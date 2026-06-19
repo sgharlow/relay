@@ -1,0 +1,64 @@
+-- ============================================================
+-- Relay — Migration 002: UNIQUE users.auth_sub
+-- 002_unique_auth_sub.sql
+--
+-- WHY: lib/auth/auth-options.ts upserts the signed-in user with
+--   INSERT INTO users (...) VALUES (...) ON CONFLICT (auth_sub) DO UPDATE ...
+-- ON CONFLICT requires a UNIQUE index/constraint on the conflict target.
+-- Migration 001 created only a NON-unique index (idx_users_auth_sub), so on a
+-- real Postgres/DSQL cluster that upsert errors with
+--   "there is no unique or exclusion constraint matching the ON CONFLICT spec"
+-- and EVERY sign-in fails. This migration makes auth_sub UNIQUE.
+--
+-- ⚠️ DRAFT — DO NOT APPLY WITHOUT: a cluster snapshot, the 5-criteria infra
+--    gate, and explicit owner sign-off (CLAUDE.md infra policy). This is a
+--    schema change to a working system.
+--
+-- ⚠️ DSQL DECISION POINTS (verify against YOUR cluster before applying):
+--   1. UNIQUE support. 001's comments note DSQL "does not enforce UNIQUE
+--      constraints the same way single-node Postgres does" — other tables use
+--      app-level OCC intent-read for uniqueness. CONFIRM Aurora DSQL supports +
+--      ENFORCES a unique secondary index on auth_sub. If it does NOT, do NOT use
+--      this migration — instead rewrite the auth upsert to the app-level pattern
+--      (see "ALTERNATIVE" below); that needs no schema change.
+--   2. Async index build. DSQL builds indexes on existing tables ASYNCHRONOUSLY.
+--      If `CREATE UNIQUE INDEX` is rejected, use the ASYNC form (commented below)
+--      and poll sys.jobs / the DSQL console until the build completes.
+--   3. Duplicates. A unique index build FAILS if duplicate auth_sub rows exist.
+--      Run the dedup pre-check first:
+--        SELECT auth_sub, COUNT(*) FROM users GROUP BY auth_sub HAVING COUNT(*) > 1;
+--      Resolve any duplicates (the seed now uses 'credentials:<email>', matching
+--      the credentials provider, so it should not collide).
+--
+-- ROLLBACK (<10 min): drop the unique index and recreate the non-unique one:
+--   DROP INDEX IF EXISTS idx_users_auth_sub;
+--   CREATE INDEX idx_users_auth_sub ON users (auth_sub);
+-- ============================================================
+
+-- Replace the non-unique index from 001 with a UNIQUE one.
+DROP INDEX IF EXISTS idx_users_auth_sub;
+
+-- Standard Postgres form (use on single-node PG and DSQL if synchronous index
+-- creation is accepted):
+CREATE UNIQUE INDEX idx_users_auth_sub ON users (auth_sub);
+
+-- ---- DSQL ASYNC alternative (uncomment if synchronous creation is rejected) ----
+-- CREATE UNIQUE INDEX ASYNC idx_users_auth_sub ON users (auth_sub);
+--   -- then wait for completion, e.g.:
+--   -- SELECT * FROM sys.jobs WHERE job_type = 'CREATE_INDEX';
+
+-- ============================================================
+-- ALTERNATIVE (no schema change) — if DSQL cannot enforce UNIQUE:
+-- Rewrite upsertUser() in lib/auth/auth-options.ts to the app-level intent-read
+-- pattern used elsewhere in the codebase (see lib/release/provisioning.ts):
+--
+--   const existing = await query('SELECT id, is_demo_account FROM users WHERE auth_sub = $1 LIMIT 1', [authSub]);
+--   if (existing.rowCount) {
+--     await query('UPDATE users SET email=$2, last_active_at=now() WHERE auth_sub=$1', [authSub, email]);
+--     return existing.rows[0];
+--   }
+--   return (await query('INSERT INTO users (email, auth_sub, ...) VALUES (...) RETURNING ...', [...])).rows[0];
+--
+-- (Accepts a small race on concurrent first sign-ins of the same new user, the
+-- same trade-off the rest of the DSQL data layer already makes.)
+-- ============================================================

@@ -4,9 +4,12 @@
  * Applies the 001_initial.sql DDL migration against an Aurora DSQL endpoint.
  *
  * Usage:
- *   npx ts-node db/migrations/migrate.ts
- *   # or
- *   npx tsx db/migrations/migrate.ts
+ *   npx tsx db/migrations/migrate.ts                        # applies 001_initial.sql (default)
+ *   npx tsx db/migrations/migrate.ts 002_unique_auth_sub.sql  # applies a specific migration
+ *
+ * Migrations are NOT tracked in a table; pass the file you intend to apply.
+ * 001 is the fresh-schema bootstrap; later files (e.g. 002) are applied
+ * individually, under the infra-change gate where relevant.
  *
  * Required environment variables (see .env.example):
  *   DSQL_PRIMARY_ENDPOINT   — e.g. <cluster-id>.dsql.us-east-1.on.aws
@@ -66,9 +69,11 @@ if (!PASSWORD) {
 }
 
 // ---------------------------------------------------------------------------
-// Read SQL file
+// Read SQL file — defaults to 001_initial.sql; pass a filename to apply another.
 // ---------------------------------------------------------------------------
-const SQL_FILE = path.resolve(__dirname, '001_initial.sql');
+const SQL_FILENAME = process.argv[2] ?? '001_initial.sql';
+// Basename only — never apply files outside this directory.
+const SQL_FILE = path.resolve(__dirname, path.basename(SQL_FILENAME));
 
 let sql: string;
 try {
@@ -102,7 +107,7 @@ async function migrate(): Promise<void> {
     await client.connect();
     console.log('[migrate] Connected successfully.');
 
-    console.log('[migrate] Applying 001_initial.sql ...');
+    console.log(`[migrate] Applying ${SQL_FILENAME} ...`);
     await client.query(sql);
     console.log('[migrate] Migration applied successfully.');
 

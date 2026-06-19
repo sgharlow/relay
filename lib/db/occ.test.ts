@@ -201,7 +201,6 @@ describe('withOccRetry — property tests', () => {
             const errObj = { code, message: 'some other error' };
             const fn = async (): Promise<never> => {
               calls++;
-              // eslint-disable-next-line @typescript-eslint/no-throw-literal
               throw errObj;
             };
 
