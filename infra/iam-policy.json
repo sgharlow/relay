@@ -1,0 +1,51 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowDsqlDbConnect",
+      "Effect": "Allow",
+      "Action": [
+        "dsql:DbConnect",
+        "dsql:DbConnectAdmin"
+      ],
+      "Resource": "CLUSTER_ARN_PLACEHOLDER",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": [
+            "us-east-1",
+            "us-west-2"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "AllowKmsEnvelopeEncryption",
+      "Effect": "Allow",
+      "Action": [
+        "kms:GenerateDataKey",
+        "kms:Decrypt",
+        "kms:DescribeKey"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceTag/Project": "relay-h0-mvp"
+        }
+      }
+    },
+    {
+      "Sid": "DenyKmsDecryptForAiRoles",
+      "Effect": "Deny",
+      "Action": [
+        "kms:Decrypt",
+        "kms:GenerateDataKey"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnLike": {
+          "aws:PrincipalArn": "arn:aws:iam::*:role/relay-ai-intake*"
+        }
+      }
+    }
+  ]
+}
