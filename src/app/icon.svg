@@ -1,0 +1,7 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="32" height="32" rx="7" fill="#0f172a"/>
+  <!-- the relay: owner (blue) hands scoped access along an arc to the recipient (amber) -->
+  <path d="M9.5 21.5 C 15 21.5, 17 10.5, 22.5 10.5" stroke="#94a3b8" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+  <circle cx="9.5" cy="21.5" r="4.3" fill="#3b82f6"/>
+  <circle cx="22.5" cy="10.5" r="4.3" fill="#fbbf24"/>
+</svg>
