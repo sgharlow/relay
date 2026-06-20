@@ -16,43 +16,8 @@
 
 import type { NextAuthOptions, User } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import { query } from '../db/connection';
 import { validateTotpCode } from './totp';
-
-// ---------------------------------------------------------------------------
-// DB upsert — auth_sub → users.id mapping
-// ---------------------------------------------------------------------------
-
-interface UserRecord {
-  id: string;
-  email: string;
-  is_demo_account: boolean;
-}
-
-/**
- * Upserts the user identified by `authSub` into the `users` table.
- * On first sign-in a new row is created with defaults.
- * On subsequent sign-ins the email column is kept in sync.
- *
- * Returns the resolved {id, is_demo_account} for the caller.
- */
-async function upsertUser(authSub: string, email: string): Promise<UserRecord> {
-  const result = await query<UserRecord>(
-    `
-    INSERT INTO users (email, auth_sub, status, last_active_at, checkin_interval_days, is_demo_account)
-    VALUES ($1, $2, 'active', now(), 30, false)
-    ON CONFLICT (auth_sub) DO UPDATE
-      SET email = EXCLUDED.email,
-          last_active_at = now()
-    RETURNING id, email, is_demo_account
-    `,
-    [email, authSub],
-  );
-
-  const row = result.rows[0];
-  if (!row) throw new Error('Upsert returned no rows');
-  return row;
-}
+import { upsertUser, type UserRecord } from './upsert-user';
 
 // ---------------------------------------------------------------------------
 // Extend next-auth types
