@@ -15,6 +15,7 @@
  */
 
 import pg from 'pg';
+import { DsqlSigner } from '@aws-sdk/dsql-signer';
 
 // ---------------------------------------------------------------------------
 // Pool configuration
@@ -23,11 +24,32 @@ import pg from 'pg';
 const POOL_CONFIG: Omit<pg.PoolConfig, 'host'> = {
   port: 5432,
   database: 'postgres',
+  user: 'admin',
   ssl: { rejectUnauthorized: false },
   connectionTimeoutMillis: 5000,   // 5-second connection timeout (Req 14.2)
   idleTimeoutMillis: 30_000,
   max: 10,
 };
+
+// Aurora DSQL authenticates with short-lived IAM auth tokens, not static
+// passwords. We mint one per new connection via the DSQL signer; pg accepts an
+// async `password` function and refreshes it automatically as connections are
+// (re)established. The signer's region is derived from the endpoint hostname
+// (`<cluster-id>.dsql.<region>.on.aws`). Without this the deployed app cannot
+// authenticate to DSQL at all (every query fails).
+function dsqlRegion(host: string): string {
+  const m = host.match(/\.dsql\.([a-z0-9-]+)\.on\.aws$/i);
+  return m ? m[1] : (process.env.AWS_REGION ?? 'us-east-1');
+}
+
+function makeDsqlPool(host: string): pg.Pool {
+  const signer = new DsqlSigner({ hostname: host, region: dsqlRegion(host) });
+  return new pg.Pool({
+    ...POOL_CONFIG,
+    host,
+    password: async () => signer.getDbConnectAdminAuthToken(),
+  });
+}
 
 // Lazily initialise pools so that missing env vars don't crash at import time
 // during tests that don't exercise DB code.
@@ -38,7 +60,7 @@ function getPrimaryPool(): pg.Pool {
   if (!_primaryPool) {
     const host = process.env.DSQL_PRIMARY_ENDPOINT;
     if (!host) throw new Error('DSQL_PRIMARY_ENDPOINT is not set');
-    _primaryPool = new pg.Pool({ ...POOL_CONFIG, host });
+    _primaryPool = makeDsqlPool(host);
   }
   return _primaryPool;
 }
@@ -47,7 +69,7 @@ function getSecondaryPool(): pg.Pool {
   if (!_secondaryPool) {
     const host = process.env.DSQL_SECONDARY_ENDPOINT;
     if (!host) throw new Error('DSQL_SECONDARY_ENDPOINT is not set');
-    _secondaryPool = new pg.Pool({ ...POOL_CONFIG, host });
+    _secondaryPool = makeDsqlPool(host);
   }
   return _secondaryPool;
 }
