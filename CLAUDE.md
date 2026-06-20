@@ -19,7 +19,7 @@ release/crypto/OCC logic — it defines the schema, state-transition table, and 
 
 ## Build state (Kiro build stopped partway — read before continuing)
 
-`npm run build`, `npx tsc --noEmit`, and `npx vitest --run` (**396 tests, 57 files**) are all green
+`npm run build`, `npx tsc --noEmit`, and `npx vitest --run` (**401 tests, 58 files**) are all green
 through the full backend + all UI + recipient-release notifications.
 **The entire backend is complete at the API layer** (28 routes) — owner CRUD, crypto/KMS, triggers,
 heartbeat, confirm, simulate, recipient access + decrypt, all three AI agents, the audit log reader,
@@ -200,19 +200,20 @@ hits the DB and fails) — add `export const dynamic = 'force-dynamic'` (see `sr
 **ALL spec'd screens now exist.** Remaining work is polish/ops only (despite `tasks.md` checkboxes —
 unreliable; trust the filesystem + passing tests): design polish (32), single-vault guard (31, small
 server tweak + migration 002), demo/submission assets (34–35), a real Web Worker for CSV parse (perf,
-Req 10.1), and the `/auth/signin` page already exists. **Backend: 27 routes, all tested. UI complete**
+Req 10.1), and the `/auth/signin` page already exists. **Backend: 28 routes, all tested. UI complete**
 — Owner: layout, vault, add-item, recipients, rules, triggers, import, audit; Access: dashboard;
 Auth: sign-in/error. The big remaining gap is END-TO-END VISUAL VERIFICATION of authenticated flows
 (needs TOTP_SECRET + KMS_KEY_ID + live DSQL — only the sign-in + access-error paths verified so far).
 **Run `docs/e2e-verification.md` against live infra** to close this — it's the full dogfood checklist
 (prereqs, migrate, seed, sign-in, crypto round-trip, release spine, recipient decrypt, AI, audit, the
 4 demo moments) + the known integration RISKS most likely to break on real infra:
-- **Risk A:** `auth-options.ts` upsert uses `ON CONFLICT (auth_sub)` but migration 001 indexes
-  `auth_sub` NON-uniquely → sign-in upsert may error on real PG/DSQL. **Drafted fix:
-  `db/migrations/002_unique_auth_sub.sql`** (apply via `npx tsx db/migrations/migrate.ts
-  002_unique_auth_sub.sql` — `migrate.ts` now takes an optional filename arg, default 001). NOT
-  applied — infra/schema change needing snapshot + sign-off; header documents the DSQL caveats +
-  a no-schema-change alternative (app-level intent-read upsert) if DSQL can't enforce UNIQUE.
+- **Risk A — FIXED (commit `c4b0005`).** The sign-in upsert previously used
+  `INSERT … ON CONFLICT (auth_sub)`, which needs a UNIQUE index migration 001 doesn't create
+  (and DSQL may not enforce). It was rewritten to the **app-level intent-read pattern** in
+  `lib/auth/upsert-user.ts` (SELECT → UPDATE/INSERT via `withOccRetry`, no `ON CONFLICT`,
+  no schema change); `auth-options.ts` imports it. **Migration `002_unique_auth_sub.sql` is now
+  OPTIONAL and left unapplied** (infra-gated + possibly DSQL-incompatible — do not apply under
+  pressure). Step 5 of the dogfood just confirms sign-in works live.
 - **Risk B:** RESOLVED — `notifyRecipientsOfRelease` (lib/notify/notifications.ts) emails each scoped
   recipient an `/access?token=…` link, auto-wired into `submitConfirmation`'s released path (real
   releases only; simulate suppresses per Req 9.5). Manual re-send: `POST /api/triggers/[id]/notify`
@@ -224,7 +225,7 @@ Auth: sign-in/error. The big remaining gap is END-TO-END VISUAL VERIFICATION of 
 `tasks.md` remains the correct ordering plan.
 
 **Resume notes:**
-- The `src/src/app/` duplicate-scaffold cruft has been removed; git is initialized (no remote).
+- The `src/src/app/` duplicate-scaffold cruft has been removed; git is initialized with remote `origin` → github.com/sgharlow/relay (branch `master`).
 - `tsconfig.json` now sets `target: ES2020` — required for the `bigint` OCC version type to compile
   (this was a Kiro build blocker). If `tsc` reports stale errors after a config change, delete
   `tsconfig.tsbuildinfo` (incremental cache).
@@ -315,5 +316,5 @@ These cut across multiple files and are easy to break. Preserve them.
 
 ## Notes
 
-- No git repository is initialized here yet (`git init` if you need version control).
-- `README.md` is still the default create-next-app boilerplate — not a source of project info.
+- Git is initialized with remote `origin` → github.com/sgharlow/relay (branch `master`).
+- `README.md` is a real project README (rewritten 2026-06-19) — safe to read for project info.

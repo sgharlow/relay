@@ -1,6 +1,6 @@
 # Relay — Devpost Submission Pack
 
-Copy each block into the matching Devpost field. Track: **Monetizable B2C**. AWS Database: **Amazon Aurora DSQL**.
+Copy each block into the matching Devpost field. Track: **Monetizable B2C** (the build spec labels it "Track 1 — Monetizable B2C"; **confirm the exact official track name/number against the H0 rules before submitting**). AWS Database: **Amazon Aurora DSQL**.
 
 ---
 
@@ -54,7 +54,7 @@ We used **Amazon Aurora DSQL**, and the choice is the architecture, not a detail
 A graduated-assurance verification engine (identity verification, death/incapacity signals, notarization), productionized zero-knowledge via threshold secret-sharing, per-jurisdiction data residency on Aurora DSQL's multi-region foundation, and distribution as **embedded continuity infrastructure** that banks, employers, and wealth managers offer their clients — beginning with the caregiver wedge.
 
 ## Built With
-`amazon-aurora-dsql` · `aws-kms` · `vercel` · `v0` · `next.js` · `typescript` · `postgresql` · `serverless`
+`amazon-aurora-dsql` · `aws-kms` · `vercel` · `v0` · `next.js` · `typescript` · `node-postgres` · `next-auth` · `openai` · `resend` · `fast-check` · `serverless`
 
 ---
 

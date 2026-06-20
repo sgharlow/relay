@@ -2,7 +2,7 @@
 
 What's already proven and what is NOT:
 
-- ✅ **Unit/property tests** (`npx vitest --run`, 387) cover all pure logic, every API handler (mocked
+- ✅ **Unit/property tests** (`npx vitest --run`, 401) cover all pure logic, every API handler (mocked
   DB/KMS/OpenAI), and the correctness properties (OCC, state machine, N-of-M, hash chain, ranking…).
 - ✅ **Build + types** (`npm run build`, `npx tsc --noEmit`) are clean.
 - ✅ **Visually verified (Playwright)**: `/auth/signin`, `/auth/error`, the owner→signin redirect, and
@@ -40,19 +40,16 @@ Copy `.env.example` and fill ALL of:
 - [ ] `TOTP_SECRET` — base32 (e.g. add it to an authenticator app as the account secret). **Required
   for sign-in.** Without it, `authorize()` throws and no one can log in.
 
-> ⚠️ **Verify the `auth_sub` upsert FIRST (see §10 Risk A).** The credentials provider runs
-> `INSERT … ON CONFLICT (auth_sub) DO UPDATE` (`lib/auth/auth-options.ts`), which requires a UNIQUE
-> index on `users.auth_sub`. Migration `001_initial.sql` creates a NON-unique index. A draft fix
-> exists: `db/migrations/002_unique_auth_sub.sql` (apply via
-> `npx tsx db/migrations/migrate.ts 002_unique_auth_sub.sql`) — **but read its header first**: it is an
-> infra/schema change (snapshot + sign-off), and if DSQL can't enforce UNIQUE the file documents the
-> no-schema-change alternative (rewrite the upsert to the app-level intent-read pattern). Confirm the
-> upsert works against your DSQL cluster before anything else — it gates every sign-in.
+> ✅ **`auth_sub` upsert — already FIXED (commit `c4b0005`, see §10 Risk A).** The sign-in upsert was
+> rewritten to the app-level intent-read pattern in `lib/auth/upsert-user.ts` (SELECT → UPDATE/INSERT
+> via `withOccRetry`, **no `ON CONFLICT`**, no UNIQUE-index dependency), so sign-in no longer requires
+> migration 002. Migration `002_unique_auth_sub.sql` is now OPTIONAL/unapplied. Step 3 below just
+> confirms sign-in works against your live DSQL cluster — it should simply succeed.
 
 ---
 
 ## 1. Pre-flight (no infra needed)
-- [ ] `npx vitest --run` → **387 passed**.
+- [ ] `npx vitest --run` → **401 passed**.
 - [ ] `npx tsc --noEmit` → exit 0. (If it reports stale errors, `rm -f tsconfig.tsbuildinfo` first.)
 - [ ] `npm run build` → "Compiled successfully", exit 0.
 
@@ -158,13 +155,11 @@ Copy `.env.example` and fill ALL of:
 
 ## Known integration risks (verify explicitly — most likely to break on real infra)
 
-- **Risk A — `auth_sub` uniqueness.** `auth-options.ts` upsert uses `ON CONFLICT (auth_sub)`. Migration
-  001 indexes `auth_sub` NON-uniquely. On real PG/DSQL this upsert may error ("no unique or exclusion
-  constraint matching"). Drafted fix: **`db/migrations/002_unique_auth_sub.sql`** (replaces the index
-  with a UNIQUE one). **Apply only under the infra gate — snapshot + sign-off (CLAUDE.md policy).** The
-  file's header covers the DSQL caveats (unique support, async index build, dedup pre-check) and the
-  no-schema-change alternative (rewrite the upsert to app-level intent-read) if DSQL can't enforce
-  UNIQUE.
+- **Risk A — `auth_sub` uniqueness — FIXED (commit `c4b0005`).** The sign-in upsert no longer uses
+  `ON CONFLICT (auth_sub)`; `upsertUser()` (`lib/auth/upsert-user.ts`) now does an app-level
+  intent-read (SELECT → UPDATE/INSERT via `withOccRetry`), so it needs no UNIQUE index and no schema
+  change and works on both Postgres and DSQL. Migration `002_unique_auth_sub.sql` is OPTIONAL/unapplied
+  (infra-gated + possibly DSQL-incompatible — do not apply). Confirm sign-in works live in Step 3.
 - **Risk B — recipient access-link delivery.** RESOLVED: recipients are auto-emailed an `/access`
   link the moment a real release reaches RELEASED (`notifyRecipientsOfRelease`, wired into the
   confirmation path), and `POST /api/triggers/<releaseStateId>/notify` re-sends on demand. Verify a
