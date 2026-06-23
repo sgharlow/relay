@@ -12,7 +12,9 @@ permanent. The default-safe state is always `ARMED`.
 
 > **H0 — Hack the Zero Stack with Vercel and AWS Databases** · Track: **Monetizable B2C** · AWS Database: **Amazon Aurora DSQL**
 
-**▶ Live:** _(deployed at submission — see [`docs/SUBMISSION-RUNBOOK.md`](docs/SUBMISSION-RUNBOOK.md))_ · **🎬 Demo video:** _(link added after recording)_
+**▶ Live:** <!-- FILL AT SUBMISSION: paste the Vercel production URL here --> _(deployed at submission — see [`docs/SUBMISSION-RUNBOOK.md`](docs/SUBMISSION-RUNBOOK.md))_ · **🎬 Demo video:** <!-- FILL AT SUBMISSION: paste the public YouTube URL here --> _(link added after recording)_
+
+> **Submission status:** code complete · **401 tests / 58 files green** · `tsc` + `next build` clean. The only remaining work is live AWS provisioning → deploy → dogfood → capture → Devpost form. Turnkey paste sheet: [`specs/DEVPOST-PASTE-MAP.md`](specs/DEVPOST-PASTE-MAP.md). Ordered cliff-day path: [`docs/SUBMISSION-RUNBOOK.md`](docs/SUBMISSION-RUNBOOK.md).
 
 ---
 

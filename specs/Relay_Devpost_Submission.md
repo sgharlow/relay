@@ -1,6 +1,6 @@
 # Relay — Devpost Submission Pack
 
-Copy each block into the matching Devpost field. Track: **Monetizable B2C** (the build spec labels it "Track 1 — Monetizable B2C"; **confirm the exact official track name/number against the H0 rules before submitting**). AWS Database: **Amazon Aurora DSQL**.
+Copy each block into the matching Devpost field. Track: **Monetizable B2C** (locked — the build spec's "Track 1 — Monetizable B2C" is the same track). AWS Database: **Amazon Aurora DSQL**.
 
 ---
 
