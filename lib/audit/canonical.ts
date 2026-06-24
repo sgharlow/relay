@@ -18,6 +18,12 @@ const HASH_EXCLUDED_KEYS = new Set(['prev_hash', 'entry_hash', 'id']);
 
 function canonicalize(value: unknown): unknown {
   if (value === null || typeof value !== 'object') return value;
+  // Dates must canonicalise to the same ISO string the writer hashed. The DB
+  // returns TIMESTAMPTZ as a Date object server-side (it only becomes a string
+  // after JSON serialisation), and the writer hashes `new Date().toISOString()`.
+  // Without this, a Date falls through to the object branch and serialises to
+  // `{}`, breaking server-side chain verification (Property 16).
+  if (value instanceof Date) return value.toISOString();
   if (Array.isArray(value)) return value.map(canonicalize);
 
   const obj = value as Record<string, unknown>;

@@ -27,6 +27,13 @@ describe('canonicalJson', () => {
     expect(canonicalJson({ b: 1, a: 2 })).toBe(canonicalJson({ a: 2, b: 1 }));
     expect(canonicalJson({ a: 1, prev_hash: 'x', entry_hash: 'y', id: 'z' })).toBe(canonicalJson({ a: 1 }));
   });
+
+  it('serialises a Date identically to its ISO string (DSQL TIMESTAMPTZ round-trip)', () => {
+    // The writer hashes `ts` as `new Date().toISOString()`; pg returns TIMESTAMPTZ
+    // as a Date object server-side. Both must canonicalise to the same string.
+    const iso = '2026-06-24T18:07:14.430Z';
+    expect(canonicalJson({ ts: new Date(iso) })).toBe(canonicalJson({ ts: iso }));
+  });
 });
 
 describe('verifyAuditChain', () => {
@@ -38,6 +45,15 @@ describe('verifyAuditChain', () => {
   it('accepts the empty chain and a single-entry chain', () => {
     expect(verifyAuditChain([]).valid).toBe(true);
     expect(verifyAuditChain(buildChain([{ actor: 'solo' }])).valid).toBe(true);
+  });
+
+  it('accepts an entry written with an ISO-string ts but read back as a Date (DSQL, Property 16)', () => {
+    const iso = '2026-06-24T18:07:14.430Z';
+    const base = { seq: 0, actor: 'a', ts: iso }; // what the writer hashed
+    const entry_hash = computeEntryHash(GENESIS_PREV_HASH, base);
+    // what the verifier sees server-side: ts is a Date object from pg
+    const readBack = { seq: 0, actor: 'a', ts: new Date(iso), prev_hash: GENESIS_PREV_HASH, entry_hash } as unknown as TestEntry;
+    expect(verifyAuditChain([readBack]).valid).toBe(true);
   });
 
   it('detects a tampered entry payload (entry_hash mismatch)', () => {

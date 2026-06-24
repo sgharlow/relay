@@ -140,8 +140,13 @@ async function importAesKey(plainDataKeyB64: string): Promise<CryptoKey> {
 // ---------------------------------------------------------------------------
 
 export class CryptoService {
-  /** Injected fetch — defaults to the global. Lets tests stub network calls. */
-  constructor(private readonly fetchImpl: typeof fetch = globalThis.fetch) {}
+  /**
+   * Injected fetch — defaults to the global. Lets tests stub network calls.
+   * The default is bound to globalThis: calling `this.fetchImpl(...)` would
+   * otherwise invoke the global `fetch` with `this` = this CryptoService
+   * instance, which the browser/undici rejects ("Illegal invocation").
+   */
+  constructor(private readonly fetchImpl: typeof fetch = globalThis.fetch.bind(globalThis)) {}
 
   /**
    * Encrypts `plaintext` under the supplied base64 plaintext data key using
