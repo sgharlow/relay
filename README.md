@@ -12,9 +12,9 @@ permanent. The default-safe state is always `ARMED`.
 
 > **H0 — Hack the Zero Stack with Vercel and AWS Databases** · Track: **Monetizable B2C** · AWS Database: **Amazon Aurora DSQL**
 
-**▶ Live:** <!-- FILL AT SUBMISSION: paste the Vercel production URL here --> _(deployed at submission — see [`docs/SUBMISSION-RUNBOOK.md`](docs/SUBMISSION-RUNBOOK.md))_ · **🎬 Demo video:** <!-- FILL AT SUBMISSION: paste the public YouTube URL here --> _(link added after recording)_
+**▶ Live:** <https://relay-three-henna.vercel.app> _(deployed on Aurora DSQL, multi-region active-active — see [`docs/SUBMISSION-RUNBOOK.md`](docs/SUBMISSION-RUNBOOK.md))_ · **🎬 Demo video:** <!-- FILL AT SUBMISSION: paste the public YouTube URL here --> _(link added after recording)_
 
-> **Submission status:** code complete · **401 tests / 58 files green** · `tsc` + `next build` clean. The only remaining work is live AWS provisioning → deploy → dogfood → capture → Devpost form. Turnkey paste sheet: [`specs/DEVPOST-PASTE-MAP.md`](specs/DEVPOST-PASTE-MAP.md). Ordered cliff-day path: [`docs/SUBMISSION-RUNBOOK.md`](docs/SUBMISSION-RUNBOOK.md).
+> **Submission status:** code complete + **deployed and dogfooded live** · **403 tests / 58 files green** · `tsc` + `next build` clean. Remaining work is the demo capture + Devpost form (recipient-email dogfood, region-failover footage, Aurora DSQL screenshot, video). Turnkey paste sheet: [`specs/DEVPOST-PASTE-MAP.md`](specs/DEVPOST-PASTE-MAP.md). Ordered cliff-day path: [`docs/SUBMISSION-RUNBOOK.md`](docs/SUBMISSION-RUNBOOK.md).
 
 ---
 
@@ -61,7 +61,7 @@ engine) · **Resend** (notifications) · **node-postgres** · Vitest + **fast-ch
 
 ```bash
 npm install
-npm test          # vitest --run — 401 tests / 58 files, all green
+npm test          # vitest --run — 403 tests / 58 files, all green
 npm run build     # next build — production build
 npm run dev       # http://localhost:3000  (needs DSQL + KMS env for DB-backed routes)
 ```
@@ -74,8 +74,9 @@ handlers are thin and build-verified. AWS provisioning + live dogfood:
 ## Status
 
 Backend complete (**28 API routes**), all UI built, recipient-release
-notifications wired. `npx vitest --run` = **401 green**; `tsc --noEmit` + `next
-build` clean. Remaining work is deploy + capture + submit — see the ordered
+notifications wired. `npx vitest --run` = **403 green**; `tsc --noEmit` + `next
+build` clean. Deployed live and dogfooded on Aurora DSQL; remaining work is demo
+capture + Devpost — see the ordered
 [**Submission runbook**](docs/SUBMISSION-RUNBOOK.md). Specs (the build contract):
 [`.kiro/specs/relay-h0-mvp/`](.kiro/specs/relay-h0-mvp/) and
 [`specs/Relay_H0_Build_Spec_v2.md`](specs/Relay_H0_Build_Spec_v2.md);

@@ -59,11 +59,12 @@ A graduated-assurance verification engine (identity verification, death/incapaci
 ---
 
 ## Required submission components (H0 checklist)
-- [ ] **Text description** — paste the blocks above; state **Amazon Aurora DSQL** as the database used.
+- [x] **Text description** — paste the blocks above; state **Amazon Aurora DSQL** as the database used.
+- [x] **Live app deployed** — <https://relay-three-henna.vercel.app> (Aurora DSQL, multi-region active-active; dogfooded 2026-06-24).
 - [ ] **Demo video (< 3 min, YouTube)** — script below; must explain the problem, who it's for, why, show the working app, include the live failover, and explain the AWS Database.
-- [ ] **Published Vercel project link + Vercel Team ID.**
-- [ ] **Architecture diagram** — `relay_architecture.svg`.
-- [ ] **Screenshot proving AWS Database usage** — Aurora DSQL resource in the AWS console and/or Vercel storage configuration.
+- [ ] **Published Vercel project link + Vercel Team ID** — Team ID `team_nP3HzRc3PNm6SaWiApTGkEWa`.
+- [x] **Architecture diagram** — upload `specs/relay_architecture.png` (PNG; `.svg` source also present).
+- [ ] **Screenshot proving AWS Database usage** — Aurora DSQL clusters in the AWS console (primary `frt34b…` us-east-1 / secondary `fjt34b…` us-west-2, Peers tab) and/or Vercel storage configuration.
 - [ ] **Bonus content** — a build post on builder.aws.com / dev.to / LinkedIn / Medium with **#H0Hackathon** and the required "created for this hackathon" statement.
 
 ---
