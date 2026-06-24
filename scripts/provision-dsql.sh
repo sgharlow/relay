@@ -1,227 +1,139 @@
 #!/usr/bin/env bash
 # =============================================================================
 # provision-dsql.sh
-# Provisions an Aurora DSQL multi-region cluster across us-east-1 and us-west-2,
-# creates the IAM role for the backend service with dsql:DbConnect permission,
-# and outputs the required environment variable values.
+# Provisions a multi-region Aurora DSQL cluster pair for Relay H0.
 #
-# Requirements: 14.1 (two-region provisioning), 17.3 (IAM auth for DSQL)
+#   Active data regions : us-east-1 (primary) + us-west-2 (secondary)
+#   Witness region      : us-east-2  (quorum log only — NO cluster, NO endpoint)
 #
-# Prerequisites:
-#   - AWS CLI v2 installed and configured
-#   - Sufficient IAM permissions:
-#       dsql:CreateCluster, dsql:GetCluster, dsql:CreateMultiRegionProperties
-#       iam:CreateRole, iam:CreatePolicy, iam:AttachRolePolicy
-#       sts:GetCallerIdentity
+# Aurora DSQL multi-region API (verified 2026-06-23 against aws-cli/2.27):
+#   1. create-cluster in each active region with --multi-region-properties
+#      '{"witnessRegion":"us-east-2"}'  (clusters start PENDING_SETUP)
+#   2. update-cluster in each region adding the OTHER region's ARN under
+#      "clusters":[...]  -> the pair links and both transition to ACTIVE
+#   There is NO `create-multi-region-clusters` operation (the old script called
+#   one that does not exist and swallowed the error, leaving two unlinked paid
+#   clusters). This version fails loudly and links correctly.
+#
+# Deletion protection is left OFF during provisioning so a failed link can be
+# torn down cheaply; it is enabled at the end once both clusters are ACTIVE.
+#
+# Requirements: 14.1 (two-region active-active), 17.3 (IAM auth for DSQL).
+# Outputs .env.dsql with the endpoints + ARN for go-live.sh / Vercel.
 #
 # Usage:
-#   chmod +x scripts/provision-dsql.sh
-#   ./scripts/provision-dsql.sh
-#
-# The script outputs a .env.dsql file you can source or copy into Vercel env vars.
+#   AWS_PROFILE=wpengine2 ./scripts/provision-dsql.sh
+#   (or)  PROFILE=wpengine2 ./scripts/provision-dsql.sh
 # =============================================================================
-
 set -euo pipefail
 
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
 PRIMARY_REGION="us-east-1"
 SECONDARY_REGION="us-west-2"
-CLUSTER_NAME="relay-h0-mvp"
-IAM_ROLE_NAME="relay-backend-dsql"
-IAM_POLICY_NAME="relay-backend-dsql-policy"
+WITNESS_REGION="us-east-2"
+PROFILE="${PROFILE:-${AWS_PROFILE:-wpengine2}}"
+TAG_KEY="Project"; TAG_VAL="relay-h0-mvp"
 OUTPUT_FILE=".env.dsql"
+WAIT_TIMEOUT_SECS=900
 
-echo "=== Relay H0 MVP — Aurora DSQL Provisioning ==="
-echo ""
+aws_() { aws --profile "$PROFILE" --output text "$@"; }
+say()  { printf '\n\033[1;36m=== %s ===\033[0m\n' "$*"; }
+die()  { printf '\n\033[1;31mHALT: %s\033[0m\n' "$*" >&2; exit 1; }
 
-# ---------------------------------------------------------------------------
-# 1. Get AWS account ID
-# ---------------------------------------------------------------------------
-echo "[1/6] Fetching AWS account identity..."
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-echo "      Account ID: ${ACCOUNT_ID}"
-echo ""
-
-# ---------------------------------------------------------------------------
-# 2. Create the primary DSQL cluster in us-east-1
-#    Aurora DSQL is a linked-cluster model: one region is the "primary"
-#    and the other is added as a peer via multi-region properties.
-# ---------------------------------------------------------------------------
-echo "[2/6] Creating primary Aurora DSQL cluster in ${PRIMARY_REGION}..."
-PRIMARY_CLUSTER_JSON=$(aws dsql create-cluster \
-  --region "${PRIMARY_REGION}" \
-  --deletion-protection-enabled \
-  --tags "Name=${CLUSTER_NAME},Project=relay-h0-mvp,ManagedBy=provision-dsql.sh" \
-  --output json)
-
-PRIMARY_CLUSTER_ID=$(echo "${PRIMARY_CLUSTER_JSON}" | python3 -c "import sys,json; print(json.load(sys.stdin)['identifier'])")
-PRIMARY_ENDPOINT=$(echo "${PRIMARY_CLUSTER_JSON}" | python3 -c "import sys,json; print(json.load(sys.stdin)['arn'])" | sed 's|.*||')
-
-echo "      Primary cluster ID: ${PRIMARY_CLUSTER_ID}"
-echo ""
+say "Relay H0 — Aurora DSQL multi-region provisioning"
+ACCOUNT_ID=$(aws_ sts get-caller-identity --query Account)
+WHO=$(aws_ sts get-caller-identity --query Arn)
+echo "profile=$PROFILE  account=$ACCOUNT_ID"
+echo "identity=$WHO"
+echo "peers: $PRIMARY_REGION + $SECONDARY_REGION   witness: $WITNESS_REGION"
 
 # ---------------------------------------------------------------------------
-# 3. Create the secondary DSQL cluster in us-west-2
+# 1. Create both clusters (PENDING_SETUP until peered). Idempotent-ish: reuse
+#    .env.dsql ids if a prior run got this far.
 # ---------------------------------------------------------------------------
-echo "[3/6] Creating secondary Aurora DSQL cluster in ${SECONDARY_REGION}..."
-SECONDARY_CLUSTER_JSON=$(aws dsql create-cluster \
-  --region "${SECONDARY_REGION}" \
-  --deletion-protection-enabled \
-  --tags "Name=${CLUSTER_NAME}-secondary,Project=relay-h0-mvp,ManagedBy=provision-dsql.sh" \
-  --output json)
+say "[1/5] Create primary cluster in $PRIMARY_REGION"
+PRIMARY_ARN=$(aws_ dsql create-cluster --region "$PRIMARY_REGION" \
+  --no-deletion-protection-enabled \
+  --multi-region-properties "{\"witnessRegion\":\"$WITNESS_REGION\"}" \
+  --query arn)
+PRIMARY_ID="${PRIMARY_ARN##*/}"
+echo "primary:   id=$PRIMARY_ID  arn=$PRIMARY_ARN"
 
-SECONDARY_CLUSTER_ID=$(echo "${SECONDARY_CLUSTER_JSON}" | python3 -c "import sys,json; print(json.load(sys.stdin)['identifier'])")
-
-echo "      Secondary cluster ID: ${SECONDARY_CLUSTER_ID}"
-echo ""
-
-# ---------------------------------------------------------------------------
-# 4. Link the two clusters into a multi-region active-active pair
-#    This is the Aurora DSQL "linked cluster" API call.
-# ---------------------------------------------------------------------------
-echo "[4/6] Linking clusters into a multi-region active-active pair..."
-LINK_JSON=$(aws dsql create-multi-region-clusters \
-  --region "${PRIMARY_REGION}" \
-  --linked-region-list "${PRIMARY_REGION}" "${SECONDARY_REGION}" \
-  --cluster-properties \
-    "${PRIMARY_REGION}={tags={Name=${CLUSTER_NAME},Project=relay-h0-mvp}}" \
-    "${SECONDARY_REGION}={tags={Name=${CLUSTER_NAME}-secondary,Project=relay-h0-mvp}}" \
-  --output json 2>/dev/null || true)
-
-# Wait for clusters to become ACTIVE
-echo "      Waiting for primary cluster to become ACTIVE (may take 2-5 minutes)..."
-aws dsql wait cluster-active \
-  --identifier "${PRIMARY_CLUSTER_ID}" \
-  --region "${PRIMARY_REGION}"
-
-echo "      Waiting for secondary cluster to become ACTIVE..."
-aws dsql wait cluster-active \
-  --identifier "${SECONDARY_CLUSTER_ID}" \
-  --region "${SECONDARY_REGION}"
+say "[2/5] Create secondary cluster in $SECONDARY_REGION"
+SECONDARY_ARN=$(aws_ dsql create-cluster --region "$SECONDARY_REGION" \
+  --no-deletion-protection-enabled \
+  --multi-region-properties "{\"witnessRegion\":\"$WITNESS_REGION\"}" \
+  --query arn)
+SECONDARY_ID="${SECONDARY_ARN##*/}"
+echo "secondary: id=$SECONDARY_ID  arn=$SECONDARY_ARN"
 
 # ---------------------------------------------------------------------------
-# 5. Retrieve the regional endpoint hostnames
-#    DSQL endpoint format: <cluster-id>.dsql.<region>.on.aws
+# 2. Link the pair: each region's cluster lists the OTHER as a peer.
 # ---------------------------------------------------------------------------
-echo "[5/6] Retrieving regional endpoint URLs..."
-
-PRIMARY_CLUSTER_DETAIL=$(aws dsql get-cluster \
-  --identifier "${PRIMARY_CLUSTER_ID}" \
-  --region "${PRIMARY_REGION}" \
-  --output json)
-
-SECONDARY_CLUSTER_DETAIL=$(aws dsql get-cluster \
-  --identifier "${SECONDARY_CLUSTER_ID}" \
-  --region "${SECONDARY_REGION}" \
-  --output json)
-
-# The hostname follows the well-known pattern; extract from ARN if not directly in response
-CLUSTER_ARN=$(echo "${PRIMARY_CLUSTER_DETAIL}" | python3 -c "import sys,json; print(json.load(sys.stdin)['arn'])")
-PRIMARY_ENDPOINT="${PRIMARY_CLUSTER_ID}.dsql.${PRIMARY_REGION}.on.aws"
-SECONDARY_ENDPOINT="${SECONDARY_CLUSTER_ID}.dsql.${SECONDARY_REGION}.on.aws"
-
-echo "      Primary endpoint  : ${PRIMARY_ENDPOINT}"
-echo "      Secondary endpoint: ${SECONDARY_ENDPOINT}"
-echo "      Cluster ARN       : ${CLUSTER_ARN}"
-echo ""
+say "[3/5] Peer the clusters (add each other's ARN)"
+aws_ dsql update-cluster --region "$PRIMARY_REGION" --identifier "$PRIMARY_ID" \
+  --multi-region-properties "{\"witnessRegion\":\"$WITNESS_REGION\",\"clusters\":[\"$SECONDARY_ARN\"]}" \
+  --query status
+aws_ dsql update-cluster --region "$SECONDARY_REGION" --identifier "$SECONDARY_ID" \
+  --multi-region-properties "{\"witnessRegion\":\"$WITNESS_REGION\",\"clusters\":[\"$PRIMARY_ARN\"]}" \
+  --query status
 
 # ---------------------------------------------------------------------------
-# 6. Create IAM policy and role for the backend service
+# 3. Wait for both to reach ACTIVE (poll, don't rely on a waiter that may not
+#    exist for the linked transition).
 # ---------------------------------------------------------------------------
-echo "[6/6] Creating IAM policy '${IAM_POLICY_NAME}' and role '${IAM_ROLE_NAME}'..."
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-POLICY_FILE="${SCRIPT_DIR}/../infra/iam-policy.json"
-
-# Substitute the real cluster ARN into the policy document
-RESOLVED_POLICY=$(sed "s|CLUSTER_ARN_PLACEHOLDER|${CLUSTER_ARN}|g" "${POLICY_FILE}")
-
-# Create the IAM policy
-POLICY_ARN=$(aws iam create-policy \
-  --policy-name "${IAM_POLICY_NAME}" \
-  --policy-document "${RESOLVED_POLICY}" \
-  --description "Allows relay backend service to authenticate to Aurora DSQL via IAM" \
-  --query 'Policy.Arn' \
-  --output text)
-
-echo "      Policy ARN: ${POLICY_ARN}"
-
-# Create the trust policy for the backend service role
-# The assume-role trust is scoped to the same account; replace with Vercel OIDC provider
-# trust document if using Vercel's AWS OIDC integration.
-TRUST_POLICY=$(cat <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "AllowBackendServiceAssumeRole",
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "lambda.amazonaws.com"
-      },
-      "Action": "sts:AssumeRole"
-    },
-    {
-      "Sid": "AllowSameAccountAssumeRole",
-      "Effect": "Allow",
-      "Principal": {
-        "AWS": "arn:aws:iam::${ACCOUNT_ID}:root"
-      },
-      "Action": "sts:AssumeRole",
-      "Condition": {
-        "StringEquals": {
-          "sts:ExternalId": "relay-h0-mvp-backend"
-        }
-      }
-    }
-  ]
+say "[4/5] Wait for ACTIVE (up to ${WAIT_TIMEOUT_SECS}s)"
+wait_active() {
+  local region=$1 id=$2 deadline=$(( SECONDS + WAIT_TIMEOUT_SECS )) st
+  while (( SECONDS < deadline )); do
+    st=$(aws_ dsql get-cluster --region "$region" --identifier "$id" --query status 2>/dev/null || echo "QUERY_ERR")
+    printf '   %s/%s : %s\n' "$region" "${id:0:8}" "$st"
+    [ "$st" = "ACTIVE" ] && return 0
+    case "$st" in FAILED|DELETING) die "$region/$id entered $st";; esac
+    sleep 15
+  done
+  die "$region/$id did not reach ACTIVE within ${WAIT_TIMEOUT_SECS}s"
 }
-EOF
-)
-
-# Create the IAM role
-ROLE_ARN=$(aws iam create-role \
-  --role-name "${IAM_ROLE_NAME}" \
-  --assume-role-policy-document "${TRUST_POLICY}" \
-  --description "Backend service role for Relay H0 MVP — Aurora DSQL IAM auth" \
-  --tags "Key=Project,Value=relay-h0-mvp" \
-  --query 'Role.Arn' \
-  --output text)
-
-echo "      Role ARN: ${ROLE_ARN}"
-
-# Attach the DSQL policy to the role
-aws iam attach-role-policy \
-  --role-name "${IAM_ROLE_NAME}" \
-  --policy-arn "${POLICY_ARN}"
-
-echo "      Attached '${IAM_POLICY_NAME}' to '${IAM_ROLE_NAME}'"
-echo ""
+wait_active "$PRIMARY_REGION"   "$PRIMARY_ID"
+wait_active "$SECONDARY_REGION" "$SECONDARY_ID"
 
 # ---------------------------------------------------------------------------
-# 7. Write environment variable output
+# 4. Tag + enable deletion protection now that the pair is healthy (best-effort
+#    tagging; protection guards the demo window — disable before teardown).
 # ---------------------------------------------------------------------------
-echo "=== Writing environment variables to ${OUTPUT_FILE} ==="
+say "[5/5] Tag + enable deletion protection"
+aws_ dsql tag-resource --region "$PRIMARY_REGION"   --resource-arn "$PRIMARY_ARN"   --tags "$TAG_KEY=$TAG_VAL" 2>/dev/null || echo "(tag primary skipped)"
+aws_ dsql tag-resource --region "$SECONDARY_REGION" --resource-arn "$SECONDARY_ARN" --tags "$TAG_KEY=$TAG_VAL" 2>/dev/null || echo "(tag secondary skipped)"
+aws_ dsql update-cluster --region "$PRIMARY_REGION"   --identifier "$PRIMARY_ID"   --deletion-protection-enabled --query status >/dev/null
+aws_ dsql update-cluster --region "$SECONDARY_REGION" --identifier "$SECONDARY_ID" --deletion-protection-enabled --query status >/dev/null
 
-cat > "${OUTPUT_FILE}" <<ENVFILE
-# Aurora DSQL — auto-generated by provision-dsql.sh
-# Copy these values into your Vercel project environment variables.
+# ---------------------------------------------------------------------------
+# 5. Endpoints + env output. DSQL endpoint = <cluster-id>.dsql.<region>.on.aws
+# ---------------------------------------------------------------------------
+PRIMARY_ENDPOINT="${PRIMARY_ID}.dsql.${PRIMARY_REGION}.on.aws"
+SECONDARY_ENDPOINT="${SECONDARY_ID}.dsql.${SECONDARY_REGION}.on.aws"
+
+cat > "$OUTPUT_FILE" <<ENVFILE
+# Aurora DSQL — auto-generated by provision-dsql.sh ($(date -u +%Y-%m-%dT%H:%M:%SZ))
+# Active peers: ${PRIMARY_REGION} + ${SECONDARY_REGION}  |  witness: ${WITNESS_REGION}
 DSQL_PRIMARY_ENDPOINT=${PRIMARY_ENDPOINT}
 DSQL_SECONDARY_ENDPOINT=${SECONDARY_ENDPOINT}
-DSQL_CLUSTER_ARN=${CLUSTER_ARN}
-DSQL_IAM_ROLE_ARN=${ROLE_ARN}
+DSQL_CLUSTER_ARN=${PRIMARY_ARN}
+DSQL_SECONDARY_CLUSTER_ARN=${SECONDARY_ARN}
 ENVFILE
 
-echo ""
-echo "=== Provisioning complete ==="
-echo ""
-echo "Next steps:"
-echo "  1. Copy the values in '${OUTPUT_FILE}' into Vercel environment variables."
-echo "  2. Run 'db/migrations/001_initial.sql' against the primary endpoint."
-echo "     Example: psql \"host=${PRIMARY_ENDPOINT} dbname=relay\" -f db/migrations/001_initial.sql"
-echo "  3. Verify connectivity: psql \"host=${PRIMARY_ENDPOINT} dbname=relay\" -c 'SELECT 1'"
-echo "  4. Verify secondary:   psql \"host=${SECONDARY_ENDPOINT} dbname=relay\" -c 'SELECT 1'"
-echo ""
-cat "${OUTPUT_FILE}"
+say "Provisioning complete"
+cat "$OUTPUT_FILE"
+cat <<NEXT
+
+Next (go-live.sh continues from here): KMS key -> merge .env.local -> migrate ->
+seed -> verify both regions -> Vercel deploy.
+
+NOTE: app runtime IAM auth — lib/db/connection.ts must mint DSQL tokens via
+@aws-sdk/dsql-signer (see go-live.sh step-0 guard) before the deployed app works.
+
+Teardown when done:
+  aws --profile $PROFILE dsql update-cluster --region $PRIMARY_REGION   --identifier $PRIMARY_ID   --no-deletion-protection-enabled
+  aws --profile $PROFILE dsql update-cluster --region $SECONDARY_REGION --identifier $SECONDARY_ID --no-deletion-protection-enabled
+  aws --profile $PROFILE dsql delete-cluster --region $PRIMARY_REGION   --identifier $PRIMARY_ID
+  aws --profile $PROFILE dsql delete-cluster --region $SECONDARY_REGION --identifier $SECONDARY_ID
+NEXT

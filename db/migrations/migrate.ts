@@ -107,8 +107,33 @@ async function migrate(): Promise<void> {
     await client.connect();
     console.log('[migrate] Connected successfully.');
 
-    console.log(`[migrate] Applying ${SQL_FILENAME} ...`);
-    await client.query(sql);
+    // DSQL runs each DDL in its own implicit transaction and rejects multiple
+    // DDL statements in a single (multi-statement) transaction — so apply the
+    // file statement-by-statement rather than as one client.query(sql) batch.
+    console.log(`[migrate] Applying ${SQL_FILENAME} statement-by-statement (DSQL) ...`);
+    const statements = sql
+      .split(/\r?\n/) // CRLF-safe
+      .map((line) => line.replace(/--.*/, '')) // strip line + inline comments (may contain ';'); no $ anchor so a trailing \r doesn't defeat it
+      .join('\n')
+      .split(';')
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    for (const [i, stmt] of statements.entries()) {
+      const label = stmt.split('\n').find((l) => l.trim())?.slice(0, 64) ?? '';
+      try {
+        await client.query(stmt);
+        console.log(`[migrate]   (${i + 1}/${statements.length}) ${label}`);
+      } catch (e) {
+        // Idempotent: skip objects that already exist (re-run after a partial apply).
+        const code = (e as { code?: string }).code;
+        const msg = (e as Error).message ?? '';
+        if (code === '42P07' || code === '42710' || /already exists/i.test(msg)) {
+          console.log(`[migrate]   (${i + 1}/${statements.length}) ${label}  (exists, skip)`);
+          continue;
+        }
+        throw e;
+      }
+    }
     console.log('[migrate] Migration applied successfully.');
 
     // Quick sanity check — list the tables we just created

@@ -37,8 +37,8 @@ CREATE TABLE users (
   created_at            TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_users_auth_sub ON users (auth_sub);
-CREATE INDEX idx_users_email    ON users (email);
+CREATE INDEX ASYNC idx_users_auth_sub ON users (auth_sub);
+CREATE INDEX ASYNC idx_users_email    ON users (email);
 
 -- ------------------------------------------------------------------
 -- 2. recipients
@@ -55,7 +55,7 @@ CREATE TABLE recipients (
   created_at   TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_recipients_owner ON recipients (owner_id);
+CREATE INDEX ASYNC idx_recipients_owner ON recipients (owner_id);
 
 -- ------------------------------------------------------------------
 -- 3. verifiers
@@ -70,7 +70,7 @@ CREATE TABLE verifiers (
   created_at          TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_verifiers_owner ON verifiers (owner_id);
+CREATE INDEX ASYNC idx_verifiers_owner ON verifiers (owner_id);
 
 -- ------------------------------------------------------------------
 -- 4. vault_items
@@ -112,8 +112,8 @@ CREATE TABLE vault_items (
 -- The INCLUDE columns (title, service_name, url, type, is_root_credential) are
 -- readable from the index alone, so list queries never touch the large
 -- ciphertext / wrapped_data_key columns stored in the main heap.
-CREATE INDEX idx_vault_items_owner ON vault_items
-  (owner_id, category, criticality, importance_score DESC)
+CREATE INDEX ASYNC idx_vault_items_owner ON vault_items
+  (owner_id, category, criticality, importance_score)
   INCLUDE (title, service_name, url, type, is_root_credential);
 
 -- ------------------------------------------------------------------
@@ -139,9 +139,9 @@ CREATE TABLE access_rules (
     CHECK (trigger_type != 'estate' OR reversible = false)
 );
 
-CREATE INDEX idx_access_rules_owner     ON access_rules (owner_id);
-CREATE INDEX idx_access_rules_item      ON access_rules (vault_item_id);
-CREATE INDEX idx_access_rules_recipient ON access_rules (recipient_id);
+CREATE INDEX ASYNC idx_access_rules_owner     ON access_rules (owner_id);
+CREATE INDEX ASYNC idx_access_rules_item      ON access_rules (vault_item_id);
+CREATE INDEX ASYNC idx_access_rules_recipient ON access_rules (recipient_id);
 
 -- ------------------------------------------------------------------
 -- 6. release_state
@@ -170,7 +170,7 @@ CREATE TABLE release_state (
 
 -- Compound index supports the common query pattern:
 --   SELECT * FROM release_state WHERE owner_id = $1 AND trigger_type = $2
-CREATE INDEX idx_release_state_owner_type ON release_state (owner_id, trigger_type);
+CREATE INDEX ASYNC idx_release_state_owner_type ON release_state (owner_id, trigger_type);
 
 -- ------------------------------------------------------------------
 -- 7. verifier_confirmations
@@ -187,7 +187,7 @@ CREATE TABLE verifier_confirmations (
                    CHECK (method IN ('app', 'document', 'manual'))
 );
 
-CREATE INDEX idx_verifier_confirmations_release ON verifier_confirmations (release_state_id);
+CREATE INDEX ASYNC idx_verifier_confirmations_release ON verifier_confirmations (release_state_id);
 
 -- ------------------------------------------------------------------
 -- 8. audit_log
@@ -215,4 +215,4 @@ CREATE TABLE audit_log (
 );
 
 -- Primary access pattern: owner-scoped ascending seq read for the audit viewer.
-CREATE INDEX idx_audit_log_owner_seq ON audit_log (owner_id, seq ASC);
+CREATE INDEX ASYNC idx_audit_log_owner_seq ON audit_log (owner_id, seq);
