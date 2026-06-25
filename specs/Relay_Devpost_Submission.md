@@ -20,7 +20,7 @@ Two things make it more than a vault:
 - **A release that's correct under pressure.** The irreversible handoff is modeled so it can never double-release, even when the owner, the verifiers, and the scheduler all act at once.
 
 ## How we built it
-- **Frontend:** scaffolded in **v0.app**, a Next.js app deployed on **Vercel**; route handlers are the API tier.
+- **Frontend:** a **Next.js** (App Router, TypeScript) app deployed on **Vercel**; route handlers are the API tier.
 - **Database:** **Amazon Aurora DSQL**, multi-region active-active, as the system of record for vault metadata, ciphertext, access rules, recipients, verifiers, the release state, and an append-only audit log.
 - **Encryption:** client-side envelope encryption with **AWS KMS** — items are encrypted in the browser and only ciphertext plus non-secret metadata are ever uploaded.
 - **Release subsystem:** a state machine (ARMED → PENDING → GRACE → RELEASED) whose every transition is a **compare-and-set validated by Aurora DSQL's optimistic concurrency control**; conflicting commits surface as serialization failures and retry or safely abort.
@@ -54,7 +54,7 @@ We used **Amazon Aurora DSQL**, and the choice is the architecture, not a detail
 A graduated-assurance verification engine (identity verification, death/incapacity signals, notarization), productionized zero-knowledge via threshold secret-sharing, per-jurisdiction data residency on Aurora DSQL's multi-region foundation, and distribution as **embedded continuity infrastructure** that banks, employers, and wealth managers offer their clients — beginning with the caregiver wedge.
 
 ## Built With
-`amazon-aurora-dsql` · `aws-kms` · `vercel` · `v0` · `next.js` · `typescript` · `node-postgres` · `next-auth` · `openai` · `resend` · `fast-check` · `serverless`
+`amazon-aurora-dsql` · `aws-kms` · `vercel` · `next.js` · `typescript` · `node-postgres` · `next-auth` · `openai` · `resend` · `fast-check` · `serverless`
 
 ---
 

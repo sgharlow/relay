@@ -33,7 +33,7 @@
 | **Name** | Relay (alternates: Continuum, Standby, Keystone) |
 | **Track** | Track 1 — Monetizable B2C (consumer demo; commercial scale path is embedded B2B2C infrastructure — §24) |
 | **Hero database** | Amazon Aurora DSQL (multi-region active-active) |
-| **Frontend** | Next.js scaffolded in v0.app, deployed on Vercel |
+| **Frontend** | Next.js (App Router), deployed on Vercel |
 | **Crypto** | Client-side envelope encryption via AWS KMS (MVP); threshold secret-sharing (stretch) |
 | **One-liner** | "Set up standby access to everything that matters, so the right person can get in the moment you can't — a hospital stay, a trip, an emergency, or one day, your estate." |
 
@@ -129,7 +129,7 @@ Relay never bypasses platform security or "breaks in." It orchestrates the legit
 
 ### 6.1 Components
 
-- **Web app (Next.js on Vercel, scaffolded in v0)** — owner and recipient UIs; route handlers as the API.
+- **Web app (Next.js on Vercel)** — owner and recipient UIs; route handlers as the API.
 - **Crypto boundary (browser/edge + AWS KMS)** — envelope encryption; plaintext never leaves the client unencrypted; KMS wraps/unwraps data keys.
 - **Aurora DSQL (multi-region active-active)** — system of record: vault metadata + ciphertext, rules, recipients, verifiers, release state, audit log.
 - **Scheduler (Vercel Cron or EventBridge)** — evaluates heartbeats; advances state machine; sends notifications.
@@ -387,9 +387,9 @@ All state-mutating trigger endpoints use the §8.2 OCC compare-and-set with retr
 
 ---
 
-## 12. Frontend / v0 build plan
+## 12. Frontend build plan
 
-Scaffold in v0.app, deploy on Vercel, route handlers talk to DSQL via a PostgreSQL driver with IAM auth.
+Build the Next.js app, deploy on Vercel, route handlers talk to DSQL via a PostgreSQL driver with IAM auth.
 
 **Two emotional modes** (the design judges will look for full-stack cohesion): a calm, organized **Owner mode** (you're in control, low-stress) and a focused, reassuring **Access mode** (someone is under pressure — minimal choices, clear next steps).
 
@@ -408,7 +408,7 @@ Scaffold in v0.app, deploy on Vercel, route handlers talk to DSQL via a PostgreS
 
 | Days | Focus | Gate |
 |---|---|---|
-| 1–2 | Request AWS+v0 credits (Google form on the hackathon page); provision **two-region** DSQL; confirm DSQL feature/endpoint behavior; v0 scaffold; hello-world IAM-auth query. | |
+| 1–2 | Request AWS credits (Google form on the hackathon page); provision **two-region** DSQL; confirm DSQL feature/endpoint behavior; hello-world IAM-auth query. | |
 | 3–4 | Data model + migrations (DSQL-correct, app-level RI); KMS envelope encryption end-to-end (write/read ciphertext). | |
 | 5–6 | Vault dashboard + add/edit; **CSV/password-manager import** (client-side parse + encrypt); recipients/verifiers/rules screens. | |
 | 7–8 | Release state machine + **OCC compare-and-set** + heartbeat cron + N-of-M verification + "Simulate trigger"; Access dashboard. | **Day-8 gate:** core continuity flow demoable end-to-end? |

@@ -15,10 +15,9 @@
 
 - **Track: Monetizable B2C — LOCKED.** Select "Monetizable B2C" on the form (the build spec's
   "Track 1 — Monetizable B2C" is the same track). No further confirmation needed.
-- [ ] **⚠️ "Built With" v0 / "scaffolded in v0.app" claim** (`Relay_Devpost_Submission.md` §How we built it
-      + Built-With tags). The repo was built with **Kiro** + Claude Code; there are no v0 artifacts. H0 is
-      literally "Vercel **v0** + AWS Databases", so claiming v0 you didn't use is an integrity risk —
-      either actually scaffold/regenerate the UI in v0, or **strike the v0 references** before submitting.
+- [x] **v0 references struck (2026-06-24).** "scaffolded in v0.app" + the `v0` Built-With tag removed from
+      the Devpost pack and the build spec (the repo wasn't built with v0). Only the hackathon's official
+      name ("Vercel v0 …") remains, which is fine.
 - [ ] **⚠️ Aurora DSQL screenshot is RELAY's clusters, not orbis's** — see value #5. The `assets/` images
       are the orbis pair; capture relay's `frt34b…`/`fjt34b…` console (both regions' Peers tabs).
 - [ ] **Bonus attribution wording.** The "created for this hackathon" statement wording is set by the
