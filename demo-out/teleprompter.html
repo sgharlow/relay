@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Relay — Narration Teleprompter (timer-based)</title>
+<style>
+  :root { --bg:#070b16; --panel:#0d1526; --line:#1e2b46; --dim:#6b82ab; --text:#eef3ff; --blue:#5b9cff; --teal:#49e0a0; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--text);
+    font-family:Helvetica,Arial,system-ui,sans-serif; }
+  .wrap { display:flex; flex-direction:column; height:100vh; }
+  .bar { display:flex; align-items:center; gap:12px; padding:12px 18px; background:var(--panel);
+    border-bottom:1px solid var(--line); font-variant-numeric:tabular-nums; }
+  .bar button { background:#16233d; color:var(--text); border:1px solid var(--line); border-radius:7px;
+    padding:9px 16px; font-size:14px; cursor:pointer; }
+  .bar button:hover { border-color:var(--blue); }
+  .bar .clock { font-family:ui-monospace,Consolas,monospace; color:var(--blue); font-size:18px; font-weight:600; }
+  .bar .hint { margin-left:auto; color:var(--dim); font-size:12px; }
+  .right { flex:1; overflow-y:auto; padding:38vh 7vw; scroll-behavior:smooth; }
+  .seg { border-left:3px solid transparent; padding:16px 24px; margin:12px 0; cursor:pointer;
+    color:#4c5e7d; font-size:20px; line-height:1.5; transition:all .18s; }
+  .seg .meta { font-family:ui-monospace,Consolas,monospace; font-size:12px; letter-spacing:.12em;
+    text-transform:uppercase; color:#3a4a66; margin-bottom:7px; }
+  .seg .do { color:var(--teal); font-weight:600; text-transform:none; letter-spacing:0; }
+  .seg.past { color:#34425e; }
+  .seg.next { color:#8fa3c4; }
+  .seg.active { color:var(--text); border-left-color:var(--blue); font-size:31px; line-height:1.45;
+    background:linear-gradient(90deg, rgba(91,156,255,.10), transparent); }
+  .seg.active .meta { color:var(--blue); }
+  .seg.active .now { display:inline-block; }
+  .now { display:none; color:var(--bg); background:var(--blue); font-weight:700; border-radius:4px;
+    padding:1px 8px; margin-left:10px; font-size:13px; letter-spacing:.1em; vertical-align:middle; }
+  .cue { color:var(--teal); font-weight:700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bar">
+    <button id="start">▶ Start</button>
+    <button id="reset">⟲ Reset</button>
+    <span class="clock" id="clock">0:00</span>
+    <span class="hint">Start the timer the moment you begin screen-recording the app · Space = start/pause · R = reset · click a line to jump · cues advance on the timer</span>
+  </div>
+  <div class="right" id="script"></div>
+</div>
+<script>
+// Timer-based teleprompter: relay's demo is a live, multi-actor flow (owner → recipient →
+// verifiers + a real region failover) that you drive on screen. Hit Start when you begin
+// recording; each narration line lights up at its cue time. The "▸ ON SCREEN" note tells
+// you what to be showing/doing while you read it. Target ~2:15, hard cap 3:00.
+const SEGS = [
+  { t:5,   label:"00:05 · The problem",          do:"Relay landing / sign-in page (or a blank title)",
+    text:"When someone can't be there — a hospital stay, a trip, or worse — the people who depend on them can't get into the accounts that matter: the bank, the insurance portal, the kids' school login. Relay fixes that." },
+  { t:24,  label:"00:24 · Set up in one sitting", do:"Import a password export → the vault populates → importance ranking + the flagged gap → assign emergency access to a recipient + name verifiers",
+    text:"This is Maria. She sets up Relay in one sitting: she imports her password-manager export and dozens of accounts populate instantly. Relay ranks them by what matters in a crisis and flags the one critical gap — her primary email has no recovery note, and it's the key that unlocks everything else. She fixes it, assigns emergency access to her husband Dave, and names her sister and attorney as verifiers." },
+  { t:62,  label:"01:02 · The emergency",         do:"Recipient requests access → owner is notified (no response) → verifiers confirm → recipient's scoped, prioritized access plan opens",
+    text:"Months later, Maria is in surgery. Dave needs the insurance login now. He requests emergency access; Relay notifies Maria, gets no response, and asks the verifiers to confirm. Dave's access opens — only what Maria scoped to him, as a clear step-by-step plan." },
+  { t:92,  label:"01:32 · Live region failover",  do:"Flip DSQL_USE_SECONDARY=true (us-west-2) → reload the recipient view → it keeps working, strongly consistent. Reset after.",
+    text:"Here's the part that matters for a moment no one can schedule: Relay runs active-active on Amazon Aurora DSQL across two regions. Watch — I move to the second region, in Oregon — and Dave's access keeps working, strongly consistent, no interruption." },
+  { t:112, label:"01:52 · Reversible",            do:"Owner checks in → the release returns to ARMED → recipient access closes",
+    text:"And it's reversible: Maria recovers, checks in, and the access closes automatically — back to the default-safe ARMED state." },
+  { t:124, label:"02:04 · Under the hood",        do:"Architecture diagram (specs/relay_architecture.png) — highlight DSQL + the state machine",
+    text:"Under the hood, the release is a compare-and-set validated by Aurora DSQL's optimistic concurrency, so it can never double-release — even when the owner, the verifiers, and the scheduler all act at once — and referential integrity is enforced in app logic because DSQL has no foreign keys." },
+  { t:142, label:"02:22 · Close",                 do:"Back to the Relay vault / title card",
+    text:"Relay turns 'what happens when I can't be there' into something you set up in fifteen minutes — for an emergency, a trip, a caregiver, or one day, your estate." },
+];
+const END = 158; // ~2:38 incl. a beat to land the close
+
+const script = document.getElementById('script');
+const clock = document.getElementById('clock');
+const startBtn = document.getElementById('start');
+const fmt = s => { s=Math.max(0,s|0); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); };
+
+const nodes = SEGS.map((seg) => {
+  const el = document.createElement('div');
+  el.className = 'seg';
+  el.innerHTML = `<div class="meta">${seg.label}<span class="now">▶ READ NOW</span><br><span class="do">▸ ON SCREEN: ${seg.do}</span></div><div>${seg.text}</div>`;
+  el.addEventListener('click', () => { base = seg.t; start = perf(); running = true; startBtn.textContent='❚❚ Pause'; });
+  script.appendChild(el);
+  return el;
+});
+
+let running = false, base = 0, start = 0, activeIdx = -1;
+const perf = () => Date.now()/1000;
+function now(){ return running ? base + (perf() - start) : base; }
+
+function render() {
+  const ct = now();
+  let idx = -1;
+  for (let i=0;i<SEGS.length;i++){ if (ct >= SEGS[i].t - 0.001) idx = i; else break; }
+  const next = SEGS[idx+1];
+  SEGS.forEach((seg,i) => {
+    const el = nodes[i];
+    el.classList.toggle('active', i===idx);
+    el.classList.toggle('past', i<idx);
+    el.classList.toggle('next', i===idx+1);
+    const meta = el.querySelector('.meta');
+    meta.querySelector('.cue')?.remove();
+    if (i===idx+1 && next) { const dt = Math.ceil(next.t - ct); if (dt<=8) meta.insertAdjacentHTML('beforeend', ` <span class="cue">— in ${dt}s</span>`); }
+  });
+  if (idx !== activeIdx && idx>=0) { activeIdx=idx; nodes[idx].scrollIntoView({block:'center'}); }
+  clock.textContent = fmt(ct) + (ct>=END ? ' · (wrap)' : '');
+}
+setInterval(render, 100);
+
+function toggle(){ if (running){ base = now(); running=false; startBtn.textContent='▶ Start'; } else { start = perf(); running=true; startBtn.textContent='❚❚ Pause'; } }
+function reset(){ running=false; base=0; activeIdx=-1; startBtn.textContent='▶ Start'; render(); }
+startBtn.onclick = toggle;
+document.getElementById('reset').onclick = reset;
+document.addEventListener('keydown', e => {
+  if (e.code==='Space'){ e.preventDefault(); toggle(); }
+  else if (e.key==='r'||e.key==='R'){ reset(); }
+});
+render();
+</script>
+</body>
+</html>
