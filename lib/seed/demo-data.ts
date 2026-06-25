@@ -153,7 +153,7 @@ export function buildDemoData(): DemoData {
   ];
 
   const recipients: SeedRecipient[] = [
-    { key: 'spouse', name: 'Jordan Rivera', relationship: 'Spouse', email: 'jordan@example.com', phone: '+15551112222', role: 'partner' },
+    { key: 'spouse', name: 'Jordan Rivera', relationship: 'Spouse', email: 'sgharlow+relay@gmail.com', phone: '+15551112222', role: 'partner' },
     { key: 'attorney', name: 'Pat Morgan', relationship: 'Estate attorney', email: 'pat@example.com', phone: '+15553334444', role: 'executor' },
   ];
 
