@@ -15,6 +15,12 @@
 
 - **Track: Monetizable B2C — LOCKED.** Select "Monetizable B2C" on the form (the build spec's
   "Track 1 — Monetizable B2C" is the same track). No further confirmation needed.
+- [ ] **⚠️ "Built With" v0 / "scaffolded in v0.app" claim** (`Relay_Devpost_Submission.md` §How we built it
+      + Built-With tags). The repo was built with **Kiro** + Claude Code; there are no v0 artifacts. H0 is
+      literally "Vercel **v0** + AWS Databases", so claiming v0 you didn't use is an integrity risk —
+      either actually scaffold/regenerate the UI in v0, or **strike the v0 references** before submitting.
+- [ ] **⚠️ Aurora DSQL screenshot is RELAY's clusters, not orbis's** — see value #5. The `assets/` images
+      are the orbis pair; capture relay's `frt34b…`/`fjt34b…` console (both regions' Peers tabs).
 - [ ] **Bonus attribution wording.** The "created for this hackathon" statement wording is set by the
       Official Rules — copy it verbatim into the build post.
 
@@ -26,11 +32,11 @@ Fill these in as you complete the runbook; they are the *only* things blocking t
 
 | # | Field | Value (paste when you have it) | Where it comes from |
 |---|---|---|---|
-| 1 | **Vercel production URL** | `________________` | Runbook Step 4 (deploy) — also paste into `README.md` `▶ Live` |
-| 2 | **Vercel project link** | `________________` | Vercel → Project → Settings |
-| 3 | **Vercel Team ID** | `________________` | Vercel → Team → Settings → General (Devpost requires it) |
-| 4 | **Demo video URL (public/unlisted-public YouTube)** | `________________` | Runbook Step 7 — also paste into `README.md` `🎬 Demo video` |
-| 5 | **Aurora DSQL screenshot** (cluster + region config) | `relay-dsql-console.png` | Runbook Step 6 capture |
+| 1 | **Vercel production URL** | `https://relay-three-henna.vercel.app` ✅ | deployed live |
+| 2 | **Vercel project link** | `https://relay-three-henna.vercel.app` (the working app a judge clicks) | Vercel → Project |
+| 3 | **Vercel Team ID** | `team_nP3HzRc3PNm6SaWiApTGkEWa` ✅ | Vercel → Team → Settings → General |
+| 4 | **Demo video URL (public YouTube)** | `PASTE-VIDEO-URL` | Runbook Step 7 — also paste into `README.md` `🎬 Demo video` |
+| 5 | **Aurora DSQL screenshots** (cluster + region config) | ⚠️ **NOT YET CAPTURED** — need TWO shots of **relay's** clusters: primary `frt34b…` (us-east-1) + secondary `fjt34b…` (us-west-2), Peers tab. **The files in `../assets/relay-dsql-region*.jpg` are the ORBIS pair (`lbt34…`/`3rt34e6…`) — wrong product, do NOT upload them.** | Runbook Step 6 capture |
 | 6 | **Build-post URL** (bonus) | `________________` | `../docs/blog-post.md` → publish to dev.to/Medium/LinkedIn with `#H0Hackathon` |
 
 ---
@@ -51,8 +57,8 @@ Fill these in as you complete the runbook; they are the *only* things blocking t
 | **What's next** | `Relay_Devpost_Submission.md` → "What's next for Relay" | ✅ ready |
 | **Built With (tags)** | `Relay_Devpost_Submission.md` → "Built With" | ✅ ready |
 | **Demo video link** | value #4 above | ⏳ needs recording |
-| **Try it out / project URL** | value #1 above | ⏳ needs deploy |
-| **Vercel project link + Team ID** | values #2, #3 above | ⏳ needs deploy |
+| **Try it out / project URL** | value #1 above | ✅ deployed (relay-three-henna.vercel.app) |
+| **Vercel project link + Team ID** | values #2, #3 above | ✅ live URL + Team ID known |
 | **Architecture diagram (image upload)** | `relay_architecture.png` (in this folder) | ✅ ready — upload the **PNG**, not the SVG |
 | **AWS Database screenshot** | value #5 above | ⏳ needs capture |
 | **Bonus build post (+attribution + #H0Hackathon)** | value #6 above | ⏳ needs publish |
@@ -72,11 +78,11 @@ Fill these in as you complete the runbook; they are the *only* things blocking t
 
 ---
 
-## Engineering gate (Claude-verifiable — GREEN as of 2026-06-22)
+## Engineering gate (Claude-verifiable — GREEN, re-verified live 2026-06-24)
 
 | Gate | State | Command |
 |---|---|---|
-| Full test suite | ✅ **401 / 58 files** | `npx vitest --run` |
+| Full test suite | ✅ **403 / 58 files** | `npx vitest --run` |
 | Types | ✅ clean | `npx tsc --noEmit` (rm `tsconfig.tsbuildinfo` if stale) |
 | Build | ✅ clean | `npm run build` |
 

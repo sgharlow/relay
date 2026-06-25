@@ -18,7 +18,7 @@
 | Layer | State |
 |---|---|
 | Code: backend (28 routes) + all UI + recipient notifications | ✅ complete |
-| Tests | ✅ **401 / 58 files green** (`npx vitest --run`) |
+| Tests | ✅ **403 / 58 files green** (`npx vitest --run`) |
 | `tsc --noEmit` · `next build` | ✅ clean |
 | **Sign-in upsert (was integration Risk A)** | ✅ **FIXED — commit `c4b0005`** (app-level intent-read, no `ON CONFLICT`, no UNIQUE-index dependency). Sign-in now works on real DSQL **without** migration 002. |
 | Live infra (DSQL + KMS + Vercel deploy) | ❌ not provisioned — the whole remaining job |
