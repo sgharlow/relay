@@ -153,7 +153,10 @@ export function buildDemoData(): DemoData {
   ];
 
   const recipients: SeedRecipient[] = [
-    { key: 'spouse', name: 'Jordan Rivera', relationship: 'Spouse', email: 'sgharlow+relay@gmail.com', phone: '+15551112222', role: 'partner' },
+    // Recipient inbox for the demo. Defaults to a placeholder for the public repo;
+    // set DEMO_RECIPIENT_EMAIL to your real inbox before reseeding to capture the
+    // on-camera access-link delivery (see demo-out/RECORDING-PLAN.md).
+    { key: 'spouse', name: 'Jordan Rivera', relationship: 'Spouse', email: process.env.DEMO_RECIPIENT_EMAIL ?? 'jordan@example.com', phone: '+15551112222', role: 'partner' },
     { key: 'attorney', name: 'Pat Morgan', relationship: 'Estate attorney', email: 'pat@example.com', phone: '+15553334444', role: 'executor' },
   ];
 

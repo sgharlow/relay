@@ -50,6 +50,14 @@ We used **Amazon Aurora DSQL**, and the choice is the architecture, not a detail
 - Designing for "no foreign keys" pushes integrity into the application in ways that are healthy for a distributed system.
 - The hardest, most valuable problem in this space isn't storage — it's verified, reversible release.
 
+## Business model — Monetizable B2C
+Relay is a consumer subscription product with a clear path to scale.
+
+- **Who pays, and why now.** The wedge is the **caregiver** — an adult child managing an aging parent's accounts feels acute, present pain (they're already doing it manually and badly), and the relationship expands naturally into the estate handoff later. Adjacent consumer segments: frequent travelers, new parents, and small-business owners who need bus-factor continuity.
+- **Pricing (B2C).** A free tier (a small vault + one emergency recipient) converts to a **paid annual subscription** for the full living vault — unlimited items, multiple recipients and verifiers, N-of-M release, and active-active availability. A one-time **activation fee at the moment of need** (an emergency or estate release) is easy to justify exactly when it matters most.
+- **How the B2C on-ramp compounds.** Direct-to-consumer is the proof and the on-ramp; the durable distribution is **embedded "powered by Relay" continuity** offered through institutions people already trust — banks, employer benefits, wealth managers, insurers — which collapses both the trust barrier and customer-acquisition cost. Same product, two revenue surfaces: consumer subscriptions + partner licensing.
+- **Why it's defensible.** Platform-native tools (Apple Legacy Contact, 1Password emergency kit) are single-ecosystem, all-or-nothing, and unverified. Relay's moat is the cross-platform, **verified, reversible, graduated** release layer — human N-of-M verification on a strongly-consistent ledger — which a password manager is neither positioned to build well nor motivated to prioritize.
+
 ## What's next for Relay
 A graduated-assurance verification engine (identity verification, death/incapacity signals, notarization), productionized zero-knowledge via threshold secret-sharing, per-jurisdiction data residency on Aurora DSQL's multi-region foundation, and distribution as **embedded continuity infrastructure** that banks, employers, and wealth managers offer their clients — beginning with the caregiver wedge.
 

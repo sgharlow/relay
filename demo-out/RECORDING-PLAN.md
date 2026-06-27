@@ -17,11 +17,11 @@ shows a **▸ ON SCREEN** note for what to be doing.
 1. **Sign-in:** owner is `demo@relay.test`. You'll need the live **TOTP** code from the
    authenticator app you set up at go-live (the `TOTP_SECRET` in Vercel prod). Have the
    6-digit code ready at record time.
-2. **Recipient email = `sgharlow+relay@gmail.com`** (your real inbox via the `+` alias).
-   Set the emergency recipient (Dave) to this address so the access-link email actually
-   arrives on camera. *(Resend sends from `onboarding@resend.dev` — with the shared test
-   sender it can only deliver to the Resend account's own verified address, so confirm the
-   account is `sgharlow@gmail.com`; the `+relay` alias lands in the same inbox.)*
+2. **Recipient email** — set `DEMO_RECIPIENT_EMAIL` to your real inbox (e.g. a `+relay`
+   gmail alias) **before reseeding**, so the access-link email arrives on camera. The seed
+   defaults to a placeholder (`jordan@example.com`) for the public repo. *(Resend sends from
+   `onboarding@resend.dev` — with the shared test sender it can only deliver to the Resend
+   account's own verified address, so use that address or one of its `+alias` variants.)*
 3. **Two browser profiles / windows:** one signed in as the **owner** (Maria), one
    **incognito** for the **recipient** (Dave) opening the `/access?token=…` link.
 4. **Have the import file ready** (a small password-manager CSV) for the "import" beat.
@@ -34,7 +34,7 @@ shows a **▸ ON SCREEN** note for what to be doing.
 | Cue | ~Time | On screen |
 |---|---|---|
 | 1 | 0:05 | Relay landing / sign-in (or a title) — set the problem |
-| 2 | 0:24 | **Import** a CSV → vault populates → **importance ranking** + the flagged gap (primary email has no recovery note) → **assign emergency access** to Dave (`sgharlow+relay@gmail.com`) + **name verifiers** |
+| 2 | 0:24 | **Import** a CSV → vault populates → **importance ranking** + the flagged gap (primary email has no recovery note) → **assign emergency access** to Dave (your `DEMO_RECIPIENT_EMAIL`) + **name verifiers** |
 | 3 | 1:02 | Recipient (incognito) **requests access** → owner **notified, no response** → **verifiers confirm** → recipient's **scoped, prioritized plan** opens |
 | 4 | 1:32 | **Live region failover:** set `DSQL_USE_SECONDARY=true` in Vercel → redeploy/restart → reload the recipient `/access` view → it **keeps working** from us-west-2 (Oregon). **Reset the flag to false after.** |
 | 5 | 1:52 | **Reversible:** owner **checks in** → release returns to `ARMED` → recipient access **closes** |

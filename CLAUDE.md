@@ -19,7 +19,7 @@ release/crypto/OCC logic — it defines the schema, state-transition table, and 
 
 ## Build state (Kiro build stopped partway — read before continuing)
 
-`npm run build`, `npx tsc --noEmit`, and `npx vitest --run` (**401 tests, 58 files**) are all green
+`npm run build`, `npx tsc --noEmit`, and `npx vitest --run` (**403 tests, 58 files**) are all green
 through the full backend + all UI + recipient-release notifications.
 **The entire backend is complete at the API layer** (28 routes) — owner CRUD, crypto/KMS, triggers,
 heartbeat, confirm, simulate, recipient access + decrypt, all three AI agents, the audit log reader,
