@@ -13,7 +13,7 @@
 
 ---
 
-## Status snapshot (2026-06-19)
+## Status snapshot (updated 2026-06-27)
 
 | Layer | State |
 |---|---|
@@ -21,11 +21,11 @@
 | Tests | ✅ **403 / 58 files green** (`npx vitest --run`) |
 | `tsc --noEmit` · `next build` | ✅ clean |
 | **Sign-in upsert (was integration Risk A)** | ✅ **FIXED — commit `c4b0005`** (app-level intent-read, no `ON CONFLICT`, no UNIQUE-index dependency). Sign-in now works on real DSQL **without** migration 002. |
-| Live infra (DSQL + KMS + Vercel deploy) | ❌ not provisioned — the whole remaining job |
-| Authenticated E2E on real infra | ❌ not run (the dogfood gate, Step 5) |
-| Demo video | ❌ not recorded |
+| Live infra (DSQL + KMS + Vercel deploy) | ✅ provisioned + deployed live |
+| Authenticated E2E on real infra | ✅ **dogfooded live 2026-06-27** — full crypto round-trip, release spine, active-active multi-region, audit chain |
+| Demo video | ❌ not recorded (silent draft + narration script ready in `demo-out/`) |
 
-**Bottom line:** no code blocker remains. The cliff is pure provisioning + capture + submit.
+**Bottom line:** no code blocker remains; provisioning and the live dogfood are done. Only the demo video + Devpost form remain.
 
 ---
 

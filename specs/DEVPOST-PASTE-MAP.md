@@ -18,8 +18,10 @@
 - [x] **v0 references struck (2026-06-24).** "scaffolded in v0.app" + the `v0` Built-With tag removed from
       the Devpost pack and the build spec (the repo wasn't built with v0). Only the hackathon's official
       name ("Vercel v0 …") remains, which is fine.
-- [ ] **⚠️ Aurora DSQL screenshot is RELAY's clusters, not orbis's** — see value #5. The `assets/` images
-      are the orbis pair; capture relay's `frt34b…`/`fjt34b…` console (both regions' Peers tabs).
+- [ ] **⚠️ Aurora DSQL screenshot must be RELAY's clusters** — see value #5. No DSQL screenshots are
+      committed (the prior mislabeled orbis images were removed from `assets/`); capture relay's
+      `frt34b…`/`fjt34b…` console (both regions' Peers tabs). Active-active was verified live — a
+      us-east-1 write read strongly-consistent from us-west-2.
 - [ ] **Bonus attribution wording.** The "created for this hackathon" statement wording is set by the
       Official Rules — copy it verbatim into the build post.
 
@@ -35,7 +37,7 @@ Fill these in as you complete the runbook; they are the *only* things blocking t
 | 2 | **Vercel project link** | `https://relay-three-henna.vercel.app` (the working app a judge clicks) | Vercel → Project |
 | 3 | **Vercel Team ID** | `team_nP3HzRc3PNm6SaWiApTGkEWa` ✅ | Vercel → Team → Settings → General |
 | 4 | **Demo video URL (public YouTube)** | `PASTE-VIDEO-URL` | Runbook Step 7 — also paste into `README.md` `🎬 Demo video` |
-| 5 | **Aurora DSQL screenshots** (cluster + region config) | ⚠️ **NOT YET CAPTURED** — need TWO shots of **relay's** clusters: primary `frt34b…` (us-east-1) + secondary `fjt34b…` (us-west-2), Peers tab. **The files in `../assets/relay-dsql-region*.jpg` are the ORBIS pair (`lbt34…`/`3rt34e6…`) — wrong product, do NOT upload them.** | Runbook Step 6 capture |
+| 5 | **Aurora DSQL screenshots** (cluster + region config) | ⚠️ **NOT YET CAPTURED** — need TWO shots of **relay's** clusters: primary `frt34b…` (us-east-1) + secondary `fjt34b…` (us-west-2), Peers tab. (The prior mislabeled orbis images were removed from `assets/`, so nothing wrong can be uploaded by accident.) | Runbook Step 6 capture |
 | 6 | **Build-post URL** (bonus) | `________________` | `../docs/blog-post.md` → publish to dev.to/Medium/LinkedIn with `#H0Hackathon` |
 
 ---
@@ -77,7 +79,7 @@ Fill these in as you complete the runbook; they are the *only* things blocking t
 
 ---
 
-## Engineering gate (Claude-verifiable — GREEN, re-verified live 2026-06-24)
+## Engineering gate (Claude-verifiable — GREEN, re-verified live 2026-06-27)
 
 | Gate | State | Command |
 |---|---|---|

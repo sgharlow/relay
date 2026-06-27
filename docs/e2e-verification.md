@@ -1,16 +1,16 @@
 # Relay — End-to-End Verification Checklist
 
-What's already proven and what is NOT:
+What's proven:
 
 - ✅ **Unit/property tests** (`npx vitest --run`, 403) cover all pure logic, every API handler (mocked
   DB/KMS/OpenAI), and the correctness properties (OCC, state machine, N-of-M, hash chain, ranking…).
 - ✅ **Build + types** (`npm run build`, `npx tsc --noEmit`) are clean.
-- ✅ **Visually verified (Playwright)**: `/auth/signin`, `/auth/error`, the owner→signin redirect, and
-  the Access-mode invalid-token path.
-- ❌ **NOT verified**: any authenticated flow against real infrastructure — the encrypt/decrypt
-  round-trip, the release/simulate spine, AI agents, region failover, KMS, and DSQL behaviour.
+- ✅ **Dogfooded live on real infra (2026-06-27)**: owner TOTP sign-in, vault + importance engine, the
+  release/simulate spine (ARMED→…→RELEASED), the encrypt→KMS-wrap→DSQL→recipient→KMS-unwrap→decrypt
+  round-trip, active-active multi-region (a us-east-1 write read strongly-consistent from us-west-2),
+  and the hash-chained audit log (server + client verification both intact).
 
-This checklist is the live dogfood that closes that gap. It requires real AWS infra (Aurora DSQL +
+This checklist is the reproducible procedure for that live dogfood. It requires real AWS infra (Aurora DSQL +
 KMS), OpenAI, and Resend. Run it top to bottom; each step lists the **action** and the **expected
 result**. **Synthetic E2E does not replace customer dogfood** for auth/credential paths — note where
 human confirmation is required.
