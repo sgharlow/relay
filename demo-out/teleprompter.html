@@ -3,90 +3,106 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Relay — Narration Teleprompter (timer-based)</title>
+<title>Relay — Narration Teleprompter (synced to relay-demo-silent.mp4)</title>
 <style>
   :root { --bg:#070b16; --panel:#0d1526; --line:#1e2b46; --dim:#6b82ab; --text:#eef3ff; --blue:#5b9cff; --teal:#49e0a0; }
   * { box-sizing:border-box; }
   html,body { margin:0; height:100%; background:var(--bg); color:var(--text);
     font-family:Helvetica,Arial,system-ui,sans-serif; }
-  .wrap { display:flex; flex-direction:column; height:100vh; }
-  .bar { display:flex; align-items:center; gap:12px; padding:12px 18px; background:var(--panel);
-    border-bottom:1px solid var(--line); font-variant-numeric:tabular-nums; }
+  .wrap { display:flex; height:100vh; }
+  /* LEFT: video */
+  .left { width:54%; display:flex; flex-direction:column; background:#000; border-right:1px solid var(--line); }
+  video { width:100%; flex:1; min-height:0; background:#000; object-fit:contain; }
+  .bar { display:flex; align-items:center; gap:10px; padding:11px 16px; background:var(--panel);
+    border-top:1px solid var(--line); font-variant-numeric:tabular-nums; }
   .bar button { background:#16233d; color:var(--text); border:1px solid var(--line); border-radius:7px;
-    padding:9px 16px; font-size:14px; cursor:pointer; }
+    padding:8px 14px; font-size:14px; cursor:pointer; }
   .bar button:hover { border-color:var(--blue); }
-  .bar .clock { font-family:ui-monospace,Consolas,monospace; color:var(--blue); font-size:18px; font-weight:600; }
-  .bar .hint { margin-left:auto; color:var(--dim); font-size:12px; }
-  .right { flex:1; overflow-y:auto; padding:38vh 7vw; scroll-behavior:smooth; }
-  .seg { border-left:3px solid transparent; padding:16px 24px; margin:12px 0; cursor:pointer;
-    color:#4c5e7d; font-size:20px; line-height:1.5; transition:all .18s; }
+  .bar .clock { font-family:ui-monospace,Consolas,monospace; color:var(--blue); font-size:17px; font-weight:600; }
+  .bar .speed { font-family:ui-monospace,Consolas,monospace; color:var(--dim); font-size:13px; }
+  .bar .hint { margin-left:auto; color:var(--dim); font-size:11px; max-width:42%; text-align:right; }
+  /* RIGHT: script */
+  .right { width:46%; overflow-y:auto; padding:40vh 4vw; scroll-behavior:smooth; }
+  .seg { border-left:3px solid transparent; padding:14px 22px; margin:10px 0; cursor:pointer;
+    color:#4c5e7d; font-size:19px; line-height:1.5; transition:all .18s; }
   .seg .meta { font-family:ui-monospace,Consolas,monospace; font-size:12px; letter-spacing:.12em;
     text-transform:uppercase; color:#3a4a66; margin-bottom:7px; }
-  .seg .do { color:var(--teal); font-weight:600; text-transform:none; letter-spacing:0; }
   .seg.past { color:#34425e; }
   .seg.next { color:#8fa3c4; }
-  .seg.active { color:var(--text); border-left-color:var(--blue); font-size:31px; line-height:1.45;
+  .seg.active { color:var(--text); border-left-color:var(--blue); font-size:29px; line-height:1.45;
     background:linear-gradient(90deg, rgba(91,156,255,.10), transparent); }
   .seg.active .meta { color:var(--blue); }
   .seg.active .now { display:inline-block; }
   .now { display:none; color:var(--bg); background:var(--blue); font-weight:700; border-radius:4px;
     padding:1px 8px; margin-left:10px; font-size:13px; letter-spacing:.1em; vertical-align:middle; }
   .cue { color:var(--teal); font-weight:700; }
+  .prog { height:3px; background:var(--line); border-radius:2px; margin-top:12px; overflow:hidden; }
+  .prog > i { display:block; height:100%; width:0; background:var(--blue); }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="bar">
-    <button id="start">▶ Start</button>
-    <button id="reset">⟲ Reset</button>
-    <span class="clock" id="clock">0:00</span>
-    <span class="hint">Start the timer the moment you begin screen-recording the app · Space = start/pause · R = reset · click a line to jump · cues advance on the timer</span>
+  <div class="left">
+    <video id="v" src="relay-demo-silent.mp4" preload="auto" muted playsinline></video>
+    <div class="bar">
+      <button id="play">▶ Play</button>
+      <button id="restart">⟲ Restart</button>
+      <span class="clock" id="clock">0:00 / 0:00</span>
+      <span class="speed" id="speed">1.00×</span>
+      <span class="hint">Space play/pause · R restart · [ ] speed · click a line to jump · ←→ seek 5s</span>
+    </div>
   </div>
   <div class="right" id="script"></div>
 </div>
 <script>
-// Timer-based teleprompter: relay's demo is a live, multi-actor flow (owner → recipient →
-// verifiers + a real region failover) that you drive on screen. Hit Start when you begin
-// recording; each narration line lights up at its cue time. The "▸ ON SCREEN" note tells
-// you what to be showing/doing while you read it. Target ~2:15, hard cap 3:00.
+// Cue times are on the relay-demo-silent.mp4 timeline (3s intro card, then each beat).
+// Read each line as it lights up; default speed is 1.00× so your narration matches the
+// final video exactly for a clean audio merge.
 const SEGS = [
-  { t:5,   label:"00:05 · The problem",          do:"Relay landing / sign-in page (or a blank title)",
-    text:"When someone can't be there — a hospital stay, a trip, or worse — the people who depend on them can't get into the accounts that matter: the bank, the insurance portal, the kids' school login. Relay fixes that." },
-  { t:24,  label:"00:24 · Set up in one sitting", do:"Import a password export → the vault populates → importance ranking + the flagged gap → assign emergency access to a recipient + name verifiers",
-    text:"This is Maria. She sets up Relay in one sitting: she imports her password-manager export and dozens of accounts populate instantly. Relay ranks them by what matters in a crisis and flags the one critical gap — her primary email has no recovery note, and it's the key that unlocks everything else. She fixes it, assigns emergency access to her husband Dave, and names her sister and attorney as verifiers." },
-  { t:62,  label:"01:02 · The emergency",         do:"Recipient requests access → owner is notified (no response) → verifiers confirm → recipient's scoped, prioritized access plan opens",
-    text:"Months later, Maria is in surgery. Dave needs the insurance login now. He requests emergency access; Relay notifies Maria, gets no response, and asks the verifiers to confirm. Dave's access opens — only what Maria scoped to him, as a clear step-by-step plan." },
-  { t:92,  label:"01:32 · Live region failover",  do:"Flip DSQL_USE_SECONDARY=true (us-west-2) → reload the recipient view → it keeps working, strongly consistent. Reset after.",
-    text:"Here's the part that matters for a moment no one can schedule: Relay runs active-active on Amazon Aurora DSQL across two regions. Watch — I move to the second region, in Oregon — and Dave's access keeps working, strongly consistent, no interruption." },
-  { t:112, label:"01:52 · Reversible",            do:"Owner checks in → the release returns to ARMED → recipient access closes",
-    text:"And it's reversible: Maria recovers, checks in, and the access closes automatically — back to the default-safe ARMED state." },
-  { t:124, label:"02:04 · Under the hood",        do:"Architecture diagram (specs/relay_architecture.png) — highlight DSQL + the state machine",
-    text:"Under the hood, the release is a compare-and-set validated by Aurora DSQL's optimistic concurrency, so it can never double-release — even when the owner, the verifiers, and the scheduler all act at once — and referential integrity is enforced in app logic because DSQL has no foreign keys." },
-  { t:142, label:"02:22 · Close",                 do:"Back to the Relay vault / title card",
-    text:"Relay turns 'what happens when I can't be there' into something you set up in fifteen minutes — for an emergency, a trip, a caregiver, or one day, your estate." },
+  { t:3,   label:"0:03 · The problem",
+    text:"When someone can't be there - a hospital stay, a trip, or worse - the people who depend on them can't reach the accounts that matter. Relay is standby access for exactly that moment." },
+  { t:16,  label:"0:16 · The vault + importance engine",
+    text:"You build one encrypted vault - accounts, documents, instructions. Relay's importance engine ranks what matters in a crisis and flags the real risk: your primary email is the key that unlocks most password resets. It only ever sees metadata - never your secrets." },
+  { t:31,  label:"0:31 · Access rules",
+    text:"Then you set the rules: who gets which item, and under which trigger - an emergency, travel, caregiving, or one day, your estate." },
+  { t:40,  label:"0:40 · Triggers — ARMED",
+    text:"Every trigger sits ARMED by default. Nothing releases unless the conditions you defined are actually met." },
+  { t:47,  label:"0:47 · Release begins",
+    text:"When an emergency fires, Relay runs a controlled release -" },
+  { t:51,  label:"0:51 · RELEASED",
+    text:"ARMED, to PENDING, to a grace window, to RELEASED. Every step is a strongly consistent transaction that can never double-release." },
+  { t:58,  label:"0:58 · The recipient's plan",
+    text:"The recipient opens one scoped link and gets a calm, prioritized plan - do this first - showing only what they were granted, and only because a real release happened." },
+  { t:68,  label:"1:08 · Reveal",
+    text:"They reveal an item and it's decrypted right in their browser - the safe code, where the will is, who the executor is. Exactly what they need, and nothing more." },
+  { t:78,  label:"1:18 · Audit log",
+    text:"Every step is written to an append-only, hash-chained audit log - tamper-evident, and verified here both on the server and in the browser." },
+  { t:87,  label:"1:27 · Aurora DSQL",
+    text:"Under the hood this runs on Amazon Aurora DSQL - active-active across regions, strongly consistent. The release is a compare-and-set on DSQL's optimistic concurrency, so even a regional outage can't stop access or corrupt it. And every secret is envelope-encrypted with AWS KMS, so the database only ever holds ciphertext." },
+  { t:103, label:"1:43 · Close",
+    text:"Relay - standby access for the people who'll need it." },
 ];
-const END = 158; // ~2:38 incl. a beat to land the close
 
+const v = document.getElementById('v');
 const script = document.getElementById('script');
 const clock = document.getElementById('clock');
-const startBtn = document.getElementById('start');
+const playBtn = document.getElementById('play');
+const speedEl = document.getElementById('speed');
 const fmt = s => { s=Math.max(0,s|0); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); };
 
 const nodes = SEGS.map((seg) => {
   const el = document.createElement('div');
   el.className = 'seg';
-  el.innerHTML = `<div class="meta">${seg.label}<span class="now">▶ READ NOW</span><br><span class="do">▸ ON SCREEN: ${seg.do}</span></div><div>${seg.text}</div>`;
-  el.addEventListener('click', () => { base = seg.t; start = perf(); running = true; startBtn.textContent='❚❚ Pause'; });
+  el.innerHTML = `<div class="meta">${seg.label}<span class="now">▶ READ NOW</span></div>`+
+                 `<div>${seg.text}</div><div class="prog"><i></i></div>`;
+  el.addEventListener('click', () => { v.currentTime = seg.t + 0.05; });
   script.appendChild(el);
   return el;
 });
 
-let running = false, base = 0, start = 0, activeIdx = -1;
-const perf = () => Date.now()/1000;
-function now(){ return running ? base + (perf() - start) : base; }
-
+let activeIdx = -1;
 function render() {
-  const ct = now();
+  const ct = v.currentTime;
   let idx = -1;
   for (let i=0;i<SEGS.length;i++){ if (ct >= SEGS[i].t - 0.001) idx = i; else break; }
   const next = SEGS[idx+1];
@@ -98,19 +114,33 @@ function render() {
     const meta = el.querySelector('.meta');
     meta.querySelector('.cue')?.remove();
     if (i===idx+1 && next) { const dt = Math.ceil(next.t - ct); if (dt<=8) meta.insertAdjacentHTML('beforeend', ` <span class="cue">— in ${dt}s</span>`); }
+    if (i===idx) {
+      const end = (i+1<SEGS.length)? SEGS[i+1].t : (v.duration||108);
+      const pct = Math.min(100, Math.max(0, (ct - seg.t)/(end - seg.t)*100));
+      el.querySelector('.prog > i').style.width = pct+'%';
+    }
   });
   if (idx !== activeIdx && idx>=0) { activeIdx=idx; nodes[idx].scrollIntoView({block:'center'}); }
-  clock.textContent = fmt(ct) + (ct>=END ? ' · (wrap)' : '');
+  clock.textContent = fmt(ct)+' / '+fmt(v.duration||0);
 }
-setInterval(render, 100);
 
-function toggle(){ if (running){ base = now(); running=false; startBtn.textContent='▶ Start'; } else { start = perf(); running=true; startBtn.textContent='❚❚ Pause'; } }
-function reset(){ running=false; base=0; activeIdx=-1; startBtn.textContent='▶ Start'; render(); }
-startBtn.onclick = toggle;
-document.getElementById('reset').onclick = reset;
+let SPEED = 1.00;
+function applySpeed(){ SPEED = Math.min(2, Math.max(0.5, Math.round(SPEED*100)/100)); v.playbackRate = SPEED; speedEl.textContent = SPEED.toFixed(2)+'×'; }
+v.addEventListener('loadedmetadata', applySpeed);
+v.addEventListener('timeupdate', render);
+v.addEventListener('play',  () => playBtn.textContent='❚❚ Pause');
+v.addEventListener('pause', () => playBtn.textContent='▶ Play');
+setInterval(render, 100); // keeps the countdown live while paused/seeking
+
+playBtn.onclick = () => { v.paused ? v.play() : v.pause(); };
+document.getElementById('restart').onclick = () => { v.currentTime = 0; v.pause(); };
 document.addEventListener('keydown', e => {
-  if (e.code==='Space'){ e.preventDefault(); toggle(); }
-  else if (e.key==='r'||e.key==='R'){ reset(); }
+  if (e.code==='Space'){ e.preventDefault(); v.paused ? v.play() : v.pause(); }
+  else if (e.key==='r'||e.key==='R'){ v.currentTime=0; v.pause(); }
+  else if (e.key==='['){ SPEED-=0.05; applySpeed(); }
+  else if (e.key===']'){ SPEED+=0.05; applySpeed(); }
+  else if (e.key==='ArrowLeft'){ v.currentTime=Math.max(0,v.currentTime-5); }
+  else if (e.key==='ArrowRight'){ v.currentTime=Math.min(v.duration||108,v.currentTime+5); }
 });
 render();
 </script>
