@@ -59,8 +59,10 @@ async function readStateByOwnerTrigger(ownerId: string, triggerType: string): Pr
  * MVP grace window: release as soon as the N-of-M quorum is met, with no
  * artificial delay. GRACE is the confirmable/cancelable state; a nonzero
  * owner-cancel delay is a config knob deliberately left at 0 for the MVP.
+ * Shared with the cron sweep (lib/release/heartbeat.ts) so both the manual and
+ * the automatic missed-check-in paths open the same grace window.
  */
-const GRACE_WINDOW_MS = 0;
+export const GRACE_WINDOW_MS = 0;
 
 /**
  * Owner fires a trigger: ARMED → PENDING → GRACE. Entering GRACE opens the

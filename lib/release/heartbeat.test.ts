@@ -175,14 +175,21 @@ describe('runHeartbeatSweep', () => {
     });
   }
 
-  it('arms each overdue ARMED release_state to PENDING', async () => {
+  it('advances each overdue ARMED release_state through PENDING into GRACE', async () => {
     setupOwners([{ id: 'rs-1', trigger_type: 'emergency', version: '0' }]);
-    const transition = vi.fn(async (..._a: unknown[]) => ({}) as never);
+    const transition = vi
+      .fn()
+      .mockResolvedValueOnce({ id: 'rs-1', version: 1 } as never) // armed -> pending
+      .mockResolvedValueOnce({ id: 'rs-1', version: 2 } as never); // pending -> grace
 
     const res = await runHeartbeatSweep({ transition } as never, { sleep: async () => {}, now: () => new Date('2026-06-18T00:00:00Z') });
     expect(res).toEqual({ evaluated: 1, transitioned: 1, failures: 0 });
     expect(transition.mock.calls[0][1]).toBe('armed');
     expect(transition.mock.calls[0][2]).toBe('pending');
+    expect(transition.mock.calls[1][1]).toBe('pending');
+    expect(transition.mock.calls[1][2]).toBe('grace');
+    // the GRACE transition stamps the grace window
+    expect((transition.mock.calls[1][4] as { updates?: { grace_ends_at?: string } }).updates?.grace_ends_at).toBeDefined();
   });
 
   it('retries a failing owner then logs + counts a failure (Req 4.7)', async () => {

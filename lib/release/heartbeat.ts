@@ -25,6 +25,7 @@
 import { query } from '../db/connection';
 import { writeAuditEntry } from '../audit/audit-service';
 import { isReversibleTrigger, type ReleaseStateMachine } from './state-machine';
+import { GRACE_WINDOW_MS } from './triggers';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -141,9 +142,11 @@ const CRON_RETRY_BASE_MS = 5000;
 const CRON_MAX_RETRIES = 3;
 
 /**
- * Finds overdue active owners and arms each ARMED release_state to PENDING.
- * A per-owner transient failure is retried (base 5s backoff, max 3) then logged
- * and skipped so one bad owner never blocks the sweep (Req 4.7).
+ * Finds overdue active owners and advances each ARMED release_state through
+ * PENDING into GRACE (opening the confirmable window) so a missed check-in can
+ * actually be released by N-of-M verifier confirmations — the automatic
+ * dead-man's-switch. A per-owner transient failure is retried (base 5s backoff,
+ * max 3) then logged and skipped so one bad owner never blocks the sweep (Req 4.7).
  */
 export async function runHeartbeatSweep(machine: Machine, deps: SweepDeps = {}): Promise<SweepResult> {
   const sleep = deps.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
@@ -182,11 +185,21 @@ async function armOne(
   now: () => Date,
   sleep: (ms: number) => Promise<void>,
 ): Promise<boolean> {
+  const reversible = isReversibleTrigger(rs.trigger_type);
   for (let attempt = 0; attempt < CRON_MAX_RETRIES; attempt++) {
     try {
-      await machine.transition(rs.id, 'armed', 'pending', rs.version, {
-        reversible: isReversibleTrigger(rs.trigger_type),
-        updates: { initiated_by: 'cron', initiated_at: now().toISOString() },
+      const at = now();
+      // ARMED → PENDING (the owner's trigger fires on a missed check-in).
+      const pending = await machine.transition(rs.id, 'armed', 'pending', rs.version, {
+        reversible,
+        updates: { initiated_by: 'cron', initiated_at: at.toISOString() },
+      });
+      // PENDING → GRACE — open the confirmable window so N-of-M verifier
+      // confirmations can drive the release. The owner can still check in to
+      // reverse a false alarm while it is in GRACE.
+      await machine.transition(pending.id, 'pending', 'grace', pending.version, {
+        reversible,
+        updates: { grace_ends_at: new Date(at.getTime() + GRACE_WINDOW_MS).toISOString() },
       });
       return true;
     } catch {

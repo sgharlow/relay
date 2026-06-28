@@ -704,7 +704,7 @@ All route handlers live under `app/api/`. State-mutating endpoints use the OCC C
 
 | Method | Route | Auth | Description |
 |---|---|---|---|
-| `POST` | `/api/cron/heartbeat` | `CRON_SECRET` header | Evaluate all active owners; initiate PENDING for overdue heartbeats |
+| `POST` | `/api/cron/heartbeat` | `CRON_SECRET` header | Evaluate all active owners; advance overdue ARMED triggers through PENDING into GRACE (the confirmable window) so verifier confirmations can release them |
 
 ---
 
