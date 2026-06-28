@@ -138,12 +138,25 @@ Relay was created for the H0 hackathon: Hack the Zero Stack with Vercel and AWS 
 
 FIELD: Testing instructions (the owner area is TOTP-gated)
 ------------------------------------------------------------
-The full owner walkthrough is in the demo video. The recipient access experience
-is publicly reachable via a scoped link. To explore the owner app yourself, sign
-in at /auth/signin with the demo account demo@relay.test and a TOTP code from the
-authenticator secret below (this is a throwaway demo account):
-  TOTP secret (base32): <PASTE the demo account's TOTP_SECRET here, or remove this
-  line and rely on the video>.
+The owner dashboard is protected by TOTP two-factor sign-in. This is a real
+security feature of the product, not a demo gate. To explore the owner app
+yourself (throwaway demo account, demo data only):
+
+1. Open https://relay-three-henna.vercel.app/auth/signin
+2. Email: demo@relay.test
+3. Add this account's TOTP secret to any authenticator app (Google Authenticator,
+   Authy, 1Password) as a manually-entered base32 key:
+      TOTP secret (base32): <PASTE demo TOTP_SECRET here>
+4. Enter the 6-digit code your authenticator shows to sign in.
+
+Once in, you can browse the encrypted vault, the importance ranking and risk
+graph, access rules, recipients and verifiers, and raise a trigger to watch the
+ARMED -> PENDING -> GRACE -> RELEASED release flow. The recipient access
+experience is shown end to end in the demo video. Please do not change the
+account's password or TOTP - other judges share this account.
+
+(The secret to paste is in .env.local as TOTP_SECRET, base32. Put it in the
+Devpost form field only - do not commit it.)
 
 
 ============================================================
