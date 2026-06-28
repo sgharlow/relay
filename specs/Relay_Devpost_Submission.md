@@ -29,7 +29,7 @@ Two things make it more than a vault:
 
 ## Which AWS Database — and why Aurora DSQL
 We used **Amazon Aurora DSQL**, and the choice is the architecture, not a detail:
-1. **Availability at an unpredictable moment.** A release can happen any day — possibly during a regional disruption. Aurora DSQL's active-active, multi-region design keeps the recipient's access path live even if a region goes down. We demonstrate this with a live failover.
+1. **Availability at an unpredictable moment.** A release can happen any day — possibly during a regional disruption. Aurora DSQL's active-active, multi-region design keeps the recipient's access path live even if a region goes down. We verified this live — a write committed in us-east-1 was read strongly-consistent from us-west-2.
 2. **Strong consistency for an irreversible action.** Releasing a vault is one-way; a stale read of release state or recipient scope is unacceptable. Aurora DSQL's strong consistency across regional endpoints is the right guarantee.
 3. **Optimistic concurrency that fits the workload.** A personal continuity vault is intrinsically low-contention — one owner, rare release events — which is exactly where OCC shines, so we model the release as a conflict-checked compare-and-set.
 4. **PostgreSQL compatibility with deliberate adaptation.** Aurora DSQL doesn't enforce foreign keys, so we enforce referential integrity in application logic — a deliberate design choice, surfaced in our data model.
@@ -69,7 +69,7 @@ A graduated-assurance verification engine (identity verification, death/incapaci
 ## Required submission components (H0 checklist)
 - [x] **Text description** — paste the blocks above; state **Amazon Aurora DSQL** as the database used.
 - [x] **Live app deployed** — <https://relay-three-henna.vercel.app> (Aurora DSQL, multi-region active-active; dogfooded live end-to-end 2026-06-27).
-- [ ] **Demo video (< 3 min, YouTube)** — script below; must explain the problem, who it's for, why, show the working app, include the live failover, and explain the AWS Database.
+- [ ] **Demo video (< 3 min, YouTube)** — recorded cut + voiceover script in [`../demo-out/narration-script.md`](../demo-out/narration-script.md); explains the problem, who it's for, why, shows the working app end to end, and explains the AWS Database (Aurora DSQL). Multi-region is shown via the architecture diagram (active-active verified by a strongly-consistent cross-region read).
 - [ ] **Published Vercel project link + Vercel Team ID** — Team ID `team_nP3HzRc3PNm6SaWiApTGkEWa`.
 - [x] **Architecture diagram** — upload `specs/relay_architecture.png` (PNG; `.svg` source also present).
 - [ ] **Screenshot proving AWS Database usage** — Aurora DSQL clusters in the AWS console (primary `frt34b…` us-east-1 / secondary `fjt34b…` us-west-2, Peers tab) and/or Vercel storage configuration.
@@ -77,17 +77,5 @@ A graduated-assurance verification engine (identity verification, death/incapaci
 
 ---
 
-## Demo video script (target ~2:00, hard cap 3:00)
-> "When someone can't be there — a hospital stay, a trip, or worse — the people who depend on them can't get into the accounts that matter. Relay fixes that.
->
-> This is Maria. She sets up Relay in one sitting: she imports her password-manager export and dozens of accounts populate instantly. Relay ranks them by what matters in a crisis and flags the one critical gap — her primary email has no recovery note, and it's the key that unlocks everything else. She fixes it, assigns emergency access to her husband Dave, and names her sister and attorney as verifiers.
->
-> Months later, Maria is in surgery. Dave needs the insurance login now. He requests emergency access; Relay notifies Maria, gets no response, and asks the verifiers to confirm. *[real confirmation]* Dave's access opens — only what Maria scoped to him, as a clear step-by-step plan.
->
-> Here's the part that matters for a moment no one can schedule: Relay runs active-active on **Amazon Aurora DSQL** across two regions. Watch — I disable the primary region *[real failover]* — Dave's access keeps working from the second region, strongly consistent, no interruption.
->
-> And it's reversible: Maria recovers, checks in, and the access closes automatically.
->
-> Under the hood, the release is a compare-and-set validated by Aurora DSQL's optimistic concurrency, so it can never double-release, and referential integrity is enforced in app logic because DSQL has no foreign keys.
->
-> Relay turns 'what happens when I can't be there' into something you set up in fifteen minutes — for an emergency, a trip, a caregiver, or one day, your estate."
+## Demo video
+The recorded silent cut is `../demo-out/relay-demo-silent.mp4` (2:09, 1080p); the matching voiceover script + timecodes are in [`../demo-out/narration-script.md`](../demo-out/narration-script.md), with a video-synced teleprompter at `../demo-out/teleprompter.html`. The cut is performed **live on the deployed app on Aurora DSQL** and walks: the problem → the vault + importance engine → access rules → triggers (manual **and** automatic) → an emergency raised into GRACE → a verifier confirms → released → the recipient's prioritized plan → in-browser decrypt → owner check-in closes access → the hash-chained audit trail → the architecture. The multi-region story is shown via the architecture diagram and was **verified by a strongly-consistent cross-region read** (no faked failover). Nothing is simulated.

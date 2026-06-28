@@ -1,0 +1,191 @@
+============================================================
+RELAY - DEVPOST SUBMISSION (PASTE-READY)
+============================================================
+Hackathon: H0 - Hack the Zero Stack with Vercel and AWS Databases
+Track: Monetizable B2C
+AWS database: Amazon Aurora DSQL
+Deadline: 2026-06-29 5:00pm PDT
+
+Plain ASCII only - no smart quotes, no em-dashes, no backticks. Copy the text
+UNDER each dashed line (not the FIELD label). Paragraphs are unwrapped so they
+paste cleanly into Devpost textareas. Prose source: specs/Relay_Devpost_Submission.md.
+
+
+============================================================
+A. TOP-OF-FORM FIELDS
+============================================================
+
+FIELD: Project name
+------------------------------------------------------------
+Relay
+
+FIELD: Tagline / elevator pitch
+------------------------------------------------------------
+Standby access for the people who will need it - set up who can reach what, and Relay hands it over the moment you can't.
+
+FIELD: Built with (tags)
+------------------------------------------------------------
+amazon-aurora-dsql, aws-kms, vercel, next.js, typescript, node-postgres, next-auth, openai, resend, fast-check, serverless
+
+
+============================================================
+B. LINKS / "TRY IT OUT"
+============================================================
+
+FIELD: Live app URL
+------------------------------------------------------------
+https://relay-three-henna.vercel.app
+
+FIELD: GitHub repository
+------------------------------------------------------------
+https://github.com/sgharlow/relay
+
+FIELD: Demo video (public YouTube, under 3 min)
+------------------------------------------------------------
+PASTE-VIDEO-URL   (title/description/tags in demo-out/youtube-metadata.md)
+
+
+============================================================
+C. ABOUT THE PROJECT (story sections)
+============================================================
+
+FIELD: Inspiration
+------------------------------------------------------------
+When someone is suddenly in surgery, traveling and unreachable, or gone, the people who depend on them hit a wall: they can't get into the bank, the insurance portal, the kids' school account, or the family documents - and the platforms each have their own slow, fragmented process. Existing tools are built around death, so people avoid them and never finish setup. We flipped it: Relay is about living continuity - emergencies, travel, caregiving, business continuity - with estate handoff as the final case of the same mechanism. That reframing is what makes it something people actually use.
+
+FIELD: What it does
+------------------------------------------------------------
+Relay lets you build an encrypted vault of accounts, credentials, documents, and instructions, then assign scoped, reversible access to the right people under rules you set. When a trigger fires - a missed check-in, a manual emergency request, or a verified estate event - Relay moves through a controlled release process (notify the owner, require N-of-M trusted verifiers, observe a grace window) and only then opens a guided, prioritized access dashboard to the recipient. Emergencies are reversible: when you recover and check in, access closes automatically.
+
+Two things make it more than a vault:
+- An importance engine turns a bulk import into focus. Import a password-manager export and dozens of accounts populate instantly; Relay ranks them by what matters in a crisis and surfaces the few that count - including the risk-graph insight that your primary email is the key that unlocks most password resets.
+- A release that is correct under pressure. The irreversible handoff is modeled so it can never double-release, even when the owner, the verifiers, and the scheduler all act at once.
+
+FIELD: Which AWS Database - and why Aurora DSQL
+------------------------------------------------------------
+We used Amazon Aurora DSQL, and the choice is the architecture, not a detail:
+1. Availability at an unpredictable moment. A release can happen any day - possibly during a regional disruption. Aurora DSQL's active-active, multi-region design keeps the recipient's access path live even if a region goes down. We verified this live: a write committed in us-east-1 was read strongly-consistent from us-west-2.
+2. Strong consistency for an irreversible action. Releasing a vault is one-way; a stale read of release state or recipient scope is unacceptable. Aurora DSQL's strong consistency across regional endpoints is the right guarantee.
+3. Optimistic concurrency that fits the workload. A personal continuity vault is intrinsically low-contention - one owner, rare release events - which is exactly where OCC shines, so we model the release as a conflict-checked compare-and-set.
+4. PostgreSQL compatibility with deliberate adaptation. Aurora DSQL doesn't enforce foreign keys, so we enforce referential integrity in application logic - a deliberate design choice, surfaced in our data model.
+
+FIELD: How we built it
+------------------------------------------------------------
+- Frontend: a Next.js (App Router, TypeScript) app deployed on Vercel; route handlers are the API tier.
+- Database: Amazon Aurora DSQL, multi-region active-active, as the system of record for vault metadata, ciphertext, access rules, recipients, verifiers, the release state, and an append-only audit log.
+- Encryption: client-side envelope encryption with AWS KMS - items are encrypted in the browser and only ciphertext plus non-secret metadata are ever uploaded.
+- Release subsystem: a state machine (ARMED to PENDING to GRACE to RELEASED) whose every transition is a compare-and-set validated by Aurora DSQL's optimistic concurrency control; conflicting commits surface as serialization failures and retry or safely abort.
+- Importance engine: serverless functions running heuristics plus an LLM over non-secret metadata only (category, root-credential and recurring-billing flags, dependency edges) - so the smartest part of the product never sees a secret and never breaks zero-knowledge.
+- Triggers: an owner can raise a trigger manually, or it fires automatically on a missed check-in (a dead-man's-switch); either way it advances into the grace window where N-of-M verifier confirmations release it.
+
+FIELD: Challenges we ran into
+------------------------------------------------------------
+- Modeling an irreversible release safely under optimistic concurrency, so concurrent actors can never produce a double-release.
+- Enforcing referential integrity without foreign keys, including orphan and cascade paths.
+- Keeping the importance engine genuinely useful while restricting it to non-secret metadata, so it never compromises the encryption boundary.
+- Making a single mechanism serve everything from a reversible emergency to a permanent estate handoff.
+
+FIELD: Accomplishments that we're proud of
+------------------------------------------------------------
+- A release path that is provably safe under concurrency, drivable both manually and automatically (the dead-man's-switch), and reversible on recovery.
+- An importance engine that converts a noisy import into a short, prioritized, dependency-aware list - and a recipient experience that is a triaged plan, not a scavenger hunt.
+- A zero-knowledge-compatible design where the database holds only ciphertext and non-secret metadata.
+
+FIELD: What we learned
+------------------------------------------------------------
+- Aurora DSQL's optimistic-concurrency model maps cleanly onto exactly-once, irreversible state transitions when you treat them as compare-and-set with retry.
+- Designing for "no foreign keys" pushes integrity into the application in ways that are healthy for a distributed system.
+- The hardest, most valuable problem in this space isn't storage - it is verified, reversible release.
+
+FIELD: Business model (Monetizable B2C)
+------------------------------------------------------------
+Relay is a consumer subscription product with a clear path to scale.
+- Who pays, and why now: the wedge is the caregiver - an adult child managing an aging parent's accounts feels acute, present pain, and the relationship expands naturally into the estate handoff later. Adjacent segments: frequent travelers, new parents, and small-business owners who need bus-factor continuity.
+- Pricing: a free tier (a small vault + one emergency recipient) converts to a paid annual subscription for the full living vault - unlimited items, multiple recipients and verifiers, N-of-M release, and active-active availability. A one-time activation fee at the moment of need (an emergency or estate release) is easy to justify exactly when it matters most.
+- How the B2C on-ramp compounds: direct-to-consumer is the proof and the on-ramp; the durable distribution is embedded "powered by Relay" continuity offered through institutions people already trust - banks, employer benefits, wealth managers, insurers. Same product, two revenue surfaces: consumer subscriptions + partner licensing.
+- Why it's defensible: platform-native tools (Apple Legacy Contact, 1Password emergency kit) are single-ecosystem, all-or-nothing, and unverified. Relay's moat is the cross-platform, verified, reversible, graduated release layer - human N-of-M verification on a strongly-consistent ledger.
+
+FIELD: What's next for Relay
+------------------------------------------------------------
+A graduated-assurance verification engine (identity verification, death/incapacity signals, notarization), productionized zero-knowledge via threshold secret-sharing, per-jurisdiction data residency on Aurora DSQL's multi-region foundation, and distribution as embedded continuity infrastructure that banks, employers, and wealth managers offer their clients - beginning with the caregiver wedge.
+
+
+============================================================
+D. H0-SPECIFIC FIELDS
+============================================================
+
+FIELD: Track
+------------------------------------------------------------
+Monetizable B2C
+
+FIELD: AWS database (select in dropdown / name in text)
+------------------------------------------------------------
+Amazon Aurora DSQL
+
+FIELD: Published Vercel project link
+------------------------------------------------------------
+https://vercel.com/steves-projects-a71becf4/relay
+(VERIFY this opens. If Devpost wants the live deployment URL instead, use
+https://relay-three-henna.vercel.app)
+
+FIELD: Vercel Team ID
+------------------------------------------------------------
+team_nP3HzRc3PNm6SaWiApTGkEWa
+
+FIELD: Created-for-this-hackathon statement
+------------------------------------------------------------
+Relay was created for the H0 hackathon: Hack the Zero Stack with Vercel and AWS Databases (June 2026).
+
+FIELD: Testing instructions (the owner area is TOTP-gated)
+------------------------------------------------------------
+The full owner walkthrough is in the demo video. The recipient access experience
+is publicly reachable via a scoped link. To explore the owner app yourself, sign
+in at /auth/signin with the demo account demo@relay.test and a TOTP code from the
+authenticator secret below (this is a throwaway demo account):
+  TOTP secret (base32): <PASTE the demo account's TOTP_SECRET here, or remove this
+  line and rely on the video>.
+
+
+============================================================
+E. IMAGE GALLERY (upload)
+============================================================
+1. specs/relay_architecture.png   - architecture diagram (a real connection
+   diagram: browsers -> Vercel -> Aurora DSQL + KMS, with the zero-knowledge
+   boundary and the release state machine).
+2. Aurora DSQL console screenshots - NOT YET CAPTURED. Capture RELAY's two
+   clusters' Peers tabs: primary frt34b... (us-east-1) + secondary fjt34b...
+   (us-west-2). Do NOT reuse any orbis screenshots.
+
+
+============================================================
+F. BONUS (up to +0.6) - optional
+============================================================
+Publish the build write-up (docs/blog-post.md) to dev.to / Medium / LinkedIn /
+builder.aws.com BEFORE the deadline, including #H0Hackathon and the
+created-for-this-hackathon statement (section D). Confirm the exact required
+attribution wording against the Devpost Official Rules, then add the published URL
+to the Devpost entry.
+
+
+============================================================
+G. FINAL MANUAL CHECKLIST (in order)
+============================================================
+[ ] 1. Record the voiceover over demo-out/relay-demo-silent.mp4 using
+       demo-out/teleprompter.html; send the audio to Claude to sync + mux, or
+       mux it yourself.
+[ ] 2. Upload the video PUBLIC to YouTube (metadata in demo-out/youtube-metadata.md).
+[ ] 3. Capture relay's OWN Aurora DSQL console screenshots (section E #2).
+[ ] 4. Flip the GitHub repo to PUBLIC (security review passed).
+[ ] 5. Paste sections A-D into the Devpost form; upload section E images.
+[ ] 6. Fill the video URL into README.md + specs/DEVPOST-PASTE-MAP.md + Devpost.
+[ ] 7. Decide the Testing Instructions approach (section D) for the TOTP-gated
+       owner area.
+[ ] 8. Open EVERY submitted link incognito / logged-out to confirm it works:
+       - https://relay-three-henna.vercel.app
+       - https://github.com/sgharlow/relay
+       - the YouTube URL
+       - the Vercel project link
+[ ] 9. (Optional) Publish the bonus post (section F).
+[ ] 10. Submit on Devpost.
+[ ] 11. After submit / after judging: tear down the DSQL clusters + IAM/KMS to
+        stop spend.
