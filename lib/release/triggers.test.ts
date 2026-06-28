@@ -171,13 +171,21 @@ describe('submitConfirmation', () => {
 // ---------------------------------------------------------------------------
 
 describe('initiateTrigger', () => {
-  it('transitions ARMED → PENDING and audits', async () => {
-    mockQuery.mockResolvedValueOnce(qResult([makeRow({ state: 'armed' })]));
+  it('transitions ARMED → PENDING → GRACE and opens the grace window', async () => {
+    mockQuery.mockResolvedValueOnce(qResult([makeRow({ state: 'armed', version: 0 })]));
     const machine = machineStub();
-    machine.transition.mockResolvedValueOnce(makeRow({ state: 'pending', version: 1 }) as never);
+    machine.transition
+      .mockResolvedValueOnce(makeRow({ state: 'pending', version: 1 }) as never)
+      .mockResolvedValueOnce(makeRow({ state: 'grace', version: 2 }) as never);
     const out = await initiateTrigger('owner-1', 'emergency', machine, new Date('2026-06-18T00:00:00Z'));
+    expect(machine.transition.mock.calls[0][1]).toBe('armed');
     expect(machine.transition.mock.calls[0][2]).toBe('pending');
-    expect(out.state).toBe('pending');
+    expect(machine.transition.mock.calls[1][1]).toBe('pending');
+    expect(machine.transition.mock.calls[1][2]).toBe('grace');
+    // the GRACE transition stamps grace_ends_at so verifier confirmations can release
+    const graceOpts = machine.transition.mock.calls[1][4] as { updates?: { grace_ends_at?: string } };
+    expect(graceOpts.updates?.grace_ends_at).toBeDefined();
+    expect(out.state).toBe('grace');
   });
 
   it('throws 404 when no release_state exists for the trigger', async () => {

@@ -55,7 +55,22 @@ async function readStateByOwnerTrigger(ownerId: string, triggerType: string): Pr
   return r.rows[0];
 }
 
-/** Owner fires a trigger: ARMED → PENDING. Returns the row + verifier recipients. */
+/**
+ * MVP grace window: release as soon as the N-of-M quorum is met, with no
+ * artificial delay. GRACE is the confirmable/cancelable state; a nonzero
+ * owner-cancel delay is a config knob deliberately left at 0 for the MVP.
+ */
+const GRACE_WINDOW_MS = 0;
+
+/**
+ * Owner fires a trigger: ARMED → PENDING → GRACE. Entering GRACE opens the
+ * confirmable window (stamps `grace_ends_at`) so that N-of-M verifier
+ * confirmations can drive GRACE → RELEASED (design.md §"Release State Machine":
+ * "PENDING → GRACE: owner notified, grace window started"). Returns the GRACE row.
+ *
+ * The owner is the one firing it, so we don't wait for an owner-response window;
+ * the owner can still check in (PENDING/GRACE → ARMED) before the quorum is met.
+ */
 export async function initiateTrigger(
   ownerId: string,
   triggerType: string,
@@ -66,10 +81,19 @@ export async function initiateTrigger(
   if (row.state !== 'armed') {
     throw new TriggerError(`Trigger "${triggerType}" is not ARMED (state=${row.state})`, 409);
   }
+  const reversible = isReversibleTrigger(triggerType);
 
-  const updated = await machine.transition(row.id, 'armed', 'pending', row.version, {
-    reversible: isReversibleTrigger(triggerType),
+  // ARMED → PENDING (owner-initiated).
+  const pending = await machine.transition(row.id, 'armed', 'pending', row.version, {
+    reversible,
     updates: { initiated_by: `owner:${ownerId}`, initiated_at: now.toISOString() },
+  });
+
+  // PENDING → GRACE — open the grace window so verifier confirmations can release.
+  const graceEndsAt = new Date(now.getTime() + GRACE_WINDOW_MS).toISOString();
+  const grace = await machine.transition(pending.id, 'pending', 'grace', pending.version, {
+    reversible,
+    updates: { grace_ends_at: graceEndsAt },
   });
 
   await writeAuditEntry(ownerId, {
@@ -80,7 +104,7 @@ export async function initiateTrigger(
     detail: { trigger_type: triggerType },
   });
 
-  return updated;
+  return grace;
 }
 
 /** Owner cancels a reversible trigger in GRACE → CANCELLED. */

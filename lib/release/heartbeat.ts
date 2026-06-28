@@ -3,9 +3,11 @@
  *
  * Two entry points, both built on the ReleaseStateMachine:
  *  - processCheckin(ownerId, machine) — an owner heartbeat: records activity and
- *    reverses any reversible trigger from PENDING/GRACE back to ARMED via CAS.
- *    Estate triggers in PENDING/GRACE are reported as `blocked` (cannot reverse,
- *    Req 4.5) so the route can return 409.
+ *    reverses any reversible trigger from PENDING/GRACE/RELEASED back to ARMED via
+ *    CAS (recovering from a RELEASED reversible trigger closes the recipient's
+ *    access — the version bump invalidates outstanding tokens). Estate triggers
+ *    are reported as `blocked` (cannot reverse / permanent once released, Req 4.5)
+ *    so the route can return 409.
  *  - runHeartbeatSweep(machine, deps) — the cron evaluation: finds overdue active
  *    owners and arms each ARMED release_state to PENDING (Req 4.3), retrying a
  *    transient failure with exponential backoff (base 5s, max 3) before logging
@@ -32,7 +34,7 @@ type Machine = Pick<ReleaseStateMachine, 'transition'>;
 interface PendingRow {
   id: string;
   trigger_type: string;
-  state: 'pending' | 'grace';
+  state: 'pending' | 'grace' | 'released';
   version: string | number;
 }
 
@@ -78,7 +80,7 @@ export async function processCheckin(ownerId: string, machine: Machine): Promise
   const rows = await query<PendingRow>(
     `SELECT id, trigger_type, state, version
        FROM release_state
-      WHERE owner_id = $1 AND state IN ('pending', 'grace')`,
+      WHERE owner_id = $1 AND state IN ('pending', 'grace', 'released')`,
     [ownerId],
   );
 
@@ -87,11 +89,19 @@ export async function processCheckin(ownerId: string, machine: Machine): Promise
 
   for (const row of rows.rows) {
     if (!isReversibleTrigger(row.trigger_type)) {
-      blocked.push(row.trigger_type); // estate — cannot reverse (Req 4.5)
+      blocked.push(row.trigger_type); // estate — cannot reverse / permanent once released (Req 4.5)
       continue;
     }
     try {
-      await machine.transition(row.id, row.state, 'armed', row.version, { reversible: true });
+      // Re-arm. For a RELEASED reversible trigger this closes the recipient's
+      // access; clear the release bookkeeping so it starts fresh next time.
+      await machine.transition(row.id, row.state, 'armed', row.version, {
+        reversible: true,
+        updates:
+          row.state === 'released'
+            ? { received_confirmations: 0, grace_ends_at: null, released_at: null }
+            : undefined,
+      });
       reset.push(row.trigger_type);
     } catch {
       // A concurrent writer moved this row; it will be re-evaluated on the next

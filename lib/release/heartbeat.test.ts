@@ -114,6 +114,38 @@ describe('Property 10: heartbeat recovery (PENDING → ARMED); estate rejected',
     expect(mockAudit.mock.calls[0][1].action).toBe('owner_checkin');
   });
 
+  it('re-arms a RELEASED reversible trigger (closing access) and resets the bookkeeping', async () => {
+    const transition = vi.fn(async (..._a: unknown[]) => ({}) as never);
+    mockQuery.mockImplementation(async (sql: string) => {
+      if (sql.startsWith('UPDATE users')) return qResult([]);
+      if (sql.includes('FROM release_state')) {
+        return qResult([{ id: 'rs-1', trigger_type: 'emergency', state: 'released', version: '3' }]);
+      }
+      return qResult([]);
+    });
+    const result = await processCheckin('owner-1', { transition } as never);
+    expect(result.reset).toEqual(['emergency']);
+    expect(transition).toHaveBeenCalledOnce();
+    expect(transition.mock.calls[0][1]).toBe('released'); // from
+    expect(transition.mock.calls[0][2]).toBe('armed'); // to
+    const opts = transition.mock.calls[0][4] as { updates?: Record<string, unknown> };
+    expect(opts.updates).toMatchObject({ received_confirmations: 0, grace_ends_at: null, released_at: null });
+  });
+
+  it('blocks a RELEASED estate trigger (permanent — cannot reverse)', async () => {
+    const transition = vi.fn(async (..._a: unknown[]) => ({}) as never);
+    mockQuery.mockImplementation(async (sql: string) => {
+      if (sql.startsWith('UPDATE users')) return qResult([]);
+      if (sql.includes('FROM release_state')) {
+        return qResult([{ id: 'rs-2', trigger_type: 'estate', state: 'released', version: '3' }]);
+      }
+      return qResult([]);
+    });
+    const result = await processCheckin('owner-1', { transition } as never);
+    expect(result.blocked).toEqual(['estate']);
+    expect(transition).not.toHaveBeenCalled();
+  });
+
   it('does not fail the whole check-in if one reversible row races (CAS error)', async () => {
     const transition = vi.fn(async () => {
       throw new Error('CAS mismatch');
