@@ -41,3 +41,6 @@ next-env.d.ts
 
 # Rendered demo video drafts (uploaded to YouTube, not tracked)
 demo-out/*.mp4
+# AWS console screenshots (uploaded to Devpost gallery, not tracked — contain account ID / personal email)
+demo-out/*.jpg
+demo-out/*.jpeg
