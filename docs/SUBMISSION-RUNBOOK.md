@@ -18,14 +18,14 @@
 | Layer | State |
 |---|---|
 | Code: backend (28 routes) + all UI + recipient notifications | ✅ complete |
-| Tests | ✅ **403 / 58 files green** (`npx vitest --run`) |
+| Tests | ✅ **405 / 58 files green** (`npx vitest --run`) |
 | `tsc --noEmit` · `next build` | ✅ clean |
 | **Sign-in upsert (was integration Risk A)** | ✅ **FIXED — commit `c4b0005`** (app-level intent-read, no `ON CONFLICT`, no UNIQUE-index dependency). Sign-in now works on real DSQL **without** migration 002. |
 | Live infra (DSQL + KMS + Vercel deploy) | ✅ provisioned + deployed live |
 | Authenticated E2E on real infra | ✅ **dogfooded live 2026-06-27** — full crypto round-trip, release spine, active-active multi-region, audit chain |
-| Demo video | ❌ not recorded (silent draft + narration script ready in `demo-out/`) |
+| Demo video | ✅ **published** — <https://youtu.be/FU3azKJOesY> (narrated, `demo-out/relay-demo-narrated.mp4`) |
 
-**Bottom line:** no code blocker remains; provisioning and the live dogfood are done. Only the demo video + Devpost form remain.
+**Bottom line:** no code blocker remains; provisioning, the live dogfood, and the demo video are done. Only the Devpost form (Aurora DSQL screenshot + paste fields) remains.
 
 ---
 

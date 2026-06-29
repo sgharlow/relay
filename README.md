@@ -12,9 +12,9 @@ permanent. The default-safe state is always `ARMED`.
 
 > **H0 — Hack the Zero Stack with Vercel and AWS Databases** · Track: **Monetizable B2C** · AWS Database: **Amazon Aurora DSQL**
 
-**▶ Live:** <https://relay-three-henna.vercel.app> _(deployed on Aurora DSQL, multi-region active-active — see [`docs/SUBMISSION-RUNBOOK.md`](docs/SUBMISSION-RUNBOOK.md))_ · **🎬 Demo video:** PASTE-VIDEO-URL <!-- replace with the public YouTube URL after recording -->
+**▶ Live:** <https://relay-three-henna.vercel.app> _(deployed on Aurora DSQL, multi-region active-active — see [`docs/SUBMISSION-RUNBOOK.md`](docs/SUBMISSION-RUNBOOK.md))_ · **🎬 Demo video:** <https://youtu.be/FU3azKJOesY>
 
-> **Submission status:** code complete + **deployed and dogfooded live** · **403 tests / 58 files green** · `tsc` + `next build` clean. Remaining work is the demo capture + Devpost form (recipient-email dogfood, region-failover footage, Aurora DSQL screenshot, video). Turnkey paste sheet: [`specs/DEVPOST-PASTE-MAP.md`](specs/DEVPOST-PASTE-MAP.md). Ordered cliff-day path: [`docs/SUBMISSION-RUNBOOK.md`](docs/SUBMISSION-RUNBOOK.md).
+> **Submission status:** code complete + **deployed and dogfooded live** · **405 tests / 58 files green** · `tsc` + `next build` clean · **demo video published** (<https://youtu.be/FU3azKJOesY>). Remaining work is the Devpost form (Aurora DSQL screenshot + form fields). Turnkey paste sheet: [`specs/DEVPOST-PASTE-MAP.md`](specs/DEVPOST-PASTE-MAP.md). Ordered cliff-day path: [`docs/SUBMISSION-RUNBOOK.md`](docs/SUBMISSION-RUNBOOK.md).
 
 ---
 

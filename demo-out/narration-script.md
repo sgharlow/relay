@@ -39,9 +39,10 @@ When an emergency is raised it doesn't just open - it moves into a grace window
 and waits, because access this sensitive has to be verified.
 
 [1:03] A VERIFIER CONFIRMS -> RELEASED
-A trusted verifier confirms - real people, N-of-M - and only then does the
-release complete. Every transition is a strongly consistent compare-and-set, so
-it can never double-release.
+Now real people have to confirm. Relay waits for a quorum of the trusted
+verifiers you named - not just one - before anything opens. Only then does the
+release complete, and every transition is a strongly consistent compare-and-set,
+so it can never double-release.
 
 [1:12] THE RECIPIENT'S PLAN
 The recipient opens one scoped link and gets a calm, prioritized plan - do this

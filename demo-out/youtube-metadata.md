@@ -1,5 +1,7 @@
 # Relay — YouTube video metadata (paste-ready, plain ASCII)
 
+**PUBLISHED:** https://youtu.be/FU3azKJOesY (public)
+
 Use these when you upload the demo video to YouTube. Set the video to PUBLIC.
 After uploading, paste the URL into README.md, specs/DEVPOST-PASTE-MAP.md, and the
 Devpost "Demo video" field.

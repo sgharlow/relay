@@ -36,7 +36,7 @@ Fill these in as you complete the runbook; they are the *only* things blocking t
 | 1 | **Vercel production URL** | `https://relay-three-henna.vercel.app` ✅ | deployed live |
 | 2 | **Vercel project link** | `https://relay-three-henna.vercel.app` (the working app a judge clicks) | Vercel → Project |
 | 3 | **Vercel Team ID** | `team_nP3HzRc3PNm6SaWiApTGkEWa` ✅ | Vercel → Team → Settings → General |
-| 4 | **Demo video URL (public YouTube)** | `PASTE-VIDEO-URL` | Runbook Step 7 — also paste into `README.md` `🎬 Demo video` |
+| 4 | **Demo video URL (public YouTube)** | `https://youtu.be/FU3azKJOesY` ✅ | Runbook Step 7 — also pasted into `README.md` `🎬 Demo video` |
 | 5 | **Aurora DSQL screenshots** (cluster + region config) | ⚠️ **NOT YET CAPTURED** — need TWO shots of **relay's** clusters: primary `frt34b…` (us-east-1) + secondary `fjt34b…` (us-west-2), Peers tab. (The prior mislabeled orbis images were removed from `assets/`, so nothing wrong can be uploaded by accident.) | Runbook Step 6 capture |
 | 6 | **Build-post URL** (bonus) | `________________` | `../docs/blog-post.md` → publish to dev.to/Medium/LinkedIn with `#H0Hackathon` |
 
@@ -57,7 +57,7 @@ Fill these in as you complete the runbook; they are the *only* things blocking t
 | **What we learned** | `Relay_Devpost_Submission.md` → "What we learned" | ✅ ready |
 | **What's next** | `Relay_Devpost_Submission.md` → "What's next for Relay" | ✅ ready |
 | **Built With (tags)** | `Relay_Devpost_Submission.md` → "Built With" | ✅ ready |
-| **Demo video link** | value #4 above | ⏳ needs recording |
+| **Demo video link** | value #4 above | ✅ published (youtu.be/FU3azKJOesY) |
 | **Try it out / project URL** | value #1 above | ✅ deployed (relay-three-henna.vercel.app) |
 | **Vercel project link + Team ID** | values #2, #3 above | ✅ live URL + Team ID known |
 | **Architecture diagram (image upload)** | `relay_architecture.png` (in this folder) | ✅ ready — upload the **PNG**, not the SVG |

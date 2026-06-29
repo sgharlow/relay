@@ -42,7 +42,7 @@ https://github.com/sgharlow/relay
 
 FIELD: Demo video (public YouTube, under 3 min)
 ------------------------------------------------------------
-PASTE-VIDEO-URL   (title/description/tags in demo-out/youtube-metadata.md)
+https://youtu.be/FU3azKJOesY   (title/description/tags in demo-out/youtube-metadata.md)
 
 
 ============================================================
