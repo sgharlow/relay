@@ -38,7 +38,7 @@ Fill these in as you complete the runbook; they are the *only* things blocking t
 | 3 | **Vercel Team ID** | `team_nP3HzRc3PNm6SaWiApTGkEWa` ✅ | Vercel → Team → Settings → General |
 | 4 | **Demo video URL (public YouTube)** | `https://youtu.be/FU3azKJOesY` ✅ | Runbook Step 7 — also pasted into `README.md` `🎬 Demo video` |
 | 5 | **Aurora DSQL screenshots** (cluster + region config) | ⚠️ **NOT YET CAPTURED** — need TWO shots of **relay's** clusters: primary `frt34b…` (us-east-1) + secondary `fjt34b…` (us-west-2), Peers tab. (The prior mislabeled orbis images were removed from `assets/`, so nothing wrong can be uploaded by accident.) | Runbook Step 6 capture |
-| 6 | **Build-post URL** (bonus) | `________________` | `../docs/blog-post.md` → publish to dev.to/Medium/LinkedIn with `#H0Hackathon` |
+| 6 | **Build-post URL** (bonus) | `https://x.com/SGHarlow/status/2071618513920503978` ✅ | X (Twitter) thread — `#H0Hackathon` + attribution; source `../demo-out/x-thread.md` |
 
 ---
 
@@ -62,7 +62,7 @@ Fill these in as you complete the runbook; they are the *only* things blocking t
 | **Vercel project link + Team ID** | values #2, #3 above | ✅ live URL + Team ID known |
 | **Architecture diagram (image upload)** | `relay_architecture.png` (in this folder) | ✅ ready — upload the **PNG**, not the SVG |
 | **AWS Database screenshot** | value #5 above | ⏳ needs capture |
-| **Bonus build post (+attribution + #H0Hackathon)** | value #6 above | ⏳ needs publish |
+| **Bonus build post (+attribution + #H0Hackathon)** | value #6 above | ✅ published (x.com/SGHarlow/status/2071618513920503978) |
 
 ---
 
@@ -75,7 +75,7 @@ Fill these in as you complete the runbook; they are the *only* things blocking t
 - [ ] **Architecture diagram** uploaded (`relay_architecture.png`).
 - [ ] **Aurora DSQL screenshot** uploaded.
 - [ ] **Every submitted link opens logged-out / incognito** (project URL, video, repo).
-- [ ] *(Bonus)* build post live with `#H0Hackathon` + the verbatim attribution statement.
+- [x] *(Bonus)* build post live with `#H0Hackathon` + the verbatim attribution statement — <https://x.com/SGHarlow/status/2071618513920503978>
 
 ---
 
