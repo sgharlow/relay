@@ -30,7 +30,7 @@
 ---
 
 ## Step 0 — Pre-flight (no infra needed, ~3 min)
-- [ ] `npx vitest --run` → **403 passed**.
+- [ ] `npx vitest --run` → **405 passed**.
 - [ ] `npx tsc --noEmit` → exit 0. (Stale errors? `rm -f tsconfig.tsbuildinfo` first.)
 - [ ] `npm run build` → "Compiled successfully".
 

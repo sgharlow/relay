@@ -18,10 +18,11 @@
 - [x] **v0 references struck (2026-06-24).** "scaffolded in v0.app" + the `v0` Built-With tag removed from
       the Devpost pack and the build spec (the repo wasn't built with v0). Only the hackathon's official
       name ("Vercel v0 …") remains, which is fine.
-- [ ] **⚠️ Aurora DSQL screenshot must be RELAY's clusters** — see value #5. No DSQL screenshots are
-      committed (the prior mislabeled orbis images were removed from `assets/`); capture relay's
-      `frt34b…`/`fjt34b…` console (both regions' Peers tabs). Active-active was verified live — a
-      us-east-1 write read strongly-consistent from us-west-2.
+- [x] **✅ Aurora DSQL screenshots ARE relay's clusters (verified 2026-06-29 audit)** — see value #5.
+      `demo-out/useast1_.jpg` = primary `frt34buqso4inluojgnj6horuy` (us-east-1); `demo-out/uswest2_.jpg`
+      = secondary `fjt34b2el5yoh7pvcm4knbkyvi` (us-west-2); both Active with mutual active-active peering
+      (witness us-east-2). (Gitignored — Devpost-upload only, won't leak account ID to the public repo.)
+      Active-active was verified live — a us-east-1 write read strongly-consistent from us-west-2.
 - [ ] **Bonus attribution wording.** The "created for this hackathon" statement wording is set by the
       Official Rules — copy it verbatim into the build post.
 
@@ -37,7 +38,7 @@ Fill these in as you complete the runbook; they are the *only* things blocking t
 | 2 | **Vercel project link** | `https://relay-three-henna.vercel.app` (the working app a judge clicks) | Vercel → Project |
 | 3 | **Vercel Team ID** | `team_nP3HzRc3PNm6SaWiApTGkEWa` ✅ | Vercel → Team → Settings → General |
 | 4 | **Demo video URL (public YouTube)** | `https://youtu.be/FU3azKJOesY` ✅ | Runbook Step 7 — also pasted into `README.md` `🎬 Demo video` |
-| 5 | **Aurora DSQL screenshots** (cluster + region config) | ⚠️ **NOT YET CAPTURED** — need TWO shots of **relay's** clusters: primary `frt34b…` (us-east-1) + secondary `fjt34b…` (us-west-2), Peers tab. (The prior mislabeled orbis images were removed from `assets/`, so nothing wrong can be uploaded by accident.) | Runbook Step 6 capture |
+| 5 | **Aurora DSQL screenshots** (cluster + region config) | ✅ **CAPTURED & VERIFIED** — `../demo-out/useast1_.jpg` (primary `frt34buqso4inluojgnj6horuy`, us-east-1, peer us-west-2, witness us-east-2) + `../demo-out/uswest2_.jpg` (secondary `fjt34b2el5yoh7pvcm4knbkyvi`, us-west-2, peer us-east-1, witness us-east-2). Confirmed relay's OWN clusters (2026-06-29 audit), mutual active-active peering. (Optional: crop the unrelated `wrt3a5…` cluster out of the us-east-1 shot.) | Runbook Step 6 capture — DONE |
 | 6 | **Build-post URL** (bonus) | `https://x.com/SGHarlow/status/2071618513920503978` ✅ | X (Twitter) thread — `#H0Hackathon` + attribution; source `../demo-out/x-thread.md` |
 
 ---
@@ -61,7 +62,7 @@ Fill these in as you complete the runbook; they are the *only* things blocking t
 | **Try it out / project URL** | value #1 above | ✅ deployed (relay-three-henna.vercel.app) |
 | **Vercel project link + Team ID** | values #2, #3 above | ✅ live URL + Team ID known |
 | **Architecture diagram (image upload)** | `relay_architecture.png` (in this folder) | ✅ ready — upload the **PNG**, not the SVG |
-| **AWS Database screenshot** | value #5 above | ⏳ needs capture |
+| **AWS Database screenshot** | value #5 above | ✅ captured & verified (relay's frt34b…/fjt34b… clusters) |
 | **Bonus build post (+attribution + #H0Hackathon)** | value #6 above | ✅ published (x.com/SGHarlow/status/2071618513920503978) |
 
 ---
@@ -83,7 +84,7 @@ Fill these in as you complete the runbook; they are the *only* things blocking t
 
 | Gate | State | Command |
 |---|---|---|
-| Full test suite | ✅ **403 / 58 files** | `npx vitest --run` |
+| Full test suite | ✅ **405 / 58 files** | `npx vitest --run` |
 | Types | ✅ clean | `npx tsc --noEmit` (rm `tsconfig.tsbuildinfo` if stale) |
 | Build | ✅ clean | `npm run build` |
 
