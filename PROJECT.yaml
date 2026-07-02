@@ -42,8 +42,8 @@ gates:
     due: 2026-09-30
 
 market:
-  competitors_doc: docs/COMPETITORS.md   # not yet authored — Build Spec §25 covers Apple Legacy Contact/1Password/Bitwarden; Everplans (closest incumbent) still unnamed. Lint flags until it exists.
-  wtp_evidence: none                     # G1 is the test; zero demand evidence today
+  competitors_doc: docs/COMPETITORS.md   # authored 2026-07-01 (Everplans $99/yr = the price anchor; GoodTrust/Trustworthy; free platform features = the awareness rival) — stale at 60 days
+  wtp_evidence: none                     # G1 is the test; COMPETITORS.md implication: test at/above Everplans' $99/yr, lead with reversibility
 
 monetization_path: none   # ZERO billing code despite Monetizable-B2C track (2026-07-01 audit) — G4 (Stripe + entitlements) is gated behind G1/G2 evidence by design
 

@@ -2,7 +2,7 @@
 
 What's proven:
 
-- ✅ **Unit/property tests** (`npx vitest --run`, 403) cover all pure logic, every API handler (mocked
+- ✅ **Unit/property tests** (`npx vitest --run`, 405 at submission) cover all pure logic, every API handler (mocked
   DB/KMS/OpenAI), and the correctness properties (OCC, state machine, N-of-M, hash chain, ranking…).
 - ✅ **Build + types** (`npm run build`, `npx tsc --noEmit`) are clean.
 - ✅ **Dogfooded live on real infra (2026-06-27)**: owner TOTP sign-in, vault + importance engine, the
@@ -49,7 +49,7 @@ Copy `.env.example` and fill ALL of:
 ---
 
 ## 1. Pre-flight (no infra needed)
-- [ ] `npx vitest --run` → **403 passed**.
+- [ ] `npx vitest --run` → **full suite passed** (405 at submission; the live run is the count).
 - [ ] `npx tsc --noEmit` → exit 0. (If it reports stale errors, `rm -f tsconfig.tsbuildinfo` first.)
 - [ ] `npm run build` → "Compiled successfully", exit 0.
 

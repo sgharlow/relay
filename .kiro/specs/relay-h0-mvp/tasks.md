@@ -1,5 +1,16 @@
 # Implementation Plan: Relay H0 MVP
 
+> **STATUS (2026-07-01): BUILD COMPLETE — this file is the historical 12-day plan, NOT current
+> state.** The build is code-complete, deployed, and dogfooded live on real DSQL + KMS (see
+> `CLAUDE.md` "Build state" and `docs/e2e-verification.md`). The checkbox states below were never
+> reconciled during the sprint and must not be read as progress.
+>
+> **Property-test traceability, reconciled:** 17 tagged `Property N` tests exist (2, 3, 5–16,
+> 18–20). Properties **1 and 4** are covered by conventional unit tests without tags
+> (`lib/db/integrity.test.ts`, `lib/rules/access-rules.test.ts`). **Property 17 was never
+> defined** — the numbering skips from 16 to 18; any "all 20 properties" claim should read
+> "all defined properties".
+
 ## Overview
 
 Twelve-day hackathon build. Tasks are grouped by milestone day-range and ordered so each step

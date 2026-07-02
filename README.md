@@ -61,7 +61,7 @@ engine) · **Resend** (notifications) · **node-postgres** · Vitest + **fast-ch
 
 ```bash
 npm install
-npm test          # vitest --run — 403 tests / 58 files, all green
+npm test          # vitest --run — full suite green (405 at submission; run for the live count)
 npm run build     # next build — production build
 npm run dev       # http://localhost:3000  (needs DSQL + KMS env for DB-backed routes)
 ```
@@ -74,7 +74,8 @@ handlers are thin and build-verified. AWS provisioning + live dogfood:
 ## Status
 
 Backend complete (**28 API routes**), all UI built, recipient-release
-notifications wired. `npx vitest --run` = **403 green**; `tsc --noEmit` + `next
+notifications wired. Full suite green (405 at submission — run `npx vitest --run`
+for the live count); `tsc --noEmit` + `next
 build` clean. Deployed live and dogfooded on Aurora DSQL; remaining work is demo
 capture + Devpost — see the ordered
 [**Submission runbook**](docs/SUBMISSION-RUNBOOK.md). Specs (the build contract):
