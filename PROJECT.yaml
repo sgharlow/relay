@@ -1,0 +1,50 @@
+# PROJECT.yaml — machine-readable project contract. Single source of truth for volatile
+# facts and gates; prose docs reference this file, they never restate its values.
+# Standard: global CLAUDE.md "Documentation & Claim Discipline" (2026-07-01). Checked by /roadmap-lint.
+
+name: relay
+
+# No standalone ROADMAP exists — the forward/commercial roadmap lives in the Build Spec §16–27
+# (the richest strategy doc in the portfolio, per the 2026-07-01 audit; its gap is operational
+# sequencing, which the gates below supply).
+authoritative_plan: specs/Relay_H0_Build_Spec_v2.md
+
+# dogfooded = deployed live + full E2E dogfood on real Aurora DSQL + KMS (2026-06-27), H0-submitted.
+# Promote to customer-used only at the first arms-length user — which is gated on G1/G2 below.
+ladder: dogfooded
+
+derived:
+  test_count: "npx vitest run 2>&1 | grep -E 'Tests .* passed' | tail -1   # static proxy: grep -rE '\\b(it|test)\\(' --include='*.test.*' lib src | wc -l"
+  head: "git rev-parse --short HEAD"
+  branch: "git branch --show-current"
+
+# Sequencing rule (from the 2026-07-01 audit): NO further building until G1 produces evidence.
+# Full chain: G1 WTP -> G2 counsel -> G3 B2B2C pilot LOI -> G4 billing MVP -> G5 audited crypto.
+# G3–G5 enter this file as gates only after G1/G2 pass — deliberately not scheduled before evidence.
+gates:
+  - id: h0-verdict-disposition
+    metric: post_judging_decision (H0 judging ends 2026-07-24; winners ~2026-07-31; DSQL/KMS teardown auto-fires 7-25)
+    target: "explicit commercialize / park / archive decision recorded within a week of results"
+    kill: "n/a — the decision itself is the gate"
+    owner: steve
+    due: 2026-08-07
+  - id: g1-caregiver-wtp
+    metric: willingness_to_pay_signal (landing + price test on the caregiver wedge, N>=100 qualified visitors)
+    target: ">= 2% click-to-intent at a real price point  # PROPOSED — Steve to ratify"
+    kill: "< 0.5% after 100+ qualified -> park D2C; B2B2C-only or archive  # PROPOSED"
+    owner: steve
+    due: 2026-09-15
+  - id: g2-counsel-opinion
+    metric: legal_opinion_on_fiduciary_custodian_status (RUFADAA/estate access — REQUIRED before any paying estate customer)
+    target: "written counsel opinion obtained"
+    kill: "adverse opinion -> B2B2C-through-regulated-partners only, or park  # PROPOSED"
+    owner: steve
+    due: 2026-09-30
+
+market:
+  competitors_doc: docs/COMPETITORS.md   # not yet authored — Build Spec §25 covers Apple Legacy Contact/1Password/Bitwarden; Everplans (closest incumbent) still unnamed. Lint flags until it exists.
+  wtp_evidence: none                     # G1 is the test; zero demand evidence today
+
+monetization_path: none   # ZERO billing code despite Monetizable-B2C track (2026-07-01 audit) — G4 (Stripe + entitlements) is gated behind G1/G2 evidence by design
+
+post_event_plan: "h0-verdict-disposition gate + auto-scheduled teardown (CCR triggers 7-25 + 7-31 tickler); commercial fork = the G1->G5 chain"
