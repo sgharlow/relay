@@ -1,4 +1,4 @@
-# G1 caregiver WTP test — design (DRAFT — pending Steve ratification)
+# G1 caregiver WTP test — design (RATIFIED by Steve 2026-07-03 — except the mailbox, see table)
 
 > Instrument built 2026-07-03 on branch `exp/g1-caregiver-landing` (Story R2/R3, in-lock relay
 > prep). **Deploys only post-H0-disposition** — merging to master before the verdict would
@@ -38,14 +38,14 @@ no product building until this evidence exists.
 - **click-to-intent** = intent pageviews ÷ qualified `/caregivers` sessions, same window.
 - **Measurement:** Vercel Web Analytics (enable on the project at deploy time — zero code, no DB).
 
-## DRAFT decisions needing Steve's ratification
+## Decisions (ratified by Steve 2026-07-03, as drafted)
 
-| # | Decision | Draft value | Notes |
+| # | Decision | Value | Status |
 |---|---|---|---|
-| 1 | Price point | **$119/yr** | Rule from COMPETITORS.md: AT/ABOVE the Everplans $99.99/yr anchor, never below. A $149 second cell is possible later as an E5-style channel split — v1 is ONE price. |
-| 2 | Contact address | `hello@relay.example` (placeholder) | Needs a real mailbox Steve owns before deploy; currently intentionally non-functional. |
-| 3 | Channels for qualified traffic | r/AgingParents, r/CaregiverSupport, caregiver Facebook groups, AgingCare forum | ALL human-send (community ToS) — same co-pilot shape as comeback bursts. Each link carries its own `src`. |
-| 4 | Window | 2–4 weeks from first send, or until N=100 qualified | Whichever first; gate hard-stops 9-15. |
+| 1 | Price point | **$119/yr** (AT/ABOVE the Everplans $99.99/yr anchor per COMPETITORS.md; v1 is ONE price — a $149 second cell stays a later E5-style option) | ✅ RATIFIED 2026-07-03 |
+| 2 | Contact address | `hello@relay.example` (placeholder, intentionally non-functional) | ⏳ **OPEN — the one remaining pre-deploy input**: needs a real mailbox Steve owns. Swap it in `interest/page.tsx` before merge. |
+| 3 | Channels for qualified traffic | r/AgingParents, r/CaregiverSupport, caregiver Facebook groups, AgingCare forum — ALL human-send (community ToS), co-pilot shape; each link carries its own `src` | ✅ RATIFIED 2026-07-03 |
+| 4 | Window | 2–4 weeks from first send, or until N=100 qualified — whichever first; gate hard-stops 9-15 | ✅ RATIFIED 2026-07-03 |
 
 ## Timeline
 

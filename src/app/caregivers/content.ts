@@ -4,7 +4,7 @@
  * Factored out of the page so the gate's pre-committed rules are testable without
  * rendering RSC (repo convention: pure logic outside the component).
  *
- * PRICING IS DRAFT — pending Steve ratification (docs/g1-wtp-test-design.md).
+ * PRICE RATIFIED by Steve 2026-07-03: $119/yr (docs/g1-wtp-test-design.md).
  * Rule from docs/COMPETITORS.md: test AT or ABOVE the Everplans anchor ($99.99/yr),
  * never below — G1 measures willingness to pay a real price, not a discount.
  *
