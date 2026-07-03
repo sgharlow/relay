@@ -35,10 +35,10 @@ export default function CaregiverInterest() {
         <p className="mt-4 leading-relaxed text-slate-300">
           Email{' '}
           <a
-            href={`mailto:hello@relay.example?subject=${encodeURIComponent('Founding family — Relay for caregivers')}`}
+            href={`mailto:sgharlow+relay@gmail.com?subject=${encodeURIComponent('Founding family — Relay for caregivers')}`}
             className="font-medium text-amber-300 underline decoration-amber-500/50 underline-offset-4 hover:text-amber-200"
           >
-            hello@relay.example
+            sgharlow+relay@gmail.com
           </a>{' '}
           with one line about your situation, and we&apos;ll reply within a day.
         </p>
