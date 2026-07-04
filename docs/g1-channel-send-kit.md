@@ -1,10 +1,10 @@
-# G1 qualified-traffic plan + send kit (v2 — REVISES ratified decision #3; needs Steve re-ratification)
+# G1 qualified-traffic plan + send kit (v2 — RATIFIED by Steve 2026-07-03, $250 budget ceiling)
 
 > Channel-rules audit run 2026-07-03 (live: subreddit rules JSON + AgingCare policy pages).
 > **Finding: every organic channel ratified in `g1-wtp-test-design.md` decision #3 prohibits
 > product promotion.** The original channel list cannot produce N≥100 qualified visitors without
 > violating community rules — which would also torch the brand with the exact audience we want.
-> This kit replaces it with a paid-primary plan. ⏳ Decision #3 therefore returns to DRAFT.
+> This kit replaces it with a paid-primary plan. ✅ v2 ratified by Steve 2026-07-03 same day.
 
 ## Channel-rules audit (live-verified 2026-07-03)
 
@@ -23,7 +23,7 @@ two subreddits. Ads and owned channels have no such constraint.
 
 The G1 metric (≥2% click-to-intent at a real price, N≥100 qualified) is actually *better* served
 by paid traffic: targeting is explicit, `src` tagging is clean, and N=100 arrives in days, not
-weeks. Draft budget: **$200–300 total** (DRAFT — Steve ratifies with revised decision #3).
+weeks. Budget: **$250 total ceiling** (ratified by Steve 2026-07-03).
 
 | Lane | Mechanics | src tag | Est. to N=100 |
 |---|---|---|---|
