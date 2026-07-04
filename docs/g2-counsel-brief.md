@@ -83,3 +83,34 @@ or park.**
   convenience) — ask specifically for "digital assets / RUFADAA experience."
 - Budget expectation: scope a fixed-fee opinion engagement rather than open-ended hourly; the
   question set above is deliberately sized for that ask.
+
+## Named starting points (researched 2026-07-03 — leads, not endorsements)
+
+> Verification status is stated per lead; Steve validates fit on the intro call. Fluency with
+> RUFADAA specifically (not just "estate planning") is the screen.
+
+1. **Justin H. Brown — Ballard Spahr** (ballardspahr.com/people/attorneys/b/brown-justin).
+   Surfaced 7-03 as having spoken and written extensively on RUFADAA/digital-asset estate topics;
+   profile page live. Big-firm rates, but a scoped fixed-fee opinion ask keeps it bounded — and a
+   national-firm opinion carries weight with future B2B2C partners.
+2. **ACTEC directory route** (actec.org → Find a Fellow): filter for digital-property/technology
+   committee involvement. This is the densest pool of RUFADAA-fluent practitioners; 30 minutes of
+   directory work yields 3–5 candidates in the preferred state.
+3. **RUFADAA-explainer authors at boutique firms** — several surfaced in research (e.g., the PA
+   estate practice of David M. Frees III, which published a RUFADAA adoption analysis; a NY
+   trusts-and-estates firm's digital-assets write-up at oalaw.com). Authorship is the fluency
+   signal; boutique rates suit a startup budget. Verify each is active before outreach.
+
+## Drafted outreach email (Steve sends from his own account)
+
+> **Subject:** Fixed-fee opinion engagement — digital-asset vault startup (RUFADAA/fiduciary-status
+> questions)
+>
+> Hi [name] — I'm the founder of Relay, an encrypted "digital continuity" vault: owners store
+> account credentials and instructions, designate recipients, and a verified trigger (missed
+> check-in, emergency, or death) releases scoped access — reversibly for emergencies, permanently
+> for estates. Before we take a dollar of revenue I want a written opinion on our custodian/
+> fiduciary status under RUFADAA and the consent/verification framework we need. I have a
+> 12-question brief ready (custodian status, the credential-release/ToS problem, wrongful-release
+> standards, ESIGN validity of in-app directives) — sized deliberately for a fixed-fee engagement.
+> Would you have 20 minutes in the next couple of weeks to scope it? [signature]
