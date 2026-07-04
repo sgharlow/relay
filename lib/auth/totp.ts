@@ -1,87 +1,48 @@
 /**
- * TOTP (Time-based One-Time Password) implementation.
+ * TOTP (Time-based One-Time Password) — adapter over the vetted `otplib` library.
  *
  * Implements RFC 6238 (TOTP) over RFC 4226 (HOTP) using HMAC-SHA1.
  * The shared secret is read from TOTP_SECRET environment variable (base32 or hex).
+ *
+ * Security remediation (docs/security-remediation-plan.md): the previous
+ * hand-rolled HOTP/TOTP implementation was replaced by `otplib` behind the
+ * exact same exported interface. Wire compatibility is pinned by the
+ * unchanged tests in totp.test.ts plus the RFC 6238 known-answer vectors in
+ * totp.adapter.test.ts: same 30s step, 6 digits, HMAC-SHA1, ±1-step skew
+ * window, and the same base32/hex TOTP_SECRET handling.
  *
  * Feature: relay-h0-mvp
  * Requirements: 17.1
  */
 
-import { createHmac } from 'crypto';
+import { generateSync, verifySync, ScureBase32Plugin } from 'otplib';
 
 // ---------------------------------------------------------------------------
-// Base32 decoding (RFC 4648, no padding required)
-// ---------------------------------------------------------------------------
-
-const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-
-function base32Decode(input: string): Buffer {
-  const str = input.toUpperCase().replace(/=+$/, '');
-  let bits = 0;
-  let value = 0;
-  const output: number[] = [];
-
-  for (const char of str) {
-    const index = BASE32_ALPHABET.indexOf(char);
-    if (index < 0) throw new Error(`Invalid base32 character: ${char}`);
-    value = (value << 5) | index;
-    bits += 5;
-    if (bits >= 8) {
-      output.push((value >>> (bits - 8)) & 0xff);
-      bits -= 8;
-    }
-  }
-
-  return Buffer.from(output);
-}
-
-// ---------------------------------------------------------------------------
-// HOTP (HMAC-based OTP, RFC 4226)
-// ---------------------------------------------------------------------------
-
-function hotp(secret: Buffer, counter: bigint, digits = 6): string {
-  // Counter as 8-byte big-endian buffer
-  const counterBuf = Buffer.alloc(8);
-  counterBuf.writeBigUInt64BE(counter);
-
-  const hmac = createHmac('sha1', secret).update(counterBuf).digest();
-
-  // Dynamic truncation
-  const offset = hmac[hmac.length - 1] & 0x0f;
-  const truncated =
-    ((hmac[offset] & 0x7f) << 24) |
-    ((hmac[offset + 1] & 0xff) << 16) |
-    ((hmac[offset + 2] & 0xff) << 8) |
-    (hmac[offset + 3] & 0xff);
-
-  const otp = truncated % Math.pow(10, digits);
-  return otp.toString().padStart(digits, '0');
-}
-
-// ---------------------------------------------------------------------------
-// TOTP (Time-based OTP, RFC 6238)
+// Wire-format constants — identical to the pre-remediation implementation.
+// Do not widen the window silently (see docs/security-remediation-plan.md).
 // ---------------------------------------------------------------------------
 
 const TOTP_STEP_SECONDS = 30;
 const TOTP_DIGITS = 6;
 const TOTP_WINDOW = 1; // ±1 step tolerance (handles clock skew)
 
+const base32 = new ScureBase32Plugin();
+
 /**
- * Decodes the TOTP secret from the environment variable.
+ * Decodes the TOTP secret from the environment variable into raw key bytes.
  * Supports both base32 (e.g., Google Authenticator export) and hex encoding.
  * The env var TOTP_SECRET is expected to be base32-encoded.
  */
-function getTotpSecretBuffer(): Buffer {
+function getTotpSecretBytes(): Uint8Array {
   const secret = process.env.TOTP_SECRET;
   if (!secret) throw new Error('TOTP_SECRET environment variable is not set');
 
-  // Detect hex (all hex chars, even length) vs base32
+  // Detect hex (all hex chars, even length) vs base32 — same rule as before.
   if (/^[0-9a-fA-F]+$/.test(secret) && secret.length % 2 === 0) {
-    return Buffer.from(secret, 'hex');
+    return Uint8Array.from(Buffer.from(secret, 'hex'));
   }
 
-  return base32Decode(secret);
+  return base32.decode(secret.toUpperCase().replace(/=+$/, ''));
 }
 
 /**
@@ -89,9 +50,13 @@ function getTotpSecretBuffer(): Buffer {
  * Exposed for testing; production code uses `validateTotpCode`.
  */
 export function generateTotpCode(atMs = Date.now()): string {
-  const secret = getTotpSecretBuffer();
-  const counter = BigInt(Math.floor(atMs / 1000 / TOTP_STEP_SECONDS));
-  return hotp(secret, counter, TOTP_DIGITS);
+  return generateSync({
+    secret: getTotpSecretBytes(),
+    algorithm: 'sha1',
+    digits: TOTP_DIGITS,
+    period: TOTP_STEP_SECONDS,
+    epoch: Math.floor(atMs / 1000),
+  });
 }
 
 /**
@@ -105,15 +70,20 @@ export function generateTotpCode(atMs = Date.now()): string {
 export function validateTotpCode(code: string, atMs = Date.now()): boolean {
   if (!/^\d{6}$/.test(code)) return false;
 
-  const secret = getTotpSecretBuffer();
-  const currentStep = BigInt(Math.floor(atMs / 1000 / TOTP_STEP_SECONDS));
+  // Resolve the secret before verifying so a missing TOTP_SECRET still
+  // throws (not returns false) — same contract as the previous implementation.
+  const secret = getTotpSecretBytes();
 
-  for (let delta = -TOTP_WINDOW; delta <= TOTP_WINDOW; delta++) {
-    const step = currentStep + BigInt(delta);
-    if (hotp(secret, step, TOTP_DIGITS) === code) {
-      return true;
-    }
-  }
+  const result = verifySync({
+    secret,
+    token: code,
+    algorithm: 'sha1',
+    digits: TOTP_DIGITS,
+    period: TOTP_STEP_SECONDS,
+    epoch: Math.floor(atMs / 1000),
+    // epochTolerance is in seconds: ±1 step of 30s ≡ the old ±1 window loop.
+    epochTolerance: TOTP_WINDOW * TOTP_STEP_SECONDS,
+  });
 
-  return false;
+  return result.valid;
 }
