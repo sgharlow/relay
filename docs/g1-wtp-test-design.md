@@ -44,7 +44,7 @@ no product building until this evidence exists.
 |---|---|---|---|
 | 1 | Price point | **$119/yr** (AT/ABOVE the Everplans $99.99/yr anchor per COMPETITORS.md; v1 is ONE price — a $149 second cell stays a later E5-style option) | ✅ RATIFIED 2026-07-03 |
 | 2 | Contact address | `sgharlow+relay@gmail.com` (live in `interest/page.tsx`; +tag keeps replies filterable) | ✅ RATIFIED 2026-07-03 |
-| 3 | Channels for qualified traffic | r/AgingParents, r/CaregiverSupport, caregiver Facebook groups, AgingCare forum — ALL human-send (community ToS), co-pilot shape; each link carries its own `src` | ✅ RATIFIED 2026-07-03 |
+| 3 | Channels for qualified traffic | ~~r/AgingParents, r/CaregiverSupport, caregiver FB groups, AgingCare forum~~ **SUPERSEDED same day by the 7-03 channel-rules audit: all four organic channels prohibit product promotion.** Revised paid-primary plan (Reddit Ads + Meta Ads, draft budget) in `g1-channel-send-kit.md` | ⏳ **RE-OPENED — Steve ratifies the v2 plan + budget** |
 | 4 | Window | 2–4 weeks from first send, or until N=100 qualified — whichever first; gate hard-stops 9-15 | ✅ RATIFIED 2026-07-03 |
 
 ## Timeline
