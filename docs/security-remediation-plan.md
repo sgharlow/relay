@@ -1,5 +1,11 @@
 # Security remediation plan — replace hand-rolled crypto primitives (docs-only today)
 
+> **SUPERSEDED BY `docs/security-remediation-plan.md` v2 on branch `exp/security-remediation`
+> (2026-07-03, commit `254c21d`). Do NOT execute this v1** — the 7-03 staging run proved its jose
+> section ("internals-only swap, tests unchanged") unimplementable: jose v6 is Promise-only, so
+> the sync token interface cannot be preserved. v2 replaces it with the verified coordinated
+> async migration design. TOTP (§ otplib) is already BUILT on that branch (`93ee10a`).
+
 > Drafted 2026-07-03 on `exp/g1-caregiver-landing` (in-lock relay prep). Closes the 7-01 audit
 > finding: "hand-rolled TOTP (RFC 6238) + hand-rolled HS256 JWTs — unaudited bespoke security
 > primitives." **No code changes until the H0 verdict** (master is the judged artifact). Timing
