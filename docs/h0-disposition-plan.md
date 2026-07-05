@@ -41,8 +41,60 @@ Killing relay without running the $250 test we already built would be deciding o
 ## Invariants across all branches
 
 - **7-25 teardown proceeds regardless of branch** (runbook: `__project-docs/relay-teardown-7-25.md`;
-  the only open choice there is 7-25 vs 7-31 timing). G1 does not depend on the demo infra.
+  timing DECIDED by Steve 2026-07-03: execute 7-25 — only the in-session GO for the destructive
+  phase remains a 7-25 decision. Pre-teardown verify pass 2026-07-04: 4/4 resources present,
+  ACTIVE, deletion-protected — runbook appendix). G1 does not depend on the demo infra.
 - G2 counsel opinion remains a hard pre-revenue requirement on every path.
 - No product feature work on any path until a G1 pass — the sequencing rule survives the verdict.
 - Decision + rationale get written into PROJECT.yaml (`gates.h0-verdict-disposition.met`) and the
   memory topic file the same day.
+
+## Appendix — verdict-day kit (paste-ready; prepared 2026-07-04)
+
+On verdict day: pick the branch, fill the two `<angle>` placeholders, paste, commit. Nothing
+else should need authoring under verdict-day emotion.
+
+### 1. PROJECT.yaml — add under `gates: - id: h0-verdict-disposition`
+
+**WIN** (any prize, placement, or finalist mention):
+
+```yaml
+    met:
+      date: <YYYY-MM-DD>
+      result: "WIN — <track/prize as announced>"
+      decision: commercialize
+      rationale: "Per pre-committed disposition plan (docs/h0-disposition-plan.md, 2026-07-03): win = distribution ammunition; every branch runs G1."
+      next: "jose §B migration -> merge security+landing -> winner badge on landing/ads -> Vercel Analytics -> G1 paid lanes (docs/g1-launch-checklist.md)"
+```
+
+**LOSE** (no placement):
+
+```yaml
+    met:
+      date: <YYYY-MM-DD>
+      result: "LOSE — no placement"
+      decision: run-G1-anyway
+      rationale: "Per pre-committed plan: judges' verdict is evidence about the hackathon, not the market; the $250 G1 test is the market instrument. Park/archive only if Steve names the higher-value use of the freed capacity."
+      next: "jose §B migration -> merge security+landing -> Vercel Analytics -> G1 paid lanes, no badge (docs/g1-launch-checklist.md)"
+```
+
+**ZOMBIE** (nothing announced by 8-07):
+
+```yaml
+    met:
+      date: 2026-08-07
+      result: "ZOMBIE — no results announced by gate date"
+      decision: run-G1-anyway
+      rationale: "Gate does not slip; treated as LOSE-path per plan. A later announcement upgrades to WIN handling (badge added mid-flight)."
+      next: "same as LOSE; revisit badge if results arrive"
+```
+
+### 2. MEMORY.md relay row — replace the `USER: H0 verdict disposition…` blocker cell
+
+- WIN: `Verdict WIN (<track/prize>, <date>) → commercialize per disposition plan; G1 launch sequence running (g1-launch-checklist.md). | USER: approve first paid-lane spend`
+- LOSE: `Verdict LOSE (<date>) → G1 runs anyway per pre-commit; park/archive only via named-opportunity-cost decision. | USER: approve first paid-lane spend`
+- ZOMBIE: `No H0 results by 8-07 → gate closed as LOSE-path per plan; G1 proceeding, outcome moot. | USER: approve first paid-lane spend`
+
+### 3. Same-day topic-file note (`project_h0_hackathon_orbis_relay.md`)
+
+One line, all branches: `h0-verdict-disposition gate CLOSED <date>: <W/L/Z + one-clause result>; decision recorded in PROJECT.yaml; next = g1-launch-checklist.md sequence. Teardown state at verdict: <from runbook appendix>.`
