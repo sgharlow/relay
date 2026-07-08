@@ -10,6 +10,7 @@
 import Link from 'next/link';
 
 import { PRICE_YEARLY_USD } from '../content';
+import IntentTracker from './IntentTracker';
 
 export const metadata = {
   title: 'Relay for caregivers — you’re early, and that’s good',
@@ -19,6 +20,7 @@ export const metadata = {
 export default function CaregiverInterest() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-950 px-6 text-slate-100">
+      <IntentTracker />
       <div className="max-w-lg text-center">
         <p className="inline-flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs text-amber-200">
           <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />

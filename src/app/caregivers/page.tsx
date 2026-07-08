@@ -23,6 +23,7 @@ import {
   SUBHEAD,
   TRUST_POINTS,
 } from './content';
+import QualifiedTracker from './QualifiedTracker';
 
 export const metadata = {
   title: 'Relay for caregivers — emergency access that closes itself',
@@ -33,6 +34,7 @@ export const metadata = {
 export default function CaregiversLanding() {
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
+      <QualifiedTracker />
       {/* Nav */}
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
         <div className="flex items-baseline gap-2">

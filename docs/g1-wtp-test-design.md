@@ -35,8 +35,8 @@ no product building until this evidence exists.
   `src`/UTM). Untagged/direct traffic is excluded from N (mirrors comeback's tagged-only doctrine).
 - **Intent:** a pageview of `/caregivers/interest` with a `src` param. (Email replies are a
   stronger secondary signal — log them, but the gate metric is click-to-intent.)
-- **click-to-intent** = intent pageviews ÷ qualified `/caregivers` sessions, same window.
-- **Measurement:** Vercel Web Analytics (enable on the project at deploy time — zero code, no DB).
+- **click-to-intent** = `count(caregiver_intent) ÷ count(caregiver_qualified)`, same window, filtered to a real (non-`direct`) `src`.
+- **Measurement:** Vercel Web Analytics, still zero-DB. Wired 2026-07-07 (`@vercel/analytics`, `<Analytics/>` in the root layout) plus two **custom events** — `caregiver_qualified` (denominator, on `/caregivers`) and `caregiver_intent` (numerator, on `/caregivers/interest`), each carrying the `src`. Custom events (not raw pageview faceting) because Vercel's free tier does not reliably segment pageviews by an arbitrary query param, and the gate is a tagged-only ratio. `src` parsing is unit-tested (`analytics.test.ts`); `<Analytics/>` still needs enabling on the Vercel project at deploy time. Deploys post-H0-disposition only.
 
 ## Decisions (ratified by Steve 2026-07-03, as drafted)
 
