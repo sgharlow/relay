@@ -33,6 +33,15 @@ no product building until this evidence exists.
 
 - **Qualified visitor:** a session on `/caregivers` from a caregiver-targeted source (tagged
   `src`/UTM). Untagged/direct traffic is excluded from N (mirrors comeback's tagged-only doctrine).
+- **Both events are keyed by the inbound CHANNEL (corrected 2026-08-05).** `caregiver_intent`
+  carries `src` = the channel the visitor arrived from (remembered from the landing page in
+  `sessionStorage`) plus `cta` = which button was pressed (`hero`/`nav`/`pricing`). Until this was
+  fixed the numerator's `src` was the CTA position while the denominator's was the channel — two
+  disjoint vocabularies, so the ratio below was **undefined as written**, per-channel conversion
+  (what the paid budget exists to buy) was unrecoverable, and showcase traffic excluded from the
+  denominator still counted in the numerator as `hero`, biasing toward a **false PASS**. An
+  untagged return visit does not overwrite a stored channel; an unreachable `sessionStorage` or a
+  visitor who never passed the landing page degrades to `direct`, which is excluded from N.
 - **Intent:** a pageview of `/caregivers/interest` with a `src` param. (Email replies are a
   stronger secondary signal — log them, but the gate metric is click-to-intent.)
 - **click-to-intent** = `count(caregiver_intent) ÷ count(caregiver_qualified)`, same window, filtered to a real (non-`direct`) `src`.

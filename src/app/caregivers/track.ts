@@ -42,8 +42,13 @@ export function ensureAnalyticsQueue(): void {
   };
 }
 
-/** Emits a G1 gate event, queueing it if the analytics script has not loaded yet. */
-export function trackG1(eventName: string, props: { src: string }): void {
+/**
+ * Emits a G1 gate event, queueing it if the analytics script has not loaded yet.
+ * `src` is always the inbound CHANNEL — the denominator and numerator must share
+ * that vocabulary or the gate ratio cannot be computed. Extra dimensions (e.g.
+ * `cta`) ride alongside.
+ */
+export function trackG1(eventName: string, props: { src: string } & Record<string, string>): void {
   ensureAnalyticsQueue();
   track(eventName, props);
 }

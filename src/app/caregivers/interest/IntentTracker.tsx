@@ -10,14 +10,16 @@
 
 import { useEffect } from 'react';
 
-import { CAREGIVER_INTENT, srcFromSearch } from '../analytics';
+import { CAREGIVER_INTENT, intentProps, recallChannel } from '../analytics';
 import { trackG1 } from '../track';
 
 export default function IntentTracker() {
   useEffect(() => {
-    // trackG1, not track: this effect runs before <Analytics/> creates the queue,
-    // so a bare track() call is silently dropped. See ../track.ts.
-    trackG1(CAREGIVER_INTENT, srcFromSearch(window.location.search));
+    // src = the inbound CHANNEL (recalled from the landing page) so it shares a
+    // vocabulary with the denominator; cta = which button was pressed. This page's
+    // own ?src= is the CTA position, which is why it cannot be the channel.
+    // trackG1, not track: see ../track.ts.
+    trackG1(CAREGIVER_INTENT, intentProps(window.location.search, recallChannel()));
   }, []);
   return null;
 }
