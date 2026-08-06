@@ -10,6 +10,8 @@
 
 import Link from 'next/link';
 
+import { caregiversHref } from './caregivers/content';
+
 export const metadata = {
   title: 'Relay — standby access for the people who will need it',
   description:
@@ -241,6 +243,30 @@ export default function Home() {
               <p className="mt-2 text-sm leading-relaxed text-slate-400">{s.v}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Caregiver wedge — self-qualifying, so only the real audience clicks through */}
+      <section className="border-t border-slate-800 bg-amber-500/[0.03]">
+        <div className="mx-auto max-w-6xl px-6 py-14">
+          <div className="max-w-2xl">
+            <div className="text-xs font-semibold uppercase tracking-wider text-amber-300">
+              For the ones who step in
+            </div>
+            <h2 className="mt-3 text-2xl font-semibold tracking-tight">
+              Caring for an aging parent?
+            </h2>
+            <p className="mt-2 leading-relaxed text-slate-300">
+              The call comes, and suddenly you need their bank, their insurance portal, the email
+              that resets all of it — and you need that access to end when the crisis does.
+            </p>
+            <Link
+              href={caregiversHref('h0-home')}
+              className="mt-5 inline-block rounded-md bg-amber-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition-colors hover:bg-amber-400"
+            >
+              See Relay for caregivers →
+            </Link>
+          </div>
         </div>
       </section>
 

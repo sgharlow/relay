@@ -26,9 +26,37 @@ export const CTA_LABEL = `Start your family's vault — $${PRICE_YEARLY_USD}/yr`
 
 export const CTA_HREF = '/caregivers/interest';
 
+export const LANDING_HREF = '/caregivers';
+
 /** Intent link with source attribution — a visit to CTA_HREF IS the G1 intent event. */
 export function intentHref(src?: string): string {
   return src ? `${CTA_HREF}?src=${encodeURIComponent(src)}` : CTA_HREF;
+}
+
+/** Inbound link to the caregiver landing, carrying its channel tag. */
+export function caregiversHref(src?: string): string {
+  return src ? `${LANDING_HREF}?src=${encodeURIComponent(src)}` : LANDING_HREF;
+}
+
+/**
+ * Showcase sources — inbound traffic from the H0-win surfaces (the landing page and
+ * the /demo tour). These are tagged so the funnel is not a dead end, but they are
+ * NOT caregiver-targeted channels, and the gate defines a qualified visitor as a
+ * session "from a caregiver-targeted source" (docs/g1-wtp-test-design.md).
+ *
+ * Counting a wave of hackathon traffic toward N would drive the ratio toward zero on
+ * an audience the test was never about — and the gate KILLS at <0.5% after 100+
+ * qualified. So these srcs are excluded from the gate read and interpreted only as a
+ * secondary signal ("did the tech audience contain caregivers?"). The exclusion is
+ * enforced in content.test.ts, not left to whoever reads the dashboard.
+ */
+export const SHOWCASE_SRCS = ['h0-demo', 'h0-home'] as const;
+
+/** True when a src counts toward the G1 gate ratio (tagged, and caregiver-targeted). */
+export function isGateQualifyingSrc(src: string): boolean {
+  const s = src.trim();
+  if (!s || s === 'direct') return false;
+  return !(SHOWCASE_SRCS as readonly string[]).includes(s);
 }
 
 export const DIFFERENTIATORS = [

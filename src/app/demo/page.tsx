@@ -17,6 +17,7 @@ import {
   DEMO_RELEASE_TIMELINE,
   DEMO_VAULT_ITEMS,
 } from '../../../lib/demo-tour/fixtures';
+import { caregiversHref } from '../caregivers/content';
 
 export const metadata = {
   title: 'Relay — guided demo',
@@ -244,6 +245,26 @@ export default function DemoTour() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Caregiver wedge — self-qualifying, so only the real audience clicks through */}
+      <section className="mx-auto max-w-5xl px-6 pt-14">
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-8">
+          <h2 className="text-xl font-semibold tracking-tight text-amber-100">
+            Caring for an aging parent right now?
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-300">
+            Everything above was built for one moment in particular: the call comes, and suddenly you
+            need their bank, their insurance portal, their email — and you need that access to end
+            when the crisis does.
+          </p>
+          <Link
+            href={caregiversHref('h0-demo')}
+            className="mt-5 inline-block rounded-md bg-amber-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition-colors hover:bg-amber-400"
+          >
+            See Relay for caregivers →
+          </Link>
         </div>
       </section>
 

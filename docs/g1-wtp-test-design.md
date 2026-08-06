@@ -36,6 +36,15 @@ no product building until this evidence exists.
 - **Intent:** a pageview of `/caregivers/interest` with a `src` param. (Email replies are a
   stronger secondary signal — log them, but the gate metric is click-to-intent.)
 - **click-to-intent** = `count(caregiver_intent) ÷ count(caregiver_qualified)`, same window, filtered to a real (non-`direct`) `src`.
+- **Showcase traffic is tagged but EXCLUDED from the gate (added 2026-08-05).** The H0 win made
+  `/` and `/demo` public-traffic surfaces, and both now link into `/caregivers` — the funnel was
+  otherwise linked from nowhere and the win-announcement spike would have missed it entirely.
+  Those links carry `src=h0-home` / `src=h0-demo` (`SHOWCASE_SRCS` in `content.ts`). They are NOT
+  caregiver-targeted channels, so per the qualified-visitor definition above they do **not** count
+  toward N: a wave of hackathon visitors could push N past 100 at ~0% intent and trip the <0.5%
+  **kill** threshold on an audience this test was never about. Read them as a separate, secondary
+  segment ("did the tech audience contain caregivers?"). Enforced by `isGateQualifyingSrc()` +
+  `content.test.ts`, not by dashboard discipline.
 - **Measurement:** Vercel Web Analytics, still zero-DB. Wired 2026-07-07 (`@vercel/analytics`, `<Analytics/>` in the root layout) plus two **custom events** — `caregiver_qualified` (denominator, on `/caregivers`) and `caregiver_intent` (numerator, on `/caregivers/interest`), each carrying the `src`. Custom events (not raw pageview faceting) because Vercel's free tier does not reliably segment pageviews by an arbitrary query param, and the gate is a tagged-only ratio. `src` parsing is unit-tested (`analytics.test.ts`); `<Analytics/>` still needs enabling on the Vercel project at deploy time. Deploys post-H0-disposition only.
 
 ## Decisions (ratified by Steve 2026-07-03, as drafted)

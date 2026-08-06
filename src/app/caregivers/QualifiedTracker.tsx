@@ -9,14 +9,16 @@
  * Feature: relay-g1-wtp (deploys post-H0-disposition only)
  */
 
-import { track } from '@vercel/analytics';
 import { useEffect } from 'react';
 
 import { CAREGIVER_QUALIFIED, srcFromSearch } from './analytics';
+import { trackG1 } from './track';
 
 export default function QualifiedTracker() {
   useEffect(() => {
-    track(CAREGIVER_QUALIFIED, srcFromSearch(window.location.search));
+    // trackG1, not track: this effect runs before <Analytics/> creates the queue,
+    // so a bare track() call is silently dropped. See track.ts.
+    trackG1(CAREGIVER_QUALIFIED, srcFromSearch(window.location.search));
   }, []);
   return null;
 }

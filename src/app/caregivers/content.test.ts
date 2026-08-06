@@ -6,12 +6,16 @@ import { describe, expect, it } from 'vitest';
 
 import {
   ANCHOR,
+  caregiversHref,
   CTA_HREF,
   CTA_LABEL,
   DIFFERENTIATORS,
   HEADLINE,
   intentHref,
+  isGateQualifyingSrc,
+  LANDING_HREF,
   PRICE_YEARLY_USD,
+  SHOWCASE_SRCS,
   SUBHEAD,
 } from './content';
 
@@ -33,6 +37,24 @@ describe('G1 caregiver WTP instrument', () => {
     expect(intentHref()).toBe(CTA_HREF);
     expect(intentHref('reddit')).toBe(`${CTA_HREF}?src=reddit`);
     expect(intentHref('r/CaregiverSupport')).toBe(`${CTA_HREF}?src=r%2FCaregiverSupport`);
+  });
+
+  it('inbound landing links carry their channel tag', () => {
+    expect(caregiversHref()).toBe(LANDING_HREF);
+    expect(caregiversHref('h0-demo')).toBe(`${LANDING_HREF}?src=h0-demo`);
+  });
+
+  it('showcase traffic is tagged but EXCLUDED from the gate ratio', () => {
+    // The gate counts caregiver-targeted sources only. H0-win traffic is neither
+    // direct nor caregiver-targeted: it must not dilute N toward the <0.5% kill.
+    for (const src of SHOWCASE_SRCS) {
+      expect(isGateQualifyingSrc(src)).toBe(false);
+    }
+    expect(isGateQualifyingSrc('direct')).toBe(false);
+    expect(isGateQualifyingSrc('')).toBe(false);
+    // Real caregiver channels still qualify.
+    expect(isGateQualifyingSrc('reddit-ads')).toBe(true);
+    expect(isGateQualifyingSrc('meta-ads')).toBe(true);
   });
 
   it('names the real competitive frames, not strawmen', () => {
