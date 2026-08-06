@@ -82,10 +82,20 @@ export default function Home() {
         <div className="pointer-events-none absolute -top-32 right-0 h-96 w-96 rounded-full bg-blue-600/20 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-40 left-0 h-96 w-96 rounded-full bg-amber-500/10 blur-3xl" />
         <div className="relative mx-auto max-w-6xl px-6 pb-20 pt-16 sm:pt-24">
-          <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/60 px-3 py-1 text-xs text-slate-300">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            Default state: ARMED
-          </p>
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <a
+              href="https://devpost.com/software/relay-n5c9re"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs text-amber-200 transition-colors hover:border-amber-400/70"
+            >
+              🏆 Winner — Most Impactful · H0: Hack the Zero Stack
+            </a>
+            <span className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/60 px-3 py-1 text-xs text-slate-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              Default state: ARMED
+            </span>
+          </div>
           <h1 className="max-w-3xl text-4xl font-bold leading-[1.1] tracking-tight sm:text-6xl">
             Standby access for the people who&apos;ll need it.
           </h1>
@@ -97,15 +107,27 @@ export default function Home() {
 
           <div className="mt-9 flex flex-wrap items-center gap-3">
             <Link
-              href="/auth/signin"
+              href="/demo"
               className="rounded-md bg-blue-600 px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-500"
             >
-              Owner sign in
+              Explore the guided demo
             </Link>
-            <span className="rounded-md border border-amber-500/40 bg-amber-500/5 px-5 py-3 text-sm text-amber-200">
-              Received an access link? Open it from your email to reach your plan.
-            </span>
+            <a
+              href="#video"
+              className="rounded-md border border-slate-700 px-5 py-3 text-sm text-slate-300 transition-colors hover:border-slate-500"
+            >
+              Watch the 2-minute demo
+            </a>
+            <Link
+              href="/auth/signin"
+              className="px-2 py-3 text-sm text-slate-400 transition-colors hover:text-slate-200"
+            >
+              Owner sign in →
+            </Link>
           </div>
+          <p className="mt-4 text-sm text-amber-200/80">
+            Received an access link? Open it from your email to reach your plan.
+          </p>
 
           {/* State-machine motif */}
           <div className="mt-14 flex flex-wrap items-center gap-2 text-xs font-medium">
@@ -126,6 +148,44 @@ export default function Home() {
               </span>
             ))}
             <span className="ml-1 text-slate-500">every transition strongly consistent</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Demo video */}
+      <section id="video" className="border-b border-slate-800 bg-slate-900/30 scroll-mt-8">
+        <div className="mx-auto max-w-4xl px-6 py-16">
+          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">See it actually run</h2>
+          <p className="mt-2 text-slate-400">
+            Two minutes on live infrastructure: a verified emergency release, a recipient decrypt, an
+            owner check-in that closes access again, and a strongly-consistent read from the second
+            region.
+          </p>
+          <div className="mt-8 aspect-video w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950">
+            <iframe
+              className="h-full w-full"
+              src="https://www.youtube-nocookie.com/embed/FU3azKJOesY"
+              title="Relay — H0 demo video"
+              loading="lazy"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+          <div className="mt-5 flex flex-wrap items-center gap-3 text-sm">
+            <Link
+              href="/demo"
+              className="rounded-md bg-blue-600 px-5 py-2.5 font-medium text-white transition-colors hover:bg-blue-500"
+            >
+              Explore the guided demo
+            </Link>
+            <a
+              href="https://devpost.com/software/relay-n5c9re"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-md border border-slate-700 px-5 py-2.5 text-slate-300 transition-colors hover:border-slate-500"
+            >
+              Devpost submission
+            </a>
           </div>
         </div>
       </section>
@@ -191,12 +251,20 @@ export default function Home() {
             <h2 className="text-2xl font-semibold tracking-tight">Put a plan in place.</h2>
             <p className="mt-1 text-slate-400">It stays ARMED until you decide otherwise.</p>
           </div>
-          <Link
-            href="/auth/signin"
-            className="rounded-md bg-blue-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-500"
-          >
-            Owner sign in
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/demo"
+              className="rounded-md bg-blue-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-500"
+            >
+              Explore the guided demo
+            </Link>
+            <Link
+              href="/auth/signin"
+              className="rounded-md border border-slate-700 px-6 py-3 text-sm text-slate-300 transition-colors hover:border-slate-500"
+            >
+              Owner sign in
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -204,7 +272,8 @@ export default function Home() {
       <footer className="border-t border-slate-800">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-8 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <span className="font-semibold text-slate-300">Relay</span> — built for{' '}
+            <span className="font-semibold text-slate-300">Relay</span> —{' '}
+            <span className="text-amber-300/90">Most Impactful</span> at{' '}
             <span className="text-slate-400">H0: Hack the Zero Stack with Vercel and AWS Databases</span>.
           </div>
           <div className="flex items-center gap-5">
