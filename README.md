@@ -10,11 +10,14 @@ prioritized access dashboard to the recipient. **Emergencies are reversible:**
 when you recover and check in, access closes automatically. Estate handoffs are
 permanent. The default-safe state is always `ARMED`.
 
-> **H0 — Hack the Zero Stack with Vercel and AWS Databases** · Track: **Monetizable B2C** · AWS Database: **Amazon Aurora DSQL**
+> 🏆 **Winner — "Most Impactful"** in **H0: Hack the Zero Stack with Vercel and AWS Databases** (announced 2026-08-05, ~9,800 participants). Track: **Monetizable B2C** · AWS Database: **Amazon Aurora DSQL** · [Devpost submission](https://devpost.com/software/relay-n5c9re)
 
-**▶ Live:** <https://relay-three-henna.vercel.app> _(deployed on Aurora DSQL, multi-region active-active — see [`docs/SUBMISSION-RUNBOOK.md`](docs/SUBMISSION-RUNBOOK.md))_ · **🎬 Demo video:** <https://youtu.be/FU3azKJOesY>
+**▶ Live:** <https://relay-three-henna.vercel.app> · **🧭 Guided demo (no account needed):** <https://relay-three-henna.vercel.app/demo> · **🎬 Demo video:** <https://youtu.be/FU3azKJOesY>
 
-> **Submission status:** code complete + **deployed and dogfooded live** · **405 tests / 58 files green** · `tsc` + `next build` clean · **demo video published** (<https://youtu.be/FU3azKJOesY>). Remaining work is the Devpost form (Aurora DSQL screenshot + form fields). Turnkey paste sheet: [`specs/DEVPOST-PASTE-MAP.md`](specs/DEVPOST-PASTE-MAP.md). Ordered cliff-day path: [`docs/SUBMISSION-RUNBOOK.md`](docs/SUBMISSION-RUNBOOK.md).
+The live deployment runs on Aurora DSQL, multi-region active-active. The guided demo is a read-only
+walkthrough of the vault, the zero-knowledge envelope, the release state machine, and the
+hash-chained audit log — the audit chain shown there is computed and verified with the same
+primitives the app uses in production.
 
 ---
 
@@ -74,11 +77,9 @@ handlers are thin and build-verified. AWS provisioning + live dogfood:
 ## Status
 
 Backend complete (**28 API routes**), all UI built, recipient-release
-notifications wired. Full suite green (405 at submission — run `npx vitest --run`
-for the live count); `tsc --noEmit` + `next
-build` clean. Deployed live and dogfooded on Aurora DSQL; remaining work is demo
-capture + Devpost — see the ordered
-[**Submission runbook**](docs/SUBMISSION-RUNBOOK.md). Specs (the build contract):
+notifications wired. Full suite green — run `npx vitest --run` for the live count;
+`tsc --noEmit` + `next build` clean. Deployed live and dogfooded end-to-end on
+Aurora DSQL + AWS KMS, submitted to H0, and awarded **Most Impactful**. Specs (the build contract):
 [`.kiro/specs/relay-h0-mvp/`](.kiro/specs/relay-h0-mvp/) and
 [`specs/Relay_H0_Build_Spec_v2.md`](specs/Relay_H0_Build_Spec_v2.md);
 Devpost write-up: [`specs/Relay_Devpost_Submission.md`](specs/Relay_Devpost_Submission.md).
