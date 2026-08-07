@@ -56,11 +56,24 @@ async function readStateByOwnerTrigger(ownerId: string, triggerType: string): Pr
 }
 
 /**
- * MVP grace window: release as soon as the N-of-M quorum is met, with no
- * artificial delay. GRACE is the confirmable/cancelable state; a nonzero
- * owner-cancel delay is a config knob deliberately left at 0 for the MVP.
- * Shared with the cron sweep (lib/release/heartbeat.ts) so both the manual and
- * the automatic missed-check-in paths open the same grace window.
+ * Grace window: release as soon as the N-of-M quorum is met, with no artificial
+ * delay. Shared with the cron sweep (lib/release/heartbeat.ts) so both the
+ * manual and the automatic missed-check-in paths open the same window.
+ *
+ * ⚠️ THIS VALUE IS LOAD-BEARING — IT IS NOT A CONFIG KNOB.
+ *
+ * `submitConfirmation` below is the only driver of GRACE → RELEASED, and it
+ * evaluates `canRelease` exactly once, at confirmation time. If the window has
+ * not elapsed it returns `pending_grace` and returns — and nothing re-drives it.
+ * No scheduled job resolves GRACE rows whose window has since passed
+ * (`runHeartbeatSweep` selects `state = 'armed'` only).
+ *
+ * Raising this above 0 therefore does NOT create an owner-cancel window. It
+ * strands the release permanently: quorum met, owner notified, release never
+ * completes. To make it genuinely configurable, first add a cron that resolves
+ * GRACE rows where `grace_ends_at <= now()` AND `received >= required`.
+ *
+ * Guarded by lib/release/grace-window-invariant.test.ts.
  */
 export const GRACE_WINDOW_MS = 0;
 

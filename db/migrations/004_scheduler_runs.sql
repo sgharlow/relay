@@ -18,5 +18,10 @@ CREATE TABLE IF NOT EXISTS scheduler_runs (
   ran_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_scheduler_runs_job_ran_at
-  ON scheduler_runs (job, ran_at DESC);
+-- DSQL requires ASYNC index creation (plain CREATE INDEX errors with
+-- "unsupported mode. please use CREATE INDEX ASYNC.") and rejects a sort
+-- order on index keys ("specifying sort order not supported for index keys"),
+-- so no DESC here. getSchedulerHealth reads a single row via ORDER BY ... DESC
+-- LIMIT 1, which this index still serves.
+CREATE INDEX ASYNC idx_scheduler_runs_job_ran_at
+  ON scheduler_runs (job, ran_at);
