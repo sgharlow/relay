@@ -2,13 +2,15 @@
  * TOTP (Time-based One-Time Password) implementation.
  *
  * Implements RFC 6238 (TOTP) over RFC 4226 (HOTP) using HMAC-SHA1.
- * The shared secret is read from TOTP_SECRET environment variable (base32 or hex).
+ * Per-user secrets: each owner carries their own base32 secret in
+ * users.totp_secret. The TOTP_SECRET env var is a legacy fallback for the
+ * pre-signup dogfood account only.
  *
  * Feature: relay-h0-mvp
  * Requirements: 17.1
  */
 
-import { createHmac } from 'crypto';
+import { createHmac, randomBytes } from 'crypto';
 
 // ---------------------------------------------------------------------------
 // Base32 decoding (RFC 4648, no padding required)
@@ -68,14 +70,10 @@ const TOTP_DIGITS = 6;
 const TOTP_WINDOW = 1; // ±1 step tolerance (handles clock skew)
 
 /**
- * Decodes the TOTP secret from the environment variable.
+ * Decodes a secret string into raw bytes.
  * Supports both base32 (e.g., Google Authenticator export) and hex encoding.
- * The env var TOTP_SECRET is expected to be base32-encoded.
  */
-function getTotpSecretBuffer(): Buffer {
-  const secret = process.env.TOTP_SECRET;
-  if (!secret) throw new Error('TOTP_SECRET environment variable is not set');
-
+function decodeSecret(secret: string): Buffer {
   // Detect hex (all hex chars, even length) vs base32
   if (/^[0-9a-fA-F]+$/.test(secret) && secret.length % 2 === 0) {
     return Buffer.from(secret, 'hex');
@@ -85,8 +83,79 @@ function getTotpSecretBuffer(): Buffer {
 }
 
 /**
- * Generates the TOTP code for the current time window (or a given time).
- * Exposed for testing; production code uses `validateTotpCode`.
+ * Decodes the legacy shared TOTP secret from the environment variable.
+ *
+ * Retained ONLY so the pre-signup dogfood account keeps authenticating. New
+ * accounts carry their own `users.totp_secret`; see `generateTotpSecret`.
+ */
+function getTotpSecretBuffer(): Buffer {
+  const secret = process.env.TOTP_SECRET;
+  if (!secret) throw new Error('TOTP_SECRET environment variable is not set');
+
+  return decodeSecret(secret);
+}
+
+/**
+ * Generates a fresh, cryptographically random per-user secret, base32-encoded
+ * for `otpauth://` URLs and authenticator apps.
+ *
+ * 20 bytes = 160 bits, the RFC 4226 recommended HMAC-SHA1 key length.
+ */
+export function generateTotpSecret(bytes = 20): string {
+  const buf = randomBytes(bytes);
+
+  let bits = 0;
+  let value = 0;
+  let out = '';
+
+  for (const byte of buf) {
+    value = (value << 8) | byte;
+    bits += 8;
+    while (bits >= 5) {
+      out += BASE32_ALPHABET[(value >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  if (bits > 0) {
+    out += BASE32_ALPHABET[(value << (5 - bits)) & 31];
+  }
+
+  return out;
+}
+
+/** Generates the TOTP code for a specific secret and time window. */
+export function generateTotpCodeFor(secret: string, atMs = Date.now()): string {
+  const counter = BigInt(Math.floor(atMs / 1000 / TOTP_STEP_SECONDS));
+  return hotp(decodeSecret(secret), counter, TOTP_DIGITS);
+}
+
+/**
+ * Validates a TOTP code against a specific secret, with ±TOTP_WINDOW step
+ * tolerance for clock skew.
+ *
+ * This is the per-user entry point. Every owner has their own secret, so a code
+ * minted for one account never validates against another.
+ */
+export function validateTotpCodeFor(secret: string, code: string, atMs = Date.now()): boolean {
+  if (!/^\d{6}$/.test(code)) return false;
+
+  const key = decodeSecret(secret);
+  const currentStep = BigInt(Math.floor(atMs / 1000 / TOTP_STEP_SECONDS));
+
+  for (let delta = -TOTP_WINDOW; delta <= TOTP_WINDOW; delta++) {
+    if (hotp(key, currentStep + BigInt(delta), TOTP_DIGITS) === code) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Generates the TOTP code for the current time window (or a given time) using
+ * the legacy shared env secret.
+ *
+ * @deprecated Prefer `generateTotpCodeFor` with the owner's own secret.
  */
 export function generateTotpCode(atMs = Date.now()): string {
   const secret = getTotpSecretBuffer();
@@ -95,8 +164,11 @@ export function generateTotpCode(atMs = Date.now()): string {
 }
 
 /**
- * Validates a TOTP code against the current time window with ±TOTP_WINDOW step
- * tolerance for clock skew.
+ * Validates a TOTP code against the legacy shared env secret.
+ *
+ * @deprecated Prefer `validateTotpCodeFor` with the owner's own secret. This
+ * path authenticates every caller against ONE secret and must never be used for
+ * an account that has its own `users.totp_secret`.
  *
  * @param code - 6-digit string provided by the user
  * @param atMs - epoch milliseconds (defaults to now; injectable for tests)

@@ -16,7 +16,8 @@
 
 import type { NextAuthOptions, User } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import { validateTotpCode } from './totp';
+import { validateTotpCodeFor } from './totp';
+import { resolveTotpSecret } from './resolve-totp-secret';
 import { upsertUser, type UserRecord } from './upsert-user';
 
 // ---------------------------------------------------------------------------
@@ -71,7 +72,10 @@ export const authOptions: NextAuthOptions = {
         const totpCode = credentials.totpCode.trim();
 
         // --- MFA gate (Requirement 17.1) ---
-        const totpValid = validateTotpCode(totpCode);
+        // Resolve THIS owner's secret. A shared secret would let any user mint a
+        // valid second factor for any other account.
+        const totpSecret = await resolveTotpSecret(email);
+        const totpValid = validateTotpCodeFor(totpSecret, totpCode);
         if (!totpValid) {
           // TOTP factor invalid — reject session
           return null;
