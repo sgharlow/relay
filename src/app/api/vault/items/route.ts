@@ -21,6 +21,7 @@ import {
 } from '../../../../../lib/vault/vault-items';
 import { writeAuditEntry } from '../../../../../lib/audit/audit-service';
 import { assertWithinItemCap, EntitlementError } from '../../../../../lib/billing/entitlements';
+import { coverNewItem } from '../../../../../lib/rules/policy-materialize';
 
 export async function GET(): Promise<NextResponse> {
   let ownerId: string;
@@ -86,5 +87,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     detail: { type: item.type },
   });
 
-  return NextResponse.json(item, { status: 201 });
+  // A new item matching an existing policy is covered automatically, so an
+  // import cannot land silently uncovered (J4-R4).
+  const covered = await coverNewItem(ownerId, item.id);
+
+  return NextResponse.json({ ...item, policiesMatched: covered.policiesMatched }, { status: 201 });
 }

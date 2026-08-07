@@ -61,15 +61,27 @@ describe('createRecipient', () => {
 });
 
 describe('deleteRecipient', () => {
-  it('cascade-deletes access_rules before the recipient (Req 3.6)', async () => {
+  it('cascade-deletes policies, then rules, then the recipient (Req 3.6, J4-R15)', async () => {
     const order: string[] = [];
-    mockCascade.mockImplementation(async () => { order.push('cascade-rules'); });
+    mockCascade.mockImplementation(async (table: string) => {
+      order.push(`cascade-${table}`);
+    });
     mockQuery.mockImplementation(async (sql: string) => {
       if (sql.startsWith('DELETE FROM recipients')) order.push('delete-recipient');
       return qResult([]);
     });
+
     await deleteRecipient('owner-1', 'r1');
+
+    expect(mockCascade).toHaveBeenCalledWith('access_policies', 'r1', 'recipient_id');
     expect(mockCascade).toHaveBeenCalledWith('access_rules', 'r1', 'recipient_id');
-    expect(order).toEqual(['cascade-rules', 'delete-recipient']);
+
+    // Policies must go FIRST: dropping only the rules would leave the
+    // generating policy behind to recreate them on the next materialisation.
+    expect(order).toEqual([
+      'cascade-access_policies',
+      'cascade-access_rules',
+      'delete-recipient',
+    ]);
   });
 });

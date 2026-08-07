@@ -19,6 +19,10 @@ vi.mock('../../../../../lib/billing/entitlements', async (io) => {
   return { ...actual, assertWithinItemCap: vi.fn(async () => undefined) };
 });
 
+vi.mock('../../../../../lib/rules/policy-materialize', () => ({
+  coverNewItem: vi.fn(async () => ({ policiesMatched: 0 })),
+}));
+
 import { getOwnerSession } from '../../../../../lib/auth/session';
 import { listItems, createItem } from '../../../../../lib/vault/vault-items';
 import { writeAuditEntry } from '../../../../../lib/audit/audit-service';
@@ -112,4 +116,17 @@ it('POST 402 when the free-tier item cap is reached, and creates nothing', async
 
   expect(res.status).toBe(402);
   expect(mockCreate).not.toHaveBeenCalled();
+});
+
+it('auto-covers a new item against existing policies (J4-R4)', async () => {
+  const { coverNewItem } = await import('../../../../../lib/rules/policy-materialize');
+  mockSession.mockResolvedValueOnce({ ownerId: 'owner-1', isDemo: false });
+  mockCreate.mockResolvedValueOnce({ id: 'new-2', type: 'login' } as never);
+  vi.mocked(coverNewItem).mockResolvedValueOnce({ policiesMatched: 2 });
+
+  const res = await POST(makeReq(validBody()));
+
+  expect(res.status).toBe(201);
+  expect(coverNewItem).toHaveBeenCalledWith('owner-1', 'new-2');
+  await expect(res.json()).resolves.toMatchObject({ policiesMatched: 2 });
 });
