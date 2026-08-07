@@ -12,6 +12,11 @@ vi.mock('../../../../lib/people/recipients', async (io) => {
   return { ...actual, listRecipients: vi.fn(), createRecipient: vi.fn(), updateRecipient: vi.fn(), deleteRecipient: vi.fn() };
 });
 
+vi.mock('../../../../lib/billing/entitlements', async (io) => {
+  const actual = await io<typeof import('../../../../lib/billing/entitlements')>();
+  return { ...actual, assertWithinRecipientCap: vi.fn(async () => undefined) };
+});
+
 import { getOwnerSession } from '../../../../lib/auth/session';
 import { listRecipients, createRecipient, updateRecipient, deleteRecipient } from '../../../../lib/people/recipients';
 import { GET, POST } from './route';
@@ -71,4 +76,20 @@ it('DELETE cascades and returns deleted', async () => {
   const res = await DELETE(makeReq(), ctx);
   expect(res.status).toBe(200);
   expect(mockDelete).toHaveBeenCalledWith('owner-1', 'r1');
+});
+
+it('POST 402 when the free-tier recipient cap is reached', async () => {
+  const { assertWithinRecipientCap, EntitlementError } = await import(
+    '../../../../lib/billing/entitlements'
+  );
+  mockSession.mockResolvedValueOnce({ ownerId: 'owner-1', isDemo: false });
+  vi.mocked(assertWithinRecipientCap).mockRejectedValueOnce(
+    new EntitlementError('The free plan allows 1 recipient.', 1, 'free'),
+  );
+
+  const res = await POST(makeReq(valid));
+
+  expect(res.status).toBe(402);
+  await expect(res.json()).resolves.toMatchObject({ error: 'EntitlementError', tier: 'free' });
+  expect(mockCreate).not.toHaveBeenCalled();
 });

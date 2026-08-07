@@ -14,6 +14,11 @@ vi.mock('../../../../../lib/vault/vault-items', async (importOriginal) => {
   return { ...actual, listItems: vi.fn(), createItem: vi.fn() };
 });
 
+vi.mock('../../../../../lib/billing/entitlements', async (io) => {
+  const actual = await io<typeof import('../../../../../lib/billing/entitlements')>();
+  return { ...actual, assertWithinItemCap: vi.fn(async () => undefined) };
+});
+
 import { getOwnerSession } from '../../../../../lib/auth/session';
 import { listItems, createItem } from '../../../../../lib/vault/vault-items';
 import { writeAuditEntry } from '../../../../../lib/audit/audit-service';
@@ -91,4 +96,20 @@ describe('POST /api/vault/items', () => {
     expect(mockAudit).toHaveBeenCalledOnce();
     expect(mockAudit.mock.calls[0][1].action).toBe('vault_item_created');
   });
+});
+
+it('POST 402 when the free-tier item cap is reached, and creates nothing', async () => {
+  const { assertWithinItemCap, EntitlementError } = await import(
+    '../../../../../lib/billing/entitlements'
+  );
+  mockSession.mockResolvedValueOnce({ ownerId: 'owner-1', isDemo: false });
+  mockCreate.mockClear();
+  vi.mocked(assertWithinItemCap).mockRejectedValueOnce(
+    new EntitlementError('The free plan holds 10 items.', 10, 'free'),
+  );
+
+  const res = await POST(makeReq(validBody()));
+
+  expect(res.status).toBe(402);
+  expect(mockCreate).not.toHaveBeenCalled();
 });

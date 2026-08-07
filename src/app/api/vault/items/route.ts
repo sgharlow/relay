@@ -20,6 +20,7 @@ import {
   ValidationError,
 } from '../../../../../lib/vault/vault-items';
 import { writeAuditEntry } from '../../../../../lib/audit/audit-service';
+import { assertWithinItemCap, EntitlementError } from '../../../../../lib/billing/entitlements';
 
 export async function GET(): Promise<NextResponse> {
   let ownerId: string;
@@ -56,6 +57,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json(
         { error: 'ValidationError', message: err.message, field: err.field },
         { status: 400 },
+      );
+    }
+    throw err;
+  }
+
+  // Free-tier cap, asserted server-side so it cannot be bypassed by calling
+  // this endpoint directly (J1-R7).
+  try {
+    await assertWithinItemCap(ownerId);
+  } catch (err) {
+    if (err instanceof EntitlementError) {
+      return NextResponse.json(
+        { error: 'EntitlementError', message: err.message, limit: err.limit, tier: err.tier },
+        { status: 402 },
       );
     }
     throw err;
