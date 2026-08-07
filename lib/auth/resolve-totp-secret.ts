@@ -20,7 +20,13 @@ export async function resolveTotpSecret(email: string): Promise<string> {
   const normalised = email.trim().toLowerCase();
 
   const res = await query<{ totp_secret: string | null }>(
-    `SELECT totp_secret FROM users WHERE email = $1 LIMIT 1`,
+    // Deterministic: prefer a row that actually carries a per-user secret, then
+    // the oldest. An unordered LIMIT 1 would pick arbitrarily if an email ever
+    // ends up on more than one row.
+    `SELECT totp_secret FROM users
+      WHERE email = $1
+      ORDER BY (totp_secret IS NULL), created_at ASC
+      LIMIT 1`,
     [normalised],
   );
 
