@@ -59,20 +59,34 @@ describe('TIER_LIMITS', () => {
 
 describe('getEntitlement', () => {
   it('defaults to free when no subscription row exists', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [] } as never);
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ is_demo_account: false }] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never);
     await expect(getEntitlement('o-1')).resolves.toEqual({ tier: 'free' });
   });
 
   it('returns paid for an active subscription', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [{ tier: 'paid' }] } as never);
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ is_demo_account: false }] } as never)
+      .mockResolvedValueOnce({ rows: [{ tier: 'paid' }] } as never);
     await expect(getEntitlement('o-1')).resolves.toEqual({ tier: 'paid' });
   });
 
+  it('treats a DEMO account as paid — the H0 demo vault holds 25 items', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ is_demo_account: true }] } as never);
+
+    await expect(getEntitlement('o-1')).resolves.toEqual({ tier: 'paid' });
+    // Short-circuits: never even looks at subscriptions.
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+  });
+
   it('scopes the lookup to the owner and to active subscriptions', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [] } as never);
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ is_demo_account: false }] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never);
     await getEntitlement('o-1');
 
-    const [sql, params] = mockQuery.mock.calls[0];
+    const [sql, params] = mockQuery.mock.calls[1];
     expect(sql).toMatch(/owner_id\s*=\s*\$1/);
     expect(sql).toMatch(/status\s*=\s*'active'/i);
     expect(params).toEqual(['o-1']);
@@ -82,6 +96,7 @@ describe('getEntitlement', () => {
 describe('assertWithinItemCap', () => {
   it('allows the 10th item on free', async () => {
     mockQuery
+      .mockResolvedValueOnce({ rows: [{ is_demo_account: false }] } as never)
       .mockResolvedValueOnce({ rows: [] } as never)
       .mockResolvedValueOnce({ rows: [{ count: '9' }] } as never);
     await expect(assertWithinItemCap('o-1')).resolves.toBeUndefined();
@@ -89,24 +104,28 @@ describe('assertWithinItemCap', () => {
 
   it('REJECTS the 11th item on free', async () => {
     mockQuery
+      .mockResolvedValueOnce({ rows: [{ is_demo_account: false }] } as never)
       .mockResolvedValueOnce({ rows: [] } as never)
       .mockResolvedValueOnce({ rows: [{ count: '10' }] } as never);
     await expect(assertWithinItemCap('o-1')).rejects.toThrow(EntitlementError);
   });
 
   it('never caps a paid owner and does not even count', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [{ tier: 'paid' }] } as never);
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ is_demo_account: false }] } as never)
+      .mockResolvedValueOnce({ rows: [{ tier: 'paid' }] } as never);
     await expect(assertWithinItemCap('o-1')).resolves.toBeUndefined();
-    expect(mockQuery).toHaveBeenCalledTimes(1);
+    expect(mockQuery).toHaveBeenCalledTimes(2);
   });
 
   it('counts only the requesting owner rows', async () => {
     mockQuery
+      .mockResolvedValueOnce({ rows: [{ is_demo_account: false }] } as never)
       .mockResolvedValueOnce({ rows: [] } as never)
       .mockResolvedValueOnce({ rows: [{ count: '0' }] } as never);
     await assertWithinItemCap('o-1');
 
-    const [sql, params] = mockQuery.mock.calls[1];
+    const [sql, params] = mockQuery.mock.calls[2];
     expect(sql).toMatch(/FROM vault_items WHERE owner_id = \$1/);
     expect(params).toEqual(['o-1']);
   });
@@ -115,6 +134,7 @@ describe('assertWithinItemCap', () => {
 describe('assertWithinRecipientCap', () => {
   it('allows the first recipient on free', async () => {
     mockQuery
+      .mockResolvedValueOnce({ rows: [{ is_demo_account: false }] } as never)
       .mockResolvedValueOnce({ rows: [] } as never)
       .mockResolvedValueOnce({ rows: [{ count: '0' }] } as never);
     await expect(assertWithinRecipientCap('o-1')).resolves.toBeUndefined();
@@ -122,6 +142,7 @@ describe('assertWithinRecipientCap', () => {
 
   it('REJECTS the 2nd recipient on free', async () => {
     mockQuery
+      .mockResolvedValueOnce({ rows: [{ is_demo_account: false }] } as never)
       .mockResolvedValueOnce({ rows: [] } as never)
       .mockResolvedValueOnce({ rows: [{ count: '1' }] } as never);
     await expect(assertWithinRecipientCap('o-1')).rejects.toThrow(EntitlementError);
@@ -130,12 +151,16 @@ describe('assertWithinRecipientCap', () => {
 
 describe('assertCanRelease', () => {
   it('blocks release on free', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [] } as never);
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ is_demo_account: false }] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never);
     await expect(assertCanRelease('o-1')).rejects.toThrow(EntitlementError);
   });
 
   it('allows release on paid', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [{ tier: 'paid' }] } as never);
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ is_demo_account: false }] } as never)
+      .mockResolvedValueOnce({ rows: [{ tier: 'paid' }] } as never);
     await expect(assertCanRelease('o-1')).resolves.toBeUndefined();
   });
 });

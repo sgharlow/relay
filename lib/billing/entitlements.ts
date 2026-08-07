@@ -48,6 +48,14 @@ export const TIER_LIMITS: Record<
 };
 
 export async function getEntitlement(ownerId: string): Promise<{ tier: Tier }> {
+  // Demo accounts are not free-tier customers. The H0 demo vault holds 25
+  // items; capping it at 10 would break the very flow the demo exists to show.
+  const demo = await query<{ is_demo_account: boolean }>(
+    `SELECT is_demo_account FROM users WHERE id = $1 LIMIT 1`,
+    [ownerId],
+  );
+  if (demo.rows[0]?.is_demo_account) return { tier: 'paid' };
+
   const res = await query<{ tier: Tier }>(
     `SELECT tier FROM subscriptions
       WHERE owner_id = $1 AND status = 'active'
