@@ -55,7 +55,9 @@ it('initiates and notifies verifiers', async () => {
   const json = await res.json();
   expect(json.state).toBe('pending');
   expect(json.verifiersNotified).toBe(2);
-  expect(mockNotify).toHaveBeenCalledWith([], 'emergency', 'rs-1');
+  // ownerId is now passed so a typed access code can be issued per verifier
+  // instead of a signed token travelling in the confirmation URL.
+  expect(mockNotify).toHaveBeenCalledWith([], 'emergency', 'rs-1', 'owner-1');
 });
 
 it('409 when the trigger is not ARMED', async () => {

@@ -38,17 +38,18 @@ const ACTION_LABEL: Record<string, string> = {
 };
 
 export default function VerifyClient() {
-  const token = useSearchParams().get('token');
+  const urlToken = useSearchParams().get('token');
+  // A code typed here becomes a token in memory. The credential never enters
+  // the URL, so nothing lands in browser history, referrer headers or proxy
+  // logs, and a forwarded email carries no ability to confirm anything.
+  const [token, setToken] = useState<string | null>(urlToken);
   const [ctx, setCtx] = useState<Context | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<Decision | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    if (!token) {
-      setError('This link is missing its code.');
-      return;
-    }
+    if (!token) return; // No token yet — the code form is shown instead.
     const res = await fetch(`/api/verify/${encodeURIComponent(token)}`);
     if (!res.ok) {
       setError((await res.json().catch(() => ({}))).message ?? 'This link is no longer valid.');
@@ -81,6 +82,11 @@ export default function VerifyClient() {
       </div>
     );
   }
+
+  // No token yet: ask for the code from the email. This is the default entry
+  // point now — the emailed link is bare, so arriving here with nothing is the
+  // normal path rather than an error.
+  if (!token) return <CodeEntry onToken={setToken} />;
 
   if (!ctx) return <p className="text-stone-600">Loading…</p>;
 
@@ -192,6 +198,87 @@ export default function VerifyClient() {
       <p className="text-[16px] text-stone-600">
         &ldquo;I don&rsquo;t know&rdquo; is a real answer. We will ask someone else rather than
         counting it either way.
+      </p>
+    </div>
+  );
+}
+
+/**
+ * Code entry — the verifier's front door.
+ *
+ * Replaces a signed token in the URL. Typing eight characters is more work than
+ * one click, and that cost is real on the step the whole release path depends
+ * on; the compensation is that the emailed link is now safe to click, safe to
+ * forward, and safe to appear in a log. Relay can also say, and mean, that it
+ * never sends a link that signs you in — which makes any email that does one
+ * self-evidently fake.
+ *
+ * Access-mode voice: large type, one field, no chrome.
+ */
+function CodeEntry({ onToken }: { onToken: (t: string) => void }) {
+  const [code, setCode] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await fetch('/api/verify/code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+      const body = (await res.json().catch(() => ({}))) as { token?: string; message?: string };
+      if (res.ok && body.token) onToken(body.token);
+      else setErr(body.message ?? 'That code was not recognised.');
+    } catch {
+      setErr('We could not reach the server. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-stone-300 bg-white p-6">
+      <h1 className="text-2xl font-semibold text-stone-900">Enter your code</h1>
+      <p className="mt-3 text-[17px] leading-relaxed text-stone-700">
+        Someone has asked you to confirm that a situation is genuine. Type the code from the email
+        we sent you.
+      </p>
+
+      <form onSubmit={submit} className="mt-6">
+        <label htmlFor="code" className="block text-sm font-medium text-stone-700">
+          Code from your email
+        </label>
+        <input
+          id="code"
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          autoComplete="one-time-code"
+          inputMode="text"
+          autoCapitalize="characters"
+          spellCheck={false}
+          placeholder="7K4M-P2XW"
+          className="mt-2 min-h-[52px] w-full rounded-md border border-stone-400 px-4 text-center font-mono text-2xl tracking-[0.2em] text-stone-900 placeholder:text-stone-300 focus:border-stone-900 focus:outline-none"
+        />
+
+        {err ? <p className="mt-3 text-[16px] text-red-700">{err}</p> : null}
+
+        <button
+          type="submit"
+          disabled={busy || !code.trim()}
+          className="mt-5 min-h-[52px] w-full rounded-md bg-stone-900 px-6 text-[17px] font-semibold text-white hover:bg-stone-800 disabled:opacity-50"
+        >
+          {busy ? 'Checking…' : 'Continue'}
+        </button>
+      </form>
+
+      <p className="mt-6 text-[15px] leading-relaxed text-stone-500">
+        You will never be shown anyone&rsquo;s private information — not now, and not after you
+        answer. Relay will never send you a link that signs you in.
       </p>
     </div>
   );

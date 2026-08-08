@@ -156,7 +156,7 @@ async function main(): Promise<void> {
     `SELECT id, name, email FROM verifiers WHERE owner_id=$1`,
     [margaret],
   );
-  await notifyVerifiersForTrigger(vfs.rows, 'emergency', rs.rows[0].id);
+  await notifyVerifiersForTrigger(vfs.rows, 'emergency', rs.rows[0].id, margaret);
   console.log(`   ${vfs.rowCount} verifier(s) asked`);
 
   const current = await query<{ id: string; version: string }>(

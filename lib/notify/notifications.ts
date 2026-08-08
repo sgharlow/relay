@@ -14,6 +14,8 @@
 
 import { sendEmailBestEffort } from './email';
 import { issueVerifierToken } from '../auth/verifier-token';
+import { issueVerifierCode, formatCode } from '../auth/verifier-code';
+import { formatCaseId } from '../release/case-id';
 import { issueRecipientToken } from '../auth/recipient-token';
 import { query } from '../db/connection';
 import { getOwnerLabel } from '../people/owner-label';
@@ -111,21 +113,54 @@ export async function notifyVerifiersForTrigger(
   verifiers: VerifierContact[],
   triggerType: string,
   releaseStateId: string,
+  ownerId?: string,
 ): Promise<number> {
+  // The case ID is the PUBLIC referent — derived from the release id and meant
+  // to be read aloud between four people during a crisis. It authenticates
+  // nothing; the code below is the secret.
+  const caseId = formatCaseId(releaseStateId);
+
   const results = await Promise.all(
-    verifiers.map((v) => {
-      const token = issueVerifierToken(v.id, releaseStateId);
-      // /verify, NOT /confirm — the latter has never existed and 404s in
-      // production, so every verifier email ever sent led to a dead page.
-      const link = `${appUrl()}/verify?token=${encodeURIComponent(token)}`;
+    verifiers.map(async (v) => {
+      // A typed code, not a token in the URL. The link is BARE: clicking it
+      // grants nothing, so a forwarded email — much the likeliest leak, since
+      // forwarding one to a family member is a perfectly reasonable thing to do
+      // — no longer hands over the ability to confirm someone's release.
+      //
+      // It also lets us say, and mean, that Relay never sends a link that signs
+      // you in. That claim is worth more than any single control: once it holds
+      // absolutely, an email containing such a link is self-evidently not us.
+      let code: string | null = null;
+      if (ownerId) {
+        try {
+          code = formatCode(await issueVerifierCode({ verifierId: v.id, releaseStateId, ownerId }));
+        } catch (err) {
+          process.stderr.write(`[notify] verifier code issue failed: ${String(err)}\n`);
+        }
+      }
+
+      // Falls back to the legacy token link when a code cannot be issued. A
+      // verifier who cannot answer at all is a worse outcome than a link.
+      const body = code
+        ? `Hi ${v.name},\n\n` +
+          `You've been asked to confirm ${article(triggerType)} "${triggerType}" release trigger.\n\n` +
+          `Go to ${appUrl()}/verify and enter this code:\n\n` +
+          `    ${code}\n\n` +
+          `Case ${caseId} · the code expires in 72 hours.\n\n` +
+          `You will not be given access to any private data — you are only confirming ` +
+          `whether the situation is genuine.\n\n` +
+          `Relay will never send you a link that signs you in. If a message claiming to ` +
+          `be from us asks you to click one, it is not from us.\n`
+        : `Hi ${v.name},\n\n` +
+          `You've been asked to confirm ${article(triggerType)} "${triggerType}" release trigger. ` +
+          `If you recognise this request, confirm here:\n\n` +
+          `${appUrl()}/verify?token=${encodeURIComponent(issueVerifierToken(v.id, releaseStateId))}\n\n` +
+          `You will not be given access to any private data — you are only confirming the trigger.\n`;
+
       return sendEmailBestEffort({
         to: v.email,
-        subject: `Action needed: confirm ${article(triggerType)} ${triggerType} trigger`,
-        text:
-          `Hi ${v.name},\n\n` +
-          `You've been asked to confirm ${article(triggerType)} "${triggerType}" release trigger. ` +
-          `If you recognise this request, confirm here:\n\n${link}\n\n` +
-          `You will not be given access to any private data — you are only confirming the trigger.\n`,
+        subject: `Action needed: confirm ${article(triggerType)} ${triggerType} trigger (${caseId})`,
+        text: body,
       });
     }),
   );

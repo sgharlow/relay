@@ -47,6 +47,7 @@ export async function POST(_req: NextRequest, { params }: Ctx): Promise<NextResp
     verifiers.map((v) => ({ id: v.id, name: v.name, email: v.email })),
     triggerType,
     row.id,
+    auth.ownerId,
   );
 
   return NextResponse.json({ state: row.state, releaseStateId: row.id, verifiersNotified: notified });
