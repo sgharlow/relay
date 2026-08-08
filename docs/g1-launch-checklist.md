@@ -60,6 +60,11 @@ Re-run all four checks at merge time if the branch has moved past `af4ddf3`.
       `RESEND_FROM_ADDRESS=relay@relaystandby.com`. Does NOT block Lane A (its conversion is an
       inbound `mailto:`), but every invitation, owner challenge and verifier notification depends
       on it — i.e. all of Lane B past signup.
+- [ ] **7c. DMARC + reply capability (added 2026-08-08).** Two Resend-accepted sends did not land
+      at a cox.net address. SPF and DKIM are correct; there is NO `_dmarc` record, and cox.net is
+      operated by Yahoo, which has required DMARC from bulk senders since Feb 2024 and weights it
+      heavily for domains with no sending history. Exact records, plus Cloudflare Email Routing so
+      `relay@relaystandby.com` can receive replies at all: `docs/email-dns-runbook.md`.
 - [ ] **8. Launch paid lanes** per `g1-channel-send-kit.md` (ratified budget ceiling; `src`
       values per lane). Organic participation stays Steve-voice-only per the channel-rules audit.
 - [ ] **9. Log window start date** + N-counting rules in the gate tracking note; the gate
