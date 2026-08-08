@@ -10,7 +10,7 @@
  * Requirements: J1-R3, 17.1
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -32,11 +32,21 @@ export default function SignUpForm() {
   const [email, setEmail] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
+  // Set when the visitor arrived by pressing "Set up my vault now" rather than
+  // browsing in. They intend to pay, so the last screen sends them to Stripe
+  // instead of the vault.
+  const [buyIntent, setBuyIntent] = useState(false);
   const [enrolmentToken, setEnrolmentToken] = useState('');
   const [secret, setSecret] = useState('');
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  // Read in an effect rather than from useSearchParams so this page stays
+  // statically renderable — the same reason the funnel trackers do it.
+  useEffect(() => {
+    setBuyIntent(new URLSearchParams(window.location.search).get('next') === 'checkout');
+  }, []);
 
   async function onBegin(e: React.FormEvent) {
     e.preventDefault();
@@ -135,13 +145,30 @@ export default function SignUpForm() {
 
         <button
           type="button"
-          onClick={() => {
+          onClick={async () => {
+            // Recovery codes are shown FIRST even for a buyer — losing the
+            // authenticator is unrecoverable, and that screen must not be
+            // skipped by someone in a hurry to pay.
+            if (buyIntent) {
+              try {
+                const res = await fetch('/api/stripe/checkout', { method: 'POST' });
+                if (res.ok) {
+                  const { url } = (await res.json()) as { url?: string };
+                  if (url) {
+                    window.location.href = url;
+                    return;
+                  }
+                }
+              } catch {
+                /* fall through to the vault rather than stranding them */
+              }
+            }
             router.push('/start');
             router.refresh();
           }}
           className="mt-3 w-full rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
         >
-          I&rsquo;ve saved them — continue
+          {buyIntent ? 'I’ve saved them — continue to payment' : 'I’ve saved them — continue'}
         </button>
       </div>
     );

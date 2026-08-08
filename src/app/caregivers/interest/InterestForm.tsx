@@ -22,7 +22,7 @@
 
 import { useRef, useState, type FormEvent } from 'react';
 
-import { CAREGIVER_LEAD, recallChannel } from '../analytics';
+import { CAREGIVER_CHECKOUT, CAREGIVER_LEAD, recallChannel } from '../analytics';
 import { trackG1 } from '../track';
 
 const CONTACT_EMAIL = 'sgharlow+relay@gmail.com';
@@ -102,7 +102,42 @@ export default function InterestForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-8 text-left">
+    <div className="mt-8 text-left">
+      {/* BUY NOW, alongside the list rather than instead of it.
+          Checkout is owner-authenticated because the account IS the product —
+          taking a card for a vault that does not exist yet would create a paid
+          customer with nothing to log into, and a reconciliation path that can
+          fail silently. So this routes through signup, which the buyer would
+          have to do anyway, and continues straight to Stripe afterwards.
+          The gate is untouched: caregiver_intent already fired on page load. */}
+      <a
+        href={`/auth/signup?next=checkout&src=${encodeURIComponent(recallChannel() ?? 'direct')}`}
+        onClick={() =>
+          trackG1(CAREGIVER_CHECKOUT, {
+            src: recallChannel() ?? 'direct',
+            cta: 'interest-buy',
+          })
+        }
+        className="flex min-h-[52px] w-full items-center justify-center rounded-md bg-amber-500 px-6 text-base font-semibold text-slate-950 transition-colors hover:bg-amber-400"
+      >
+        Set up my vault now — $119/yr
+      </a>
+      <p className="mt-2 text-center text-xs leading-relaxed text-slate-500">
+        Takes a few minutes. You will need an authenticator app — there is no password to lose.
+      </p>
+
+      <div className="my-6 flex items-center gap-3">
+        <span className="h-px flex-1 bg-slate-800" />
+        <span className="text-xs uppercase tracking-wider text-slate-500">or</span>
+        <span className="h-px flex-1 bg-slate-800" />
+      </div>
+
+      <p className="text-sm leading-relaxed text-slate-300">
+        Not ready yet? Tell us about your situation and we&apos;ll be in touch — we onboard
+        founding families personally.
+      </p>
+
+    <form onSubmit={onSubmit} className="mt-4 text-left">
       <label htmlFor="email" className="block text-sm font-medium text-slate-200">
         Your email
       </label>
@@ -159,5 +194,6 @@ export default function InterestForm() {
         We&apos;ll only use this to reply to you. No card required, and nothing is charged today.
       </p>
     </form>
+    </div>
   );
 }

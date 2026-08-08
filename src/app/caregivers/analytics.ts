@@ -36,6 +36,16 @@ export const CAREGIVER_INTENT = 'caregiver_intent';
 export const CAREGIVER_LEAD = 'caregiver_lead_submitted';
 
 /**
+ * Someone chose to buy rather than join the list.
+ *
+ * Added 2026-08-08 when live checkout landed. Strictly downstream of
+ * CAREGIVER_INTENT and NOT part of the ratified gate ratio — but it is the
+ * strongest signal this funnel can produce, because it is the only one where
+ * the visitor is reaching for a card rather than expressing an opinion.
+ */
+export const CAREGIVER_CHECKOUT = 'caregiver_checkout_started';
+
+/**
  * Extract the source-attribution props from a URL query string. Untagged/empty resolves
  * to 'direct' so it can be excluded from N (mirrors the tagged-only qualification rule);
  * URL-encoded channel values (e.g. `r%2FCaregiverSupport`) are decoded by URLSearchParams,
