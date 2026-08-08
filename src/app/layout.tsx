@@ -14,7 +14,18 @@ const geistMono = localFont({
   weight: "100 900",
 });
 
-const SITE_URL = "https://relay-three-henna.vercel.app";
+/**
+ * The canonical public origin. Every og:url and og:image is resolved against
+ * this, so a stale value silently mis-declares the whole site: until 2026-08-08
+ * this read `relay-three-henna.vercel.app`, meaning every link preview and every
+ * ad-platform crawl of the paid landing page pointed at the pre-domain
+ * deployment rather than at relaystandby.com.
+ *
+ * NEXT_PUBLIC_SITE_URL lets previews declare themselves correctly; the literal
+ * is the production fallback, because an unset variable must not resurrect a
+ * wrong domain.
+ */
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://relaystandby.com";
 const SITE_DESCRIPTION =
   "Living-continuity vault — reversible emergency access, permanent estate handoff.";
 

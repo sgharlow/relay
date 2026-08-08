@@ -28,10 +28,33 @@ import {
 } from './content';
 import QualifiedTracker from './QualifiedTracker';
 
+const OG_TITLE = 'Relay for caregivers — emergency access that closes itself';
+const OG_DESCRIPTION =
+  'One encrypted vault for a parent’s accounts and instructions. Opens for you in a real emergency, seals itself when they recover. Reversible by design.';
+
+/**
+ * openGraph is set explicitly rather than inherited. The root layout's OG copy
+ * describes the platform ("living-continuity vault — reversible emergency
+ * access, permanent estate handoff"), which is category jargon; a caregiver who
+ * sees this link shared, or an ad reviewer who crawls it, should get the
+ * caregiver message the page itself leads with.
+ */
 export const metadata = {
-  title: 'Relay for caregivers — emergency access that closes itself',
-  description:
-    'One encrypted vault for a parent’s accounts and instructions. Opens for you in a real emergency, seals itself when they recover. Reversible by design.',
+  title: OG_TITLE,
+  description: OG_DESCRIPTION,
+  alternates: { canonical: '/caregivers' },
+  openGraph: {
+    type: 'website',
+    siteName: 'Relay',
+    url: '/caregivers',
+    title: OG_TITLE,
+    description: OG_DESCRIPTION,
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: OG_TITLE,
+    description: OG_DESCRIPTION,
+  },
 };
 
 export default function CaregiversLanding() {
