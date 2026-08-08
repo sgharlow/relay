@@ -289,15 +289,46 @@ describe('standDownTrigger', () => {
     });
   });
 
-  it.each(['armed', 'released', 'cancelled'] as const)(
-    'refuses to stand down from %s (409)',
-    async (state) => {
-      mockQuery.mockResolvedValueOnce(qResult([makeRow({ state })]));
-      await expect(standDownTrigger('owner-1', 'rs-1', machineStub())).rejects.toMatchObject({
-        httpStatus: 409,
-      });
-    },
-  );
+  it.each(['armed', 'cancelled'] as const)('refuses to stand down from %s (409)', async (state) => {
+    mockQuery.mockResolvedValueOnce(qResult([makeRow({ state })]));
+    await expect(standDownTrigger('owner-1', 'rs-1', machineStub())).rejects.toMatchObject({
+      httpStatus: 409,
+    });
+  });
+
+  it('CLOSES a RELEASED trigger — the differentiator, and the state it matters most in', async () => {
+    mockQuery.mockResolvedValueOnce(qResult([makeRow({ state: 'released', version: 4 })]));
+    const machine = machineStub();
+    machine.transition.mockResolvedValueOnce(makeRow({ state: 'armed', version: 5 }) as never);
+
+    const out = await standDownTrigger('owner-1', 'rs-1', machine);
+
+    expect(machine.transition.mock.calls[0][1]).toBe('released');
+    expect(machine.transition.mock.calls[0][2]).toBe('armed');
+    expect(out.state).toBe('armed');
+  });
+
+  it('clears release bookkeeping on re-arm, so the NEXT emergency is not pre-confirmed', async () => {
+    mockQuery.mockResolvedValueOnce(qResult([makeRow({ state: 'released', received_confirmations: 3 })]));
+    const machine = machineStub();
+    machine.transition.mockResolvedValueOnce(makeRow({ state: 'armed' }) as never);
+
+    await standDownTrigger('owner-1', 'rs-1', machine);
+
+    expect(machine.transition.mock.calls[0][4]).toMatchObject({
+      updates: { received_confirmations: 0, grace_ends_at: null, released_at: null },
+    });
+  });
+
+  it('does NOT clear bookkeeping when standing down from GRACE — nothing was released', async () => {
+    mockQuery.mockResolvedValueOnce(qResult([makeRow({ state: 'grace' })]));
+    const machine = machineStub();
+    machine.transition.mockResolvedValueOnce(makeRow({ state: 'armed' }) as never);
+
+    await standDownTrigger('owner-1', 'rs-1', machine);
+
+    expect((machine.transition.mock.calls[0][4] as { updates?: unknown }).updates).toBeUndefined();
+  });
 
   it('rejects a cross-owner stand-down (403)', async () => {
     mockQuery.mockResolvedValueOnce(qResult([makeRow({ state: 'grace', owner_id: 'someone-else' })]));
@@ -327,7 +358,7 @@ describe('standDownTrigger', () => {
   });
 
   it('uses ONLY edges already in PERMITTED_TRANSITIONS — no eighth transition', () => {
-    for (const from of ['pending', 'grace'] as const) {
+    for (const from of ['pending', 'grace', 'released'] as const) {
       expect(isPermittedTransition(from, 'armed', true)).toBe(true);
     }
     expect(PERMITTED_TRANSITIONS).toHaveLength(7);

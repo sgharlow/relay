@@ -214,12 +214,12 @@ function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promi
               therefore retired the access rule for good, by pressing the most
               innocuous-looking word on the screen. Stand down is prominent;
               the permanent option is demoted and says what it does. */}
-          {(rs.state === 'grace' || rs.state === 'pending') && reversible ? (
+          {(rs.state === 'grace' || rs.state === 'pending' || rs.state === 'released') && reversible ? (
             <button
               onClick={() => act(() => apiSend(`/api/triggers/${rs.id}/stand-down`, 'POST'))}
               className="rounded bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-700"
             >
-              Stand down — re-arm
+              {rs.state === 'released' ? 'Close access — re-arm' : 'Stand down — re-arm'}
             </button>
           ) : null}
           {/* Two-step inline rather than window.confirm: a native modal blocks

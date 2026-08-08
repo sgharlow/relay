@@ -199,12 +199,26 @@ export async function standDownTrigger(
   if (!isReversibleTrigger(row.trigger_type)) {
     throw new TriggerError('Estate handoffs are permanent and cannot be stood down', 409);
   }
-  if (row.state !== 'pending' && row.state !== 'grace') {
-    throw new TriggerError('Only a trigger in PENDING or GRACE can be stood down', 409);
+  if (row.state !== 'pending' && row.state !== 'grace' && row.state !== 'released') {
+    throw new TriggerError('Only a trigger in PENDING, GRACE or RELEASED can be stood down', 409);
   }
 
+  // RELEASED is the state this matters most in — access has actually been
+  // granted, and closing it is the entire differentiator. Until 2026-08-08 a
+  // RELEASED trigger had no owner-facing control at all: the released→armed
+  // edge existed and processCheckin used it, but an owner home from hospital
+  // looking at their own trigger saw no button to close anything.
+  //
+  // The bookkeeping reset mirrors processCheckin exactly. Without it a re-armed
+  // trigger carries its old confirmation count and released_at forward, so the
+  // next emergency starts pre-confirmed — it would fire on fewer verifiers than
+  // the owner configured.
   const updated = await machine.transition(row.id, row.state, 'armed', row.version, {
     reversible: true,
+    updates:
+      row.state === 'released'
+        ? { received_confirmations: 0, grace_ends_at: null, released_at: null }
+        : undefined,
   });
 
   await writeAuditEntry(ownerId, {
