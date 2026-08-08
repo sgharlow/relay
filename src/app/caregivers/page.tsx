@@ -184,9 +184,29 @@ export default function CaregiversLanding() {
             <span className="font-semibold text-slate-300">Relay</span> — standby access for the
             people who&apos;ll need it.
           </div>
-          <Link href="/" className="transition-colors hover:text-slate-300">
-            About Relay
-          </Link>
+          {/* Privacy and Terms are required by Meta and Reddit ad policy, and
+              by anyone deciding whether to trust this with a parent's
+              credentials. min-h-[44px] keeps them tappable on a phone. */}
+          <div className="flex flex-wrap items-center gap-x-5">
+            <Link
+              href="/"
+              className="inline-flex min-h-[44px] items-center transition-colors hover:text-slate-300"
+            >
+              About Relay
+            </Link>
+            <Link
+              href="/privacy"
+              className="inline-flex min-h-[44px] items-center transition-colors hover:text-slate-300"
+            >
+              Privacy
+            </Link>
+            <Link
+              href="/terms"
+              className="inline-flex min-h-[44px] items-center transition-colors hover:text-slate-300"
+            >
+              Terms
+            </Link>
+          </div>
         </div>
       </footer>
     </main>
