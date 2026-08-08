@@ -15,6 +15,8 @@ import { requireOwner, readJson, isResponse, mapError } from '../../../../../../
 import { respondToChallenge } from '../../../../../../lib/release/challenge';
 import { ReleaseStateMachine } from '../../../../../../lib/release/state-machine';
 import { ValidationError } from '../../../../../../lib/validation';
+import { query } from '../../../../../../lib/db/connection';
+import { notifyRequesterOfOutcome } from '../../../../../../lib/notify/notifications';
 
 type Ctx = { params: { id: string } };
 
@@ -32,15 +34,39 @@ export async function POST(req: NextRequest, { params }: Ctx): Promise<NextRespo
       throw new ValidationError('response must be approve or deny', 'response');
     }
 
-    return NextResponse.json(
-      await respondToChallenge({
-        requestId: params.id,
-        ownerId: auth.ownerId,
-        response,
-        machine: new ReleaseStateMachine(),
-        now: new Date(),
-      }),
+    const result = await respondToChallenge({
+      requestId: params.id,
+      ownerId: auth.ownerId,
+      response,
+      machine: new ReleaseStateMachine(),
+      now: new Date(),
+    });
+
+    // Tell the requester either way. A dead-end is its own failure (J6-R10).
+    const ctx = await query<{ email: string; name: string; case_id: string }>(
+      `SELECT r.email, r.name, ar.case_id
+         FROM access_requests ar
+         JOIN recipients r ON r.id = ar.recipient_id
+        WHERE ar.id = $1 AND ar.owner_id = $2
+        LIMIT 1`,
+      [params.id, auth.ownerId],
     );
+    const owner = await query<{ email: string }>(
+      `SELECT email FROM users WHERE id = $1 LIMIT 1`,
+      [auth.ownerId],
+    );
+
+    if (ctx.rows[0]) {
+      await notifyRequesterOfOutcome({
+        to: ctx.rows[0].email,
+        name: ctx.rows[0].name,
+        outcome: result.status,
+        ownerLabel: owner.rows[0]?.email ?? 'They',
+        caseId: ctx.rows[0].case_id,
+      });
+    }
+
+    return NextResponse.json(result);
   } catch (err) {
     return mapError(err);
   }

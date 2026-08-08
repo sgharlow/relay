@@ -11,6 +11,11 @@ authoritative_plan: specs/Relay_H0_Build_Spec_v2.md
 
 # dogfooded = deployed live + full E2E dogfood on real Aurora DSQL + KMS (2026-06-27), H0-submitted.
 # Promote to customer-used only at the first arms-length user — which is gated on G1/G2 below.
+#
+# 2026-08-07: Sprints 1-4 of docs/implementation-plan-4-sprints.md shipped and deployed. The H0
+# spine remains dogfooded; the NEW surfaces (policies, delegation, verifier decisions, access
+# requests) are live-proven at the lib/API layer against the real cluster but have NOT been
+# dogfooded through the UI end to end. They are "live-proven", not "dogfooded" — do not conflate.
 ladder: dogfooded
 
 derived:
@@ -28,6 +33,13 @@ gates:
     kill: "n/a — the decision itself is the gate"
     owner: steve
     due: 2026-08-07
+    met:
+      date: 2026-08-07
+      result: "WIN — H0 'Most Impactful' ($2k cash + $2k AWS credits, announced 2026-08-05)"
+      decision: commercialize
+      rationale: "Per pre-committed disposition plan (docs/h0-disposition-plan.md, 2026-07-03): a win is distribution ammunition, and every branch runs G1 before any park/archive call. The judges' verdict is evidence about the hackathon, not about the market."
+      next: "G1 paid lanes (docs/g1-launch-checklist.md) — the instrument is now live-proven end to end on production (2026-08-07): all six funnel events observed on the wire carrying src attribution. Start G2 counsel outreach the same week (docs/g2-counsel-brief.md)."
+      caveat: "G1 has still measured ZERO traffic. N=0 qualified. This gate records the disposition, not demand evidence."
   - id: g1-caregiver-wtp
     metric: willingness_to_pay_signal (landing + price test on the caregiver wedge, N>=100 qualified visitors)
     target: ">= 2% click-to-intent at a real price point  # ratified by Steve 2026-07-01"
@@ -43,8 +55,17 @@ gates:
 
 market:
   competitors_doc: docs/COMPETITORS.md   # authored 2026-07-01 (Everplans $99/yr = the price anchor; GoodTrust/Trustworthy; free platform features = the awareness rival) — stale at 60 days
+  g1_instrument_verified: "2026-08-07 — all six funnel events observed on the wire against
+    production, each carrying src attribution: caregiver_qualified, seed_started, seed_completed,
+    reveal_viewed, price_viewed, intent_clicked. Two bugs were found and fixed by this check
+    (props were being dropped by a wrong payload shape; the channel key was `channel` where the
+    landing page uses `src`). Re-probe if the instrument is touched — a 200 response proves
+    nothing about attribution."
   wtp_evidence: none                     # G1 is the test; COMPETITORS.md implication: test at/above Everplans' $99/yr, lead with reversibility
 
-monetization_path: none   # ZERO billing code despite Monetizable-B2C track (2026-07-01 audit) — G4 (Stripe + entitlements) is gated behind G1/G2 evidence by design
+monetization_path: none   # Still none: there is NO payment processor and no money can be taken.
+# 2026-08-07: entitlement SCAFFOLDING now exists (subscriptions table + server-side free-tier caps
+# of 10 items / 1 recipient / no release, lib/billing/entitlements.ts). That is cap enforcement,
+# not monetization. G4 (Stripe) remains gated behind G1/G2 evidence by design.
 
 post_event_plan: "h0-verdict-disposition gate + auto-scheduled teardown (CCR triggers 7-25 + 7-31 tickler); commercial fork = the G1->G5 chain"

@@ -78,7 +78,9 @@ export async function notifyVerifiersForTrigger(
   const results = await Promise.all(
     verifiers.map((v) => {
       const token = issueVerifierToken(v.id, releaseStateId);
-      const link = `${appUrl()}/confirm?token=${encodeURIComponent(token)}`;
+      // /verify, NOT /confirm — the latter has never existed and 404s in
+      // production, so every verifier email ever sent led to a dead page.
+      const link = `${appUrl()}/verify?token=${encodeURIComponent(token)}`;
       return sendEmailBestEffort({
         to: v.email,
         subject: `Action needed: confirm a ${triggerType} trigger`,
@@ -130,4 +132,163 @@ export async function notifyOwnerTriggerPending(
       `A "${triggerType}" trigger has entered the pending state. ` +
       `If this wasn't expected, check in now to reset it:\n\n${appUrl()}/triggers\n`,
   });
+}
+
+// ---------------------------------------------------------------------------
+// Sprint 2-4 flows. These surfaces existed but nothing told anyone to visit
+// them: an invitation returned a claim URL nobody emailed, an access request
+// reached the owner only if they happened to open /challenge, and a verifier
+// was never told a decision was waiting. A journey with no notification is a
+// journey that never starts.
+// ---------------------------------------------------------------------------
+
+/** Invitation to claim a recipient or verifier role, BEFORE any trigger (J4-R9). */
+export async function notifyInvitation(params: {
+  to: string;
+  name: string;
+  personType: 'recipient' | 'verifier';
+  claimUrl: string;
+  ownerLabel: string;
+}): Promise<boolean> {
+  const isVerifier = params.personType === 'verifier';
+
+  return sendEmailBestEffort({
+    to: params.to,
+    subject: isVerifier
+      ? `${params.ownerLabel} asked you to be a trusted contact`
+      : `${params.ownerLabel} set something up for you`,
+    text:
+      `Hi ${params.name},
+
+` +
+      (isVerifier
+        ? `${params.ownerLabel} has named you as someone they trust to confirm an emergency is real.
+
+` +
+          `Nothing is happening right now. If a day comes when someone asks for access to their ` +
+          `accounts, we may ask you one question: is this genuine?
+
+` +
+          `You will never see any of their information. Not now, and not then.
+
+`
+        : `${params.ownerLabel} has arranged for you to be able to reach some of their accounts ` +
+          `if something ever happens to them.
+
+` +
+          `Nothing is open right now, and nothing will be until a trigger is verified. Setting ` +
+          `this up today means you will not be locked out at the worst possible moment.
+
+`) +
+      `Accept here:
+
+${params.claimUrl}
+
+` +
+      `This link works once and expires in 30 days.
+`,
+  });
+}
+
+/**
+ * The owner challenge — the whole point of asking them BEFORE the verifiers
+ * (J6-R2, J6-R3). Sent to every channel we hold.
+ */
+export async function notifyOwnerOfAccessRequest(params: {
+  to: string;
+  requesterName: string;
+  triggerType: string;
+  reason: string | null;
+  caseId: string;
+  expiresAt: string;
+}): Promise<boolean> {
+  return sendEmailBestEffort({
+    to: params.to,
+    subject: `${params.requesterName} is asking for access — is that right?`,
+    text:
+      `${params.requesterName} has asked for ${params.triggerType} access to your vault.
+
+` +
+      (params.reason ? `They said: "${params.reason}"
+
+` : '') +
+      `If you are fine, say so and nothing opens:
+${appUrl()}/challenge
+
+` +
+      `If you do not answer by ${new Date(params.expiresAt).toUTCString()}, we will ask the ` +
+      `people you nominated whether this is genuine.
+
+` +
+      `Reference ${params.caseId}
+`,
+  });
+}
+
+/** Honest status back to the requester, whatever the outcome (J6-R10). */
+export async function notifyRequesterOfOutcome(params: {
+  to: string;
+  name: string;
+  outcome: 'denied_by_owner' | 'approved_by_owner' | 'escalated';
+  ownerLabel: string;
+  caseId: string;
+}): Promise<boolean> {
+  const body = {
+    denied_by_owner:
+      `${params.ownerLabel} let us know they are fine, so nothing has been opened.
+
+` +
+      `If you are still worried, contact them directly.`,
+    approved_by_owner:
+      `${params.ownerLabel} approved your request. Access is opening now — check your email ` +
+      `for the link, or sign in.`,
+    escalated:
+      `We have not heard back from ${params.ownerLabel}, so we are now asking the people they ` +
+      `nominated to confirm this is genuine. We will let you know either way.`,
+  }[params.outcome];
+
+  return sendEmailBestEffort({
+    to: params.to,
+    subject: `About your access request (${params.caseId})`,
+    text: `Hi ${params.name},
+
+${body}
+
+Reference ${params.caseId}
+`,
+  });
+}
+
+/**
+ * Social transparency: everyone in the circle learns a request was made,
+ * whatever the outcome. A covert access attempt becomes impossible, which is
+ * the deterrent that matters most in a family context (J6-R9).
+ */
+export async function notifyCircleOfRequest(
+  contacts: { email: string; name: string }[],
+  params: { requesterName: string; ownerLabel: string; caseId: string },
+): Promise<number> {
+  const results = await Promise.all(
+    contacts.map((c) =>
+      sendEmailBestEffort({
+        to: c.email,
+        subject: `For your awareness: someone asked for access to ${params.ownerLabel}'s vault`,
+        text:
+          `Hi ${c.name},
+
+` +
+          `${params.requesterName} has requested access to ${params.ownerLabel}'s accounts. ` +
+          `You are receiving this because you are part of their circle.
+
+` +
+          `No action is needed from you right now — we are asking ${params.ownerLabel} first. ` +
+          `We are telling you simply so that nothing happens quietly.
+
+` +
+          `Reference ${params.caseId}
+`,
+      }),
+    ),
+  );
+  return results.filter(Boolean).length;
 }

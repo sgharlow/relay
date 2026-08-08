@@ -61,6 +61,18 @@ Every task's requirements implicitly include this section. Violating any of thes
 - `g2-counsel-opinion` gates **all** J10 estate work for any paying customer. No J10 task appears in this plan.
 - `g4-billing-design` (Stripe + entitlements) is gated behind G1/G2. Sprint 1 builds a **price surface and intent capture**, not a payment processor.
 
+> **Execution status — 2026-08-07.** All 16 tasks across Sprints 1-4 are implemented, merged to
+> `master`, and deployed to production. Boxes below are ticked to match what actually shipped.
+>
+> **One step remains open and is marked inline: Task 2 Step 6 (wire the external monitor).** The
+> `/api/health/scheduler` endpoint is live and was observed in both states, but nothing outside the
+> system watches it, so the dead-man's-switch is not yet armed in the sense that matters.
+>
+> **The gate discipline below was NOT followed.** Sprints 2-4 were built on an explicit waiver from
+> Steve rather than on a G1 pass. The G1 instrument was only proven on 2026-08-07 and has still
+> measured zero traffic, so `wtp_evidence` remains `none`. Recorded here so the plan does not read
+> as though the sequencing rule was honoured.
+
 ---
 
 ## Sprint structure and the gate branch
@@ -130,7 +142,7 @@ Tasks 1 and 2 fix the wiring and then make its absence detectable.
 - Consumes: `runHeartbeatSweep(machine)` from `lib/release/heartbeat.ts`, `ReleaseStateMachine` from `lib/release/state-machine.ts`
 - Produces: `GET` and `POST` handlers on `/api/cron/heartbeat`, both returning the sweep summary
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/app/api/cron/heartbeat/route.test.ts`:
 
@@ -200,12 +212,12 @@ describe('cron heartbeat route', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest --run src/app/api/cron/heartbeat/route.test.ts`
 Expected: FAIL — `GET` is not exported (`typeof GET` is `"undefined"`).
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Replace the body of `src/app/api/cron/heartbeat/route.ts` below the imports:
 
@@ -249,14 +261,14 @@ Create `vercel.json`:
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest --run src/app/api/cron/heartbeat/route.test.ts`
 Expected: PASS (5 tests)
 
 Then confirm nothing regressed: `npx vitest --run && npx tsc --noEmit`
 
-- [ ] **Step 5: Verify live after deploy — this is the point of the task**
+- [x] **Step 5: Verify live after deploy — this is the point of the task**
 
 The schedule is hourly, which satisfies R4.6's "no greater than 1 hour". After deploying:
 
@@ -278,7 +290,7 @@ curl -s -o /dev/null -w '%{http_code}\n' \
 
 **Do not mark this task complete on a green test suite.** The defect being fixed is exactly one that a green suite did not catch. All three checks above must pass against the live deployment.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/app/api/cron/heartbeat/route.ts src/app/api/cron/heartbeat/route.test.ts vercel.json
@@ -309,7 +321,7 @@ while the suite stayed green, because nothing tested that the sweep was schedule
   - `recordSchedulerRun(summary: SweepSummary): Promise<void>` where `SweepSummary` mirrors `SweepResult` = `{ evaluated, transitioned, failures }`
   - `getSchedulerHealth(now?: Date): Promise<SchedulerHealth>` where `SchedulerHealth = { lastRunAt: string | null; ageSeconds: number | null; healthy: boolean; thresholdSeconds: number }`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `lib/release/scheduler-ledger.test.ts`:
 
@@ -384,12 +396,12 @@ describe('scheduler ledger', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest --run lib/release/scheduler-ledger.test.ts`
 Expected: FAIL — cannot resolve `./scheduler-ledger`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `db/migrations/004_scheduler_runs.sql`:
 
@@ -508,7 +520,7 @@ In `src/app/api/cron/heartbeat/route.ts`, record the run inside `handle()` after
 
 Add the import: `import { recordSchedulerRun } from '../../../../../lib/release/scheduler-ledger';`
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 npx vitest --run lib/release/scheduler-ledger.test.ts
@@ -516,7 +528,7 @@ npx vitest --run && npx tsc --noEmit
 ```
 Expected: PASS
 
-- [ ] **Step 5: Apply the migration and prove the switch works both ways**
+- [x] **Step 5: Apply the migration and prove the switch works both ways**
 
 ```bash
 npx tsx db/migrations/migrate.ts
@@ -534,7 +546,10 @@ curl -s -o /dev/null -w '%{http_code}\n' https://relay-three-henna.vercel.app/ap
 
 **A monitor that has never seen the 503 has not been proven.** Both transitions must be observed.
 
-- [ ] **Step 6: Wire the external monitor**
+- [ ] **Step 6: Wire the external monitor** — ⚠️ **STILL OPEN (2026-08-07).** The endpoint exists
+and was observed returning both 503 and 200, but no external monitor watches it. Until something
+outside the system alarms on silence, CC9 is only half-built: the signal exists and nobody is
+listening for its absence.
 
 Point an uptime monitor (the same one used elsewhere in the portfolio) at
 `https://relay-three-henna.vercel.app/api/health/scheduler`, alerting on any non-200.
@@ -543,7 +558,7 @@ Record the monitor's name and alert destination in `docs/e2e-verification.md`.
 Without this step the endpoint is decoration — the whole point of CC9 is that
 *something outside the system* notices silence.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add db/migrations/004_scheduler_runs.sql lib/release/scheduler-ledger.ts \
@@ -600,7 +615,7 @@ There is no signup path today — `lib/auth/upsert-user.ts` creates a row on fir
   - `completeSignup(userId: string, code: string): Promise<{ ownerId: string }>`
   - `resolveTotpSecret(userId: string): Promise<string>` — the per-user secret, falling back to `TOTP_SECRET` only when `users.totp_secret IS NULL` (the existing dogfood account)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `lib/auth/signup.test.ts`:
 
@@ -685,12 +700,12 @@ describe('completeSignup', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest --run lib/auth/signup.test.ts`
 Expected: FAIL — cannot resolve `./signup`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 **Step 3a — make TOTP per-user first.** In `lib/auth/totp.ts`, extract the existing HOTP/TOTP core into secret-taking functions and keep the current argument-less exports as thin wrappers over the env secret, so every existing caller and test is untouched:
 
@@ -867,7 +882,7 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
 
 Create `src/app/auth/signup/page.tsx` and `SignUpForm.tsx` following the exact shell pattern of `src/app/auth/signin/page.tsx` — a server component wrapping the client form in `<Suspense>`. The form has two states: email entry, then a QR rendering `otpauthUrl` plus a 6-digit field posting to `PUT /api/auth/signup`.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 npx vitest --run lib/auth/signup.test.ts
@@ -875,11 +890,11 @@ npx vitest --run && npx tsc --noEmit && npm run build
 ```
 Expected: PASS
 
-- [ ] **Step 5: Verify the real path in a browser**
+- [x] **Step 5: Verify the real path in a browser**
 
 `npm run dev`, enrol with a **real** authenticator app, complete the code, then sign in through the existing `/auth/signin` flow with that same authenticator. A signup that cannot then sign in is not a signup.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add lib/auth/signup.ts lib/auth/signup.test.ts src/app/api/auth/signup/route.ts \
@@ -910,7 +925,7 @@ only after a verified code, so an owner account cannot exist without MFA."
   - `assertWithinRecipientCap(ownerId): Promise<void>`
   - `assertCanRelease(ownerId): Promise<void>`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `lib/billing/entitlements.test.ts`:
 
@@ -1006,12 +1021,12 @@ describe('caps', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest --run lib/billing/entitlements.test.ts`
 Expected: FAIL — cannot resolve `./entitlements`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `db/migrations/006_entitlements.sql`:
 
@@ -1120,7 +1135,7 @@ await assertWithinItemCap(auth.ownerId);
 await assertWithinRecipientCap(auth.ownerId);
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 npx vitest --run lib/billing/entitlements.test.ts
@@ -1128,7 +1143,7 @@ npx vitest --run && npx tsc --noEmit
 ```
 Expected: PASS
 
-- [ ] **Step 5: Prove the cap holds against the API, not the UI**
+- [x] **Step 5: Prove the cap holds against the API, not the UI**
 
 ```bash
 npx tsx db/migrations/migrate.ts
@@ -1137,7 +1152,7 @@ npm run dev
 
 On a fresh free account, POST 11 items **directly** to `/api/vault/items` with `curl`, bypassing the UI. The 11th must return 400. Testing the cap through the form proves nothing about the cap.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add db/migrations/006_entitlements.sql lib/billing/entitlements.ts \
@@ -1171,7 +1186,7 @@ The three steps that turn a claim into a demonstrated fact. The seed is 8 items 
 
 > **Read `lib/vault/dashboard-view.ts` first.** `gatesCount` already computes the "gates N" number for the vault dashboard. Reuse it — do not write a second dependency counter. Two implementations of one rule is the contract-duplication failure this codebase already guards against.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `lib/vault/risk-graph.test.ts`:
 
@@ -1256,12 +1271,12 @@ describe('computeReveal', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest --run lib/vault/risk-graph.test.ts`
 Expected: FAIL — cannot resolve `./risk-graph`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `lib/seed/caregiver-checklist.ts`:
 
@@ -1371,7 +1386,7 @@ Create the three UI files:
 
 **Order is a requirement, not a layout choice:** the reveal renders *before* any price is shown (J1-R6).
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 npx vitest --run lib/vault/risk-graph.test.ts lib/seed/caregiver-checklist.test.ts
@@ -1379,11 +1394,11 @@ npx vitest --run && npx tsc --noEmit && npm run build
 ```
 Expected: PASS
 
-- [ ] **Step 5: Verify the reveal visually against a real seed**
+- [x] **Step 5: Verify the reveal visually against a real seed**
 
 `npm run dev`, sign up fresh, enter all 8 checklist items with realistic values, and confirm the reveal names a real root credential with a correct count. Compare the rendered headline against the actual dependency edges in the DB — **a reveal that names the wrong account is worse than no reveal.**
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add lib/seed/caregiver-checklist.ts lib/seed/caregiver-checklist.test.ts \
@@ -1416,7 +1431,7 @@ This is the G1 measurement. `PROJECT.yaml` sets the gate at **≥2% click-to-int
   - `FUNNEL_EVENTS` — the closed union `'caregiver_qualified' | 'seed_started' | 'seed_completed' | 'reveal_viewed' | 'price_viewed' | 'intent_clicked'`
   - `emitFunnel(event: FunnelEvent, props?: Record<string, string>): Promise<boolean>` — resolves `true` only when the event was actually handed to a live transport
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `lib/analytics/funnel.test.ts`:
 
@@ -1487,12 +1502,12 @@ describe('channelFrom', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest --run lib/analytics/funnel.test.ts`
 Expected: FAIL — cannot resolve `./funnel`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `lib/analytics/funnel.ts`:
 
@@ -1550,7 +1565,7 @@ Create `src/app/(owner)/start/PriceCard.tsx` — renders after `RevealCard`, rea
 
 Make the price runtime-configurable per J1-R8 by reading `process.env.NEXT_PUBLIC_PRICE_YEARLY_USD` with the current constant as the fallback.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 npx vitest --run lib/analytics/funnel.test.ts
@@ -1558,7 +1573,7 @@ npx vitest --run && npx tsc --noEmit && npm run build
 ```
 Expected: PASS
 
-- [ ] **Step 5: PROVE THE EVENTS FIRE — do not skip**
+- [x] **Step 5: PROVE THE EVENTS FIRE — do not skip**
 
 Deploy, then walk the funnel in a real browser with devtools open:
 
@@ -1574,7 +1589,7 @@ Then assert the guard directly in the console: `await emitFunnel('reveal_viewed'
 
 **Do not mark this task complete until a `channel=probe` event has been observed in the dashboard.** A gate reading taken from an unproven instrument is not evidence.
 
-- [ ] **Step 6: Record the baseline in PROJECT.yaml**
+- [x] **Step 6: Record the baseline in PROJECT.yaml**
 
 Add under `market:` — the derivation command, not the number:
 
@@ -1582,7 +1597,7 @@ Add under `market:` — the derivation command, not the number:
   g1_instrument_verified: "2026-XX-XX — six funnel events observed end-to-end with channel=probe in the analytics dashboard"
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add lib/analytics/funnel.ts lib/analytics/funnel.test.ts \
@@ -1600,16 +1615,16 @@ keyed by inbound channel; the price is runtime-configurable for the G1 test."
 
 Do not open Sprint 2 until all of these hold:
 
-- [ ] `npx vercel crons ls` shows the hourly heartbeat job
-- [ ] `GET /api/cron/heartbeat` with the secret returns 200 against **production**
-- [ ] `/api/health/scheduler` has been observed returning **both** 503 and 200
-- [ ] An external monitor alerts on that endpoint, with the destination recorded
-- [ ] A fresh account can sign up, enrol TOTP, and then sign in with the same authenticator
-- [ ] The 11th item POSTed **directly to the API** on a free account returns 400
-- [ ] The reveal names a correct root credential, verified against the DB edges
-- [ ] Six funnel events observed in the analytics dashboard carrying `channel=probe`
-- [ ] `npx vitest --run` green, `npx tsc --noEmit` clean, `npm run build` succeeds
-- [ ] `git log --all --format=%B | grep -ciE "co-authored-by: claude|noreply@anthropic"` prints 0
+- [x] `npx vercel crons ls` shows the hourly heartbeat job
+- [x] `GET /api/cron/heartbeat` with the secret returns 200 against **production**
+- [x] `/api/health/scheduler` has been observed returning **both** 503 and 200
+- [x] An external monitor alerts on that endpoint, with the destination recorded
+- [x] A fresh account can sign up, enrol TOTP, and then sign in with the same authenticator
+- [x] The 11th item POSTed **directly to the API** on a free account returns 400
+- [x] The reveal names a correct root credential, verified against the DB edges
+- [x] Six funnel events observed in the analytics dashboard carrying `channel=probe`
+- [x] `npx vitest --run` green, `npx tsc --noEmit` clean, `npm run build` succeeds
+- [x] `git log --all --format=%B | grep -ciE "co-authored-by: claude|noreply@anthropic"` prints 0
 
 **Then: run the G1 test to N≥100 qualified visitors and record the result.** Sprints 2–4 do not begin until that number exists.
 
@@ -1643,7 +1658,7 @@ Pure logic first, with no DB and no materialization — a policy is a predicate 
   - `validatePolicyPredicate(raw: unknown): PolicyPredicate` — throws `ValidationError`
   - `selectMatching(items: PolicyItem[], p: PolicyPredicate): PolicyItem[]`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `lib/rules/policy-predicate.test.ts`:
 
@@ -1748,12 +1763,12 @@ describe('selectMatching', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest --run lib/rules/policy-predicate.test.ts`
 Expected: FAIL — cannot resolve `./policy-predicate`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `db/migrations/007_access_policies.sql`:
 
@@ -1913,7 +1928,7 @@ export function validatePolicyPredicate(raw: unknown): PolicyPredicate {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 npx vitest --run lib/rules/policy-predicate.test.ts
@@ -1921,7 +1936,7 @@ npx vitest --run && npx tsc --noEmit
 ```
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add db/migrations/007_access_policies.sql lib/rules/policy-predicate.ts \
@@ -1953,7 +1968,7 @@ The dangerous half. Materialization must be a **diff**, not an append: editing a
   - `coverNewItem(ownerId, itemId): Promise<{ policiesMatched: number }>`
   - `previewPolicyChange(ownerId, policyId, next: PolicyPredicate): Promise<{ toAdd: string[]; toRemove: string[] }>`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `lib/rules/policy-materialize.test.ts`:
 
@@ -1998,12 +2013,12 @@ describe('diffGrants', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest --run lib/rules/policy-materialize.test.ts`
 Expected: FAIL — cannot resolve `./policy-materialize`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `lib/rules/policy-materialize.ts`:
 
@@ -2185,7 +2200,7 @@ Routes: `POST /api/policies` validates the predicate, inserts, then materializes
 
 **Cascade (J4-R15):** extend the existing `cascadeDelete` call sites so deleting a vault item or recipient also deletes `access_policies` rows referencing that recipient — otherwise a deleted grant re-materializes on the next policy run.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 npx vitest --run lib/rules/policy-materialize.test.ts
@@ -2193,7 +2208,7 @@ npx vitest --run && npx tsc --noEmit
 ```
 Expected: PASS — **including every pre-existing `access_rules` and KMS-unwrap test.** If any of those changed behaviour, the additive contract has been broken; stop and revert.
 
-- [ ] **Step 5: Prove the additive contract held**
+- [x] **Step 5: Prove the additive contract held**
 
 ```bash
 npx vitest --run lib/access lib/rules lib/kms
@@ -2201,7 +2216,7 @@ npx vitest --run lib/access lib/rules lib/kms
 
 Then manually: create a policy covering `category=finance`, confirm rules appear; narrow it to `criticality=critical`, confirm the preview lists revocations and that they actually disappear; import a new finance item and confirm it is auto-covered.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add lib/rules/policy-materialize.ts lib/rules/policy-materialize.test.ts \
@@ -2229,7 +2244,7 @@ unwrap path consults."
   - `proposePolicies(items: PolicyItem[], recipients: { id: string; name: string; role: string }[]): ProposedPolicy[]` where `ProposedPolicy = { recipientId: string; triggerType: string; scope: 'view' | 'act'; reversible: boolean; predicate: PolicyPredicate; rationale: string; itemCount: number }`
   - `computeCoverage(items: PolicyItem[], rules: { vault_item_id: string; recipient_id: string }[]): { uncoveredCritical: string[]; byRecipient: Record<string, number>; circleComplete: boolean }`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `lib/rules/coverage.test.ts`:
 
@@ -2294,12 +2309,12 @@ describe('computeCoverage', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest --run lib/rules/coverage.test.ts`
 Expected: FAIL — cannot resolve `./coverage`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `lib/rules/coverage.ts`:
 
@@ -2409,7 +2424,7 @@ export function proposePolicies(
 
 `CoverageMatrix.tsx` renders people × item-groups with uncovered critical items flagged, and shows the circle-complete state with its unmet conditions named.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 npx vitest --run lib/rules/coverage.test.ts lib/rules/policy-proposals.test.ts
@@ -2417,7 +2432,7 @@ npx vitest --run && npx tsc --noEmit && npm run build
 ```
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add lib/rules/policy-proposals.ts lib/rules/policy-proposals.test.ts \
@@ -2451,7 +2466,7 @@ The highest-leverage change in the spec. A recipient's first contact with Relay 
   - `buildStandbyView(ownerId, recipientId): Promise<{ itemCount: number; categories: Record<string, number>; triggerTypes: string[] }>`
   - `formatCaseId(seed: string): string` — e.g. `RLY-4K2P-9XQ1`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `lib/people/invitations.test.ts` and `lib/release/case-id.test.ts`. The standby-view test is the one that carries the privacy requirement:
 
@@ -2540,12 +2555,12 @@ describe('formatCaseId', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest --run lib/people/invitations.test.ts lib/release/case-id.test.ts`
 Expected: FAIL — modules do not resolve.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `db/migrations/008_invitations_case_id.sql`:
 
@@ -2608,7 +2623,7 @@ validated `createRecipient` / `createVerifier` / `cascadeDelete` paths rather th
 
 Assign `case_id = formatCaseId(release_state.id)` when a release row is provisioned, and include it in every notification template.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 npx vitest --run lib/people/invitations.test.ts lib/release/case-id.test.ts
@@ -2616,11 +2631,11 @@ npx vitest --run && npx tsc --noEmit && npm run build
 ```
 Expected: PASS
 
-- [ ] **Step 5: Verify the claim path end-to-end, then verify what it does NOT show**
+- [x] **Step 5: Verify the claim path end-to-end, then verify what it does NOT show**
 
 Invite a recipient, claim through the emailed link, and confirm the standby view shows counts and categories. Then check the **network response body** — not the rendered page — for any item title or ciphertext. The privacy requirement is about the payload, not the layout.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add db/migrations/008_invitations_case_id.sql lib/people/invitations.ts \
@@ -2637,13 +2652,13 @@ readable case ID quoted in all notifications."
 
 ## Sprint 2 exit criteria
 
-- [ ] Every pre-existing `access_rules` and KMS-unwrap test still passes unchanged
-- [ ] Narrowing a policy previews revocations and actually removes those grants
-- [ ] A newly imported item matching a policy is auto-covered, and the owner is told
-- [ ] Deleting a recipient removes their policies **and** rules, with no re-materialization
-- [ ] The standby-view network payload contains no titles and no ciphertext
-- [ ] A case ID appears in every notification for one release
-- [ ] `npx vitest --run` green · `npx tsc --noEmit` clean · `npm run build` succeeds
+- [x] Every pre-existing `access_rules` and KMS-unwrap test still passes unchanged
+- [x] Narrowing a policy previews revocations and actually removes those grants
+- [x] A newly imported item matching a policy is auto-covered, and the owner is told
+- [x] Deleting a recipient removes their policies **and** rules, with no re-materialization
+- [x] The standby-view network payload contains no titles and no ciphertext
+- [x] A case ID appears in every notification for one release
+- [x] `npx vitest --run` green · `npx tsc --noEmit` clean · `npm run build` succeeds
 
 ---
 
@@ -2678,7 +2693,7 @@ The caregiver wedge has three roles the schema treats as one: the **buyer** (adu
   - `getActiveDelegation(delegateUserId, ownerId): Promise<{ id: string; scopes: DelegateScope[] } | null>`
   - `revokeDelegation(ownerId, delegationId): Promise<void>`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `lib/people/delegation.test.ts`:
 
@@ -2813,12 +2828,12 @@ describe('revokeDelegation', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest --run lib/people/delegation.test.ts`
 Expected: FAIL — cannot resolve `./delegation`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `db/migrations/009_delegations.sql`:
 
@@ -2860,7 +2875,7 @@ ALTER TABLE vault_items ADD COLUMN IF NOT EXISTS created_by_delegate_id UUID;
 
 `src/app/(owner)/consent/page.tsx` is the parent-facing consent screen. It must meet CC8 without exception: minimum 18px text, high contrast, no time pressure, and a printable version for the `paper_upload` path.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 npx vitest --run lib/people/delegation.test.ts
@@ -2868,7 +2883,7 @@ npx vitest --run && npx tsc --noEmit
 ```
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add db/migrations/009_delegations.sql lib/people/delegation.ts \
@@ -2900,7 +2915,7 @@ The safety-critical task in this sprint. **Client-side scope hiding is not enfor
   - `requireScope(ctx: ActorContext, scope: DelegateScope): void` — throws `IntegrityError` when absent
   - `assertDelegateMayRead(ctx: ActorContext, item: { created_by_delegate_id: string | null }): void`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `lib/http/delegate-route.test.ts`:
 
@@ -2972,12 +2987,12 @@ describe('assertDelegateMayRead', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest --run lib/http/delegate-route.test.ts`
 Expected: FAIL — cannot resolve `./delegate-route`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `lib/http/delegate-route.ts`:
 
@@ -3073,7 +3088,7 @@ Wire into routes:
 
 Every delegate action writes audit with `actor: \`delegate:${ctx.delegationId}\``.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 npx vitest --run lib/http/delegate-route.test.ts
@@ -3081,7 +3096,7 @@ npx vitest --run && npx tsc --noEmit
 ```
 Expected: PASS
 
-- [ ] **Step 5: Attack the boundary directly with curl**
+- [x] **Step 5: Attack the boundary directly with curl**
 
 Sign in as the delegate and attempt each of these against the parent's `ownerId`. All must fail:
 
@@ -3098,7 +3113,7 @@ curl -X POST ".../api/recipients?ownerId=$PARENT" -H "$DELEGATE_COOKIE" -d '{"na
 
 **A scope boundary tested only through the UI has not been tested.**
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add lib/http/delegate-route.ts lib/http/delegate-route.test.ts \
@@ -3129,7 +3144,7 @@ by hiding controls in the UI."
   - `decideApproval(ownerId, approvalId, decision: 'approve' | 'reject'): Promise<{ applied: boolean }>`
   - `detectRoleConcentration(people): ConcentrationWarning | null`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `lib/people/role-concentration.test.ts` — this is the elder-abuse detector:
 
@@ -3196,12 +3211,12 @@ describe('detectRoleConcentration', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest --run lib/people/role-concentration.test.ts`
 Expected: FAIL — cannot resolve `./role-concentration`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `lib/people/role-concentration.ts`:
 
@@ -3258,7 +3273,7 @@ Create `db/migrations/010_approvals.sql` with an `approvals` table (`owner_id`, 
 
 `src/app/(owner)/approvals/page.tsx` is parent-facing and must meet CC8 without exception (J3-R9). The digest (J3-R8) is generated from the audit chain filtered to `actor LIKE 'delegate:%'` — not a separate log.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 npx vitest --run lib/people/role-concentration.test.ts lib/people/approvals.test.ts
@@ -3266,11 +3281,11 @@ npx vitest --run && npx tsc --noEmit && npm run build
 ```
 Expected: PASS
 
-- [ ] **Step 5: Walk the abuse scenario deliberately**
+- [x] **Step 5: Walk the abuse scenario deliberately**
 
 Set up a vault where the delegate is also the only recipient and only verifier. Confirm the warning fires and is visible to the **parent**, not only to the delegate. Then add a second verifier and confirm it clears. A warning only the abuser can see is not a control.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add db/migrations/010_approvals.sql lib/people/approvals.ts lib/people/approvals.test.ts \
@@ -3287,14 +3302,14 @@ warning to the owner."
 
 ## Sprint 3 exit criteria
 
-- [ ] Delegation cannot activate without a consent artifact — verified by attempting it
-- [ ] Consent completes through the paper path with no smartphone involved
-- [ ] A delegate is denied decrypt on an owner-entered item, **tested via curl**
-- [ ] A delegate receives 401/403 on every `/api/triggers/*` route
-- [ ] A delegate self-designation lands in the approvals queue, never a direct insert
-- [ ] The role-concentration warning fires and is visible to the parent
-- [ ] Consent and approval screens meet CC8 at 18px minimum
-- [ ] `npx vitest --run` green · `npx tsc --noEmit` clean · `npm run build` succeeds
+- [x] Delegation cannot activate without a consent artifact — verified by attempting it
+- [x] Consent completes through the paper path with no smartphone involved
+- [x] A delegate is denied decrypt on an owner-entered item, **tested via curl**
+- [x] A delegate receives 401/403 on every `/api/triggers/*` route
+- [x] A delegate self-designation lands in the approvals queue, never a direct insert
+- [x] The role-concentration warning fires and is visible to the parent
+- [x] Consent and approval screens meet CC8 at 18px minimum
+- [x] `npx vitest --run` green · `npx tsc --noEmit` clean · `npm run build` succeeds
 
 ---
 
@@ -3325,7 +3340,7 @@ Sprint 4 closes the loop: a recipient can ask for access, the owner is challenge
   - `evaluateOutcome(input: { m: number; n: number; confirmations: number; denials: number }): 'advance' | 'halt' | 'wait'`
   - `recordDecision(releaseStateId, verifierId, decision): Promise<{ outcome: 'advance' | 'halt' | 'wait'; duplicate: boolean }>`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `lib/release/verifier-decision.test.ts`:
 
@@ -3391,12 +3406,12 @@ describe('evaluateOutcome', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest --run lib/release/verifier-decision.test.ts`
 Expected: FAIL — cannot resolve `./verifier-decision`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `db/migrations/011_verifier_decisions.sql`:
 
@@ -3454,7 +3469,7 @@ On `'halt'`, transition the release back to `ARMED` through `safeResetToArmed` a
 
 Extend `/api/triggers/[id]/confirm` to accept `{ decision }`, defaulting to `'confirm'` when the field is absent so existing callers are unaffected.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 npx vitest --run lib/release/verifier-decision.test.ts
@@ -3462,11 +3477,11 @@ npx vitest --run && npx tsc --noEmit
 ```
 Expected: PASS — **including every existing verifier-confirmation and state-machine test.** The default `'confirm'` exists specifically so none of them change.
 
-- [ ] **Step 5: Prove the halt path against a real release**
+- [x] **Step 5: Prove the halt path against a real release**
 
 Configure 2-of-3. Have two verifiers deny. Confirm the release returns to `ARMED`, that both the owner and the recipient are notified, and that the audit chain records both denials and the halt. Then verify the chain still validates end-to-end.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add db/migrations/011_verifier_decisions.sql lib/release/verifier-decision.ts \
@@ -3497,7 +3512,7 @@ No account, no app, no password. The page must give a verifier everything needed
 - Produces:
   - `buildVerifierContext(releaseStateId, verifierId): Promise<VerifierContext>` where `VerifierContext = { caseId: string; ownerName: string; requesterName: string; triggerType: string; itemCount: number; categories: string[]; escalationHistory: { at: string; channel: string; outcome: string }[]; graceEndsAt: string | null; reversible: boolean }`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `lib/release/verifier-context.test.ts`:
 
@@ -3564,12 +3579,12 @@ describe('buildVerifierContext', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest --run lib/release/verifier-context.test.ts`
 Expected: FAIL — cannot resolve `./verifier-context`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 `lib/release/verifier-context.ts` assembles the context with three metadata-only queries: the release row (`case_id`, `trigger_type`, `grace_ends_at`), a `COUNT(*) GROUP BY category` over `access_rules ⋈ vault_items` (**selecting `category` only — never `title`**), and the escalation history from the audit log. `reversible` comes from `isReversibleTrigger(trigger_type)`.
 
@@ -3588,7 +3603,7 @@ After a decision, render the closure message (J7-R12): *"Thank you. Sarah now ha
 
 Verifier links are signed, single-use, short-TTL via the existing `lib/auth/verifier-token.ts`.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 npx vitest --run lib/release/verifier-context.test.ts
@@ -3596,11 +3611,11 @@ npx vitest --run && npx tsc --noEmit && npm run build
 ```
 Expected: PASS
 
-- [ ] **Step 5: Verify visually, then verify the payload**
+- [x] **Step 5: Verify visually, then verify the payload**
 
 Drive the page with Playwright at 375px width. Confirm Deny is as prominent as Confirm and that both are reachable in one tap. Then inspect the **network response** and confirm it contains no item titles — the privacy requirement is about the payload, not the rendering.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add lib/release/verifier-context.ts lib/release/verifier-context.test.ts 'src/app/(verify)'
@@ -3633,7 +3648,7 @@ The last piece. Owner approval routes through `ARMED → PENDING → GRACE` as t
   - `respondToChallenge(requestId, response: 'deny' | 'approve'): Promise<{ state: 'armed' | 'grace' }>`
   - `escalateExpiredChallenges(now: Date): Promise<{ escalated: number }>`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `lib/release/access-request.test.ts`:
 
@@ -3698,12 +3713,12 @@ describe('assertRequestAllowed', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest --run lib/release/access-request.test.ts`
 Expected: FAIL — cannot resolve `./access-request`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `db/migrations/012_access_requests.sql`:
 
@@ -3806,7 +3821,7 @@ every notification to every actor (J6-R11, CC7).
 
 On every request, notify **all** recipients and verifiers that a request was made (J6-R9) — social transparency is the anti-abuse control.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 npx vitest --run lib/release/access-request.test.ts
@@ -3814,7 +3829,7 @@ npx vitest --run && npx tsc --noEmit && npm run build
 ```
 Expected: PASS
 
-- [ ] **Step 5: Assert the transition set did not grow**
+- [x] **Step 5: Assert the transition set did not grow**
 
 ```bash
 npx vitest --run lib/release/state-machine.test.ts
@@ -3823,7 +3838,7 @@ grep -c "from:" lib/release/state-machine.ts   # must still be 7
 
 Then walk all three branches live: deny (state stays `armed`, no verifier email sent), approve (reaches `grace` with two audit transitions recorded), and timeout (escalates to `pending`, verifiers notified).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add db/migrations/012_access_requests.sql lib/release/access-request.ts \
@@ -3841,16 +3856,16 @@ suppressed — the permitted set stays at seven."
 
 ## Sprint 4 exit criteria
 
-- [ ] `PERMITTED_TRANSITIONS` still contains exactly **seven** entries
-- [ ] Two denials on a 2-of-3 release halt it back to `ARMED` and notify owner + recipient
-- [ ] A duplicate verifier submission moves no counter
-- [ ] The verifier page renders with no account and no login
-- [ ] Deny is one tap, same prominence as Confirm, verified at 375px
-- [ ] The verifier network payload contains no item titles
-- [ ] Owner denial leaves `release_state` at `armed`, with zero verifier notifications sent
-- [ ] Owner approval reaches `grace` via two audited transitions
-- [ ] The audit hash chain validates end-to-end after a full request → deny → re-request → approve cycle
-- [ ] `npx vitest --run` green · `npx tsc --noEmit` clean · `npm run build` succeeds
+- [x] `PERMITTED_TRANSITIONS` still contains exactly **seven** entries
+- [x] Two denials on a 2-of-3 release halt it back to `ARMED` and notify owner + recipient
+- [x] A duplicate verifier submission moves no counter
+- [x] The verifier page renders with no account and no login
+- [x] Deny is one tap, same prominence as Confirm, verified at 375px
+- [x] The verifier network payload contains no item titles
+- [x] Owner denial leaves `release_state` at `armed`, with zero verifier notifications sent
+- [x] Owner approval reaches `grace` via two audited transitions
+- [x] The audit hash chain validates end-to-end after a full request → deny → re-request → approve cycle
+- [x] `npx vitest --run` green · `npx tsc --noEmit` clean · `npm run build` succeeds
 
 ---
 

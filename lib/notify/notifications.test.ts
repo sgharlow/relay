@@ -56,7 +56,7 @@ describe('notifyVerifiersForTrigger', () => {
     );
     expect(n).toBe(2);
     expect(sent).toHaveLength(2);
-    expect(sent[0].text).toContain('/confirm?token=');
+    expect(sent[0].text).toContain('/verify?token=');
     // verifiers must never receive secret material
     expect(sent[0].text).not.toContain('ciphertext');
   });
@@ -99,5 +99,23 @@ describe('notifyOwnerReleasePendingGrace', () => {
     await notifyOwnerReleasePendingGrace('owner@example.com', 'emergency');
     expect(sent[0].to).toBe('owner@example.com');
     expect(sent[0].subject).toContain('grace window');
+  });
+});
+
+describe('verifier link regression', () => {
+  it('REGRESSION: the verifier link must never point at /confirm', async () => {
+    _setResendClientForTesting(stubResend());
+    // /confirm has never existed and 404s in production, so every verifier
+    // email sent before 2026-08-07 led to a dead page and the N-of-M loop
+    // could not be completed from email at all.
+    await notifyVerifiersForTrigger(
+      [{ id: 'v1', name: 'Alex', email: 'alex@example.com' }],
+      'emergency',
+      'rs-1',
+    );
+
+    const body = sent[0]?.text ?? '';
+    expect(body).toContain('/verify?token=');
+    expect(body).not.toContain('/confirm?token=');
   });
 });

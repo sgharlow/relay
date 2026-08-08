@@ -18,6 +18,44 @@
 
 ---
 
+## ⚠️ Build state — updated 2026-08-07
+
+**The inline `[BUILT]` / `[GAP]` / `[P2]` tags below are as-of-authoring (2026-08-06) and are now
+partly stale.** They are deliberately NOT rewritten in place: retagging 74 requirements by hand
+would mean asserting a build state for each one, and a wrong tag here is worse than a dated one.
+
+**Authority for build state is `docs/implementation-plan-4-sprints.md` (16 tasks, 15 of 16 steps
+complete) and `PROJECT.yaml`.** This document remains authoritative for the journeys themselves —
+the process flows, data flows, and numbered requirements.
+
+**Shipped and deployed since authoring** (all four sprints, `master` @ deployed):
+
+| Journey | What now exists |
+|---|---|
+| J1 | Self-serve signup with per-user TOTP · server-side free-tier caps · prompted 8-item seed · zero-knowledge moment · risk-graph reveal · price surface · funnel instrument **live-proven on the wire** |
+| J3 | Full delegation model — consent artifacts incl. a paper path, server-side scope enforcement, read boundary at `/api/kms/unwrap`, approvals queue, role-concentration detector |
+| J4 | Access policies materialising into `access_rules` as a diff · coverage matrix · proposed policies · unified people list · invitations (now emailed) · release case IDs |
+| J5 | Heartbeat scheduler **wired** (it had never been scheduled) · `scheduler_runs` ledger · `/api/health/scheduler` |
+| J6 | Recipient access requests · owner-challenge-first · velocity limits · circle notification |
+| J7 | Verifier deny / abstain / halt · the verifier decision surface (there was none) |
+
+**Still genuinely open, and not to be read as built:**
+
+- **CC9 is half-built.** `/api/health/scheduler` exists and was observed in both states, but no
+  external monitor watches it. Nothing outside the system alarms on silence.
+- **J5 retention work** — passive liveness, escalation ladder, quarterly review, renewal receipt.
+- **J8 / J9 refinements** — precomputed triage plan, single-next-action, ephemeral reveal, shared
+  progress, reversal receipt, graceful close.
+- **J2 review-by-exception** and the document/email ingestion lanes.
+- **All of J10 (estate)** — still correctly blocked on `g2-counsel-opinion`.
+- **Identity verification (KYC) at claim**, and mobile.
+
+**And the thing no amount of shipping changes:** `wtp_evidence` is still `none`. Sprints 2-4 were
+built on an explicit waiver of the G1 gate, and G1 has measured zero traffic. The instrument is
+now proven; the demand is not.
+
+---
+
 ## Status legend — read this before anything else
 
 Every step and requirement below carries a build-state tag. The full commercial horizon was

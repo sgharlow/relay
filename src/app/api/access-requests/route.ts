@@ -26,6 +26,10 @@ import {
   type TriggerType,
 } from '../../../../lib/release/access-request';
 import { ValidationError } from '../../../../lib/validation';
+import {
+  notifyOwnerOfAccessRequest,
+  notifyCircleOfRequest,
+} from '../../../../lib/notify/notifications';
 
 export async function GET(): Promise<NextResponse> {
   const auth = await requireOwner();
@@ -88,6 +92,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     assertRequestAllowed(recent.rows);
 
     const now = new Date();
+    const caseId = formatCaseId(`${payload.recipientId}:${now.toISOString()}`);
     const inserted = await query<{ id: string }>(
       `INSERT INTO access_requests
          (owner_id, recipient_id, trigger_type, reason, case_id, expires_at)
@@ -98,7 +103,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         payload.recipientId,
         trigger_type,
         typeof reason === 'string' ? reason : null,
-        formatCaseId(`${payload.recipientId}:${now.toISOString()}`),
+        caseId,
         challengeExpiry(trigger_type as TriggerType, now),
       ],
     );
@@ -111,12 +116,38 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       detail: { trigger_type },
     });
 
+    // Challenge the OWNER first — the entire point of this flow (J6-R2).
+    const [ownerRow, requester, circle] = await Promise.all([
+      query<{ email: string }>(`SELECT email FROM users WHERE id = $1 LIMIT 1`, [ownerId]),
+      query<{ name: string }>(`SELECT name FROM recipients WHERE id = $1 LIMIT 1`, [payload.recipientId]),
+      query<{ email: string; name: string }>(
+        `SELECT email, name FROM recipients WHERE owner_id = $1 AND id <> $2
+         UNION ALL
+         SELECT email, name FROM verifiers WHERE owner_id = $1`,
+        [ownerId, payload.recipientId],
+      ),
+    ]);
+
+    const requesterName = requester.rows[0]?.name ?? 'Someone you trust';
+    const ownerLabel = ownerRow.rows[0]?.email ?? 'the vault owner';
+    const expiresAt = challengeExpiry(trigger_type as TriggerType, now);
+
+    const challenged = ownerRow.rows[0]
+      ? await notifyOwnerOfAccessRequest({
+          to: ownerRow.rows[0].email,
+          requesterName,
+          triggerType: trigger_type,
+          reason: typeof reason === 'string' ? reason : null,
+          caseId,
+          expiresAt,
+        })
+      : false;
+
+    // Social transparency — nothing happens quietly (J6-R9).
+    await notifyCircleOfRequest(circle.rows, { requesterName, ownerLabel, caseId });
+
     return NextResponse.json(
-      {
-        id: inserted.rows[0].id,
-        status: 'awaiting_owner',
-        expiresAt: challengeExpiry(trigger_type as TriggerType, now),
-      },
+      { id: inserted.rows[0].id, status: 'awaiting_owner', expiresAt, ownerChallenged: challenged },
       { status: 201 },
     );
   } catch (err) {
