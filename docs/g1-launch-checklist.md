@@ -37,6 +37,14 @@ Re-run all four checks at merge time if the branch has moved past `af4ddf3`.
 - [ ] **4. Push master** — verdict freeze is over at this point by definition. Vercel auto-deploys.
 - [ ] **5. Enable Vercel Web Analytics** on the project (dashboard toggle, zero code) — this is
       the G1 measurement instrument; without it there is no denominator.
+- [x] **5b. Funnel instrument live-proven on relaystandby.com (added and DONE 2026-08-08).**
+      This was the single largest open risk: every sprint was built on a G1 waiver, so no reading
+      was trustworthy, and the custom domain moved the surface after the last check. Driven in a
+      real browser at a 390px viewport, `/caregivers?src=reddit_test` -> hero CTA:
+      `caregiver_qualified` and `caregiver_intent` both POST 200 to the first-party collector, and
+      BOTH payloads carry `src: "reddit_test"` — numerator and denominator share the channel
+      vocabulary, so the gate ratio is computable per lane. `cta: "hero"` rides alongside for
+      lane-vs-lane analysis. Payloads read off the wire, not inferred from code.
 - [ ] **6. Live post-deploy probes:**
       - `/caregivers` → 200, price visible on CTA, reversibility-led hero.
       - `/caregivers/interest?src=hero` → 200, noindex meta present, mailto CTA correct.
@@ -60,11 +68,33 @@ Re-run all four checks at merge time if the branch has moved past `af4ddf3`.
       `RESEND_FROM_ADDRESS=relay@relaystandby.com`. Does NOT block Lane A (its conversion is an
       inbound `mailto:`), but every invitation, owner challenge and verifier notification depends
       on it — i.e. all of Lane B past signup.
-- [ ] **7c. DMARC + reply capability (added 2026-08-08).** Two Resend-accepted sends did not land
-      at a cox.net address. SPF and DKIM are correct; there is NO `_dmarc` record, and cox.net is
-      operated by Yahoo, which has required DMARC from bulk senders since Feb 2024 and weights it
-      heavily for domains with no sending history. Exact records, plus Cloudflare Email Routing so
-      `relay@relaystandby.com` can receive replies at all: `docs/email-dns-runbook.md`.
+- [x] **7c. DMARC + reply capability (added and DONE 2026-08-08).** DMARC published and verified by
+      DoH. Reply capability shipped as a `Reply-To` header (`RESEND_REPLY_TO_ADDRESS`) and
+      live-proven — the reply to test #3 arrived. The cox.net bounces were NOT a DMARC problem:
+      cox.net is Yahoo-operated and Yahoo does not support `+tag` addressing, so
+      `sgharlow+relay@cox.net` was never a real mailbox. The untagged address delivered.
+      Full write-up: `docs/email-dns-runbook.md`.
+- [ ] **7d. Cloudflare Email Routing (added 2026-08-08, STEVE — DNS).** Apex has no MX, so
+      `relay@relaystandby.com` cannot receive mail and the public contact address on the landing,
+      privacy and terms pages is a personal Gmail. Enabling Email Routing gives
+      `hello@relaystandby.com` forwarding to a real inbox and lets From and Reply-To match. Records
+      in `docs/email-dns-runbook.md` §2. Not blocking — the Gmail works — but it is the last thing
+      on the paid surface that reads as unfinished.
+- [x] **7e. Lead capture on the intent page (added and DONE 2026-08-08).** `/caregivers/interest`
+      offered only a `mailto:` link, which on the mobile traffic this gate buys means handing the
+      visitor to an app many have never configured: intent would fire on the pageview while no
+      contactable human was captured, and the gate would read as if it were working. Replaced with
+      a real form writing BOTH a `caregiver_leads` row and a notification email, so a broken
+      capture path cannot masquerade as absent demand. Migration 013 applied to live DSQL.
+      Live-proven end-to-end from a 390px viewport: `src`/`cta` attribution intact through to the
+      row, honeypot silently discards, invalid email 400s, rate limiter 429s. Test rows purged —
+      `caregiver_leads` starts the flight at 0.
+- [x] **7f. Ad-surface metadata (added and DONE 2026-08-08).** `metadataBase` still declared
+      `relay-three-henna.vercel.app`, so every `og:url`/`og:image` — including what Meta and Reddit
+      crawl during ad review — pointed at the pre-domain deployment. Now `relaystandby.com`, with a
+      caregiver-specific share card (the root card sells Aurora DSQL and a state machine, which is
+      the wrong pitch for this audience), plus `robots.txt` and `sitemap.xml`, both previously 404.
+      `/caregivers/interest` stays noindexed so intent counts paid clicks, not organic arrivals.
 - [ ] **8. Launch paid lanes** per `g1-channel-send-kit.md` (ratified budget ceiling; `src`
       values per lane). Organic participation stays Steve-voice-only per the channel-rules audit.
 - [ ] **9. Log window start date** + N-counting rules in the gate tracking note; the gate
