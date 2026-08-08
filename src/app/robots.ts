@@ -23,7 +23,7 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: '*',
-      allow: ['/', '/caregivers', '/privacy', '/terms'],
+      allow: ['/', '/caregivers', '/how-it-works', '/privacy', '/terms'],
       disallow: ['/api/', '/auth/', '/vault', '/start', '/access', '/verify', '/caregivers/interest'],
     },
     sitemap: 'https://relaystandby.com/sitemap.xml',

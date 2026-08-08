@@ -157,6 +157,18 @@ export default function CaregiversLanding() {
               </div>
             ))}
           </div>
+
+          {/* The prose above is the summary; the table is what someone actually
+              comparing options wants. Placed here rather than in the footer
+              because this is the moment they are weighing alternatives. */}
+          <div className="mt-8">
+            <Link
+              href="/how-it-works#compare"
+              className="inline-flex min-h-[44px] items-center text-sm font-medium text-amber-300 underline decoration-amber-500/40 underline-offset-4 hover:text-amber-200"
+            >
+              See the full comparison — including where Relay loses →
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -211,11 +223,15 @@ export default function CaregiversLanding() {
               by anyone deciding whether to trust this with a parent's
               credentials. min-h-[44px] keeps them tappable on a phone. */}
           <div className="flex flex-wrap items-center gap-x-5">
+            {/* Was "About Relay" → "/", which is still the hackathon submission
+                page — Aurora DSQL, a stack section, Devpost and GitHub links. The
+                single link a curious caregiver clicked took them from this page to
+                one about database consistency. */}
             <Link
-              href="/"
+              href="/how-it-works"
               className="inline-flex min-h-[44px] items-center transition-colors hover:text-slate-300"
             >
-              About Relay
+              How it works
             </Link>
             <Link
               href="/privacy"
