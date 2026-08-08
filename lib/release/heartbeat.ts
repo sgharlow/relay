@@ -24,6 +24,7 @@
 
 import { query } from '../db/connection';
 import { writeAuditEntry } from '../audit/audit-service';
+import { notifyRecipientsOfClosure } from '../notify/notifications';
 import { isReversibleTrigger, type ReleaseStateMachine } from './state-machine';
 import { GRACE_WINDOW_MS } from './triggers';
 
@@ -104,6 +105,19 @@ export async function processCheckin(ownerId: string, machine: Machine): Promise
             : undefined,
       });
       reset.push(row.trigger_type);
+
+      // A RELEASED trigger had recipients holding live access, and they are now
+      // owed an explanation. Check-in is the OTHER way access closes — the
+      // stand-down button is not the only one — so the notice belongs on both
+      // paths or a recipient hears nothing depending on which control the owner
+      // happened to use. Best-effort: closing access must not depend on mail.
+      if (row.state === 'released') {
+        try {
+          await notifyRecipientsOfClosure({ ownerId, triggerType: row.trigger_type });
+        } catch (err) {
+          process.stderr.write(`[checkin] closure notification failed: ${String(err)}\n`);
+        }
+      }
     } catch {
       // A concurrent writer moved this row; it will be re-evaluated on the next
       // heartbeat. Do not fail the whole check-in for one racing row.

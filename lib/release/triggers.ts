@@ -21,7 +21,7 @@ import { query } from '../db/connection';
 import { isSqlState40001, withOccRetry } from '../db/occ';
 import { writeAuditEntry } from '../audit/audit-service';
 import { DECISIONS, evaluateOutcome, type Decision } from './verifier-decision';
-import { notifyRecipientsOfRelease } from '../notify/notifications';
+import { notifyRecipientsOfRelease, notifyRecipientsOfClosure } from '../notify/notifications';
 import {
   canRelease,
   isReversibleTrigger,
@@ -228,6 +228,18 @@ export async function standDownTrigger(
     entityId: row.id,
     detail: { trigger_type: row.trigger_type, from: row.state },
   });
+
+  // Only a RELEASED trigger had recipients with live access, so only that case
+  // leaves anyone owed an explanation. Best-effort by design: closing access is
+  // the safety-critical half and must not be held up, let alone rolled back, by
+  // a mail failure.
+  if (row.state === 'released') {
+    try {
+      await notifyRecipientsOfClosure({ ownerId, triggerType: row.trigger_type });
+    } catch (err) {
+      process.stderr.write(`[release] closure notification failed: ${String(err)}\n`);
+    }
+  }
 
   return updated;
 }

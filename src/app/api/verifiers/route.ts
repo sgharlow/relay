@@ -8,6 +8,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { requireOwner, readJson, isResponse, mapError } from '../../../../lib/http/owner-route';
 import { listVerifiers, createVerifier, validateVerifierInput } from '../../../../lib/people/verifiers';
+import { inviteOnCreateBestEffort } from '../../../../lib/people/invite';
 
 export async function GET(): Promise<NextResponse> {
   const auth = await requireOwner();
@@ -25,6 +26,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const input = validateVerifierInput(body);
     const verifier = await createVerifier(auth.ownerId, input);
+
+    // A verifier who first hears of Relay in an "Action needed" email during
+    // someone's emergency is the one most likely to dismiss it as phishing —
+    // and J7 only works if verifiers answer. Introduce them while nothing is
+    // happening, which is exactly what the invitation copy says.
+    await inviteOnCreateBestEffort(auth.ownerId, verifier.id, 'verifier');
     return NextResponse.json(verifier, { status: 201 });
   } catch (err) {
     return mapError(err);

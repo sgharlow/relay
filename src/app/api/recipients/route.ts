@@ -9,6 +9,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { requireOwner, readJson, isResponse, mapError } from '../../../../lib/http/owner-route';
 import { listRecipients, createRecipient, validateRecipientInput } from '../../../../lib/people/recipients';
 import { assertWithinRecipientCap, EntitlementError } from '../../../../lib/billing/entitlements';
+import { inviteOnCreateBestEffort } from '../../../../lib/people/invite';
 
 export async function GET(): Promise<NextResponse> {
   const auth = await requireOwner();
@@ -28,6 +29,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // Free-tier cap, asserted server-side (J1-R7).
     await assertWithinRecipientCap(auth.ownerId);
     const recipient = await createRecipient(auth.ownerId, input);
+
+    // Tell them they have been named, now, while nothing is happening. Until
+    // 2026-08-08 nobody was told until an emergency was already underway, which
+    // is the worst possible introduction to a product asking for trust.
+    await inviteOnCreateBestEffort(auth.ownerId, recipient.id, 'recipient');
+
     return NextResponse.json(recipient, { status: 201 });
   } catch (err) {
     if (err instanceof EntitlementError) {

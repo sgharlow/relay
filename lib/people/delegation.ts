@@ -20,6 +20,7 @@
 import { query } from '../db/connection';
 import { withOccRetry } from '../db/occ';
 import { writeAuditEntry } from '../audit/audit-service';
+import { notifyOwnerOfDelegation } from '../notify/notifications';
 import { ValidationError } from '../validation';
 
 /**
@@ -109,6 +110,34 @@ export async function recordConsent(
     entityId: row.id,
     detail: { method: input.method, evidenceRef: input.evidenceRef },
   });
+
+  // Tell the owner, in their own inbox, that someone now has setup rights on
+  // their vault. Consent is already required before this point, so it cannot be
+  // a surprise — but consent given verbally at a kitchen table leaves an older
+  // owner nothing to find afterwards, and this is the message that says what
+  // was agreed, what it does and does not permit, and how to end it. It is also
+  // the honest check on a delegation model: the person whose vault it is always
+  // gets told. Best-effort — a mail failure must not undo recorded consent.
+  try {
+    const parties = await query<{ owner_email: string; delegate_email: string }>(
+      `SELECT o.email AS owner_email, d.email AS delegate_email
+         FROM delegations dg
+         JOIN users o ON o.id = dg.owner_id
+         JOIN users d ON d.id = dg.delegate_user_id
+        WHERE dg.id = $1 LIMIT 1`,
+      [row.id],
+    );
+    const p = parties.rows[0];
+    if (p) {
+      await notifyOwnerOfDelegation({
+        ownerEmail: p.owner_email,
+        delegateLabel: p.delegate_email,
+        consentMethod: input.method,
+      });
+    }
+  } catch (err) {
+    process.stderr.write(`[delegation] consent notification failed: ${String(err)}\n`);
+  }
 
   return { status: 'active' };
 }

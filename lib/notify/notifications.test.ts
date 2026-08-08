@@ -12,6 +12,8 @@ import {
   notifyOwnerReleasePendingGrace,
   notifyOwnerTriggerPending,
   notifyRecipientsOfRelease,
+  notifyRecipientAccessClosed,
+  notifyOwnerOfDelegation,
 } from './notifications';
 import { query } from '../db/connection';
 
@@ -206,5 +208,96 @@ describe('subject-line grammar', () => {
 
     expect(sent[0].subject).toBe('An emergency trigger was initiated on your account');
     expect(sent[0].text).toContain('An "emergency" trigger');
+  });
+});
+
+/**
+ * The quiet moments.
+ *
+ * Transcribing a full family arc on 2026-08-08 produced three messages, ALL of
+ * them during the crisis. These cover the moments the product used to stay
+ * silent through.
+ */
+describe('closure notice to the recipient', () => {
+  it('leads with reassurance, not an error', async () => {
+    _setResendClientForTesting(stubResend());
+    await notifyRecipientAccessClosed({
+      to: 'sarah@example.com', name: 'Sarah', ownerLabel: 'Margaret',
+      itemsGranted: 4, itemsOpened: 2,
+    });
+
+    expect(sent[0].subject).toBe('Access closed — Margaret is back');
+    expect(sent[0].text).toContain('Nothing is wrong');
+    expect(sent[0].text).toContain('Thank you for stepping in');
+  });
+
+  it('reports what they opened and what they did not', async () => {
+    _setResendClientForTesting(stubResend());
+    await notifyRecipientAccessClosed({
+      to: 'sarah@example.com', name: 'Sarah', ownerLabel: 'Margaret',
+      itemsGranted: 4, itemsOpened: 2,
+    });
+
+    expect(sent[0].text).toContain('trusted with 4 items');
+    expect(sent[0].text).toContain('opened 2 of them');
+    expect(sent[0].text).toContain('other 2 are');
+  });
+
+  it('uses singular English when exactly one went unopened', async () => {
+    _setResendClientForTesting(stubResend());
+    await notifyRecipientAccessClosed({
+      to: 'a@b.com', name: 'Sarah', ownerLabel: 'Margaret', itemsGranted: 2, itemsOpened: 1,
+    });
+    expect(sent[0].text).toContain('other one is');
+  });
+
+  it('handles a recipient who opened nothing without sounding accusatory', async () => {
+    _setResendClientForTesting(stubResend());
+    await notifyRecipientAccessClosed({
+      to: 'a@b.com', name: 'Sarah', ownerLabel: 'Margaret', itemsGranted: 3, itemsOpened: 0,
+    });
+    expect(sent[0].text).toContain('did not need to open any');
+  });
+
+  it('carries NO link — a message that closes a loop should not open one', async () => {
+    _setResendClientForTesting(stubResend());
+    await notifyRecipientAccessClosed({
+      to: 'a@b.com', name: 'Sarah', ownerLabel: 'Margaret', itemsGranted: 1, itemsOpened: 1,
+    });
+    expect(sent[0].text).not.toMatch(/https?:\/\//);
+  });
+});
+
+describe('delegation confirmation to the owner', () => {
+  it('states the boundary of what a delegate can and cannot do', async () => {
+    _setResendClientForTesting(stubResend());
+    await notifyOwnerOfDelegation({
+      ownerEmail: 'margaret@example.com', delegateLabel: 'sarah@example.com',
+      consentMethod: 'in_person',
+    });
+
+    expect(sent[0].text).toContain('CANNOT see anything already');
+    expect(sent[0].text).toContain('cannot release anything');
+  });
+
+  it.each([
+    ['in_person', 'in person'],
+    ['paper_upload', 'on paper'],
+    ['link', 'by link'],
+  ])('describes %s consent as "%s"', async (method, phrase) => {
+    _setResendClientForTesting(stubResend());
+    await notifyOwnerOfDelegation({
+      ownerEmail: 'm@example.com', delegateLabel: 's@example.com', consentMethod: method,
+    });
+    expect(sent[0].text).toContain(phrase);
+  });
+
+  it('tells the owner how to end it', async () => {
+    _setResendClientForTesting(stubResend());
+    await notifyOwnerOfDelegation({
+      ownerEmail: 'm@example.com', delegateLabel: 's@example.com', consentMethod: 'link',
+    });
+    expect(sent[0].text).toContain('/circle');
+    expect(sent[0].text).toContain('end it at any time');
   });
 });

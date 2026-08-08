@@ -25,6 +25,7 @@ import { query, closeAllPools } from '../lib/db/connection';
 import { writeAuditEntry } from '../lib/audit/audit-service';
 import { issueRecipientToken } from '../lib/auth/recipient-token';
 import { createDelegation, recordConsent, getActiveDelegation } from '../lib/people/delegation';
+import { inviteOnCreateBestEffort } from '../lib/people/invite';
 import { notifyVerifiersForTrigger, notifyOwnerTriggerPending } from '../lib/notify/notifications';
 import { initiateTrigger, submitConfirmation, standDownTrigger } from '../lib/release/triggers';
 import { ReleaseStateMachine } from '../lib/release/state-machine';
@@ -96,7 +97,6 @@ async function main(): Promise<void> {
   const active = await getActiveDelegation(sarahUser, margaret);
   console.log(`   after consent: ${active ? 'active' : 'STILL INACTIVE'}`);
   if (!active) note('Consent recorded but delegation did not activate.');
-  note('Nobody emailed Margaret that her daughter now has setup rights on her vault.');
 
   // ── 2. The vault (J2) ───────────────────────────────────────────────────
   step('2. Sarah seeds her mother\'s vault (J2)');
@@ -135,8 +135,10 @@ async function main(): Promise<void> {
       [margaret, id, sarah],
     );
   }
-  console.log('   Sarah = recipient, Dr Patel = verifier, 4 items scoped');
-  note('Neither Sarah nor Dr Patel was emailed that they had been named. They find out mid-crisis.');
+  await inviteOnCreateBestEffort(margaret, sarah, 'recipient');
+  const vrow = await query<{ id: string }>(`SELECT id FROM verifiers WHERE owner_id=$1 LIMIT 1`, [margaret]);
+  await inviteOnCreateBestEffort(margaret, vrow.rows[0].id, 'verifier');
+  console.log('   Sarah = recipient, Dr Patel = verifier, 4 items scoped, both invited');
 
   // ── 4. The crisis (J6 → J7) ─────────────────────────────────────────────
   step('4. Margaret is hospitalised; the trigger fires (J6/J7)');
@@ -204,7 +206,6 @@ async function main(): Promise<void> {
     [margaret],
   );
   console.log(`   RELEASED → ${closed.rows[0].state.toUpperCase()} — Sarah's link is now dead`);
-  note("Sarah was never told access closed. She learns only if she revisits a dead link.");
 
   // ── The transcript ──────────────────────────────────────────────────────
   const t = getTranscript();

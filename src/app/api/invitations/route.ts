@@ -14,10 +14,9 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { requireOwner, readJson, isResponse, mapError } from '../../../../lib/http/owner-route';
 import { assertOwns } from '../../../../lib/db/integrity';
 import { writeAuditEntry } from '../../../../lib/audit/audit-service';
-import { createInvitation, type PersonType } from '../../../../lib/people/invitations';
 import { ValidationError } from '../../../../lib/validation';
-import { notifyInvitation } from '../../../../lib/notify/notifications';
-import { query } from '../../../../lib/db/connection';
+import { inviteAndNotify } from '../../../../lib/people/invite';
+import type { PersonType } from '../../../../lib/people/invitations';
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const auth = await requireOwner();
@@ -39,10 +38,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // DSQL has no FKs — confirm the person belongs to this owner (R16.1).
     await assertOwns(auth.ownerId, personType === 'recipient' ? 'recipients' : 'verifiers', personId);
 
-    const { token, expiresAt } = await createInvitation(auth.ownerId, {
+    const { claimUrl, expiresAt, emailDelivered } = await inviteAndNotify(
+      auth.ownerId,
       personId,
-      personType: personType as PersonType,
-    });
+      personType as PersonType,
+    );
 
     await writeAuditEntry(auth.ownerId, {
       actor: `owner:${auth.ownerId}`,
@@ -52,34 +52,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       detail: { personType, expiresAt },
     });
 
-    const base = process.env.NEXTAUTH_URL ?? '';
-    const claimUrl = `${base}/claim?token=${token}`;
-
-    // Actually send it. Returning a URL nobody emails is a journey that never
-    // starts (J4-R9).
-    const table = personType === 'recipient' ? 'recipients' : 'verifiers';
-    const person = await query<{ name: string; email: string }>(
-      `SELECT name, email FROM ${table} WHERE id = $1 AND owner_id = $2 LIMIT 1`,
-      [personId, auth.ownerId],
-    );
-    const owner = await query<{ email: string }>(
-      `SELECT email FROM users WHERE id = $1 LIMIT 1`,
-      [auth.ownerId],
-    );
-
-    const delivered = person.rows[0]
-      ? await notifyInvitation({
-          to: person.rows[0].email,
-          name: person.rows[0].name,
-          personType: personType as 'recipient' | 'verifier',
-          claimUrl,
-          ownerLabel: owner.rows[0]?.email ?? 'Someone you know',
-        })
-      : false;
-
-    // claimUrl is still returned so the owner can share it another way if mail
-    // bounces — delivery is best-effort and must never block the invitation.
-    return NextResponse.json({ claimUrl, expiresAt, emailDelivered: delivered }, { status: 201 });
+    return NextResponse.json({ claimUrl, expiresAt, emailDelivered }, { status: 201 });
   } catch (err) {
     return mapError(err);
   }

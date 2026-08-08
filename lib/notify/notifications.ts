@@ -328,3 +328,139 @@ export async function notifyCircleOfRequest(
   );
   return results.filter(Boolean).length;
 }
+
+// ---------------------------------------------------------------------------
+// The quiet moments (added 2026-08-08 after transcribing a full family arc).
+//
+// The arc produced exactly three messages, and ALL THREE fired during the
+// crisis. A family that sets Relay up in calm conditions heard nothing until
+// the worst day, when people who had never seen the product were suddenly
+// asked to act. The gaps below were not broken code — they were messages
+// nobody had written, which is why a ten-journey sweep and 880 tests missed
+// them entirely.
+// ---------------------------------------------------------------------------
+
+/**
+ * Tells a recipient their access has closed (J9-R4).
+ *
+ * The graceful-close PAGE was built first, and nothing drove anyone to it: a
+ * recipient would discover the closure days later by clicking a dead link, if
+ * ever. Someone who dropped everything to help during a family emergency
+ * should not learn it ended by finding a broken page.
+ *
+ * The summary is inline so it needs no click and no credential. Deliberately
+ * no link: any URL here would either be dead or require minting a token that
+ * grants nothing, and a message that closes a loop should not open one.
+ */
+export async function notifyRecipientAccessClosed(params: {
+  to: string;
+  name: string;
+  ownerLabel: string;
+  itemsGranted: number;
+  itemsOpened: number;
+}): Promise<boolean> {
+  const { name, ownerLabel, itemsGranted, itemsOpened } = params;
+
+  const whatYouSaw =
+    itemsOpened === 0
+      ? `You did not need to open any of them, and that is recorded too.`
+      : `You opened ${itemsOpened} of them. The ${itemsGranted - itemsOpened === 1 ? 'other one is' : `other ${itemsGranted - itemsOpened} are`} on the record as never opened.`;
+
+  return sendEmailBestEffort({
+    to: params.to,
+    subject: `Access closed — ${ownerLabel} is back`,
+    text:
+      `Hi ${name},\n\n` +
+      `${ownerLabel} has checked in, so the access you were given is now closed. ` +
+      `Nothing is wrong — this is how it was meant to work. Access was temporary, ` +
+      `and it has ended.\n\n` +
+      `You were trusted with ${itemsGranted} ${itemsGranted === 1 ? 'item' : 'items'}. ` +
+      `${whatYouSaw}\n\n` +
+      `Thank you for stepping in. If they need help again, you will get a new link.\n`,
+  });
+}
+
+/**
+ * Confirms to the OWNER that someone now has setup rights on their vault
+ * (J3-R2).
+ *
+ * Consent is recorded before a delegation activates, so this cannot be a
+ * surprise — but consent given verbally at a kitchen table leaves the owner
+ * nothing to find afterwards. An older owner whose adult child set this up
+ * deserves a durable record in their own inbox, in their own words, including
+ * how to end it. It is also the honest check on a delegation model: the person
+ * whose vault it is gets told, every time.
+ */
+export async function notifyOwnerOfDelegation(params: {
+  ownerEmail: string;
+  delegateLabel: string;
+  consentMethod: string;
+}): Promise<boolean> {
+  const how =
+    params.consentMethod === 'in_person'
+      ? 'in person'
+      : params.consentMethod === 'paper_upload'
+        ? 'on paper'
+        : 'by link';
+
+  return sendEmailBestEffort({
+    to: params.ownerEmail,
+    subject: `${params.delegateLabel} can now help set up your vault`,
+    text:
+      `You agreed ${how} that ${params.delegateLabel} can help set up your Relay vault.\n\n` +
+      `They can add accounts and suggest people. They CANNOT see anything already ` +
+      `stored, and they cannot release anything to anyone.\n\n` +
+      `If this is not what you agreed to, you can end it at any time here:\n\n` +
+      `${appUrl()}/circle\n\n` +
+      `Keep this message — it is your record of what was agreed and when.\n`,
+  });
+}
+
+/**
+ * Tells every scoped recipient that a released trigger has closed.
+ *
+ * Counts what each of them actually opened, so the message is specific rather
+ * than a form letter. Best-effort throughout: a mail failure must never affect
+ * a committed re-arm, and closing access is the safety-critical half.
+ *
+ * Returns the number notified. A no-op when nothing was ever released.
+ */
+export async function notifyRecipientsOfClosure(params: {
+  ownerId: string;
+  triggerType: string;
+}): Promise<number> {
+  const owner = await query<{ email: string }>(`SELECT email FROM users WHERE id = $1 LIMIT 1`, [
+    params.ownerId,
+  ]);
+  const ownerLabel = owner.rows[0]?.email ?? 'The vault owner';
+
+  const recipients = await query<{ id: string; name: string; email: string; granted: string }>(
+    `SELECT r.id, r.name, r.email, count(*)::text AS granted
+       FROM recipients r
+       JOIN access_rules ar ON ar.recipient_id = r.id
+      WHERE ar.owner_id = $1 AND ar.trigger_type = $2
+      GROUP BY r.id, r.name, r.email`,
+    [params.ownerId, params.triggerType],
+  );
+
+  const results = await Promise.all(
+    recipients.rows.map(async (r) => {
+      const opened = await query<{ n: string }>(
+        `SELECT count(DISTINCT entity_id)::text AS n
+           FROM audit_log
+          WHERE owner_id = $1 AND actor = $2
+            AND action = 'vault_item_decrypted'
+            AND detail->>'outcome' = 'authorized'`,
+        [params.ownerId, `recipient:${r.id}`],
+      );
+      return notifyRecipientAccessClosed({
+        to: r.email,
+        name: r.name,
+        ownerLabel,
+        itemsGranted: Number(r.granted),
+        itemsOpened: Number(opened.rows[0]?.n ?? 0),
+      });
+    }),
+  );
+  return results.filter(Boolean).length;
+}
