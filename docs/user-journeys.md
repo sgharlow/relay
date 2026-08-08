@@ -18,6 +18,51 @@
 
 ---
 
+## ✅ Live journey sweep — 2026-08-08
+
+**Every journey below was walked against production** (`relaystandby.com`) as a brand-new
+self-serve account, not against localhost and not with seeded demo data. The account and all its
+rows were deleted afterwards. This supersedes the build-state note that follows for anything the
+two disagree on.
+
+| # | Journey | Verdict | Evidence |
+|---|---|---|---|
+| J1 | Worry → proof → commitment | **PASS** | signup+TOTP → 8-step seed → risk reveal → price → `caregiver_intent` fired with `cta=start` |
+| J2 | Cold-start defeat | **PASS** | guided seed saved 4 items; `kms/wrap` 200, `vault/items` 201 each time |
+| J3 | Assisted setup for a parent | **NOT WALKED** | delegation model shipped in Sprint 2; no second human available to exercise consent |
+| J4 | Building the circle of trust | **PASS (partial)** | recipient, verifier and 3 access rules created; invitation *email* path not walked |
+| J5 | The living habit | **PARTIAL** | check-in reverses PENDING/GRACE/RELEASED (code-verified, and the RELEASED edge is now also exposed in the UI); no check-in **button** on /triggers — only the interval setting |
+| J6 | Someone requests access | **NOT WALKED** | routes exist (`/api/access-requests`); needs a recipient-side session |
+| J7 | The verifier's moment | **PASS** | `/verify?token=` rendered case ref `RLY-992C-TXYS`, scope, reversibility and "you will never see any of their information"; confirming drove 0/1 → 1/1 → **RELEASED** |
+| J8 | Hands on the account · **PRIMARY DEMAND** | **PASS** | recipient opened a prioritised access plan and **Reveal returned the exact plaintext the owner had typed** — full KMS unwrap + client decrypt round-trip |
+| J9 | Standing down · **DIFFERENTIATOR** | **PASS after two fixes** | GRACE → stand down → ARMED → re-initiate; RELEASED → close → ARMED with confirmations reset 1/1 → 0/1; **the recipient's live token then returned "invalid or has expired" and leaked no plaintext** |
+| J10 | The permanent handoff | **BLOCKED BY DESIGN** | estate rule creates and initiates; correctly offers **no** reversal control. Remains gated on `g2-counsel-opinion` |
+
+### Defects the sweep found — all fixed and re-proven live
+
+1. **CANCELLED was a one-way door.** The only stop-control during a release was Cancel, which lands
+   in a terminal state that check-in does not reverse. One click permanently retired the access
+   rule. Added `standDownTrigger`; Cancel is demoted behind a two-tap confirmation.
+2. **A RELEASED trigger had no owner control at all** — no button of any kind in the one state where
+   closing access is the entire product claim. `standDownTrigger` now covers RELEASED and resets the
+   release bookkeeping, so the next emergency is not pre-confirmed.
+3. **Every emailed link pointed at `relay-three-henna.vercel.app`.** Found by Steve in a real inbox.
+   `appUrl()` read `NEXTAUTH_URL`, which still held the pre-domain deployment. A raw vercel.app host
+   with a JWT in the query string, arriving during an emergency, is indistinguishable from phishing.
+
+`PERMITTED_TRANSITIONS` is still **seven**. Both release fixes gave existing edges a caller; a test
+asserts the count so it cannot drift.
+
+### Known gaps that are NOT defects (deliberate, and still open)
+
+- **J9 step 4 — the graceful close.** A recipient whose access was closed sees *"This access link is
+  invalid or has expired."* Correct and safe, but it is an error page shown to someone who just
+  helped during a crisis. Still `[GAP]`, and the highest-value remaining UX work.
+- **J5** has no check-in button, only the interval setting.
+- **J9 steps 5–7** — reversal receipt, re-arm confirmation, thank-you — remain unbuilt.
+
+---
+
 ## ⚠️ Build state — updated 2026-08-07
 
 **The inline `[BUILT]` / `[GAP]` / `[P2]` tags below are as-of-authoring (2026-08-06) and are now
@@ -41,8 +86,11 @@ the process flows, data flows, and numbered requirements.
 
 **Still genuinely open, and not to be read as built:**
 
-- **CC9 is half-built.** `/api/health/scheduler` exists and was observed in both states, but no
-  external monitor watches it. Nothing outside the system alarms on silence.
+- ~~**CC9 is half-built.**~~ **CLOSED 2026-08-08.** An external monitor now runs in GitHub Actions
+  (`.github/workflows/scheduler-monitor.yml`) every 30 minutes. It is hosted off Vercel on purpose:
+  the thing being watched IS a Vercel Cron, so a Vercel-hosted monitor would share fate with it and
+  silence would look like health. **Both transitions proven** — healthy 200, and a forced failure
+  that retried once and then failed the job.
 - **J5 retention work** — passive liveness, escalation ladder, quarterly review, renewal receipt.
 - **J8 / J9 refinements** — precomputed triage plan, single-next-action, ephemeral reveal, shared
   progress, reversal receipt, graceful close.
