@@ -17,8 +17,30 @@ import { issueVerifierToken } from '../auth/verifier-token';
 import { issueRecipientToken } from '../auth/recipient-token';
 import { query } from '../db/connection';
 
+/**
+ * The origin every emailed link is built on.
+ *
+ * FOUND IN A REAL INBOX 2026-08-08. This read NEXTAUTH_URL, which in production
+ * still pointed at the pre-domain deployment, so every access link, verifier
+ * confirmation, owner challenge and check-in nudge we have ever sent linked to
+ * `relay-three-henna.vercel.app`.
+ *
+ * That is not cosmetic. The recipient email arrives during someone's emergency
+ * and asks them to open a vault of a family member's credentials; a raw
+ * vercel.app hostname with a JWT in the query string is indistinguishable from
+ * a phishing attempt, and telling caregivers to click links like that is the
+ * opposite of what this product sells. It is also brittle — the deployment URL
+ * is not ours to keep, and if it stops resolving every outstanding access link
+ * dies with it.
+ *
+ * NEXT_PUBLIC_SITE_URL is preferred and set in Vercel production; the same
+ * variable drives metadataBase, so the canonical origin is stated once.
+ * NEXTAUTH_URL stays in the chain so local dev keeps working without extra
+ * setup, and is deliberately NOT repurposed — auth configuration is not
+ * something to change as a side effect of fixing an email link.
+ */
 function appUrl(): string {
-  return process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
+  return process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
 }
 
 /**

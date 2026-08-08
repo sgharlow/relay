@@ -38,6 +38,7 @@ beforeEach(() => {
   process.env.VERIFIER_JWT_SECRET = 'test-secret';
   process.env.RECIPIENT_JWT_SECRET = 'test-recipient-secret';
   process.env.NEXTAUTH_URL = 'https://relay.test';
+  delete process.env.NEXT_PUBLIC_SITE_URL;
 });
 afterEach(() => {
   _setResendClientForTesting(null);
@@ -117,5 +118,55 @@ describe('verifier link regression', () => {
     const body = sent[0]?.text ?? '';
     expect(body).toContain('/verify?token=');
     expect(body).not.toContain('/confirm?token=');
+  });
+});
+
+/**
+ * Emailed-link origin.
+ *
+ * FOUND IN A REAL INBOX 2026-08-08: appUrl() read NEXTAUTH_URL, which in
+ * production still pointed at the pre-domain deployment, so every access link
+ * we had ever sent went to relay-three-henna.vercel.app. A raw vercel.app host
+ * with a JWT in the query string, arriving during someone's emergency, is
+ * indistinguishable from phishing.
+ */
+describe('emailed link origin', () => {
+  it('prefers NEXT_PUBLIC_SITE_URL over NEXTAUTH_URL', async () => {
+    process.env.NEXT_PUBLIC_SITE_URL = 'https://relaystandby.com';
+    _setResendClientForTesting(stubResend());
+
+    await notifyVerifiersForTrigger(
+      [{ id: 'v-1', name: 'Dr Patel', email: 'v@example.com' }],
+      'emergency',
+      'rs-1',
+    );
+
+    expect(sent[0].text).toContain('https://relaystandby.com/verify?token=');
+    expect(sent[0].text).not.toContain('relay.test');
+  });
+
+  it('falls back to NEXTAUTH_URL so local dev needs no extra setup', async () => {
+    _setResendClientForTesting(stubResend());
+
+    await notifyVerifiersForTrigger(
+      [{ id: 'v-1', name: 'Dr Patel', email: 'v@example.com' }],
+      'emergency',
+      'rs-1',
+    );
+
+    expect(sent[0].text).toContain('https://relay.test/verify?token=');
+  });
+
+  it('NEVER emits a vercel.app link — that host is not ours to keep', async () => {
+    process.env.NEXT_PUBLIC_SITE_URL = 'https://relaystandby.com';
+    _setResendClientForTesting(stubResend());
+
+    await notifyVerifiersForTrigger(
+      [{ id: 'v-1', name: 'Dr Patel', email: 'v@example.com' }],
+      'emergency',
+      'rs-1',
+    );
+
+    expect(sent[0].text).not.toMatch(/vercel\.app/);
   });
 });
