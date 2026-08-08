@@ -10,6 +10,41 @@ Whether caregivers (adult children of aging parents) will pay a real price for r
 emergency access — BEFORE any further product build. Sequencing rule from the 7-01 audit:
 no product building until this evidence exists.
 
+## ⚠️ Amendment — the ratio alone cannot decide this (2026-08-08, approved by Steve)
+
+**The ratified thresholds below are unchanged. What changes is that they are no longer read alone.**
+
+At the ratified N the gate decides on a handful of observations. N = 100 with a 2% ship line means
+**2 intents**; the 95% interval around 2/100 runs roughly **0.6%–7%**. A product whose true rate is
+2% frequently reads 1 (kill), and one whose true rate is 0.5% frequently reads 3 (ship). The test
+as specified cannot separate its own ship and kill conditions.
+
+Two consequences, both adopted:
+
+1. **N ≈ 250 is the honest minimum** for the ratio to distinguish 2% from 0.5% with ~80% power.
+   Below that, a ratio reading is directional, not decisive, and the verdict must say so.
+2. **Leads are now a co-equal read, not a footnote.** `/caregivers/interest` captures an email
+   address and a free-text sentence about the visitor's situation, and as of 2026-08-08 fires
+   `caregiver_lead_submitted`. Twenty caregivers describing their own circumstances in their own
+   words is decision-grade evidence about whether this product should exist; a ratio at N = 100 is
+   not. The lead count and the notes are read alongside the ratio and recorded in the verdict.
+
+**Amended verdict rule.** The written G1 verdict must state, in this order:
+
+| | What | Why it is there |
+|---|---|---|
+| 1 | `caregiver_intent ÷ caregiver_qualified` on Lane A, with N | The ratified gate metric, unchanged |
+| 2 | Whether N reached ~250 | Determines whether line 1 is decisive or directional |
+| 3 | Count of `caregiver_lead_submitted` | Contactable humans — the harder signal |
+| 4 | The lead notes, quoted | Whether the pain we assumed is the pain they describe |
+| 5 | Ship / kill / iterate, and **which line drove it** | Prevents a post-hoc reading of whichever number looked better |
+
+A ship call on line 1 alone at N < 250 is not permitted. A kill call on line 1 alone at N < 250 is
+not permitted either — that is the failure the original rule was most exposed to, since an
+underpowered read is likelier to land under 0.5% than over 2%.
+
+---
+
 ## Pre-committed thresholds (ratified 7-01 in PROJECT.yaml — restated, not invented)
 
 - **Ship signal:** ≥ 2% click-to-intent at a real price point, N ≥ 100 qualified visitors.
@@ -72,7 +107,7 @@ by the same ads landing on `/caregivers`, and the visitor self-selects.
 
 | Lane | Path | Reads |
 |---|---|---|
-| **A — landing (the ratified gate)** | `/caregivers` → priced CTA → `/caregivers/interest` (mailto) | Will a caregiver click a $119 CTA? |
+| **A — landing (the ratified gate)** | `/caregivers` → priced CTA → `/caregivers/interest` (**lead form** since 2026-08-08; was a `mailto:` link, which captured almost nobody on the mobile traffic this gate buys) | Will a caregiver click a $119 CTA — and then tell us who they are? |
 | **B — product** | `/caregivers` → subordinate link → signup → seed → **risk-graph reveal** → price | Will they pay *after* the stakes are demonstrated? |
 
 **The gate metric is UNCHANGED**: `count(caregiver_intent) ÷ count(caregiver_qualified)`, tagged-only,

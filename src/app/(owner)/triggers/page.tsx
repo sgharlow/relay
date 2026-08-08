@@ -79,6 +79,46 @@ export default function TriggersPage() {
   );
 }
 
+function CheckInButton({ onDone }: { onDone: () => Promise<void> }) {
+  const [state, setState] = useState<'idle' | 'busy' | 'done'>('idle');
+  const [msg, setMsg] = useState<string | null>(null);
+
+  async function checkIn() {
+    setState('busy');
+    setMsg(null);
+    try {
+      const r = (await apiSend('/api/checkin', 'PUT')) as { reset?: string[]; blocked?: string[] };
+      const reset = r?.reset ?? [];
+      // Naming what was stood down matters: an owner checking in after an alarm
+      // needs to know it actually closed, not just that a button worked.
+      setMsg(
+        reset.length > 0
+          ? `Checked in — ${reset.join(', ')} re-armed.`
+          : 'Checked in. Nothing needed reversing.',
+      );
+      setState('done');
+      await onDone();
+    } catch (err) {
+      setState('idle');
+      setMsg(String((err as Error).message));
+    }
+  }
+
+  return (
+    <span className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={checkIn}
+        disabled={state === 'busy'}
+        className="rounded border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 disabled:opacity-60"
+      >
+        {state === 'busy' ? 'Checking in…' : "I'm fine — check in"}
+      </button>
+      {msg ? <span className="text-sm text-emerald-700">{msg}</span> : null}
+    </span>
+  );
+}
+
 function CadenceForm({ current, onSaved }: { current: number; onSaved: () => Promise<void> }) {
   const [days, setDays] = useState(String(current));
   const [msg, setMsg] = useState<string | null>(null);
@@ -111,6 +151,12 @@ function CadenceForm({ current, onSaved }: { current: number; onSaved: () => Pro
       <button type="submit" className="rounded bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700">
         Save
       </button>
+      {/* The check-in itself, which had no control anywhere in the product.
+          processCheckin reverses PENDING, GRACE and RELEASED back to ARMED — it
+          is the routine "I'm fine" that the whole dead-man's-switch is built
+          around — and the only way to perform one was to wait for the cron to
+          notice, or to stand down each trigger individually. */}
+      <CheckInButton onDone={onSaved} />
       {msg ? <span className="text-sm text-slate-500">{msg}</span> : null}
     </form>
   );

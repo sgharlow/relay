@@ -15,6 +15,7 @@
 import { sendEmailBestEffort } from './email';
 import { issueVerifierToken } from '../auth/verifier-token';
 import { issueVerifierCode, formatCode } from '../auth/verifier-code';
+import { issueRecipientCode } from '../auth/recipient-code';
 import { formatCaseId } from '../release/case-id';
 import { issueRecipientToken } from '../auth/recipient-token';
 import { query } from '../db/connection';
@@ -82,17 +83,49 @@ export async function notifyRecipientsOfRelease(params: {
     [params.ownerId, params.triggerType],
   );
 
+  const caseId = formatCaseId(params.releaseStateId);
+  const ownerLabel = await getOwnerLabel(params.ownerId);
+
   const results = await Promise.all(
-    recipients.rows.map((r) => {
-      const token = issueRecipientToken(r.id, params.releaseStateId, BigInt(params.version));
-      const link = `${appUrl()}/access?token=${encodeURIComponent(token)}`;
+    recipients.rows.map(async (r) => {
+      // A typed code, not a token in the URL — and this is the higher-value
+      // credential of the two, because it opens the vault rather than asking one
+      // question. Forwarding this email to a sibling used to hand over access to
+      // a parent's accounts.
+      let code: string | null = null;
+      try {
+        code = formatCode(
+          await issueRecipientCode({
+            recipientId: r.id,
+            releaseStateId: params.releaseStateId,
+            ownerId: params.ownerId,
+            version: params.version,
+          }),
+        );
+      } catch (err) {
+        process.stderr.write(`[notify] recipient code issue failed: ${String(err)}\n`);
+      }
+
+      // Falls back to the legacy token link. A recipient who cannot get in
+      // during an emergency is a worse outcome than a link in an email.
+      const body = code
+        ? `Hi ${r.name},\n\n` +
+          `${ownerLabel} arranged for you to be able to reach some of their accounts, and that ` +
+          `access is now open.\n\n` +
+          `Go to ${appUrl()}/access and enter this code:\n\n` +
+          `    ${code}\n\n` +
+          `Case ${caseId} · the code expires in 24 hours and can be used once.\n\n` +
+          `Relay will never send you a link that signs you in. If a message claiming to be from ` +
+          `us asks you to click one, it is not from us.\n`
+        : `Hi ${r.name},\n\n` +
+          `Access you were granted has been released. Open your secure access plan here:\n\n` +
+          `${appUrl()}/access?token=${encodeURIComponent(issueRecipientToken(r.id, params.releaseStateId, BigInt(params.version)))}\n\n` +
+          `This link is personal to you and expires in 24 hours.\n`;
+
       return sendEmailBestEffort({
         to: r.email,
-        subject: 'Your Relay access is now available',
-        text:
-          `Hi ${r.name},\n\n` +
-          `Access you were granted has been released. Open your secure access plan here:\n\n${link}\n\n` +
-          `This link is personal to you and expires in 24 hours.\n`,
+        subject: `Your Relay access is now available (${caseId})`,
+        text: body,
       });
     }),
   );

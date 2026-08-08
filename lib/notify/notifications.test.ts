@@ -76,19 +76,33 @@ describe('notifyVerifiersForTrigger', () => {
   });
 });
 
+/**
+ * The recipient path now issues a typed code and looks up the owner's display
+ * name, so a fixed call-order mock runs out. Routing on the SQL keeps these
+ * tests about behaviour rather than about how many queries the implementation
+ * happens to make.
+ */
+function routeQueries(recipients: unknown[]) {
+  mockQuery.mockImplementation(async (sql: string) => {
+    if (sql.includes('FROM recipients')) return qResult(recipients) as never;
+    if (sql.includes('FROM users')) return qResult([{ display_name: 'Margaret Chen', email: 'margaret@example.com' }]) as never;
+    return qResult([]) as never; // code INSERT and anything else
+  });
+}
+
 describe('notifyRecipientsOfRelease', () => {
   it('emails each scoped recipient a personal /access link and counts successes', async () => {
     _setResendClientForTesting(stubResend());
-    mockQuery.mockResolvedValueOnce(
-      qResult([
-        { id: 'r1', name: 'Jordan', email: 'jordan@example.com' },
-        { id: 'r2', name: 'Pat', email: 'pat@example.com' },
-      ]),
-    );
+    routeQueries([
+      { id: 'r1', name: 'Jordan', email: 'jordan@example.com' },
+      { id: 'r2', name: 'Pat', email: 'pat@example.com' },
+    ]);
     const n = await notifyRecipientsOfRelease({ releaseStateId: 'rs-1', ownerId: 'owner-1', triggerType: 'emergency', version: 3 });
     expect(n).toBe(2);
     expect(sent).toHaveLength(2);
-    expect(sent[0].text).toContain('/access?token=');
+    // Points at the bare /access page. The token used to travel in this URL;
+    // it is now a typed code, asserted separately below.
+    expect(sent[0].text).toContain('/access');
     // scoped query joins access_rules on owner + trigger
     const sql = mockQuery.mock.calls[0][0] as string;
     expect(sql).toContain('JOIN access_rules');
@@ -96,8 +110,28 @@ describe('notifyRecipientsOfRelease', () => {
 
   it('returns 0 when no recipients are scoped', async () => {
     _setResendClientForTesting(stubResend());
-    mockQuery.mockResolvedValueOnce(qResult([]));
+    routeQueries([]);
     expect(await notifyRecipientsOfRelease({ releaseStateId: 'rs-1', ownerId: 'o', triggerType: 'emergency', version: 1 })).toBe(0);
+  });
+
+  it('sends a CODE, not a token in the URL — a forwarded email must grant nothing', async () => {
+    _setResendClientForTesting(stubResend());
+    routeQueries([{ id: 'r1', name: 'Jordan', email: 'jordan@example.com' }]);
+
+    await notifyRecipientsOfRelease({ releaseStateId: 'rs-1', ownerId: 'o', triggerType: 'emergency', version: 3 });
+
+    expect(sent[0].text).not.toContain('?token=');
+    expect(sent[0].text).toMatch(/[23456789A-Z]{4}-[23456789A-Z]{4}/);
+    expect(sent[0].text).toContain('never send you a link that signs you in');
+  });
+
+  it('names the owner rather than printing a raw email address', async () => {
+    _setResendClientForTesting(stubResend());
+    routeQueries([{ id: 'r1', name: 'Jordan', email: 'jordan@example.com' }]);
+
+    await notifyRecipientsOfRelease({ releaseStateId: 'rs-1', ownerId: 'o', triggerType: 'emergency', version: 3 });
+
+    expect(sent[0].text).toContain('Margaret Chen');
   });
 });
 

@@ -37,17 +37,17 @@ interface Dashboard {
 }
 
 export default function AccessClient() {
-  const token = useSearchParams().get('token') ?? '';
+  const urlToken = useSearchParams().get('token') ?? '';
+  // A typed code becomes a token in memory. The credential never enters the
+  // URL, so a forwarded email no longer carries access to a parent's accounts.
+  const [token, setToken] = useState(urlToken);
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [closure, setClosure] = useState<ClosureSummary | null>(null);
   const [revealed, setRevealed] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (!token) {
-      setError('This access link is missing its token.');
-      return;
-    }
+    if (!token) return; // No token yet — the code form is shown instead.
     fetch(`/api/access?token=${encodeURIComponent(token)}`)
       .then(async (res) => {
         if (res.status === 403) {
@@ -92,6 +92,23 @@ export default function AccessClient() {
 
   if (closure) {
     return <ClosedGracefully summary={closure} />;
+  }
+  if (!token) {
+    return (
+      <AccessCodeEntry
+        onToken={setToken}
+        // A code whose release was re-armed cannot produce a token, so the full
+        // graceful close (which needs one) is unreachable here. Say the same
+        // thing in the same voice rather than reporting a failure: this person
+        // did nothing wrong and the good outcome happened.
+        onClosed={() =>
+          setError(
+            'Access has been closed — the person who arranged it has checked in and is fine. ' +
+              'Nothing is wrong, and there is nothing you need to do. Thank you for stepping in.',
+          )
+        }
+      />
+    );
   }
   if (error) {
     return <p className="rounded-lg border border-amber-300 bg-amber-50 px-5 py-4 text-stone-700">{error}</p>;
@@ -268,6 +285,91 @@ function ClosedGracefully({ summary }: { summary: ClosureSummary }) {
 
       <p className="mt-4 px-2 text-[15px] leading-relaxed text-stone-500">
         Nothing you saw is stored on this device, and this page holds no vault contents.
+      </p>
+    </div>
+  );
+}
+
+/**
+ * Code entry — the recipient's front door.
+ *
+ * Replaces a signed token in the URL for the higher-value of the two
+ * credentials: this one opens the vault. Forwarding the email to a sibling used
+ * to hand over access to a parent's accounts.
+ *
+ * A code whose release has been re-armed reports `closed` rather than a
+ * failure, because that recipient did nothing wrong and the good outcome
+ * happened — the owner recovered.
+ */
+function AccessCodeEntry({ onToken, onClosed }: { onToken: (t: string) => void; onClosed: () => void }) {
+  const [code, setCode] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await fetch('/api/access/code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+      const body = (await res.json().catch(() => ({}))) as { token?: string; reason?: string; message?: string };
+      if (res.ok && body.token) {
+        onToken(body.token);
+        return;
+      }
+      if (body.reason === 'closed') {
+        onClosed();
+        return;
+      }
+      setErr(body.message ?? 'That code was not recognised.');
+    } catch {
+      setErr('We could not reach the server. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mx-auto max-w-md rounded-2xl border border-stone-200 bg-white px-6 py-7">
+      <h1 className="text-[26px] font-semibold leading-snug text-stone-900">Enter your code</h1>
+      <p className="mt-3 text-[17px] leading-relaxed text-stone-700">
+        Someone arranged for you to reach their accounts, and that access is open. Type the code
+        from the email we sent you.
+      </p>
+
+      <form onSubmit={submit} className="mt-6">
+        <label htmlFor="acode" className="block text-sm font-medium text-stone-700">
+          Code from your email
+        </label>
+        <input
+          id="acode"
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          autoComplete="one-time-code"
+          autoCapitalize="characters"
+          spellCheck={false}
+          placeholder="7K4M-P2XW"
+          className="mt-2 min-h-[52px] w-full rounded-md border border-stone-400 px-4 text-center font-mono text-2xl tracking-[0.2em] text-stone-900 placeholder:text-stone-300 focus:border-stone-900 focus:outline-none"
+        />
+
+        {err ? <p className="mt-3 text-[16px] text-red-700">{err}</p> : null}
+
+        <button
+          type="submit"
+          disabled={busy || !code.trim()}
+          className="mt-5 min-h-[52px] w-full rounded-md bg-stone-900 px-6 text-[17px] font-semibold text-white hover:bg-stone-800 disabled:opacity-50"
+        >
+          {busy ? 'Checking…' : 'Continue'}
+        </button>
+      </form>
+
+      <p className="mt-6 text-[15px] leading-relaxed text-stone-500">
+        Relay will never send you a link that signs you in.
       </p>
     </div>
   );

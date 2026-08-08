@@ -15,6 +15,10 @@ const LINKS = [
   { href: '/rules', label: 'Rules' },
   { href: '/triggers', label: 'Triggers' },
   { href: '/audit', label: 'Audit' },
+  // Leaving has to be findable. The terms promise an export and the privacy
+  // page promises deletion; a promise reachable only by emailing us is not
+  // really kept.
+  { href: '/account', label: 'Account' },
 ];
 
 export default function SidebarNav() {
