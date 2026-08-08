@@ -35,12 +35,12 @@ export default function CaregiverInterest() {
           Founding families
         </p>
         <h1 className="mt-5 text-3xl font-bold tracking-tight sm:text-4xl">
-          We&apos;re onboarding the first families by hand.
+          You can start right now.
         </h1>
         <p className="mt-4 leading-relaxed text-slate-300">
-          Relay&apos;s vault, triggers, and reversible release engine are built and running. We
-          onboard each founding family personally — same ${PRICE_YEARLY_USD}/yr, with direct access
-          to us while we do it.
+          Relay&apos;s vault, triggers and reversible release engine are built and running. Set it
+          up yourself in a few minutes for ${PRICE_YEARLY_USD}/yr — or tell us about your situation
+          and we&apos;ll walk you through it personally, at the same price.
         </p>
         <InterestForm />
 

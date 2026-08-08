@@ -175,7 +175,11 @@ export default function InterestForm() {
       <button
         type="submit"
         disabled={status === 'sending'}
-        className="mt-6 min-h-[48px] w-full rounded-md bg-amber-500 px-6 text-base font-semibold text-slate-950 transition-colors hover:bg-amber-400 disabled:opacity-60"
+        // Subordinate to "Set up my vault now" on purpose. Two identical amber
+        // buttons made the waitlist compete with the sale, which is exactly
+        // backwards now that checkout is live: someone ready to pay should not
+        // have to pick their action out of a pair.
+        className="mt-6 min-h-[48px] w-full rounded-md border border-slate-600 bg-transparent px-6 text-base font-medium text-slate-200 transition-colors hover:border-slate-400 hover:text-white disabled:opacity-60"
       >
         {status === 'sending' ? 'Sending…' : 'Request an invite'}
       </button>
