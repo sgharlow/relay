@@ -39,7 +39,17 @@ export const TIER_LIMITS: Record<
   Tier,
   { items: number; recipients: number; canRelease: boolean }
 > = {
-  free: { items: 10, recipients: 1, canRelease: false },
+  // RECIPIENTS RAISED 1 → 4 for beta (2026-08-08). At one recipient a family
+  // with two adult children could not name them both — and there is no checkout
+  // to upgrade through, so the cap was not a paywall, it was a wall. Four covers
+  // the realistic caregiver case (two siblings, a spouse, an executor) without
+  // becoming an unlimited free tier.
+  //
+  // canRelease stays false and stays UNWIRED. Nothing calls assertCanRelease,
+  // and that dead code is currently load-bearing: connecting it before billing
+  // exists would mean no account could ever release. Wire it in the same change
+  // that ships checkout, not before.
+  free: { items: 10, recipients: 4, canRelease: false },
   paid: {
     items: Number.POSITIVE_INFINITY,
     recipients: Number.POSITIVE_INFINITY,
@@ -101,7 +111,10 @@ export async function assertWithinRecipientCap(ownerId: string): Promise<void> {
 
   if ((await countOwned('recipients', ownerId)) >= limit) {
     throw new EntitlementError(
-      `The free plan allows ${limit} recipient. Upgrade to designate more.`,
+      // "Upgrade" would be a lie until checkout exists — there is nowhere to
+      // upgrade to. Say what is true and give them a way to reach a person.
+      `The free plan allows ${limit} recipient${limit === 1 ? '' : 's'}. ` +
+        `Email us if you need more — we are onboarding founding families by hand.`,
       limit,
       tier,
     );

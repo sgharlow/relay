@@ -368,9 +368,94 @@ function AccessCodeEntry({ onToken, onClosed }: { onToken: (t: string) => void; 
         </button>
       </form>
 
+      <ExpiredCodeHelp />
+
       <p className="mt-6 text-[15px] leading-relaxed text-stone-500">
         Relay will never send you a link that signs you in.
       </p>
     </div>
+  );
+}
+
+/**
+ * "My code expired."
+ *
+ * A recipient's access lasts 24 hours and the only way to re-issue it used to
+ * be an owner-authenticated endpoint — the owner being, by the nature of this
+ * product, the person in hospital. Hospital stays are days to weeks, so a
+ * caregiver who came back on day three was locked out with nobody able to help.
+ *
+ * The new code goes to the address on file, never the one typed here, so this
+ * cannot be used to redirect access or to discover who is named on a vault.
+ */
+function ExpiredCodeHelp() {
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState('');
+  const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  if (sent) {
+    return (
+      <p className="mt-6 rounded-md bg-stone-50 px-4 py-3 text-[16px] leading-relaxed text-stone-700">
+        If that address has active access, a new code is on its way. It can take a minute to arrive.
+      </p>
+    );
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mt-5 text-[16px] text-stone-600 underline underline-offset-4 hover:text-stone-900"
+      >
+        My code has expired
+      </button>
+    );
+  }
+
+  return (
+    <form
+      className="mt-5 rounded-md bg-stone-50 p-4"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (busy) return;
+        setBusy(true);
+        try {
+          await fetch('/api/access/resend', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+          });
+        } finally {
+          setBusy(false);
+          setSent(true);
+        }
+      }}
+    >
+      <label htmlFor="resend" className="block text-[15px] font-medium text-stone-700">
+        Your email address
+      </label>
+      <input
+        id="resend"
+        type="email"
+        required
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        className="mt-2 min-h-[48px] w-full rounded-md border border-stone-400 px-4 text-[17px]"
+        placeholder="you@example.com"
+      />
+      <button
+        type="submit"
+        disabled={busy}
+        className="mt-3 min-h-[48px] w-full rounded-md border border-stone-400 bg-white px-4 text-[16px] font-medium text-stone-800 hover:bg-stone-100 disabled:opacity-50"
+      >
+        {busy ? 'Sending…' : 'Send me a new code'}
+      </button>
+      <p className="mt-2 text-[14px] leading-relaxed text-stone-500">
+        We send it to the address already on file, so this only works if you are the person who was
+        given access.
+      </p>
+    </form>
   );
 }

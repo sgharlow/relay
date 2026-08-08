@@ -10,6 +10,7 @@
 import { redirect } from 'next/navigation';
 import { getOwnerSession } from '../../../lib/auth/session';
 import SidebarNav from './_components/SidebarNav';
+import ReadinessBanner from './_components/ReadinessBanner';
 
 export default async function OwnerLayout({ children }: { children: React.ReactNode }) {
   const session = await getOwnerSession().catch(() => null);
@@ -29,7 +30,13 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
           </div>
         ) : null}
       </aside>
-      <main className="flex-1 px-8 py-6 text-[15px] leading-relaxed">{children}</main>
+      <main className="flex-1 px-8 py-6 text-[15px] leading-relaxed">
+        {/* On every owner screen, because the failure it reports is invisible
+            on all of them: a vault with no trusted contact renders exactly like
+            a working one and only reveals itself by not opening. */}
+        <ReadinessBanner />
+        {children}
+      </main>
     </div>
   );
 }

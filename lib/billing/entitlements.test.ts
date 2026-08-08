@@ -42,8 +42,10 @@ describe('EntitlementError', () => {
 });
 
 describe('TIER_LIMITS', () => {
-  it('free is 10 items, 1 recipient, no release', () => {
-    expect(TIER_LIMITS.free).toEqual({ items: 10, recipients: 1, canRelease: false });
+  it('free is 10 items, 4 recipients, no release', () => {
+    // Raised from 1 for beta: a family with two adult children could not name
+    // them both, and with no checkout the cap was a wall rather than a paywall.
+    expect(TIER_LIMITS.free).toEqual({ items: 10, recipients: 4, canRelease: false });
   });
 
   it('paid is unbounded and can release', () => {
@@ -140,12 +142,30 @@ describe('assertWithinRecipientCap', () => {
     await expect(assertWithinRecipientCap('o-1')).resolves.toBeUndefined();
   });
 
-  it('REJECTS the 2nd recipient on free', async () => {
+  it('ALLOWS a second recipient on free — two siblings is the normal case', async () => {
     mockQuery
       .mockResolvedValueOnce({ rows: [{ is_demo_account: false }] } as never)
       .mockResolvedValueOnce({ rows: [] } as never)
       .mockResolvedValueOnce({ rows: [{ count: '1' }] } as never);
+    await expect(assertWithinRecipientCap('o-1')).resolves.toBeUndefined();
+  });
+
+  it('REJECTS the 5th recipient on free', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ is_demo_account: false }] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never)
+      .mockResolvedValueOnce({ rows: [{ count: '4' }] } as never);
     await expect(assertWithinRecipientCap('o-1')).rejects.toThrow(EntitlementError);
+  });
+
+  it('does not promise an upgrade that does not exist', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ is_demo_account: false }] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never)
+      .mockResolvedValueOnce({ rows: [{ count: '4' }] } as never);
+    const msg = await assertWithinRecipientCap('o-1').catch((e) => e.message);
+    expect(msg).not.toContain('Upgrade');
+    expect(msg).toContain('Email us');
   });
 });
 

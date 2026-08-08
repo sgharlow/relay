@@ -115,6 +115,8 @@ function RuleBuilder({ items, recipients, onCreated }: { items: Named[]; recipie
     setForm((f) => ({ ...f, trigger_type, reversible: trigger_type === 'estate' ? false : f.reversible }));
   }
 
+  const [warning, setWarning] = useState<string | null>(null);
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -133,6 +135,19 @@ function RuleBuilder({ items, recipients, onCreated }: { items: Named[]; recipie
         release_after_days: form.release_after_days ? Number(form.release_after_days) : undefined,
       });
       setForm({ ...form, vault_item_id: '', recipient_id: '', release_after_days: '' });
+
+      // Creating a rule provisions a release state that needs a confirmation to
+      // fire. Say so HERE, at the moment the owner formed the intention, rather
+      // than only in a banner they may already be scrolling past — this is the
+      // step that silently made the vault unopenable.
+      try {
+        const r = (await apiGet('/api/readiness')) as { blockers?: Array<{ code: string; message: string }> };
+        const fatal = (r.blockers ?? []).find((b) => b.code === 'no_verifiers' || b.code === 'not_enough_verifiers');
+        setWarning(fatal ? fatal.message : null);
+      } catch {
+        setWarning(null);
+      }
+
       await onCreated();
     } catch (err) {
       setError(String((err as Error).message));
@@ -143,6 +158,14 @@ function RuleBuilder({ items, recipients, onCreated }: { items: Named[]; recipie
 
   return (
     <form onSubmit={submit} className="space-y-3 rounded border border-slate-200 bg-white p-4">
+      {warning ? (
+        <div className="rounded border border-red-300 bg-red-50 px-3 py-2 text-sm leading-relaxed text-red-800">
+          <span className="font-semibold">Rule saved — but this vault would not open.</span> {warning}{' '}
+          <a href="/recipients" className="font-medium underline">
+            Add a trusted contact
+          </a>
+        </div>
+      ) : null}
       <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">New rule</h2>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="text-sm">
