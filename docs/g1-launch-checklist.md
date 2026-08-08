@@ -46,7 +46,14 @@ Re-run all four checks at merge time if the branch has moved past `af4ddf3`.
       `/`) don't land a qualified visitor on a 500. If `/` errors without DSQL, point the footer
       link at `/caregivers` or accept the dead home page explicitly — do not silently ship a
       broken first click.
-- [ ] **7b. Verify a Resend sending domain (added 2026-08-07).** The sender is currently
+- [x] **7b. Verify a Resend sending domain (added 2026-08-07; DONE 2026-08-08).**
+      `relaystandby.com` verified in Resend; `RESEND_FROM_ADDRESS=relay@relaystandby.com` set in
+      `.env.local` AND in Vercel production (value confirmed via `vercel env pull`, since the env
+      listing shows only that a variable exists, not what it holds). Redeployed so the running app
+      uses it. A send to `sgharlow+relay@cox.net` — a different domain, and NOT the Resend account
+      address — was accepted, which the old shared-domain sender would have rejected outright.
+      ORIGINAL NOTE FOLLOWS.
+       The sender is currently
       `onboarding@resend.dev`, Resend's SHARED test domain — high spam risk, and the send-only API
       key means delivery cannot be queried. Verify `relaystandby.com` in Resend, add the generated
       SPF/DKIM records in Cloudflare next to the existing A/CNAME, then set
