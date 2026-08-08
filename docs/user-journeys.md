@@ -29,13 +29,13 @@ two disagree on.
 |---|---|---|---|
 | J1 | Worry → proof → commitment | **PASS** | signup+TOTP → 8-step seed → risk reveal → price → `caregiver_intent` fired with `cta=start` |
 | J2 | Cold-start defeat | **PASS** | guided seed saved 4 items; `kms/wrap` 200, `vault/items` 201 each time |
-| J3 | Assisted setup for a parent | **NOT WALKED** | delegation model shipped in Sprint 2; no second human available to exercise consent |
+| J3 | Assisted setup for a parent | **PASS** | delegation created `pending`; **inactive until consent recorded**; self-delegation and invalid consent methods refused; the **paper path** activates it with the artifact stored (a parent without a smartphone is not a blocker) |
 | J4 | Building the circle of trust | **PASS (partial)** | recipient, verifier and 3 access rules created; invitation *email* path not walked |
 | J5 | The living habit | **PARTIAL** | check-in reverses PENDING/GRACE/RELEASED (code-verified, and the RELEASED edge is now also exposed in the UI); no check-in **button** on /triggers — only the interval setting |
-| J6 | Someone requests access | **NOT WALKED** | routes exist (`/api/access-requests`); needs a recipient-side session |
+| J6 | Someone requests access | **PASS** | request → 201 `awaiting_owner` with `ownerChallenged: true` (owner challenged first, verifiers not disturbed); forged token → 403; velocity limit fires on the 4th request in 24h |
 | J7 | The verifier's moment | **PASS** | `/verify?token=` rendered case ref `RLY-992C-TXYS`, scope, reversibility and "you will never see any of their information"; confirming drove 0/1 → 1/1 → **RELEASED** |
 | J8 | Hands on the account · **PRIMARY DEMAND** | **PASS** | recipient opened a prioritised access plan and **Reveal returned the exact plaintext the owner had typed** — full KMS unwrap + client decrypt round-trip |
-| J9 | Standing down · **DIFFERENTIATOR** | **PASS after two fixes** | GRACE → stand down → ARMED → re-initiate; RELEASED → close → ARMED with confirmations reset 1/1 → 0/1; **the recipient's live token then returned "invalid or has expired" and leaked no plaintext** |
+| J9 | Standing down · **DIFFERENTIATOR** | **PASS after three fixes** | GRACE → stand down → ARMED → re-initiate; RELEASED → close → ARMED with confirmations reset 1/1 → 0/1; the recipient's live token then leaked no plaintext, and now renders the **graceful close** instead of an expiry error |
 | J10 | The permanent handoff | **BLOCKED BY DESIGN** | estate rule creates and initiates; correctly offers **no** reversal control. Remains gated on `g2-counsel-opinion` |
 
 ### Defects the sweep found — all fixed and re-proven live
@@ -50,16 +50,26 @@ two disagree on.
    `appUrl()` read `NEXTAUTH_URL`, which still held the pre-domain deployment. A raw vercel.app host
    with a JWT in the query string, arriving during an emergency, is indistinguishable from phishing.
 
+**Two of the three were the same shape:** a capability that was built, permitted and unit-tested,
+with no way for a user to reach it. 845 passing tests could not see any of them. Only walking the
+product could.
+
 `PERMITTED_TRANSITIONS` is still **seven**. Both release fixes gave existing edges a caller; a test
 asserts the count so it cannot drift.
 
 ### Known gaps that are NOT defects (deliberate, and still open)
 
-- **J9 step 4 — the graceful close.** A recipient whose access was closed sees *"This access link is
-  invalid or has expired."* Correct and safe, but it is an error page shown to someone who just
-  helped during a crisis. Still `[GAP]`, and the highest-value remaining UX work.
-- **J5** has no check-in button, only the interval setting.
-- **J9 steps 5–7** — reversal receipt, re-arm confirmation, thank-you — remain unbuilt.
+- ~~**J9 step 4 — the graceful close.**~~ **BUILT 2026-08-08** and live-proven. A recipient whose
+  access has closed now sees what the vault did on their behalf — items trusted, duration, which
+  ones they opened, that the unopened ones are on the owner's record too — and a thank-you. Shown
+  **only** to a bearer whose token passes signature verification; forged, tampered and malformed
+  tokens still get the flat generic error, confirmed live. Denied decrypt attempts are excluded and
+  repeat opens deduplicate, so the count is what they actually saw.
+- **J5** has no check-in button, only the interval setting. The reversal it performs is now also
+  reachable from the trigger card, so this is a convenience gap rather than a capability one.
+- **J9 steps 5–7** — reversal receipt, re-arm confirmation, thank-you-the-recipient — remain
+  unbuilt. Step 4 now carries the emotional weight these were meant to share.
+- **J4's invitation email path** and **J8's ephemeral-reveal refinements** are untouched.
 
 ---
 
