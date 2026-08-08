@@ -1,8 +1,15 @@
 /**
  * G1 intent page — landing here (with the price already seen) IS the intent event.
- * Measured as pageviews segmented by ?src= (Vercel Web Analytics; enable at deploy).
- * Deliberately DB-free: demo DSQL infra is torn down post-judging, and the G1 test
- * must not depend on it.
+ * Measured as pageviews segmented by ?src= (Vercel Web Analytics).
+ *
+ * The gate metric is unchanged by the capture form below it: intent still fires
+ * on mount, from IntentTracker, before anything is submitted. The form does not
+ * move the numerator — it turns a measured intent into a contactable human,
+ * which the previous mailto:-only version did not do for mobile visitors.
+ *
+ * No longer DB-free. That note dated from the assumption that the demo DSQL
+ * infra would be torn down after judging; it was kept by Steve's ruling, and a
+ * lead that exists only in an email is one silent send failure from being lost.
  *
  * Feature: relay-g1-wtp (deploys post-H0-disposition only)
  */
@@ -10,6 +17,7 @@
 import Link from 'next/link';
 
 import { PRICE_YEARLY_USD } from '../content';
+import InterestForm from './InterestForm';
 import IntentTracker from './IntentTracker';
 
 export const metadata = {
@@ -34,17 +42,12 @@ export default function CaregiverInterest() {
           onboard each founding family personally — same ${PRICE_YEARLY_USD}/yr, with direct access
           to us while we do it.
         </p>
-        <p className="mt-4 leading-relaxed text-slate-300">
-          Email{' '}
-          <a
-            href={`mailto:sgharlow+relay@gmail.com?subject=${encodeURIComponent('Founding family — Relay for caregivers')}`}
-            className="font-medium text-amber-300 underline decoration-amber-500/50 underline-offset-4 hover:text-amber-200"
-          >
-            sgharlow+relay@gmail.com
-          </a>{' '}
-          with one line about your situation, and we&apos;ll reply within a day.
-        </p>
-        <Link href="/caregivers" className="mt-8 inline-block text-sm text-slate-400 hover:text-slate-200">
+        <InterestForm />
+
+        <Link
+          href="/caregivers"
+          className="mt-8 inline-flex min-h-[44px] items-center text-sm text-slate-400 hover:text-slate-200"
+        >
           ← Back
         </Link>
       </div>

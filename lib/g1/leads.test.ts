@@ -1,0 +1,149 @@
+/**
+ * Tests for G1 lead capture.
+ *
+ * The behaviour worth pinning is the resilience shape: a lead must survive the
+ * loss of EITHER leg, and only a double failure may be reported as a failure.
+ * Get that backwards and a working funnel looks broken, or — far worse — a
+ * broken one looks like an absence of demand, which is what the gate kills on.
+ *
+ * Feature: relay-g1-wtp
+ */
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+const sendEmail = vi.fn();
+const query = vi.fn();
+
+vi.mock('../notify/email', () => ({ sendEmail: (...a: unknown[]) => sendEmail(...a) }));
+vi.mock('../db/connection', () => ({ query: (...a: unknown[]) => query(...a) }));
+
+import { recordLead, validateLead, normaliseEmail, LeadValidationError, MAX_NOTE_LENGTH } from './leads';
+
+beforeEach(() => {
+  sendEmail.mockReset().mockResolvedValue(undefined);
+  query.mockReset().mockResolvedValue({ rows: [] });
+  process.env.LEAD_NOTIFY_ADDRESS = 'ops@example.com';
+});
+afterEach(() => {
+  delete process.env.LEAD_NOTIFY_ADDRESS;
+});
+
+describe('validateLead', () => {
+  it('normalises case and surrounding whitespace', () => {
+    expect(normaliseEmail('  Steve@Example.COM ')).toBe('steve@example.com');
+    expect(validateLead({ email: '  Steve@Example.COM ' }).email).toBe('steve@example.com');
+  });
+
+  it.each([
+    'a@b.com',
+    'first.last+tag@sub.domain.co.uk',
+    "o'brien@example.org",
+  ])('accepts the real-world address %s', (email) => {
+    expect(validateLead({ email }).email).toBe(email.toLowerCase());
+  });
+
+  it.each(['', '   ', 'nope', 'no@domain', '@example.com', 'two parts@example.com'])(
+    'rejects %j',
+    (email) => {
+      expect(() => validateLead({ email })).toThrow(LeadValidationError);
+    },
+  );
+
+  it('drops an empty note rather than storing whitespace', () => {
+    expect(validateLead({ email: 'a@b.com', note: '   ' }).note).toBeUndefined();
+  });
+
+  it('rejects an oversized note', () => {
+    expect(() => validateLead({ email: 'a@b.com', note: 'x'.repeat(MAX_NOTE_LENGTH + 1) })).toThrow(
+      /under 1000/,
+    );
+  });
+
+  it('gives the visitor a message they can act on, not an internal one', () => {
+    expect(() => validateLead({ email: 'nope' })).toThrow(/does not look like an email/);
+  });
+});
+
+describe('recordLead resilience', () => {
+  it('reports both legs on the happy path', async () => {
+    await expect(recordLead({ email: 'a@b.com' })).resolves.toEqual({ stored: true, notified: true });
+  });
+
+  it('STILL STORES when the notification email fails', async () => {
+    sendEmail.mockRejectedValue(new Error('resend down'));
+    await expect(recordLead({ email: 'a@b.com' })).resolves.toEqual({ stored: true, notified: false });
+  });
+
+  it('records notified=false on the row, so a lost email is visible later', async () => {
+    sendEmail.mockRejectedValue(new Error('resend down'));
+    await recordLead({ email: 'a@b.com' });
+    expect(query.mock.calls[0][1]).toContain(false);
+  });
+
+  it('STILL NOTIFIES when the database write fails', async () => {
+    query.mockRejectedValue(new Error('dsql unavailable'));
+    await expect(recordLead({ email: 'a@b.com' })).resolves.toEqual({ stored: false, notified: true });
+  });
+
+  it('reports total failure only when BOTH legs fail', async () => {
+    sendEmail.mockRejectedValue(new Error('resend down'));
+    query.mockRejectedValue(new Error('dsql unavailable'));
+    await expect(recordLead({ email: 'a@b.com' })).resolves.toEqual({ stored: false, notified: false });
+  });
+
+  it('never lets a leg failure escape as an exception', async () => {
+    sendEmail.mockRejectedValue(new Error('boom'));
+    query.mockRejectedValue(new Error('boom'));
+    await expect(recordLead({ email: 'a@b.com' })).resolves.toBeDefined();
+  });
+
+  it('validates BEFORE writing anything', async () => {
+    await expect(recordLead({ email: 'nope' })).rejects.toThrow(LeadValidationError);
+    expect(query).not.toHaveBeenCalled();
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+});
+
+describe('recordLead attribution and content', () => {
+  it('persists the channel and CTA that paid for the lead', async () => {
+    await recordLead({ email: 'a@b.com', note: 'dad in hospital', src: 'reddit', cta: 'hero' });
+    const params = query.mock.calls[0][1] as unknown[];
+    expect(params).toEqual(['a@b.com', 'dad in hospital', 'reddit', 'hero', true]);
+  });
+
+  it('stores nulls, not undefined, for absent optional columns', async () => {
+    await recordLead({ email: 'a@b.com' });
+    const params = query.mock.calls[0][1] as unknown[];
+    expect(params.slice(1, 4)).toEqual([null, null, null]);
+  });
+
+  it('sets reply-to to the LEAD so replying reaches the caregiver', async () => {
+    await recordLead({ email: 'caregiver@example.com' });
+    expect(sendEmail.mock.calls[0][0].replyTo).toBe('caregiver@example.com');
+  });
+
+  it('puts the channel in the subject so leads trace to an ad at a glance', async () => {
+    await recordLead({ email: 'a@b.com', src: 'reddit' });
+    expect(sendEmail.mock.calls[0][0].subject).toContain('reddit');
+  });
+
+  it('includes the note in the body', async () => {
+    await recordLead({ email: 'a@b.com', note: 'mum has dementia' });
+    expect(sendEmail.mock.calls[0][0].text).toContain('mum has dementia');
+  });
+
+  it('still stores when no notify address is configured', async () => {
+    delete process.env.LEAD_NOTIFY_ADDRESS;
+    delete process.env.RESEND_REPLY_TO_ADDRESS;
+    await expect(recordLead({ email: 'a@b.com' })).resolves.toEqual({ stored: true, notified: false });
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the reply-to inbox when LEAD_NOTIFY_ADDRESS is unset', async () => {
+    delete process.env.LEAD_NOTIFY_ADDRESS;
+    process.env.RESEND_REPLY_TO_ADDRESS = 'fallback@example.com';
+    await recordLead({ email: 'a@b.com' });
+    expect(sendEmail.mock.calls[0][0].to).toBe('fallback@example.com');
+    delete process.env.RESEND_REPLY_TO_ADDRESS;
+  });
+});
