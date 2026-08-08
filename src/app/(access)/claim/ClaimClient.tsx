@@ -22,16 +22,16 @@ interface Standby {
 }
 
 export default function ClaimClient() {
-  const token = useSearchParams().get('token');
+  const urlToken = useSearchParams().get('token');
+  // A typed code, kept in memory. Arriving with nothing is now the NORMAL path:
+  // the emailed link is bare, so a forwarded invitation carries no credential.
+  const [token, setToken] = useState<string | null>(urlToken);
   const [state, setState] = useState<
     { kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'verifier' } | { kind: 'recipient'; standby: Standby }
   >({ kind: 'loading' });
 
   useEffect(() => {
-    if (!token) {
-      setState({ kind: 'error', message: 'This link is missing its invitation code.' });
-      return;
-    }
+    if (!token) return; // Show the code form instead.
 
     fetch(`/api/invitations/${encodeURIComponent(token)}`, { method: 'POST' })
       .then(async (res) => {
@@ -48,6 +48,8 @@ export default function ClaimClient() {
       })
       .catch(() => setState({ kind: 'error', message: 'Something went wrong. Try the link again.' }));
   }, [token]);
+
+  if (!token) return <ClaimCodeEntry onCode={setToken} />;
 
   if (state.kind === 'loading') return <p className="text-stone-500">Checking your invitation…</p>;
 
@@ -118,6 +120,59 @@ export default function ClaimClient() {
       <p className="mt-3 text-stone-600">
         You don&rsquo;t need to do anything else. If access ever opens, we&rsquo;ll email you and
         you&rsquo;ll already be signed in.
+      </p>
+    </div>
+  );
+}
+
+/**
+ * Invitation code entry.
+ *
+ * The last credential Relay had travelling in a URL. Converting it is what lets
+ * the promise in every one of our emails — that we never send a link which
+ * signs you in — actually hold. A rule with one exception is a rule a recipient
+ * cannot use to spot a fake.
+ */
+function ClaimCodeEntry({ onCode }: { onCode: (c: string) => void }) {
+  const [code, setCode] = useState('');
+
+  return (
+    <div className="mx-auto max-w-md rounded-2xl border border-stone-200 bg-white px-6 py-7">
+      <h1 className="text-[26px] font-semibold leading-snug text-stone-900">Enter your invitation code</h1>
+      <p className="mt-3 text-[17px] leading-relaxed text-stone-700">
+        Someone has named you in their Relay plan. Type the code from the email they sent you.
+      </p>
+
+      <form
+        className="mt-6"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (code.trim()) onCode(code.trim());
+        }}
+      >
+        <label htmlFor="invite" className="block text-sm font-medium text-stone-700">
+          Code from your email
+        </label>
+        <input
+          id="invite"
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          autoCapitalize="characters"
+          spellCheck={false}
+          placeholder="4KMPQ-7XR2W"
+          className="mt-2 min-h-[52px] w-full rounded-md border border-stone-400 px-4 text-center font-mono text-2xl tracking-[0.15em] text-stone-900 placeholder:text-stone-300 focus:border-stone-900 focus:outline-none"
+        />
+        <button
+          type="submit"
+          disabled={!code.trim()}
+          className="mt-5 min-h-[52px] w-full rounded-md bg-stone-900 px-6 text-[17px] font-semibold text-white hover:bg-stone-800 disabled:opacity-50"
+        >
+          Continue
+        </button>
+      </form>
+
+      <p className="mt-6 text-[15px] leading-relaxed text-stone-500">
+        Nothing is being opened. Accepting only tells them you have seen it.
       </p>
     </div>
   );

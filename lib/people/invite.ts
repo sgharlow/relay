@@ -22,7 +22,7 @@
  * Requirements: J4-R9
  */
 
-import { createInvitation, type PersonType } from './invitations';
+import { createInvitation, formatInviteCode, type PersonType } from './invitations';
 import { notifyInvitation } from '../notify/notifications';
 import { query } from '../db/connection';
 import { getOwnerLabel } from './owner-label';
@@ -57,7 +57,11 @@ export async function inviteAndNotify(
   personType: PersonType,
 ): Promise<InviteResult> {
   const { token, expiresAt } = await createInvitation(ownerId, { personId, personType });
-  const claimUrl = `${appUrl()}/claim?token=${token}`;
+  // BARE link plus a typed code. The credential no longer travels in the URL,
+  // so a forwarded invitation grants nothing, and Relay's claim that it never
+  // sends a sign-in link now holds across every message it sends.
+  const claimUrl = `${appUrl()}/claim`;
+  const claimCode = formatInviteCode(token);
 
   const table = personType === 'recipient' ? 'recipients' : 'verifiers';
   const person = await query<{ name: string; email: string }>(
@@ -70,6 +74,7 @@ export async function inviteAndNotify(
         name: person.rows[0].name,
         personType,
         claimUrl,
+        claimCode,
         ownerLabel: await getOwnerLabel(ownerId),
       })
     : false;

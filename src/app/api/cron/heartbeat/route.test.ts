@@ -16,6 +16,10 @@ vi.mock('../../../../../lib/release/heartbeat', () => ({
   // SweepResult is { evaluated, transitioned, failures } — verified against
   // lib/release/heartbeat.ts. Do not guess these field names.
   runHeartbeatSweep: vi.fn(async () => ({ evaluated: 3, transitioned: 1, failures: 0 })),
+  // The other half of the sweep: GRACE rows whose window elapsed and whose
+  // quorum is already met. Without it, GRACE_WINDOW_MS could not be raised
+  // above 0 without stranding releases.
+  resolveElapsedGrace: vi.fn(async () => 0),
 }));
 vi.mock('../../../../../lib/release/state-machine', () => ({
   ReleaseStateMachine: class {},

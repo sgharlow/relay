@@ -49,7 +49,17 @@ export const TIER_LIMITS: Record<
   // and that dead code is currently load-bearing: connecting it before billing
   // exists would mean no account could ever release. Wire it in the same change
   // that ships checkout, not before.
-  free: { items: 10, recipients: 4, canRelease: false },
+  //
+  // canRelease is TRUE on free during beta, and this is a deliberate, dated
+  // decision rather than an oversight. Founding families are being onboarded by
+  // hand and will not have paid; enforcing the paywall now would mean the beta
+  // cannot exercise the one feature the product exists for. Checkout is wired
+  // and assertCanRelease is called on the release path, so flipping this to
+  // false is the single line that turns enforcement on — and the path is
+  // already live and tested rather than dead code discovered later.
+  //
+  // FLIP TO false WHEN BETA ENDS.
+  free: { items: 10, recipients: 4, canRelease: true },
   paid: {
     items: Number.POSITIVE_INFINITY,
     recipients: Number.POSITIVE_INFINITY,

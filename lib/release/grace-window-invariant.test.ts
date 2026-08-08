@@ -48,12 +48,30 @@ describe('GRACE_WINDOW_MS invariant', () => {
     // re-evaluates the row later, so the release would never complete.
   });
 
-  it('confirms no scheduled job resolves an elapsed grace window', async () => {
-    // If a grace-elapsed sweep is ever added, export it and assert it here
-    // instead of this guard, then this test should be replaced.
+  /**
+   * REPLACED 2026-08-08, exactly as the old guard instructed.
+   *
+   * This used to assert that NO scheduled job resolved an elapsed grace window
+   * — encoding the limitation that made GRACE_WINDOW_MS unusable above 0. The
+   * resolver now exists, so the guard flips: it asserts the resolver is there,
+   * and that it stays conservative.
+   */
+  it('a scheduled resolver exists, so a non-zero grace window no longer strands releases', async () => {
     const heartbeat = await import('./heartbeat');
+    expect(Object.keys(heartbeat)).toContain('resolveElapsedGrace');
+  });
 
-    expect(Object.keys(heartbeat)).not.toContain('runGraceSweep');
-    expect(Object.keys(heartbeat)).not.toContain('resolveElapsedGrace');
+  it('the resolver releases ONLY rows that already have full quorum', async () => {
+    // The danger of adding a resolver is that it becomes a second, weaker path
+    // to release. It must never lower a threshold or release early — quorum is
+    // a precondition in the query itself, not a check a caller might skip.
+    const src = await import('fs').then((fs) =>
+      fs.readFileSync(new URL('./heartbeat.ts', import.meta.url), 'utf8'),
+    );
+    const body = src.slice(src.indexOf('export async function resolveElapsedGrace'));
+
+    expect(body).toContain('received_confirmations >= required_confirmations');
+    expect(body).toContain("state = 'grace'");
+    expect(body).toContain('grace_ends_at <=');
   });
 });

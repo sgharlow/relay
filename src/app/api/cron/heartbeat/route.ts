@@ -10,7 +10,7 @@
  */
 
 import { NextResponse, type NextRequest } from 'next/server';
-import { runHeartbeatSweep } from '../../../../../lib/release/heartbeat';
+import { runHeartbeatSweep, resolveElapsedGrace } from '../../../../../lib/release/heartbeat';
 import { ReleaseStateMachine } from '../../../../../lib/release/state-machine';
 import { recordSchedulerRun } from '../../../../../lib/release/scheduler-ledger';
 
@@ -25,12 +25,19 @@ async function handle(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  const summary = await runHeartbeatSweep(new ReleaseStateMachine());
+  const machine = new ReleaseStateMachine();
+  const summary = await runHeartbeatSweep(machine);
+
+  // The other half of the sweep: GRACE rows whose window has elapsed and whose
+  // quorum is already met. Without this, GRACE_WINDOW_MS could not be raised
+  // above 0 — a non-zero window would strand releases rather than create the
+  // owner-cancel window it appears to offer.
+  const graceReleased = await resolveElapsedGrace(machine);
 
   // CC9: record the run so its ABSENCE is detectable by /api/health/scheduler.
   await recordSchedulerRun(summary);
 
-  return NextResponse.json(summary);
+  return NextResponse.json({ ...summary, graceReleased });
 }
 
 /** Vercel Cron invokes cron paths with GET. */

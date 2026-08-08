@@ -24,7 +24,7 @@
 
 import { query } from '../db/connection';
 import { writeAuditEntry } from '../audit/audit-service';
-import { notifyRecipientsOfClosure } from '../notify/notifications';
+import { notifyRecipientsOfClosure, notifyRecipientsOfRelease } from '../notify/notifications';
 import { isReversibleTrigger, type ReleaseStateMachine } from './state-machine';
 import { GRACE_WINDOW_MS } from './triggers';
 
@@ -224,4 +224,73 @@ async function armOne(
   }
   process.stderr.write(`[heartbeat] failed to arm owner ${ownerId} trigger ${rs.trigger_type}\n`);
   return false;
+}
+
+// ---------------------------------------------------------------------------
+// Grace resolution — the missing half of a configurable grace window
+// ---------------------------------------------------------------------------
+
+/**
+ * Releases GRACE rows whose window has elapsed and whose quorum is already met.
+ *
+ * WHY THIS EXISTS. `GRACE_WINDOW_MS` is 0, and the comment on it explains that
+ * raising it does NOT create an owner-cancel window — it strands the release
+ * permanently. `submitConfirmation` evaluates `canRelease` exactly once, at
+ * confirmation time; if the window has not elapsed it returns `pending_grace`
+ * and nothing ever re-drives it. The sweep only looks at ARMED rows.
+ *
+ * So the grace window was not a knob that was set to zero — it was a knob that
+ * could not be turned. This is the resolver that makes it real: a row whose
+ * quorum is met and whose window has now passed gets released on the next
+ * sweep. With that in place, GRACE_WINDOW_MS can be raised to give an owner a
+ * genuine window to stop a false alarm before anything opens.
+ *
+ * Deliberately conservative: it releases ONLY rows that already have every
+ * confirmation they need. It never lowers a threshold, never releases early,
+ * and a row that is short of quorum is left exactly where it is.
+ *
+ * Requirements: 6.5, 6.6
+ */
+export async function resolveElapsedGrace(machine: Machine, now: Date = new Date()): Promise<number> {
+  const due = await query<{
+    id: string;
+    owner_id: string;
+    trigger_type: string;
+    version: string | number;
+    received_confirmations: number;
+    required_confirmations: number;
+  }>(
+    `SELECT id, owner_id, trigger_type, version, received_confirmations, required_confirmations
+       FROM release_state
+      WHERE state = 'grace'
+        AND grace_ends_at IS NOT NULL
+        AND grace_ends_at <= $1
+        AND received_confirmations >= required_confirmations`,
+    [now.toISOString()],
+  );
+
+  let released = 0;
+  for (const row of due.rows) {
+    try {
+      await machine.transition(row.id, 'grace', 'released', row.version, {
+        reversible: isReversibleTrigger(row.trigger_type),
+        updates: { released_at: now.toISOString() },
+      });
+
+      // Same notification the confirmation path sends, so a recipient's
+      // experience does not depend on which code path completed the release.
+      await notifyRecipientsOfRelease({
+        releaseStateId: row.id,
+        ownerId: row.owner_id,
+        triggerType: row.trigger_type,
+        version: String(Number(row.version) + 1),
+      }).catch(() => undefined);
+
+      released++;
+    } catch {
+      // A concurrent writer moved the row; the next sweep re-evaluates it.
+    }
+  }
+
+  return released;
 }

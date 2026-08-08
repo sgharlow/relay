@@ -59,7 +59,14 @@ describe('createInvitation', () => {
 
     const out = await createInvitation('o-1', { personId: 'r-1', personType: 'recipient' });
 
-    expect(out.token.length).toBeGreaterThanOrEqual(32);
+    // A TYPED code now, not a 32-byte URL token: every credential Relay emails
+    // is typed, because "we never send a link that signs you in" is only usable
+    // for spotting a fake if it holds for all of our mail. Ten characters over
+    // the 31-character unambiguous alphabet is ~50 bits — deliberately longer
+    // than the 8-character verifier and recipient codes, because an invitation
+    // lives 30 days rather than 24-72 hours.
+    expect(out.token).toHaveLength(10);
+    expect(out.token).toMatch(/^[23456789ABCDEFGHJKLMNPQRSTVWXYZ]+$/);
     expect(new Date(out.expiresAt).getTime()).toBeGreaterThan(Date.now());
   });
 

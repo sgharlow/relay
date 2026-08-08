@@ -22,7 +22,8 @@
     "pg": "8.22.0",
     "react": "^18",
     "react-dom": "^18",
-    "resend": "6.14.0"
+    "resend": "6.14.0",
+    "stripe": "^22.4.0"
   },
   "devDependencies": {
     "@types/node": "^20",

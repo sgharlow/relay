@@ -42,6 +42,24 @@ export default function PriceCard() {
       cta: 'start-price-card',
       price: String(price),
     });
+    // Try real checkout first. It 503s until Stripe is configured, and the
+    // interest page is the fallback — the G1 lane, which still fires
+    // caregiver_intent, so the gate reads the same either way. That ordering
+    // matters: the button says "Keep my vault — $119/yr", and sending someone
+    // who wants to pay to a waitlist when checkout exists would be a bait.
+    try {
+      const res = await fetch('/api/stripe/checkout', { method: 'POST' });
+      if (res.ok) {
+        const { url } = (await res.json()) as { url?: string };
+        if (url) {
+          window.location.href = url;
+          return;
+        }
+      }
+    } catch {
+      /* fall through to the interest lane */
+    }
+
     window.location.href = '/caregivers/interest?src=start';
   }
 

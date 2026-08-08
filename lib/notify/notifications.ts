@@ -253,6 +253,7 @@ export async function notifyInvitation(params: {
   name: string;
   personType: 'recipient' | 'verifier';
   claimUrl: string;
+  claimCode?: string;
   ownerLabel: string;
 }): Promise<boolean> {
   const isVerifier = params.personType === 'verifier';
@@ -285,13 +286,25 @@ export async function notifyInvitation(params: {
           `this up today means you will not be locked out at the worst possible moment.
 
 `) +
-      `Accept here:
+      (params.claimCode
+        ? `Go to ${params.claimUrl} and enter this code:
+
+    ${params.claimCode}
+
+` +
+          `It works once and expires in 30 days.
+
+` +
+          `Relay will never send you a link that signs you in. If a message claiming to be from ` +
+          `us asks you to click one, it is not from us.
+`
+        : `Accept here:
 
 ${params.claimUrl}
 
 ` +
-      `This link works once and expires in 30 days.
-`,
+          `This link works once and expires in 30 days.
+`),
   });
 }
 

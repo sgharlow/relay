@@ -16,9 +16,10 @@
  * Requirements: J4-R9, J4-R10, J4-R11
  */
 
-import { createHash, randomBytes } from 'crypto';
+import { createHash, randomInt } from 'crypto';
 
 import { query } from '../db/connection';
+import { CASE_ID_ALPHABET } from '../release/case-id';
 import { ValidationError } from '../validation';
 
 export const INVITE_TTL_DAYS = 30;
@@ -27,8 +28,43 @@ export type PersonType = 'recipient' | 'verifier';
 
 const PERSON_TYPES: PersonType[] = ['recipient', 'verifier'];
 
+/**
+ * Normalises a typed claim code so formatting and case do not matter:
+ * "4KMPQ-7XR2W", "4kmpq 7xr2w" and "4KMPQ7XR2W" are the same code.
+ *
+ * Applied inside hashToken so every caller gets it for free — a redeem path
+ * that forgot to normalise would reject perfectly correct codes.
+ */
+export function normaliseToken(token: string): string {
+  return token.toUpperCase().replace(/[^0-9A-Z]/g, '');
+}
+
 export function hashToken(token: string): string {
-  return createHash('sha256').update(token).digest('hex');
+  return createHash('sha256').update(normaliseToken(token)).digest('hex');
+}
+
+/** Display form — two groups of five, which people transcribe accurately. */
+export function formatInviteCode(code: string): string {
+  const c = normaliseToken(code);
+  return `${c.slice(0, 5)}-${c.slice(5)}`;
+}
+
+/**
+ * TEN characters, not the eight used for verifier and recipient codes.
+ *
+ * Those live 24–72 hours; an invitation lives 30 days, so the guessing window
+ * is roughly an order of magnitude longer and the entropy is raised to match
+ * (~50 bits rather than ~40). Copying the shorter format would have been
+ * consistent-looking and wrong.
+ */
+export const INVITE_CODE_LENGTH = 10;
+
+function generateInviteCode(): string {
+  let out = '';
+  for (let i = 0; i < INVITE_CODE_LENGTH; i++) {
+    out += CASE_ID_ALPHABET[randomInt(CASE_ID_ALPHABET.length)];
+  }
+  return out;
 }
 
 export async function createInvitation(
@@ -39,7 +75,11 @@ export async function createInvitation(
     throw new ValidationError('personType must be recipient or verifier', 'personType');
   }
 
-  const token = randomBytes(32).toString('base64url');
+  // A typed code, not a URL token. Every other credential Relay emails is now
+  // typed, and the rule "we never send a link that signs you in" is only useful
+  // to a recipient if it holds for ALL of our mail — one exception makes it
+  // unusable as a way to spot a fake.
+  const token = generateInviteCode();
   const expiresAt = new Date(Date.now() + INVITE_TTL_DAYS * 86400_000).toISOString();
 
   await query(

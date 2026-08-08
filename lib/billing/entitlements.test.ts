@@ -42,10 +42,13 @@ describe('EntitlementError', () => {
 });
 
 describe('TIER_LIMITS', () => {
-  it('free is 10 items, 4 recipients, no release', () => {
-    // Raised from 1 for beta: a family with two adult children could not name
-    // them both, and with no checkout the cap was a wall rather than a paywall.
-    expect(TIER_LIMITS.free).toEqual({ items: 10, recipients: 4, canRelease: false });
+  it('free is 10 items, 4 recipients, and CAN release during beta', () => {
+    // Recipients raised from 1: a family with two adult children could not name
+    // them both. canRelease is true by dated decision — founding families are
+    // onboarded by hand and will not have paid, so enforcing the paywall now
+    // would stop the beta exercising the one feature the product exists for.
+    // Flipping it to false is what turns enforcement on; the call site is live.
+    expect(TIER_LIMITS.free).toEqual({ items: 10, recipients: 4, canRelease: true });
   });
 
   it('paid is unbounded and can release', () => {
@@ -170,7 +173,7 @@ describe('assertWithinRecipientCap', () => {
 });
 
 describe('assertCanRelease', () => {
-  it('blocks release on free', async () => {
+  it.skip('blocks release on free (re-enable when the beta paywall is turned on)', async () => {
     mockQuery
       .mockResolvedValueOnce({ rows: [{ is_demo_account: false }] } as never)
       .mockResolvedValueOnce({ rows: [] } as never);

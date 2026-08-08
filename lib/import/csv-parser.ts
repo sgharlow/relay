@@ -14,9 +14,9 @@
  * Requirements: 10.1–10.3, 10.6, 10.7, 10.9
  */
 
-export type CsvFormat = '1password' | 'bitwarden' | 'lastpass' | 'chrome' | 'firefox';
+export type CsvFormat = '1password' | 'bitwarden' | 'lastpass' | 'chrome' | 'firefox' | 'generic';
 
-export const CSV_FORMATS: CsvFormat[] = ['1password', 'bitwarden', 'lastpass', 'chrome', 'firefox'];
+export const CSV_FORMATS: CsvFormat[] = ['1password', 'bitwarden', 'lastpass', 'chrome', 'firefox', 'generic'];
 
 export interface ParsedRow {
   service_name: string;
@@ -55,6 +55,17 @@ const FORMAT_COLUMNS: Record<CsvFormat, { service_name: string[]; url: string[];
   lastpass: { service_name: ['name'], url: ['url'], username: ['username'], password: ['password'] },
   chrome: { service_name: ['name'], url: ['url'], username: ['username'], password: ['password'] },
   firefox: { service_name: [], url: ['url'], username: ['username'], password: ['password'] }, // service_name from url host
+  // GENERIC — for the parent who has no password manager at all, which is most
+  // people over seventy. Before this, five named exports were supported and the
+  // alternative was typing every account by hand; a spreadsheet a daughter fills
+  // in at the kitchen table is the realistic path, and it was the one path we
+  // did not accept. Column names are the ones a person would actually write.
+  generic: {
+    service_name: ['account', 'service', 'site', 'name', 'what', 'title'],
+    url: ['url', 'website', 'link', 'address'],
+    username: ['username', 'user', 'login', 'email', 'user name'],
+    password: ['password', 'pass', 'pin', 'code', 'secret'],
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -117,6 +128,16 @@ export function detectFormat(headers: string[]): CsvFormat | null {
   if (h.has('name') && h.has('url') && h.has('username') && h.has('password')) {
     return h.has('note') || h.has('notes') ? 'chrome' : 'lastpass';
   }
+
+  // Last resort: anything that names a thing and a secret. Checked AFTER every
+  // known exporter so a real 1Password file is never mis-read as a hand-made
+  // sheet, and it accepts the words people actually use — "account", "pin",
+  // "what", "login" — rather than requiring them to learn ours.
+  const named = FORMAT_COLUMNS.generic;
+  const hasService = named.service_name.some((c) => h.has(c));
+  const hasSecret = named.password.some((c) => h.has(c));
+  if (hasService && hasSecret) return 'generic';
+
   return null;
 }
 

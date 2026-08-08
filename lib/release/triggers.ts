@@ -18,6 +18,7 @@
  */
 
 import { query } from '../db/connection';
+import { assertCanRelease } from '../billing/entitlements';
 import { isSqlState40001, withOccRetry } from '../db/occ';
 import { writeAuditEntry } from '../audit/audit-service';
 import { DECISIONS, evaluateOutcome, type Decision } from './verifier-decision';
@@ -69,10 +70,15 @@ async function readStateByOwnerTrigger(ownerId: string, triggerType: string): Pr
  * No scheduled job resolves GRACE rows whose window has since passed
  * (`runHeartbeatSweep` selects `state = 'armed'` only).
  *
- * Raising this above 0 therefore does NOT create an owner-cancel window. It
- * strands the release permanently: quorum met, owner notified, release never
- * completes. To make it genuinely configurable, first add a cron that resolves
- * GRACE rows where `grace_ends_at <= now()` AND `received >= required`.
+ * ⚠️ THE ABOVE WAS TRUE UNTIL 2026-08-08 and is now FIXED. `resolveElapsedGrace`
+ * in lib/release/heartbeat.ts runs on every cron sweep and releases GRACE rows
+ * where `grace_ends_at <= now()` AND `received >= required` — exactly the
+ * resolver this comment asked for. Raising this value now creates a REAL
+ * owner-cancel window rather than stranding the release.
+ *
+ * It stays 0 for the H0 demo, where an instant release is the point. Raising it
+ * is now a product decision (how long should an owner get to stop a false
+ * alarm?) rather than a thing that would quietly break releases.
  *
  * Guarded by lib/release/grace-window-invariant.test.ts.
  */
@@ -93,6 +99,15 @@ export async function initiateTrigger(
   machine: Pick<ReleaseStateMachine, 'transition'>,
   now: Date,
 ): Promise<ReleaseStateRow> {
+  // The paywall, finally connected. assertCanRelease was written, unit-tested
+  // and called by NOTHING — dead code that was quietly load-bearing, because
+  // wiring it before checkout existed would have meant no account could ever
+  // release. Checkout exists now, so it is wired here, on the one path that
+  // starts a release. Free currently permits releasing (beta); flipping that
+  // flag is what turns enforcement on, and this call is what makes the flag
+  // mean something.
+  await assertCanRelease(ownerId);
+
   const row = await readStateByOwnerTrigger(ownerId, triggerType);
   if (row.state !== 'armed') {
     throw new TriggerError(`Trigger "${triggerType}" is not ARMED (state=${row.state})`, 409);

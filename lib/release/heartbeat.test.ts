@@ -14,7 +14,7 @@ vi.mock('../audit/audit-service', () => ({ writeAuditEntry: vi.fn(async () => ({
 
 import { query } from '../db/connection';
 import { writeAuditEntry } from '../audit/audit-service';
-import { isOverdue, processCheckin, runHeartbeatSweep } from './heartbeat';
+import { isOverdue, processCheckin, runHeartbeatSweep , resolveElapsedGrace } from './heartbeat';
 
 const mockQuery = vi.mocked(query);
 const mockAudit = vi.mocked(writeAuditEntry);
@@ -203,5 +203,56 @@ describe('runHeartbeatSweep', () => {
     expect(res).toEqual({ evaluated: 1, transitioned: 0, failures: 1 });
     expect(transition).toHaveBeenCalledTimes(3); // max 3 attempts
     expect(sleep).toHaveBeenCalledTimes(2); // backoff between attempts
+  });
+});
+
+/**
+ * resolveElapsedGrace — the resolver that makes GRACE_WINDOW_MS configurable.
+ *
+ * Until this existed, raising the grace window above 0 did not create an
+ * owner-cancel window; it stranded releases, because submitConfirmation
+ * evaluates canRelease exactly once and nothing re-drove a GRACE row.
+ */
+describe('resolveElapsedGrace', () => {
+  it('releases a row whose window has elapsed AND whose quorum is met', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ id: 'rs-1', owner_id: 'o-1', trigger_type: 'emergency', version: 3, received_confirmations: 2, required_confirmations: 2 }],
+      rowCount: 1,
+    } as never);
+    const machine = { transition: vi.fn(async (..._a: unknown[]) => ({}) as never) };
+
+    await expect(resolveElapsedGrace(machine as never, new Date())).resolves.toBe(1);
+    expect(machine.transition.mock.calls[0][1]).toBe('grace');
+    expect(machine.transition.mock.calls[0][2]).toBe('released');
+  });
+
+  it('only selects rows that already have every confirmation they need', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
+    await resolveElapsedGrace({ transition: vi.fn() } as never, new Date());
+
+    const sql = String(mockQuery.mock.calls[0][0]);
+    expect(sql).toContain('received_confirmations >= required_confirmations');
+    expect(sql).toContain('grace_ends_at <=');
+    expect(sql).toContain("state = 'grace'");
+  });
+
+  it('returns 0 when nothing is due', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
+    await expect(resolveElapsedGrace({ transition: vi.fn() } as never, new Date())).resolves.toBe(0);
+  });
+
+  it('a racing row does not abort the rest of the sweep', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        { id: 'a', owner_id: 'o', trigger_type: 'emergency', version: 1, received_confirmations: 1, required_confirmations: 1 },
+        { id: 'b', owner_id: 'o', trigger_type: 'emergency', version: 1, received_confirmations: 1, required_confirmations: 1 },
+      ],
+      rowCount: 2,
+    } as never);
+    const machine = {
+      transition: vi.fn().mockRejectedValueOnce(new Error('CAS mismatch')).mockResolvedValueOnce({} as never),
+    };
+
+    await expect(resolveElapsedGrace(machine as never, new Date())).resolves.toBe(1);
   });
 });

@@ -89,3 +89,35 @@ describe('parseCSV', () => {
     expect(result.rows).toHaveLength(300);
   });
 });
+
+/**
+ * The generic format — for the parent who has no password manager.
+ *
+ * Five named exporters were supported and the alternative was typing every
+ * account by hand. Most people over seventy have no password manager, so a
+ * spreadsheet filled in at a kitchen table is the realistic path, and it was
+ * the one path the importer refused.
+ */
+describe('generic CSV', () => {
+  it('accepts the words a person would actually write', () => {
+    expect(detectFormat(['Account', 'Website', 'Login', 'Password'])).toBe('generic');
+    expect(detectFormat(['What', 'PIN'])).toBe('generic');
+    expect(detectFormat(['Service', 'User', 'Pass'])).toBe('generic');
+  });
+
+  it('is checked LAST — a real exporter is never mis-read as a hand-made sheet', () => {
+    // Every one of these also satisfies the generic shape.
+    expect(detectFormat(['title', 'url', 'username', 'password'])).toBe('1password');
+    expect(detectFormat(['login_uri', 'login_username', 'login_password'])).toBe('bitwarden');
+    expect(detectFormat(['name', 'url', 'username', 'password', 'note'])).toBe('chrome');
+  });
+
+  it('still refuses a file with no secret column at all', () => {
+    expect(detectFormat(['account', 'website'])).toBeNull();
+    expect(detectFormat(['first name', 'last name'])).toBeNull();
+  });
+
+  it('refuses a file that names a secret but nothing to attach it to', () => {
+    expect(detectFormat(['password'])).toBeNull();
+  });
+});

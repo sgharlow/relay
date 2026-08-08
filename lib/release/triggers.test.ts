@@ -10,7 +10,13 @@ import fc from 'fast-check';
 
 vi.mock('../db/connection', () => ({ query: vi.fn() }));
 vi.mock('../audit/audit-service', () => ({ writeAuditEntry: vi.fn(async () => ({})) }));
-vi.mock('../notify/notifications', () => ({ notifyRecipientsOfRelease: vi.fn(async () => 0) }));
+vi.mock('../notify/notifications', () => ({
+  notifyRecipientsOfRelease: vi.fn(async () => 0),
+  notifyRecipientsOfClosure: vi.fn(async () => 0),
+}));
+// initiateTrigger now asserts the release entitlement — the paywall that was
+// written, tested and called by nothing until checkout existed.
+vi.mock('../billing/entitlements', () => ({ assertCanRelease: vi.fn(async () => undefined) }));
 
 import { writeAuditEntry } from '../audit/audit-service';
 import { query } from '../db/connection';
