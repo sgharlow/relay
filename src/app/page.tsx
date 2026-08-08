@@ -1,317 +1,142 @@
 /**
- * Relay marketing landing page (public root).
+ * The front door.
  *
- * The front door for both audiences: Owners (who build a vault and sign in) and
- * Recipients (who arrive via an emailed /access?token link). Blue = Owner mode,
- * amber = Access mode — the product's two-mode duality is the visual through-line.
+ * This was the hackathon submission page: "Built on Amazon Aurora DSQL" in the
+ * meta description, a stack section, ARMED→PENDING→GRACE→RELEASED badges, and
+ * links to Devpost and GitHub. Correct for judges in June; wrong for the person
+ * who types relaystandby.com in August, which is now the only kind of visitor
+ * who arrives here — the ads land on /caregivers.
+ *
+ * Nothing was deleted. The architecture moved to /security, where a
+ * security-minded buyer will actually look for it, and the hackathon artefacts
+ * moved with it, where "independently judged and open to inspection" reads as
+ * credibility rather than as "weekend project".
+ *
+ * This page now does one job: work out who arrived and send them somewhere
+ * useful, without making them read a product pitch to find out whether they are
+ * in the right place.
  *
  * Feature: relay-h0-mvp
  */
 
 import Link from 'next/link';
 
-import { caregiversHref } from './caregivers/content';
+import { PRICE_YEARLY_USD } from './caregivers/content';
+
+const TITLE = 'Relay — standby access for the people who will need it';
+const DESCRIPTION =
+  'One encrypted vault for the accounts someone would need if you could not manage them. It opens when a real emergency is confirmed, and closes again when you recover.';
 
 export const metadata = {
-  title: 'Relay — standby access for the people who will need it',
-  description:
-    'An encrypted living-continuity vault with scoped, reversible access. Emergencies are reversible; estate handoffs are permanent. Built on Amazon Aurora DSQL.',
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: { canonical: '/' },
+  openGraph: { type: 'website', siteName: 'Relay', url: '/', title: TITLE, description: DESCRIPTION },
+  twitter: { card: 'summary_large_image', title: TITLE, description: DESCRIPTION },
 };
-
-const STATES = ['ARMED', 'PENDING', 'GRACE', 'RELEASED'] as const;
-
-const STEPS = [
-  {
-    n: '01',
-    title: 'Build the vault',
-    body: 'Import a password-manager export or add accounts, documents, and instructions. An importance engine ranks what matters in a crisis — and shows that your primary email is the key that unlocks most password resets. It only ever sees non-secret metadata.',
-  },
-  {
-    n: '02',
-    title: 'Set the rules',
-    body: 'Decide who gets which items, under which trigger — a missed check-in, a manual emergency, or a verified estate event — with N-of-M trusted verifiers and a grace window before anything opens.',
-  },
-  {
-    n: '03',
-    title: 'Controlled release',
-    body: 'A trigger advances a state machine — ARMED → PENDING → GRACE → RELEASED — where every transition is a strongly-consistent compare-and-set on Aurora DSQL. It can never double-release, even when owner, verifiers, and scheduler all act at once.',
-  },
-  {
-    n: '04',
-    title: 'Reversible by default',
-    body: 'Recover and check in, and emergency access closes again automatically. Estate handoffs are permanent. The default-safe state is always ARMED.',
-  },
-];
-
-const STACK = [
-  {
-    k: 'Amazon Aurora DSQL',
-    v: 'Active-active across regions, strongly consistent. The invariant — no double-spend, no oversell, no reconciliation — is owned by the database.',
-  },
-  {
-    k: 'AWS KMS envelope encryption',
-    v: 'Per-item AES-GCM-256 data key, wrapped by KMS. Plaintext never leaves your browser; the server only ever stores ciphertext.',
-  },
-  {
-    k: 'Hash-chained audit',
-    v: 'Every security event is an append-only, per-owner SHA-256 chain — tamper-evident and verifiable in the browser.',
-  },
-  {
-    k: 'Next.js on Vercel',
-    v: 'Two emotionally-distinct modes — dense blue Owner mode, calm amber Access mode — on one strongly-consistent ledger.',
-  },
-];
 
 export default function Home() {
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
-      {/* Nav */}
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-        <div className="flex items-baseline gap-2">
-          <span className="text-lg font-semibold tracking-tight">Relay</span>
-          <span className="hidden text-xs text-slate-400 sm:inline">Living-continuity vault</span>
-        </div>
-        <Link
-          href="/auth/signin"
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500"
-        >
-          Owner sign in
+      <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
+        <span className="text-lg font-semibold tracking-tight">Relay</span>
+        <Link href="/auth/signin" className="text-sm text-slate-300 hover:text-white">
+          Sign in
         </Link>
       </header>
 
-      {/* Hero */}
-      <section className="relative overflow-hidden border-b border-slate-800">
-        <div className="pointer-events-none absolute -top-32 right-0 h-96 w-96 rounded-full bg-blue-600/20 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-40 left-0 h-96 w-96 rounded-full bg-amber-500/10 blur-3xl" />
-        <div className="relative mx-auto max-w-6xl px-6 pb-20 pt-16 sm:pt-24">
-          <div className="mb-4 flex flex-wrap items-center gap-2">
-            <a
-              href="https://devpost.com/software/relay-n5c9re"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs text-amber-200 transition-colors hover:border-amber-400/70"
-            >
-              🏆 Winner — Most Impactful · H0: Hack the Zero Stack
-            </a>
-            <span className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/60 px-3 py-1 text-xs text-slate-300">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              Default state: ARMED
-            </span>
-          </div>
-          <h1 className="max-w-3xl text-4xl font-bold leading-[1.1] tracking-tight sm:text-6xl">
-            Standby access for the people who&apos;ll need it.
-          </h1>
-          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-300">
-            Relay is an encrypted vault of your accounts, credentials, and instructions — with{' '}
-            <span className="text-white">scoped, reversible access</span> that opens only under rules
-            you set. When you can&apos;t act, the right people can — and not a moment before.
-          </p>
-
-          <div className="mt-9 flex flex-wrap items-center gap-3">
-            <Link
-              href="/demo"
-              className="rounded-md bg-blue-600 px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-500"
-            >
-              Explore the guided demo
-            </Link>
-            <a
-              href="#video"
-              className="rounded-md border border-slate-700 px-5 py-3 text-sm text-slate-300 transition-colors hover:border-slate-500"
-            >
-              Watch the 2-minute demo
-            </a>
-            <Link
-              href="/auth/signin"
-              className="px-2 py-3 text-sm text-slate-400 transition-colors hover:text-slate-200"
-            >
-              Owner sign in →
-            </Link>
-          </div>
-          <p className="mt-4 text-sm text-amber-200/80">
-            Received an access link? Open it from your email to reach your plan.
-          </p>
-
-          {/* State-machine motif */}
-          <div className="mt-14 flex flex-wrap items-center gap-2 text-xs font-medium">
-            {STATES.map((s, i) => (
-              <span key={s} className="flex items-center gap-2">
-                <span
-                  className={`rounded-md border px-3 py-1.5 tracking-wide ${
-                    s === 'ARMED'
-                      ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
-                      : s === 'RELEASED'
-                        ? 'border-amber-500/40 bg-amber-500/10 text-amber-300'
-                        : 'border-slate-700 bg-slate-900/60 text-slate-300'
-                  }`}
-                >
-                  {s}
-                </span>
-                {i < STATES.length - 1 && <span className="text-slate-600">→</span>}
-              </span>
-            ))}
-            <span className="ml-1 text-slate-500">every transition strongly consistent</span>
-          </div>
-        </div>
-      </section>
-
-      {/* Demo video */}
-      <section id="video" className="border-b border-slate-800 bg-slate-900/30 scroll-mt-8">
-        <div className="mx-auto max-w-4xl px-6 py-16">
-          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">See it actually run</h2>
-          <p className="mt-2 text-slate-400">
-            Two minutes on live infrastructure: a verified emergency release, a recipient decrypt, an
-            owner check-in that closes access again, and a strongly-consistent read from the second
-            region.
-          </p>
-          <div className="mt-8 aspect-video w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950">
-            <iframe
-              className="h-full w-full"
-              src="https://www.youtube-nocookie.com/embed/FU3azKJOesY"
-              title="Relay — H0 demo video"
-              loading="lazy"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
-          </div>
-          <div className="mt-5 flex flex-wrap items-center gap-3 text-sm">
-            <Link
-              href="/demo"
-              className="rounded-md bg-blue-600 px-5 py-2.5 font-medium text-white transition-colors hover:bg-blue-500"
-            >
-              Explore the guided demo
-            </Link>
-            <a
-              href="https://devpost.com/software/relay-n5c9re"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-md border border-slate-700 px-5 py-2.5 text-slate-300 transition-colors hover:border-slate-500"
-            >
-              Devpost submission
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section className="mx-auto max-w-6xl px-6 py-20">
-        <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">How Relay works</h2>
-        <p className="mt-2 max-w-2xl text-slate-400">
-          A thin vault and a thick release engine. The hard part — being correct under pressure —
-          is handled by the database, not by hope.
+      <section className="mx-auto max-w-3xl px-6 pb-16 pt-12 sm:pt-20">
+        <h1 className="text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl">
+          The accounts someone would need, if you could not manage them.
+        </h1>
+        <p className="mt-6 text-lg leading-relaxed text-slate-300">
+          Relay holds them encrypted, opens only what you chose for the person you chose, and only
+          once a real emergency has been confirmed by someone you trust — then closes again when you
+          recover. One price for the whole family, {`$${PRICE_YEARLY_USD}`} a year.
         </p>
-        <div className="mt-10 grid gap-6 sm:grid-cols-2">
-          {STEPS.map((s) => (
-            <div
-              key={s.n}
-              className="rounded-xl border border-slate-800 bg-slate-900/40 p-6 transition-colors hover:border-slate-700"
-            >
-              <div className="font-mono text-sm text-blue-400">{s.n}</div>
-              <h3 className="mt-2 text-lg font-semibold">{s.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-400">{s.body}</p>
-            </div>
-          ))}
+
+        <div className="mt-9 flex flex-wrap items-center gap-4">
+          <Link
+            href="/caregivers"
+            className="rounded-md bg-amber-500 px-6 py-3 text-sm font-semibold text-slate-950 transition-colors hover:bg-amber-400"
+          >
+            I&rsquo;m caring for a parent
+          </Link>
+          <Link
+            href="/how-it-works"
+            className="inline-flex min-h-[44px] items-center text-sm font-medium text-slate-300 underline decoration-slate-600 underline-offset-4 hover:text-white"
+          >
+            Show me what actually happens
+          </Link>
         </div>
       </section>
 
-      {/* Two modes */}
+      {/* The three questions that decide whether someone reads on, answered in
+          a line each rather than in a features grid. */}
       <section className="border-y border-slate-800 bg-slate-900/30">
-        <div className="mx-auto grid max-w-6xl gap-6 px-6 py-16 sm:grid-cols-2">
-          <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-7">
-            <div className="text-xs font-semibold uppercase tracking-wider text-blue-300">Owner mode</div>
-            <p className="mt-3 text-slate-300">
-              Dense and deliberate. Build the vault, see the risk graph, set the rules, and arm the
-              triggers. MFA on every sign-in; nothing releases by accident.
-            </p>
-          </div>
-          <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-7">
-            <div className="text-xs font-semibold uppercase tracking-wider text-amber-300">Access mode</div>
-            <p className="mt-3 text-slate-300">
-              Calm and guided. A recipient opens one scoped link and gets a prioritized, do-this-first
-              plan — revealing only what they were granted, only once a release has actually happened.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Stack */}
-      <section className="mx-auto max-w-6xl px-6 py-20">
-        <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Built on a correctness-first stack</h2>
-        <div className="mt-10 grid gap-px overflow-hidden rounded-xl border border-slate-800 bg-slate-800 sm:grid-cols-2">
-          {STACK.map((s) => (
-            <div key={s.k} className="bg-slate-950 p-6">
-              <div className="font-medium text-white">{s.k}</div>
-              <p className="mt-2 text-sm leading-relaxed text-slate-400">{s.v}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Caregiver wedge — self-qualifying, so only the real audience clicks through */}
-      <section className="border-t border-slate-800 bg-amber-500/[0.03]">
-        <div className="mx-auto max-w-6xl px-6 py-14">
-          <div className="max-w-2xl">
-            <div className="text-xs font-semibold uppercase tracking-wider text-amber-300">
-              For the ones who step in
-            </div>
-            <h2 className="mt-3 text-2xl font-semibold tracking-tight">
-              Caring for an aging parent?
-            </h2>
-            <p className="mt-2 leading-relaxed text-slate-300">
-              The call comes, and suddenly you need their bank, their insurance portal, the email
-              that resets all of it — and you need that access to end when the crisis does.
-            </p>
-            <Link
-              href={caregiversHref('h0-home')}
-              className="mt-5 inline-block rounded-md bg-amber-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition-colors hover:bg-amber-400"
-            >
-              See Relay for caregivers →
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="border-t border-slate-800">
-        <div className="mx-auto flex max-w-6xl flex-col items-start gap-5 px-6 py-16 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mx-auto grid max-w-5xl gap-6 px-6 py-14 sm:grid-cols-3">
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight">Put a plan in place.</h2>
-            <p className="mt-1 text-slate-400">It stays ARMED until you decide otherwise.</p>
+            <h2 className="text-sm font-semibold text-slate-100">It closes again</h2>
+            <p className="mt-2 text-sm leading-relaxed text-slate-400">
+              Every other way of doing this is a door you open once. Recover, check in, and access
+              ends on its own — which is what makes it safe to set up before you need it.
+            </p>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <Link
-              href="/demo"
-              className="rounded-md bg-blue-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-500"
-            >
-              Explore the guided demo
-            </Link>
-            <Link
-              href="/auth/signin"
-              className="rounded-md border border-slate-700 px-6 py-3 text-sm text-slate-300 transition-colors hover:border-slate-500"
-            >
-              Owner sign in
-            </Link>
+          <div>
+            <h2 className="text-sm font-semibold text-slate-100">We cannot read it</h2>
+            <p className="mt-2 text-sm leading-relaxed text-slate-400">
+              Secrets are encrypted in your browser before they reach us. We hold ciphertext, and we
+              are honest on{' '}
+              <Link href="/security" className="text-slate-300 underline underline-offset-2">
+                exactly what we can see
+              </Link>
+              .
+            </p>
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-slate-100">Someone has to say yes</h2>
+            <p className="mt-2 text-sm leading-relaxed text-slate-400">
+              Nothing opens on a timer or a guess. A person you named confirms the situation is
+              real, and never sees anything of yours.
+            </p>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
+      {/* Recipients arrive by email with a code, not through this page — but
+          someone who was named and went looking should not hit a dead end. */}
+      <section className="mx-auto max-w-3xl px-6 py-14">
+        <h2 className="text-lg font-semibold">Were you named by someone?</h2>
+        <p className="mt-2 text-sm leading-relaxed text-slate-400">
+          If someone has asked you to be a recipient or a trusted contact, you will have an email
+          with a code in it. Enter it at{' '}
+          <Link href="/claim" className="text-amber-300 underline underline-offset-4">
+            relaystandby.com/claim
+          </Link>
+          . Relay never sends a link that signs you in — if a message claiming to be from us asks
+          you to click one, it is not from us.
+        </p>
+      </section>
+
       <footer className="border-t border-slate-800">
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-8 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <span className="font-semibold text-slate-300">Relay</span> —{' '}
-            <span className="text-amber-300/90">Most Impactful</span> at{' '}
-            <span className="text-slate-400">H0: Hack the Zero Stack with Vercel and AWS Databases</span>.
-          </div>
-          <div className="flex items-center gap-5">
-            <a
-              href="https://github.com/sgharlow/relay"
-              className="transition-colors hover:text-slate-300"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              GitHub
-            </a>
-            <span>MIT</span>
+        <div className="mx-auto flex max-w-5xl flex-col gap-3 px-6 py-8 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+          <span>
+            <span className="font-semibold text-slate-300">Relay</span> — standby access for the
+            people who&rsquo;ll need it.
+          </span>
+          <div className="flex flex-wrap items-center gap-x-5">
+            <Link href="/how-it-works" className="inline-flex min-h-[44px] items-center hover:text-slate-300">
+              How it works
+            </Link>
+            <Link href="/security" className="inline-flex min-h-[44px] items-center hover:text-slate-300">
+              Security
+            </Link>
+            <Link href="/privacy" className="inline-flex min-h-[44px] items-center hover:text-slate-300">
+              Privacy
+            </Link>
+            <Link href="/terms" className="inline-flex min-h-[44px] items-center hover:text-slate-300">
+              Terms
+            </Link>
           </div>
         </div>
       </footer>

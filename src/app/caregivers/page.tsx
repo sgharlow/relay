@@ -234,6 +234,12 @@ export default function CaregiversLanding() {
               How it works
             </Link>
             <Link
+              href="/security"
+              className="inline-flex min-h-[44px] items-center transition-colors hover:text-slate-300"
+            >
+              Security
+            </Link>
+            <Link
               href="/privacy"
               className="inline-flex min-h-[44px] items-center transition-colors hover:text-slate-300"
             >
