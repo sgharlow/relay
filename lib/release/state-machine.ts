@@ -49,6 +49,8 @@ export interface ReleaseStateRow {
   initiated_at: string | null;
   grace_ends_at: string | null;
   released_at: string | null;
+  /** CC7: phone-readable case ID, set at provisioning. Null on pre-CC7 rows. */
+  case_id?: string | null;
   created_at: string;
 }
 

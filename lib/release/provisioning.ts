@@ -15,6 +15,7 @@
 
 import { query } from '../db/connection';
 import { withOccRetry } from '../db/occ';
+import { formatCaseId } from './case-id';
 import { ValidationError } from '../validation';
 import { validateNofM, VALID_TRIGGER_TYPES, type TriggerType } from '../rules/access-rules';
 import type { ReleaseStateRow } from './state-machine';
@@ -55,7 +56,19 @@ export async function ensureReleaseState(
       [ownerId, triggerType, required],
     ),
   );
-  return inserted.rows[0];
+
+  const row = inserted.rows[0];
+
+  // CC7: one phone-readable case ID per release, derived from its own id so the
+  // same release always yields the same referent. Set once, at creation.
+  await withOccRetry(() =>
+    query(`UPDATE release_state SET case_id = $2 WHERE id = $1 AND case_id IS NULL`, [
+      row.id,
+      formatCaseId(row.id),
+    ]),
+  );
+
+  return { ...row, case_id: formatCaseId(row.id) };
 }
 
 /**
