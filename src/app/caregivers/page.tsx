@@ -16,6 +16,9 @@ import Link from 'next/link';
 
 import {
   CTA_LABEL,
+  WINNER_BADGE,
+  SECONDARY_CTA_LABEL,
+  productHref,
   DIFFERENTIATORS,
   HEADLINE,
   intentHref,
@@ -57,7 +60,13 @@ export default function CaregiversLanding() {
             <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
             For adult children caring for aging parents
           </p>
-          <h1 className="max-w-3xl text-4xl font-bold leading-[1.1] tracking-tight sm:text-6xl">
+
+          {/* H0 win — distribution ammunition per the disposition plan's WIN branch. */}
+          <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1 text-xs font-medium text-amber-300">
+            {WINNER_BADGE}
+          </p>
+
+          <h1 className="mt-4 max-w-3xl text-4xl font-bold leading-[1.1] tracking-tight sm:text-6xl">
             {HEADLINE}
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-300">{SUBHEAD}</p>
@@ -72,6 +81,18 @@ export default function CaregiversLanding() {
             <span className="text-sm text-slate-400">
               One price, the whole family. Cancel anytime.
             </span>
+          </div>
+
+          {/* Secondary lane: the product funnel. Measures WTP after the reveal
+              rather than from copy alone. Does not split the gate — a conversion
+              here still reaches /caregivers/interest and fires caregiver_intent. */}
+          <div className="mt-4">
+            <Link
+              href={productHref('hero-product')}
+              className="text-sm font-medium text-slate-300 underline decoration-slate-600 underline-offset-4 transition-colors hover:text-white"
+            >
+              {SECONDARY_CTA_LABEL}
+            </Link>
           </div>
         </div>
       </section>

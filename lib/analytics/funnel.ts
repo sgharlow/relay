@@ -26,11 +26,17 @@
  * signal available synchronously. Actual delivery is proven by watching the
  * POST bodies in a browser — see docs/g1-launch-checklist.md.
  *
+ * CHANNEL MEMORY IS SHARED WITH THE LANDING FUNNEL. Both read and write
+ * `CHANNEL_STORAGE_KEY` from src/app/caregivers/analytics.ts, so a visitor who
+ * arrives on /caregivers?src=reddit-ads and later reaches /start carries that
+ * attribution the whole way. Two keys meant the product funnel saw `direct`.
+ *
  * Feature: relay-g1-wtp
  * Requirements: J1-R9, J1-R10
  */
 
 import { trackG1, ensureAnalyticsQueue } from '../../src/app/caregivers/track';
+import { CHANNEL_STORAGE_KEY } from '../../src/app/caregivers/analytics';
 
 export const FUNNEL_EVENTS = [
   'caregiver_qualified',
@@ -44,7 +50,12 @@ export const FUNNEL_EVENTS = [
 export type FunnelEvent = (typeof FUNNEL_EVENTS)[number];
 
 const CHANNEL_KEYS = ['src', 'utm_source', 'ref'] as const;
-const CHANNEL_STORAGE_KEY = 'relay.channel';
+
+// CHANNEL_STORAGE_KEY is imported, NOT redefined. This module briefly parked the
+// channel under its own key ('relay.channel') while the landing page used
+// 'relay.g1.channel'. The gate ratio survived — caregiver_intent resolves from
+// the landing's key — but every /start event read `direct` for real ad traffic,
+// making the product funnel unattributable. One key, one definition.
 
 export function channelFrom(search: string): string {
   const params = new URLSearchParams(search);

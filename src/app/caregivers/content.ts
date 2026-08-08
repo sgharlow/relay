@@ -26,6 +26,34 @@ export const CTA_LABEL = `Start your family's vault — $${PRICE_YEARLY_USD}/yr`
 
 export const CTA_HREF = '/caregivers/interest';
 
+/**
+ * H0 win — distribution ammunition, per the disposition plan's WIN branch.
+ * Shown on the landing before first send (g1-launch-checklist.md step 3).
+ */
+export const WINNER_BADGE = 'Winner — Most Impactful, H0 Hackathon 2026';
+
+/**
+ * SECONDARY LANE (added 2026-08-07, "run both").
+ *
+ * The gate metric is unchanged: caregiver_intent ÷ caregiver_qualified. This CTA
+ * opens the PRODUCT funnel — signup → prompted seed → risk-graph reveal → price —
+ * which measures willingness to pay AFTER the stakes have been demonstrated
+ * rather than from the landing copy alone.
+ *
+ * It does not split the gate. A visitor who converts through the product path
+ * still lands on /caregivers/interest, so caregiver_intent still fires; the `cta`
+ * dimension ('start') is what separates the two paths in analysis. One traffic
+ * buy, two conversion routes, two readings.
+ */
+export const SECONDARY_CTA_LABEL = 'Or see it on your own family first — free, 10 items';
+
+export const SECONDARY_CTA_HREF = '/auth/signup';
+
+/** Signup link carrying the inbound channel, so attribution survives into /start. */
+export function productHref(src?: string): string {
+  return src ? `${SECONDARY_CTA_HREF}?src=${encodeURIComponent(src)}` : SECONDARY_CTA_HREF;
+}
+
 export const LANDING_HREF = '/caregivers';
 
 /** Intent link with source attribution — a visit to CTA_HREF IS the G1 intent event. */

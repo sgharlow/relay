@@ -65,6 +65,50 @@ no product building until this evidence exists.
 | 3 | Channels for qualified traffic | ~~r/AgingParents, r/CaregiverSupport, caregiver FB groups, AgingCare forum~~ **SUPERSEDED same day by the 7-03 channel-rules audit: all four organic channels prohibit product promotion.** Revised paid-primary plan (Reddit Ads + Meta Ads, draft budget) in `g1-channel-send-kit.md` | ✅ **v2 RATIFIED 2026-07-03: paid-primary, $250 ceiling** |
 | 4 | Window | 2–4 weeks from first send, or until N=100 qualified — whichever first; gate hard-stops 9-15 | ✅ RATIFIED 2026-07-03 |
 
+## Addendum — dual-lane execution (ratified by Steve 2026-08-07)
+
+**Decision: run BOTH lanes on one traffic buy.** The $250 ceiling is NOT split; both lanes are fed
+by the same ads landing on `/caregivers`, and the visitor self-selects.
+
+| Lane | Path | Reads |
+|---|---|---|
+| **A — landing (the ratified gate)** | `/caregivers` → priced CTA → `/caregivers/interest` (mailto) | Will a caregiver click a $119 CTA? |
+| **B — product** | `/caregivers` → subordinate link → signup → seed → **risk-graph reveal** → price | Will they pay *after* the stakes are demonstrated? |
+
+**The gate metric is UNCHANGED**: `count(caregiver_intent) ÷ count(caregiver_qualified)`, tagged-only,
+showcase excluded. Lane B does not create a second numerator — a lane-B conversion still lands on
+`/caregivers/interest` and fires `caregiver_intent`. The `cta` dimension separates them:
+`hero`/`nav`/`pricing` = lane A, `start` = lane B.
+
+### ⚠️ The risk this introduces, and the rule that contains it
+
+Lane B costs a signup, a TOTP enrolment and a seed before the price appears. It will almost
+certainly convert worse in raw click-to-intent than a mailto. **If lane B cannibalises lane A
+clicks, the blended ratio falls and a genuinely interested audience could trip the <0.5% KILL
+threshold on an artefact of our own funnel design — a false kill.**
+
+Three containments, two of them structural:
+
+1. **Lane B's CTA is deliberately subordinate** — a text link beneath the primary priced button,
+   no price on it, wording that opens with "Or". Enforced in `content.test.ts`, not by discipline.
+2. **Report BOTH ratios at verdict time.** Blended (all intents ÷ all qualified) AND
+   **lane-A-only** (`cta ∈ {hero, nav, pricing}` ÷ all qualified).
+3. **The ratified gate is read on the LANE-A-ONLY ratio.** It is the metric the thresholds were
+   set against on 2026-07-01. Lane B is a *secondary reading* that informs the iterate branch — it
+   cannot by itself trigger the kill.
+
+If lane A passes and lane B is materially higher, that is the strongest available argument for
+routing paid traffic through the product in a follow-up flight. If lane B is materially lower, the
+reveal is not worth its friction at the top of the funnel — which is itself worth knowing before
+building more of it.
+
+### Channel attribution across lanes
+
+Both funnels now share one `sessionStorage` key (`CHANNEL_STORAGE_KEY`, defined once in
+`src/app/caregivers/analytics.ts`). They briefly used two, which left every lane-B event reading
+`direct` for real ad traffic. The gate ratio was never affected — `caregiver_intent` always
+resolved from the landing's key — but lane B was unattributable until this was unified.
+
 ## Timeline
 
 1. **Now → verdict (~7-31):** branch stays unmerged; preview URL available for copy review.
