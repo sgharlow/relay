@@ -21,9 +21,18 @@ function stub(response: unknown): Resend {
   return { emails: { send: vi.fn(async () => response) } } as unknown as Resend;
 }
 
+/** The payload handed to Resend by the most recent send. */
+function sentPayload(client: Resend): Record<string, unknown> {
+  const send = client.emails.send as unknown as { mock: { calls: unknown[][] } };
+  return send.mock.calls.at(-1)![0] as Record<string, unknown>;
+}
+
+const ok = { data: { id: 'msg-1' }, error: null };
+
 beforeEach(() => {
   process.env.RESEND_FROM_ADDRESS = 'relay@example.com';
   process.env.RESEND_API_KEY = 'test-key';
+  delete process.env.RESEND_REPLY_TO_ADDRESS;
 });
 afterEach(() => _setResendClientForTesting(null));
 
@@ -57,6 +66,51 @@ describe('sendEmail', () => {
     delete process.env.RESEND_FROM_ADDRESS;
     _setResendClientForTesting(stub({ data: { id: 'x' }, error: null }));
     await expect(sendEmail({ to: 'a@b.com', subject: 's', text: 't' })).rejects.toThrow(/RESEND_FROM_ADDRESS/);
+  });
+});
+
+/**
+ * The From address (relay@relaystandby.com) has no MX record behind it, so a
+ * reply to it reaches nobody. These pin the header that makes replies land.
+ */
+describe('reply-to', () => {
+  it('sets Reply-To from RESEND_REPLY_TO_ADDRESS', async () => {
+    process.env.RESEND_REPLY_TO_ADDRESS = 'inbox@example.com';
+    const client = stub(ok);
+    _setResendClientForTesting(client);
+
+    await sendEmail({ to: 'a@b.com', subject: 's', text: 't' });
+
+    expect(sentPayload(client).replyTo).toBe('inbox@example.com');
+  });
+
+  it('lets a caller override the env default per message', async () => {
+    process.env.RESEND_REPLY_TO_ADDRESS = 'inbox@example.com';
+    const client = stub(ok);
+    _setResendClientForTesting(client);
+
+    await sendEmail({ to: 'a@b.com', subject: 's', text: 't', replyTo: 'support@example.com' });
+
+    expect(sentPayload(client).replyTo).toBe('support@example.com');
+  });
+
+  it('OMITS the header entirely when unset — an empty Reply-To is malformed', async () => {
+    const client = stub(ok);
+    _setResendClientForTesting(client);
+
+    await sendEmail({ to: 'a@b.com', subject: 's', text: 't' });
+
+    expect(sentPayload(client)).not.toHaveProperty('replyTo');
+  });
+
+  it('treats a whitespace-only env value as unset', async () => {
+    process.env.RESEND_REPLY_TO_ADDRESS = '   ';
+    const client = stub(ok);
+    _setResendClientForTesting(client);
+
+    await sendEmail({ to: 'a@b.com', subject: 's', text: 't' });
+
+    expect(sentPayload(client)).not.toHaveProperty('replyTo');
   });
 });
 

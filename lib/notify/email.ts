@@ -31,6 +31,32 @@ export interface EmailMessage {
   to: string;
   subject: string;
   text: string;
+  /** Overrides RESEND_REPLY_TO_ADDRESS for this one message. */
+  replyTo?: string;
+}
+
+/**
+ * The address a recipient reaches by hitting reply.
+ *
+ * This is NOT cosmetic. `relaystandby.com` has no apex MX record, so the From
+ * address — relay@relaystandby.com — cannot receive mail at all. Without a
+ * Reply-To header, a caregiver who reads "someone is requesting access to your
+ * parent's vault" and replies is writing to a mailbox that does not exist, and
+ * gets a bounce instead of a person. For a product whose entire proposition is
+ * trust, that is the worst possible failure.
+ *
+ * A Reply-To pointing at a real inbox fixes this today, without waiting on
+ * inbound-mail DNS. When Cloudflare Email Routing is enabled (see
+ * docs/email-dns-runbook.md) this can point at relay@relaystandby.com instead;
+ * nothing else needs to change.
+ *
+ * Returns undefined when unset — an absent header is correct, an empty one is
+ * malformed.
+ */
+function resolveReplyTo(explicit?: string): string | undefined {
+  const addr = explicit ?? process.env.RESEND_REPLY_TO_ADDRESS;
+  const trimmed = addr?.trim();
+  return trimmed ? trimmed : undefined;
 }
 
 /**
@@ -51,11 +77,14 @@ export async function sendEmail(msg: EmailMessage): Promise<void> {
   const from = process.env.RESEND_FROM_ADDRESS;
   if (!from) throw new Error('RESEND_FROM_ADDRESS environment variable is not set');
 
+  const replyTo = resolveReplyTo(msg.replyTo);
+
   const result = await getClient().emails.send({
     from,
     to: msg.to,
     subject: msg.subject,
     text: msg.text,
+    ...(replyTo ? { replyTo } : {}),
   });
 
   // The error field is the ONLY signal that a send failed.
