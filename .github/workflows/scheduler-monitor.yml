@@ -51,8 +51,12 @@ jobs:
             code=$(printf '%s' "$body" | tail -n1)
             payload=$(printf '%s' "$body" | sed '$d')
 
+            # Truncated: a non-200 from Vercel is a full HTML error page, and
+            # dumping it buries the one line that matters under a screen of
+            # markup. Proven the hard way on the alarm's first real firing.
             echo "attempt $attempt -> HTTP $code"
-            echo "$payload"
+            printf '%s\n' "$payload" | head -c 400
+            echo
 
             if [ "$code" = "200" ]; then
               echo "::notice::Scheduler healthy."
