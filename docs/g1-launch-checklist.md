@@ -102,6 +102,19 @@ Re-run all four checks at merge time if the branch has moved past `af4ddf3`.
       Live-proven end-to-end from a 390px viewport: `src`/`cta` attribution intact through to the
       row, honeypot silently discards, invalid email 400s, rate limiter 429s. Test rows purged —
       `caregiver_leads` starts the flight at 0.
+- [x] **7g. Form spam defences (added and DONE 2026-08-08).** Deliberately NO CAPTCHA: the form's
+      purpose is measuring conversion, so a visible challenge is friction applied to the exact
+      behaviour being measured and biases the gate. reCAPTCHA is additionally excluded because the
+      privacy page states there are no advertising or tracking cookies on the site. Shipped
+      instead: an off-screen honeypot, and a render-timestamp check rejecting submissions faster
+      than a human can type. Both invisible, no vendor, no cookie. Both fail OPEN — a malformed or
+      absent timestamp records the lead rather than discarding it, because an anti-spam heuristic
+      that can silently drop real demand is worse than spam during a gate that kills on a low
+      number. Live-proven: instant and 1-second submissions discarded with no row and no email,
+      malformed timestamp recorded, genuine human-speed submission through the real form recorded
+      with `cta` attribution intact. **Escalation path if spam actually materialises:** Cloudflare
+      Turnstile (free, DNS already there, no tracking cookie) — NOT reCAPTCHA. Trigger: more than
+      a handful of junk rows in `caregiver_leads` during the flight.
 - [x] **7f. Ad-surface metadata (added and DONE 2026-08-08).** `metadataBase` still declared
       `relay-three-henna.vercel.app`, so every `og:url`/`og:image` — including what Meta and Reddit
       crawl during ad review — pointed at the pre-domain deployment. Now `relaystandby.com`, with a
