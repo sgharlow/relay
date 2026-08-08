@@ -7,7 +7,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { Resend } from 'resend';
 import { _setResendClientForTesting } from './email';
-import { notifyVerifiersForTrigger, notifyOwnerReleasePendingGrace, notifyRecipientsOfRelease } from './notifications';
+import {
+  notifyVerifiersForTrigger,
+  notifyOwnerReleasePendingGrace,
+  notifyOwnerTriggerPending,
+  notifyRecipientsOfRelease,
+} from './notifications';
 import { query } from '../db/connection';
 
 vi.mock('../db/connection', () => ({ query: vi.fn() }));
@@ -168,5 +173,38 @@ describe('emailed link origin', () => {
     );
 
     expect(sent[0].text).not.toMatch(/vercel\.app/);
+  });
+});
+
+/**
+ * Indefinite articles in subject lines.
+ *
+ * Caught by transcribing a full family scenario 2026-08-08: two of the five
+ * trigger types start with a vowel, so real mail went out reading "A emergency
+ * trigger was initiated" — in the subject line of the message that arrives
+ * during an actual emergency.
+ */
+describe('subject-line grammar', () => {
+  it.each(['emergency', 'estate'])('uses "an" before the vowel-initial %s', async (trigger) => {
+    _setResendClientForTesting(stubResend());
+    await notifyVerifiersForTrigger([{ id: 'v-1', name: 'Dr Patel', email: 'v@example.com' }], trigger, 'rs-1');
+
+    expect(sent[0].subject).toContain(`confirm an ${trigger}`);
+    expect(sent[0].subject).not.toContain(`confirm a ${trigger}`);
+  });
+
+  it.each(['caregiver', 'travel', 'business'])('uses "a" before the consonant-initial %s', async (trigger) => {
+    _setResendClientForTesting(stubResend());
+    await notifyVerifiersForTrigger([{ id: 'v-1', name: 'Dr Patel', email: 'v@example.com' }], trigger, 'rs-1');
+
+    expect(sent[0].subject).toContain(`confirm a ${trigger}`);
+  });
+
+  it('capitalises correctly when the article opens the sentence', async () => {
+    _setResendClientForTesting(stubResend());
+    await notifyOwnerTriggerPending('owner@example.com', 'emergency');
+
+    expect(sent[0].subject).toBe('An emergency trigger was initiated on your account');
+    expect(sent[0].text).toContain('An "emergency" trigger');
   });
 });

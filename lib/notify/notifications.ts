@@ -44,6 +44,20 @@ function appUrl(): string {
 }
 
 /**
+ * Indefinite article for a trigger type.
+ *
+ * Two of the five trigger types begin with a vowel, so the templates read
+ * "A emergency trigger was initiated" and "confirm a emergency trigger" — in
+ * the subject line of the message that reaches someone during an actual
+ * emergency. Small, but this product is asking a stranger to trust it with a
+ * parent's credentials, and mail that cannot manage "an" reads like a phishing
+ * kit. Caught by transcribing a full family scenario 2026-08-08.
+ */
+function article(word: string): 'a' | 'an' {
+  return /^[aeiou]/i.test(word) ? 'an' : 'a';
+}
+
+/**
  * After a release is RELEASED, emails every scoped recipient a one-time access
  * link carrying their recipient JWT (`/access?token=…`), scoped to this
  * release_state + version (so re-arming invalidates the link). Best-effort —
@@ -105,10 +119,10 @@ export async function notifyVerifiersForTrigger(
       const link = `${appUrl()}/verify?token=${encodeURIComponent(token)}`;
       return sendEmailBestEffort({
         to: v.email,
-        subject: `Action needed: confirm a ${triggerType} trigger`,
+        subject: `Action needed: confirm ${article(triggerType)} ${triggerType} trigger`,
         text:
           `Hi ${v.name},\n\n` +
-          `You've been asked to confirm a "${triggerType}" release trigger. ` +
+          `You've been asked to confirm ${article(triggerType)} "${triggerType}" release trigger. ` +
           `If you recognise this request, confirm here:\n\n${link}\n\n` +
           `You will not be given access to any private data — you are only confirming the trigger.\n`,
       });
@@ -149,9 +163,9 @@ export async function notifyOwnerTriggerPending(
 ): Promise<void> {
   await sendEmailBestEffort({
     to: ownerEmail,
-    subject: `A ${triggerType} trigger was initiated on your account`,
+    subject: `${article(triggerType) === 'an' ? 'An' : 'A'} ${triggerType} trigger was initiated on your account`,
     text:
-      `A "${triggerType}" trigger has entered the pending state. ` +
+      `${article(triggerType) === 'an' ? 'An' : 'A'} "${triggerType}" trigger has entered the pending state. ` +
       `If this wasn't expected, check in now to reset it:\n\n${appUrl()}/triggers\n`,
   });
 }

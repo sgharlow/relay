@@ -11,6 +11,8 @@
 
 import { Resend } from 'resend';
 
+import { recordSend } from './transcript';
+
 let _client: Resend | null = null;
 
 function getClient(): Resend {
@@ -90,13 +92,19 @@ export async function sendEmail(msg: EmailMessage): Promise<void> {
   // The error field is the ONLY signal that a send failed.
   if (result?.error) {
     const e = result.error as { name?: string; message?: string };
-    throw new Error(`Resend rejected the send: ${e.name ?? 'error'} — ${e.message ?? 'no message'}`);
+    const message = `Resend rejected the send: ${e.name ?? 'error'} — ${e.message ?? 'no message'}`;
+    recordSend(msg, { accepted: false, error: message });
+    throw new Error(message);
   }
 
   // A success carries an id. Its absence means we cannot claim delivery.
   if (!result?.data?.id) {
-    throw new Error('Resend returned no message id; the send cannot be considered accepted');
+    const message = 'Resend returned no message id; the send cannot be considered accepted';
+    recordSend(msg, { accepted: false, error: message });
+    throw new Error(message);
   }
+
+  recordSend(msg, { accepted: true });
 }
 
 /** Sends one email, swallowing+logging any failure (never throws). */
