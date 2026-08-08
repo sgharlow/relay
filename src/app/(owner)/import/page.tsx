@@ -25,7 +25,7 @@ export default function ImportPage() {
   const [format, setFormat] = useState<CsvFormat>('1password');
   const [parsed, setParsed] = useState<ParseResult | null>(null);
   const [progress, setProgress] = useState<number | null>(null);
-  const [report, setReport] = useState<{ imported: number; skipped: number } | null>(null);
+  const [report, setReport] = useState<{ imported: number; skipped: number; duplicates: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -75,9 +75,13 @@ export default function ImportPage() {
         setProgress(Math.round(((i + 1) / parsed.rows.length) * 90)); // 0–90% = encrypt
       }
       setProgress(95);
-      const res = await apiSend<{ imported: number }>('/api/import', 'POST', { items });
+      const res = await apiSend<{ imported: number; duplicatesSkipped?: number }>('/api/import', 'POST', { items });
       setProgress(100);
-      setReport({ imported: res.imported, skipped: parsed.skipped.length });
+      setReport({
+        imported: res.imported,
+        skipped: parsed.skipped.length,
+        duplicates: res.duplicatesSkipped ?? 0,
+      });
     } catch (err) {
       // Abort: nothing uploaded if a row failed to encrypt (Req 10.4).
       setError(`Import aborted: ${String((err as Error).message)}`);
@@ -169,7 +173,19 @@ export default function ImportPage() {
       {report ? (
         <div className="rounded border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
           Imported {report.imported} item{report.imported === 1 ? '' : 's'}
-          {report.skipped ? `, skipped ${report.skipped}` : ''}.
+          {report.skipped ? `, skipped ${report.skipped} unreadable row${report.skipped === 1 ? '' : 's'}` : ''}
+          {report.duplicates
+            ? `, and left ${report.duplicates} already in your vault untouched`
+            : ''}
+          .
+          {/* Naming the duplicates matters: an owner who counted the rows in
+              their export would otherwise conclude the import lost credentials. */}
+          {report.imported ? (
+            <p className="mt-2 text-emerald-700">
+              We&apos;ve re-checked which of these unlock the others — your vault ranking is up
+              to date.
+            </p>
+          ) : null}
         </div>
       ) : null}
     </div>

@@ -22,7 +22,8 @@
 
 import { useRef, useState, type FormEvent } from 'react';
 
-import { recallChannel } from '../analytics';
+import { CAREGIVER_LEAD, recallChannel } from '../analytics';
+import { trackG1 } from '../track';
 
 const CONTACT_EMAIL = 'sgharlow+relay@gmail.com';
 const MAILTO = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('Founding family — Relay for caregivers')}`;
@@ -63,6 +64,14 @@ export default function InterestForm() {
       });
 
       if (res.ok) {
+        // Fire AFTER the server accepted it. A lead event for a submission that
+        // failed would inflate the one number in this funnel that is supposed to
+        // mean a real person we can reply to.
+        trackG1(CAREGIVER_LEAD, {
+          src: recallChannel() ?? 'direct',
+          cta: params.get('src') ?? 'none',
+          withNote: String(Boolean(String(data.get('note') ?? '').trim())),
+        });
         setStatus('sent');
         return;
       }

@@ -23,6 +23,7 @@ import { createHmac, timingSafeEqual } from 'crypto';
 import { query } from '../db/connection';
 import { generateTotpSecret, validateTotpCodeFor } from './totp';
 import { ValidationError } from '../validation';
+import { issueRecoveryCodes, formatRecoveryCode } from './recovery-code';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -175,7 +176,7 @@ export async function beginSignup(
 export async function completeSignup(
   enrolmentToken: string,
   code: string,
-): Promise<{ ownerId: string }> {
+): Promise<{ ownerId: string; recoveryCodes: string[] }> {
   const claims = verifyEnrolment(enrolmentToken);
 
   if (!validateTotpCodeFor(claims.secret, code)) {
@@ -196,5 +197,22 @@ export async function completeSignup(
     [claims.email, authSubFor(claims.email), claims.secret, claims.displayName ?? null],
   );
 
-  return { ownerId: inserted.rows[0].id };
+  const ownerId = inserted.rows[0].id;
+
+  // Issued at signup because this is the only moment the owner is guaranteed to
+  // be looking. Relay has no password, so without these a lost or replaced
+  // phone used to mean a permanently unreachable vault — for an older owner
+  // over a few years, the expected case rather than an edge one.
+  //
+  // Best-effort: an account that exists without recovery codes can regenerate
+  // them, whereas failing the signup after the row is committed would leave an
+  // account nobody can finish creating.
+  let recoveryCodes: string[] = [];
+  try {
+    recoveryCodes = (await issueRecoveryCodes(ownerId)).map(formatRecoveryCode);
+  } catch (err) {
+    process.stderr.write(`[signup] recovery code issue failed for ${ownerId}: ${String(err)}\n`);
+  }
+
+  return { ownerId, recoveryCodes };
 }

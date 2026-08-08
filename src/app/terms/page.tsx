@@ -54,9 +54,18 @@ export default function TermsPage() {
               It does not bypass anyone else&rsquo;s security. It organises access you already have
               the right to grant.
             </li>
+            {/* Corrected 2026-08-08. This previously said losing your
+                authenticator lost your data, "a consequence of encrypting in
+                your browser". That was not accurate: data keys are held by AWS
+                KMS and unwrapped for an authenticated account, so losing the
+                authenticator loses the ability to SIGN IN, not the vault. The
+                overstatement was in the safe direction but it was still false,
+                and it would have deterred exactly the careful buyer this
+                product is for. */}
             <li>
-              It cannot recover your data if you lose your authenticator and your secrets. That is a
-              consequence of encrypting in your browser, not an oversight.
+              It gives you recovery codes when you create your vault, and those are the only way
+              back in if you lose your authenticator. Lose both and we cannot let you in — we can
+              verify a recovery code, but we will not take anyone&rsquo;s word for who they are.
             </li>
             <li>
               It offers no uptime guarantee. Keep a copy of anything you cannot afford to lose.

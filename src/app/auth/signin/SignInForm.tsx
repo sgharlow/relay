@@ -87,6 +87,17 @@ export default function SignInForm() {
       >
         {pending ? 'Signing in…' : 'Sign in'}
       </button>
+
+      {/* The way back for someone whose phone is gone. Relay has no password,
+          so without this the only honest answer was "your vault is
+          unreachable" — and the person most likely to need it is the one least
+          likely to go hunting for it. */}
+      <p className="text-center text-sm text-slate-500">
+        Lost your authenticator?{' '}
+        <a href="/auth/recover" className="text-blue-600 hover:underline">
+          Use a recovery code
+        </a>
+      </p>
     </form>
   );
 }

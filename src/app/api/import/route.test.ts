@@ -12,13 +12,20 @@ vi.mock('../../../../lib/vault/vault-items', async (io) => {
   return { ...actual, createItem: vi.fn() };
 });
 vi.mock('../../../../lib/audit/audit-service', () => ({ writeAuditEntry: vi.fn(async () => ({})) }));
+// Import now reads the vault to skip duplicates, and re-scores what arrives —
+// without that scoring an imported vault sat at a flat importance with no
+// dependency graph, so the caregiver who gave us the most data got the least.
+vi.mock('../../../../lib/db/connection', () => ({ query: vi.fn(async () => ({ rows: [], rowCount: 0 })) }));
+vi.mock('../../../../lib/ai/intake-agent', () => ({ runIntake: vi.fn(async () => ({})) }));
 
 import { getOwnerSession } from '../../../../lib/auth/session';
 import { createItem } from '../../../../lib/vault/vault-items';
+import { runIntake } from '../../../../lib/ai/intake-agent';
 import { POST } from './route';
 
 const mockSession = vi.mocked(getOwnerSession);
 const mockCreate = vi.mocked(createItem);
+const mockIntake = vi.mocked(runIntake);
 
 function makeReq(body: unknown) {
   return { json: async () => body } as never;
@@ -64,4 +71,32 @@ it('returns 0 for an empty batch', async () => {
   const res = await POST(makeReq({ items: [] }));
   expect((await res.json()).imported).toBe(0);
   expect(mockCreate).not.toHaveBeenCalled();
+});
+
+it('re-scores the vault after a successful import', async () => {
+  mockSession.mockResolvedValue({ ownerId: 'o-1', isDemo: false } as never);
+  mockCreate.mockResolvedValue({ id: 'i-1' } as never);
+
+  await POST(makeReq({ items: [item()] }));
+
+  expect(mockIntake).toHaveBeenCalledWith('o-1');
+});
+
+it('does NOT re-score when nothing was imported', async () => {
+  mockSession.mockResolvedValue({ ownerId: 'o-1', isDemo: false } as never);
+
+  await POST(makeReq({ items: [] }));
+
+  expect(mockIntake).not.toHaveBeenCalled();
+});
+
+it('still reports success when scoring fails — the items are safely stored', async () => {
+  mockSession.mockResolvedValue({ ownerId: 'o-1', isDemo: false } as never);
+  mockCreate.mockResolvedValue({ id: 'i-1' } as never);
+  mockIntake.mockRejectedValueOnce(new Error('openai down'));
+
+  const res = await POST(makeReq({ items: [item()] }));
+
+  expect(res.status).toBe(200);
+  expect((await res.json()).imported).toBe(1);
 });

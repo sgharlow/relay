@@ -59,7 +59,13 @@ export default function PriceCard() {
         </p>
 
         <ul className="mt-4 space-y-2 text-sm text-slate-700">
-          <li>Unlimited accounts, documents and instructions</li>
+          {/* NOT "documents". There is no file upload anywhere in the product —
+              the only file input is the CSV importer — so selling document
+              storage would be a claim the software cannot honour. "Where to
+              find things" is what Relay actually does for a document: the
+              instruction that says the will is in box 214 at First National,
+              which is the useful half anyway. Revisit this line if upload ships. */}
+          <li>Unlimited accounts, instructions, and where to find things</li>
           <li>As many recipients as your family needs</li>
           <li>Emergency access that reverses when they recover</li>
         </ul>

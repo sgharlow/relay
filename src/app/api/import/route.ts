@@ -15,6 +15,9 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { requireOwner, readJson, isResponse } from '../../../../lib/http/owner-route';
 import { createItem, validateCreateInput, ValidationError } from '../../../../lib/vault/vault-items';
 import { writeAuditEntry } from '../../../../lib/audit/audit-service';
+import { query } from '../../../../lib/db/connection';
+import { splitDuplicates } from '../../../../lib/vault/dedupe';
+import { runIntake } from '../../../../lib/ai/intake-agent';
 
 const MAX_BATCH = 1000;
 
@@ -50,18 +53,46 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
   }
 
+  // Skip what is already here. Re-running an export after adding two accounts
+  // used to double the whole vault, which matters because the recipient's
+  // access plan is RANKED — a vault full of pairs makes the ranking meaningless
+  // and doubles the length of the screen someone reads during an emergency.
+  const existing = await query<{ title: string; service_name: string | null }>(
+    `SELECT title, service_name FROM vault_items WHERE owner_id = $1`,
+    [auth.ownerId],
+  );
+  const { fresh, duplicates } = splitDuplicates(validated, existing.rows);
+
   let imported = 0;
-  for (const input of validated) {
+  for (const input of fresh) {
     await createItem(auth.ownerId, input);
     imported++;
+  }
+
+  // Score what just arrived. Until 2026-08-08 only the guided seed called the
+  // intake agent, so an imported vault sat at a flat importance of 0.5 with no
+  // dependency graph — meaning the caregiver who gave us the MOST data got the
+  // worst product: an unranked access plan and an empty risk reveal, which is
+  // the thing the price is justified by.
+  //
+  // Best-effort and after the writes: the items are safely stored either way,
+  // and a scoring failure must not turn a successful import into an error.
+  if (imported > 0) {
+    try {
+      await runIntake(auth.ownerId);
+    } catch (err) {
+      process.stderr.write(`[import] intake scoring failed for ${auth.ownerId}: ${String(err)}\n`);
+    }
   }
 
   await writeAuditEntry(auth.ownerId, {
     actor: `owner:${auth.ownerId}`,
     action: 'vault_items_imported',
     entity: 'vault_item',
-    detail: { count: imported },
+    detail: { count: imported, duplicatesSkipped: duplicates.length },
   });
 
-  return NextResponse.json({ imported });
+  // Report the skips. A silent skip is its own defect: the owner counted the
+  // rows in their export and will conclude the import lost credentials.
+  return NextResponse.json({ imported, duplicatesSkipped: duplicates.length });
 }

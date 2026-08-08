@@ -15,7 +15,7 @@ import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 
-type Phase = 'email' | 'enrol';
+type Phase = 'email' | 'enrol' | 'recovery';
 
 /** Base32 in 4-char groups so a 32-character key is typeable by a human. */
 function groupSecret(secret: string): string {
@@ -31,6 +31,7 @@ export default function SignUpForm() {
   const [phase, setPhase] = useState<Phase>('email');
   const [email, setEmail] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
   const [enrolmentToken, setEnrolmentToken] = useState('');
   const [secret, setSecret] = useState('');
   const [code, setCode] = useState('');
@@ -83,12 +84,67 @@ export default function SignUpForm() {
     const signed = await signIn('email-totp', { email, totpCode: code, redirect: false });
     setPending(false);
 
-    if (signed?.ok) {
-      router.push('/start');
-      router.refresh();
-    } else {
+    if (!signed?.ok) {
       router.push('/auth/signin');
+      return;
     }
+
+    // Show the recovery codes BEFORE the vault. Relay has no password, so
+    // without these a lost or replaced phone means a permanently unreachable
+    // vault — and this is the only moment the owner is guaranteed to be looking.
+    // Redirecting straight to /start would bury the one screen that prevents
+    // the product's most catastrophic failure.
+    if (Array.isArray(data.recoveryCodes) && data.recoveryCodes.length > 0) {
+      setRecoveryCodes(data.recoveryCodes as string[]);
+      setPhase('recovery');
+      return;
+    }
+
+    router.push('/start');
+    router.refresh();
+  }
+
+  if (phase === 'recovery') {
+    return (
+      <div>
+        <h1 className="text-xl font-semibold text-slate-900">Save these somewhere safe</h1>
+        <p className="mt-3 text-[15px] leading-relaxed text-slate-700">
+          Relay has no password. If you lose the phone with your authenticator on it, one of these
+          codes is the only way back into your vault.
+        </p>
+        <p className="mt-2 text-[15px] leading-relaxed text-slate-700">
+          Print them, or put them where you keep important papers.{' '}
+          <span className="font-medium">We cannot show them again.</span>
+        </p>
+
+        <ul className="mt-5 grid grid-cols-2 gap-2 rounded-md border border-slate-300 bg-slate-50 p-4 font-mono text-[15px] tracking-wide text-slate-900">
+          {recoveryCodes.map((c) => (
+            <li key={c}>{c}</li>
+          ))}
+        </ul>
+
+        <button
+          type="button"
+          onClick={() => {
+            void navigator.clipboard?.writeText(recoveryCodes.join('\n'));
+          }}
+          className="mt-4 w-full rounded border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+        >
+          Copy all
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            router.push('/start');
+            router.refresh();
+          }}
+          className="mt-3 w-full rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        >
+          I&rsquo;ve saved them — continue
+        </button>
+      </div>
+    );
   }
 
   if (phase === 'email') {

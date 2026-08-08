@@ -21,6 +21,21 @@ export const CAREGIVER_QUALIFIED = 'caregiver_qualified';
 export const CAREGIVER_INTENT = 'caregiver_intent';
 
 /**
+ * A lead actually captured — email plus, usually, a sentence about their
+ * situation.
+ *
+ * Added 2026-08-08. The form shipped without this, so the strongest signal the
+ * funnel produces was invisible to the funnel. It matters more than the ratio
+ * it sits beneath: at the ratified N the intent gate is deciding on a couple of
+ * observations, whereas twenty caregivers describing their own circumstances is
+ * decision-grade evidence about whether this product should exist.
+ *
+ * Strictly downstream of CAREGIVER_INTENT and NOT part of the ratified gate
+ * ratio — it is a second, richer read on the same traffic.
+ */
+export const CAREGIVER_LEAD = 'caregiver_lead_submitted';
+
+/**
  * Extract the source-attribution props from a URL query string. Untagged/empty resolves
  * to 'direct' so it can be excluded from N (mirrors the tagged-only qualification rule);
  * URL-encoded channel values (e.g. `r%2FCaregiverSupport`) are decoded by URLSearchParams,

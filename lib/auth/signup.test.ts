@@ -102,7 +102,7 @@ describe('completeSignup', () => {
       .mockResolvedValueOnce({ rows: [{ id: 'u-9' }] } as never);
 
     const code = generateTotpCodeFor(totpSecret);
-    await expect(completeSignup(enrolmentToken, code)).resolves.toEqual({ ownerId: 'u-9' });
+    await expect(completeSignup(enrolmentToken, code)).resolves.toMatchObject({ ownerId: 'u-9' });
 
     const insert = mockQuery.mock.calls[1][0] as string;
     expect(insert).toMatch(/INSERT INTO users/i);
