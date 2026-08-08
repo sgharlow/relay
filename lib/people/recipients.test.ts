@@ -52,6 +52,7 @@ describe('validateRecipientInput', () => {
 
 describe('createRecipient', () => {
   it('inserts and returns the recipient', async () => {
+    mockQuery.mockResolvedValueOnce(qResult([])); // dedupe check: no existing row
     mockQuery.mockResolvedValueOnce(
       qResult([{ id: 'r1', name: 'Sam', relationship: null, email: 'sam@example.com', phone: null, role: 'executor', created_at: new Date() }]),
     );
@@ -83,5 +84,28 @@ describe('deleteRecipient', () => {
       'cascade-access_rules',
       'delete-recipient',
     ]);
+  });
+});
+
+describe('createRecipient — duplicate guard', () => {
+  it('REJECTS a second recipient with the same email for one owner', async () => {
+    // Found by a live walk: approving a delegate proposal for someone already
+    // in the circle created "Sarah Chen, Sarah Chen" — two rows, one human,
+    // access_rules split across both.
+    mockQuery.mockResolvedValueOnce(qResult([{ id: 'existing' }]));
+
+    await expect(
+      createRecipient('owner-1', validateRecipientInput({ name: 'Sam', email: 'sam@example.com', role: 'recipient' })),
+    ).rejects.toThrow(ValidationError);
+  });
+
+  it('compares on NORMALISED email, matching listPeople and the abuse detector', async () => {
+    mockQuery.mockResolvedValueOnce(qResult([]));
+    mockQuery.mockResolvedValueOnce(qResult([{ id: 'r1', name: 'Sam', relationship: null, email: 'sam@example.com', phone: null, role: 'recipient', created_at: new Date() }]));
+
+    await createRecipient('owner-1', validateRecipientInput({ name: 'Sam', email: 'sam@example.com', role: 'recipient' }));
+
+    const sql = mockQuery.mock.calls[0][0] as string;
+    expect(sql).toMatch(/lower\(trim\(email\)\)/i);
   });
 });

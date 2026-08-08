@@ -79,6 +79,26 @@ export async function listRecipients(ownerId: string): Promise<Recipient[]> {
 }
 
 export async function createRecipient(ownerId: string, input: RecipientInput): Promise<Recipient> {
+  // One human, one row. Without this, approving a delegate proposal for someone
+  // already in the circle silently creates a SECOND recipient with the same
+  // email — splitting their access_rules across two rows and double-counting
+  // them in the coverage matrix. DSQL has no unique constraints, so the check
+  // is application-side (matching how all referential integrity works here).
+  //
+  // Compared on normalised email, the same key listPeople and
+  // detectRoleConcentration use, so all three agree on what "the same person"
+  // means.
+  const existing = await query<{ id: string }>(
+    `SELECT id FROM recipients WHERE owner_id = $1 AND lower(trim(email)) = lower(trim($2)) LIMIT 1`,
+    [ownerId, input.email],
+  );
+  if (existing.rows.length > 0) {
+    throw new ValidationError(
+      `${input.email} is already a recipient for this vault`,
+      'email',
+    );
+  }
+
   const result = await withOccRetry(() =>
     query<Record<string, unknown>>(
       `INSERT INTO recipients (owner_id, name, relationship, email, phone, role)

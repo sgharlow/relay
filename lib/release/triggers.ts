@@ -374,9 +374,13 @@ export async function submitConfirmation(params: SubmitConfirmationParams): Prom
   }
 
   // Record the confirmation row AFTER a successful increment (no orphan rows).
+  // Write 'confirm' explicitly rather than leaving NULL: NULL is the
+  // backward-compatible reading for rows written before the decision column
+  // existed, so a new row that omits it is indistinguishable from a pre-
+  // migration one. New rows say what they are.
   await query(
-    `INSERT INTO verifier_confirmations (release_state_id, verifier_id, method)
-     VALUES ($1, $2, $3)`,
+    `INSERT INTO verifier_confirmations (release_state_id, verifier_id, method, decision)
+     VALUES ($1, $2, $3, 'confirm')`,
     [releaseStateId, verifierId, method],
   );
 
