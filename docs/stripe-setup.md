@@ -4,13 +4,17 @@
 > skillcrossroads and beacon. Everything Relay owns is additive; nothing
 > belonging to another product has been read into, modified, or rolled.
 
-## What exists now (TEST mode)
+## What exists now (LIVE mode, since 2026-08-08)
 
-| Object | Id |
-|---|---|
-| Product | `prod_V2MCc5ccGaM3Bd` — "Relay Family Vault" |
-| Price | `price_1U2HURGs40KMmT4XxM6svIr0` — $119.00/year |
-| Webhook endpoint | `we_1U2HUhGs40KMmT4XbQHmEJZU` → `https://relaystandby.com/api/stripe/webhook` |
+| Object | Live id | Test id (kept for local dev) |
+|---|---|---|
+| Product | `prod_V2N1HwRgMNdWbT` | `prod_V2MCc5ccGaM3Bd` |
+| Price ($119.00/yr) | `price_1U2IHyGs40KMmT4XYv42dsma` | `price_1U2HURGs40KMmT4XxM6svIr0` |
+| Webhook endpoint | `we_1U2IIGGs40KMmT4XAIradLoE` | *(deleted — see below)* |
+
+The TEST webhook endpoint was deleted. It pointed at the same production URL, and
+once production held live secrets it could no longer verify test events — it
+would only have accrued delivery failures.
 
 Events: `checkout.session.completed`, `customer.subscription.updated`,
 `customer.subscription.deleted`.
@@ -19,15 +23,27 @@ Vercel production carries `STRIPE_SECRET_KEY` (test), `STRIPE_PRICE_RELAY_ANNUAL
 and `STRIPE_WEBHOOK_SECRET` (this endpoint's own secret — report-bridge's would
 reject every event).
 
-## Why TEST and not live
+## How live objects got created
 
-The Stripe CLI's live credential is a RESTRICTED key (`rk_live_…`) without
-`product_write`. That is correct least-privilege and was not worked around.
+The Stripe CLI's own credential is a session key whose permissions Stripe fixes
+at issue time and the dashboard cannot edit — which is why the permission
+toggles appear greyed out. Creating a restricted key with the needed writes was
+also blocked in the dashboard.
 
-It also happens to be the right mode for now: beta families are onboarded by
-hand and free, G1 has not yet measured whether anyone will pay, and the terms
-page states that nothing is charged without an explicit checkout step. Test mode
-means checkout works end to end and no card is ever actually charged.
+Steve therefore authorised using report-bridge's live secret key (already in its
+Vercel production env, on this same account) for the three creates. It was read
+transiently, never written to disk in this repo, and the temporary copy was
+deleted immediately afterwards.
+
+This is a deliberate exception to a preference stated earlier in the same
+session — borrowing a credential across a project boundary — made by the account
+owner to avoid transcribing secrets by hand. Recorded here rather than left
+implicit.
+
+⚠️ **The earlier claim that beta families are "free" was wrong.** The interest
+page says founding families are onboarded personally at the *same $119/yr*. They
+follow the Stripe flow like anyone else, which is why live mode is required
+before marketing rather than after.
 
 ## Proven, not assumed (2026-08-08)
 
@@ -44,13 +60,20 @@ means checkout works end to end and no card is ever actually charged.
 carries no customer object. A genuine browser checkout populates it. That field
 is therefore the one part of the webhook NOT exercised by this test.
 
-## Going live — three steps, all Steve's
+## Live verification (2026-08-08)
 
-1. Grant `product_write` (and `feature_write`) on the restricted live key, or
-   create the objects in the dashboard. The permission URL is in the CLI's error.
-2. Re-create product + price + webhook endpoint **with `--live`**. Same commands.
-3. Swap the three Vercel vars to the live key, the live price id, and the live
-   endpoint's secret. **Do not roll `STRIPE_SECRET_KEY`** — report-bridge,
-   skillcrossroads and beacon use it.
+- Live price object: `livemode: true`, `unit_amount: 11900`, yearly. ✅
+- Live webhook endpoint `enabled`, and **skillcrossroads' and report-bridge's
+  endpoints confirmed still `enabled` and untouched** before and after. ✅
+- A **live** Checkout Session minted against the configured price returned
+  `livemode: true`, `amount_total: 11900`, `currency: usd`. Creating a session
+  charges nothing; it proves the key and price work together. ✅
+- Production rejects a forged webhook signature (**400 InvalidSignature**) and an
+  unauthenticated checkout (**401**). ✅
 
-Nothing in the code changes; it is all environment.
+## NOT yet proven — the last mile
+
+**No real card has been charged.** The webhook's paid-tier and cancellation paths
+were proven end to end in TEST mode; the live path is verified only as far as
+session creation. One genuine purchase (then refund) is the remaining check, and
+it must happen before marketing spend rather than after.
