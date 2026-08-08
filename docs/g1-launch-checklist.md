@@ -46,6 +46,13 @@ Re-run all four checks at merge time if the branch has moved past `af4ddf3`.
       `/`) don't land a qualified visitor on a 500. If `/` errors without DSQL, point the footer
       link at `/caregivers` or accept the dead home page explicitly — do not silently ship a
       broken first click.
+- [ ] **7b. Verify a Resend sending domain (added 2026-08-07).** The sender is currently
+      `onboarding@resend.dev`, Resend's SHARED test domain — high spam risk, and the send-only API
+      key means delivery cannot be queried. Verify `relaystandby.com` in Resend, add the generated
+      SPF/DKIM records in Cloudflare next to the existing A/CNAME, then set
+      `RESEND_FROM_ADDRESS=relay@relaystandby.com`. Does NOT block Lane A (its conversion is an
+      inbound `mailto:`), but every invitation, owner challenge and verifier notification depends
+      on it — i.e. all of Lane B past signup.
 - [ ] **8. Launch paid lanes** per `g1-channel-send-kit.md` (ratified budget ceiling; `src`
       values per lane). Organic participation stays Steve-voice-only per the channel-rules audit.
 - [ ] **9. Log window start date** + N-counting rules in the gate tracking note; the gate

@@ -59,6 +59,72 @@ sub-2% read is not over-interpreted.
 
 ---
 
+## Pre-flight findings (audited 2026-08-07, before any spend)
+
+### 1. Ad-policy compliance — self-check before submitting
+
+Both platforms require a privacy policy for advertisers. **`/privacy` and `/terms` now exist and
+are linked from the landing footer** — they did not before this audit, and the ad accounts would
+likely have been rejected.
+
+Checked against the categories that actually get creatives rejected:
+
+| Policy area | Our position |
+|---|---|
+| Privacy policy present and linked | ✅ `/privacy`, footer-linked on the ad destination |
+| Personal-attribute targeting | ✅ Copy never asserts the reader's health or family situation; it describes a scenario |
+| Health claims | ✅ None. Hospitalisation is context, not a medical claim |
+| Financial-service claims | ✅ We never claim to move money, hold funds, or be a financial institution |
+| Testimonials / social proof | ✅ None used — we have no customers, and the creatives say nothing implying otherwise |
+| Certifications / trust badges | ✅ None claimed. The only badge is a hackathon award, which is true and verifiable |
+| Urgency manufacturing | ✅ No countdowns, no "act now", no scarcity |
+| Data-collection disclosure | ✅ The landing collects nothing; signup is opt-in and disclosed |
+| Destination matches ad | ✅ Every creative lands on `/caregivers`, which carries the same claim and price |
+
+**The dry run is still worth doing.** Submit **R1 alone**, on a small budget, and let review pass or
+reject it before building out the flight. Policy review is free and is the only authoritative
+signal — this table is a self-assessment, not an approval.
+
+### 2. Email deliverability — ⚠️ NOT proven, and a real risk
+
+A live send through the app's own path was **accepted by Resend**. That is not the same as
+delivered, and the distinction matters: a send to `example.org` — a reserved domain that cannot
+receive mail — was accepted too.
+
+**The sending address is `onboarding@resend.dev`, Resend's shared test domain**, used by every
+free account. Shared-domain sends frequently land in spam. For a product whose notifications say
+*"someone is asking for access to your vault"*, spam-foldering is a functional failure, not an
+inconvenience.
+
+The API key is send-only, so delivery status cannot be queried programmatically. **Steve must
+check the inbox — including the spam folder.**
+
+**The fix, now possible because we own the domain:** verify `relaystandby.com` as a Resend sending
+domain (Resend generates the SPF/DKIM records; add them in Cloudflare alongside the existing A and
+CNAME), then set `RESEND_FROM_ADDRESS=relay@relaystandby.com`. A verified own-domain sender is the
+difference between the notification layer working and quietly not.
+
+**Does this block the flight?** No, for Lane A: the conversion is a `mailto:` the visitor sends to
+us, so it does not depend on our sending. It does block a working Lane B beyond signup, and every
+invitation, challenge and verifier notification.
+
+### 3. Ad-blocker exposure — low, and the ratio is structurally safe
+
+Verified on the live page: the analytics script is served **first-party** from
+`https://relaystandby.com/b079b94dacb289b4/script.js` — same origin, randomized path — and there
+are **zero third-party trackers**. Blocklists target known third-party tracker domains and paths,
+so this configuration largely evades them.
+
+More importantly, the gate metric is a **ratio**. Any blocking that occurs suppresses the numerator
+and denominator together, so click-to-intent survives it. What blocking costs is *speed*: N
+accumulates more slowly than the ad platform's click count suggests.
+
+**Do not read a gap between platform clicks and N as broken measurement.** Cross-check N against
+the pageview count for `/caregivers` in Vercel Analytics; a modest shortfall is expected and
+benign.
+
+---
+
 ## Claim discipline — what these ads may and may not say
 
 Everything below is limited to what is built and live-proven. Nothing here needs a lawyer.
