@@ -173,11 +173,13 @@ function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promi
   const reversible = rs.trigger_type !== 'estate';
   const [n, setN] = useState(String(rs.required_confirmations));
   const [msg, setMsg] = useState<string | null>(null);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
 
   const act = async (fn: () => Promise<unknown>) => {
     setMsg(null);
     try {
       await fn();
+      setConfirmingCancel(false);
       await onChange();
     } catch (err) {
       setMsg(String((err as Error).message));
@@ -205,16 +207,59 @@ function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promi
               Initiate
             </button>
           ) : null}
-          {rs.state === 'grace' && reversible ? (
+          {/* The false-alarm control, and the DEFAULT one.
+              Until 2026-08-08 the only option here was Cancel, which lands in
+              CANCELLED — a terminal state with no outgoing transition, which
+              check-in does not reverse. Someone standing down a false alarm
+              therefore retired the access rule for good, by pressing the most
+              innocuous-looking word on the screen. Stand down is prominent;
+              the permanent option is demoted and says what it does. */}
+          {(rs.state === 'grace' || rs.state === 'pending') && reversible ? (
             <button
-              onClick={() => act(() => apiSend(`/api/triggers/${rs.id}/cancel`, 'POST'))}
-              className="rounded border border-red-300 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
+              onClick={() => act(() => apiSend(`/api/triggers/${rs.id}/stand-down`, 'POST'))}
+              className="rounded bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-700"
             >
-              Cancel
+              Stand down — re-arm
             </button>
+          ) : null}
+          {/* Two-step inline rather than window.confirm: a native modal blocks
+              the page, reads badly on a phone, and cannot be exercised by the
+              browser tests that guard this behaviour. */}
+          {rs.state === 'grace' && reversible ? (
+            confirmingCancel ? (
+              <button
+                onClick={() => act(() => apiSend(`/api/triggers/${rs.id}/cancel`, 'POST'))}
+                className="rounded border border-red-400 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100"
+              >
+                Retire it for good — tap again
+              </button>
+            ) : (
+              <button
+                onClick={() => setConfirmingCancel(true)}
+                className="rounded border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-red-50 hover:text-red-700"
+              >
+                Cancel permanently
+              </button>
+            )
           ) : null}
         </div>
       </div>
+
+      {/* CANCELLED is terminal — nothing transitions out of it and check-in
+          does not reverse it. A bare badge does not convey that a rule is dead,
+          so say it. */}
+      {rs.state === 'cancelled' ? (
+        <p className="mt-2 text-xs leading-relaxed text-slate-500">
+          Retired. This trigger cannot be re-armed — recreate the access rule to grant this
+          recipient emergency access again.
+        </p>
+      ) : null}
+      {confirmingCancel && rs.state === 'grace' ? (
+        <p className="mt-2 text-xs leading-relaxed text-red-700">
+          This retires the trigger for good. To stop a false alarm and keep the rule, use{' '}
+          <span className="font-semibold">Stand down — re-arm</span> instead.
+        </p>
+      ) : null}
 
       <div className="mt-3 flex items-center gap-2">
         <span className="text-xs text-slate-600">Required confirmations (N):</span>

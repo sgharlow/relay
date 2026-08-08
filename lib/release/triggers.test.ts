@@ -12,15 +12,18 @@ vi.mock('../db/connection', () => ({ query: vi.fn() }));
 vi.mock('../audit/audit-service', () => ({ writeAuditEntry: vi.fn(async () => ({})) }));
 vi.mock('../notify/notifications', () => ({ notifyRecipientsOfRelease: vi.fn(async () => 0) }));
 
+import { writeAuditEntry } from '../audit/audit-service';
 import { query } from '../db/connection';
 import { notifyRecipientsOfRelease } from '../notify/notifications';
 import {
   submitConfirmation,
   initiateTrigger,
   cancelTrigger,
+  standDownTrigger,
   resendReleaseNotifications,
   TriggerError,
 } from './triggers';
+import { isPermittedTransition, PERMITTED_TRANSITIONS } from './state-machine';
 import type { ReleaseStateRow } from './state-machine';
 
 const mockQuery = vi.mocked(query);
@@ -230,6 +233,104 @@ describe('cancelTrigger', () => {
   it('rejects a cross-owner cancel (403)', async () => {
     mockQuery.mockResolvedValueOnce(qResult([makeRow({ state: 'grace', owner_id: 'someone-else' })]));
     await expect(cancelTrigger('owner-1', 'rs-1', machineStub())).rejects.toMatchObject({ httpStatus: 403 });
+  });
+});
+
+/**
+ * standDownTrigger — the false-alarm control.
+ *
+ * THE DEFECT THESE EXIST FOR (found 2026-08-08 by driving production): the UI's
+ * only stop-control was Cancel, which lands in CANCELLED. Nothing transitions
+ * out of CANCELLED and processCheckin does not touch it, so standing down a
+ * false alarm permanently retired the access rule — on a product whose headline
+ * claim is that emergency access reverses.
+ *
+ * The critical assertion is the LAST one: this must not become an eighth
+ * transition. It reuses pending→armed and grace→armed, which already existed.
+ */
+describe('standDownTrigger', () => {
+  it('takes a GRACE trigger back to ARMED', async () => {
+    mockQuery.mockResolvedValueOnce(qResult([makeRow({ state: 'grace', version: 3 })]));
+    const machine = machineStub();
+    machine.transition.mockResolvedValueOnce(makeRow({ state: 'armed', version: 4 }) as never);
+
+    const out = await standDownTrigger('owner-1', 'rs-1', machine);
+
+    expect(machine.transition.mock.calls[0][1]).toBe('grace');
+    expect(machine.transition.mock.calls[0][2]).toBe('armed');
+    expect(out.state).toBe('armed');
+  });
+
+  it('takes a PENDING trigger back to ARMED — a false alarm can be caught early', async () => {
+    mockQuery.mockResolvedValueOnce(qResult([makeRow({ state: 'pending', version: 1 })]));
+    const machine = machineStub();
+    machine.transition.mockResolvedValueOnce(makeRow({ state: 'armed', version: 2 }) as never);
+
+    await standDownTrigger('owner-1', 'rs-1', machine);
+
+    expect(machine.transition.mock.calls[0][1]).toBe('pending');
+    expect(machine.transition.mock.calls[0][2]).toBe('armed');
+  });
+
+  it('passes reversible:true, since both reverse edges are reversible-only', async () => {
+    mockQuery.mockResolvedValueOnce(qResult([makeRow({ state: 'grace' })]));
+    const machine = machineStub();
+    machine.transition.mockResolvedValueOnce(makeRow({ state: 'armed' }) as never);
+
+    await standDownTrigger('owner-1', 'rs-1', machine);
+
+    expect(machine.transition.mock.calls[0][4]).toMatchObject({ reversible: true });
+  });
+
+  it('REFUSES an estate handoff — permanence is the point (409)', async () => {
+    mockQuery.mockResolvedValueOnce(qResult([makeRow({ state: 'grace', trigger_type: 'estate' })]));
+    await expect(standDownTrigger('owner-1', 'rs-1', machineStub())).rejects.toMatchObject({
+      httpStatus: 409,
+    });
+  });
+
+  it.each(['armed', 'released', 'cancelled'] as const)(
+    'refuses to stand down from %s (409)',
+    async (state) => {
+      mockQuery.mockResolvedValueOnce(qResult([makeRow({ state })]));
+      await expect(standDownTrigger('owner-1', 'rs-1', machineStub())).rejects.toMatchObject({
+        httpStatus: 409,
+      });
+    },
+  );
+
+  it('rejects a cross-owner stand-down (403)', async () => {
+    mockQuery.mockResolvedValueOnce(qResult([makeRow({ state: 'grace', owner_id: 'someone-else' })]));
+    await expect(standDownTrigger('owner-1', 'rs-1', machineStub())).rejects.toMatchObject({
+      httpStatus: 403,
+    });
+  });
+
+  it('404s on an unknown release state', async () => {
+    mockQuery.mockResolvedValueOnce(qResult([]));
+    await expect(standDownTrigger('owner-1', 'nope', machineStub())).rejects.toMatchObject({
+      httpStatus: 404,
+    });
+  });
+
+  it('writes an audit entry naming the state it came from', async () => {
+    mockQuery.mockResolvedValueOnce(qResult([makeRow({ state: 'grace' })]));
+    const machine = machineStub();
+    machine.transition.mockResolvedValueOnce(makeRow({ state: 'armed' }) as never);
+
+    await standDownTrigger('owner-1', 'rs-1', machine);
+
+    expect(vi.mocked(writeAuditEntry)).toHaveBeenCalledWith(
+      'owner-1',
+      expect.objectContaining({ action: 'trigger_stood_down', detail: expect.objectContaining({ from: 'grace' }) }),
+    );
+  });
+
+  it('uses ONLY edges already in PERMITTED_TRANSITIONS — no eighth transition', () => {
+    for (const from of ['pending', 'grace'] as const) {
+      expect(isPermittedTransition(from, 'armed', true)).toBe(true);
+    }
+    expect(PERMITTED_TRANSITIONS).toHaveLength(7);
   });
 });
 

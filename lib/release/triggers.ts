@@ -159,6 +159,66 @@ export async function cancelTrigger(
 }
 
 /**
+ * Owner stands a release down: PENDING or GRACE back to ARMED.
+ *
+ * WHY THIS EXISTS (defect found 2026-08-08 by driving production). The only
+ * stop-control the UI offered during an in-progress release was Cancel, which
+ * lands in CANCELLED — a state with NO outgoing edge in PERMITTED_TRANSITIONS
+ * and which `processCheckin` does not touch. One click on the most innocuous
+ * word in the interface permanently killed the access rule: that recipient
+ * could never be granted emergency access again, and nothing said so.
+ *
+ * Relay's headline claim is that emergency access reverses. The reverse edges
+ * existed and were tested — `pending → armed` and `grace → armed`, both
+ * reversible-only — they simply had no way to be invoked except by the owner's
+ * periodic check-in. This exposes them directly, which is what a false alarm
+ * actually needs.
+ *
+ * PERMITTED_TRANSITIONS stays at seven. Nothing is added; two existing edges
+ * get a caller.
+ */
+export async function standDownTrigger(
+  ownerId: string,
+  releaseStateId: string,
+  machine: Pick<ReleaseStateMachine, 'transition'>,
+): Promise<ReleaseStateRow> {
+  const r = await query<ReleaseStateRow>(`SELECT * FROM release_state WHERE id = $1 LIMIT 1`, [
+    releaseStateId,
+  ]);
+  if (r.rowCount === 0 || r.rows.length === 0) {
+    throw new TriggerError('Release state not found', 404);
+  }
+  const row = r.rows[0];
+  if (row.owner_id !== ownerId) {
+    throw new TriggerError('Not authorized for this trigger', 403);
+  }
+
+  // Estate handoffs are permanent by design (Req 5.10) — the reverse edges are
+  // reversibleOnly, and this check makes the refusal legible rather than
+  // letting the state machine throw an opaque transition error.
+  if (!isReversibleTrigger(row.trigger_type)) {
+    throw new TriggerError('Estate handoffs are permanent and cannot be stood down', 409);
+  }
+  if (row.state !== 'pending' && row.state !== 'grace') {
+    throw new TriggerError('Only a trigger in PENDING or GRACE can be stood down', 409);
+  }
+
+  const updated = await machine.transition(row.id, row.state, 'armed', row.version, {
+    reversible: true,
+  });
+
+  await writeAuditEntry(ownerId, {
+    actor: `owner:${ownerId}`,
+    action: 'trigger_stood_down',
+    entity: 'release_state',
+    entityId: row.id,
+    detail: { trigger_type: row.trigger_type, from: row.state },
+  });
+
+  return updated;
+}
+
+/**
  * Re-issues + re-emails recipient access links for an already-RELEASED trigger
  * (owner-initiated). Recipients are auto-notified on first release; this is the
  * manual re-send. Returns the number of recipients emailed.

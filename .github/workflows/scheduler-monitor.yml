@@ -1,0 +1,76 @@
+# Dead-man's switch for the release scheduler.
+#
+# WHY THIS LIVES IN GITHUB ACTIONS, NOT IN VERCEL. The thing being watched IS a
+# Vercel Cron. A monitor hosted on Vercel would share fate with it: if Vercel
+# Cron stops firing, the heartbeat stops AND the monitor stops, and silence
+# looks exactly like health. A watchdog must be able to outlive the thing it
+# watches, so it runs somewhere else entirely.
+#
+# WHAT IT PROTECTS. Relay's entire promise is that a vault opens when a trigger
+# fires. That sweep runs unattended and its success signal is a side effect — a
+# row in scheduler_runs. Nobody notices a side effect that stops happening.
+# /api/health/scheduler turns that silence into a 503; this turns the 503 into
+# an email. Without both halves the endpoint is decoration.
+#
+# A failing run emails the repository owner through GitHub's default
+# notification settings — no third-party uptime account, no secret to rotate,
+# no monthly cost.
+#
+# Feature: relay-h0-mvp (CC9)
+
+name: Scheduler heartbeat monitor
+
+on:
+  schedule:
+    # Every 30 minutes. The endpoint's own staleness threshold is 9000s (2.5h),
+    # so this samples well inside the window and an outage is caught long before
+    # a real trigger could be missed.
+    - cron: '*/30 * * * *'
+  workflow_dispatch: {} # so the alarm can be proven to work on demand
+
+concurrency:
+  group: scheduler-monitor
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe /api/health/scheduler
+        env:
+          HEALTH_URL: https://relaystandby.com/api/health/scheduler
+        run: |
+          set -uo pipefail
+
+          # Two attempts, 30s apart. A single failed probe is as likely to be a
+          # transient network blip as a dead scheduler, and a monitor that cries
+          # wolf gets muted — which is the failure mode this exists to prevent.
+          for attempt in 1 2; do
+            body=$(curl -sS --max-time 20 -w '\n%{http_code}' "$HEALTH_URL" || echo -e '\n000')
+            code=$(printf '%s' "$body" | tail -n1)
+            payload=$(printf '%s' "$body" | sed '$d')
+
+            echo "attempt $attempt -> HTTP $code"
+            echo "$payload"
+
+            if [ "$code" = "200" ]; then
+              echo "::notice::Scheduler healthy."
+              exit 0
+            fi
+
+            if [ "$attempt" = "1" ]; then
+              echo "Retrying in 30s before alarming..."
+              sleep 30
+            fi
+          done
+
+          echo "::error::Scheduler heartbeat is STALE or unreachable (HTTP $code)."
+          echo "The Vercel Cron that advances release states has not recorded a run"
+          echo "inside its staleness threshold. Triggers may not be firing."
+          echo ""
+          echo "Check, in order:"
+          echo "  1. Vercel dashboard -> the project -> Cron Jobs: is the job enabled and succeeding?"
+          echo "  2. GET $HEALTH_URL for lastRunAt and ageSeconds."
+          echo "  3. Vercel runtime logs for /api/cron/heartbeat."
+          exit 1
