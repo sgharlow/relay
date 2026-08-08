@@ -89,7 +89,7 @@ export default function CaregiversLanding() {
           <div className="mt-4">
             <Link
               href={productHref('hero-product')}
-              className="text-sm font-medium text-slate-300 underline decoration-slate-600 underline-offset-4 transition-colors hover:text-white"
+              className="inline-flex min-h-[44px] items-center text-sm font-medium text-slate-300 underline decoration-slate-600 underline-offset-4 transition-colors hover:text-white"
             >
               {SECONDARY_CTA_LABEL}
             </Link>
