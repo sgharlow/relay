@@ -20,7 +20,7 @@
  * Feature: relay-g1-wtp
  */
 
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 
 import { recallChannel } from '../analytics';
 
@@ -32,6 +32,11 @@ type Status = 'idle' | 'sending' | 'sent' | 'error';
 export default function InterestForm() {
   const [status, setStatus] = useState<Status>('idle');
   const [message, setMessage] = useState('');
+
+  // When this component first rendered, used server-side to reject submissions
+  // completed faster than a person could type. A ref, not state, so it is fixed
+  // at first render and never triggers one. See lib/http/bot-signals.ts.
+  const renderedAt = useRef(Date.now());
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -51,6 +56,7 @@ export default function InterestForm() {
           email: String(data.get('email') ?? ''),
           note: String(data.get('note') ?? ''),
           company: String(data.get('company') ?? ''), // honeypot
+          renderedAt: renderedAt.current,
           src: recallChannel() ?? undefined,
           cta: params.get('src') ?? undefined,
         }),

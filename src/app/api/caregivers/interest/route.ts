@@ -17,6 +17,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
 import { recordLead, LeadValidationError, MAX_NOTE_LENGTH } from '../../../../../lib/g1/leads';
+import { submissionSpeedVerdict } from '../../../../../lib/http/bot-signals';
 import { rateLimit, clientKey } from '../../../../../lib/http/rate-limit';
 
 /** Generous for a human, tight for a script: 5 submissions per 10 minutes. */
@@ -51,6 +52,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // filled value is answered with a normal-looking 200 so the bot has no signal
   // to adapt to, but nothing is recorded.
   if (typeof body.company === 'string' && body.company.trim() !== '') {
+    process.stderr.write('[g1] lead discarded: honeypot filled\n');
+    return NextResponse.json({ ok: true });
+  }
+
+  // Speed: a form completed faster than a person can read a label and type an
+  // address. Also answered with a bland 200. Only an explicit 'too-fast' is
+  // discarded — an absent or unreadable timestamp is allowed through, because
+  // silently dropping real leads is far worse than absorbing some spam.
+  if (submissionSpeedVerdict(body.renderedAt) === 'too-fast') {
+    process.stderr.write('[g1] lead discarded: submitted faster than a human could type\n');
     return NextResponse.json({ ok: true });
   }
 
