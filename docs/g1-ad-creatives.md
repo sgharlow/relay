@@ -85,28 +85,36 @@ Checked against the categories that actually get creatives rejected:
 reject it before building out the flight. Policy review is free and is the only authoritative
 signal — this table is a self-assessment, not an approval.
 
-### 2. Email deliverability — ⚠️ NOT proven, and a real risk
+### 2. Email deliverability — transport PROVEN; third-party delivery still unproven
 
-A live send through the app's own path was **accepted by Resend**. That is not the same as
-delivered, and the distinction matters: a send to `example.org` — a reserved domain that cannot
-receive mail — was accepted too.
+**Confirmed 2026-08-07:** a test email sent through the app's own boundary was **received in the
+Gmail inbox (not spam)** at `sgharlow@gmail.com`. The full path works —
+`notifyX → sendEmail → Resend → a real inbox`.
 
-**The sending address is `onboarding@resend.dev`, Resend's shared test domain**, used by every
-free account. Shared-domain sends frequently land in spam. For a product whose notifications say
-*"someone is asking for access to your vault"*, spam-foldering is a functional failure, not an
-inconvenience.
+That was only discoverable after fixing a bug in `sendEmail`, which never inspected the Resend
+response. The SDK resolves with `{ data, error }` rather than throwing, so every rejected send was
+reported as a success and `sendEmailBestEffort` never logged. The first test email was in fact
+**rejected** and reported delivered. With the error surfaced:
 
-The API key is send-only, so delivery status cannot be queried programmatically. **Steve must
-check the inbox — including the spam folder.**
+| Recipient | Result |
+|---|---|
+| `sgharlow@gmail.com` (the Resend account address) | ✅ accepted, and received in the inbox |
+| `sgharlow+relay@gmail.com` | ❌ rejected — a `+` alias is a DIFFERENT address to Resend |
+| any third party | ❌ rejected — test mode permits only the account's own address |
 
-**The fix, now possible because we own the domain:** verify `relaystandby.com` as a Resend sending
-domain (Resend generates the SPF/DKIM records; add them in Cloudflare alongside the existing A and
-CNAME), then set `RESEND_FROM_ADDRESS=relay@relaystandby.com`. A verified own-domain sender is the
-difference between the notification layer working and quietly not.
+**What is still unproven:** delivery to anyone who is not Steve. The sender is
+`onboarding@resend.dev`, Resend's shared test domain, and shared-domain reputation is precisely
+what causes spam-foldering on third-party inboxes. A successful send to your own address does not
+predict that.
 
-**Does this block the flight?** No, for Lane A: the conversion is a `mailto:` the visitor sends to
-us, so it does not depend on our sending. It does block a working Lane B beyond signup, and every
-invitation, challenge and verifier notification.
+**Required before Lane B works past signup**, and before any invitation, owner challenge or
+verifier request reaches a real person: verify `relaystandby.com` in Resend, add the generated
+SPF/DKIM records in Cloudflare beside the existing A/CNAME, and set
+`RESEND_FROM_ADDRESS=relay@relaystandby.com`. Then repeat this test to a recipient address that is
+NOT Steve's — that is the only send that proves the notification layer.
+
+**Lane A remains unaffected** — its conversion is an inbound `mailto:` that Steve receives, and it
+does not depend on our sending at all.
 
 ### 3. Ad-blocker exposure — low, and the ratio is structurally safe
 
