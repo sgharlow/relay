@@ -6,6 +6,10 @@
  * quorum with an elapsed grace window the release advances to RELEASED; if the
  * grace window is still open the owner is notified (Req 6.6).
  *
+ * `decision` accepts confirm | deny | abstain and defaults to confirm. A
+ * verifier who can only confirm is a rubber stamp: silence and objection have
+ * to be distinguishable, and enough objections halt the release (J7-R5, J7-R7).
+ *
  * Feature: relay-h0-mvp
  * Requirements: 6.3, 6.4, 6.5, 6.6, 6.9
  */
@@ -14,12 +18,17 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { verifyVerifierToken } from '../../../../../../lib/auth/verifier-token';
 import { submitConfirmation, TriggerError } from '../../../../../../lib/release/triggers';
 import { ReleaseStateMachine } from '../../../../../../lib/release/state-machine';
+import { DECISIONS, type Decision } from '../../../../../../lib/release/verifier-decision';
 import { notifyOwnerReleasePendingGraceById } from '../../../../../../lib/notify/notifications';
 
 type Ctx = { params: { id: string } };
 
 export async function POST(req: NextRequest, { params }: Ctx): Promise<NextResponse> {
-  const body = (await req.json().catch(() => ({}))) as { verifier_token?: string; method?: string };
+  const body = (await req.json().catch(() => ({}))) as {
+    verifier_token?: string;
+    method?: string;
+    decision?: string;
+  };
 
   const authz = req.headers.get('authorization');
   const token = authz?.startsWith('Bearer ') ? authz.slice(7) : body.verifier_token;
@@ -45,6 +54,10 @@ export async function POST(req: NextRequest, { params }: Ctx): Promise<NextRespo
       releaseStateId: payload.releaseStateId,
       verifierId: payload.verifierId,
       method: body.method,
+      // Absent → 'confirm', so every existing caller is unaffected (J7-R5).
+      decision: DECISIONS.includes(body.decision as Decision)
+        ? (body.decision as Decision)
+        : 'confirm',
       machine: new ReleaseStateMachine(),
       now: new Date(),
     });

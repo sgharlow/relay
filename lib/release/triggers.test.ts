@@ -48,7 +48,7 @@ function makeRow(overrides: Partial<ReleaseStateRow> = {}): ReleaseStateRow {
 }
 
 /** In-memory release_state + verifier_confirmations behind the query mock. */
-function installSim(initial: ReleaseStateRow) {
+function installSim(initial: ReleaseStateRow, verifierPool = 3) {
   const row = { ...initial } as ReleaseStateRow & { version: number };
   row.version = Number(initial.version);
   const confirmations: Array<{ id: string; release_state_id: string; verifier_id: string }> = [];
@@ -61,6 +61,14 @@ function installSim(initial: ReleaseStateRow) {
     }
     if (sql.startsWith('SELECT * FROM release_state')) {
       return qResult([{ ...row }]);
+    }
+    if (sql.includes('received_denials')) {
+      row.received_denials = Number(row.received_denials ?? 0) + 1;
+      row.version += 1;
+      return qResult([{ ...row }]);
+    }
+    if (sql.includes('FROM verifiers')) {
+      return qResult([{ n: String(verifierPool) }]);
     }
     if (sql.startsWith('UPDATE release_state')) {
       if (Number(p[1]) === row.version) {
@@ -83,6 +91,7 @@ function installSim(initial: ReleaseStateRow) {
 const machineStub = () => ({
   releaseFromGrace: vi.fn(async (..._a: unknown[]) => ({}) as never),
   transition: vi.fn(async (..._a: unknown[]) => ({}) as never),
+  safeResetToArmed: vi.fn(async (..._a: unknown[]) => undefined),
 });
 
 beforeEach(() => {
@@ -248,5 +257,110 @@ describe('resendReleaseNotifications', () => {
   it('409 when the trigger is not RELEASED', async () => {
     mockQuery.mockResolvedValueOnce(qResult([makeRow({ state: 'grace' })]));
     await expect(resendReleaseNotifications('owner-1', 'rs-1')).rejects.toMatchObject({ httpStatus: 409 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Verifier decisions: deny and abstain (J7-R5, J7-R7, J7-R8)
+// ---------------------------------------------------------------------------
+
+describe('submitConfirmation — deny and abstain', () => {
+  const now = new Date('2026-06-18T00:00:00Z');
+
+  it('a denial that leaves the quorum reachable only records it', async () => {
+    // 3 verifiers, need 2, one denies -> 2 remain, still exactly enough.
+    installSim(makeRow({ required_confirmations: 2, received_confirmations: 0 }), 3);
+    const machine = machineStub();
+
+    const out = await submitConfirmation({
+      releaseStateId: 'rs-1',
+      verifierId: 'v-1',
+      decision: 'deny',
+      machine,
+      now,
+    });
+
+    expect(out.status).toBe('recorded');
+    expect(machine.safeResetToArmed).not.toHaveBeenCalled();
+    expect(machine.releaseFromGrace).not.toHaveBeenCalled();
+  });
+
+  it('HALTS to ARMED when denials make the quorum unreachable', async () => {
+    // 3 verifiers, need 2, already one denial -> this second one makes it 2.
+    installSim(
+      makeRow({ required_confirmations: 2, received_confirmations: 0, received_denials: 1 }),
+      3,
+    );
+    const machine = machineStub();
+
+    const out = await submitConfirmation({
+      releaseStateId: 'rs-1',
+      verifierId: 'v-2',
+      decision: 'deny',
+      machine,
+      now,
+    });
+
+    expect(out.status).toBe('halted');
+    expect(machine.safeResetToArmed).toHaveBeenCalledWith('rs-1');
+  });
+
+  it('a sole verifier denying a 1-of-1 halts it immediately', async () => {
+    installSim(makeRow({ required_confirmations: 1, received_confirmations: 0 }), 1);
+    const machine = machineStub();
+
+    const out = await submitConfirmation({
+      releaseStateId: 'rs-1',
+      verifierId: 'v-1',
+      decision: 'deny',
+      machine,
+      now,
+    });
+
+    expect(out.status).toBe('halted');
+    expect(machine.safeResetToArmed).toHaveBeenCalledOnce();
+  });
+
+  it('a denial NEVER increments received_confirmations', async () => {
+    const sim = installSim(makeRow({ required_confirmations: 2, received_confirmations: 0 }), 3);
+    const machine = machineStub();
+
+    await submitConfirmation({
+      releaseStateId: 'rs-1',
+      verifierId: 'v-1',
+      decision: 'deny',
+      machine,
+      now,
+    });
+
+    expect(sim.getRow().received_confirmations).toBe(0);
+  });
+
+  it('an abstention moves NEITHER counter and never releases', async () => {
+    const sim = installSim(makeRow({ required_confirmations: 1, received_confirmations: 0 }), 3);
+    const machine = machineStub();
+
+    const out = await submitConfirmation({
+      releaseStateId: 'rs-1',
+      verifierId: 'v-1',
+      decision: 'abstain',
+      machine,
+      now,
+    });
+
+    expect(out.status).toBe('recorded');
+    expect(sim.getRow().received_confirmations).toBe(0);
+    expect(Number(sim.getRow().received_denials ?? 0)).toBe(0);
+    expect(machine.releaseFromGrace).not.toHaveBeenCalled();
+    expect(machine.safeResetToArmed).not.toHaveBeenCalled();
+  });
+
+  it('an absent decision still behaves exactly as confirm', async () => {
+    installSim(makeRow({ required_confirmations: 1, received_confirmations: 0, grace_ends_at: '2020-01-01T00:00:00Z' }), 3);
+    const machine = machineStub();
+
+    const out = await submitConfirmation({ releaseStateId: 'rs-1', verifierId: 'v-1', machine, now });
+
+    expect(out.status).toBe('released');
   });
 });

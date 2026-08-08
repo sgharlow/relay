@@ -18,8 +18,9 @@
  */
 
 import { query } from '../db/connection';
-import { isSqlState40001 } from '../db/occ';
+import { isSqlState40001, withOccRetry } from '../db/occ';
 import { writeAuditEntry } from '../audit/audit-service';
+import { DECISIONS, evaluateOutcome, type Decision } from './verifier-decision';
 import { notifyRecipientsOfRelease } from '../notify/notifications';
 import {
   canRelease,
@@ -183,7 +184,14 @@ export async function resendReleaseNotifications(ownerId: string, releaseStateId
 // Verifier confirmation (Property 14)
 // ---------------------------------------------------------------------------
 
-export type ConfirmStatus = 'recorded' | 'duplicate' | 'released' | 'pending_grace' | 'inactive';
+export type ConfirmStatus =
+  | 'recorded'
+  | 'duplicate'
+  | 'released'
+  | 'pending_grace'
+  | 'inactive'
+  /** Denials made the quorum unreachable; the release stood down to ARMED. */
+  | 'halted';
 
 export interface ConfirmOutcome {
   status: ConfirmStatus;
@@ -198,13 +206,96 @@ export interface SubmitConfirmationParams {
   releaseStateId: string;
   verifierId: string;
   method?: string;
-  machine: Pick<ReleaseStateMachine, 'releaseFromGrace'>;
+  /**
+   * confirm (default, so every existing caller is unchanged) | deny | abstain.
+   * A verifier who can only confirm is a rubber stamp (J7-R5).
+   */
+  decision?: Decision;
+  machine: Pick<ReleaseStateMachine, 'releaseFromGrace' | 'safeResetToArmed'>;
   now: Date;
   sleep?: (ms: number) => Promise<void>;
 }
 
 const CONFIRM_MAX_RETRIES = 3;
 const CONFIRM_BASE_MS = 100;
+
+/**
+ * Records a denial and halts the release when denials make the N-of-M threshold
+ * arithmetically unreachable.
+ *
+ * `M` is the number of verifiers designated for this owner — the pool the
+ * quorum could ever draw from. Halting returns the row to ARMED through
+ * `safeResetToArmed`, the same default-safe path OCC exhaustion uses (J7-R7).
+ */
+async function denyConfirmation(args: {
+  releaseStateId: string;
+  verifierId: string;
+  method: ConfirmMethod;
+  head: ReleaseStateRow;
+  machine: Pick<ReleaseStateMachine, 'safeResetToArmed'>;
+}): Promise<ConfirmOutcome> {
+  const { releaseStateId, verifierId, method, head } = args;
+
+  await query(
+    `INSERT INTO verifier_confirmations (release_state_id, verifier_id, method, decision)
+     VALUES ($1, $2, $3, 'deny')`,
+    [releaseStateId, verifierId, method],
+  );
+
+  // COALESCE: the column is nullable because DSQL cannot add a NOT NULL column.
+  const bumped = await withOccRetry(() =>
+    query<ReleaseStateRow>(
+      `UPDATE release_state
+          SET received_denials = COALESCE(received_denials, 0) + 1
+        WHERE id = $1
+     RETURNING *`,
+      [releaseStateId],
+    ),
+  );
+
+  const row = bumped.rows[0] ?? head;
+
+  // M = the verifier pool this owner designated.
+  const pool = await query<{ n: string }>(
+    `SELECT COUNT(*)::text AS n FROM verifiers WHERE owner_id = $1`,
+    [row.owner_id],
+  );
+
+  const outcomeKind = evaluateOutcome({
+    m: Number(pool.rows[0]?.n ?? '0'),
+    n: row.required_confirmations,
+    confirmations: row.received_confirmations,
+    denials: Number(row.received_denials ?? 0),
+  });
+
+  await writeAuditEntry(row.owner_id, {
+    actor: `verifier:${verifierId}`,
+    action: 'verifier_denied',
+    entity: 'release_state',
+    entityId: releaseStateId,
+    detail: {
+      denials: Number(row.received_denials ?? 0),
+      required: row.required_confirmations,
+      outcome: outcomeKind,
+    },
+  });
+
+  if (outcomeKind !== 'halt') return outcome('recorded', row);
+
+  // Enough objections that the quorum can never be met — stand the release down
+  // through the same default-safe path OCC exhaustion uses.
+  await args.machine.safeResetToArmed(releaseStateId);
+
+  await writeAuditEntry(row.owner_id, {
+    actor: 'system',
+    action: 'release_halted_by_denial',
+    entity: 'release_state',
+    entityId: releaseStateId,
+    detail: { denials: Number(row.received_denials ?? 0) },
+  });
+
+  return outcome('halted', await readState(releaseStateId));
+}
 
 export async function submitConfirmation(params: SubmitConfirmationParams): Promise<ConfirmOutcome> {
   const { releaseStateId, verifierId, machine, now } = params;
@@ -226,6 +317,31 @@ export async function submitConfirmation(params: SubmitConfirmationParams): Prom
   }
   if (head.state !== 'pending' && head.state !== 'grace') {
     return outcome('inactive', head); // not in a confirmable window
+  }
+
+  const decision: Decision = DECISIONS.includes(params.decision as Decision)
+    ? (params.decision as Decision)
+    : 'confirm';
+
+  // ---- Abstain: recorded, counts toward neither side, escalates elsewhere ----
+  if (decision === 'abstain') {
+    await query(
+      `INSERT INTO verifier_confirmations (release_state_id, verifier_id, method, decision)
+       VALUES ($1, $2, $3, 'abstain')`,
+      [releaseStateId, verifierId, method],
+    );
+    await writeAuditEntry(head.owner_id, {
+      actor: `verifier:${verifierId}`,
+      action: 'verifier_abstained',
+      entity: 'release_state',
+      entityId: releaseStateId,
+    });
+    return outcome('recorded', head);
+  }
+
+  // ---- Deny: count separately, halt if the quorum becomes unreachable ----
+  if (decision === 'deny') {
+    return denyConfirmation({ releaseStateId, verifierId, method, head, machine: params.machine });
   }
 
   // CAS-increment received_confirmations (Req 6.3) with bounded OCC retry (Req 6.9).

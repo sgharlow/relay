@@ -51,6 +51,12 @@ export interface ReleaseStateRow {
   released_at: string | null;
   /** CC7: phone-readable case ID, set at provisioning. Null on pre-CC7 rows. */
   case_id?: string | null;
+  /**
+   * Verifier objections. Nullable because DSQL cannot add a NOT NULL column;
+   * NULL means zero. Counted separately so received_confirmations keeps
+   * counting ONLY confirmations and the N-of-M semantics are unchanged.
+   */
+  received_denials?: number | null;
   created_at: string;
 }
 
