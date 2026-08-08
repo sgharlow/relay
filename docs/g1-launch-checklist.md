@@ -6,7 +6,20 @@
 > NOT restated here — they live in `PROJECT.yaml` (gate `g1-caregiver-wtp`),
 > `g1-wtp-test-design.md` (decisions table), and `g1-channel-send-kit.md` (budget/lanes).
 
-## Static-survival proof (verified 2026-07-04 on `af4ddf3`)
+## Static-survival proof (verified 2026-07-04 on `af4ddf3`) — SUPERSEDED 2026-08-08
+
+> **This section no longer describes the shipped funnel and is kept only as the record of a
+> decision that was reversed.** It proved the instrument would survive the 2026-07-25 DSQL/KMS
+> teardown. That teardown did not happen — the infra was kept by Steve's ruling — and the premise
+> went with it. `/caregivers/interest` now posts to `/api/caregivers/interest`, which writes a
+> `caregiver_leads` row, so points 1-3 below are deliberately false as of item 7e.
+>
+> The trade was made knowingly: a `mailto:`-only conversion is immune to backend failure and
+> captures almost nobody on mobile, which is the traffic this gate buys. A capture path that can
+> break is worth more than one that cannot work — provided the break is loud, which is why every
+> lead is written to two independent places.
+
+Original text follows.
 
 The G1 instrument provably survives the 7-25 DSQL/KMS teardown:
 
@@ -47,8 +60,8 @@ Re-run all four checks at merge time if the branch has moved past `af4ddf3`.
       lane-vs-lane analysis. Payloads read off the wire, not inferred from code.
 - [ ] **6. Live post-deploy probes:**
       - `/caregivers` → 200, price visible on CTA, reversibility-led hero.
-      - `/caregivers/interest?src=hero` → 200, noindex meta present, mailto CTA correct.
-      - `?src=` attribution survives the click-through path.
+      - `/caregivers/interest?src=hero` → 200, noindex meta present, lead form renders and submits.
+      - `?src=` attribution survives the click-through path AND reaches the `caregiver_leads` row.
 - [ ] **7. Teardown-aftermath check (post-7-25 deploys only):** the DB-backed app routes are
       expected dead — verify the landing's only outbound links (`/caregivers/interest`, footer
       `/`) don't land a qualified visitor on a 500. If `/` errors without DSQL, point the footer
