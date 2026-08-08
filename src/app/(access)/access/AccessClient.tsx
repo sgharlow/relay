@@ -40,6 +40,7 @@ export default function AccessClient() {
   const token = useSearchParams().get('token') ?? '';
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [closure, setClosure] = useState<ClosureSummary | null>(null);
   const [revealed, setRevealed] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -49,7 +50,20 @@ export default function AccessClient() {
     }
     fetch(`/api/access?token=${encodeURIComponent(token)}`)
       .then(async (res) => {
-        if (res.status === 403) throw new Error('This access link is invalid or has expired.');
+        if (res.status === 403) {
+          // The graceful close (J9-R4). A 403 carrying a summary means the owner
+          // re-armed — they recovered, or it was a false alarm. That is the
+          // product working, and this person just helped during someone's worst
+          // week; an expiry error is the wrong last word.
+          const body = (await res.json().catch(() => null)) as
+            | { closed?: boolean; summary?: ClosureSummary }
+            | null;
+          if (body?.closed && body.summary) {
+            setClosure(body.summary);
+            return;
+          }
+          throw new Error('This access link is invalid or has expired.');
+        }
         if (!res.ok) throw new Error('Unable to load your access right now.');
         setData((await res.json()) as Dashboard);
       })
@@ -76,6 +90,9 @@ export default function AccessClient() {
     [token],
   );
 
+  if (closure) {
+    return <ClosedGracefully summary={closure} />;
+  }
   if (error) {
     return <p className="rounded-lg border border-amber-300 bg-amber-50 px-5 py-4 text-stone-700">{error}</p>;
   }
@@ -158,6 +175,97 @@ export default function AccessClient() {
           </section>
         ))}
       </div>
+    </div>
+  );
+}
+
+interface ClosureSummary {
+  grantedCount: number;
+  opened: Array<{ title: string; openedAt: string }>;
+  firstSeenAt: string | null;
+  lastSeenAt: string | null;
+  hoursOfAccess: number;
+}
+
+/**
+ * The graceful close (J9-R4) — the last screen Relay ever shows a recipient.
+ *
+ * It used to say "This access link is invalid or has expired," which reads as a
+ * malfunction, or worse as an accusation, to someone who dropped everything to
+ * help during a family emergency. What actually happened is the good outcome:
+ * the person recovered, and the product closed access exactly as promised. That
+ * is the story worth telling, and this is the moment a family decides whether to
+ * recommend Relay.
+ *
+ * Access-mode voice: warm, larger type, no chrome, no next step demanded.
+ */
+function ClosedGracefully({ summary }: { summary: ClosureSummary }) {
+  const { grantedCount, opened, hoursOfAccess } = summary;
+
+  // "under an hour" is both friendlier and more accurate than "0 hours" for the
+  // common case of a single short visit.
+  const duration =
+    hoursOfAccess < 1
+      ? 'under an hour'
+      : hoursOfAccess === 1
+        ? 'about an hour'
+        : `about ${hoursOfAccess} hours`;
+
+  return (
+    <div className="mx-auto max-w-xl">
+      <div className="rounded-2xl border border-stone-200 bg-white px-6 py-7">
+        <p className="text-[15px] uppercase tracking-wide text-stone-500">Access closed</p>
+        <h1 className="mt-3 text-[26px] font-semibold leading-snug text-stone-900">
+          Everything is back to normal.
+        </h1>
+        <p className="mt-4 text-[18px] leading-relaxed text-stone-700">
+          The vault has been re-armed, so this link no longer opens anything. That is the system
+          working as intended — access was temporary, and it has now closed.
+        </p>
+
+        <div className="mt-6 rounded-xl bg-stone-50 px-5 py-4">
+          <p className="text-[17px] leading-relaxed text-stone-700">
+            You were trusted with{' '}
+            <span className="font-semibold text-stone-900">
+              {grantedCount} {grantedCount === 1 ? 'item' : 'items'}
+            </span>{' '}
+            for {duration}.
+          </p>
+
+          {opened.length > 0 ? (
+            <>
+              <p className="mt-3 text-[17px] text-stone-700">
+                You opened {opened.length} of them:
+              </p>
+              <ul className="mt-2 space-y-1">
+                {opened.map((o) => (
+                  <li key={`${o.title}-${o.openedAt}`} className="text-[17px] text-stone-800">
+                    · {o.title}
+                  </li>
+                ))}
+              </ul>
+              {grantedCount > opened.length ? (
+                <p className="mt-3 text-[16px] leading-relaxed text-stone-600">
+                  The other {grantedCount - opened.length} were never opened. The owner can see this
+                  too — it is on their permanent record, exactly as it happened.
+                </p>
+              ) : null}
+            </>
+          ) : (
+            <p className="mt-3 text-[17px] leading-relaxed text-stone-700">
+              You did not need to open any of them. That is recorded too.
+            </p>
+          )}
+        </div>
+
+        <p className="mt-6 text-[18px] leading-relaxed text-stone-700">
+          Thank you for stepping in. If they need help again, you will get a new link.
+        </p>
+      </div>
+
+      <p className="mt-4 px-2 text-[15px] leading-relaxed text-stone-500">
+        Nothing you saw is stored on this device, and this page holds no vault contents.
+      </p>
     </div>
   );
 }
