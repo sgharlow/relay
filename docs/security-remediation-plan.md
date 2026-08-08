@@ -155,7 +155,7 @@ Doc follow-up (non-code): the `npx tsx -e` snippet at `docs/e2e-verification.md:
 ### B.5 Harness migration (the three test files — mechanical, no semantic edits)
 
 Files: `lib/auth/recipient-token.test.ts` (367 lines), `lib/auth/verifier-token.test.ts` (48),
-`lib/auth/token-negative-vectors.test.ts` (218, **22 tests**). Two mechanical transforms only:
+`lib/auth/token-negative-vectors.test.ts` (count via `npx vitest --run lib/auth/token-negative-vectors.test.ts`). Two mechanical transforms only:
 
 - Happy-path calls: `const token = issueRecipientToken(…)` → `const token = await issueRecipientToken(…)`;
   same for `verify*` result assertions (`(await verifyVerifierToken(token)).verifierId` …).
