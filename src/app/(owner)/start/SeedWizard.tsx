@@ -25,6 +25,28 @@ interface Props {
   onComplete: () => void;
 }
 
+/**
+ * Runs the Intake Agent over the freshly seeded vault.
+ *
+ * R11.1 says classification happens when an item is created or imported, but
+ * nothing invoked it: every seeded item sat at the default 0.5 score with no
+ * root-credential flag and no `depends_on_item_id`. The consequence was silent
+ * and total — the risk-graph reveal ALWAYS fell back to its "add a few more
+ * accounts" degradation, because there were never any dependency edges to find.
+ * Caught by walking the funnel in a browser; no unit test could see it, since
+ * they all feed synthetic items that already carry edges.
+ *
+ * Best-effort by design: scoring failure must never block vault creation
+ * (R11.9), so a failure here still advances to the reveal.
+ */
+async function scoreSeededVault(): Promise<void> {
+  try {
+    await fetch('/api/ai/intake', { method: 'POST' });
+  } catch {
+    // R11.9 — the reveal degrades honestly rather than blocking the funnel.
+  }
+}
+
 export default function SeedWizard({ onComplete }: Props) {
   const [index, setIndex] = useState(0);
   const [service, setService] = useState('');
@@ -88,6 +110,7 @@ export default function SeedWizard({ onComplete }: Props) {
 
       if (index + 1 >= CAREGIVER_CHECKLIST.length) {
         void emitFunnel('seed_completed', { channel: resolveChannel(window.location.search) });
+        await scoreSeededVault();
         onComplete();
       } else {
         setIndex((i) => i + 1);
@@ -99,9 +122,12 @@ export default function SeedWizard({ onComplete }: Props) {
     }
   }
 
-  function skip() {
+  async function skip() {
     if (index + 1 >= CAREGIVER_CHECKLIST.length) {
       void emitFunnel('seed_completed', { channel: resolveChannel(window.location.search) });
+      setBusy(true);
+      await scoreSeededVault();
+      setBusy(false);
       onComplete();
     } else {
       setIndex((i) => i + 1);
@@ -177,7 +203,7 @@ export default function SeedWizard({ onComplete }: Props) {
           </button>
           <button
             type="button"
-            onClick={skip}
+            onClick={() => void skip()}
             className="rounded border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
           >
             Skip
