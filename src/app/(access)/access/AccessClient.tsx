@@ -246,8 +246,11 @@ function ClosedGracefully({ summary }: { summary: ClosureSummary }) {
               </ul>
               {grantedCount > opened.length ? (
                 <p className="mt-3 text-[16px] leading-relaxed text-stone-600">
-                  The other {grantedCount - opened.length} were never opened. The owner can see this
-                  too — it is on their permanent record, exactly as it happened.
+                  {grantedCount - opened.length === 1
+                    ? 'The other one was never opened.'
+                    : `The other ${grantedCount - opened.length} were never opened.`}{' '}
+                  The owner can see this too — it is on their permanent record, exactly as it
+                  happened.
                 </p>
               ) : null}
             </>
