@@ -14,6 +14,29 @@
   }
 }
 
+/*
+ * No page may ever scroll sideways.
+ *
+ * Found 2026-08-08: the comparison table on /how-it-works carries a min-width so
+ * its columns stay readable, and although it sits in an overflow-x-auto
+ * container that clips it visually, the min-width still propagated into the ROOT
+ * scroller. The whole page could be swiped sideways on a phone, leaving a blank
+ * gutter beside the content. Clipping on <main> did not stop it.
+ *
+ * This is set here rather than on that one page because the failure is a CLASS,
+ * not an instance: any future wide element — a table, a code block, a long
+ * unbroken URL — reintroduces it, and the symptom is invisible in a screenshot
+ * until someone deliberately scrolls right. Better made impossible than
+ * remembered.
+ *
+ * Elements that need to scroll horizontally still can; they carry their own
+ * overflow-x and are unaffected.
+ */
+html,
+body {
+  overflow-x: hidden;
+}
+
 body {
   color: var(--foreground);
   background: var(--background);

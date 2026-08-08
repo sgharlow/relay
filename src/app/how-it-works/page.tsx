@@ -114,9 +114,21 @@ function Mark({ state }: { state: keyof typeof CELL_MARK }) {
   );
 }
 
+/**
+ * `overflow-x-hidden` on <main> is load-bearing, not tidiness.
+ *
+ * The comparison table carries min-w-[720px] so its columns stay readable, and
+ * it sits in an overflow-x-auto container that clips it VISUALLY — but the
+ * min-width still propagated into the ROOT scroller, so the whole page could be
+ * swiped sideways on a phone, leaving a blank gutter beside the content. On the
+ * mobile traffic this page is built for, that reads as broken.
+ *
+ * Caught by measuring documentElement.scrollLeft at 390px. It was invisible in
+ * a screenshot until the page was deliberately scrolled right.
+ */
 export default function HowItWorksPage() {
   return (
-    <main className="min-h-screen bg-white text-slate-800">
+    <main className="min-h-screen overflow-x-hidden bg-white text-slate-800">
       <header className="mx-auto max-w-3xl px-6 pb-4 pt-14">
         <Link href="/caregivers" className="text-sm text-slate-500 hover:text-slate-800">
           ← Relay for caregivers
@@ -178,8 +190,49 @@ export default function HowItWorksPage() {
           lose, because a comparison where the newcomer wins everything is not worth reading.
         </p>
 
+        {/* MOBILE. A five-column table on a 390px screen shows the Relay
+            column and hides the other four behind a horizontal swipe nobody
+            discovers — so a caregiver saw a row of green dots beside our own
+            name and no comparison at all, which reads as bragging rather than
+            evidence. Below md the same data renders one block per question,
+            with every alternative visible and labelled in words. */}
+        <div className="mt-8 space-y-6 md:hidden">
+          {ROWS.map((row) => (
+            <div key={row.question} className="rounded-xl border border-slate-200 p-4">
+              <p className="text-[15px] font-semibold text-slate-900">{row.question}</p>
+              {row.note ? (
+                <p className="mt-1 text-[13px] leading-relaxed text-slate-500">{row.note}</p>
+              ) : null}
+              <ul className="mt-3 space-y-1.5">
+                {COLUMNS.map((c) => (
+                  <li
+                    key={c.key}
+                    className={`flex items-center justify-between gap-3 rounded px-2 py-1 ${
+                      c.key === 'relay' ? 'bg-amber-50' : ''
+                    }`}
+                  >
+                    <span
+                      className={`text-[14px] ${
+                        c.key === 'relay' ? 'font-semibold text-amber-800' : 'text-slate-700'
+                      }`}
+                    >
+                      {c.label}
+                    </span>
+                    <span className="flex items-center gap-1.5 whitespace-nowrap">
+                      <Mark state={row.cells[c.key]} />
+                      <span className="text-[12px] text-slate-500">
+                        {CELL_MARK[row.cells[c.key]].label}
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
         {/* Scrolls on a phone rather than squashing five columns. */}
-        <div className="mt-8 overflow-x-auto">
+        <div className="mt-8 hidden w-full max-w-full overflow-x-auto md:block">
           <table className="w-full min-w-[720px] border-collapse text-left">
             <thead>
               <tr className="border-b border-slate-300">
