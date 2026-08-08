@@ -1,19 +1,36 @@
 /**
  * G1 funnel instrument.
  *
- * `emitFunnel` returns whether a transport actually accepted the event. The
- * previous instrument called `window.va?.()` and reported nothing when the stub
- * had not been created yet, so the gate would have read as "no demand" when the
- * truth was "no measurement". An empty analytics dashboard and a broken
- * instrument are indistinguishable, so delivery has to be observable.
+ * TWO BUGS WERE FOUND HERE BY READING THE BYTES ON THE WIRE (2026-08-07), not
+ * by tests and not by HTTP status. Both produced a 200 and an event that landed
+ * in the dashboard — while being useless for the gate:
  *
- * Every event carries the inbound `channel`, parked in sessionStorage on first
- * sight, so the numerator and denominator of click-to-intent are keyed the same
- * way. `cta` stays a separate dimension (J1-R9, J1-R10).
+ *  1. WRONG PAYLOAD SHAPE. This module called `window.va('event', {name,
+ *     ...props})` directly. Vercel nests custom properties under `data`, so
+ *     top-level props are DROPPED: `seed_started` arrived with no `ed` field at
+ *     all and therefore no channel attribution. `track()` from the SDK builds
+ *     the payload correctly, so we delegate to it rather than hand-rolling.
+ *
+ *  2. WRONG PROPERTY KEY. This module used `channel` while the landing-page
+ *     instrument uses `src`. The numerator and denominator of click-to-intent
+ *     would have been keyed by different names — the exact mismatch fixed in
+ *     2a9eb88, reintroduced. `src` IS the inbound channel; that vocabulary is
+ *     shared and must not be forked.
+ *
+ * Emission goes through `trackG1`, which also guarantees the analytics queue
+ * exists before emitting — the 2026-08-05 bug where `<Analytics/>` had not
+ * created `window.va` yet and every event was swallowed.
+ *
+ * NOTE ON THE RETURN VALUE: true means the event was handed to a live queue or
+ * transport, NOT that it reached the dashboard. Queue-handoff is the strongest
+ * signal available synchronously. Actual delivery is proven by watching the
+ * POST bodies in a browser — see docs/g1-launch-checklist.md.
  *
  * Feature: relay-g1-wtp
  * Requirements: J1-R9, J1-R10
  */
+
+import { trackG1, ensureAnalyticsQueue } from '../../src/app/caregivers/track';
 
 export const FUNNEL_EVENTS = [
   'caregiver_qualified',
@@ -66,18 +83,27 @@ export function resolveChannel(search: string): string {
   return fromQuery;
 }
 
-/** Resolves true only when a live transport accepted the event. */
+/**
+ * Emits a funnel event.
+ *
+ * `channel` is written to the `src` property, because that is the key the
+ * landing-page events already use and a gate ratio cannot be computed across
+ * two different property names.
+ *
+ * Returns whether the event was accepted by a queue/transport.
+ */
 export async function emitFunnel(
   event: FunnelEvent,
   props: Record<string, string> = {},
 ): Promise<boolean> {
-  const w = (globalThis as unknown as { window?: Record<string, unknown> }).window;
-  const va = w?.va as ((kind: string, payload: Record<string, unknown>) => void) | undefined;
+  if (typeof window === 'undefined') return false;
 
-  if (typeof va !== 'function') return false;
+  const { channel, ...rest } = props;
 
   try {
-    va('event', { name: event, ...props });
+    ensureAnalyticsQueue();
+    // `src` — the shared channel vocabulary. Never emit `channel`.
+    trackG1(event, { src: channel ?? 'direct', ...rest });
     return true;
   } catch {
     return false;

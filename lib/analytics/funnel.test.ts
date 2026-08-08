@@ -15,6 +15,12 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+vi.mock('../../src/app/caregivers/track', () => ({
+  trackG1: vi.fn(),
+  ensureAnalyticsQueue: vi.fn(),
+}));
+
+import { trackG1, ensureAnalyticsQueue } from '../../src/app/caregivers/track';
 import { emitFunnel, FUNNEL_EVENTS, channelFrom, resolveChannel } from './funnel';
 
 type W = { va?: unknown; sessionStorage?: Record<string, unknown> };
@@ -23,7 +29,10 @@ function withWindow(w: W | undefined) {
   (globalThis as { window?: unknown }).window = w;
 }
 
-beforeEach(() => withWindow({}));
+beforeEach(() => {
+  vi.clearAllMocks();
+  withWindow({});
+});
 afterEach(() => {
   delete (globalThis as { window?: unknown }).window;
 });
@@ -42,44 +51,54 @@ describe('FUNNEL_EVENTS', () => {
 });
 
 describe('emitFunnel', () => {
-  it('returns FALSE when no transport exists — never silently succeeds', async () => {
-    await expect(emitFunnel('reveal_viewed')).resolves.toBe(false);
-  });
-
-  it('returns false when window itself is absent (SSR)', async () => {
+  it('returns FALSE when there is no window (SSR)', async () => {
     withWindow(undefined);
     await expect(emitFunnel('reveal_viewed')).resolves.toBe(false);
+    expect(trackG1).not.toHaveBeenCalled();
   });
 
-  it('returns false when va exists but is not callable', async () => {
-    withWindow({ va: 'not-a-function' });
-    await expect(emitFunnel('reveal_viewed')).resolves.toBe(false);
-  });
-
-  it('returns true and forwards the event when a transport is present', async () => {
-    const va = vi.fn();
-    withWindow({ va });
-
+  it('delegates to trackG1 rather than hand-rolling window.va', async () => {
     await expect(emitFunnel('intent_clicked', { channel: 'reddit' })).resolves.toBe(true);
-    expect(va).toHaveBeenCalledWith('event', { name: 'intent_clicked', channel: 'reddit' });
+    expect(trackG1).toHaveBeenCalledOnce();
   });
 
-  it('keys the event by channel so per-channel conversion is computable', async () => {
-    const va = vi.fn();
-    withWindow({ va });
+  it('ensures the analytics queue exists BEFORE emitting', async () => {
+    await emitFunnel('seed_started', { channel: 'reddit' });
+    expect(ensureAnalyticsQueue).toHaveBeenCalled();
+  });
 
+  it('SHAPE: writes the channel to `src`, never to `channel`', async () => {
+    await emitFunnel('price_viewed', { channel: 'reddit' });
+
+    const [, props] = vi.mocked(trackG1).mock.calls[0];
+    // `src` is the shared vocabulary with the landing-page events. Emitting
+    // `channel` instead would key numerator and denominator differently and
+    // make the gate ratio uncomputable.
+    expect(props).toMatchObject({ src: 'reddit' });
+    expect(props).not.toHaveProperty('channel');
+  });
+
+  it('passes the event name through unchanged', async () => {
+    await emitFunnel('seed_completed', { channel: 'hn' });
+    expect(vi.mocked(trackG1).mock.calls[0][0]).toBe('seed_completed');
+  });
+
+  it('keeps extra dimensions such as cta alongside src', async () => {
     await emitFunnel('price_viewed', { channel: 'search', cta: 'hero' });
 
-    expect(va.mock.calls[0][1]).toMatchObject({ channel: 'search', cta: 'hero' });
+    const [, props] = vi.mocked(trackG1).mock.calls[0];
+    expect(props).toMatchObject({ src: 'search', cta: 'hero' });
+  });
+
+  it('falls back to direct when no channel is supplied', async () => {
+    await emitFunnel('reveal_viewed');
+    expect(vi.mocked(trackG1).mock.calls[0][1]).toMatchObject({ src: 'direct' });
   });
 
   it('returns false rather than throwing if the transport throws', async () => {
-    withWindow({
-      va: vi.fn(() => {
-        throw new Error('transport exploded');
-      }),
+    vi.mocked(trackG1).mockImplementationOnce(() => {
+      throw new Error('transport exploded');
     });
-
     await expect(emitFunnel('seed_started')).resolves.toBe(false);
   });
 });
