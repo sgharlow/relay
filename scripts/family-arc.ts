@@ -79,13 +79,13 @@ async function main(): Promise<void> {
   // ── 1. Sarah sets it up FOR her mother (J3) ──────────────────────────────
   step('1. Sarah sets it up for Margaret (J3)');
   const m = await query<{ id: string }>(
-    `INSERT INTO users (email, auth_sub) VALUES ($1,$2) RETURNING id`,
-    [MARGARET, `credentials:${MARGARET}`],
+    `INSERT INTO users (email, auth_sub, display_name) VALUES ($1,$2,$3) RETURNING id`,
+    [MARGARET, `credentials:${MARGARET}`, 'Margaret Chen'],
   );
   const margaret = m.rows[0].id;
   const s = await query<{ id: string }>(
-    `INSERT INTO users (email, auth_sub) VALUES ($1,$2) RETURNING id`,
-    [SARAH, `credentials:${SARAH}`],
+    `INSERT INTO users (email, auth_sub, display_name) VALUES ($1,$2,$3) RETURNING id`,
+    [SARAH, `credentials:${SARAH}`, 'Sarah Chen'],
   );
   const sarahUser = s.rows[0].id;
 

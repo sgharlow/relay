@@ -1,0 +1,22 @@
+-- A name for the owner.
+--
+-- WHY. Recipients and verifiers have had names since 001; the owner never did.
+-- So every message referring to the owner printed a raw email address:
+--
+--   "sgharlow+margaret@gmail.com asked you to be a trusted contact"
+--
+-- A real family reads "margaret.chen1948@gmail.com set something up for you".
+-- On a product whose whole proposition is trust, addressing people by raw email
+-- is the strongest phishing signal left in the outbound mail, and it lands
+-- hardest on the verifier — the person least invested and most likely to bin
+-- it. J7 only works if verifiers answer.
+--
+-- Nullable on purpose. Existing owners have no name and must keep working; the
+-- notification layer falls back to the email address, which is exactly today's
+-- behaviour. No backfill, no default — a made-up name would be worse than none.
+--
+-- DSQL: no constraints on ALTER TABLE ADD COLUMN.
+--
+-- Feature: relay-h0-mvp
+
+ALTER TABLE users ADD COLUMN display_name TEXT;

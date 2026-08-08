@@ -21,6 +21,7 @@ import { query } from '../db/connection';
 import { withOccRetry } from '../db/occ';
 import { writeAuditEntry } from '../audit/audit-service';
 import { notifyOwnerOfDelegation } from '../notify/notifications';
+import { formatOwnerLabel } from './owner-label';
 import { ValidationError } from '../validation';
 
 /**
@@ -119,8 +120,12 @@ export async function recordConsent(
   // the honest check on a delegation model: the person whose vault it is always
   // gets told. Best-effort — a mail failure must not undo recorded consent.
   try {
-    const parties = await query<{ owner_email: string; delegate_email: string }>(
-      `SELECT o.email AS owner_email, d.email AS delegate_email
+    const parties = await query<{
+      owner_email: string;
+      delegate_name: string | null;
+      delegate_email: string;
+    }>(
+      `SELECT o.email AS owner_email, d.display_name AS delegate_name, d.email AS delegate_email
          FROM delegations dg
          JOIN users o ON o.id = dg.owner_id
          JOIN users d ON d.id = dg.delegate_user_id
@@ -131,7 +136,7 @@ export async function recordConsent(
     if (p) {
       await notifyOwnerOfDelegation({
         ownerEmail: p.owner_email,
-        delegateLabel: p.delegate_email,
+        delegateLabel: formatOwnerLabel(p.delegate_name, p.delegate_email),
         consentMethod: input.method,
       });
     }

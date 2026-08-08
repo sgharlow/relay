@@ -30,6 +30,7 @@ export default function SignUpForm() {
 
   const [phase, setPhase] = useState<Phase>('email');
   const [email, setEmail] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [enrolmentToken, setEnrolmentToken] = useState('');
   const [secret, setSecret] = useState('');
   const [code, setCode] = useState('');
@@ -44,7 +45,7 @@ export default function SignUpForm() {
     const res = await fetch('/api/auth/signup', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, displayName }),
     });
     const data = await res.json().catch(() => ({}));
     setPending(false);
@@ -107,6 +108,33 @@ export default function SignUpForm() {
             className={inputClass}
             placeholder="you@example.com"
           />
+        </div>
+
+        {/* OPTIONAL, and asked for here because it is the only place an owner
+            can give it. Without a name every message about them prints their
+            raw email address — "margaret.chen1948@gmail.com asked you to be a
+            trusted contact" — which on a trust product is the strongest
+            phishing signal in the outbound mail, and it lands hardest on the
+            verifier, who has no stake and is likeliest to bin it. Never
+            required: this is the one screen between an ad click and an account. */}
+        <div>
+          <label htmlFor="displayName" className="mb-1 block text-sm font-medium text-slate-700">
+            Your name <span className="font-normal text-slate-400">(optional)</span>
+          </label>
+          <input
+            id="displayName"
+            type="text"
+            autoComplete="name"
+            maxLength={80}
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            className={inputClass}
+            placeholder="Margaret Chen"
+          />
+          <p className="mt-1 text-xs leading-relaxed text-slate-500">
+            This is how you appear to the people you trust — they will see
+            &ldquo;{displayName.trim() || 'your email address'}&rdquo; when we contact them.
+          </p>
         </div>
 
         {error && <p className="text-sm text-red-600">{error}</p>}

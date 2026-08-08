@@ -25,6 +25,7 @@
 import { createInvitation, type PersonType } from './invitations';
 import { notifyInvitation } from '../notify/notifications';
 import { query } from '../db/connection';
+import { getOwnerLabel } from './owner-label';
 
 /**
  * The origin claim links are built on.
@@ -63,17 +64,13 @@ export async function inviteAndNotify(
     `SELECT name, email FROM ${table} WHERE id = $1 AND owner_id = $2 LIMIT 1`,
     [personId, ownerId],
   );
-  const owner = await query<{ email: string }>(`SELECT email FROM users WHERE id = $1 LIMIT 1`, [
-    ownerId,
-  ]);
-
   const emailDelivered = person.rows[0]
     ? await notifyInvitation({
         to: person.rows[0].email,
         name: person.rows[0].name,
         personType,
         claimUrl,
-        ownerLabel: owner.rows[0]?.email ?? 'Someone you know',
+        ownerLabel: await getOwnerLabel(ownerId),
       })
     : false;
 

@@ -45,6 +45,8 @@ interface EnrolmentClaims {
   purpose: string;
   email: string;
   secret: string;
+  /** Carried through enrolment so step two needs no second form. */
+  displayName?: string;
   exp: number;
 }
 
@@ -103,14 +105,34 @@ function verifyEnrolment(token: string): EnrolmentClaims {
   return claims;
 }
 
-export function validateSignupInput(body: unknown): { email: string } {
+/**
+ * A display name is OPTIONAL and capped, never required.
+ *
+ * Every message about an owner used to print their raw email address, which on
+ * a trust product is the strongest phishing signal in the outbound mail. But
+ * demanding a name at signup adds a field to the one screen standing between an
+ * ad click and an account, so it is asked for and never insisted on — an owner
+ * without one falls back to their email, exactly as before.
+ */
+export const MAX_DISPLAY_NAME_LENGTH = 80;
+
+export function validateSignupInput(body: unknown): { email: string; displayName?: string } {
   const raw = (body as { email?: unknown })?.email;
   if (typeof raw !== 'string') throw new ValidationError('email is required', 'email');
 
   const email = raw.trim().toLowerCase();
   if (!EMAIL_RE.test(email)) throw new ValidationError('email is not a valid address', 'email');
 
-  return { email };
+  const rawName = (body as { displayName?: unknown })?.displayName;
+  const displayName = typeof rawName === 'string' ? rawName.trim() : undefined;
+  if (displayName && displayName.length > MAX_DISPLAY_NAME_LENGTH) {
+    throw new ValidationError(
+      `name must be ${MAX_DISPLAY_NAME_LENGTH} characters or fewer`,
+      'displayName',
+    );
+  }
+
+  return displayName ? { email, displayName } : { email };
 }
 
 async function emailIsTaken(email: string): Promise<boolean> {
@@ -121,7 +143,10 @@ async function emailIsTaken(email: string): Promise<boolean> {
   return res.rows.length > 0;
 }
 
-export async function beginSignup(email: string): Promise<{
+export async function beginSignup(
+  email: string,
+  displayName?: string,
+): Promise<{
   enrolmentToken: string;
   totpSecret: string;
   otpauthUrl: string;
@@ -136,6 +161,7 @@ export async function beginSignup(email: string): Promise<{
     purpose: TOKEN_PURPOSE,
     email,
     secret: totpSecret,
+    ...(displayName ? { displayName } : {}),
     exp: Math.floor(Date.now() / 1000) + ENROLMENT_TTL_SECONDS,
   });
 
@@ -164,10 +190,10 @@ export async function completeSignup(
   // auth_sub MUST match what authorize() derives, or sign-in will not find this
   // row and upsertUser will insert a duplicate for the same email.
   const inserted = await query<{ id: string }>(
-    `INSERT INTO users (email, auth_sub, status, totp_secret)
-     VALUES ($1, $2, 'active', $3)
+    `INSERT INTO users (email, auth_sub, status, totp_secret, display_name)
+     VALUES ($1, $2, 'active', $3, $4)
      RETURNING id`,
-    [claims.email, authSubFor(claims.email), claims.secret],
+    [claims.email, authSubFor(claims.email), claims.secret, claims.displayName ?? null],
   );
 
   return { ownerId: inserted.rows[0].id };

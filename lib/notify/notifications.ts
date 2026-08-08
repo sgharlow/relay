@@ -16,6 +16,7 @@ import { sendEmailBestEffort } from './email';
 import { issueVerifierToken } from '../auth/verifier-token';
 import { issueRecipientToken } from '../auth/recipient-token';
 import { query } from '../db/connection';
+import { getOwnerLabel } from '../people/owner-label';
 
 /**
  * The origin every emailed link is built on.
@@ -429,10 +430,7 @@ export async function notifyRecipientsOfClosure(params: {
   ownerId: string;
   triggerType: string;
 }): Promise<number> {
-  const owner = await query<{ email: string }>(`SELECT email FROM users WHERE id = $1 LIMIT 1`, [
-    params.ownerId,
-  ]);
-  const ownerLabel = owner.rows[0]?.email ?? 'The vault owner';
+  const ownerLabel = await getOwnerLabel(params.ownerId);
 
   const recipients = await query<{ id: string; name: string; email: string; granted: string }>(
     `SELECT r.id, r.name, r.email, count(*)::text AS granted

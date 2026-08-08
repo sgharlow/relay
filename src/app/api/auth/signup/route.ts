@@ -20,8 +20,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (isResponse(body)) return body;
 
   try {
-    const { email } = validateSignupInput(body);
-    const { enrolmentToken, otpauthUrl } = await beginSignup(email);
+    const { email, displayName } = validateSignupInput(body);
+    const { enrolmentToken, otpauthUrl } = await beginSignup(email, displayName);
 
     // The secret is returned only inside the otpauth URL the QR encodes and
     // inside the signed enrolment token — never as a bare field.
