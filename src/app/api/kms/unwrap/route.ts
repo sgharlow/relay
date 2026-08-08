@@ -17,12 +17,23 @@
  */
 
 import { NextResponse, type NextRequest } from 'next/server';
-import { getOwnerSession } from '../../../../../lib/auth/session';
 import { verifyRecipientToken } from '../../../../../lib/auth/recipient-token';
 import { assertOwns } from '../../../../../lib/db/integrity';
 import { decryptDataKey } from '../../../../../lib/kms/kms-client';
 import { evaluateRecipientUnwrap } from '../../../../../lib/kms/unwrap-gate';
 import { writeAuditEntry } from '../../../../../lib/audit/audit-service';
+import { query } from '../../../../../lib/db/connection';
+import { resolveActor, assertDelegateMayRead } from '../../../../../lib/http/delegate-route';
+import { IntegrityError } from '../../../../../lib/db/integrity';
+
+/** Defensive: a handler must not throw on an absent or malformed request URL. */
+function ownerIdParam(req: NextRequest): string | null {
+  try {
+    return new URL(req.url).searchParams.get('ownerId');
+  } catch {
+    return null;
+  }
+}
 
 interface UnwrapBody {
   wrapped_data_key?: string;
@@ -90,13 +101,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ plaintext_data_key: plaintextDataKey });
   }
 
-  // ---- Owner path ----
-  let ownerId: string;
-  try {
-    ({ ownerId } = await getOwnerSession());
-  } catch (res) {
-    return res as NextResponse;
-  }
+  // ---- Owner / delegate path ----
+  // A delegate acting on someone else's vault passes ?ownerId=. They may unwrap
+  // ONLY items they personally entered (J3-R4) — this is the point at which a
+  // helper could otherwise read a parent's whole vault.
+  const targetOwnerId = ownerIdParam(req);
+  const actor = await resolveActor(targetOwnerId);
+  if (actor instanceof NextResponse) return actor;
+
+  const ownerId = actor.ownerId;
 
   try {
     await assertOwns(ownerId, 'vault_items', vault_item_id);
@@ -104,9 +117,36 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Forbidden', message: 'Not the item owner' }, { status: 403 });
   }
 
+  if (actor.isDelegate) {
+    const prov = await query<{ created_by_delegate_id: string | null }>(
+      `SELECT created_by_delegate_id FROM vault_items WHERE id = $1 AND owner_id = $2 LIMIT 1`,
+      [vault_item_id, ownerId],
+    );
+
+    try {
+      assertDelegateMayRead(actor, prov.rows[0] ?? {});
+    } catch (err) {
+      if (err instanceof IntegrityError) {
+        await writeAuditEntry(ownerId, {
+          actor: `delegate:${actor.delegationId}`,
+          action: 'kms_unwrap_denied',
+          entity: 'vault_item',
+          entityId: vault_item_id,
+          detail: { outcome: 'denied', reason: 'not_entered_by_delegate' },
+        });
+        // No KMS call was made.
+        return NextResponse.json(
+          { error: 'Forbidden', message: 'You can only open items you entered yourself' },
+          { status: 403 },
+        );
+      }
+      throw err;
+    }
+  }
+
   const plaintextDataKey = await decryptDataKey(wrapped_data_key);
   await writeAuditEntry(ownerId, {
-    actor: `owner:${ownerId}`,
+    actor: actor.isDelegate ? `delegate:${actor.delegationId}` : `owner:${ownerId}`,
     action: 'kms_unwrap',
     entity: 'vault_item',
     entityId: vault_item_id,

@@ -20,8 +20,11 @@ import {
   ValidationError,
 } from '../../../../../lib/vault/vault-items';
 import { writeAuditEntry } from '../../../../../lib/audit/audit-service';
+import { query } from '../../../../../lib/db/connection';
 import { assertWithinItemCap, EntitlementError } from '../../../../../lib/billing/entitlements';
 import { coverNewItem } from '../../../../../lib/rules/policy-materialize';
+import { resolveActor, requireScope } from '../../../../../lib/http/delegate-route';
+import { IntegrityError } from '../../../../../lib/db/integrity';
 
 export async function GET(): Promise<NextResponse> {
   let ownerId: string;
@@ -36,11 +39,27 @@ export async function GET(): Promise<NextResponse> {
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  let ownerId: string;
+  // A delegate acting on another person's vault passes ?ownerId=; resolveActor
+  // refuses unless an active delegation covers that exact pair (J3-R11).
+  let targetOwnerId: string | null = null;
   try {
-    ({ ownerId } = await getOwnerSession());
-  } catch (res) {
-    return res as NextResponse;
+    targetOwnerId = new URL(req.url).searchParams.get('ownerId');
+  } catch {
+    targetOwnerId = null;
+  }
+
+  const actor = await resolveActor(targetOwnerId);
+  if (actor instanceof NextResponse) return actor;
+
+  const ownerId = actor.ownerId;
+
+  try {
+    requireScope(actor, 'items:create');
+  } catch (err) {
+    if (err instanceof IntegrityError) {
+      return NextResponse.json({ error: 'Forbidden', message: err.message }, { status: 403 });
+    }
+    throw err;
   }
 
   let body: unknown;
@@ -79,8 +98,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const item = await createItem(ownerId, input);
 
+  // Provenance: which delegate entered this, so the read boundary can be
+  // enforced later. NULL means the owner entered it themselves (J3-R4).
+  if (actor.isDelegate) {
+    await query(
+      `UPDATE vault_items SET created_by_delegate_id = $2 WHERE id = $1 AND owner_id = $3`,
+      [item.id, actor.delegationId, ownerId],
+    );
+  }
+
   await writeAuditEntry(ownerId, {
-    actor: `owner:${ownerId}`,
+    actor: actor.isDelegate ? `delegate:${actor.delegationId}` : `owner:${ownerId}`,
     action: 'vault_item_created',
     entity: 'vault_item',
     entityId: item.id,
