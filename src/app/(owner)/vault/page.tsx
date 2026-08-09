@@ -12,14 +12,9 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { groupAndSortItems, gatesCount, type DashboardItem } from '../../../../lib/vault/dashboard-view';
-
-const CRITICALITY_STYLE: Record<string, string> = {
-  critical: 'bg-red-100 text-red-700',
-  high: 'bg-orange-100 text-orange-700',
-  medium: 'bg-amber-100 text-amber-700',
-  low: 'bg-slate-100 text-slate-600',
-};
+import { gatesCount, type DashboardItem } from '../../../../lib/vault/dashboard-view';
+import { rankItems, reasonFor } from '../../../../lib/vault/reason';
+import { buttonPrimary, buttonQuiet, card, errorText, h1, meta, muted } from '../_lib/ui';
 
 export default function VaultDashboardPage() {
   const [items, setItems] = useState<DashboardItem[] | null>(null);
@@ -39,85 +34,105 @@ export default function VaultDashboardPage() {
     };
   }, []);
 
-  const groups = items ? groupAndSortItems(items) : [];
+  const ranked = items ? rankItems(items) : [];
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <header className="mb-6 flex items-center justify-between">
+    <div>
+      <header className="mb-6 flex flex-wrap items-end justify-between" style={{ gap: 'var(--s4)' }}>
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Vault</h1>
-          <p className="text-sm text-slate-500">
-            {items ? `${items.length} item${items.length === 1 ? '' : 's'}` : 'Loading…'}
+          <h1 style={h1}>Vault</h1>
+          {/*
+            Was "3 items", which tells you a count and nothing else. The order is
+            the insight now, so the subtitle says what the order means.
+          */}
+          <p style={{ ...muted, marginTop: 'var(--s1)' }}>
+            {items
+              ? `${items.length} item${items.length === 1 ? '' : 's'} · most consequential first`
+              : 'Loading…'}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Link href="/import" className="rounded border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-100">
+        <div className="flex" style={{ gap: 'var(--s2)' }}>
+          <Link href="/import" style={{ ...buttonQuiet, display: 'inline-flex', alignItems: 'center' }}>
             Import CSV
           </Link>
-          <Link href="/vault/new" className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700">
+          <Link href="/vault/new" style={{ ...buttonPrimary, display: 'inline-flex', alignItems: 'center' }}>
             Add item
           </Link>
         </div>
       </header>
 
-      {error ? (
-        <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
-      ) : null}
+      {error ? <p style={errorText}>{error}</p> : null}
 
-      {!items && !error ? <p className="text-sm text-slate-500">Loading your vault…</p> : null}
+      {!items && !error ? <p style={muted}>Loading your vault…</p> : null}
 
       {items && items.length === 0 ? (
-        <div className="rounded border border-dashed border-slate-300 px-6 py-10 text-center text-sm text-slate-500">
-          Your vault is empty. <Link href="/import" className="text-blue-600 underline">Import a password export</Link> or add an item to get started.
+        <div style={{ ...card, borderStyle: 'dashed', padding: 'var(--s12) var(--s6)', textAlign: 'center' }}>
+          <p style={{ fontSize: 'var(--t3)' }}>Nothing here yet.</p>
+          <p style={{ ...muted, marginTop: 'var(--s2)' }}>
+            The fastest start is a password-manager export —{' '}
+            <Link href="/import" style={{ color: 'var(--ink)', textDecoration: 'underline' }}>
+              import one
+            </Link>
+            , or add the first account by hand.
+          </p>
         </div>
       ) : null}
 
-      <div className="space-y-7">
-        {groups.map((group) => (
-          <section key={group.category}>
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{group.label}</h2>
-            <ul className="divide-y divide-slate-100 rounded border border-slate-200 bg-white">
-              {group.items.map((item) => {
-                const gates = gatesCount(item.id, items!);
-                return (
-                  <li key={item.id} className="flex items-center justify-between gap-4 px-4 py-2.5">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate text-sm font-medium">{item.title}</span>
-                        {item.is_root_credential ? (
-                          <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[11px] font-semibold text-blue-700" title="Root credential — many other accounts recover through this">
-                            ROOT
-                          </span>
-                        ) : null}
-                        {gates > 0 ? (
-                          <span
-                            className="rounded bg-violet-100 px-1.5 py-0.5 text-[11px] font-semibold text-violet-700"
-                            title={`Gates ${gates} reset${gates === 1 ? '' : 's'} — ${gates} account${gates === 1 ? '' : 's'} depend on this for recovery`}
-                          >
-                            gates {gates}
-                          </span>
-                        ) : null}
-                      </div>
-                      <div className="truncate text-xs text-slate-500">
-                        {item.service_name ?? item.type}
-                        {item.url ? ` · ${item.url}` : ''}
-                      </div>
+      {ranked.length > 0 ? (
+        <ul style={{ ...card, listStyle: 'none', padding: 0, margin: 0 }}>
+          {ranked.map((item, i) => {
+            const gates = gatesCount(item.id, items!);
+            const reason = reasonFor(item, gates);
+            return (
+              <li
+                key={item.id}
+                className="flex items-baseline"
+                style={{
+                  gap: 'var(--s4)',
+                  padding: 'var(--s3) var(--s4)',
+                  borderTop: i === 0 ? 'none' : '1px solid var(--rule)',
+                }}
+              >
+                {/* The score, as the only thing a score is good for: an order. */}
+                <span style={{ ...meta, width: '1.5rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                  {i + 1}
+                </span>
+                <div className="min-w-0" style={{ flex: 1 }}>
+                  <div style={{ fontSize: 'var(--t3)', fontWeight: 500 }}>{item.title}</div>
+                  {/*
+                    The dependency edge, in words. This is the same field that
+                    used to render as an unexplained number in a column with no
+                    header.
+                  */}
+                  {reason ? (
+                    <div style={{ ...muted, marginTop: '2px' }}>{reason}</div>
+                  ) : (
+                    <div style={{ ...meta, marginTop: '2px' }}>
+                      {item.service_name ?? item.type}
+                      {item.url ? ` · ${item.url}` : ''}
                     </div>
-                    <div className="flex shrink-0 items-center gap-3">
-                      <span className="w-10 text-right text-xs tabular-nums text-slate-500" title="Importance score">
-                        {Math.round(item.importance_score * 100)}
-                      </span>
-                      <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${CRITICALITY_STYLE[item.criticality ?? ''] ?? 'bg-slate-100 text-slate-600'}`}>
-                        {item.criticality ?? 'n/a'}
-                      </span>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        ))}
-      </div>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+
+      {/*
+        A preparedness product that never tells you what to do next is asking
+        you to work it out. The readiness banner names what is missing; this
+        names the single next move.
+      */}
+      {ranked.length > 0 ? (
+        <p style={{ ...muted, marginTop: 'var(--s6)' }}>
+          Next:{' '}
+          <Link href="/circle" style={{ color: 'var(--ink)', textDecoration: 'underline' }}>
+            name who could reach these
+          </Link>{' '}
+          — a vault nobody can open is a vault that does nothing.
+        </p>
+      ) : null}
     </div>
   );
 }
