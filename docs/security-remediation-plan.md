@@ -65,8 +65,27 @@ agree perfectly while agreeing with nothing already sitting in someone's inbox.
 verifies with jose. It was confirmed able to fail: injecting `requiredClaims: ['jti']` turned it
 red, and removing it turned it green again.
 
-**Still not live-proven at time of writing** — deployed, but no real recipient or verifier link has
-been round-tripped against production since the swap. That is the next check, not an assumption.
+**LIVE-PROVEN 2026-08-08 against the deployed build.** A verifier token minted by the new jose
+issuer was presented to production `GET /api/verify/[token]` alongside two forgeries:
+
+| token | production response |
+|---|---|
+| genuine signature | accepted — passed verification, failed later on a non-existent release state |
+| one bit flipped in the signature | **403** "This link is no longer valid" |
+| `alg:none` downgrade | **403** "This link is no longer valid" |
+
+The genuine token clearing verification while both forgeries are refused is the proof: the deployed
+jose verifier enforces the boundary, and the production signing secret matches. Note this also
+confirms something no test could — that the deployed `VERIFIER_JWT_SECRET` and the local one agree,
+since a mismatch would have refused the genuine token too.
+
+⚠️ **Pre-existing defect found by this probe, NOT caused by the migration.** A *validly signed*
+verifier token naming a well-formed but non-existent `release_state` returns an unhandled **500**,
+because `buildVerifierContext` is not wrapped and `payloadOr403` only guards the token itself.
+Verifier links live 72 hours, and a release state disappears when an owner deletes their account —
+so the real-world shape of this is a doctor clicking an emailed link during an emergency and
+getting a server error instead of "this link is no longer valid". The same code path behaved
+identically before the swap. Tracked, not fixed here.
 
 ## Inventory (live-verified 2026-07-03)
 
