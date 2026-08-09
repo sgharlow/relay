@@ -11,6 +11,13 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
+    // scripts/canary.ts is run by `node` directly, with no build step and no
+    // installed dependencies, so that the alarm cannot be stopped by a broken
+    // lockfile. Node's native type stripping resolves imports the way the
+    // runtime does, which means the specifier must carry its real `.ts`
+    // extension. Safe here because `noEmit` is on — nothing is being compiled,
+    // so there is no output path for the extension to be wrong in.
+    "allowImportingTsExtensions": true,
     "jsx": "preserve",
     "incremental": true,
     "plugins": [

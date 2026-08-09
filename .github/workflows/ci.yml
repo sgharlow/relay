@@ -1,0 +1,72 @@
+# Continuous integration.
+#
+# This repo had a thousand passing tests and nothing that ran them. Every green
+# claim in every document rested on someone having run `npx vitest` locally and
+# remembered the number correctly — which is exactly how a suite rots into
+# decoration while the badge stays green.
+#
+# The steps are ordered cheapest-signal-first so a failure reports in seconds
+# rather than minutes, but none of them are optional and none are `|| true`.
+# In particular the test step runs the real suite: a pipeline that only checks
+# syntax on a repo whose value is correctness is a pipeline that lies.
+#
+# Feature: relay-h0-mvp
+
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch: {}
+
+concurrency:
+  # Supersede an in-flight run for the same ref — but never for master, where
+  # every commit's result is worth having on the record.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # No secrets are exposed to this job. The suite must pass without database,
+    # KMS or Stripe credentials — pools and clients initialise lazily precisely
+    # so that holds. If a test ever needs a real credential to pass, that is the
+    # test to fix, not this file.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # Documented in the global rules and learned the hard way twice: an
+      # AI-co-authorship trailer has triggered compliance flags on a public
+      # repo, each time needing a force-pushed history rewrite. Cheaper to
+      # catch on the way in.
+      - name: No AI co-authorship trailers
+        run: |
+          count=$(git log --format=%B -n 50 | grep -ciE "co-authored-by: claude|noreply@anthropic" || true)
+          if [ "$count" != "0" ]; then
+            echo "::error::Found $count commit(s) carrying an AI co-authorship trailer."
+            exit 1
+          fi
+          echo "Clean."

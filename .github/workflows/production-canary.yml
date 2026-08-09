@@ -1,0 +1,71 @@
+# Synthetic canary against production.
+#
+# WHAT THIS IS FOR, AND WHY IT IS NOT AN ERROR REPORTER. Next 14 gives no global
+# hook for route errors, so anything wired in-app only covers the handlers
+# someone remembered to wrap — the wrong shape for catching a failure nobody
+# anticipated. On 2026-08-08 a validly signed verifier link returned an
+# unhandled 500 in production, behind a green suite of a thousand tests, and it
+# was found by a person poking at it by hand. This exercises the real paths from
+# outside, on a schedule, so the next one is found by a machine at 3am instead.
+#
+# WHY THE CHECKS ARE BEHAVIOURAL. Every page in this app returned 200 for the
+# entire time that verifier link was broken. So these assert that forged tokens
+# are refused, that anonymous checkout is refused, and that an unsigned billing
+# webhook is refused — the things whose failure actually costs something.
+#
+# NO CREDENTIALS, NO WRITES. It runs on a public runner with no secrets, and
+# nothing it does persists a row. That is a constraint on the checks, enforced
+# by a test: any POST check must expect a refusal.
+#
+# Hosted here rather than on Vercel for the same reason as the scheduler
+# monitor: a watchdog must be able to outlive the thing it watches.
+#
+# Feature: relay-h0-mvp (CC9)
+
+name: Production canary
+
+on:
+  schedule:
+    # Every 15 minutes. Fast enough that a broken deploy is caught before much
+    # paid traffic lands on it, slow enough to stay far inside free minutes.
+    - cron: '*/15 * * * *'
+  workflow_dispatch: {} # so the alarm can be proven to work on demand
+  push:
+    branches: [master]
+    paths:
+      - 'lib/ops/canary.ts'
+      - 'scripts/canary.ts'
+      - '.github/workflows/production-canary.yml'
+
+concurrency:
+  group: production-canary
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      # No `npm ci`. The canary imports one dependency-free module and Node
+      # strips the types natively, so this job needs nothing installed — which
+      # keeps it fast and means a broken lockfile can never stop the alarm from
+      # firing. A watchdog with a build step is a watchdog with a way to fail
+      # silently.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Probe production
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/canary.ts
+
+      - name: Explain a failure
+        if: failure()
+        run: |
+          echo "::error::Production canary FAILED — see the probe step for which check and what it means."
+          echo "Each failing check prints its consequence. Then, in order:"
+          echo "  1. Is the site up at all?           https://relaystandby.com"
+          echo "  2. Did a deploy just land?          vercel ls relay --prod"
+          echo "  3. Vercel runtime logs for the failing route."
+          echo "  4. If it is the scheduler, the dedicated monitor covers that separately."
