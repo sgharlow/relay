@@ -6,10 +6,21 @@
  * /caregivers/interest with the price already shown. Copy leads with
  * REVERSIBILITY per docs/COMPETITORS.md.
  *
- * Amber-led: caregivers are the access-mode audience emotionally, even though
- * they buy as owners.
+ * DRAWN ON THE SYSTEM (2026-08-09). This page used to be near-black with gold
+ * accents and a blurred glow, while everything after it — signup, start, vault —
+ * is paper and ink. A paid click therefore crossed a visual seam at exactly the
+ * moment it was deciding whether to trust us, and arrived somewhere that looked
+ * like a different company. The copy was never the problem and is unchanged.
  *
- * Feature: relay-g1-wtp (deploys post-H0-disposition only)
+ * Colour does one job each: ink carries text and every primary action, ochre
+ * marks the one argument that matters — that access closes itself — and clay
+ * appears nowhere on this page, because nothing here is permanent. Reserving it
+ * is what lets it mean something on the estate row later.
+ *
+ * No glow, no gradient, no glass. Decoration reads as marketing, and marketing
+ * on a page asking for a parent's passwords reads as a phishing attempt.
+ *
+ * Feature: relay-g1-wtp
  */
 
 import Link from 'next/link';
@@ -57,51 +68,117 @@ export const metadata = {
   },
 };
 
+const wrap = 'mx-auto w-full';
+const wrapStyle: React.CSSProperties = { maxWidth: '1080px', padding: '0 var(--s6)' };
+
+/** Ink, because a primary action is not decoration. */
+const primaryCta: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  minHeight: '48px',
+  padding: 'var(--s3) var(--s6)',
+  borderRadius: 'var(--radius-owner)',
+  background: 'var(--ink)',
+  color: 'var(--paper)',
+  fontSize: 'var(--t3)',
+  fontWeight: 600,
+};
+
+const card: React.CSSProperties = {
+  border: '1px solid var(--rule)',
+  borderRadius: 'var(--radius-owner)',
+  background: 'var(--paper-raised)',
+  padding: 'var(--s6)',
+};
+
+const sectionHeading: React.CSSProperties = {
+  fontFamily: 'var(--font-read)',
+  fontSize: 'var(--t7)',
+  fontWeight: 500,
+  letterSpacing: '-0.01em',
+  textWrap: 'balance',
+};
+
 export default function CaregiversLanding() {
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100">
+    <main style={{ minHeight: '100vh', background: 'var(--paper)', color: 'var(--ink)' }}>
       <QualifiedTracker />
-      {/* Nav */}
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-        <div className="flex items-baseline gap-2">
-          <span className="text-lg font-semibold tracking-tight">Relay</span>
-          <span className="hidden text-xs text-slate-400 sm:inline">for the ones who step in</span>
+
+      <header
+        className={`${wrap} flex items-center justify-between`}
+        style={{ ...wrapStyle, paddingTop: 'var(--s4)', paddingBottom: 'var(--s4)' }}
+      >
+        <div className="flex items-baseline" style={{ gap: 'var(--s2)' }}>
+          <span style={{ fontSize: 'var(--t5)', fontWeight: 600, letterSpacing: '-0.01em' }}>Relay</span>
+          <span className="hidden sm:inline" style={{ fontSize: 'var(--t1)', color: 'var(--ink-muted)' }}>
+            for the ones who step in
+          </span>
         </div>
-        <Link
-          href={intentHref('nav')}
-          className="rounded-md bg-amber-500 px-4 py-2 text-sm font-medium text-slate-950 transition-colors hover:bg-amber-400"
-        >
+        <Link href={intentHref('nav')} style={{ ...primaryCta, minHeight: '44px', padding: 'var(--s2) var(--s4)', fontSize: 'var(--t2)' }}>
           Get started
         </Link>
       </header>
 
       {/* Hero */}
-      <section className="relative overflow-hidden border-b border-slate-800">
-        <div className="pointer-events-none absolute -top-32 right-0 h-96 w-96 rounded-full bg-amber-500/15 blur-3xl" />
-        <div className="relative mx-auto max-w-6xl px-6 pb-20 pt-16 sm:pt-24">
-          <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/60 px-3 py-1 text-xs text-slate-300">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-            For adult children caring for aging parents
-          </p>
+      <section style={{ borderBottom: '1px solid var(--rule)' }}>
+        <div className={wrap} style={{ ...wrapStyle, paddingTop: 'var(--s12)', paddingBottom: 'var(--s12)' }}>
+          <div className="flex flex-wrap" style={{ gap: 'var(--s2)' }}>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 'var(--s2)',
+                borderRadius: '999px',
+                border: '1px solid var(--rule-strong)',
+                padding: '4px 12px',
+                fontSize: 'var(--t1)',
+                color: 'var(--ink-muted)',
+              }}
+            >
+              For adult children caring for aging parents
+            </span>
 
-          {/* H0 win — distribution ammunition per the disposition plan's WIN branch. */}
-          <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1 text-xs font-medium text-amber-300">
-            {WINNER_BADGE}
-          </p>
+            {/* H0 win — distribution ammunition per the disposition plan's WIN branch. */}
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                borderRadius: '999px',
+                border: '1px solid var(--ochre)',
+                padding: '4px 12px',
+                fontSize: 'var(--t1)',
+                fontWeight: 500,
+                color: 'var(--ochre-text)',
+              }}
+            >
+              {WINNER_BADGE}
+            </span>
+          </div>
 
-          <h1 className="mt-4 max-w-3xl text-4xl font-bold leading-[1.1] tracking-tight sm:text-6xl">
+          <h1
+            style={{
+              fontFamily: 'var(--font-read)',
+              fontSize: 'var(--t9)',
+              fontWeight: 600,
+              lineHeight: 1.06,
+              letterSpacing: '-0.02em',
+              margin: 'var(--s6) 0 0',
+              maxWidth: '20ch',
+              textWrap: 'balance',
+            }}
+          >
             {HEADLINE}
           </h1>
-          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-300">{SUBHEAD}</p>
 
-          <div className="mt-9 flex flex-wrap items-center gap-4">
-            <Link
-              href={intentHref('hero')}
-              className="rounded-md bg-amber-500 px-6 py-3 text-sm font-semibold text-slate-950 transition-colors hover:bg-amber-400"
-            >
+          <p style={{ fontSize: 'var(--t5)', lineHeight: 1.55, color: 'var(--ink-muted)', marginTop: 'var(--s6)', maxWidth: '62ch' }}>
+            {SUBHEAD}
+          </p>
+
+          <div className="flex flex-wrap items-center" style={{ gap: 'var(--s4)', marginTop: 'var(--s8)' }}>
+            <Link href={intentHref('hero')} style={primaryCta}>
               {CTA_LABEL}
             </Link>
-            <span className="text-sm text-slate-400">
+            <span style={{ fontSize: 'var(--t2)', color: 'var(--ink-muted)' }}>
               One price, the whole family. Cancel anytime.
             </span>
           </div>
@@ -109,10 +186,11 @@ export default function CaregiversLanding() {
           {/* Secondary lane: the product funnel. Measures WTP after the reveal
               rather than from copy alone. Does not split the gate — a conversion
               here still reaches /caregivers/interest and fires caregiver_intent. */}
-          <div className="mt-4">
+          <div style={{ marginTop: 'var(--s4)' }}>
             <Link
               href={productHref('hero-product')}
-              className="inline-flex min-h-[44px] items-center text-sm font-medium text-slate-300 underline decoration-slate-600 underline-offset-4 transition-colors hover:text-white"
+              className="inline-flex min-h-[44px] items-center"
+              style={{ fontSize: 'var(--t2)', fontWeight: 500, color: 'var(--ink)', textDecoration: 'underline', textUnderlineOffset: '4px' }}
             >
               {SECONDARY_CTA_LABEL}
             </Link>
@@ -121,37 +199,46 @@ export default function CaregiversLanding() {
       </section>
 
       {/* The moment it's for */}
-      <section className="mx-auto max-w-6xl px-6 py-16">
-        <div className="max-w-3xl">
-          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            The call comes. Then the lockouts start.
-          </h2>
-          <p className="mt-4 leading-relaxed text-slate-300">
+      <section className={wrap} style={{ ...wrapStyle, paddingTop: 'var(--s12)', paddingBottom: 'var(--s12)' }}>
+        <div style={{ maxWidth: '68ch' }}>
+          <h2 style={sectionHeading}>The call comes. Then the lockouts start.</h2>
+          <p style={{ fontSize: 'var(--t3)', lineHeight: 1.65, marginTop: 'var(--s4)' }}>
             The bank. The insurance portal. The pharmacy account. The email that resets all of them.
             Most families solve this ahead of time the only way they know how — by handing over
             every password to everyone, forever. That works right up until it doesn&apos;t, and it
             can never be undone.
           </p>
-          <p className="mt-4 leading-relaxed text-slate-300">
+          <p style={{ fontSize: 'var(--t3)', lineHeight: 1.65, marginTop: 'var(--s4)' }}>
             Relay is the other way: a vault your parent controls while they can, that opens{' '}
-            <span className="text-white">only what each person needs, only when a real trigger fires</span>{' '}
-            — and that <span className="text-amber-300">closes itself when they recover</span>.
+            <strong style={{ fontWeight: 600 }}>only what each person needs, only when a real trigger fires</strong>{' '}
+            — and that{' '}
+            {/* The one thing in ochre on this page. It is the argument. */}
+            <span style={{ color: 'var(--ochre-text)', fontWeight: 600 }}>closes itself when they recover</span>.
           </p>
         </div>
       </section>
 
       {/* Differentiators */}
-      <section className="border-y border-slate-800 bg-slate-900/30">
-        <div className="mx-auto max-w-6xl px-6 py-16">
-          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            Why not the alternatives you&apos;ve already considered?
-          </h2>
-          <div className="mt-10 grid gap-6 lg:grid-cols-3">
+      <section style={{ borderTop: '1px solid var(--rule)', borderBottom: '1px solid var(--rule)', background: 'var(--paper-sunken)' }}>
+        <div className={wrap} style={{ ...wrapStyle, paddingTop: 'var(--s12)', paddingBottom: 'var(--s12)' }}>
+          <h2 style={sectionHeading}>Why not the alternatives you&apos;ve already considered?</h2>
+          <div className="grid lg:grid-cols-3" style={{ gap: 'var(--s6)', marginTop: 'var(--s8)' }}>
             {DIFFERENTIATORS.map((d) => (
-              <div key={d.them} className="rounded-xl border border-slate-800 bg-slate-950 p-6">
-                <div className="text-sm font-semibold text-slate-200">{d.them}</div>
-                <p className="mt-2 text-sm leading-relaxed text-slate-400">{d.problem}</p>
-                <p className="mt-4 border-t border-slate-800 pt-4 text-sm leading-relaxed text-amber-200/90">
+              <div key={d.them} style={card}>
+                <div style={{ fontSize: 'var(--t3)', fontWeight: 600 }}>{d.them}</div>
+                <p style={{ fontSize: 'var(--t2)', lineHeight: 1.6, color: 'var(--ink-muted)', marginTop: 'var(--s2)' }}>
+                  {d.problem}
+                </p>
+                <p
+                  style={{
+                    fontSize: 'var(--t2)',
+                    lineHeight: 1.6,
+                    color: 'var(--ink)',
+                    marginTop: 'var(--s4)',
+                    paddingTop: 'var(--s4)',
+                    borderTop: '1px solid var(--rule)',
+                  }}
+                >
                   {d.relay}
                 </p>
               </div>
@@ -161,10 +248,11 @@ export default function CaregiversLanding() {
           {/* The prose above is the summary; the table is what someone actually
               comparing options wants. Placed here rather than in the footer
               because this is the moment they are weighing alternatives. */}
-          <div className="mt-8">
+          <div style={{ marginTop: 'var(--s8)' }}>
             <Link
               href="/how-it-works#compare"
-              className="inline-flex min-h-[44px] items-center text-sm font-medium text-amber-300 underline decoration-amber-500/40 underline-offset-4 hover:text-amber-200"
+              className="inline-flex min-h-[44px] items-center"
+              style={{ fontSize: 'var(--t2)', fontWeight: 500, color: 'var(--ink)', textDecoration: 'underline', textUnderlineOffset: '4px' }}
             >
               See the full comparison — including where Relay loses →
             </Link>
@@ -173,14 +261,11 @@ export default function CaregiversLanding() {
       </section>
 
       {/* Trust */}
-      <section className="mx-auto max-w-6xl px-6 py-16">
-        <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Built like it matters</h2>
-        <ul className="mt-8 grid gap-4 sm:grid-cols-3">
+      <section className={wrap} style={{ ...wrapStyle, paddingTop: 'var(--s12)', paddingBottom: 'var(--s12)' }}>
+        <h2 style={sectionHeading}>Built like it matters</h2>
+        <ul className="grid sm:grid-cols-3" style={{ gap: 'var(--s4)', marginTop: 'var(--s8)', listStyle: 'none', padding: 0 }}>
           {TRUST_POINTS.map((t) => (
-            <li
-              key={t}
-              className="rounded-xl border border-slate-800 bg-slate-900/40 p-5 text-sm leading-relaxed text-slate-300"
-            >
+            <li key={t} style={{ ...card, fontSize: 'var(--t2)', lineHeight: 1.6, color: 'var(--ink-muted)' }}>
               {t}
             </li>
           ))}
@@ -188,24 +273,21 @@ export default function CaregiversLanding() {
       </section>
 
       {/* Price + CTA */}
-      <section className="border-t border-slate-800">
-        <div className="mx-auto max-w-6xl px-6 py-16">
-          <div className="mx-auto max-w-xl rounded-2xl border border-amber-500/30 bg-amber-500/5 p-8 text-center">
-            <div className="text-xs font-semibold uppercase tracking-wider text-amber-300">
+      <section style={{ borderTop: '1px solid var(--rule)' }}>
+        <div className={wrap} style={{ ...wrapStyle, paddingTop: 'var(--s12)', paddingBottom: 'var(--s12)' }}>
+          <div className="mx-auto text-center" style={{ ...card, maxWidth: '34rem', padding: 'var(--s8)' }}>
+            <div style={{ fontSize: 'var(--t1)', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--ink-muted)' }}>
               One plan
             </div>
-            <div className="mt-3 text-5xl font-bold tracking-tight">
+            <div style={{ fontSize: 'var(--t9)', fontWeight: 600, letterSpacing: '-0.02em', marginTop: 'var(--s3)' }}>
               ${PRICE_YEARLY_USD}
-              <span className="text-lg font-medium text-slate-400">/year</span>
+              <span style={{ fontSize: 'var(--t5)', fontWeight: 400, color: 'var(--ink-muted)' }}>/year</span>
             </div>
-            <p className="mt-3 text-sm leading-relaxed text-slate-300">
+            <p style={{ fontSize: 'var(--t3)', lineHeight: 1.6, color: 'var(--ink-muted)', marginTop: 'var(--s3)' }}>
               One vault, unlimited recipients and triggers, every release reversible until the one
               that shouldn&apos;t be.
             </p>
-            <Link
-              href={intentHref('pricing')}
-              className="mt-6 inline-block rounded-md bg-amber-500 px-6 py-3 text-sm font-semibold text-slate-950 transition-colors hover:bg-amber-400"
-            >
+            <Link href={intentHref('pricing')} style={{ ...primaryCta, marginTop: 'var(--s6)' }}>
               {CTA_LABEL}
             </Link>
           </div>
@@ -213,44 +295,37 @@ export default function CaregiversLanding() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-slate-800">
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-8 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+      <footer style={{ borderTop: '1px solid var(--rule)' }}>
+        <div
+          className={`${wrap} flex flex-col sm:flex-row sm:items-center sm:justify-between`}
+          style={{ ...wrapStyle, gap: 'var(--s3)', paddingTop: 'var(--s8)', paddingBottom: 'var(--s8)', fontSize: 'var(--t2)', color: 'var(--ink-muted)' }}
+        >
           <div>
-            <span className="font-semibold text-slate-300">Relay</span> — standby access for the
+            <span style={{ fontWeight: 600, color: 'var(--ink)' }}>Relay</span> — standby access for the
             people who&apos;ll need it.
           </div>
           {/* Privacy and Terms are required by Meta and Reddit ad policy, and
               by anyone deciding whether to trust this with a parent's
-              credentials. min-h-[44px] keeps them tappable on a phone. */}
-          <div className="flex flex-wrap items-center gap-x-5">
-            {/* Was "About Relay" → "/", which is still the hackathon submission
-                page — Aurora DSQL, a stack section, Devpost and GitHub links. The
-                single link a curious caregiver clicked took them from this page to
-                one about database consistency. */}
-            <Link
-              href="/how-it-works"
-              className="inline-flex min-h-[44px] items-center transition-colors hover:text-slate-300"
-            >
-              How it works
-            </Link>
-            <Link
-              href="/security"
-              className="inline-flex min-h-[44px] items-center transition-colors hover:text-slate-300"
-            >
-              Security
-            </Link>
-            <Link
-              href="/privacy"
-              className="inline-flex min-h-[44px] items-center transition-colors hover:text-slate-300"
-            >
-              Privacy
-            </Link>
-            <Link
-              href="/terms"
-              className="inline-flex min-h-[44px] items-center transition-colors hover:text-slate-300"
-            >
-              Terms
-            </Link>
+              credentials. min-h-[44px] keeps them tappable on a phone.
+              These measured 4.24:1 on the old dark ground — below AA, on an
+              audience that skews older. Ink-muted on paper is 5.2:1, and the
+              underline means colour is not the only thing marking them. */}
+          <div className="flex flex-wrap items-center" style={{ columnGap: 'var(--s5, 1.25rem)' }}>
+            {[
+              ['/how-it-works', 'How it works'],
+              ['/security', 'Security'],
+              ['/privacy', 'Privacy'],
+              ['/terms', 'Terms'],
+            ].map(([href, label]) => (
+              <Link
+                key={href}
+                href={href}
+                className="inline-flex min-h-[44px] items-center"
+                style={{ color: 'var(--ink-muted)', textDecoration: 'underline', textUnderlineOffset: '3px', marginRight: 'var(--s4)' }}
+              >
+                {label}
+              </Link>
+            ))}
           </div>
         </div>
       </footer>
