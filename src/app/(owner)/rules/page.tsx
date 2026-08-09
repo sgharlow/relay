@@ -161,7 +161,7 @@ function RuleBuilder({ items, recipients, onCreated }: { items: Named[]; recipie
       {warning ? (
         <div className="rounded border border-red-300 bg-red-50 px-3 py-2 text-sm leading-relaxed text-red-800">
           <span className="font-semibold">Rule saved — but this vault would not open.</span> {warning}{' '}
-          <a href="/recipients" className="font-medium underline">
+          <a href="/circle" className="font-medium underline">
             Add a trusted contact
           </a>
         </div>

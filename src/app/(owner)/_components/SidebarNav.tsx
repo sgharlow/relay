@@ -11,12 +11,10 @@ import { usePathname } from 'next/navigation';
 const LINKS = [
   { href: '/vault', label: 'Vault' },
   { href: '/import', label: 'Import' },
-  { href: '/recipients', label: 'Recipients' },
-  // Shipped in the circle sprint and then reachable only from a single
-  // notification email — so an owner who never received that email, or deleted
-  // it, had no route to the one screen that shows whether their circle is
-  // actually complete.
-  { href: '/circle', label: 'Circle' },
+  // One destination for the people you trust. It was two — "Recipients &
+  // Verifiers" and "Your circle" — which made the owner learn an internal
+  // distinction before they could find anybody. /recipients now redirects here.
+  { href: '/circle', label: 'People' },
   { href: '/rules', label: 'Rules' },
   { href: '/triggers', label: 'Triggers' },
   // Linked from nowhere at all before this: not from an email, not from the
@@ -42,11 +40,17 @@ export default function SidebarNav() {
             key={link.href}
             href={link.href}
             aria-current={active ? 'page' : undefined}
-            className={`rounded px-3 py-1.5 text-sm transition-colors ${
-              active
-                ? 'bg-blue-600 text-white'
-                : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-            }`}
+            className="transition-colors"
+            style={{
+              borderRadius: 'var(--radius-owner)',
+              padding: 'var(--s2) var(--s3)',
+              fontSize: 'var(--t2)',
+              /* Ochre marks where you are — the one thing in motion on this
+                 rail. Blue was the last of the pre-system accents here. */
+              background: active ? 'var(--ochre)' : 'transparent',
+              color: active ? 'var(--paper)' : 'var(--ink-faint)',
+              fontWeight: active ? 600 : 400,
+            }}
           >
             {link.label}
           </Link>

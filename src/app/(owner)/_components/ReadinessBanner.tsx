@@ -44,11 +44,11 @@ export default function ReadinessBanner() {
   return (
     <div className="mb-6 space-y-3">
       {fatal.length > 0 ? (
-        <div className="rounded border border-red-300 bg-red-50 px-4 py-3">
-          <p className="text-sm font-semibold text-red-900">This vault would not open in an emergency.</p>
+        <div style={{ borderRadius: 'var(--radius-owner)', border: '1px solid var(--clay)', background: 'var(--clay-soft)', padding: 'var(--s3) var(--s4)' }}>
+          <p style={{ fontSize: 'var(--t3)', fontWeight: 600, color: 'var(--ink)' }}>This vault would not open in an emergency.</p>
           <ul className="mt-2 space-y-1">
             {fatal.map((b) => (
-              <li key={b.code} className="text-sm leading-relaxed text-red-800">
+              <li key={b.code} style={{ fontSize: 'var(--t2)', lineHeight: 1.55, color: 'var(--ink)' }}>
                 {b.message}{' '}
                 <Link href={b.href} className="font-medium underline">
                   Fix this
@@ -60,11 +60,11 @@ export default function ReadinessBanner() {
       ) : null}
 
       {setup.length > 0 ? (
-        <div className="rounded border border-amber-200 bg-amber-50 px-4 py-3">
-          <p className="text-sm font-medium text-amber-900">Still to set up</p>
+        <div style={{ borderRadius: 'var(--radius-owner)', border: '1px solid var(--ochre)', background: 'var(--ochre-soft)', padding: 'var(--s3) var(--s4)' }}>
+          <p style={{ fontSize: 'var(--t3)', fontWeight: 600, color: 'var(--ochre-text)' }}>Still to set up</p>
           <ul className="mt-1 space-y-1">
             {setup.map((b) => (
-              <li key={b.code} className="text-sm leading-relaxed text-amber-800">
+              <li key={b.code} style={{ fontSize: 'var(--t2)', lineHeight: 1.55, color: 'var(--ink-muted)' }}>
                 {b.message}{' '}
                 <Link href={b.href} className="font-medium underline">
                   Go

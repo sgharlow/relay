@@ -20,6 +20,15 @@ const nextConfig = {
   async redirects() {
     return [
       {
+        // "Recipients & Verifiers" and "Your circle" were two nav entries for
+        // one idea, which asked an owner to know an internal distinction in
+        // order to find anyone. /circle is now People and does both jobs.
+        // Permanent, so bookmarks and any older emailed link move with it.
+        source: '/recipients',
+        destination: '/circle',
+        permanent: true,
+      },
+      {
         source: '/:path*',
         has: [{ type: 'host', value: LEGACY_HOST }],
         destination: `https://relaystandby.com/:path*`,

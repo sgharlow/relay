@@ -12,7 +12,8 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
+
+import { RecipientSection, VerifierSection } from './PeopleSections';
 
 interface Proposal {
   recipientId: string;
@@ -88,11 +89,11 @@ export default function CircleClient() {
   const nameById = new Map(recipients.map((r) => [r.id, r.name]));
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8">
+    <div className="space-y-8">
       <header>
-        <h1 className="text-xl font-semibold tracking-tight text-slate-900">Your circle</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Who can reach what, and under which conditions.
+        <h1 style={{ fontSize: 'var(--t7)', fontWeight: 600, letterSpacing: '-0.02em' }}>People</h1>
+        <p style={{ fontSize: 'var(--t3)', color: 'var(--ink-muted)', marginTop: 'var(--s1)' }}>
+          Who would step in, who confirms it is real, and what each of them could reach.
         </p>
       </header>
 
@@ -166,12 +167,8 @@ export default function CircleClient() {
       <section>
         <h2 className="text-sm font-semibold text-slate-900">Who holds what</h2>
         {recipients.length === 0 ? (
-          <p className="mt-2 text-sm text-slate-500">
-            No recipients yet.{' '}
-            <Link href="/recipients" className="text-blue-600 hover:underline">
-              Designate someone
-            </Link>
-            .
+          <p style={{ marginTop: 'var(--s2)', fontSize: 'var(--t2)', color: 'var(--ink-muted)' }}>
+            Nobody named yet — add the first person below.
           </p>
         ) : (
           <table className="mt-3 w-full text-sm">
@@ -198,14 +195,14 @@ export default function CircleClient() {
         )}
       </section>
 
-      <section>
-        <h2 className="text-sm font-semibold text-slate-900">Verifiers</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          {verifiers.length === 0
-            ? 'None yet. Verifiers confirm a trigger is real — they never see your vault.'
-            : `${verifiers.length} designated. They confirm a trigger is real and never see your vault.`}
-        </p>
-      </section>
+      {/*
+        Management sits beneath the assessment on purpose. The coverage matrix
+        above names the gap; these are where you close it, on the same screen,
+        without having to know that "recipients" and "circle" were once
+        different pages.
+      */}
+      <RecipientSection items={recipients} onChange={load} />
+      <VerifierSection items={verifiers} onChange={load} />
     </div>
   );
 }
