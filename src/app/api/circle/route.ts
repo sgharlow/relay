@@ -19,6 +19,19 @@ import { computeCoverage } from '../../../../lib/rules/coverage';
 import { proposePolicies } from '../../../../lib/rules/policy-proposals';
 import type { PolicyItem } from '../../../../lib/rules/policy-predicate';
 
+/**
+ * Takes no request argument, so Next tries to prerender it at build time —
+ * which means running a query with no session against no database. That made
+ * the build depend on the cluster being reachable and on credentials being
+ * present, which is why it failed the first time CI ran it on a clean machine
+ * and passed on every developer laptop with a .env.local.
+ *
+ * The route was already dynamic in the built output; this makes the build
+ * hermetic rather than changing what ships.
+ */
+export const dynamic = 'force-dynamic';
+
+
 export async function GET(): Promise<NextResponse> {
   const auth = await requireOwner();
   if (isResponse(auth)) return auth;
