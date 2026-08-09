@@ -143,14 +143,40 @@ The whole path was executed end to end, not reasoned about:
   deletion protection still on, before and after.
 - Cross-Region copy to `relay-vault-dr` → **COMPLETED**, identical 494,356 bytes.
 
+## Alerting
+
+Two layers, because they catch different failures. Both publish to the existing
+`NotifyMe` SNS topic in us-east-1, which already had a **confirmed** email
+subscription — so no new credential was created and nothing needs confirming.
+
+**1. Job failure → vault notifications.** `relay-vault` notifies on
+`BACKUP_JOB_FAILED`, `COPY_JOB_FAILED` and `RESTORE_JOB_FAILED`. Catches the
+common case: a permission change, a broken role, a copy that cannot reach the DR
+Region.
+
+⚠️ **The topic policy did not permit `backup.amazonaws.com` to publish.** AWS
+accepted the notification configuration with a 200 anyway, and it would have
+delivered precisely nothing. The grant was **appended** to the existing policy —
+that topic already serves other alerting, and replacing it would have silently
+broken whatever else publishes there.
+
+**2. Backups going quiet → CloudWatch alarm `relay-backup-absent`.** Ten
+consecutive 3-hour windows with no completed backup job — 30 hours, matching the
+threshold in `backup-status.mjs`. `TreatMissingData: breaching`, because the
+failure being watched for IS the metric going quiet; treating absence as healthy
+would defeat the whole alarm. This is the layer that catches a plan that stops
+scheduling, which produces no failure event at all.
+
+**Both were proven to reach a human**, not merely configured: the alarm was
+forced into `ALARM` deliberately and then reset to `OK`. Given that the SNS
+policy gap above meant "configured" and "delivers" were demonstrably different
+things here, firing it once was the only honest verification.
+
 ## Still open
 
-- **Nothing alerts on backup failure.** `backup-status.mjs` reports on demand
-  and exits non-zero, but no schedule runs it. The scheduler monitor and the
-  production canary both run in GitHub Actions without credentials; this one
-  needs AWS access, so it either wants a scoped read-only key as a repo secret
-  or an SNS notification on the vault. Until then, absence of backups is
-  discoverable but not announced — which is the failure mode this file opens by
-  describing.
 - The first **scheduled** run has not happened yet (05:00 UTC). Everything above
-  was proven by on-demand jobs. Confirm the schedule fires before trusting it.
+  was proven with on-demand jobs. Confirm the schedule fires before trusting it —
+  and note the alarm will not have enough history to evaluate until it does.
+- `backup-status.mjs` still has to be run by hand. The two alerts above cover
+  failure and silence; the script remains the way to answer "how stale is it
+  right now?" on demand.
