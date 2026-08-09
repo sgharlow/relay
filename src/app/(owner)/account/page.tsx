@@ -19,8 +19,8 @@ export default function AccountPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Your account</h1>
-        <p className="mt-1 text-sm text-slate-600">Take your data out, or close the account.</p>
+        <h1 className="text-t7 font-semibold tracking-tight text-ink">Your account</h1>
+        <p className="mt-1 text-t2 text-muted">Take your data out, or close the account.</p>
       </div>
       <AccountClient />
     </div>

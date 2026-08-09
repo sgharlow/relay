@@ -18,7 +18,7 @@ import { useState } from 'react';
 type Phase = 'identify' | 'enrol' | 'done';
 
 const inputCls =
-  'mt-1 w-full rounded border border-slate-300 px-3 py-2 text-base focus:border-blue-500 focus:outline-none';
+  'mt-1 w-full rounded border border-rule-strong px-3 py-2 text-t3 focus:border-ink focus:outline-none';
 
 export default function RecoverForm() {
   const router = useRouter();
@@ -73,12 +73,12 @@ export default function RecoverForm() {
   if (phase === 'done') {
     return (
       <div>
-        <h1 className="text-xl font-semibold text-slate-900">You&rsquo;re back in</h1>
-        <p className="mt-3 text-[15px] leading-relaxed text-slate-700">
+        <h1 className="text-t5 font-semibold text-ink">You&rsquo;re back in</h1>
+        <p className="mt-3 text-[15px] leading-relaxed text-ink">
           Your new authenticator is set up. Your old one no longer works, and the recovery codes
           you had before have been replaced — here is a new set.
         </p>
-        <ul className="mt-5 grid grid-cols-2 gap-2 rounded-md border border-slate-300 bg-slate-50 p-4 font-mono text-[15px] text-slate-900">
+        <ul className="mt-5 grid grid-cols-2 gap-2 rounded-md border border-rule-strong bg-paper-sunken p-4 font-mono text-[15px] text-ink">
           {fresh.map((c) => (
             <li key={c}>{c}</li>
           ))}
@@ -86,7 +86,7 @@ export default function RecoverForm() {
         <button
           type="button"
           onClick={() => router.push('/auth/signin')}
-          className="mt-5 w-full rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="mt-5 w-full rounded bg-ink px-3 py-2 text-t2 font-medium text-paper hover:bg-ink"
         >
           Sign in
         </button>
@@ -97,29 +97,29 @@ export default function RecoverForm() {
   if (phase === 'enrol') {
     return (
       <form onSubmit={onEnrol}>
-        <h1 className="text-xl font-semibold text-slate-900">Set up your new authenticator</h1>
-        <p className="mt-3 text-[15px] leading-relaxed text-slate-700">
+        <h1 className="text-t5 font-semibold text-ink">Set up your new authenticator</h1>
+        <p className="mt-3 text-[15px] leading-relaxed text-ink">
           In your authenticator app, choose &ldquo;enter a setup key&rdquo; and paste this:
         </p>
-        <p className="mt-3 break-all rounded bg-slate-100 px-3 py-2 font-mono text-[15px] text-slate-900">
+        <p className="mt-3 break-all rounded bg-paper-sunken px-3 py-2 font-mono text-[15px] text-ink">
           {secret.replace(/(.{4})/g, '$1 ').trim()}
         </p>
 
-        <label htmlFor="code" className="mt-5 block text-sm font-medium text-slate-700">
+        <label htmlFor="code" className="mt-5 block text-t2 font-medium text-ink">
           6-digit code from your new authenticator
         </label>
         <input id="code" value={code} onChange={(e) => setCode(e.target.value)} className={inputCls} inputMode="numeric" required />
 
-        {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+        {error && <p className="mt-3 text-t2 text-clay">{error}</p>}
 
         <button
           type="submit"
           disabled={pending}
-          className="mt-5 w-full rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          className="mt-5 w-full rounded bg-ink px-3 py-2 text-t2 font-medium text-paper hover:bg-ink disabled:opacity-50"
         >
           {pending ? 'Checking…' : 'Finish'}
         </button>
-        <p className="mt-3 text-center text-xs text-slate-500">
+        <p className="mt-3 text-center text-t1 text-muted">
           Nothing changes until this code checks out.
         </p>
       </form>
@@ -128,18 +128,18 @@ export default function RecoverForm() {
 
   return (
     <form onSubmit={onIdentify}>
-      <h1 className="text-xl font-semibold text-slate-900">Get back in</h1>
-      <p className="mt-3 text-[15px] leading-relaxed text-slate-700">
+      <h1 className="text-t5 font-semibold text-ink">Get back in</h1>
+      <p className="mt-3 text-[15px] leading-relaxed text-ink">
         Lost the phone with your authenticator? Use one of the recovery codes you saved when you
         created your vault. Your vault contents are untouched — this only replaces how you sign in.
       </p>
 
-      <label htmlFor="email" className="mt-5 block text-sm font-medium text-slate-700">
+      <label htmlFor="email" className="mt-5 block text-t2 font-medium text-ink">
         Email address
       </label>
       <input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} />
 
-      <label htmlFor="recoveryCode" className="mt-4 block text-sm font-medium text-slate-700">
+      <label htmlFor="recoveryCode" className="mt-4 block text-t2 font-medium text-ink">
         One recovery code
       </label>
       <input
@@ -153,18 +153,18 @@ export default function RecoverForm() {
         className={`${inputCls} font-mono tracking-wide`}
       />
 
-      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-3 text-t2 text-clay">{error}</p>}
 
       <button
         type="submit"
         disabled={pending}
-        className="mt-5 w-full rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+        className="mt-5 w-full rounded bg-ink px-3 py-2 text-t2 font-medium text-paper hover:bg-ink disabled:opacity-50"
       >
         {pending ? 'Checking…' : 'Continue'}
       </button>
 
-      <p className="mt-4 text-center text-sm text-slate-500">
-        <Link href="/auth/signin" className="text-blue-600 hover:underline">
+      <p className="mt-4 text-center text-t2 text-muted">
+        <Link href="/auth/signin" className="text-ink hover:underline">
           Back to sign in
         </Link>
       </p>

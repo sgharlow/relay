@@ -51,30 +51,30 @@ export default function ClaimClient() {
 
   if (!token) return <ClaimCodeEntry onCode={setToken} />;
 
-  if (state.kind === 'loading') return <p className="text-stone-500">Checking your invitation…</p>;
+  if (state.kind === 'loading') return <p className="text-muted">Checking your invitation…</p>;
 
   if (state.kind === 'error') {
     return (
-      <div className="rounded-lg border border-stone-300 bg-white p-5">
-        <h1 className="text-xl font-semibold text-stone-900">We couldn&rsquo;t open that link</h1>
-        <p className="mt-2 text-stone-700">{state.message}</p>
-        <p className="mt-3 text-stone-600">Ask whoever invited you to send a fresh one.</p>
+      <div className="rounded-lg border border-rule-strong bg-paper-raised p-5">
+        <h1 className="text-t5 font-semibold text-ink">We couldn&rsquo;t open that link</h1>
+        <p className="mt-2 text-ink">{state.message}</p>
+        <p className="mt-3 text-muted">Ask whoever invited you to send a fresh one.</p>
       </div>
     );
   }
 
   if (state.kind === 'verifier') {
     return (
-      <div className="rounded-lg border border-stone-300 bg-white p-5">
-        <h1 className="text-xl font-semibold text-stone-900">You&rsquo;re on the list</h1>
-        <p className="mt-3 text-stone-800">
+      <div className="rounded-lg border border-rule-strong bg-paper-raised p-5">
+        <h1 className="text-t5 font-semibold text-ink">You&rsquo;re on the list</h1>
+        <p className="mt-3 text-ink">
           If something happens, we may ask you one question: is this real?
         </p>
-        <p className="mt-3 text-stone-800">
+        <p className="mt-3 text-ink">
           <strong>You will never see their information.</strong> Not now, and not when access opens.
           Your only role is to confirm — or deny — that the situation is genuine.
         </p>
-        <p className="mt-3 text-stone-600">
+        <p className="mt-3 text-muted">
           Nothing more to do today. We&rsquo;ll be in touch only if we need you.
         </p>
       </div>
@@ -85,14 +85,14 @@ export default function ClaimClient() {
   const cats = Object.entries(standby.categories).sort((a, b) => b[1] - a[1]);
 
   return (
-    <div className="rounded-lg border border-stone-300 bg-white p-5">
-      <h1 className="text-xl font-semibold text-stone-900">You&rsquo;re set up</h1>
-      <p className="mt-3 text-stone-800">
+    <div className="rounded-lg border border-rule-strong bg-paper-raised p-5">
+      <h1 className="text-t5 font-semibold text-ink">You&rsquo;re set up</h1>
+      <p className="mt-3 text-ink">
         Nothing is open right now, and nothing will be until a trigger is verified.
       </p>
 
-      <div className="mt-4 rounded border border-amber-300 bg-amber-50 p-4">
-        <p className="text-stone-900">
+      <div className="mt-4 rounded border border-ochre bg-ochre-soft p-4">
+        <p className="text-ink">
           If that day comes, you would get access to{' '}
           <strong>
             {standby.itemCount} item{standby.itemCount === 1 ? '' : 's'}
@@ -113,11 +113,11 @@ export default function ClaimClient() {
         </p>
       </div>
 
-      <p className="mt-4 text-stone-700">
+      <p className="mt-4 text-ink">
         We&rsquo;re not showing you what those items are — that stays private until it needs not to
         be.
       </p>
-      <p className="mt-3 text-stone-600">
+      <p className="mt-3 text-muted">
         You don&rsquo;t need to do anything else. If access ever opens, we&rsquo;ll email you and
         you&rsquo;ll already be signed in.
       </p>
@@ -137,9 +137,9 @@ function ClaimCodeEntry({ onCode }: { onCode: (c: string) => void }) {
   const [code, setCode] = useState('');
 
   return (
-    <div className="mx-auto max-w-md rounded-2xl border border-stone-200 bg-white px-6 py-7">
-      <h1 className="text-[26px] font-semibold leading-snug text-stone-900">Enter your invitation code</h1>
-      <p className="mt-3 text-[17px] leading-relaxed text-stone-700">
+    <div className="mx-auto max-w-md rounded-2xl border border-rule bg-paper-raised px-6 py-7">
+      <h1 className="text-[26px] font-semibold leading-snug text-ink">Enter your invitation code</h1>
+      <p className="mt-3 text-[17px] leading-relaxed text-ink">
         Someone has named you in their Relay plan. Type the code from the email they sent you.
       </p>
 
@@ -150,7 +150,7 @@ function ClaimCodeEntry({ onCode }: { onCode: (c: string) => void }) {
           if (code.trim()) onCode(code.trim());
         }}
       >
-        <label htmlFor="invite" className="block text-sm font-medium text-stone-700">
+        <label htmlFor="invite" className="block text-t2 font-medium text-ink">
           Code from your email
         </label>
         <input
@@ -160,18 +160,18 @@ function ClaimCodeEntry({ onCode }: { onCode: (c: string) => void }) {
           autoCapitalize="characters"
           spellCheck={false}
           placeholder="4KMPQ-7XR2W"
-          className="mt-2 min-h-[52px] w-full rounded-md border border-stone-400 px-4 text-center font-mono text-2xl tracking-[0.15em] text-stone-900 placeholder:text-stone-300 focus:border-stone-900 focus:outline-none"
+          className="mt-2 min-h-[52px] w-full rounded-md border border-rule-strong px-4 text-center font-mono text-t7 tracking-[0.15em] text-ink placeholder:text-muted focus:border-rule focus:outline-none"
         />
         <button
           type="submit"
           disabled={!code.trim()}
-          className="mt-5 min-h-[52px] w-full rounded-md bg-stone-900 px-6 text-[17px] font-semibold text-white hover:bg-stone-800 disabled:opacity-50"
+          className="mt-5 min-h-[52px] w-full rounded-md bg-ink px-6 text-[17px] font-semibold text-paper hover:bg-ink disabled:opacity-50"
         >
           Continue
         </button>
       </form>
 
-      <p className="mt-6 text-[15px] leading-relaxed text-stone-500">
+      <p className="mt-6 text-[15px] leading-relaxed text-muted">
         Nothing is being opened. Accepting only tells them you have seen it.
       </p>
     </div>

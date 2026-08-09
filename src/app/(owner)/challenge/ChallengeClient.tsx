@@ -56,13 +56,13 @@ export default function ChallengeClient() {
     if (res.ok) setDone((d) => ({ ...d, [id]: response }));
   }
 
-  if (requests === null) return <p className="text-stone-600">Loading…</p>;
+  if (requests === null) return <p className="text-muted">Loading…</p>;
 
   if (requests.length === 0) {
     return (
       <div className="mx-auto max-w-xl text-[18px]">
-        <h1 className="text-2xl font-semibold text-stone-900">Nobody is asking for access</h1>
-        <p className="mt-3 text-stone-700">
+        <h1 className="text-t7 font-semibold text-ink">Nobody is asking for access</h1>
+        <p className="mt-3 text-ink">
           If someone ever does, we will contact you here first — before anyone else is involved.
         </p>
       </div>
@@ -70,45 +70,45 @@ export default function ChallengeClient() {
   }
 
   return (
-    <div className="mx-auto max-w-xl space-y-6 text-[18px] leading-relaxed text-stone-900">
+    <div className="mx-auto max-w-xl space-y-6 text-[18px] leading-relaxed text-ink">
       {requests.map((r) => {
         const decided = done[r.id];
 
         if (decided) {
           return (
-            <div key={r.id} className="rounded-lg border border-stone-300 bg-white p-6">
-              <h2 className="text-xl font-semibold">
+            <div key={r.id} className="rounded-lg border border-rule-strong bg-paper-raised p-6">
+              <h2 className="text-t5 font-semibold">
                 {decided === 'deny' ? 'Nothing was opened' : 'Access is opening'}
               </h2>
-              <p className="mt-3 text-stone-800">
+              <p className="mt-3 text-ink">
                 {decided === 'deny'
                   ? 'We told them no. Nobody else was contacted, and your vault stayed closed.'
                   : 'They will be able to reach what you designated. You can close it again at any time.'}
               </p>
-              <p className="mt-3 text-[16px] text-stone-600">Reference {r.case_id}</p>
+              <p className="mt-3 text-[16px] text-muted">Reference {r.case_id}</p>
             </div>
           );
         }
 
         return (
-          <div key={r.id} className="rounded-lg border-2 border-amber-400 bg-white p-6">
-            <p className="text-[16px] uppercase tracking-wide text-stone-500">
+          <div key={r.id} className="rounded-lg border-2 border-ochre bg-paper-raised p-6">
+            <p className="text-[16px] uppercase tracking-wide text-muted">
               Reference {r.case_id}
             </p>
-            <h1 className="mt-2 text-2xl font-semibold">
+            <h1 className="mt-2 text-t7 font-semibold">
               {r.recipient_name ?? 'Someone you trust'} is asking for access
             </h1>
 
-            {r.reason && <p className="mt-3 text-stone-800">They said: &ldquo;{r.reason}&rdquo;</p>}
+            {r.reason && <p className="mt-3 text-ink">They said: &ldquo;{r.reason}&rdquo;</p>}
 
-            <p className="mt-3 text-stone-700">{timeLeft(r.expires_at)}</p>
+            <p className="mt-3 text-ink">{timeLeft(r.expires_at)}</p>
 
             <div className="mt-5 space-y-3">
               <button
                 type="button"
                 disabled={busy === r.id}
                 onClick={() => respond(r.id, 'deny')}
-                className="w-full rounded border-2 border-stone-800 bg-white px-5 py-4 font-semibold text-stone-900 hover:bg-stone-100 disabled:opacity-50"
+                className="w-full rounded border-2 border-rule bg-paper-raised px-5 py-4 font-semibold text-ink hover:bg-paper-sunken disabled:opacity-50"
               >
                 I&rsquo;m fine — don&rsquo;t open anything
               </button>
@@ -116,13 +116,13 @@ export default function ChallengeClient() {
                 type="button"
                 disabled={busy === r.id}
                 onClick={() => respond(r.id, 'approve')}
-                className="w-full rounded border-2 border-stone-800 bg-stone-800 px-5 py-4 font-semibold text-white hover:bg-stone-900 disabled:opacity-50"
+                className="w-full rounded border-2 border-rule bg-ink px-5 py-4 font-semibold text-paper hover:bg-ink disabled:opacity-50"
               >
                 Yes — let them in
               </button>
             </div>
 
-            <p className="mt-4 text-[16px] text-stone-600">
+            <p className="mt-4 text-[16px] text-muted">
               If you don&rsquo;t answer, we will ask the people you nominated to confirm whether
               this is real.
             </p>

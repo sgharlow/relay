@@ -40,7 +40,7 @@ export default function SignInForm() {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div>
-        <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">
+        <label htmlFor="email" className="mb-1 block text-t2 font-medium text-ink">
           Email address
         </label>
         <input
@@ -50,13 +50,13 @@ export default function SignInForm() {
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full rounded border border-rule-strong px-3 py-2 text-t2 focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
           placeholder="owner@example.com"
         />
       </div>
 
       <div>
-        <label htmlFor="totp" className="mb-1 block text-sm font-medium text-slate-700">
+        <label htmlFor="totp" className="mb-1 block text-t2 font-medium text-ink">
           Authenticator code
         </label>
         <input
@@ -68,14 +68,14 @@ export default function SignInForm() {
           required
           value={totpCode}
           onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
-          className="w-full rounded border border-slate-300 px-3 py-2 text-sm tracking-[0.3em] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full rounded border border-rule-strong px-3 py-2 text-t2 tracking-[0.3em] focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
           placeholder="000000"
         />
-        <p className="mt-1 text-xs text-slate-500">6-digit code from your authenticator app.</p>
+        <p className="mt-1 text-t1 text-muted">6-digit code from your authenticator app.</p>
       </div>
 
       {error ? (
-        <div role="alert" className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div role="alert" className="rounded border border-clay bg-clay-soft px-3 py-2 text-t2 text-clay">
           {error}
         </div>
       ) : null}
@@ -83,7 +83,7 @@ export default function SignInForm() {
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+        className="w-full rounded bg-ink px-3 py-2 text-t2 font-semibold text-paper hover:bg-ink disabled:opacity-60"
       >
         {pending ? 'Signing in…' : 'Sign in'}
       </button>
@@ -92,9 +92,9 @@ export default function SignInForm() {
           so without this the only honest answer was "your vault is
           unreachable" — and the person most likely to need it is the one least
           likely to go hunting for it. */}
-      <p className="text-center text-sm text-slate-500">
+      <p className="text-center text-t2 text-muted">
         Lost your authenticator?{' '}
-        <a href="/auth/recover" className="text-blue-600 hover:underline">
+        <a href="/auth/recover" className="text-ink hover:underline">
           Use a recovery code
         </a>
       </p>

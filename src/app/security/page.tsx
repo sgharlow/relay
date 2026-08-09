@@ -93,15 +93,15 @@ const ARCHITECTURE = [
 
 export default function SecurityPage() {
   return (
-    <main className="min-h-screen bg-white text-slate-800">
+    <main className="min-h-screen bg-paper-raised text-ink">
       <header className="mx-auto max-w-3xl px-6 pb-2 pt-14">
         <Link href="/caregivers" style={{ fontSize: 'var(--t2)', color: 'var(--ink-muted)', textDecoration: 'underline', textUnderlineOffset: '3px' }}>
           ← Relay for caregivers
         </Link>
-        <h1 className="mt-4 text-4xl font-bold leading-tight tracking-tight text-slate-900">
+        <h1 className="mt-4 font-serif text-t9 font-semibold leading-tight tracking-tight text-ink">
           What protects your vault
         </h1>
-        <p className="mt-4 text-[19px] leading-relaxed text-slate-700">
+        <p className="mt-4 text-[19px] leading-relaxed text-ink">
           You are considering putting a parent&rsquo;s bank login into a website you had not heard
           of last week. These are the questions that deserve straight answers.
         </p>
@@ -111,35 +111,35 @@ export default function SecurityPage() {
         <dl className="space-y-8">
           {PLAIN_ANSWERS.map((item) => (
             <div key={item.q}>
-              <dt className="text-xl font-semibold text-slate-900">{item.q}</dt>
-              <dd className="mt-2 text-[17px] leading-relaxed text-slate-700">{item.a}</dd>
+              <dt className="text-t5 font-semibold text-ink">{item.q}</dt>
+              <dd className="mt-2 text-[17px] leading-relaxed text-ink">{item.a}</dd>
             </div>
           ))}
         </dl>
 
-        <p className="mt-10 rounded-xl border border-slate-300 bg-slate-50 p-5 text-[16px] leading-relaxed text-slate-700">
-          <span className="font-semibold text-slate-900">One thing we will not claim.</span> Relay
+        <p className="mt-10 rounded-xl border border-rule-strong bg-paper-sunken p-5 text-[16px] leading-relaxed text-ink">
+          <span className="font-semibold text-ink">One thing we will not claim.</span> Relay
           is early-stage software with no paying customers yet. The engineering above is real and
           you can inspect it, but a young product is a young product — please do not make this the
           only place something important is written down. Our{' '}
-          <Link href="/terms" className="text-blue-700 underline">
+          <Link href="/terms" className="text-ink underline">
             terms
           </Link>{' '}
           say the same thing.
         </p>
       </section>
 
-      <section className="border-y border-slate-200 bg-slate-50">
+      <section className="border-y border-rule bg-paper-sunken">
         <div className="mx-auto max-w-3xl px-6 py-12">
-          <h2 className="text-2xl font-semibold tracking-tight text-slate-900">How it is built</h2>
-          <p className="mt-2 text-[16px] leading-relaxed text-slate-600">
+          <h2 className="text-t7 font-semibold tracking-tight text-ink">How it is built</h2>
+          <p className="mt-2 text-[16px] leading-relaxed text-muted">
             For readers who want the mechanism rather than the reassurance.
           </p>
           <dl className="mt-8 space-y-6">
             {ARCHITECTURE.map((a) => (
-              <div key={a.k} className="border-l-2 border-slate-300 pl-4">
-                <dt className="font-semibold text-slate-900">{a.k}</dt>
-                <dd className="mt-1 text-[15px] leading-relaxed text-slate-600">{a.v}</dd>
+              <div key={a.k} className="border-l-2 border-rule-strong pl-4">
+                <dt className="font-semibold text-ink">{a.k}</dt>
+                <dd className="mt-1 text-[15px] leading-relaxed text-muted">{a.v}</dd>
               </div>
             ))}
           </dl>
@@ -147,15 +147,15 @@ export default function SecurityPage() {
           {/* Here rather than on the front door: in this context it reads as
               "independently judged, open to inspection"; on a landing page it
               frames a credential vault as a weekend project. */}
-          <div className="mt-10 rounded-xl border border-slate-200 bg-white p-5">
-            <p className="text-[15px] leading-relaxed text-slate-700">
+          <div className="mt-10 rounded-xl border border-rule bg-paper-raised p-5">
+            <p className="text-[15px] leading-relaxed text-ink">
               Relay won <span className="font-semibold">Most Impactful</span> at the H0 hackathon,
               judged on this architecture. The build is public and open to inspection.
             </p>
             <div className="mt-3 flex flex-wrap gap-4 text-[15px]">
               <a
                 href="https://github.com/sgharlow/relay"
-                className="text-blue-700 underline"
+                className="text-ink underline"
                 rel="noreferrer"
                 target="_blank"
               >
@@ -163,13 +163,13 @@ export default function SecurityPage() {
               </a>
               <a
                 href="https://devpost.com/software/relay-n5c9re"
-                className="text-blue-700 underline"
+                className="text-ink underline"
                 rel="noreferrer"
                 target="_blank"
               >
                 Submission and judging
               </a>
-              <Link href="/demo" className="text-blue-700 underline">
+              <Link href="/demo" className="text-ink underline">
                 Guided demo
               </Link>
             </div>
@@ -178,19 +178,19 @@ export default function SecurityPage() {
       </section>
 
       <section className="mx-auto max-w-3xl px-6 py-12 text-center">
-        <p className="text-[19px] leading-relaxed text-slate-800">
+        <p className="text-[19px] leading-relaxed text-ink">
           Still deciding? The clearest way to judge it is to see what happens.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           <Link
             href="/how-it-works"
-            className="inline-flex min-h-[48px] items-center rounded-md border border-slate-300 px-5 text-sm font-medium text-slate-800 hover:bg-slate-50"
+            className="inline-flex min-h-[48px] items-center rounded-md border border-rule-strong px-5 text-t2 font-medium text-ink hover:bg-paper-sunken"
           >
             How it works
           </Link>
           <Link
             href="/caregivers"
-            className="inline-flex min-h-[48px] items-center rounded-md bg-amber-500 px-6 text-sm font-semibold text-slate-950 hover:bg-amber-400"
+            className="inline-flex min-h-[48px] items-center rounded-md bg-ink px-6 text-t2 font-semibold text-paper hover:bg-ink"
           >
             Relay for caregivers
           </Link>

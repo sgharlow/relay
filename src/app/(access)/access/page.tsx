@@ -10,7 +10,7 @@ import AccessClient from './AccessClient';
 
 export default function AccessPage() {
   return (
-    <Suspense fallback={<p className="text-stone-500">Loading…</p>}>
+    <Suspense fallback={<p className="text-muted">Loading…</p>}>
       <AccessClient />
     </Suspense>
   );

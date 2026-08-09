@@ -12,8 +12,8 @@ export const metadata = { title: 'Sign-in error · Relay' };
 
 export default function AuthErrorPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-      <Suspense fallback={<p className="text-sm text-slate-500">Loading…</p>}>
+    <main className="flex min-h-screen items-center justify-center bg-paper-sunken px-4">
+      <Suspense fallback={<p className="text-t2 text-muted">Loading…</p>}>
         <ErrorContent />
       </Suspense>
     </main>

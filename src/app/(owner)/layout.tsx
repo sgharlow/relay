@@ -40,7 +40,7 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
         </div>
         <SidebarNav />
         {session.isDemo ? (
-          <div className="mt-auto rounded bg-amber-500/15 px-2 py-1 text-xs text-amber-300">
+          <div className="mt-auto rounded bg-ochre-soft px-2 py-1 text-t1 text-ochre-text">
             Demo account
           </div>
         ) : null}

@@ -100,14 +100,14 @@ function Mark({ state }: { state: keyof typeof CELL_MARK }) {
   const { mark, label } = CELL_MARK[state];
   const tone =
     state === 'yes'
-      ? 'text-emerald-700'
+      ? 'text-sage-text'
       : state === 'partial'
-        ? 'text-amber-700'
+        ? 'text-ochre-text'
         : state === 'unknown'
-          ? 'text-slate-400'
-          : 'text-slate-300';
+          ? 'text-muted'
+          : 'text-muted';
   return (
-    <span className={`text-lg ${tone}`} title={label}>
+    <span className={`text-t5 ${tone}`} title={label}>
       {mark}
       <span className="sr-only">{label}</span>
     </span>
@@ -128,15 +128,15 @@ function Mark({ state }: { state: keyof typeof CELL_MARK }) {
  */
 export default function HowItWorksPage() {
   return (
-    <main className="min-h-screen overflow-x-hidden bg-white text-slate-800">
+    <main className="min-h-screen overflow-x-hidden bg-paper-raised text-ink">
       <header className="mx-auto max-w-3xl px-6 pb-4 pt-14">
         <Link href="/caregivers" style={{ fontSize: 'var(--t2)', color: 'var(--ink-muted)', textDecoration: 'underline', textUnderlineOffset: '3px' }}>
           ← Relay for caregivers
         </Link>
-        <h1 className="mt-4 text-4xl font-bold leading-tight tracking-tight text-slate-900">
+        <h1 className="mt-4 font-serif text-t9 font-semibold leading-tight tracking-tight text-ink">
           What actually happens
         </h1>
-        <p className="mt-4 text-[19px] leading-relaxed text-slate-700">
+        <p className="mt-4 text-[19px] leading-relaxed text-ink">
           Most explanations of this kind of product describe features. Here is the sequence instead,
           in the order a family lives it.
         </p>
@@ -144,18 +144,18 @@ export default function HowItWorksPage() {
 
       {/* The narrative. This is the part that makes reversibility mean something. */}
       <section className="mx-auto max-w-3xl px-6 py-8">
-        <ol className="space-y-8 border-l border-slate-200 pl-6">
+        <ol className="space-y-8 border-l border-rule pl-6">
           {TIMELINE.map((step) => (
             <li key={step.title} className="relative">
-              <span className="absolute -left-[31px] top-1.5 h-2.5 w-2.5 rounded-full bg-amber-500" />
-              <p className="text-xs font-semibold uppercase tracking-wider text-amber-700">{step.when}</p>
-              <h2 className="mt-1 text-xl font-semibold text-slate-900">{step.title}</h2>
-              <p className="mt-2 text-[17px] leading-relaxed text-slate-700">{step.body}</p>
+              <span className="absolute -left-[31px] top-1.5 h-2.5 w-2.5 rounded-full bg-ink" />
+              <p className="text-t1 font-semibold uppercase tracking-wider text-ochre-text">{step.when}</p>
+              <h2 className="mt-1 text-t5 font-semibold text-ink">{step.title}</h2>
+              <p className="mt-2 text-[17px] leading-relaxed text-ink">{step.body}</p>
             </li>
           ))}
         </ol>
 
-        <p className="mt-10 rounded-xl border border-amber-300 bg-amber-50 p-5 text-[17px] leading-relaxed text-slate-800">
+        <p className="mt-10 rounded-xl border border-ochre bg-ochre-soft p-5 text-[17px] leading-relaxed text-ink">
           <span className="font-semibold">The last step is the one nothing else does.</span> Every
           other way of doing this — a shared note, a deputy, a legacy contact — is a door you open
           once. Relay is the only one that closes again on its own, which is what makes it safe to
@@ -164,18 +164,18 @@ export default function HowItWorksPage() {
       </section>
 
       {/* Use cases. Estate is deliberately absent — see USE_CASES. */}
-      <section className="border-y border-slate-200 bg-slate-50">
+      <section className="border-y border-rule bg-paper-sunken">
         <div className="mx-auto max-w-3xl px-6 py-12">
-          <h2 className="text-2xl font-semibold tracking-tight text-slate-900">What people use it for</h2>
+          <h2 className="text-t7 font-semibold tracking-tight text-ink">What people use it for</h2>
           <div className="mt-6 grid gap-5 sm:grid-cols-3">
             {USE_CASES.map((u) => (
-              <div key={u.title} className="rounded-xl border border-slate-200 bg-white p-5">
-                <h3 className="font-semibold text-slate-900">{u.title}</h3>
-                <p className="mt-2 text-[15px] leading-relaxed text-slate-600">{u.body}</p>
+              <div key={u.title} className="rounded-xl border border-rule bg-paper-raised p-5">
+                <h3 className="font-semibold text-ink">{u.title}</h3>
+                <p className="mt-2 text-[15px] leading-relaxed text-muted">{u.body}</p>
               </div>
             ))}
           </div>
-          <p className="mt-5 text-[15px] leading-relaxed text-slate-500">
+          <p className="mt-5 text-[15px] leading-relaxed text-muted">
             Relay is not a will and does not handle inheritance. If that is what you need, an estate
             attorney is the right call — this is about the years before that.
           </p>
@@ -184,8 +184,8 @@ export default function HowItWorksPage() {
 
       {/* The matrix. */}
       <section id="compare" className="mx-auto max-w-5xl px-6 py-12 scroll-mt-6">
-        <h2 className="text-2xl font-semibold tracking-tight text-slate-900">How it compares</h2>
-        <p className="mt-3 max-w-3xl text-[17px] leading-relaxed text-slate-700">
+        <h2 className="text-t7 font-semibold tracking-tight text-ink">How it compares</h2>
+        <p className="mt-3 max-w-3xl text-[17px] leading-relaxed text-ink">
           These are the four things people actually choose between. We have included the rows we
           lose, because a comparison where the newcomer wins everything is not worth reading.
         </p>
@@ -198,29 +198,29 @@ export default function HowItWorksPage() {
             with every alternative visible and labelled in words. */}
         <div className="mt-8 space-y-6 md:hidden">
           {ROWS.map((row) => (
-            <div key={row.question} className="rounded-xl border border-slate-200 p-4">
-              <p className="text-[15px] font-semibold text-slate-900">{row.question}</p>
+            <div key={row.question} className="rounded-xl border border-rule p-4">
+              <p className="text-[15px] font-semibold text-ink">{row.question}</p>
               {row.note ? (
-                <p className="mt-1 text-[13px] leading-relaxed text-slate-500">{row.note}</p>
+                <p className="mt-1 text-[13px] leading-relaxed text-muted">{row.note}</p>
               ) : null}
               <ul className="mt-3 space-y-1.5">
                 {COLUMNS.map((c) => (
                   <li
                     key={c.key}
                     className={`flex items-center justify-between gap-3 rounded px-2 py-1 ${
-                      c.key === 'relay' ? 'bg-amber-50' : ''
+                      c.key === 'relay' ? 'bg-ochre-soft' : ''
                     }`}
                   >
                     <span
                       className={`text-[14px] ${
-                        c.key === 'relay' ? 'font-semibold text-amber-800' : 'text-slate-700'
+                        c.key === 'relay' ? 'font-semibold text-ochre-text' : 'text-ink'
                       }`}
                     >
                       {c.label}
                     </span>
                     <span className="flex items-center gap-1.5 whitespace-nowrap">
                       <Mark state={row.cells[c.key]} />
-                      <span className="text-[12px] text-slate-500">
+                      <span className="text-[12px] text-muted">
                         {CELL_MARK[row.cells[c.key]].label}
                       </span>
                     </span>
@@ -235,31 +235,31 @@ export default function HowItWorksPage() {
         <div className="mt-8 hidden w-full max-w-full overflow-x-auto md:block">
           <table className="w-full min-w-[720px] border-collapse text-left">
             <thead>
-              <tr className="border-b border-slate-300">
-                <th className="w-[34%] py-3 pr-4 align-bottom text-sm font-semibold text-slate-900">
+              <tr className="border-b border-rule-strong">
+                <th className="w-[34%] py-3 pr-4 align-bottom text-t2 font-semibold text-ink">
                   &nbsp;
                 </th>
                 {COLUMNS.map((c) => (
                   <th key={c.key} className="px-3 py-3 align-bottom">
-                    <div className={`text-sm font-semibold ${c.key === 'relay' ? 'text-amber-700' : 'text-slate-900'}`}>
+                    <div className={`text-t2 font-semibold ${c.key === 'relay' ? 'text-ochre-text' : 'text-ink'}`}>
                       {c.label}
                     </div>
-                    <div className="mt-0.5 text-xs font-normal leading-snug text-slate-500">{c.sublabel}</div>
+                    <div className="mt-0.5 text-t1 font-normal leading-snug text-muted">{c.sublabel}</div>
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {ROWS.map((row) => (
-                <tr key={row.question} className="border-b border-slate-200 align-top">
+                <tr key={row.question} className="border-b border-rule align-top">
                   <th scope="row" className="py-4 pr-4 text-left font-normal">
-                    <span className="text-[15px] font-medium text-slate-900">{row.question}</span>
+                    <span className="text-[15px] font-medium text-ink">{row.question}</span>
                     {row.note ? (
-                      <span className="mt-1 block text-[13px] leading-relaxed text-slate-500">{row.note}</span>
+                      <span className="mt-1 block text-[13px] leading-relaxed text-muted">{row.note}</span>
                     ) : null}
                   </th>
                   {COLUMNS.map((c) => (
-                    <td key={c.key} className={`px-3 py-4 ${c.key === 'relay' ? 'bg-amber-50/60' : ''}`}>
+                    <td key={c.key} className={`px-3 py-4 ${c.key === 'relay' ? 'bg-ochre-soft' : ''}`}>
                       <Mark state={row.cells[c.key]} />
                     </td>
                   ))}
@@ -269,28 +269,28 @@ export default function HowItWorksPage() {
           </table>
         </div>
 
-        <div className="mt-5 flex flex-wrap gap-x-6 gap-y-1 text-[13px] text-slate-500">
-          <span><span className="text-emerald-700">●</span> yes</span>
-          <span><span className="text-amber-700">◐</span> partly</span>
-          <span><span className="text-slate-300">—</span> not offered</span>
-          <span><span className="text-slate-400">?</span> not published by the vendor</span>
+        <div className="mt-5 flex flex-wrap gap-x-6 gap-y-1 text-[13px] text-muted">
+          <span><span className="text-sage-text">●</span> yes</span>
+          <span><span className="text-ochre-text">◐</span> partly</span>
+          <span><span className="text-muted">—</span> not offered</span>
+          <span><span className="text-muted">?</span> not published by the vendor</span>
         </div>
 
-        <p className="mt-4 max-w-3xl text-[13px] leading-relaxed text-slate-500">
+        <p className="mt-4 max-w-3xl text-[13px] leading-relaxed text-muted">
           Checked against vendor documentation on {VERIFIED_ON}. Where a company does not publish
           whether it does something, we say so rather than guessing. If you believe a cell is wrong,
           tell us and we will correct it — these are their products, not ours.
         </p>
       </section>
 
-      <section className="border-t border-slate-200">
+      <section className="border-t border-rule">
         <div className="mx-auto max-w-3xl px-6 py-12 text-center">
-          <p className="text-[19px] leading-relaxed text-slate-800">
+          <p className="text-[19px] leading-relaxed text-ink">
             One vault, the whole family, {`$${PRICE_YEARLY_USD}`} a year.
           </p>
           <Link
             href="/caregivers"
-            className="mt-6 inline-flex min-h-[48px] items-center rounded-md bg-amber-500 px-6 text-sm font-semibold text-slate-950 transition-colors hover:bg-amber-400"
+            className="mt-6 inline-flex min-h-[48px] items-center rounded-md bg-ink px-6 text-t2 font-semibold text-paper transition-colors hover:bg-ink"
           >
             See Relay for caregivers
           </Link>

@@ -19,7 +19,7 @@ export const metadata = {
 export default function RecoverPage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-md items-center px-6 py-12">
-      <div className="w-full rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="w-full rounded-lg border border-rule bg-paper-raised p-6 shadow-sm">
         <RecoverForm />
       </div>
     </main>

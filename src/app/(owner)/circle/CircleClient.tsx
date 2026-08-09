@@ -82,8 +82,8 @@ export default function CircleClient() {
     await load();
   }
 
-  if (error && !data) return <p className="text-sm text-red-600">{error}</p>;
-  if (!data) return <p className="text-sm text-slate-500">Loading your circle…</p>;
+  if (error && !data) return <p className="text-t2 text-clay">{error}</p>;
+  if (!data) return <p className="text-t2 text-muted">Loading your circle…</p>;
 
   const { coverage, proposals, recipients, verifiers } = data;
   const nameById = new Map(recipients.map((r) => [r.id, r.name]));
@@ -97,29 +97,29 @@ export default function CircleClient() {
         </p>
       </header>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-t2 text-clay">{error}</p>}
 
       {/* Circle-complete state, with its unmet condition named (J4-R13) */}
       <div
         className={`rounded-lg border p-4 ${
           coverage.circleComplete
-            ? 'border-emerald-200 bg-emerald-50'
-            : 'border-amber-300 bg-amber-50'
+            ? 'border-sage bg-sage-soft'
+            : 'border-ochre bg-ochre-soft'
         }`}
       >
         {coverage.circleComplete ? (
-          <p className="text-sm font-medium text-emerald-900">
+          <p className="text-t2 font-medium text-sage-text">
             Every critical item has someone who can reach it.
           </p>
         ) : (
           <>
-            <p className="text-sm font-medium text-amber-900">
+            <p className="text-t2 font-medium text-ochre-text">
               {coverage.uncoveredCritical.length} critical item
               {coverage.uncoveredCritical.length === 1 ? '' : 's'} nobody can reach
             </p>
             <ul className="mt-2 space-y-1">
               {coverage.uncoveredCritical.map((i) => (
-                <li key={i.id} className="text-sm text-amber-900">
+                <li key={i.id} className="text-t2 text-ochre-text">
                   {i.title}
                 </li>
               ))}
@@ -131,8 +131,8 @@ export default function CircleClient() {
       {/* Proposals — the owner edits a draft (J4-R2) */}
       {proposals.length > 0 && (
         <section>
-          <h2 className="text-sm font-semibold text-slate-900">Suggested starting point</h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <h2 className="text-t2 font-semibold text-ink">Suggested starting point</h2>
+          <p className="mt-1 text-t2 text-muted">
             Built from what the importance engine already knows. Accept what fits.
           </p>
 
@@ -140,19 +140,19 @@ export default function CircleClient() {
             {proposals.map((p, idx) => {
               const key = `${p.recipientId}-${idx}`;
               return (
-                <li key={key} className="rounded border border-slate-200 bg-white p-3">
-                  <p className="text-sm text-slate-900">
+                <li key={key} className="rounded border border-rule bg-paper-raised p-3">
+                  <p className="text-t2 text-ink">
                     <span className="font-medium">{nameById.get(p.recipientId) ?? 'Recipient'}</span>{' '}
                     gets <span className="font-medium">{p.scope}</span> access to{' '}
                     <span className="font-medium">{p.itemCount}</span> item
                     {p.itemCount === 1 ? '' : 's'} on an emergency trigger
                   </p>
-                  <p className="mt-1 text-xs text-slate-500">{p.rationale}</p>
+                  <p className="mt-1 text-t1 text-muted">{p.rationale}</p>
                   <button
                     type="button"
                     disabled={busy === key}
                     onClick={() => accept(p, key)}
-                    className="mt-2 rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                    className="mt-2 rounded bg-ink px-3 py-1.5 text-t1 font-medium text-paper hover:bg-ink disabled:opacity-50"
                   >
                     {busy === key ? 'Applying…' : 'Accept'}
                   </button>
@@ -165,15 +165,15 @@ export default function CircleClient() {
 
       {/* Coverage matrix */}
       <section>
-        <h2 className="text-sm font-semibold text-slate-900">Who holds what</h2>
+        <h2 className="text-t2 font-semibold text-ink">Who holds what</h2>
         {recipients.length === 0 ? (
           <p style={{ marginTop: 'var(--s2)', fontSize: 'var(--t2)', color: 'var(--ink-muted)' }}>
             Nobody named yet — add the first person below.
           </p>
         ) : (
-          <table className="mt-3 w-full text-sm">
+          <table className="mt-3 w-full text-t2">
             <thead>
-              <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+              <tr className="border-b border-rule text-left text-t1 uppercase tracking-wide text-muted">
                 <th className="pb-2">Person</th>
                 <th className="pb-2">Role</th>
                 <th className="pb-2 text-right">Items reachable</th>
@@ -181,12 +181,12 @@ export default function CircleClient() {
             </thead>
             <tbody>
               {recipients.map((r) => (
-                <tr key={r.id} className="border-b border-slate-100">
-                  <td className="py-2 text-slate-900">{r.name}</td>
-                  <td className="py-2 text-slate-500">{r.role}</td>
-                  <td className="py-2 text-right text-slate-900">
+                <tr key={r.id} className="border-b border-rule">
+                  <td className="py-2 text-ink">{r.name}</td>
+                  <td className="py-2 text-muted">{r.role}</td>
+                  <td className="py-2 text-right text-ink">
                     {coverage.byRecipient[r.id] ?? 0}
-                    <span className="text-slate-400"> / {data.itemCount}</span>
+                    <span className="text-muted"> / {data.itemCount}</span>
                   </td>
                 </tr>
               ))}

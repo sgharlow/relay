@@ -14,7 +14,7 @@ export const metadata = { title: 'Your invitation · Relay' };
 
 export default function ClaimPage() {
   return (
-    <Suspense fallback={<p className="text-stone-500">Loading…</p>}>
+    <Suspense fallback={<p className="text-muted">Loading…</p>}>
       <ClaimClient />
     </Suspense>
   );

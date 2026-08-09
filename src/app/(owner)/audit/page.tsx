@@ -86,23 +86,23 @@ export default function AuditPage() {
     <div className="mx-auto max-w-5xl">
       <header className="mb-5 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Audit log</h1>
-          <p className="text-sm text-slate-500">{entries.length} entries · append-only, hash-chained.</p>
+          <h1 className="text-t7 font-semibold tracking-tight">Audit log</h1>
+          <p className="text-t2 text-muted">{entries.length} entries · append-only, hash-chained.</p>
         </div>
         <div className="flex items-center gap-3">
           <ChainBadge label="Server" v={serverV} />
           <ChainBadge label="Client" v={clientV} />
-          <button onClick={verify} disabled={verifying || entries.length === 0} className="rounded bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
+          <button onClick={verify} disabled={verifying || entries.length === 0} className="rounded bg-ink px-3 py-1.5 text-t2 font-semibold text-paper hover:bg-ink disabled:opacity-60">
             {verifying ? 'Verifying…' : 'Verify chain'}
           </button>
         </div>
       </header>
 
-      {error ? <p className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
+      {error ? <p className="rounded border border-clay bg-clay-soft px-4 py-3 text-t2 text-clay">{error}</p> : null}
 
-      <div className="overflow-hidden rounded border border-slate-200">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+      <div className="overflow-hidden rounded border border-rule">
+        <table className="w-full text-left text-t2">
+          <thead className="bg-paper-sunken text-t1 uppercase text-muted">
             <tr>
               <th className="px-3 py-2">Seq</th>
               <th className="px-3 py-2">Time</th>
@@ -113,32 +113,32 @@ export default function AuditPage() {
               <th className="px-3 py-2">Hash</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-rule">
             {pageEntries.map((e) => (
-              <tr key={e.id || e.seq} className={broken === e.seq ? 'bg-red-50' : ''}>
-                <td className="px-3 py-1.5 tabular-nums text-slate-500">{e.seq}</td>
-                <td className="px-3 py-1.5 text-xs text-slate-500">{new Date(e.ts).toLocaleString()}</td>
+              <tr key={e.id || e.seq} className={broken === e.seq ? 'bg-clay-soft' : ''}>
+                <td className="px-3 py-1.5 tabular-nums text-muted">{e.seq}</td>
+                <td className="px-3 py-1.5 text-t1 text-muted">{new Date(e.ts).toLocaleString()}</td>
                 <td className="px-3 py-1.5">{e.actor}</td>
                 <td className="px-3 py-1.5 font-medium">{e.action}</td>
-                <td className="px-3 py-1.5 text-slate-500">
+                <td className="px-3 py-1.5 text-muted">
                   {e.entity}
-                  {e.entity_id ? <span className="text-slate-400"> · {e.entity_id.slice(0, 8)}</span> : null}
+                  {e.entity_id ? <span className="text-muted"> · {e.entity_id.slice(0, 8)}</span> : null}
                 </td>
                 <td className="px-3 py-1.5">
                   {Object.keys(e.detail ?? {}).length ? (
                     <details>
-                      <summary className="cursor-pointer text-xs text-blue-600">view</summary>
-                      <pre className="mt-1 whitespace-pre-wrap break-all text-xs text-slate-600">{JSON.stringify(e.detail, null, 2)}</pre>
+                      <summary className="cursor-pointer text-t1 text-ink">view</summary>
+                      <pre className="mt-1 whitespace-pre-wrap break-all text-t1 text-muted">{JSON.stringify(e.detail, null, 2)}</pre>
                     </details>
                   ) : (
-                    <span className="text-slate-300">—</span>
+                    <span className="text-muted">—</span>
                   )}
                 </td>
                 <td className="px-3 py-1.5">
                   <button
                     onClick={() => navigator.clipboard?.writeText(e.entry_hash)}
                     title="Copy full hash"
-                    className="font-mono text-xs text-slate-500 hover:text-slate-900"
+                    className="font-mono text-t1 text-muted hover:text-ink"
                   >
                     {e.entry_hash.slice(0, 12)}…
                   </button>
@@ -147,7 +147,7 @@ export default function AuditPage() {
             ))}
             {entries.length === 0 && !error ? (
               <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-sm text-slate-400">No audit entries yet.</td>
+                <td colSpan={7} className="px-3 py-6 text-center text-t2 text-muted">No audit entries yet.</td>
               </tr>
             ) : null}
           </tbody>
@@ -155,14 +155,14 @@ export default function AuditPage() {
       </div>
 
       {pageCount > 1 ? (
-        <div className="mt-3 flex items-center justify-end gap-2 text-sm">
-          <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0} className="rounded border border-slate-300 px-2 py-1 disabled:opacity-40">
+        <div className="mt-3 flex items-center justify-end gap-2 text-t2">
+          <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0} className="rounded border border-rule-strong px-2 py-1 disabled:opacity-40">
             Prev
           </button>
-          <span className="text-slate-500">
+          <span className="text-muted">
             Page {page + 1} / {pageCount}
           </span>
-          <button onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))} disabled={page >= pageCount - 1} className="rounded border border-slate-300 px-2 py-1 disabled:opacity-40">
+          <button onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))} disabled={page >= pageCount - 1} className="rounded border border-rule-strong px-2 py-1 disabled:opacity-40">
             Next
           </button>
         </div>
@@ -172,10 +172,10 @@ export default function AuditPage() {
 }
 
 function ChainBadge({ label, v }: { label: string; v: Verification | null }) {
-  if (!v) return <span className="text-xs text-slate-400">{label}: —</span>;
+  if (!v) return <span className="text-t1 text-muted">{label}: —</span>;
   return v.valid ? (
-    <span className="rounded bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">{label}: intact</span>
+    <span className="rounded bg-sage-soft px-2 py-0.5 text-t1 font-semibold text-sage-text">{label}: intact</span>
   ) : (
-    <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">{label}: broken @ {v.brokenSeq}</span>
+    <span className="rounded bg-clay-soft px-2 py-0.5 text-t1 font-semibold text-clay">{label}: broken @ {v.brokenSeq}</span>
   );
 }

@@ -178,9 +178,9 @@ export default function AccountClient() {
 
   return (
     <div className="space-y-8">
-      <section className="rounded border border-slate-200 bg-white p-5">
-        <h2 className="font-medium text-slate-900">Your name</h2>
-        <p className="mt-2 text-sm leading-relaxed text-slate-600">
+      <section className="rounded border border-rule bg-paper-raised p-5">
+        <h2 className="font-medium text-ink">Your name</h2>
+        <p className="mt-2 text-t2 leading-relaxed text-muted">
           This is how you appear to the people you trust. They see it on every message Relay sends
           on your behalf — including the one that arrives when something has gone wrong, which is
           the worst possible moment for it to say an email address they do not recognise.
@@ -190,42 +190,42 @@ export default function AccountClient() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Margaret Chen"
-            className="w-64 rounded border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-64 rounded border border-rule-strong px-3 py-2 text-t2 focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
           />
           <button
             type="submit"
-            className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            className="rounded bg-ink px-3 py-2 text-t2 font-medium text-paper hover:bg-ink"
           >
             Save name
           </button>
-          {nameSaved ? <span className="text-sm text-slate-600">Saved: {nameSaved}</span> : null}
+          {nameSaved ? <span className="text-t2 text-muted">Saved: {nameSaved}</span> : null}
         </form>
       </section>
 
-      <section className="rounded border border-slate-200 bg-white p-5">
-        <h2 className="font-medium text-slate-900">Recovery codes</h2>
-        <p className="mt-2 text-sm leading-relaxed text-slate-600">
+      <section className="rounded border border-rule bg-paper-raised p-5">
+        <h2 className="font-medium text-ink">Recovery codes</h2>
+        <p className="mt-2 text-t2 leading-relaxed text-muted">
           Relay has no password. If you lose the phone with your authenticator on it, these codes
           are the only way back in — so if you cannot find the list you were given at signup, get a
           new one now, while you still can.
         </p>
-        <p className="mt-2 text-sm leading-relaxed text-slate-600">
+        <p className="mt-2 text-t2 leading-relaxed text-muted">
           Issuing a new list immediately stops the old one working.
         </p>
         <button
           onClick={onRegenerate}
           disabled={regenerating}
-          className="mt-4 rounded border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          className="mt-4 rounded border border-rule-strong px-3 py-2 text-t2 font-medium text-ink hover:bg-paper-sunken disabled:opacity-50"
         >
           {regenerating ? 'Issuing…' : 'Issue new recovery codes'}
         </button>
 
         {newCodes ? (
-          <div className="mt-4 rounded border border-amber-300 bg-amber-50 p-4">
-            <p className="text-sm font-medium text-amber-900">
+          <div className="mt-4 rounded border border-ochre bg-ochre-soft p-4">
+            <p className="text-t2 font-medium text-ochre-text">
               Write these down now. They are not shown again.
             </p>
-            <ul className="mt-3 grid grid-cols-2 gap-1 font-mono text-sm text-slate-800">
+            <ul className="mt-3 grid grid-cols-2 gap-1 font-mono text-t2 text-ink">
               {newCodes.map((c) => (
                 <li key={c}>{c}</li>
               ))}
@@ -233,29 +233,29 @@ export default function AccountClient() {
           </div>
         ) : null}
       </section>
-      <section className="rounded border border-slate-200 bg-white p-5">
-        <h2 className="font-medium text-slate-900">Export everything</h2>
-        <p className="mt-2 text-sm leading-relaxed text-slate-600">
+      <section className="rounded border border-rule bg-paper-raised p-5">
+        <h2 className="font-medium text-ink">Export everything</h2>
+        <p className="mt-2 text-t2 leading-relaxed text-muted">
           Downloads a readable file containing every item, decrypted here in your browser, plus the
           people you have designated. Keep it somewhere you would keep a password list — it is not
           protected once it leaves.
         </p>
         <button
           onClick={onExport}
-          className="mt-4 rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="mt-4 rounded bg-ink px-3 py-2 text-t2 font-medium text-paper hover:bg-ink"
         >
           Export my vault
         </button>
-        {progress ? <p className="mt-3 text-sm text-slate-600">{progress}</p> : null}
+        {progress ? <p className="mt-3 text-t2 text-muted">{progress}</p> : null}
       </section>
 
-      <section className="rounded border border-red-200 bg-red-50 p-5">
-        <h2 className="font-medium text-red-900">Close this account</h2>
-        <p className="mt-2 text-sm leading-relaxed text-red-800">
+      <section className="rounded border border-clay bg-clay-soft p-5">
+        <h2 className="font-medium text-clay">Close this account</h2>
+        <p className="mt-2 text-t2 leading-relaxed text-clay">
           Removes your vault, the people you designated, and your access rules. This cannot be
           undone, and anyone relying on this vault will lose their access immediately.
         </p>
-        <p className="mt-2 text-sm leading-relaxed text-red-800">
+        <p className="mt-2 text-t2 leading-relaxed text-clay">
           The tamper-evident event log is kept, exactly as our privacy page says. It holds no
           secrets — only the record of what happened and when.
         </p>
@@ -263,27 +263,27 @@ export default function AccountClient() {
         {!confirming ? (
           <button
             onClick={() => setConfirming(true)}
-            className="mt-4 rounded border border-red-300 bg-white px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100"
+            className="mt-4 rounded border border-clay bg-paper-raised px-3 py-2 text-t2 font-medium text-clay hover:bg-clay-soft"
           >
             Close my account
           </button>
         ) : (
           <div className="mt-4">
-            <label htmlFor="confirmEmail" className="block text-sm font-medium text-red-900">
+            <label htmlFor="confirmEmail" className="block text-t2 font-medium text-clay">
               Type your email address to confirm
             </label>
             <input
               id="confirmEmail"
               value={confirmEmail}
               onChange={(e) => setConfirmEmail(e.target.value)}
-              className="mt-1 w-full rounded border border-red-300 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded border border-clay px-3 py-2 text-t2"
               autoComplete="off"
             />
             <div className="mt-3 flex gap-2">
               <button
                 onClick={onDelete}
                 disabled={deleting || !confirmEmail.trim()}
-                className="rounded bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                className="rounded bg-clay px-3 py-2 text-t2 font-semibold text-paper hover:bg-clay disabled:opacity-50"
               >
                 {deleting ? 'Closing…' : 'Permanently close'}
               </button>
@@ -292,7 +292,7 @@ export default function AccountClient() {
                   setConfirming(false);
                   setConfirmEmail('');
                 }}
-                className="rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+                className="rounded border border-rule-strong bg-paper-raised px-3 py-2 text-t2 text-ink"
               >
                 Cancel
               </button>
@@ -300,7 +300,7 @@ export default function AccountClient() {
           </div>
         )}
 
-        {error ? <p className="mt-3 text-sm font-medium text-red-700">{error}</p> : null}
+        {error ? <p className="mt-3 text-t2 font-medium text-clay">{error}</p> : null}
       </section>
     </div>
   );

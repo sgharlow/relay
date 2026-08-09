@@ -40,7 +40,7 @@ interface Named {
 }
 
 const inputCls =
-  'rounded border border-slate-300 px-2.5 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500';
+  'rounded border border-rule-strong px-2.5 py-1.5 text-t2 focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink';
 
 export default function RulesPage() {
   const [rules, setRules] = useState<Rule[]>([]);
@@ -68,23 +68,23 @@ export default function RulesPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-8">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Access Rules</h1>
-        <p className="text-sm text-slate-500">Grant a recipient scoped access to an item under a trigger.</p>
+        <h1 className="text-t7 font-semibold tracking-tight">Access Rules</h1>
+        <p className="text-t2 text-muted">Grant a recipient scoped access to an item under a trigger.</p>
       </header>
 
-      <ul className="divide-y divide-slate-100 rounded border border-slate-200 bg-white">
-        {rules.length === 0 ? <li className="px-4 py-3 text-sm text-slate-400">No rules yet.</li> : null}
+      <ul className="divide-y divide-rule rounded border border-rule bg-paper-raised">
+        {rules.length === 0 ? <li className="px-4 py-3 text-t2 text-muted">No rules yet.</li> : null}
         {rules.map((rule) => (
-          <li key={rule.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
+          <li key={rule.id} className="flex items-center justify-between px-4 py-2.5 text-t2">
             <div>
               <span className="font-medium">{itemName(rule.vault_item_id)}</span>
-              <span className="text-slate-400"> → </span>
+              <span className="text-muted"> → </span>
               <span>{recipientName(rule.recipient_id)}</span>
-              <div className="text-xs text-slate-500">
+              <div className="text-t1 text-muted">
                 {rule.trigger_type} · {rule.scope} · {rule.reversible ? 'reversible' : 'irreversible'}
               </div>
             </div>
-            <button onClick={() => apiSend(`/api/rules/${rule.id}`, 'DELETE').then(load).catch(() => {})} className="text-xs text-red-600 hover:underline">
+            <button onClick={() => apiSend(`/api/rules/${rule.id}`, 'DELETE').then(load).catch(() => {})} className="text-t1 text-clay hover:underline">
               Remove
             </button>
           </li>
@@ -157,19 +157,19 @@ function RuleBuilder({ items, recipients, onCreated }: { items: Named[]; recipie
   }
 
   return (
-    <form onSubmit={submit} className="space-y-3 rounded border border-slate-200 bg-white p-4">
+    <form onSubmit={submit} className="space-y-3 rounded border border-rule bg-paper-raised p-4">
       {warning ? (
-        <div className="rounded border border-red-300 bg-red-50 px-3 py-2 text-sm leading-relaxed text-red-800">
+        <div className="rounded border border-clay bg-clay-soft px-3 py-2 text-t2 leading-relaxed text-clay">
           <span className="font-semibold">Rule saved — but this vault would not open.</span> {warning}{' '}
           <a href="/circle" className="font-medium underline">
             Add a trusted contact
           </a>
         </div>
       ) : null}
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">New rule</h2>
+      <h2 className="text-t2 font-semibold uppercase tracking-wide text-muted">New rule</h2>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <label className="text-sm">
-          <span className="mb-1 block text-slate-600">Vault item</span>
+        <label className="text-t2">
+          <span className="mb-1 block text-muted">Vault item</span>
           <select className={`${inputCls} w-full`} value={form.vault_item_id} onChange={(e) => setForm({ ...form, vault_item_id: e.target.value })}>
             <option value="">Select an item…</option>
             {items.map((i) => (
@@ -179,8 +179,8 @@ function RuleBuilder({ items, recipients, onCreated }: { items: Named[]; recipie
             ))}
           </select>
         </label>
-        <label className="text-sm">
-          <span className="mb-1 block text-slate-600">Recipient</span>
+        <label className="text-t2">
+          <span className="mb-1 block text-muted">Recipient</span>
           <select className={`${inputCls} w-full`} value={form.recipient_id} onChange={(e) => setForm({ ...form, recipient_id: e.target.value })}>
             <option value="">Select a recipient…</option>
             {recipients.map((r) => (
@@ -190,8 +190,8 @@ function RuleBuilder({ items, recipients, onCreated }: { items: Named[]; recipie
             ))}
           </select>
         </label>
-        <label className="text-sm">
-          <span className="mb-1 block text-slate-600">Trigger type</span>
+        <label className="text-t2">
+          <span className="mb-1 block text-muted">Trigger type</span>
           <select className={`${inputCls} w-full`} value={form.trigger_type} onChange={(e) => setTrigger(e.target.value as TriggerType)}>
             {VALID_TRIGGER_TYPES.map((t) => (
               <option key={t} value={t}>
@@ -200,8 +200,8 @@ function RuleBuilder({ items, recipients, onCreated }: { items: Named[]; recipie
             ))}
           </select>
         </label>
-        <label className="text-sm">
-          <span className="mb-1 block text-slate-600">Scope</span>
+        <label className="text-t2">
+          <span className="mb-1 block text-muted">Scope</span>
           <select className={`${inputCls} w-full`} value={form.scope} onChange={(e) => setForm({ ...form, scope: e.target.value as Scope })}>
             {VALID_SCOPES.map((s) => (
               <option key={s} value={s}>
@@ -214,22 +214,22 @@ function RuleBuilder({ items, recipients, onCreated }: { items: Named[]; recipie
 
       <div className="flex items-center gap-4">
         <label
-          className={`flex items-center gap-2 text-sm ${estate ? 'text-slate-400' : 'text-slate-700'}`}
+          className={`flex items-center gap-2 text-t2 ${estate ? 'text-muted' : 'text-ink'}`}
           title={estate ? 'Estate rules must be irreversible' : 'Reversible: access closes again if you recover'}
         >
           <input type="checkbox" checked={estate ? false : form.reversible} disabled={estate} onChange={(e) => setForm({ ...form, reversible: e.target.checked })} />
           Reversible
-          {estate ? <span className="text-xs">(estate is always irreversible)</span> : null}
+          {estate ? <span className="text-t1">(estate is always irreversible)</span> : null}
         </label>
-        <label className="flex items-center gap-2 text-sm text-slate-700">
+        <label className="flex items-center gap-2 text-t2 text-ink">
           Release after
           <input className={`${inputCls} w-20`} type="number" min={0} placeholder="0" value={form.release_after_days} onChange={(e) => setForm({ ...form, release_after_days: e.target.value })} />
           days
         </label>
       </div>
 
-      {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
-      <button type="submit" disabled={busy} className="rounded bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
+      {error ? <p role="alert" className="text-t2 text-clay">{error}</p> : null}
+      <button type="submit" disabled={busy} className="rounded bg-ink px-3 py-1.5 text-t2 font-semibold text-paper hover:bg-ink disabled:opacity-60">
         Add rule
       </button>
     </form>

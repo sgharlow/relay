@@ -12,7 +12,7 @@ export const metadata = { title: 'A quick question · Relay' };
 
 export default function VerifyPage() {
   return (
-    <Suspense fallback={<p className="text-stone-600">Loading…</p>}>
+    <Suspense fallback={<p className="text-muted">Loading…</p>}>
       <VerifyClient />
     </Suspense>
   );

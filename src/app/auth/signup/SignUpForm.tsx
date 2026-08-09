@@ -25,7 +25,7 @@ function groupSecret(secret: string): string {
 }
 
 const inputClass =
-  'w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500';
+  'w-full rounded border border-rule-strong px-3 py-2 text-t2 focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink';
 
 export default function SignUpForm() {
   const router = useRouter();
@@ -126,17 +126,17 @@ export default function SignUpForm() {
   if (phase === 'recovery') {
     return (
       <div>
-        <h1 className="text-xl font-semibold text-slate-900">Save these somewhere safe</h1>
-        <p className="mt-3 text-[15px] leading-relaxed text-slate-700">
+        <h1 className="text-t5 font-semibold text-ink">Save these somewhere safe</h1>
+        <p className="mt-3 text-[15px] leading-relaxed text-ink">
           Relay has no password. If you lose the phone with your authenticator on it, one of these
           codes is the only way back into your vault.
         </p>
-        <p className="mt-2 text-[15px] leading-relaxed text-slate-700">
+        <p className="mt-2 text-[15px] leading-relaxed text-ink">
           Print them, or put them where you keep important papers.{' '}
           <span className="font-medium">We cannot show them again.</span>
         </p>
 
-        <ul className="mt-5 grid grid-cols-2 gap-2 rounded-md border border-slate-300 bg-slate-50 p-4 font-mono text-[15px] tracking-wide text-slate-900">
+        <ul className="mt-5 grid grid-cols-2 gap-2 rounded-md border border-rule-strong bg-paper-sunken p-4 font-mono text-[15px] tracking-wide text-ink">
           {recoveryCodes.map((c) => (
             <li key={c}>{c}</li>
           ))}
@@ -147,7 +147,7 @@ export default function SignUpForm() {
           onClick={() => {
             void navigator.clipboard?.writeText(recoveryCodes.join('\n'));
           }}
-          className="mt-4 w-full rounded border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          className="mt-4 w-full rounded border border-rule-strong px-3 py-2 text-t2 font-medium text-ink hover:bg-paper-sunken"
         >
           Copy all
         </button>
@@ -175,7 +175,7 @@ export default function SignUpForm() {
             router.push('/start');
             router.refresh();
           }}
-          className="mt-3 w-full rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="mt-3 w-full rounded bg-ink px-3 py-2 text-t2 font-medium text-paper hover:bg-ink"
         >
           {buyIntent ? 'I’ve saved them — continue to payment' : 'I’ve saved them — continue'}
         </button>
@@ -187,7 +187,7 @@ export default function SignUpForm() {
     return (
       <form onSubmit={onBegin} className="space-y-4">
         <div>
-          <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">
+          <label htmlFor="email" className="mb-1 block text-t2 font-medium text-ink">
             Email address
           </label>
           <input
@@ -210,8 +210,8 @@ export default function SignUpForm() {
             verifier, who has no stake and is likeliest to bin it. Never
             required: this is the one screen between an ad click and an account. */}
         <div>
-          <label htmlFor="displayName" className="mb-1 block text-sm font-medium text-slate-700">
-            Your name <span className="font-normal text-slate-400">(optional)</span>
+          <label htmlFor="displayName" className="mb-1 block text-t2 font-medium text-ink">
+            Your name <span className="font-normal text-muted">(optional)</span>
           </label>
           <input
             id="displayName"
@@ -223,25 +223,25 @@ export default function SignUpForm() {
             className={inputClass}
             placeholder="Margaret Chen"
           />
-          <p className="mt-1 text-xs leading-relaxed text-slate-500">
+          <p className="mt-1 text-t1 leading-relaxed text-muted">
             This is how you appear to the people you trust — they will see
             &ldquo;{displayName.trim() || 'your email address'}&rdquo; when we contact them.
           </p>
         </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-t2 text-clay">{error}</p>}
 
         <button
           type="submit"
           disabled={pending}
-          className="w-full rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          className="w-full rounded bg-ink px-3 py-2 text-t2 font-medium text-paper hover:bg-ink disabled:opacity-50"
         >
           {pending ? 'Starting…' : 'Continue'}
         </button>
 
-        <p className="text-center text-sm text-slate-500">
+        <p className="text-center text-t2 text-muted">
           Already have an account?{' '}
-          <Link href="/auth/signin" className="text-blue-600 hover:underline">
+          <Link href="/auth/signin" className="text-ink hover:underline">
             Sign in
           </Link>
         </p>
@@ -277,7 +277,7 @@ export default function SignUpForm() {
 
         {qrSvg ? (
           <div
-            className="mx-auto mt-3 w-44 max-w-full rounded bg-white p-2"
+            className="mx-auto mt-3 w-44 max-w-full rounded bg-paper-raised p-2"
             /*
               Safe by construction, not by trust: otpauthQrSvg emits only an
               <svg> of numeric <rect> coordinates. The payload is encoded into
@@ -293,14 +293,14 @@ export default function SignUpForm() {
           Can&rsquo;t scan? Choose &ldquo;enter a setup key&rdquo; and type this instead:
         </p>
 
-        <code className="mt-2 block break-all rounded bg-white px-2 py-2 text-center text-sm tracking-widest text-slate-800">
+        <code className="mt-2 block break-all rounded bg-paper-raised px-2 py-2 text-center text-t2 tracking-widest text-ink">
           {groupSecret(secret)}
         </code>
 
         <button
           type="button"
           onClick={() => navigator.clipboard?.writeText(secret)}
-          className="mt-2 w-full rounded border border-slate-300 px-3 py-1.5 text-xs text-slate-600 hover:bg-white"
+          className="mt-2 w-full rounded border border-rule-strong px-3 py-1.5 text-t1 text-muted hover:bg-paper-raised"
         >
           Copy setup key
         </button>
@@ -341,12 +341,12 @@ export default function SignUpForm() {
         />
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-t2 text-clay">{error}</p>}
 
       <button
         type="submit"
         disabled={pending || code.length !== 6}
-        className="w-full rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+        className="w-full rounded bg-ink px-3 py-2 text-t2 font-medium text-paper hover:bg-ink disabled:opacity-50"
       >
         {pending ? 'Verifying…' : 'Create account'}
       </button>

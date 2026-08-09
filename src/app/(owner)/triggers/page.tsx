@@ -26,12 +26,29 @@ interface TriggersResponse {
   isDemo: boolean;
 }
 
+/*
+  The release states, in the system's own vocabulary.
+
+  ARMED is sage: closed, safe, the resting state a vault sits in for years and
+  returns to on its own. PENDING, GRACE and RELEASED are all ochre, because they
+  are all the same thing — something is in motion and it can still be undone —
+  and giving each its own colour would imply a difference in kind that does not
+  exist.
+
+  RELEASED was clay. That was wrong: clay is reserved for what cannot be taken
+  back, and a released emergency trigger closes itself the moment the owner
+  checks in. Spending clay here would leave nothing to mark the estate handoff,
+  which is the one thing in the product that really is permanent.
+
+  CANCELLED is muted rather than coloured: it is over, and nothing is asked of
+  anyone.
+*/
 const STATE_STYLE: Record<string, string> = {
-  armed: 'bg-emerald-100 text-emerald-700',
-  pending: 'bg-amber-100 text-amber-700',
-  grace: 'bg-orange-100 text-orange-700',
-  released: 'bg-red-100 text-red-700',
-  cancelled: 'bg-slate-100 text-slate-600',
+  armed: 'bg-sage-soft text-sage-text',
+  pending: 'bg-ochre-soft text-ochre-text',
+  grace: 'bg-ochre-soft text-ochre-text',
+  released: 'bg-ochre-soft text-ochre-text',
+  cancelled: 'bg-paper-sunken text-muted',
 };
 
 const SIMULATE_MS = 10_000;
@@ -51,11 +68,11 @@ export default function TriggersPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Triggers</h1>
-        <p className="text-sm text-slate-500">Release state, check-in cadence, and (for demo accounts) the simulate control.</p>
+        <h1 className="text-t7 font-semibold tracking-tight">Triggers</h1>
+        <p className="text-t2 text-muted">Release state, check-in cadence, and (for demo accounts) the simulate control.</p>
       </header>
 
-      {error ? <p className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
+      {error ? <p className="rounded border border-clay bg-clay-soft px-4 py-3 text-t2 text-clay">{error}</p> : null}
 
       {data ? (
         <>
@@ -63,9 +80,9 @@ export default function TriggersPage() {
           {data.isDemo ? <SimulatePanel onDone={load} /> : null}
 
           <section className="space-y-3">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Release states</h2>
+            <h2 className="text-t2 font-semibold uppercase tracking-wide text-muted">Release states</h2>
             {data.releaseStates.length === 0 ? (
-              <p className="text-sm text-slate-400">No triggers yet — create an access rule to provision one.</p>
+              <p className="text-t2 text-muted">No triggers yet — create an access rule to provision one.</p>
             ) : null}
             {data.releaseStates.map((rs) => (
               <TriggerCard key={rs.id} rs={rs} onChange={load} />
@@ -73,7 +90,7 @@ export default function TriggersPage() {
           </section>
         </>
       ) : (
-        !error && <p className="text-sm text-slate-500">Loading…</p>
+        !error && <p className="text-t2 text-muted">Loading…</p>
       )}
     </div>
   );
@@ -110,11 +127,11 @@ function CheckInButton({ onDone }: { onDone: () => Promise<void> }) {
         type="button"
         onClick={checkIn}
         disabled={state === 'busy'}
-        className="rounded border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 disabled:opacity-60"
+        className="rounded border border-sage bg-sage-soft px-3 py-1.5 text-t2 font-semibold text-sage-text hover:bg-sage-soft disabled:opacity-60"
       >
         {state === 'busy' ? 'Checking in…' : "I'm fine — check in"}
       </button>
-      {msg ? <span className="text-sm text-emerald-700">{msg}</span> : null}
+      {msg ? <span className="text-t2 text-sage-text">{msg}</span> : null}
     </span>
   );
 }
@@ -136,19 +153,19 @@ function CadenceForm({ current, onSaved }: { current: number; onSaved: () => Pro
   }
 
   return (
-    <form onSubmit={save} className="flex items-end gap-3 rounded border border-slate-200 bg-white p-4">
-      <label className="text-sm">
-        <span className="mb-1 block text-slate-600">Check-in interval (days)</span>
+    <form onSubmit={save} className="flex items-end gap-3 rounded border border-rule bg-paper-raised p-4">
+      <label className="text-t2">
+        <span className="mb-1 block text-muted">Check-in interval (days)</span>
         <input
           type="number"
           min={1}
           max={365}
           value={days}
           onChange={(e) => setDays(e.target.value)}
-          className="w-28 rounded border border-slate-300 px-2.5 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-28 rounded border border-rule-strong px-2.5 py-1.5 text-t2 focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
         />
       </label>
-      <button type="submit" className="rounded bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700">
+      <button type="submit" className="rounded bg-ink px-3 py-1.5 text-t2 font-semibold text-paper hover:bg-ink">
         Save
       </button>
       {/* The check-in itself, which had no control anywhere in the product.
@@ -157,7 +174,7 @@ function CadenceForm({ current, onSaved }: { current: number; onSaved: () => Pro
           around — and the only way to perform one was to wait for the cron to
           notice, or to stand down each trigger individually. */}
       <CheckInButton onDone={onSaved} />
-      {msg ? <span className="text-sm text-slate-500">{msg}</span> : null}
+      {msg ? <span className="text-t2 text-muted">{msg}</span> : null}
     </form>
   );
 }
@@ -191,26 +208,26 @@ function SimulatePanel({ onDone }: { onDone: () => Promise<void> }) {
   }
 
   return (
-    <section className="rounded border border-amber-200 bg-amber-50 p-4">
+    <section className="rounded border border-ochre bg-ochre-soft p-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-semibold text-amber-800">Simulate emergency (demo)</h2>
-          <p className="text-xs text-amber-700">Fast-forwards ARMED → PENDING → GRACE → RELEASED in ~10s using the real state machine.</p>
+          <h2 className="text-t2 font-semibold text-ochre-text">Simulate emergency (demo)</h2>
+          <p className="text-t1 text-ochre-text">Fast-forwards ARMED → PENDING → GRACE → RELEASED in ~10s using the real state machine.</p>
         </div>
         <button
           onClick={run}
           disabled={progress !== null}
-          className="rounded bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-60"
+          className="rounded bg-ink px-3 py-1.5 text-t2 font-semibold text-paper hover:bg-ink disabled:opacity-60"
         >
           {progress !== null ? 'Running…' : 'Simulate'}
         </button>
       </div>
       {progress !== null ? (
-        <div className="mt-3 h-2 overflow-hidden rounded bg-amber-200">
-          <div className="h-full bg-amber-600 transition-all" style={{ width: `${progress}%` }} />
+        <div className="mt-3 h-2 overflow-hidden rounded bg-ochre-soft">
+          <div className="h-full bg-ink transition-all" style={{ width: `${progress}%` }} />
         </div>
       ) : null}
-      {result ? <p className="mt-2 text-sm text-amber-800">{result}</p> : null}
+      {result ? <p className="mt-2 text-t2 text-ochre-text">{result}</p> : null}
     </section>
   );
 }
@@ -233,14 +250,14 @@ function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promi
   };
 
   return (
-    <div className="rounded border border-slate-200 bg-white p-4">
+    <div className="rounded border border-rule bg-paper-raised p-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="font-medium capitalize">{rs.trigger_type}</span>
-          <span className={`rounded px-2 py-0.5 text-[11px] font-semibold uppercase ${STATE_STYLE[rs.state] ?? 'bg-slate-100 text-slate-600'}`}>
+          <span className={`rounded px-2 py-0.5 text-[11px] font-semibold uppercase ${STATE_STYLE[rs.state] ?? 'bg-paper-sunken text-muted'}`}>
             {rs.state}
           </span>
-          <span className="text-xs text-slate-500">
+          <span className="text-t1 text-muted">
             {rs.received_confirmations}/{rs.required_confirmations} confirmations
           </span>
         </div>
@@ -248,7 +265,7 @@ function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promi
           {rs.state === 'armed' ? (
             <button
               onClick={() => act(() => apiSend(`/api/triggers/${encodeURIComponent(rs.trigger_type)}/initiate`, 'POST'))}
-              className="rounded border border-slate-300 px-2.5 py-1 text-xs font-medium hover:bg-slate-100"
+              className="rounded border border-rule-strong px-2.5 py-1 text-t1 font-medium hover:bg-paper-sunken"
             >
               Initiate
             </button>
@@ -263,7 +280,7 @@ function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promi
           {(rs.state === 'grace' || rs.state === 'pending' || rs.state === 'released') && reversible ? (
             <button
               onClick={() => act(() => apiSend(`/api/triggers/${rs.id}/stand-down`, 'POST'))}
-              className="rounded bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-700"
+              className="rounded bg-ink px-2.5 py-1 text-t1 font-medium text-paper hover:bg-ink"
             >
               {rs.state === 'released' ? 'Close access — re-arm' : 'Stand down — re-arm'}
             </button>
@@ -275,14 +292,14 @@ function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promi
             confirmingCancel ? (
               <button
                 onClick={() => act(() => apiSend(`/api/triggers/${rs.id}/cancel`, 'POST'))}
-                className="rounded border border-red-400 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100"
+                className="rounded border border-clay bg-clay-soft px-2.5 py-1 text-t1 font-semibold text-clay hover:bg-clay-soft"
               >
                 Retire it for good — tap again
               </button>
             ) : (
               <button
                 onClick={() => setConfirmingCancel(true)}
-                className="rounded border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-red-50 hover:text-red-700"
+                className="rounded border border-rule-strong px-2.5 py-1 text-t1 font-medium text-muted hover:bg-clay-soft hover:text-clay"
               >
                 Cancel permanently
               </button>
@@ -295,34 +312,34 @@ function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promi
           does not reverse it. A bare badge does not convey that a rule is dead,
           so say it. */}
       {rs.state === 'cancelled' ? (
-        <p className="mt-2 text-xs leading-relaxed text-slate-500">
+        <p className="mt-2 text-t1 leading-relaxed text-muted">
           Retired. This trigger cannot be re-armed — recreate the access rule to grant this
           recipient emergency access again.
         </p>
       ) : null}
       {confirmingCancel && rs.state === 'grace' ? (
-        <p className="mt-2 text-xs leading-relaxed text-red-700">
+        <p className="mt-2 text-t1 leading-relaxed text-clay">
           This retires the trigger for good. To stop a false alarm and keep the rule, use{' '}
           <span className="font-semibold">Stand down — re-arm</span> instead.
         </p>
       ) : null}
 
       <div className="mt-3 flex items-center gap-2">
-        <span className="text-xs text-slate-600">Required confirmations (N):</span>
+        <span className="text-t1 text-muted">Required confirmations (N):</span>
         <input
           type="number"
           min={1}
           value={n}
           onChange={(e) => setN(e.target.value)}
-          className="w-16 rounded border border-slate-300 px-2 py-1 text-xs focus:border-blue-500 focus:outline-none"
+          className="w-16 rounded border border-rule-strong px-2 py-1 text-t1 focus:border-ink focus:outline-none"
         />
         <button
           onClick={() => act(() => apiSend(`/api/triggers/${encodeURIComponent(rs.trigger_type)}/config`, 'PUT', { required_confirmations: Number(n) }))}
-          className="rounded border border-slate-300 px-2 py-1 text-xs font-medium hover:bg-slate-100"
+          className="rounded border border-rule-strong px-2 py-1 text-t1 font-medium hover:bg-paper-sunken"
         >
           Set
         </button>
-        {msg ? <span className="text-xs text-red-600">{msg}</span> : null}
+        {msg ? <span className="text-t1 text-clay">{msg}</span> : null}
       </div>
     </div>
   );

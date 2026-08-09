@@ -61,10 +61,10 @@ export default function ApprovalsClient() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 text-[18px] leading-relaxed text-stone-900">
+    <div className="mx-auto max-w-2xl space-y-6 text-[18px] leading-relaxed text-ink">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Things waiting for you</h1>
-        <p className="mt-2 text-stone-700">
+        <h1 className="text-t7 font-semibold tracking-tight">Things waiting for you</h1>
+        <p className="mt-2 text-ink">
           Your helper can add and organise information. Anything that changes{' '}
           <strong>who can reach it</strong> waits for you.
         </p>
@@ -72,27 +72,27 @@ export default function ApprovalsClient() {
 
       {/* The elder-abuse signature, surfaced to the OWNER (J3-R10) */}
       {warning && (
-        <div className="rounded-lg border-2 border-red-300 bg-red-50 p-4">
-          <p className="font-semibold text-red-900">Worth a second look</p>
-          <p className="mt-2 text-red-900">{warning.message}</p>
-          <p className="mt-2 text-red-900">{warning.remedy}</p>
+        <div className="rounded-lg border-2 border-clay bg-clay-soft p-4">
+          <p className="font-semibold text-clay">Worth a second look</p>
+          <p className="mt-2 text-clay">{warning.message}</p>
+          <p className="mt-2 text-clay">{warning.remedy}</p>
         </div>
       )}
 
-      {approvals === null && <p className="text-stone-600">Loading…</p>}
+      {approvals === null && <p className="text-muted">Loading…</p>}
 
       {approvals?.length === 0 && (
-        <p className="rounded-lg border border-stone-300 bg-white p-4 text-stone-700">
+        <p className="rounded-lg border border-rule-strong bg-paper-raised p-4 text-ink">
           Nothing is waiting. There is no rush and nothing expires.
         </p>
       )}
 
       {approvals?.map((a) => (
-        <div key={a.id} className="rounded-lg border border-stone-300 bg-white p-5">
+        <div key={a.id} className="rounded-lg border border-rule-strong bg-paper-raised p-5">
           <p>{PLAIN[a.kind](a.payload)}</p>
 
           {a.kind === 'self_designation' && (
-            <p className="mt-3 text-stone-700">
+            <p className="mt-3 text-ink">
               That would mean they could open your information if something happened to you.
             </p>
           )}
@@ -102,7 +102,7 @@ export default function ApprovalsClient() {
               type="button"
               disabled={busy === a.id}
               onClick={() => decide(a.id, 'approve')}
-              className="rounded bg-stone-800 px-5 py-3 font-medium text-white hover:bg-stone-900 disabled:opacity-50"
+              className="rounded bg-ink px-5 py-3 font-medium text-paper hover:bg-ink disabled:opacity-50"
             >
               Yes, that&rsquo;s fine
             </button>
@@ -110,13 +110,13 @@ export default function ApprovalsClient() {
               type="button"
               disabled={busy === a.id}
               onClick={() => decide(a.id, 'reject')}
-              className="rounded border-2 border-stone-400 px-5 py-3 font-medium text-stone-800 hover:bg-stone-50 disabled:opacity-50"
+              className="rounded border-2 border-rule-strong px-5 py-3 font-medium text-ink hover:bg-paper-sunken disabled:opacity-50"
             >
               No, not this
             </button>
           </div>
 
-          <p className="mt-3 text-[16px] text-stone-600">
+          <p className="mt-3 text-[16px] text-muted">
             Saying no changes nothing else. You can decide later.
           </p>
         </div>

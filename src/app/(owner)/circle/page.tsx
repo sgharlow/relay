@@ -12,7 +12,7 @@ export const metadata = { title: 'Your circle · Relay' };
 
 export default function CirclePage() {
   return (
-    <Suspense fallback={<p className="text-sm text-slate-500">Loading…</p>}>
+    <Suspense fallback={<p className="text-t2 text-muted">Loading…</p>}>
       <CircleClient />
     </Suspense>
   );

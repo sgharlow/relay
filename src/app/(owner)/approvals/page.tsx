@@ -12,7 +12,7 @@ export const metadata = { title: 'Waiting for you · Relay' };
 
 export default function ApprovalsPage() {
   return (
-    <Suspense fallback={<p className="text-stone-600">Loading…</p>}>
+    <Suspense fallback={<p className="text-muted">Loading…</p>}>
       <ApprovalsClient />
     </Suspense>
   );

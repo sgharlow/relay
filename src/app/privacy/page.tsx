@@ -25,20 +25,20 @@ const UPDATED = '7 August 2026';
 
 export default function PrivacyPage() {
   return (
-    <main className="min-h-screen bg-white px-6 py-12 text-[17px] leading-relaxed text-slate-800">
+    <main className="min-h-screen bg-paper-raised px-6 py-12 text-[17px] leading-relaxed text-ink">
       <div className="mx-auto max-w-2xl space-y-6">
         <header>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Privacy</h1>
-          <p className="mt-2 text-slate-500">Last updated {UPDATED}</p>
+          <h1 className="text-t7 font-bold tracking-tight text-ink">Privacy</h1>
+          <p className="mt-2 text-muted">Last updated {UPDATED}</p>
         </header>
 
-        <p className="rounded-lg border border-amber-300 bg-amber-50 p-4">
+        <p className="rounded-lg border border-ochre bg-ochre-soft p-4">
           Relay is early. This page describes exactly what the software does today. Where something
           is a limitation rather than a protection, it says so.
         </p>
 
         <section>
-          <h2 className="text-xl font-semibold text-slate-900">What we cannot read</h2>
+          <h2 className="text-t5 font-semibold text-ink">What we cannot read</h2>
           <p className="mt-2">
             The secret content of every vault item — the password, the account number, the note —
             is encrypted <strong>in your browser</strong> with a key we never receive in usable
@@ -48,7 +48,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold text-slate-900">What we can read</h2>
+          <h2 className="text-t5 font-semibold text-ink">What we can read</h2>
           <p className="mt-2">
             This is the part most services leave vague, so to be direct: the{' '}
             <strong>labels</strong> you give an item are <strong>not</strong> encrypted. We store,
@@ -69,7 +69,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold text-slate-900">Automated analysis</h2>
+          <h2 className="text-t5 font-semibold text-ink">Automated analysis</h2>
           <p className="mt-2">
             Relay ranks your items by consequence and works out which credentials others depend on.
             That analysis runs over the labels above and <strong>never</strong> over your secrets —
@@ -80,7 +80,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold text-slate-900">Who else is involved</h2>
+          <h2 className="text-t5 font-semibold text-ink">Who else is involved</h2>
           <ul className="mt-2 list-disc space-y-1 pl-6">
             <li><strong>Amazon Web Services</strong> — database and key management (United States)</li>
             <li><strong>Vercel</strong> — hosting and privacy-friendly, cookieless analytics</li>
@@ -94,7 +94,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold text-slate-900">People you designate</h2>
+          <h2 className="text-t5 font-semibold text-ink">People you designate</h2>
           <p className="mt-2">
             When you name a recipient or a trusted contact, we store their name and contact details
             and may email them. A trusted contact is only ever asked whether a situation is real —
@@ -104,7 +104,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold text-slate-900">Records we keep</h2>
+          <h2 className="text-t5 font-semibold text-ink">Records we keep</h2>
           <p className="mt-2">
             Every access and release event is written to a tamper-evident log so you can audit what
             happened. That log is append-only by design: entries are never edited or deleted, which
@@ -113,7 +113,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold text-slate-900">Deleting your data</h2>
+          <h2 className="text-t5 font-semibold text-ink">Deleting your data</h2>
           <p className="mt-2">
             Email us and we will delete your account and vault contents. The append-only event log
             described above is the one exception, and it contains no secret material.
@@ -121,20 +121,20 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold text-slate-900">Contact</h2>
+          <h2 className="text-t5 font-semibold text-ink">Contact</h2>
           <p className="mt-2">
-            <a className="text-blue-700 underline" href="mailto:sgharlow+relay@gmail.com">
+            <a className="text-ink underline" href="mailto:sgharlow+relay@gmail.com">
               sgharlow+relay@gmail.com
             </a>
           </p>
         </section>
 
         <footer style={{ borderTop: '1px solid var(--rule)', paddingTop: 'var(--s6)', color: 'var(--ink-muted)' }}>
-          <a className="underline hover:text-slate-800" href="/caregivers">
+          <a className="underline hover:text-ink" href="/caregivers">
             Back to Relay for caregivers
           </a>
           <span className="px-2">·</span>
-          <a className="underline hover:text-slate-800" href="/terms">
+          <a className="underline hover:text-ink" href="/terms">
             Terms
           </a>
         </footer>

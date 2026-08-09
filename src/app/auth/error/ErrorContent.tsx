@@ -16,10 +16,10 @@ export default function ErrorContent() {
   const code = useSearchParams().get('error') ?? '';
   const message = MESSAGES[code] ?? 'Something went wrong during sign-in.';
   return (
-    <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-6 text-center shadow-sm">
-      <h1 className="text-lg font-semibold text-slate-900">Sign-in error</h1>
-      <p className="mt-2 text-sm text-slate-600">{message}</p>
-      <Link href="/auth/signin" className="mt-4 inline-block rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+    <div className="w-full max-w-sm rounded-lg border border-rule bg-paper-raised p-6 text-center shadow-sm">
+      <h1 className="text-t5 font-semibold text-ink">Sign-in error</h1>
+      <p className="mt-2 text-t2 text-muted">{message}</p>
+      <Link href="/auth/signin" className="mt-4 inline-block rounded bg-ink px-3 py-2 text-t2 font-semibold text-paper hover:bg-ink">
         Back to sign in
       </Link>
     </div>

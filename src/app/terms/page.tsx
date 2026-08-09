@@ -22,20 +22,20 @@ const UPDATED = '7 August 2026';
 
 export default function TermsPage() {
   return (
-    <main className="min-h-screen bg-white px-6 py-12 text-[17px] leading-relaxed text-slate-800">
+    <main className="min-h-screen bg-paper-raised px-6 py-12 text-[17px] leading-relaxed text-ink">
       <div className="mx-auto max-w-2xl space-y-6">
         <header>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Terms</h1>
-          <p className="mt-2 text-slate-500">Last updated {UPDATED}</p>
+          <h1 className="text-t7 font-bold tracking-tight text-ink">Terms</h1>
+          <p className="mt-2 text-muted">Last updated {UPDATED}</p>
         </header>
 
-        <p className="rounded-lg border border-amber-300 bg-amber-50 p-4">
+        <p className="rounded-lg border border-ochre bg-ochre-soft p-4">
           <strong>Relay is early-stage software and has no paying customers yet.</strong> Please do
           not make it the only place something important is written down.
         </p>
 
         <section>
-          <h2 className="text-xl font-semibold text-slate-900">What Relay does</h2>
+          <h2 className="text-t5 font-semibold text-ink">What Relay does</h2>
           <p className="mt-2">
             Relay stores information you choose to put in it, encrypted in your browser, and
             releases parts of it to people you designate when conditions you configure are met. You
@@ -44,7 +44,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold text-slate-900">What Relay does not do</h2>
+          <h2 className="text-t5 font-semibold text-ink">What Relay does not do</h2>
           <ul className="mt-2 list-disc space-y-1 pl-6">
             <li>
               It is <strong>not a legal instrument</strong>. It is not a will, a power of attorney,
@@ -74,7 +74,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold text-slate-900">Your responsibilities</h2>
+          <h2 className="text-t5 font-semibold text-ink">Your responsibilities</h2>
           <p className="mt-2">
             Only store information you are entitled to hold. If you set Relay up on behalf of
             someone else, do it with their knowledge and consent — the software records that
@@ -83,7 +83,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold text-slate-900">Payment</h2>
+          <h2 className="text-t5 font-semibold text-ink">Payment</h2>
           <p className="mt-2">
             Relay is not currently taking payment. Where a price is shown, it is the intended
             price; you will not be charged without a separate, explicit checkout step.
@@ -91,7 +91,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold text-slate-900">Ending it</h2>
+          <h2 className="text-t5 font-semibold text-ink">Ending it</h2>
           <p className="mt-2">
             You can ask us to delete your account at any time. We may discontinue the service, and
             if we do we will give notice and a way to export what you have stored.
@@ -99,7 +99,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold text-slate-900">Liability</h2>
+          <h2 className="text-t5 font-semibold text-ink">Liability</h2>
           <p className="mt-2">
             Relay is provided as-is, without warranties. To the fullest extent the law allows, we
             are not liable for indirect or consequential loss arising from its use.
@@ -107,20 +107,20 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold text-slate-900">Contact</h2>
+          <h2 className="text-t5 font-semibold text-ink">Contact</h2>
           <p className="mt-2">
-            <a className="text-blue-700 underline" href="mailto:sgharlow+relay@gmail.com">
+            <a className="text-ink underline" href="mailto:sgharlow+relay@gmail.com">
               sgharlow+relay@gmail.com
             </a>
           </p>
         </section>
 
         <footer style={{ borderTop: '1px solid var(--rule)', paddingTop: 'var(--s6)', color: 'var(--ink-muted)' }}>
-          <a className="underline hover:text-slate-800" href="/caregivers">
+          <a className="underline hover:text-ink" href="/caregivers">
             Back to Relay for caregivers
           </a>
           <span className="px-2">·</span>
-          <a className="underline hover:text-slate-800" href="/privacy">
+          <a className="underline hover:text-ink" href="/privacy">
             Privacy
           </a>
         </footer>

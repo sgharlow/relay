@@ -27,17 +27,17 @@ export const metadata = {
 
 export default function CaregiverInterest() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-950 px-6 text-slate-100">
+    <main className="flex min-h-screen items-center justify-center bg-paper px-6 text-ink">
       <IntentTracker />
       <div className="max-w-lg text-center">
-        <p className="inline-flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs text-amber-200">
-          <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+        <p className="inline-flex items-center gap-2 rounded-full border border-ochre bg-ochre-soft px-3 py-1 text-t1 text-ochre-text">
+          <span className="h-1.5 w-1.5 rounded-full bg-ink" />
           Founding families
         </p>
-        <h1 className="mt-5 text-3xl font-bold tracking-tight sm:text-4xl">
+        <h1 className="mt-5 text-t7 font-bold tracking-tight sm:text-t9">
           You can start right now.
         </h1>
-        <p className="mt-4 leading-relaxed text-slate-300">
+        <p className="mt-4 leading-relaxed text-muted">
           Relay&apos;s vault, triggers and reversible release engine are built and running. Set it
           up yourself in a few minutes for ${PRICE_YEARLY_USD}/yr — or tell us about your situation
           and we&apos;ll walk you through it personally, at the same price.
@@ -46,7 +46,7 @@ export default function CaregiverInterest() {
 
         <Link
           href="/caregivers"
-          className="mt-8 inline-flex min-h-[44px] items-center text-sm text-slate-400 hover:text-slate-200"
+          className="mt-8 inline-flex min-h-[44px] items-center text-t2 text-muted hover:text-muted"
         >
           ← Back
         </Link>

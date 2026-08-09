@@ -87,12 +87,12 @@ export default function InterestForm() {
 
   if (status === 'sent') {
     return (
-      <div className="mt-8 rounded-xl border border-amber-500/40 bg-amber-500/10 p-6 text-left">
-        <p className="font-semibold text-amber-200">Got it — thank you.</p>
-        <p className="mt-2 text-sm leading-relaxed text-slate-300">
+      <div className="mt-8 rounded-xl border border-ochre bg-ochre-soft p-6 text-left">
+        <p className="font-semibold text-ochre-text">Got it — thank you.</p>
+        <p className="mt-2 text-t2 leading-relaxed text-muted">
           We read every one of these ourselves, and you&apos;ll hear back within a day. If anything
           is urgent in the meantime, email{' '}
-          <a className="text-amber-300 underline underline-offset-4" href={MAILTO}>
+          <a className="text-ochre-text underline underline-offset-4" href={MAILTO}>
             {CONTACT_EMAIL}
           </a>
           .
@@ -118,27 +118,27 @@ export default function InterestForm() {
             cta: 'interest-buy',
           })
         }
-        className="flex min-h-[52px] w-full items-center justify-center rounded-md bg-amber-500 px-6 text-base font-semibold text-slate-950 transition-colors hover:bg-amber-400"
+        className="flex min-h-[52px] w-full items-center justify-center rounded-md bg-ink px-6 text-t3 font-semibold text-paper transition-colors hover:bg-ink"
       >
         Set up my vault now — $119/yr
       </a>
-      <p className="mt-2 text-center text-xs leading-relaxed text-slate-500">
+      <p className="mt-2 text-center text-t1 leading-relaxed text-muted">
         Takes a few minutes. You will need an authenticator app — there is no password to lose.
       </p>
 
       <div className="my-6 flex items-center gap-3">
-        <span className="h-px flex-1 bg-slate-800" />
-        <span className="text-xs uppercase tracking-wider text-slate-500">or</span>
-        <span className="h-px flex-1 bg-slate-800" />
+        <span className="h-px flex-1 bg-paper-sunken" />
+        <span className="text-t1 uppercase tracking-wider text-muted">or</span>
+        <span className="h-px flex-1 bg-paper-sunken" />
       </div>
 
-      <p className="text-sm leading-relaxed text-slate-300">
+      <p className="text-t2 leading-relaxed text-muted">
         Not ready yet? Tell us about your situation and we&apos;ll be in touch — we onboard
         founding families personally.
       </p>
 
     <form onSubmit={onSubmit} className="mt-4 text-left">
-      <label htmlFor="email" className="block text-sm font-medium text-slate-200">
+      <label htmlFor="email" className="block text-t2 font-medium text-muted">
         Your email
       </label>
       <input
@@ -149,11 +149,11 @@ export default function InterestForm() {
         autoComplete="email"
         inputMode="email"
         placeholder="you@example.com"
-        className="mt-2 min-h-[48px] w-full rounded-md border border-slate-700 bg-slate-900 px-4 text-base text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+        className="mt-2 min-h-[48px] w-full rounded-md border border-rule bg-paper px-4 text-t3 text-ink placeholder:text-muted focus:border-ochre focus:outline-none focus:ring-1 focus:ring-ochre"
       />
 
-      <label htmlFor="note" className="mt-5 block text-sm font-medium text-slate-200">
-        One line about your situation <span className="text-slate-500">(optional)</span>
+      <label htmlFor="note" className="mt-5 block text-t2 font-medium text-muted">
+        One line about your situation <span className="text-muted">(optional)</span>
       </label>
       <textarea
         id="note"
@@ -161,7 +161,7 @@ export default function InterestForm() {
         rows={3}
         maxLength={1000}
         placeholder="Dad's in hospital and I can't get into anything."
-        className="mt-2 w-full rounded-md border border-slate-700 bg-slate-900 px-4 py-3 text-base text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+        className="mt-2 w-full rounded-md border border-rule bg-paper px-4 py-3 text-t3 text-ink placeholder:text-muted focus:border-ochre focus:outline-none focus:ring-1 focus:ring-ochre"
       />
 
       {/* Honeypot — hidden from people, tempting to naive bots. Not display:none,
@@ -179,13 +179,13 @@ export default function InterestForm() {
         // buttons made the waitlist compete with the sale, which is exactly
         // backwards now that checkout is live: someone ready to pay should not
         // have to pick their action out of a pair.
-        className="mt-6 min-h-[48px] w-full rounded-md border border-slate-600 bg-transparent px-6 text-base font-medium text-slate-200 transition-colors hover:border-slate-400 hover:text-white disabled:opacity-60"
+        className="mt-6 min-h-[48px] w-full rounded-md border border-rule-strong bg-transparent px-6 text-t3 font-medium text-muted transition-colors hover:border-rule-strong hover:text-paper disabled:opacity-60"
       >
         {status === 'sending' ? 'Sending…' : 'Request an invite'}
       </button>
 
       {status === 'error' && (
-        <p className="mt-3 text-sm leading-relaxed text-amber-300">
+        <p className="mt-3 text-t2 leading-relaxed text-ochre-text">
           {message} Please email{' '}
           <a className="underline underline-offset-4" href={MAILTO}>
             {CONTACT_EMAIL}
@@ -194,7 +194,7 @@ export default function InterestForm() {
         </p>
       )}
 
-      <p className="mt-4 text-xs leading-relaxed text-slate-500">
+      <p className="mt-4 text-t1 leading-relaxed text-muted">
         We&apos;ll only use this to reply to you. No card required, and nothing is charged today.
       </p>
     </form>

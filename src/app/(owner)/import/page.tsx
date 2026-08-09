@@ -93,74 +93,74 @@ export default function ImportPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Import</h1>
-        <p className="text-sm text-slate-500">Import a CSV export. It is parsed and encrypted entirely in your browser.</p>
+        <h1 className="text-t7 font-semibold tracking-tight">Import</h1>
+        <p className="text-t2 text-muted">Import a CSV export. It is parsed and encrypted entirely in your browser.</p>
       </header>
 
-      <div className="flex flex-wrap items-end gap-3 rounded border border-slate-200 bg-white p-4">
-        <label className="text-sm">
-          <span className="mb-1 block text-slate-600">CSV file</span>
-          <input type="file" accept=".csv,text/csv" onChange={onFile} className="text-sm" />
+      <div className="flex flex-wrap items-end gap-3 rounded border border-rule bg-paper-raised p-4">
+        <label className="text-t2">
+          <span className="mb-1 block text-muted">CSV file</span>
+          <input type="file" accept=".csv,text/csv" onChange={onFile} className="text-t2" />
         </label>
-        <label className="text-sm">
-          <span className="mb-1 block text-slate-600">Format</span>
-          <select value={format} onChange={(e) => setFormat(e.target.value as CsvFormat)} className="rounded border border-slate-300 px-2.5 py-1.5 text-sm">
+        <label className="text-t2">
+          <span className="mb-1 block text-muted">Format</span>
+          <select value={format} onChange={(e) => setFormat(e.target.value as CsvFormat)} className="rounded border border-rule-strong px-2.5 py-1.5 text-t2">
             {CSV_FORMATS.map((f) => (
               <option key={f} value={f}>{f}</option>
             ))}
           </select>
         </label>
-        <button onClick={parse} disabled={!file} className="rounded border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-100 disabled:opacity-50">
+        <button onClick={parse} disabled={!file} className="rounded border border-rule-strong px-3 py-1.5 text-t2 font-medium hover:bg-paper-sunken disabled:opacity-50">
           Preview
         </button>
       </div>
 
-      {error ? <p role="alert" className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
+      {error ? <p role="alert" className="rounded border border-clay bg-clay-soft px-4 py-3 text-t2 text-clay">{error}</p> : null}
 
       {parsed ? (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-slate-600">
+            <p className="text-t2 text-muted">
               {parsed.rows.length} item{parsed.rows.length === 1 ? '' : 's'} to import
               {parsed.skipped.length ? ` · ${parsed.skipped.length} skipped` : ''}
             </p>
-            <button onClick={runImport} disabled={progress !== null || parsed.rows.length === 0} className="rounded bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
+            <button onClick={runImport} disabled={progress !== null || parsed.rows.length === 0} className="rounded bg-ink px-3 py-1.5 text-t2 font-semibold text-paper hover:bg-ink disabled:opacity-60">
               {progress !== null ? 'Importing…' : `Encrypt & import ${parsed.rows.length}`}
             </button>
           </div>
 
           {progress !== null ? (
-            <div className="h-2 overflow-hidden rounded bg-slate-200">
-              <div className="h-full bg-blue-600 transition-all" style={{ width: `${progress}%` }} />
+            <div className="h-2 overflow-hidden rounded bg-paper-sunken">
+              <div className="h-full bg-ink transition-all" style={{ width: `${progress}%` }} />
             </div>
           ) : null}
 
-          <div className="overflow-hidden rounded border border-slate-200">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+          <div className="overflow-hidden rounded border border-rule">
+            <table className="w-full text-left text-t2">
+              <thead className="bg-paper-sunken text-t1 uppercase text-muted">
                 <tr>
                   <th className="px-3 py-2">Service</th>
                   <th className="px-3 py-2">URL</th>
                   <th className="px-3 py-2">Username</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-rule">
                 {parsed.rows.slice(0, 50).map((row, i) => (
                   <tr key={i}>
                     <td className="px-3 py-1.5">{row.service_name}</td>
-                    <td className="truncate px-3 py-1.5 text-slate-500">{row.url ?? '—'}</td>
-                    <td className="px-3 py-1.5 text-slate-500">{row.username ?? '—'}</td>
+                    <td className="truncate px-3 py-1.5 text-muted">{row.url ?? '—'}</td>
+                    <td className="px-3 py-1.5 text-muted">{row.username ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            {parsed.rows.length > 50 ? <p className="px-3 py-2 text-xs text-slate-400">+{parsed.rows.length - 50} more…</p> : null}
+            {parsed.rows.length > 50 ? <p className="px-3 py-2 text-t1 text-muted">+{parsed.rows.length - 50} more…</p> : null}
           </div>
 
           {parsed.skipped.length ? (
-            <details className="rounded border border-slate-200 bg-white p-3 text-sm">
-              <summary className="cursor-pointer text-slate-600">{parsed.skipped.length} skipped rows</summary>
-              <ul className="mt-2 space-y-1 text-xs text-slate-500">
+            <details className="rounded border border-rule bg-paper-raised p-3 text-t2">
+              <summary className="cursor-pointer text-muted">{parsed.skipped.length} skipped rows</summary>
+              <ul className="mt-2 space-y-1 text-t1 text-muted">
                 {parsed.skipped.map((s) => (
                   <li key={s.row}>Row {s.row}: {s.reason}</li>
                 ))}
@@ -171,7 +171,7 @@ export default function ImportPage() {
       ) : null}
 
       {report ? (
-        <div className="rounded border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+        <div className="rounded border border-sage bg-sage-soft px-4 py-3 text-t2 text-sage-text">
           Imported {report.imported} item{report.imported === 1 ? '' : 's'}
           {report.skipped ? `, skipped ${report.skipped} unreadable row${report.skipped === 1 ? '' : 's'}` : ''}
           {report.duplicates
@@ -181,7 +181,7 @@ export default function ImportPage() {
           {/* Naming the duplicates matters: an owner who counted the rows in
               their export would otherwise conclude the import lost credentials. */}
           {report.imported ? (
-            <p className="mt-2 text-emerald-700">
+            <p className="mt-2 text-sage-text">
               We&apos;ve re-checked which of these unlock the others — your vault ranking is up
               to date.
             </p>

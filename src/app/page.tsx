@@ -37,19 +37,19 @@ export const metadata = {
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100">
+    <main className="min-h-screen bg-paper text-ink">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
-        <span className="text-lg font-semibold tracking-tight">Relay</span>
-        <Link href="/auth/signin" className="text-sm text-slate-300 hover:text-white">
+        <span className="text-t5 font-semibold tracking-tight">Relay</span>
+        <Link href="/auth/signin" className="text-t2 text-muted hover:text-paper">
           Sign in
         </Link>
       </header>
 
       <section className="mx-auto max-w-3xl px-6 pb-16 pt-12 sm:pt-20">
-        <h1 className="text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl">
+        <h1 className="font-serif text-t9 font-semibold leading-[1.06] tracking-tight sm:text-t9">
           The accounts someone would need, if you could not manage them.
         </h1>
-        <p className="mt-6 text-lg leading-relaxed text-slate-300">
+        <p className="mt-6 text-t5 leading-relaxed text-muted">
           Relay holds them encrypted, opens only what you chose for the person you chose, and only
           once a real emergency has been confirmed by someone you trust — then closes again when you
           recover. One price for the whole family, {`$${PRICE_YEARLY_USD}`} a year.
@@ -58,13 +58,13 @@ export default function Home() {
         <div className="mt-9 flex flex-wrap items-center gap-4">
           <Link
             href="/caregivers"
-            className="rounded-md bg-amber-500 px-6 py-3 text-sm font-semibold text-slate-950 transition-colors hover:bg-amber-400"
+            className="rounded-md bg-ink px-6 py-3 text-t2 font-semibold text-paper transition-colors hover:bg-ink"
           >
             I&rsquo;m caring for a parent
           </Link>
           <Link
             href="/how-it-works"
-            className="inline-flex min-h-[44px] items-center text-sm font-medium text-slate-300 underline decoration-slate-600 underline-offset-4 hover:text-white"
+            className="inline-flex min-h-[44px] items-center text-t2 font-medium text-muted underline decoration-rule-strong underline-offset-4 hover:text-paper"
           >
             Show me what actually happens
           </Link>
@@ -73,29 +73,29 @@ export default function Home() {
 
       {/* The three questions that decide whether someone reads on, answered in
           a line each rather than in a features grid. */}
-      <section className="border-y border-slate-800 bg-slate-900/30">
+      <section className="border-y border-rule bg-paper-sunken">
         <div className="mx-auto grid max-w-5xl gap-6 px-6 py-14 sm:grid-cols-3">
           <div>
-            <h2 className="text-sm font-semibold text-slate-100">It closes again</h2>
-            <p className="mt-2 text-sm leading-relaxed text-slate-400">
+            <h2 className="text-t2 font-semibold text-ink">It closes again</h2>
+            <p className="mt-2 text-t2 leading-relaxed text-muted">
               Every other way of doing this is a door you open once. Recover, check in, and access
               ends on its own — which is what makes it safe to set up before you need it.
             </p>
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-slate-100">We cannot read it</h2>
-            <p className="mt-2 text-sm leading-relaxed text-slate-400">
+            <h2 className="text-t2 font-semibold text-ink">We cannot read it</h2>
+            <p className="mt-2 text-t2 leading-relaxed text-muted">
               Secrets are encrypted in your browser before they reach us. We hold ciphertext, and we
               are honest on{' '}
-              <Link href="/security" className="text-slate-300 underline underline-offset-2">
+              <Link href="/security" className="text-muted underline underline-offset-2">
                 exactly what we can see
               </Link>
               .
             </p>
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-slate-100">Someone has to say yes</h2>
-            <p className="mt-2 text-sm leading-relaxed text-slate-400">
+            <h2 className="text-t2 font-semibold text-ink">Someone has to say yes</h2>
+            <p className="mt-2 text-t2 leading-relaxed text-muted">
               Nothing opens on a timer or a guess. A person you named confirms the situation is
               real, and never sees anything of yours.
             </p>
@@ -106,11 +106,11 @@ export default function Home() {
       {/* Recipients arrive by email with a code, not through this page — but
           someone who was named and went looking should not hit a dead end. */}
       <section className="mx-auto max-w-3xl px-6 py-14">
-        <h2 className="text-lg font-semibold">Were you named by someone?</h2>
-        <p className="mt-2 text-sm leading-relaxed text-slate-400">
+        <h2 className="text-t5 font-semibold">Were you named by someone?</h2>
+        <p className="mt-2 text-t2 leading-relaxed text-muted">
           If someone has asked you to be a recipient or a trusted contact, you will have an email
           with a code in it. Enter it at{' '}
-          <Link href="/claim" className="text-amber-300 underline underline-offset-4">
+          <Link href="/claim" className="text-ochre-text underline underline-offset-4">
             relaystandby.com/claim
           </Link>
           . Relay never sends a link that signs you in — if a message claiming to be from us asks
@@ -118,23 +118,23 @@ export default function Home() {
         </p>
       </section>
 
-      <footer className="border-t border-slate-800">
-        <div className="mx-auto flex max-w-5xl flex-col gap-3 px-6 py-8 text-sm text-slate-300 sm:flex-row sm:items-center sm:justify-between">
+      <footer className="border-t border-rule">
+        <div className="mx-auto flex max-w-5xl flex-col gap-3 px-6 py-8 text-t2 text-muted sm:flex-row sm:items-center sm:justify-between">
           <span>
-            <span className="font-semibold text-slate-300">Relay</span> — standby access for the
+            <span className="font-semibold text-muted">Relay</span> — standby access for the
             people who&rsquo;ll need it.
           </span>
           <div className="flex flex-wrap items-center gap-x-5">
-            <Link href="/how-it-works" className="inline-flex min-h-[44px] items-center hover:text-slate-300">
+            <Link href="/how-it-works" className="inline-flex min-h-[44px] items-center hover:text-muted">
               How it works
             </Link>
-            <Link href="/security" className="inline-flex min-h-[44px] items-center hover:text-slate-300">
+            <Link href="/security" className="inline-flex min-h-[44px] items-center hover:text-muted">
               Security
             </Link>
-            <Link href="/privacy" className="inline-flex min-h-[44px] items-center hover:text-slate-300">
+            <Link href="/privacy" className="inline-flex min-h-[44px] items-center hover:text-muted">
               Privacy
             </Link>
-            <Link href="/terms" className="inline-flex min-h-[44px] items-center hover:text-slate-300">
+            <Link href="/terms" className="inline-flex min-h-[44px] items-center hover:text-muted">
               Terms
             </Link>
           </div>

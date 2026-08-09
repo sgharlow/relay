@@ -111,25 +111,25 @@ export default function AccessClient() {
     );
   }
   if (error) {
-    return <p className="rounded-lg border border-amber-300 bg-amber-50 px-5 py-4 text-stone-700">{error}</p>;
+    return <p className="rounded-lg border border-ochre bg-ochre-soft px-5 py-4 text-ink">{error}</p>;
   }
   if (!data) {
-    return <p className="text-stone-500">Loading your access…</p>;
+    return <p className="text-muted">Loading your access…</p>;
   }
 
   if (!data.released) {
     return (
       <div>
-        <h1 className="text-2xl font-bold">Access not yet active</h1>
-        <p className="mt-2 text-stone-600">
+        <h1 className="text-t7 font-bold">Access not yet active</h1>
+        <p className="mt-2 text-muted">
           You have access to the items below, but the release is still pending. You can see what is
           covered, but not the contents yet.
         </p>
         <ul className="mt-6 space-y-3">
           {data.items.map((item) => (
-            <li key={item.id} className="rounded-lg border border-stone-200 px-5 py-3">
+            <li key={item.id} className="rounded-lg border border-rule px-5 py-3">
               <div className="font-semibold">{item.title}</div>
-              <div className="text-sm text-stone-500">
+              <div className="text-t2 text-muted">
                 {item.service_name ?? item.type}
                 {item.url ? ` · ${item.url}` : ''}
               </div>
@@ -149,41 +149,41 @@ export default function AccessClient() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold">Your access plan</h1>
-      <p className="mt-2 text-stone-600">Work top to bottom — the most consequential items come first.</p>
+      <h1 className="text-t7 font-bold">Your access plan</h1>
+      <p className="mt-2 text-muted">Work top to bottom — the most consequential items come first.</p>
 
       <div className="mt-8 space-y-8">
         {BUCKET_ORDER.filter((b) => grouped[b].length > 0).map((bucket) => (
           <section key={bucket}>
-            <h2 className="mb-3 text-sm font-bold uppercase tracking-widest text-amber-700">{BUCKET_LABELS[bucket]}</h2>
+            <h2 className="mb-3 text-t2 font-bold uppercase tracking-widest text-ochre-text">{BUCKET_LABELS[bucket]}</h2>
             <ol className="space-y-3">
               {grouped[bucket].map((item) => {
                 step += 1;
                 const value = revealed[item.id];
                 return (
-                  <li key={item.id} className="rounded-lg border border-stone-200 px-5 py-4">
+                  <li key={item.id} className="rounded-lg border border-rule px-5 py-4">
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-600 text-sm font-bold text-white">
+                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink text-t2 font-bold text-paper">
                             {step}
                           </span>
                           <span className="font-semibold">{item.title}</span>
                           {item.scope ? (
-                            <span className="rounded bg-stone-100 px-1.5 py-0.5 text-xs font-medium text-stone-600">{item.scope}</span>
+                            <span className="rounded bg-paper-sunken px-1.5 py-0.5 text-t1 font-medium text-muted">{item.scope}</span>
                           ) : null}
                         </div>
-                        <div className="ml-8 text-sm text-stone-500">{item.service_name ?? item.type}</div>
+                        <div className="ml-8 text-t2 text-muted">{item.service_name ?? item.type}</div>
                       </div>
                       <button
                         onClick={() => decrypt(item)}
-                        className="shrink-0 rounded bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-amber-700"
+                        className="shrink-0 rounded bg-ink px-3 py-1.5 text-t2 font-semibold text-paper hover:bg-ink"
                       >
                         Reveal
                       </button>
                     </div>
                     {value !== undefined ? (
-                      <pre className="ml-8 mt-3 whitespace-pre-wrap break-all rounded bg-stone-900 px-3 py-2 text-sm text-amber-100">{value}</pre>
+                      <pre className="ml-8 mt-3 whitespace-pre-wrap break-all rounded bg-ink px-3 py-2 text-t2 text-ochre-text">{value}</pre>
                     ) : null}
                   </li>
                 );
@@ -230,20 +230,20 @@ function ClosedGracefully({ summary }: { summary: ClosureSummary }) {
 
   return (
     <div className="mx-auto max-w-xl">
-      <div className="rounded-2xl border border-stone-200 bg-white px-6 py-7">
-        <p className="text-[15px] uppercase tracking-wide text-stone-500">Access closed</p>
-        <h1 className="mt-3 text-[26px] font-semibold leading-snug text-stone-900">
+      <div className="rounded-2xl border border-rule bg-paper-raised px-6 py-7">
+        <p className="text-[15px] uppercase tracking-wide text-muted">Access closed</p>
+        <h1 className="mt-3 text-[26px] font-semibold leading-snug text-ink">
           Everything is back to normal.
         </h1>
-        <p className="mt-4 text-[18px] leading-relaxed text-stone-700">
+        <p className="mt-4 text-[18px] leading-relaxed text-ink">
           The vault has been re-armed, so this link no longer opens anything. That is the system
           working as intended — access was temporary, and it has now closed.
         </p>
 
-        <div className="mt-6 rounded-xl bg-stone-50 px-5 py-4">
-          <p className="text-[17px] leading-relaxed text-stone-700">
+        <div className="mt-6 rounded-xl bg-paper-sunken px-5 py-4">
+          <p className="text-[17px] leading-relaxed text-ink">
             You were trusted with{' '}
-            <span className="font-semibold text-stone-900">
+            <span className="font-semibold text-ink">
               {grantedCount} {grantedCount === 1 ? 'item' : 'items'}
             </span>{' '}
             for {duration}.
@@ -251,18 +251,18 @@ function ClosedGracefully({ summary }: { summary: ClosureSummary }) {
 
           {opened.length > 0 ? (
             <>
-              <p className="mt-3 text-[17px] text-stone-700">
+              <p className="mt-3 text-[17px] text-ink">
                 You opened {opened.length} of them:
               </p>
               <ul className="mt-2 space-y-1">
                 {opened.map((o) => (
-                  <li key={`${o.title}-${o.openedAt}`} className="text-[17px] text-stone-800">
+                  <li key={`${o.title}-${o.openedAt}`} className="text-[17px] text-ink">
                     · {o.title}
                   </li>
                 ))}
               </ul>
               {grantedCount > opened.length ? (
-                <p className="mt-3 text-[16px] leading-relaxed text-stone-600">
+                <p className="mt-3 text-[16px] leading-relaxed text-muted">
                   {grantedCount - opened.length === 1
                     ? 'The other one was never opened.'
                     : `The other ${grantedCount - opened.length} were never opened.`}{' '}
@@ -272,18 +272,18 @@ function ClosedGracefully({ summary }: { summary: ClosureSummary }) {
               ) : null}
             </>
           ) : (
-            <p className="mt-3 text-[17px] leading-relaxed text-stone-700">
+            <p className="mt-3 text-[17px] leading-relaxed text-ink">
               You did not need to open any of them. That is recorded too.
             </p>
           )}
         </div>
 
-        <p className="mt-6 text-[18px] leading-relaxed text-stone-700">
+        <p className="mt-6 text-[18px] leading-relaxed text-ink">
           Thank you for stepping in. If they need help again, you will get a new link.
         </p>
       </div>
 
-      <p className="mt-4 px-2 text-[15px] leading-relaxed text-stone-500">
+      <p className="mt-4 px-2 text-[15px] leading-relaxed text-muted">
         Nothing you saw is stored on this device, and this page holds no vault contents.
       </p>
     </div>
@@ -335,15 +335,15 @@ function AccessCodeEntry({ onToken, onClosed }: { onToken: (t: string) => void; 
   }
 
   return (
-    <div className="mx-auto max-w-md rounded-2xl border border-stone-200 bg-white px-6 py-7">
-      <h1 className="text-[26px] font-semibold leading-snug text-stone-900">Enter your code</h1>
-      <p className="mt-3 text-[17px] leading-relaxed text-stone-700">
+    <div className="mx-auto max-w-md rounded-2xl border border-rule bg-paper-raised px-6 py-7">
+      <h1 className="text-[26px] font-semibold leading-snug text-ink">Enter your code</h1>
+      <p className="mt-3 text-[17px] leading-relaxed text-ink">
         Someone arranged for you to reach their accounts, and that access is open. Type the code
         from the email we sent you.
       </p>
 
       <form onSubmit={submit} className="mt-6">
-        <label htmlFor="acode" className="block text-sm font-medium text-stone-700">
+        <label htmlFor="acode" className="block text-t2 font-medium text-ink">
           Code from your email
         </label>
         <input
@@ -354,15 +354,15 @@ function AccessCodeEntry({ onToken, onClosed }: { onToken: (t: string) => void; 
           autoCapitalize="characters"
           spellCheck={false}
           placeholder="7K4M-P2XW"
-          className="mt-2 min-h-[52px] w-full rounded-md border border-stone-400 px-4 text-center font-mono text-2xl tracking-[0.2em] text-stone-900 placeholder:text-stone-300 focus:border-stone-900 focus:outline-none"
+          className="mt-2 min-h-[52px] w-full rounded-md border border-rule-strong px-4 text-center font-mono text-t7 tracking-[0.2em] text-ink placeholder:text-muted focus:border-rule focus:outline-none"
         />
 
-        {err ? <p className="mt-3 text-[16px] text-red-700">{err}</p> : null}
+        {err ? <p className="mt-3 text-[16px] text-clay">{err}</p> : null}
 
         <button
           type="submit"
           disabled={busy || !code.trim()}
-          className="mt-5 min-h-[52px] w-full rounded-md bg-stone-900 px-6 text-[17px] font-semibold text-white hover:bg-stone-800 disabled:opacity-50"
+          className="mt-5 min-h-[52px] w-full rounded-md bg-ink px-6 text-[17px] font-semibold text-paper hover:bg-ink disabled:opacity-50"
         >
           {busy ? 'Checking…' : 'Continue'}
         </button>
@@ -370,7 +370,7 @@ function AccessCodeEntry({ onToken, onClosed }: { onToken: (t: string) => void; 
 
       <ExpiredCodeHelp />
 
-      <p className="mt-6 text-[15px] leading-relaxed text-stone-500">
+      <p className="mt-6 text-[15px] leading-relaxed text-muted">
         Relay will never send you a link that signs you in.
       </p>
     </div>
@@ -396,7 +396,7 @@ function ExpiredCodeHelp() {
 
   if (sent) {
     return (
-      <p className="mt-6 rounded-md bg-stone-50 px-4 py-3 text-[16px] leading-relaxed text-stone-700">
+      <p className="mt-6 rounded-md bg-paper-sunken px-4 py-3 text-[16px] leading-relaxed text-ink">
         If that address has active access, a new code is on its way. It can take a minute to arrive.
       </p>
     );
@@ -407,7 +407,7 @@ function ExpiredCodeHelp() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mt-5 text-[16px] text-stone-600 underline underline-offset-4 hover:text-stone-900"
+        className="mt-5 text-[16px] text-muted underline underline-offset-4 hover:text-ink"
       >
         My code has expired
       </button>
@@ -416,7 +416,7 @@ function ExpiredCodeHelp() {
 
   return (
     <form
-      className="mt-5 rounded-md bg-stone-50 p-4"
+      className="mt-5 rounded-md bg-paper-sunken p-4"
       onSubmit={async (e) => {
         e.preventDefault();
         if (busy) return;
@@ -433,7 +433,7 @@ function ExpiredCodeHelp() {
         }
       }}
     >
-      <label htmlFor="resend" className="block text-[15px] font-medium text-stone-700">
+      <label htmlFor="resend" className="block text-[15px] font-medium text-ink">
         Your email address
       </label>
       <input
@@ -442,17 +442,17 @@ function ExpiredCodeHelp() {
         required
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        className="mt-2 min-h-[48px] w-full rounded-md border border-stone-400 px-4 text-[17px]"
+        className="mt-2 min-h-[48px] w-full rounded-md border border-rule-strong px-4 text-[17px]"
         placeholder="you@example.com"
       />
       <button
         type="submit"
         disabled={busy}
-        className="mt-3 min-h-[48px] w-full rounded-md border border-stone-400 bg-white px-4 text-[16px] font-medium text-stone-800 hover:bg-stone-100 disabled:opacity-50"
+        className="mt-3 min-h-[48px] w-full rounded-md border border-rule-strong bg-paper-raised px-4 text-[16px] font-medium text-ink hover:bg-paper-sunken disabled:opacity-50"
       >
         {busy ? 'Sending…' : 'Send me a new code'}
       </button>
-      <p className="mt-2 text-[14px] leading-relaxed text-stone-500">
+      <p className="mt-2 text-[14px] leading-relaxed text-muted">
         We send it to the address already on file, so this only works if you are the person who was
         given access.
       </p>

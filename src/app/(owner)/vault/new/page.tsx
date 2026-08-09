@@ -22,7 +22,7 @@ import {
 import { CryptoService } from '../../../../../lib/crypto/crypto-service';
 
 const inputCls =
-  'w-full rounded border border-slate-300 px-2.5 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500';
+  'w-full rounded border border-rule-strong px-2.5 py-1.5 text-t2 focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink';
 
 export default function NewVaultItemPage() {
   const router = useRouter();
@@ -62,11 +62,11 @@ export default function NewVaultItemPage() {
   return (
     <div className="mx-auto max-w-xl">
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Add item</h1>
-        <p className="text-sm text-slate-500">The secret is encrypted in your browser before it is sent.</p>
+        <h1 className="text-t7 font-semibold tracking-tight">Add item</h1>
+        <p className="text-t2 text-muted">The secret is encrypted in your browser before it is sent.</p>
       </header>
 
-      <form onSubmit={submit} className="space-y-4 rounded border border-slate-200 bg-white p-5">
+      <form onSubmit={submit} className="space-y-4 rounded border border-rule bg-paper-raised p-5">
         <Field label="Title">
           <input className={inputCls} required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Gmail" />
         </Field>
@@ -107,13 +107,13 @@ export default function NewVaultItemPage() {
           <textarea className={`${inputCls} font-mono`} required rows={3} value={form.secret} onChange={(e) => setForm({ ...form, secret: e.target.value })} placeholder="Password, note, or instructions — encrypted before upload" />
         </Field>
 
-        {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
+        {error ? <p role="alert" className="text-t2 text-clay">{error}</p> : null}
 
         <div className="flex gap-2">
-          <button type="submit" disabled={busy} className="rounded bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
+          <button type="submit" disabled={busy} className="rounded bg-ink px-3 py-1.5 text-t2 font-semibold text-paper hover:bg-ink disabled:opacity-60">
             {busy ? 'Encrypting…' : 'Save item'}
           </button>
-          <button type="button" onClick={() => router.push('/vault')} className="rounded border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-100">
+          <button type="button" onClick={() => router.push('/vault')} className="rounded border border-rule-strong px-3 py-1.5 text-t2 font-medium hover:bg-paper-sunken">
             Cancel
           </button>
         </div>
@@ -124,8 +124,8 @@ export default function NewVaultItemPage() {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="block text-sm">
-      <span className="mb-1 block text-slate-600">{label}</span>
+    <label className="block text-t2">
+      <span className="mb-1 block text-muted">{label}</span>
       {children}
     </label>
   );

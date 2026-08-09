@@ -12,16 +12,16 @@ export const metadata = { title: 'Create your vault · Relay' };
 
 export default function SignUpPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 text-slate-900">
-      <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+    <main className="flex min-h-screen items-center justify-center bg-paper-sunken px-4 text-ink">
+      <div className="w-full max-w-sm rounded-lg border border-rule bg-paper-raised p-6 shadow-sm">
         <div className="mb-6">
-          <div className="text-lg font-semibold tracking-tight">Relay</div>
-          <h1 className="mt-1 text-xl font-semibold">Create your vault</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <div className="text-t5 font-semibold tracking-tight">Relay</div>
+          <h1 className="mt-1 text-t5 font-semibold">Create your vault</h1>
+          <p className="mt-1 text-t2 text-muted">
             Two steps. An authenticator app is required — there is no password.
           </p>
         </div>
-        <Suspense fallback={<p className="text-sm text-slate-500">Loading…</p>}>
+        <Suspense fallback={<p className="text-t2 text-muted">Loading…</p>}>
           <SignUpForm />
         </Suspense>
       </div>

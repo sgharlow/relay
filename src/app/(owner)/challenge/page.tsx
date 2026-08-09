@@ -12,7 +12,7 @@ export const metadata = { title: 'Someone is asking · Relay' };
 
 export default function ChallengePage() {
   return (
-    <Suspense fallback={<p className="text-stone-600">Loading…</p>}>
+    <Suspense fallback={<p className="text-muted">Loading…</p>}>
       <ChallengeClient />
     </Suspense>
   );

@@ -10,7 +10,7 @@
 
 export default function VerifyLayout({ children }: { children: React.ReactNode }) {
   return (
-    <main className="min-h-screen bg-stone-50 px-4 py-8 text-[18px] leading-relaxed text-stone-900">
+    <main className="min-h-screen bg-paper-sunken px-4 py-8 text-[18px] leading-relaxed text-ink">
       <div className="mx-auto max-w-xl">{children}</div>
     </main>
   );
