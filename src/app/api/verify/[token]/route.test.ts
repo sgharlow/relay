@@ -35,7 +35,7 @@ import { GET } from './route';
 const mockVerify = vi.mocked(verifyVerifierToken);
 const mockContext = vi.mocked(buildVerifierContext);
 
-const ctx = { params: { token: 'a.valid.token' } };
+const ctx = { params: Promise.resolve({ token: 'a.valid.token' }) };
 const req = {} as NextRequest;
 
 beforeEach(() => {

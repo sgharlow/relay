@@ -10,7 +10,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { requireOwner, readJson, isResponse, mapError } from '../../../../../lib/http/owner-route';
 import { updateVerifier, deleteVerifier, validateVerifierInput } from '../../../../../lib/people/verifiers';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 const NOT_FOUND = { error: 'NotFound', message: 'Verifier not found' };
 
@@ -23,7 +23,7 @@ export async function PUT(req: NextRequest, { params }: Ctx): Promise<NextRespon
 
   try {
     const input = validateVerifierInput(body);
-    const updated = await updateVerifier(auth.ownerId, params.id, input);
+    const updated = await updateVerifier(auth.ownerId, (await params).id, input);
     if (!updated) return NextResponse.json(NOT_FOUND, { status: 404 });
     return NextResponse.json(updated);
   } catch (err) {
@@ -34,6 +34,6 @@ export async function PUT(req: NextRequest, { params }: Ctx): Promise<NextRespon
 export async function DELETE(_req: NextRequest, { params }: Ctx): Promise<NextResponse> {
   const auth = await requireOwner();
   if (isResponse(auth)) return auth;
-  await deleteVerifier(auth.ownerId, params.id);
+  await deleteVerifier(auth.ownerId, (await params).id);
   return NextResponse.json({ deleted: true });
 }

@@ -26,7 +26,7 @@ const mockNotify = vi.mocked(notifyOwnerReleasePendingGraceById);
 function makeReq(body: unknown = {}, headers: Record<string, string> = {}) {
   return { json: async () => body, headers: { get: (k: string) => headers[k.toLowerCase()] ?? null } } as never;
 }
-const ctx = { params: { id: 'rs-1' } };
+const ctx = { params: Promise.resolve({ id: 'rs-1' }) };
 
 beforeEach(() => vi.clearAllMocks());
 

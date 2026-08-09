@@ -37,12 +37,12 @@ it('401 when unauthenticated', async () => {
   const { NextResponse } = await import('next/server');
   mockSession.mockReset();
   mockSession.mockRejectedValueOnce(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
-  const res = await POST(makeReq(), { params: { id: 'emergency' } });
+  const res = await POST(makeReq(), { params: Promise.resolve({ id: 'emergency' }) });
   expect(res.status).toBe(401);
 });
 
 it('400 on an unknown trigger type', async () => {
-  const res = await POST(makeReq(), { params: { id: 'apocalypse' } });
+  const res = await POST(makeReq(), { params: Promise.resolve({ id: 'apocalypse' }) });
   expect(res.status).toBe(400);
   expect(mockInitiate).not.toHaveBeenCalled();
 });
@@ -50,7 +50,7 @@ it('400 on an unknown trigger type', async () => {
 it('initiates and notifies verifiers', async () => {
   mockInitiate.mockResolvedValueOnce({ id: 'rs-1', state: 'pending' } as never);
   mockNotify.mockResolvedValueOnce(2);
-  const res = await POST(makeReq(), { params: { id: 'emergency' } });
+  const res = await POST(makeReq(), { params: Promise.resolve({ id: 'emergency' }) });
   expect(res.status).toBe(200);
   const json = await res.json();
   expect(json.state).toBe('pending');
@@ -62,6 +62,6 @@ it('initiates and notifies verifiers', async () => {
 
 it('409 when the trigger is not ARMED', async () => {
   mockInitiate.mockRejectedValueOnce(new TriggerError('not armed', 409));
-  const res = await POST(makeReq(), { params: { id: 'emergency' } });
+  const res = await POST(makeReq(), { params: Promise.resolve({ id: 'emergency' }) });
   expect(res.status).toBe(409);
 });

@@ -13,14 +13,14 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { requireOwner, isResponse } from '../../../../../../lib/http/owner-route';
 import { resendReleaseNotifications, TriggerError } from '../../../../../../lib/release/triggers';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 export async function POST(_req: NextRequest, { params }: Ctx): Promise<NextResponse> {
   const auth = await requireOwner();
   if (isResponse(auth)) return auth;
 
   try {
-    const notified = await resendReleaseNotifications(auth.ownerId, params.id);
+    const notified = await resendReleaseNotifications(auth.ownerId, (await params).id);
     return NextResponse.json({ notified });
   } catch (err) {
     if (err instanceof TriggerError) {

@@ -26,7 +26,7 @@ import { writeAuditEntry } from '../../../../../../lib/audit/audit-service';
 
 const FORBIDDEN = { error: 'Forbidden', message: 'Not authorized for this item' };
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 /** Resolve owner session + assert ownership. Returns ownerId or a response to send. */
 async function authorize(id: string): Promise<{ ownerId: string } | NextResponse> {
@@ -49,16 +49,16 @@ async function authorize(id: string): Promise<{ ownerId: string } | NextResponse
 }
 
 export async function GET(_req: NextRequest, { params }: Ctx): Promise<NextResponse> {
-  const auth = await authorize(params.id);
+  const auth = await authorize((await params).id);
   if (auth instanceof NextResponse) return auth;
 
-  const item = await getItemForOwner(auth.ownerId, params.id);
+  const item = await getItemForOwner(auth.ownerId, (await params).id);
   if (!item) return NextResponse.json(FORBIDDEN, { status: 403 });
   return NextResponse.json(item);
 }
 
 export async function PUT(req: NextRequest, { params }: Ctx): Promise<NextResponse> {
-  const auth = await authorize(params.id);
+  const auth = await authorize((await params).id);
   if (auth instanceof NextResponse) return auth;
 
   let body: unknown;
@@ -81,30 +81,30 @@ export async function PUT(req: NextRequest, { params }: Ctx): Promise<NextRespon
     throw err;
   }
 
-  const updated = await updateItem(auth.ownerId, params.id, input);
+  const updated = await updateItem(auth.ownerId, (await params).id, input);
   if (!updated) return NextResponse.json(FORBIDDEN, { status: 403 });
 
   await writeAuditEntry(auth.ownerId, {
     actor: `owner:${auth.ownerId}`,
     action: 'vault_item_updated',
     entity: 'vault_item',
-    entityId: params.id,
+    entityId: (await params).id,
   });
 
   return NextResponse.json(updated);
 }
 
 export async function DELETE(_req: NextRequest, { params }: Ctx): Promise<NextResponse> {
-  const auth = await authorize(params.id);
+  const auth = await authorize((await params).id);
   if (auth instanceof NextResponse) return auth;
 
-  await deleteItem(auth.ownerId, params.id);
+  await deleteItem(auth.ownerId, (await params).id);
 
   await writeAuditEntry(auth.ownerId, {
     actor: `owner:${auth.ownerId}`,
     action: 'vault_item_deleted',
     entity: 'vault_item',
-    entityId: params.id,
+    entityId: (await params).id,
   });
 
   return NextResponse.json({ deleted: true });

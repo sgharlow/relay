@@ -15,11 +15,11 @@ import { redeemInvitation, buildStandbyView } from '../../../../../lib/people/in
 import { writeAuditEntry } from '../../../../../lib/audit/audit-service';
 import { ValidationError } from '../../../../../lib/validation';
 
-type Ctx = { params: { token: string } };
+type Ctx = { params: Promise<{ token: string }> };
 
 export async function POST(_req: NextRequest, { params }: Ctx): Promise<NextResponse> {
   try {
-    const claim = await redeemInvitation(params.token);
+    const claim = await redeemInvitation((await params).token);
 
     await writeAuditEntry(claim.ownerId, {
       actor: `${claim.personType}:${claim.personId}`,

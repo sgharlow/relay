@@ -22,7 +22,7 @@ import {
   materializePolicy,
 } from '../../../../../lib/rules/policy-materialize';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 export async function PUT(req: NextRequest, { params }: Ctx): Promise<NextResponse> {
   const auth = await requireOwner();
@@ -34,10 +34,10 @@ export async function PUT(req: NextRequest, { params }: Ctx): Promise<NextRespon
   const { predicate, confirm } = (body ?? {}) as Record<string, unknown>;
 
   try {
-    await assertOwns(auth.ownerId, 'access_policies', params.id);
+    await assertOwns(auth.ownerId, 'access_policies', (await params).id);
     const validated = validatePolicyPredicate(predicate);
 
-    const preview = await previewPolicyChange(auth.ownerId, params.id, validated);
+    const preview = await previewPolicyChange(auth.ownerId, (await params).id, validated);
 
     // Revocations are the dangerous direction — never apply them unseen.
     if (preview.toRemove.length > 0 && confirm !== true) {
@@ -54,12 +54,12 @@ export async function PUT(req: NextRequest, { params }: Ctx): Promise<NextRespon
     await query(
       `UPDATE access_policies SET predicate = $3, updated_at = now()
         WHERE id = $1 AND owner_id = $2`,
-      [params.id, auth.ownerId, JSON.stringify(validated)],
+      [(await params).id, auth.ownerId, JSON.stringify(validated)],
     );
 
-    const result = await materializePolicy(auth.ownerId, params.id);
+    const result = await materializePolicy(auth.ownerId, (await params).id);
 
-    return NextResponse.json({ id: params.id, ...result });
+    return NextResponse.json({ id: (await params).id, ...result });
   } catch (err) {
     return mapError(err);
   }
@@ -70,18 +70,18 @@ export async function DELETE(_req: NextRequest, { params }: Ctx): Promise<NextRe
   if (isResponse(auth)) return auth;
 
   try {
-    await assertOwns(auth.ownerId, 'access_policies', params.id);
+    await assertOwns(auth.ownerId, 'access_policies', (await params).id);
 
     // Rules first: a policy row removed before its grants would orphan them.
     const removed = await query<{ id: string }>(
       `DELETE FROM access_rules
         WHERE owner_id = $1 AND policy_id = $2
         RETURNING id`,
-      [auth.ownerId, params.id],
+      [auth.ownerId, (await params).id],
     );
 
     await query(`DELETE FROM access_policies WHERE id = $1 AND owner_id = $2`, [
-      params.id,
+      (await params).id,
       auth.ownerId,
     ]);
 
@@ -89,7 +89,7 @@ export async function DELETE(_req: NextRequest, { params }: Ctx): Promise<NextRe
       actor: `owner:${auth.ownerId}`,
       action: 'policy_deleted',
       entity: 'access_policy',
-      entityId: params.id,
+      entityId: (await params).id,
       detail: { rulesRemoved: removed.rows.length },
     });
 

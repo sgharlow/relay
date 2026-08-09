@@ -40,7 +40,7 @@ const mockUpdate = vi.mocked(updateItem);
 const mockDelete = vi.mocked(deleteItem);
 const mockAudit = vi.mocked(writeAuditEntry);
 
-const ctx = { params: { id: 'item-1' } };
+const ctx = { params: Promise.resolve({ id: 'item-1' }) };
 function makeReq(body?: unknown) {
   return { json: async () => body } as never;
 }

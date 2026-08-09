@@ -31,7 +31,7 @@ const mockDelete = vi.mocked(deleteRecipient);
 function makeReq(body?: unknown) {
   return { json: async () => body } as never;
 }
-const ctx = { params: { id: 'r1' } };
+const ctx = { params: Promise.resolve({ id: 'r1' }) };
 const valid = { name: 'Sam', email: 'sam@example.com', role: 'executor' };
 
 beforeEach(() => {

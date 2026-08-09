@@ -55,7 +55,7 @@ it('GET returns release states, cadence, and isDemo', async () => {
 });
 
 it('config PUT 400 on unknown trigger type', async () => {
-  const res = await PUT(makeReq({ required_confirmations: 2 }), { params: { id: 'bogus' } });
+  const res = await PUT(makeReq({ required_confirmations: 2 }), { params: Promise.resolve({ id: 'bogus' }) });
   expect(res.status).toBe(400);
   expect(mockSetN).not.toHaveBeenCalled();
 });
@@ -63,7 +63,7 @@ it('config PUT 400 on unknown trigger type', async () => {
 it('config PUT sets N against the verifier count (M)', async () => {
   mockVerifierCount.mockResolvedValueOnce(3);
   mockSetN.mockResolvedValueOnce({ required_confirmations: 2 } as never);
-  const res = await PUT(makeReq({ required_confirmations: 2 }), { params: { id: 'emergency' } });
+  const res = await PUT(makeReq({ required_confirmations: 2 }), { params: Promise.resolve({ id: 'emergency' }) });
   expect(res.status).toBe(200);
   expect(mockSetN).toHaveBeenCalledWith('owner-1', 'emergency', 2, 3);
   expect((await res.json()).verifier_count).toBe(3);
@@ -72,6 +72,6 @@ it('config PUT sets N against the verifier count (M)', async () => {
 it('config PUT maps an invalid N-of-M to 400', async () => {
   mockVerifierCount.mockResolvedValueOnce(1);
   mockSetN.mockRejectedValueOnce(new ValidationError('Invalid N-of-M', 'required_confirmations'));
-  const res = await PUT(makeReq({ required_confirmations: 5 }), { params: { id: 'emergency' } });
+  const res = await PUT(makeReq({ required_confirmations: 5 }), { params: Promise.resolve({ id: 'emergency' }) });
   expect(res.status).toBe(400);
 });

@@ -19,7 +19,7 @@ const mockDecrypt = vi.mocked(decryptAccessItem);
 function makeReq(body: unknown = {}, headers: Record<string, string> = {}) {
   return { json: async () => body, headers: { get: (k: string) => headers[k.toLowerCase()] ?? null } } as never;
 }
-const ctx = { params: { itemId: 'item-1' } };
+const ctx = { params: Promise.resolve({ itemId: 'item-1' }) };
 
 beforeEach(() => vi.clearAllMocks());
 

@@ -9,7 +9,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { requireOwner, readJson, isResponse, mapError } from '../../../../../lib/http/owner-route';
 import { updateRule, deleteRule, validateAccessRuleInput } from '../../../../../lib/rules/access-rules';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 const NOT_FOUND = { error: 'NotFound', message: 'Access rule not found' };
 
@@ -22,7 +22,7 @@ export async function PUT(req: NextRequest, { params }: Ctx): Promise<NextRespon
 
   try {
     const input = validateAccessRuleInput(body);
-    const updated = await updateRule(auth.ownerId, params.id, input);
+    const updated = await updateRule(auth.ownerId, (await params).id, input);
     if (!updated) return NextResponse.json(NOT_FOUND, { status: 404 });
     return NextResponse.json(updated);
   } catch (err) {
@@ -33,6 +33,6 @@ export async function PUT(req: NextRequest, { params }: Ctx): Promise<NextRespon
 export async function DELETE(_req: NextRequest, { params }: Ctx): Promise<NextResponse> {
   const auth = await requireOwner();
   if (isResponse(auth)) return auth;
-  await deleteRule(auth.ownerId, params.id);
+  await deleteRule(auth.ownerId, (await params).id);
   return NextResponse.json({ deleted: true });
 }

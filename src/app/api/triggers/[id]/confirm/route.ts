@@ -21,7 +21,7 @@ import { ReleaseStateMachine } from '../../../../../../lib/release/state-machine
 import { DECISIONS, type Decision } from '../../../../../../lib/release/verifier-decision';
 import { notifyOwnerReleasePendingGraceById } from '../../../../../../lib/notify/notifications';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 export async function POST(req: NextRequest, { params }: Ctx): Promise<NextResponse> {
   const body = (await req.json().catch(() => ({}))) as {
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest, { params }: Ctx): Promise<NextRespo
   }
 
   // The token is scoped to one release_state — it must match the path.
-  if (payload.releaseStateId !== params.id) {
+  if (payload.releaseStateId !== (await params).id) {
     return NextResponse.json({ error: 'Forbidden', message: 'Token not scoped to this release' }, { status: 403 });
   }
 

@@ -20,13 +20,13 @@ import { listVerifiers } from '../../../../../../lib/people/verifiers';
 import { notifyVerifiersForTrigger } from '../../../../../../lib/notify/notifications';
 import { VALID_TRIGGER_TYPES } from '../../../../../../lib/rules/access-rules';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 export async function POST(_req: NextRequest, { params }: Ctx): Promise<NextResponse> {
   const auth = await requireOwner();
   if (isResponse(auth)) return auth;
 
-  const triggerType = params.id; // [id] carries the trigger type for initiate
+  const triggerType = (await params).id; // [id] carries the trigger type for initiate
   if (!VALID_TRIGGER_TYPES.includes(triggerType as never)) {
     return NextResponse.json({ error: 'BadRequest', message: 'Unknown trigger type' }, { status: 400 });
   }

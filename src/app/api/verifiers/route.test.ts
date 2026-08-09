@@ -44,7 +44,7 @@ it('POST 201 on a valid verifier', async () => {
 
 it('DELETE removes confirmations + verifier', async () => {
   mockDelete.mockResolvedValueOnce(undefined);
-  const res = await DELETE(makeReq(), { params: { id: 'v1' } });
+  const res = await DELETE(makeReq(), { params: Promise.resolve({ id: 'v1' }) });
   expect(res.status).toBe(200);
   expect(mockDelete).toHaveBeenCalledWith('owner-1', 'v1');
 });
