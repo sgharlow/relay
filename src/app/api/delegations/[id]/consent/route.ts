@@ -15,7 +15,7 @@ import { requireOwner, readJson, isResponse, mapError } from '../../../../../../
 import { recordConsent, CONSENT_METHODS, type ConsentMethod } from '../../../../../../lib/people/delegation';
 import { ValidationError } from '../../../../../../lib/validation';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 export async function POST(req: NextRequest, { params }: Ctx): Promise<NextResponse> {
   const auth = await requireOwner();
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest, { params }: Ctx): Promise<NextRespo
       );
     }
     return NextResponse.json(
-      await recordConsent(params.id, {
+      await recordConsent((await params).id, {
         method: method as ConsentMethod,
         evidenceRef: typeof evidenceRef === 'string' ? evidenceRef : null,
       }),

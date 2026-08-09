@@ -13,7 +13,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { decryptAccessItem, AccessError } from '../../../../../../lib/access/dashboard';
 
-type Ctx = { params: { itemId: string } };
+type Ctx = { params: Promise<{ itemId: string }> };
 
 export async function POST(req: NextRequest, { params }: Ctx): Promise<NextResponse> {
   const body = (await req.json().catch(() => ({}))) as { token?: string };
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest, { params }: Ctx): Promise<NextRespo
   }
 
   try {
-    return NextResponse.json(await decryptAccessItem(token, params.itemId));
+    return NextResponse.json(await decryptAccessItem(token, (await params).itemId));
   } catch (err) {
     if (err instanceof AccessError) {
       return NextResponse.json({ error: 'AccessError', message: err.message }, { status: err.httpStatus });

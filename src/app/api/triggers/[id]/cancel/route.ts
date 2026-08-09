@@ -13,14 +13,14 @@ import { requireOwner, isResponse } from '../../../../../../lib/http/owner-route
 import { cancelTrigger, TriggerError } from '../../../../../../lib/release/triggers';
 import { ReleaseStateMachine } from '../../../../../../lib/release/state-machine';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 export async function POST(_req: NextRequest, { params }: Ctx): Promise<NextResponse> {
   const auth = await requireOwner();
   if (isResponse(auth)) return auth;
 
   try {
-    const row = await cancelTrigger(auth.ownerId, params.id, new ReleaseStateMachine());
+    const row = await cancelTrigger(auth.ownerId, (await params).id, new ReleaseStateMachine());
     return NextResponse.json({ state: row.state });
   } catch (err) {
     if (err instanceof TriggerError) {

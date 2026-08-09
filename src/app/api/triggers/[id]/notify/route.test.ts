@@ -18,7 +18,7 @@ import { POST } from './route';
 
 const mockSession = vi.mocked(getOwnerSession);
 const mockResend = vi.mocked(resendReleaseNotifications);
-const ctx = { params: { id: 'rs-1' } };
+const ctx = { params: Promise.resolve({ id: 'rs-1' }) };
 
 beforeEach(() => {
   vi.clearAllMocks();

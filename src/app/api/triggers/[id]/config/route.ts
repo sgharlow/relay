@@ -16,13 +16,13 @@ import { setRequiredConfirmations } from '../../../../../../lib/release/provisio
 import { getVerifierCount } from '../../../../../../lib/release/release-list';
 import { VALID_TRIGGER_TYPES } from '../../../../../../lib/domain/enums';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 export async function PUT(req: NextRequest, { params }: Ctx): Promise<NextResponse> {
   const auth = await requireOwner();
   if (isResponse(auth)) return auth;
 
-  const triggerType = params.id;
+  const triggerType = (await params).id;
   if (!VALID_TRIGGER_TYPES.includes(triggerType as never)) {
     return NextResponse.json({ error: 'BadRequest', message: 'Unknown trigger type' }, { status: 400 });
   }

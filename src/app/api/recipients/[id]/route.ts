@@ -14,7 +14,7 @@ import {
   validateRecipientInput,
 } from '../../../../../lib/people/recipients';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 const NOT_FOUND = { error: 'NotFound', message: 'Recipient not found' };
 
@@ -27,7 +27,7 @@ export async function PUT(req: NextRequest, { params }: Ctx): Promise<NextRespon
 
   try {
     const input = validateRecipientInput(body);
-    const updated = await updateRecipient(auth.ownerId, params.id, input);
+    const updated = await updateRecipient(auth.ownerId, (await params).id, input);
     if (!updated) return NextResponse.json(NOT_FOUND, { status: 404 });
     return NextResponse.json(updated);
   } catch (err) {
@@ -38,6 +38,6 @@ export async function PUT(req: NextRequest, { params }: Ctx): Promise<NextRespon
 export async function DELETE(_req: NextRequest, { params }: Ctx): Promise<NextResponse> {
   const auth = await requireOwner();
   if (isResponse(auth)) return auth;
-  await deleteRecipient(auth.ownerId, params.id);
+  await deleteRecipient(auth.ownerId, (await params).id);
   return NextResponse.json({ deleted: true });
 }

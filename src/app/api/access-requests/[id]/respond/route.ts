@@ -18,7 +18,7 @@ import { ValidationError } from '../../../../../../lib/validation';
 import { query } from '../../../../../../lib/db/connection';
 import { notifyRequesterOfOutcome } from '../../../../../../lib/notify/notifications';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 export async function POST(req: NextRequest, { params }: Ctx): Promise<NextResponse> {
   const auth = await requireOwner();
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest, { params }: Ctx): Promise<NextRespo
     }
 
     const result = await respondToChallenge({
-      requestId: params.id,
+      requestId: (await params).id,
       ownerId: auth.ownerId,
       response,
       machine: new ReleaseStateMachine(),
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest, { params }: Ctx): Promise<NextRespo
          JOIN recipients r ON r.id = ar.recipient_id
         WHERE ar.id = $1 AND ar.owner_id = $2
         LIMIT 1`,
-      [params.id, auth.ownerId],
+      [(await params).id, auth.ownerId],
     );
     const owner = await query<{ email: string }>(
       `SELECT email FROM users WHERE id = $1 LIMIT 1`,

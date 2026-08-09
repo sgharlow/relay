@@ -11,7 +11,7 @@ import { requireOwner, readJson, isResponse, mapError } from '../../../../../lib
 import { decideApproval } from '../../../../../lib/people/approvals';
 import { ValidationError } from '../../../../../lib/validation';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 export async function POST(req: NextRequest, { params }: Ctx): Promise<NextResponse> {
   const auth = await requireOwner();
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest, { params }: Ctx): Promise<NextRespo
     if (decision !== 'approve' && decision !== 'reject') {
       throw new ValidationError('decision must be approve or reject', 'decision');
     }
-    return NextResponse.json(await decideApproval(auth.ownerId, params.id, decision));
+    return NextResponse.json(await decideApproval(auth.ownerId, (await params).id, decision));
   } catch (err) {
     return mapError(err);
   }
