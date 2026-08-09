@@ -12,8 +12,18 @@ const LINKS = [
   { href: '/vault', label: 'Vault' },
   { href: '/import', label: 'Import' },
   { href: '/recipients', label: 'Recipients' },
+  // Shipped in the circle sprint and then reachable only from a single
+  // notification email — so an owner who never received that email, or deleted
+  // it, had no route to the one screen that shows whether their circle is
+  // actually complete.
+  { href: '/circle', label: 'Circle' },
   { href: '/rules', label: 'Rules' },
   { href: '/triggers', label: 'Triggers' },
+  // Linked from nowhere at all before this: not from an email, not from the
+  // sidebar. A parent whose child had proposed changes could not find the queue
+  // where they approve them, which made the whole delegation flow terminate in
+  // silence.
+  { href: '/approvals', label: 'Approvals' },
   { href: '/audit', label: 'Audit' },
   // Leaving has to be findable. The terms promise an export and the privacy
   // page promises deletion; a promise reachable only by emailing us is not

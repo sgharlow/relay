@@ -40,7 +40,23 @@ body {
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  /*
+    Geist, which layout.tsx has been loading all along.
+    This read `Arial, Helvetica, sans-serif` — the create-next-app default —
+    until 2026-08-09, so both Geist files were downloaded on every page load and
+    then never used, and the entire product rendered in Arial. On a product
+    asking someone to hand over a parent's credentials, looking unfinished is
+    read as being unsafe.
+  */
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* The monospace face is loaded too; give it the one job it is for. */
+code,
+kbd,
+samp,
+pre {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
 }
 
 @layer utilities {
