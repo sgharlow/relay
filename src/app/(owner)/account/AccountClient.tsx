@@ -50,6 +50,10 @@ export default function AccountClient() {
   const [confirmEmail, setConfirmEmail] = useState('');
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [name, setName] = useState('');
+  const [nameSaved, setNameSaved] = useState<string | null>(null);
+  const [newCodes, setNewCodes] = useState<string[] | null>(null);
+  const [regenerating, setRegenerating] = useState(false);
 
   async function onExport() {
     setError(null);
@@ -142,8 +146,93 @@ export default function AccountClient() {
     }
   }
 
+  async function onSaveName(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setNameSaved(null);
+    const res = await fetch('/api/account', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ displayName: name }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data.message ?? 'Could not save that name.');
+      return;
+    }
+    setNameSaved(data.displayName ?? '(cleared — your email will be used)');
+  }
+
+  async function onRegenerate() {
+    setError(null);
+    setRegenerating(true);
+    const res = await fetch('/api/account/recovery-codes', { method: 'POST' });
+    const data = await res.json().catch(() => ({}));
+    setRegenerating(false);
+    if (!res.ok) {
+      setError(data.message ?? 'Could not issue new codes.');
+      return;
+    }
+    setNewCodes(data.recoveryCodes ?? []);
+  }
+
   return (
     <div className="space-y-8">
+      <section className="rounded border border-slate-200 bg-white p-5">
+        <h2 className="font-medium text-slate-900">Your name</h2>
+        <p className="mt-2 text-sm leading-relaxed text-slate-600">
+          This is how you appear to the people you trust. They see it on every message Relay sends
+          on your behalf — including the one that arrives when something has gone wrong, which is
+          the worst possible moment for it to say an email address they do not recognise.
+        </p>
+        <form onSubmit={onSaveName} className="mt-4 flex flex-wrap items-center gap-2">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Margaret Chen"
+            className="w-64 rounded border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+          <button
+            type="submit"
+            className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            Save name
+          </button>
+          {nameSaved ? <span className="text-sm text-slate-600">Saved: {nameSaved}</span> : null}
+        </form>
+      </section>
+
+      <section className="rounded border border-slate-200 bg-white p-5">
+        <h2 className="font-medium text-slate-900">Recovery codes</h2>
+        <p className="mt-2 text-sm leading-relaxed text-slate-600">
+          Relay has no password. If you lose the phone with your authenticator on it, these codes
+          are the only way back in — so if you cannot find the list you were given at signup, get a
+          new one now, while you still can.
+        </p>
+        <p className="mt-2 text-sm leading-relaxed text-slate-600">
+          Issuing a new list immediately stops the old one working.
+        </p>
+        <button
+          onClick={onRegenerate}
+          disabled={regenerating}
+          className="mt-4 rounded border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+        >
+          {regenerating ? 'Issuing…' : 'Issue new recovery codes'}
+        </button>
+
+        {newCodes ? (
+          <div className="mt-4 rounded border border-amber-300 bg-amber-50 p-4">
+            <p className="text-sm font-medium text-amber-900">
+              Write these down now. They are not shown again.
+            </p>
+            <ul className="mt-3 grid grid-cols-2 gap-1 font-mono text-sm text-slate-800">
+              {newCodes.map((c) => (
+                <li key={c}>{c}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </section>
       <section className="rounded border border-slate-200 bg-white p-5">
         <h2 className="font-medium text-slate-900">Export everything</h2>
         <p className="mt-2 text-sm leading-relaxed text-slate-600">

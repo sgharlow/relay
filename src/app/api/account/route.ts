@@ -18,6 +18,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 import { requireOwner, readJson, isResponse } from '../../../../lib/http/owner-route';
 import { deleteAccount } from '../../../../lib/account/lifecycle';
+import { MAX_DISPLAY_NAME_LENGTH } from '../../../../lib/auth/signup';
 import { query } from '../../../../lib/db/connection';
 
 export async function DELETE(req: NextRequest): Promise<NextResponse> {
@@ -41,4 +42,50 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
   }
 
   return NextResponse.json(await deleteAccount(auth.ownerId));
+}
+
+/**
+ * PATCH /api/account — change the owner's display name.
+ *
+ * It was set once at signup and never editable again, which mattered more than
+ * it looks: this is the name every recipient and verifier sees on the messages
+ * that arrive during an emergency. A typo made at signup was permanent in the
+ * one place it is read by the people it has to reassure.
+ *
+ * Requirements: J13-R1
+ */
+export async function PATCH(req: NextRequest): Promise<NextResponse> {
+  const auth = await requireOwner();
+  if (isResponse(auth)) return auth;
+
+  const body = await readJson(req);
+  if (isResponse(body)) return body;
+
+  const raw = (body as { displayName?: unknown }).displayName;
+  if (typeof raw !== 'string') {
+    return NextResponse.json(
+      { error: 'ValidationError', message: 'displayName is required', field: 'displayName' },
+      { status: 400 },
+    );
+  }
+
+  const trimmed = raw.trim();
+  if (trimmed.length > MAX_DISPLAY_NAME_LENGTH) {
+    // Rejected rather than truncated: silently shortening the name someone will
+    // be recognised by is worse than telling them it did not fit.
+    return NextResponse.json(
+      {
+        error: 'ValidationError',
+        message: `Name must be ${MAX_DISPLAY_NAME_LENGTH} characters or fewer`,
+        field: 'displayName',
+      },
+      { status: 400 },
+    );
+  }
+
+  // Empty clears it, falling back to the email address exactly as before a name
+  // was ever set. The owner id comes from the session and never from the body.
+  await query(`UPDATE users SET display_name = $1 WHERE id = $2`, [trimmed || null, auth.ownerId]);
+
+  return NextResponse.json({ displayName: trimmed || null });
 }
