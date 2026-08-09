@@ -19,9 +19,19 @@ would only have accrued delivery failures.
 Events: `checkout.session.completed`, `customer.subscription.updated`,
 `customer.subscription.deleted`.
 
-Vercel production carries `STRIPE_SECRET_KEY` (test), `STRIPE_PRICE_RELAY_ANNUAL`
+Vercel production carries `STRIPE_SECRET_KEY`, `STRIPE_PRICE_RELAY_ANNUAL`
 and `STRIPE_WEBHOOK_SECRET` (this endpoint's own secret — report-bridge's would
 reject every event).
+
+**The production key is the LIVE key — verified 2026-08-08 on the deployed
+build**, not inferred from the dashboard. A checkout session started by a real
+self-serve account came back as `cs_live_…`; a test key would have returned
+`cs_test_…`, or failed outright against the live price id. This paragraph
+previously read "(test)" and was left behind when live mode landed — the config
+was right and the doc was wrong, which is the more dangerous direction, since it
+invites someone to "fix" a working key. All three values are marked sensitive in
+Vercel, so `vercel env pull` returns them empty: the session-id prefix is the
+only read path that does not require the dashboard.
 
 ## How live objects got created
 

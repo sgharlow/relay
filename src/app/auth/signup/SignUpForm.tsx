@@ -10,10 +10,12 @@
  * Requirements: J1-R3, 17.1
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+
+import { otpauthQrSvg } from '../../../../lib/auth/totp-qr';
 
 type Phase = 'email' | 'enrol' | 'recovery';
 
@@ -38,6 +40,7 @@ export default function SignUpForm() {
   const [buyIntent, setBuyIntent] = useState(false);
   const [enrolmentToken, setEnrolmentToken] = useState('');
   const [secret, setSecret] = useState('');
+  const [otpauthUrl, setOtpauthUrl] = useState('');
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -47,6 +50,11 @@ export default function SignUpForm() {
   useEffect(() => {
     setBuyIntent(new URLSearchParams(window.location.search).get('next') === 'checkout');
   }, []);
+
+  // Encoding is pure and fast, but it runs on every keystroke in the code field
+  // without this — and a wrong-looking QR mid-typing is the kind of thing that
+  // makes someone start over.
+  const qrSvg = useMemo(() => (otpauthUrl ? otpauthQrSvg(otpauthUrl) : ''), [otpauthUrl]);
 
   async function onBegin(e: React.FormEvent) {
     e.preventDefault();
@@ -69,6 +77,7 @@ export default function SignUpForm() {
     setEnrolmentToken(data.enrolmentToken);
     // The secret is read out of the otpauth URL and never stored elsewhere.
     setSecret(new URL(data.otpauthUrl).searchParams.get('secret') ?? '');
+    setOtpauthUrl(data.otpauthUrl);
     setPhase('enrol');
   }
 
@@ -243,15 +252,33 @@ export default function SignUpForm() {
   return (
     <form onSubmit={onComplete} className="space-y-4">
       {/*
-        No QR image here on purpose. Rendering one via a hosted QR service would
-        send the otpauth URL — which contains the TOTP secret — to a third
-        party. A QR belongs here, but only once it is generated client-side.
+        The QR is generated in this browser — see lib/auth/totp-qr.ts. A hosted
+        QR service would have sent the otpauth URL, and with it the TOTP secret,
+        to a third party; that ruled out the obvious implementation, not the
+        capability. The typed setup key stays below it, because scanning fails
+        on a desktop with no camera and on a phone signing up for itself.
       */}
       <div className="rounded border border-slate-200 bg-slate-50 p-3">
         <p className="text-sm font-medium text-slate-700">Add Relay to your authenticator</p>
         <p className="mt-1 text-xs text-slate-500">
-          In 1Password, Authy, Google Authenticator, or any TOTP app, choose
-          &ldquo;enter a setup key&rdquo; and paste this:
+          Open 1Password, Authy, Google Authenticator, or any TOTP app and scan this:
+        </p>
+
+        {qrSvg ? (
+          <div
+            className="mx-auto mt-3 w-44 max-w-full rounded bg-white p-2"
+            /*
+              Safe by construction, not by trust: otpauthQrSvg emits only an
+              <svg> of numeric <rect> coordinates. The payload is encoded into
+              the module matrix, never interpolated into markup, so no part of
+              the email or secret reaches the DOM as text. A test pins that.
+            */
+            dangerouslySetInnerHTML={{ __html: qrSvg }}
+          />
+        ) : null}
+
+        <p className="mt-3 text-xs text-slate-500">
+          Can&rsquo;t scan? Choose &ldquo;enter a setup key&rdquo; and type this instead:
         </p>
 
         <code className="mt-2 block break-all rounded bg-white px-2 py-2 text-center text-sm tracking-widest text-slate-800">

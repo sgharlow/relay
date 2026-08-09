@@ -31,7 +31,7 @@ two disagree on.
 | J2 | Cold-start defeat | **PASS** | guided seed saved 4 items; `kms/wrap` 200, `vault/items` 201 each time |
 | J3 | Assisted setup for a parent | **PASS** | delegation created `pending`; **inactive until consent recorded**; self-delegation and invalid consent methods refused; the **paper path** activates it with the artifact stored (a parent without a smartphone is not a blocker) |
 | J4 | Building the circle of trust | **PASS (partial)** | recipient, verifier and 3 access rules created; invitation *email* path not walked |
-| J5 | The living habit | **PARTIAL** | check-in reverses PENDING/GRACE/RELEASED (code-verified, and the RELEASED edge is now also exposed in the UI); no check-in **button** on /triggers — only the interval setting |
+| J5 | The living habit | **PARTIAL** | check-in reverses PENDING/GRACE/RELEASED (code-verified, and the RELEASED edge is now also exposed in the UI). ~~No check-in button.~~ **One shipped in `afff84b`**, in the same form as the interval setting (`src/app/(owner)/triggers/page.tsx:159`), unguarded — so wherever the interval renders, it renders. Not yet clicked in a browser: the page is client-rendered, so the control is absent from the server HTML and only a real browser can prove it. Remaining gap is retention (passive liveness, escalation ladder), not the control |
 | J6 | Someone requests access | **PASS** | request → 201 `awaiting_owner` with `ownerChallenged: true` (owner challenged first, verifiers not disturbed); forged token → 403; velocity limit fires on the 4th request in 24h |
 | J7 | The verifier's moment | **PASS** | `/verify?token=` rendered case ref `RLY-992C-TXYS`, scope, reversibility and "you will never see any of their information"; confirming drove 0/1 → 1/1 → **RELEASED** |
 | J8 | Hands on the account · **PRIMARY DEMAND** | **PASS** | recipient opened a prioritised access plan and **Reveal returned the exact plaintext the owner had typed** — full KMS unwrap + client decrypt round-trip |
@@ -65,8 +65,10 @@ asserts the count so it cannot drift.
   **only** to a bearer whose token passes signature verification; forged, tampered and malformed
   tokens still get the flat generic error, confirmed live. Denied decrypt attempts are excluded and
   repeat opens deduplicate, so the count is what they actually saw.
-- **J5** has no check-in button, only the interval setting. The reversal it performs is now also
-  reachable from the trigger card, so this is a convenience gap rather than a capability one.
+- ~~**J5** has no check-in button, only the interval setting.~~ **BUILT in `afff84b`** — a check-in
+  control now sits beside the interval field, and names what it stood down rather than only
+  confirming a button worked. The reversal is also reachable from the trigger card. What remains
+  under J5 is retention, not the control.
 - **J9 steps 5–7** — reversal receipt, re-arm confirmation, thank-you-the-recipient — remain
   unbuilt. Step 4 now carries the emotional weight these were meant to share.
 - **J4's invitation email path** and **J8's ephemeral-reveal refinements** are untouched.

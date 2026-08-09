@@ -17,11 +17,33 @@ The full source-of-truth specs live in `.kiro/specs/relay-h0-mvp/` (`requirement
 `tasks.md`) and `specs/Relay_H0_Build_Spec_v2.md`. Read `design.md` before changing any
 release/crypto/OCC logic — it defines the schema, state-transition table, and the demo spine.
 
-## Build state — code-complete, deployed, dogfooded live (2026-06-27)
+## Build state — commercialising, live at relaystandby.com
 
-`npm run build`, `npx tsc --noEmit`, and `npx vitest --run` (**405 tests, 58 files**) are all green. The entire backend (28 API routes) and all UI screens are complete, and the full app was **dogfooded end-to-end on live Aurora DSQL + AWS KMS on 2026-06-27**: owner TOTP sign-in, vault + importance engine, the release state machine (ARMED→PENDING→GRACE→RELEASED), active-active multi-region (a release written in us-east-1 read strongly-consistent from us-west-2), the full crypto round-trip (create item → in-browser AES-GCM + KMS wrap → DSQL → recipient token → KMS unwrap → plaintext), and the hash-chained audit log (server + client verification both intact). Deployed live at https://relay-three-henna.vercel.app.
+H0 is over: relay **won "Most Impactful"** (2026-08-05) and the product is now on the G1→G5
+commercial track. `npm run build`, `npx tsc --noEmit` and `npm test` are green — **derive the test
+count with the command in `PROJECT.yaml` (`derived.test_count`) rather than trusting a number
+quoted in prose.** A hardcoded count sat here drifting for weeks; that is why it is gone.
 
-Per-task implementation detail lives in the specs (`.kiro/specs/relay-h0-mvp/`, `specs/Relay_H0_Build_Spec_v2.md`); the live-dogfood checklist is `docs/e2e-verification.md`. Remaining work is submission packaging only (demo video, Devpost form) — see `docs/SUBMISSION-RUNBOOK.md`.
+Live on **https://relaystandby.com** (the custom domain — the old `relay-three-henna.vercel.app`
+is a stale surface, not the product). Six sprints past the H0 MVP have shipped: self-serve signup
+with per-user TOTP, access policies, delegation with consent, verifier deny/abstain, access
+requests, recovery codes, the wired heartbeat scheduler with an off-Vercel dead-man's switch, and
+live-mode Stripe billing.
+
+**All ten user journeys were walked against production as a brand-new self-serve account on
+2026-08-08** — see the sweep table at the top of `docs/user-journeys.md`, which supersedes the
+`[BUILT]`/`[GAP]` tags further down that file. The 2026-06-27 dogfood described below is still
+true and is now the *older* of two live proofs.
+
+Authority for build state: `PROJECT.yaml` (gates, volatile facts) and the sweep table in
+`docs/user-journeys.md`. Per-task detail lives in the specs (`.kiro/specs/relay-h0-mvp/`,
+`specs/Relay_H0_Build_Spec_v2.md`); `docs/e2e-verification.md` is the live-dogfood checklist.
+
+The 2026-06-27 dogfood on live Aurora DSQL + AWS KMS proved: owner TOTP sign-in, vault + importance
+engine, the release state machine (ARMED→PENDING→GRACE→RELEASED), active-active multi-region (a
+release written in us-east-1 read strongly-consistent from us-west-2), the full crypto round-trip
+(create item → in-browser AES-GCM + KMS wrap → DSQL → recipient token → KMS unwrap → plaintext),
+and the hash-chained audit log (server + client verification both intact).
 
 Conventions to preserve: `tsconfig.json` targets `ES2020` (required for the `bigint` OCC version type — if `tsc` reports stale errors after a config change, delete `tsconfig.tsbuildinfo`); `.eslintrc.json` ignores `^_`-prefixed unused vars. Reset the demo to a clean 25-item/ARMED state with `npx tsx --env-file=.env.local scripts/reset-demo.ts`. To visually verify UI, `npm run dev` then drive with Playwright.
 
