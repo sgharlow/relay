@@ -95,7 +95,7 @@ export default function SecurityPage() {
   return (
     <main className="min-h-screen bg-white text-slate-800">
       <header className="mx-auto max-w-3xl px-6 pb-2 pt-14">
-        <Link href="/caregivers" className="text-sm text-slate-500 hover:text-slate-800">
+        <Link href="/caregivers" style={{ fontSize: 'var(--t2)', color: 'var(--ink-muted)', textDecoration: 'underline', textUnderlineOffset: '3px' }}>
           ← Relay for caregivers
         </Link>
         <h1 className="mt-4 text-4xl font-bold leading-tight tracking-tight text-slate-900">

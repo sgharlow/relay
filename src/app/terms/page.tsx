@@ -115,7 +115,7 @@ export default function TermsPage() {
           </p>
         </section>
 
-        <footer className="border-t border-slate-200 pt-6 text-slate-500">
+        <footer style={{ borderTop: '1px solid var(--rule)', paddingTop: 'var(--s6)', color: 'var(--ink-muted)' }}>
           <a className="underline hover:text-slate-800" href="/caregivers">
             Back to Relay for caregivers
           </a>

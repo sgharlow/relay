@@ -258,10 +258,21 @@ export default function SignUpForm() {
         capability. The typed setup key stays below it, because scanning fails
         on a desktop with no camera and on a phone signing up for itself.
       */}
-      <div className="rounded border border-slate-200 bg-slate-50 p-3">
-        <p className="text-sm font-medium text-slate-700">Add Relay to your authenticator</p>
-        <p className="mt-1 text-xs text-slate-500">
-          Open 1Password, Authy, Google Authenticator, or any TOTP app and scan this:
+      <div style={{ border: '1px solid var(--rule)', borderRadius: 'var(--radius-owner)', background: 'var(--paper-sunken)', padding: 'var(--s4)' }}>
+        {/*
+          Names the reason, not the mechanism. "Enrol a TOTP factor" is what the
+          system is doing; "a password alone can be phished, and this vault holds
+          your family's accounts" is why anyone should bother. The step is the
+          most common place to abandon signup, and it is abandoned because it
+          feels like homework rather than protection.
+        */}
+        <p style={{ fontSize: 'var(--t3)', fontWeight: 600 }}>
+          Now the part that makes this vault worth trusting
+        </p>
+        <p style={{ fontSize: 'var(--t2)', lineHeight: 1.6, color: 'var(--ink-muted)', marginTop: 'var(--s2)' }}>
+          A password on its own can be phished, and this vault holds your family&rsquo;s accounts.
+          Scan this once with an authenticator app and nobody can get in with your password alone —
+          not an attacker, and not us.
         </p>
 
         {qrSvg ? (
@@ -277,7 +288,8 @@ export default function SignUpForm() {
           />
         ) : null}
 
-        <p className="mt-3 text-xs text-slate-500">
+        <p style={{ fontSize: 'var(--t2)', color: 'var(--ink-muted)', marginTop: 'var(--s3)' }}>
+          No app yet? Google Authenticator and 1Password are both free and take about a minute.
           Can&rsquo;t scan? Choose &ldquo;enter a setup key&rdquo; and type this instead:
         </p>
 
@@ -293,15 +305,27 @@ export default function SignUpForm() {
           Copy setup key
         </button>
 
-        <p className="mt-2 text-xs text-slate-500">
-          Account name: <span className="text-slate-700">Relay ({email})</span> · time-based · 6
-          digits
+        <p style={{ fontSize: 'var(--t1)', color: 'var(--ink-faint)', marginTop: 'var(--s2)' }}>
+          Account name: <span style={{ color: 'var(--ink-muted)' }}>Relay ({email})</span> ·
+          time-based · 6 digits
         </p>
       </div>
 
+      {/*
+        Said here rather than discovered later. This is the one place where
+        losing a phone is genuinely a problem, and a product about continuity
+        that hides its own failure mode has not earned the trust it is asking
+        for. Better to say it now than at 2am.
+      */}
+      <p style={{ fontSize: 'var(--t2)', lineHeight: 1.6, color: 'var(--ink-muted)' }}>
+        <span style={{ fontWeight: 600, color: 'var(--ink)' }}>If you lose your phone:</span> we
+        give you ten recovery codes on the next screen. Print them, or put them somewhere you keep
+        important paper. They are the only way back in.
+      </p>
+
       <div>
-        <label htmlFor="code" className="mb-1 block text-sm font-medium text-slate-700">
-          6-digit code from your authenticator
+        <label htmlFor="code" style={{ display: 'block', fontSize: 'var(--t2)', fontWeight: 500, marginBottom: 'var(--s1)' }}>
+          Then type the 6 digits it shows you
         </label>
         <input
           id="code"
@@ -327,8 +351,8 @@ export default function SignUpForm() {
         {pending ? 'Verifying…' : 'Create account'}
       </button>
 
-      <p className="text-center text-xs text-slate-500">
-        Your account is created only once this code checks out.
+      <p style={{ fontSize: 'var(--t1)', color: 'var(--ink-faint)', textAlign: 'center' }}>
+        Nothing is saved until this code checks out — abandon here and no account exists.
       </p>
     </form>
   );
