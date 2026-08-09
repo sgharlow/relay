@@ -12,6 +12,7 @@
  */
 
 import { query } from '../db/connection';
+import { TriggerError } from './triggers';
 import { isReversibleTrigger } from './state-machine';
 import { caseIdFor } from './case-id';
 
@@ -52,7 +53,13 @@ export async function buildVerifierContext(
 
   const row = release.rows[0];
   if (!row) {
-    throw new Error(`Release state not found: ${releaseStateId}`);
+    // Typed, so the route can tell "this release is gone" apart from "the
+    // database is down" and answer each honestly. A bare Error forced the
+    // caller to choose between swallowing both — hiding an outage behind a
+    // friendly message — or neither, which is the 500 a verifier hit in
+    // production on 2026-08-08. The id stays out of the message: it is echoed
+    // back to whoever holds the link.
+    throw new TriggerError('Release state not found', 404);
   }
 
   // Counts and categories only. Deliberately no title, no ciphertext column.

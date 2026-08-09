@@ -144,3 +144,22 @@ describe('buildVerifierContext', () => {
     expect(ctx.categories).toEqual([]);
   });
 });
+
+/**
+ * Added 2026-08-08 after a production probe returned an unhandled 500.
+ *
+ * The route can only turn "this release is gone" into a plain refusal if it can
+ * TELL that is what happened. A bare Error is indistinguishable from a database
+ * falling over, so the route either has to swallow both — hiding an outage — or
+ * neither, which is the 500 a verifier actually saw. The type is the fix.
+ */
+describe('buildVerifierContext — missing release state', () => {
+  it('throws a typed 404 the route can recognise, not a bare Error', async () => {
+    install({ release: null });
+
+    await expect(buildVerifierContext('rs-gone', 'v-1')).rejects.toMatchObject({
+      name: 'TriggerError',
+      httpStatus: 404,
+    });
+  });
+});

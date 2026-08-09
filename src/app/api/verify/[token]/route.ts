@@ -37,9 +37,27 @@ export async function GET(_req: NextRequest, { params }: Ctx): Promise<NextRespo
     return NextResponse.json({ error: 'Forbidden', message: 'This link is no longer valid' }, { status: 403 });
   }
 
-  return NextResponse.json(
-    await buildVerifierContext(payload.releaseStateId, payload.verifierId),
-  );
+  try {
+    return NextResponse.json(
+      await buildVerifierContext(payload.releaseStateId, payload.verifierId),
+    );
+  } catch (err) {
+    // A validly signed link whose release state is gone — the owner deleted
+    // their account, or the release was resolved — reads to the holder exactly
+    // as a bad link does, and gets the same words. Deliberately indistinguish-
+    // able from a forgery: a doctor opening this mid-emergency needs to know
+    // the link is no good, not which of the two reasons applies.
+    if (err instanceof TriggerError && err.httpStatus === 404) {
+      return NextResponse.json(
+        { error: 'Forbidden', message: 'This link is no longer valid' },
+        { status: 403 },
+      );
+    }
+    // Anything else is a real failure and must stay one. Swallowing it here
+    // would show every verifier "your link expired" during an outage while
+    // nothing paged anyone.
+    throw err;
+  }
 }
 
 export async function POST(req: NextRequest, { params }: Ctx): Promise<NextResponse> {
