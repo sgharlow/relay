@@ -1,8 +1,14 @@
 /**
  * OwnerLayout (Requirement 12.1) — the Owner-mode shell.
  *
- * Blue/neutral, information-dense (14–16px body), low-saturation. Gates the
- * whole owner area: an unauthenticated visitor is redirected to sign in.
+ * THE SHELL OWNS THE MEASURE. The audit found /vault and /triggers rendering at
+ * different widths and indents because each page set its own padding, so the
+ * app had no consistent geometry. Rail, gutter and column are declared here and
+ * pages get no say: 240px rail, 32px gutter, 1120px column.
+ *
+ * Information-dense by design — tables, rows, badges, 16px floor. Access mode
+ * is the deliberate opposite and lives in (access)/layout.tsx; the two should be
+ * tellable apart with the words cropped out.
  *
  * Feature: relay-h0-mvp
  */
@@ -17,11 +23,20 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
   if (!session) redirect('/auth/signin');
 
   return (
-    <div className="flex min-h-screen bg-slate-50 text-slate-900">
-      <aside className="flex w-56 shrink-0 flex-col gap-6 bg-slate-900 px-4 py-5 text-slate-100">
+    <div className="flex min-h-screen" style={{ background: 'var(--paper)', color: 'var(--ink)' }}>
+      <aside
+        className="flex shrink-0 flex-col"
+        style={{
+          width: 'var(--rail)',
+          gap: 'var(--s6)',
+          padding: 'var(--s6) var(--s4)',
+          background: 'var(--ink)',
+          color: 'var(--paper)',
+        }}
+      >
         <div>
-          <div className="text-lg font-semibold tracking-tight">Relay</div>
-          <div className="text-xs text-slate-400">Living-continuity vault</div>
+          <div style={{ fontSize: 'var(--t5)', fontWeight: 600, letterSpacing: '-0.01em' }}>Relay</div>
+          <div style={{ fontSize: 'var(--t1)', color: 'var(--ink-faint)' }}>Living-continuity vault</div>
         </div>
         <SidebarNav />
         {session.isDemo ? (
@@ -30,12 +45,14 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
           </div>
         ) : null}
       </aside>
-      <main className="flex-1 px-8 py-6 text-[15px] leading-relaxed">
+      <main className="flex-1" style={{ padding: 'var(--s6) var(--gutter)', fontSize: 'var(--t3)' }}>
+        <div className="mx-auto" style={{ maxWidth: 'var(--measure-owner)' }}>
         {/* On every owner screen, because the failure it reports is invisible
             on all of them: a vault with no trusted contact renders exactly like
             a working one and only reveals itself by not opening. */}
         <ReadinessBanner />
         {children}
+        </div>
       </main>
     </div>
   );

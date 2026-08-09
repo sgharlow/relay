@@ -2,17 +2,90 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===========================================================================
+   THE SYSTEM
+   ---------------------------------------------------------------------------
+   The production audit found eight problems. Six of them were one problem:
+   there was no system, so every screen invented its own type sizes, spacing and
+   geometry. This file is the missing artifact.
+
+   Two modes are declared here rather than per page, because the audit's
+   load-bearing finding was that owner mode and access mode are the same
+   interface with different words. They read different rows of one scale, use
+   different faces, and have different measures. The test: screenshot both, crop
+   the words out, and you should still know which is which.
+
+   Palette 3b, "Warm Archive". Ink on paper reads 14:1, which clears AA
+   everywhere without effort and frees the other colours to mean ONLY state.
+   =========================================================================== */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* --- Ground and ink ---------------------------------------------------- */
+  --paper: #f7f4ee;        /* every surface. Warm enough not to read as a spreadsheet. */
+  --paper-raised: #fffdf9; /* cards sitting on paper */
+  --paper-sunken: #efeae0; /* wells, table headers */
+  --ink: #1f1b16;          /* all text, all primary buttons. 14:1 on paper. */
+  --ink-muted: #6b6257;    /* secondary text. 5.2:1 on paper. */
+  --ink-faint: #8a8073;    /* meta only, never body */
+  --rule: #e3dccf;         /* hairline borders */
+  --rule-strong: #cfc7b8;
+
+  /* --- State. Each colour has exactly one job and appears nowhere else. ----
+     This is what makes reversibility legible without a paragraph explaining
+     it, and why there is no "success" colour: nothing in Relay is a success.
+     Things are either armed, or someone is having the worst week of their
+     life. */
+  --sage: #4f7a6b;         /* ARMED, closed, safe — the resting state */
+  --sage-soft: #e6ede9;
+  --ochre: #b4703a;        /* in motion and REVERSIBLE: pending, grace, released */
+  --ochre-text: #8a5a2b;   /* ochre measures 3.9:1 as text, so wording uses this */
+  --ochre-soft: #f6ead9;
+  --clay: #b2402c;         /* PERMANENT ONLY. Estate handoff, account closure. Never anything else. */
+  --clay-soft: #f8e5e0;
+
+  /* --- Type scale. Nine steps, and no page may invent a tenth. -------------
+     Owner mode reads T1–T7. Access mode reads T4–T9. The overlap is
+     deliberate and narrow. */
+  --t1: 0.75rem;   /* 12 · meta, timestamps, table keys      owner */
+  --t2: 0.875rem;  /* 14 · dense UI, nav, table cells        owner */
+  --t3: 1rem;      /* 16 · owner body — the floor            owner */
+  --t4: 1.125rem;  /* 18 · access body — the floor           both  */
+  --t5: 1.25rem;   /* 20 · owner H2 · access secondary       both  */
+  --t6: 1.5rem;    /* 24 · access lead paragraph             access */
+  --t7: 1.875rem;  /* 30 · owner H1 — one value, everywhere  owner */
+  --t8: 2.375rem;  /* 38 · access H1 — one value             access */
+  --t9: 3rem;      /* 48 · marketing hero only               public */
+
+  /* --- Space. These eight values only. ----------------------------------- */
+  --s1: 0.25rem; --s2: 0.5rem; --s3: 0.75rem; --s4: 1rem;
+  --s6: 1.5rem;  --s8: 2rem;   --s12: 3rem;   --s16: 4rem;
+
+  /* --- Geometry. The shell owns the measure; pages get no say. ------------ */
+  --rail: 240px;
+  --gutter: 2rem;
+  --measure-owner: 1120px;
+  --measure-access: 620px;
+  --radius-owner: 4px;
+  --radius-access: 12px;
+
+  /* Wired by layout.tsx via next/font. */
+  --font-ui: var(--font-public-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-read: var(--font-newsreader), Georgia, "Times New Roman", serif;
+
+  /* Kept for compatibility with the pre-system pages until each is migrated. */
+  --background: var(--paper);
+  --foreground: var(--ink);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/*
+ * Deliberately no dark theme.
+ *
+ * This is a paper product — a document a family keeps. The whole argument of
+ * the palette is ink on paper at 14:1, and inverting it produces a dashboard,
+ * which is the thing the direction is explicitly not. A half-considered dark
+ * mode on a credential screen also reads as unfinished, and unfinished reads as
+ * unsafe here.
+ */
 
 /*
  * No page may ever scroll sideways.
@@ -38,25 +111,36 @@ body {
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  /*
-    Geist, which layout.tsx has been loading all along.
-    This read `Arial, Helvetica, sans-serif` — the create-next-app default —
-    until 2026-08-09, so both Geist files were downloaded on every page load and
-    then never used, and the entire product rendered in Arial. On a product
-    asking someone to hand over a parent's credentials, looking unfinished is
-    read as being unsafe.
-  */
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  font-family: var(--font-ui);
+  font-size: var(--t3);          /* owner body floor: 16. Never lower. */
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* The monospace face is loaded too; give it the one job it is for. */
+/*
+ * Access mode. Everything a recipient sees during an emergency.
+ *
+ * Not owner mode with different words: a different face, a narrower measure, a
+ * higher floor, softer corners, and no chrome at all. Applied by the (access)
+ * route group's layout.
+ */
+.mode-access {
+  font-family: var(--font-read);
+  font-size: var(--t4);          /* access body floor: 18. Instructions go to 20. */
+  line-height: 1.6;
+}
+
+.mode-access h1 { font-family: var(--font-read); font-size: var(--t8); font-weight: 600; }
+.mode-access h2 { font-family: var(--font-read); font-size: var(--t6); font-weight: 500; }
+
 code,
 kbd,
 samp,
 pre {
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.9em;
 }
 
 @layer utilities {

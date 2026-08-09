@@ -3,15 +3,30 @@ import { Analytics } from "@vercel/analytics/next";
 import localFont from "next/font/local";
 import "./globals.css";
 
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-  weight: "100 900",
+/**
+ * Two faces, one job each — this is what makes the two modes unmistakable.
+ *
+ * Public Sans carries owner mode: open apertures and a tall x-height, drawn to
+ * stay legible to a 78-year-old on a five-year-old phone. Newsreader carries
+ * access mode and marketing headlines, so anything a person READS looks
+ * written rather than shipped.
+ *
+ * Self-hosted rather than fetched at build time: Norton's TLS interception on
+ * the workstation this is maintained from breaks the font fetcher, and a build
+ * that only works on some machines is not a build. These replace Geist, which
+ * was downloaded on every page load and never referenced.
+ */
+const publicSans = localFont({
+  src: "./fonts/PublicSans-var.woff2",
+  variable: "--font-public-sans",
+  weight: "400 700",
+  display: "swap",
 });
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
-  weight: "100 900",
+const newsreader = localFont({
+  src: "./fonts/Newsreader-var.woff2",
+  variable: "--font-newsreader",
+  weight: "400 600",
+  display: "swap",
 });
 
 /**
@@ -54,10 +69,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+    /*
+      The font variables go on <html>, not <body>.
+
+      next/font defines --font-public-sans on whatever element carries the
+      class. globals.css composes --font-ui from it at :root — and a var()
+      inside a custom property resolves in the scope where that property is
+      DECLARED. With the class on <body>, --font-public-sans did not exist at
+      :root, so --font-ui silently collapsed to its fallback and the whole app
+      rendered in ui-sans-serif. That is precisely the Arial bug again: the font
+      downloads, the variable is declared, and nothing uses it.
+    */
+    <html lang="en" className={`${publicSans.variable} ${newsreader.variable}`}>
+      <body className="antialiased">
         {children}
         <Analytics />
       </body>
