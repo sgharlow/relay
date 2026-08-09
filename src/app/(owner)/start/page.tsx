@@ -15,7 +15,7 @@ export const metadata = { title: 'Start your vault · Relay' };
 
 export default function StartPage() {
   return (
-    <Suspense fallback={<p className="text-sm text-slate-500">Loading…</p>}>
+    <Suspense fallback={<p style={{ fontSize: 'var(--t3)', color: 'var(--ink-muted)' }}>Loading…</p>}>
       <StartClient />
     </Suspense>
   );

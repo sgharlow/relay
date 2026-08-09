@@ -18,6 +18,7 @@ import { useCallback, useState } from 'react';
 import SeedWizard from './SeedWizard';
 import RevealCard from './RevealCard';
 import PriceCard from './PriceCard';
+import { buttonQuiet, h1, muted } from '../_lib/ui';
 
 type Phase = 'seed' | 'reveal' | 'price';
 
@@ -30,10 +31,10 @@ export default function StartClient() {
   return (
     <div className="mx-auto max-w-lg space-y-6">
       <header>
-        <h1 className="text-xl font-semibold tracking-tight text-slate-900">
+        <h1 style={h1}>
           {phase === 'seed' ? "Start with what you'd need first" : 'Here is what we found'}
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p style={{ ...muted, marginTop: 'var(--s1)' }}>
           {phase === 'seed'
             ? 'If they were hospitalised tomorrow, these are the accounts you would reach for.'
             : 'Built from the accounts you just entered.'}
@@ -50,7 +51,7 @@ export default function StartClient() {
             <button
               type="button"
               onClick={() => setPhase('price')}
-              className="w-full rounded border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              style={{ ...buttonQuiet, width: '100%' }}
             >
               Continue
             </button>

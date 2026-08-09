@@ -15,6 +15,7 @@ import { useEffect, useState } from 'react';
 import { computeReveal, type Reveal } from '../../../../lib/vault/risk-graph';
 import type { DashboardItem } from '../../../../lib/vault/dashboard-view';
 import { emitFunnel, resolveChannel } from '../../../../lib/analytics/funnel';
+import { cardPadded, errorText, muted } from '../_lib/ui';
 
 export default function RevealCard({ onReady }: { onReady: () => void }) {
   const [reveal, setReveal] = useState<Reveal | null>(null);
@@ -45,30 +46,30 @@ export default function RevealCard({ onReady }: { onReady: () => void }) {
     };
   }, [onReady]);
 
-  if (error) return <p className="text-sm text-red-600">{error}</p>;
-  if (!reveal) return <p className="text-sm text-slate-500">Working out what depends on what…</p>;
+  if (error) return <p style={errorText}>{error}</p>;
+  if (!reveal) return <p style={muted}>Working out what depends on what…</p>;
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-amber-300 bg-amber-50 p-4">
-        <p className="text-xs font-medium uppercase tracking-wide text-amber-700">
+      <div style={{ ...cardPadded, borderColor: 'var(--ochre)', background: 'var(--ochre-soft)' }}>
+        <p style={{ fontSize: 'var(--t1)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--ochre-text)' }}>
           What we found
         </p>
-        <p className="mt-2 text-lg font-semibold leading-snug text-stone-900">
+        <p style={{ fontSize: 'var(--t5)', fontWeight: 600, lineHeight: 1.35, marginTop: 'var(--s2)' }}>
           {reveal.headline}
         </p>
       </div>
 
       {reveal.gatedTitles.length > 0 && (
         <div>
-          <p className="text-sm text-slate-600">
+          <p style={{ fontSize: 'var(--t3)', color: 'var(--ink-muted)' }}>
             Locked behind{' '}
-            <span className="font-medium text-slate-900">{reveal.rootTitle}</span>:
+            <span style={{ fontWeight: 600, color: 'var(--ink)' }}>{reveal.rootTitle}</span>:
           </p>
           <ul className="mt-2 space-y-1">
             {reveal.gatedTitles.map((t: string) => (
-              <li key={t} className="flex items-center gap-2 text-sm text-slate-700">
-                <span aria-hidden className="text-slate-400">
+              <li key={t} className="flex items-center" style={{ gap: 'var(--s2)', fontSize: 'var(--t3)' }}>
+                <span aria-hidden style={{ color: 'var(--ink-faint)' }}>
                   └
                 </span>
                 {t}
@@ -78,7 +79,7 @@ export default function RevealCard({ onReady }: { onReady: () => void }) {
         </div>
       )}
 
-      <p className="text-sm text-slate-500">
+      <p style={muted}>
         This is the part families get wrong. Not the passwords — the order they unlock in.
       </p>
     </div>

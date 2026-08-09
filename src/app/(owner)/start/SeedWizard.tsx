@@ -17,9 +17,7 @@ import { useEffect, useState } from 'react';
 import { CAREGIVER_CHECKLIST, type ChecklistEntry } from '../../../../lib/seed/caregiver-checklist';
 import { CryptoService } from '../../../../lib/crypto/crypto-service';
 import { emitFunnel, resolveChannel } from '../../../../lib/analytics/funnel';
-
-const inputCls =
-  'w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500';
+import { buttonPrimary, buttonQuiet, cardPadded, errorText, h2, input as inputStyle, mono, muted, sunken } from '../_lib/ui';
 
 interface Props {
   onComplete: () => void;
@@ -138,33 +136,35 @@ export default function SeedWizard({ onComplete }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between text-xs text-slate-500">
+      <div className="flex items-center justify-between" style={{ fontSize: 'var(--t1)', color: 'var(--ink-muted)' }}>
         <span>
           Step {index + 1} of {CAREGIVER_CHECKLIST.length}
         </span>
         <span>{saved} saved</span>
       </div>
 
-      <div className="h-1 w-full rounded bg-slate-200">
+      <div className="h-1 w-full" style={{ background: 'var(--paper-sunken)', borderRadius: 'var(--radius-owner)' }}>
         <div
-          className="h-1 rounded bg-blue-600 transition-all"
-          style={{ width: `${((index + 1) / CAREGIVER_CHECKLIST.length) * 100}%` }}
+          className="h-1 transition-all"
+          // Ochre: the one thing in motion on this screen.
+          style={{ background: 'var(--ochre)', borderRadius: 'var(--radius-owner)',
+            width: `${((index + 1) / CAREGIVER_CHECKLIST.length) * 100}%` }}
         />
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold text-slate-900">{entry.label}</h2>
-        <p className="mt-1 text-sm text-slate-500">{entry.hint}</p>
+        <h2 style={h2}>{entry.label}</h2>
+        <p style={{ ...muted, marginTop: 'var(--s1)' }}>{entry.hint}</p>
       </div>
 
       <form onSubmit={save} className="space-y-3">
         <div>
-          <label htmlFor="service" className="mb-1 block text-sm font-medium text-slate-700">
-            Which one? <span className="font-normal text-slate-400">(optional)</span>
+          <label htmlFor="service" style={{ display: 'block', fontSize: 'var(--t2)', fontWeight: 500, marginBottom: 'var(--s1)' }}>
+            Which one? <span style={{ fontWeight: 400, color: 'var(--ink-faint)' }}>(optional)</span>
           </label>
           <input
             id="service"
-            className={inputCls}
+            style={inputStyle}
             value={service}
             onChange={(e) => setService(e.target.value)}
             placeholder="Gmail, Chase, Blue Cross…"
@@ -172,39 +172,39 @@ export default function SeedWizard({ onComplete }: Props) {
         </div>
 
         <div>
-          <label htmlFor="secret" className="mb-1 block text-sm font-medium text-slate-700">
+          <label htmlFor="secret" style={{ display: 'block', fontSize: 'var(--t2)', fontWeight: 500, marginBottom: 'var(--s1)' }}>
             Login details or a note
           </label>
           <textarea
             id="secret"
             required
             rows={3}
-            className={`${inputCls} font-mono`}
+            style={{ ...inputStyle, ...mono, fontSize: 'var(--t2)' }}
             value={secret}
             onChange={(e) => setSecret(e.target.value)}
             placeholder="Encrypted in your browser before it is sent"
           />
         </div>
 
-        <label className="flex items-center gap-2 text-sm text-slate-600">
+        <label className="flex items-center" style={{ gap: 'var(--s2)', fontSize: 'var(--t2)', color: 'var(--ink-muted)' }}>
           <input type="checkbox" checked={isRoot} onChange={(e) => setIsRoot(e.target.checked)} />
           Other accounts reset through this one
         </label>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p style={errorText}>{error}</p>}
 
         <div className="flex gap-2">
           <button
             type="submit"
             disabled={busy || secret.length === 0}
-            className="flex-1 rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            style={{ ...buttonPrimary, flex: 1, opacity: busy || secret.length === 0 ? 0.5 : 1 }}
           >
             {busy ? 'Encrypting…' : 'Save and continue'}
           </button>
           <button
             type="button"
             onClick={() => void skip()}
-            className="rounded border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
+            style={buttonQuiet}
           >
             Skip
           </button>
@@ -212,19 +212,28 @@ export default function SeedWizard({ onComplete }: Props) {
       </form>
 
       {proof && (
-        <div className="rounded border border-emerald-200 bg-emerald-50 p-3">
-          <p className="text-sm font-medium text-emerald-900">What we actually stored</p>
-          <p className="mt-1 text-xs text-emerald-800">You typed:</p>
-          <code className="mt-1 block truncate rounded bg-white px-2 py-1 text-xs text-slate-700">
+        /*
+          Not a success message — there is no success colour in this system, and
+          this is not a congratulation. It is evidence, so it is set like
+          evidence: paper, ink, and the two strings side by side.
+        */
+        <div style={cardPadded}>
+          <p style={{ fontSize: 'var(--t3)', fontWeight: 600 }}>What just left your browser</p>
+
+          <p style={{ ...muted, marginTop: 'var(--s3)' }}>You typed</p>
+          <code style={{ ...mono, ...sunken, display: 'block', padding: 'var(--s2)', marginTop: 'var(--s1)', overflowWrap: 'anywhere' }}>
             {proof.plaintext}
           </code>
-          <p className="mt-2 text-xs text-emerald-800">What left your browser:</p>
-          <code className="mt-1 block break-all rounded bg-white px-2 py-1 text-xs text-slate-500">
+
+          <p style={{ ...muted, marginTop: 'var(--s3)' }}>What we received</p>
+          <code style={{ ...mono, ...sunken, display: 'block', padding: 'var(--s2)', marginTop: 'var(--s1)', color: 'var(--ink-muted)', overflowWrap: 'anywhere' }}>
             {proof.ciphertext.slice(0, 96)}…
           </code>
-          <p className="mt-2 text-xs text-emerald-800">
-            That is what our server received. We cannot read it — and neither can anyone who
-            breaches us.
+
+          <p style={{ fontSize: 'var(--t2)', lineHeight: 1.6, marginTop: 'var(--s3)' }}>
+            That is the whole row on our servers. We can tell you have an account here — that is how
+            the ranking works. We cannot tell what the password is, and neither can the part of Relay
+            that decides which of these matters most.
           </p>
         </div>
       )}

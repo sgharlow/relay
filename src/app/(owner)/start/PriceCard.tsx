@@ -18,6 +18,7 @@ import { useEffect, useState } from 'react';
 
 import { PRICE_YEARLY_USD, ANCHOR } from '../../caregivers/content';
 import { emitFunnel, resolveChannel } from '../../../../lib/analytics/funnel';
+import { buttonPrimary, cardPadded, meta, muted } from '../_lib/ui';
 
 /** Runtime-configurable so a price test does not require a deploy (J1-R8). */
 function priceUsd(): number {
@@ -65,18 +66,18 @@ export default function PriceCard() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-slate-200 bg-white p-5">
-        <p className="text-sm text-slate-500">Keep this vault, and everything it protects</p>
-        <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">
+      <div style={{ ...cardPadded, padding: 'var(--s6)' }}>
+        <p style={muted}>Keep this vault, and everything it protects</p>
+        <p style={{ fontSize: 'var(--t7)', fontWeight: 600, letterSpacing: '-0.02em', marginTop: 'var(--s2)' }}>
           ${price}
-          <span className="text-base font-normal text-slate-500">/year</span>
+          <span style={{ fontSize: 'var(--t3)', fontWeight: 400, color: 'var(--ink-muted)' }}>/year</span>
         </p>
-        <p className="mt-1 text-xs text-slate-400">
+        <p style={{ ...meta, marginTop: 'var(--s1)' }}>
           {ANCHOR.name} charges ${ANCHOR.priceYearlyUsd}/yr to organise documents. Relay is the
           only one that opens on a verified trigger and closes itself again.
         </p>
 
-        <ul className="mt-4 space-y-2 text-sm text-slate-700">
+        <ul style={{ marginTop: 'var(--s4)', display: 'flex', flexDirection: 'column', gap: 'var(--s2)', fontSize: 'var(--t3)', listStyle: 'none', padding: 0 }}>
           {/* NOT "documents". There is no file upload anywhere in the product —
               the only file input is the CSV importer — so selling document
               storage would be a claim the software cannot honour. "Where to
@@ -91,18 +92,18 @@ export default function PriceCard() {
         <button
           type="button"
           onClick={onIntent}
-          className="mt-5 w-full rounded bg-amber-500 px-4 py-2.5 text-sm font-semibold text-stone-900 hover:bg-amber-400"
+          style={{ ...buttonPrimary, width: '100%', marginTop: 'var(--s6)' }}
         >
           Keep my vault — ${price}/yr
         </button>
 
-        <p className="mt-3 text-center text-xs text-slate-400">
+        <p style={{ ...meta, marginTop: 'var(--s3)', textAlign: 'center' }}>
           Free plan keeps your first 10 items. Nothing is deleted if you wait.
         </p>
       </div>
 
       {delivered === false && (
-        <p className="text-xs text-amber-600">
+        <p style={{ fontSize: 'var(--t1)', color: 'var(--ochre-text)' }}>
           Measurement is not reaching analytics on this page load — the G1 reading from this
           session is not trustworthy.
         </p>
