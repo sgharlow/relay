@@ -119,7 +119,7 @@ export async function notifyRecipientsOfRelease(params: {
           `us asks you to click one, it is not from us.\n`
         : `Hi ${r.name},\n\n` +
           `Access you were granted has been released. Open your secure access plan here:\n\n` +
-          `${appUrl()}/access?token=${encodeURIComponent(issueRecipientToken(r.id, params.releaseStateId, BigInt(params.version)))}\n\n` +
+          `${appUrl()}/access?token=${encodeURIComponent(await issueRecipientToken(r.id, params.releaseStateId, BigInt(params.version)))}\n\n` +
           `This link is personal to you and expires in 24 hours.\n`;
 
       return sendEmailBestEffort({
@@ -187,7 +187,7 @@ export async function notifyVerifiersForTrigger(
         : `Hi ${v.name},\n\n` +
           `You've been asked to confirm ${article(triggerType)} "${triggerType}" release trigger. ` +
           `If you recognise this request, confirm here:\n\n` +
-          `${appUrl()}/verify?token=${encodeURIComponent(issueVerifierToken(v.id, releaseStateId))}\n\n` +
+          `${appUrl()}/verify?token=${encodeURIComponent(await issueVerifierToken(v.id, releaseStateId))}\n\n` +
           `You will not be given access to any private data — you are only confirming the trigger.\n`;
 
       return sendEmailBestEffort({

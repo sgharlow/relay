@@ -51,7 +51,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const { recipientId, releaseStateId, version } = await redeemRecipientCode(code);
     return NextResponse.json({
-      token: issueRecipientToken(recipientId, releaseStateId, BigInt(version)),
+      token: await issueRecipientToken(recipientId, releaseStateId, BigInt(version)),
     });
   } catch (err) {
     if (err instanceof RecipientCodeError) {

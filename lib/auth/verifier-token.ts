@@ -1,16 +1,30 @@
 /**
  * Verifier-scoped JWT issuance and verification.
  *
- * Mirrors lib/auth/recipient-token.ts: HS256 compact JWS signed with the
- * Node built-in `crypto` module, scoping a Verifier session to a specific
- * Release_State instance. The confirmation email link carries this token so a
- * verifier can confirm without an interactive login.
+ * Mirrors lib/auth/recipient-token.ts: HS256 compact JWS scoping a Verifier
+ * session to a specific Release_State instance. The confirmation email link
+ * carries this token so a verifier can confirm without an interactive login.
+ *
+ * SIGNING IS DELEGATED TO jose (2026-08-08). It was hand-rolled on Node's
+ * `crypto` — correct as far as anyone could tell, but "as far as anyone could
+ * tell" is not the standard for the code that decides whether a stranger may
+ * open someone's vault. jose v6 is WebCrypto-backed and Promise-only, which is
+ * why this module's public interface is async; that change is the reason the
+ * swap had to be coordinated across every call site at once.
+ *
+ * WHAT IS DELIBERATELY NOT DELEGATED. The structural, header and algorithm
+ * checks below still run first, in this order, because the error contract is
+ * pinned by tests and jose's own messages do not match it — and because a
+ * downgraded-alg token carrying a garbage signature must be refused for the
+ * *algorithm*, not the signature. Losing that precedence would turn a specific
+ * refusal into a generic one and make an alg-downgrade attempt look like an
+ * ordinary typo in the logs.
  *
  * Feature: relay-h0-mvp
  * Requirements: 6.3, 17.2
  */
 
-import { createHmac, timingSafeEqual } from 'crypto';
+import { SignJWT, jwtVerify, errors as joseErrors } from 'jose';
 
 export interface VerifierTokenPayload {
   /** UUID of the Verifier. */
@@ -26,16 +40,11 @@ export interface VerifierTokenPayload {
 const ALGORITHM = 'HS256';
 const TOKEN_TTL_SECONDS = 72 * 60 * 60; // 72 hours
 
-function base64urlEncode(data: string | Buffer): string {
-  const buf = typeof data === 'string' ? Buffer.from(data, 'utf8') : data;
-  return buf.toString('base64url');
-}
-
 function base64urlDecode(encoded: string): Buffer {
   return Buffer.from(encoded, 'base64url');
 }
 
-function getSecret(): Buffer {
+function getSecret(): Uint8Array {
   const secret = process.env.VERIFIER_JWT_SECRET;
   if (!secret || secret.length === 0) {
     throw new Error('VERIFIER_JWT_SECRET environment variable is not set');
@@ -43,34 +52,33 @@ function getSecret(): Buffer {
   return Buffer.from(secret, 'utf8');
 }
 
-function sign(input: string, secret: Buffer): Buffer {
-  return createHmac('sha256', secret).update(input).digest();
-}
-
 /** Issues a 72-hour HS256 JWT scoping a Verifier to one Release_State. */
-export function issueVerifierToken(verifierId: string, releaseStateId: string): string {
+export async function issueVerifierToken(
+  verifierId: string,
+  releaseStateId: string,
+): Promise<string> {
+  const secret = getSecret();
+
+  // Epoch seconds computed here and passed explicitly. jose's no-argument
+  // defaults call `new Date()`, which does NOT route through `Date.now` and so
+  // is invisible to the harness's clock mocking. Passing the value keeps every
+  // existing time-travel test working untouched.
   const now = Math.floor(Date.now() / 1000);
-  const header = { alg: ALGORITHM, typ: 'JWT' };
-  const payload: VerifierTokenPayload = {
-    verifierId,
-    releaseStateId,
-    iat: now,
-    exp: now + TOKEN_TTL_SECONDS,
-  };
-  const headerEncoded = base64urlEncode(JSON.stringify(header));
-  const payloadEncoded = base64urlEncode(JSON.stringify(payload));
-  const signingInput = `${headerEncoded}.${payloadEncoded}`;
-  const signature = base64urlEncode(sign(signingInput, getSecret()));
-  return `${signingInput}.${signature}`;
+
+  return new SignJWT({ verifierId, releaseStateId })
+    .setProtectedHeader({ alg: ALGORITHM, typ: 'JWT' })
+    .setIssuedAt(now)
+    .setExpirationTime(now + TOKEN_TTL_SECONDS)
+    .sign(secret);
 }
 
-/** Verifies a verifier token and returns its payload, or throws. */
-export function verifyVerifierToken(token: string): VerifierTokenPayload {
+/** Verifies a verifier token and returns its payload, or rejects. */
+export async function verifyVerifierToken(token: string): Promise<VerifierTokenPayload> {
   const parts = token.split('.');
   if (parts.length !== 3) {
     throw new Error('Invalid token: expected three dot-separated segments');
   }
-  const [headerEncoded, payloadEncoded, signatureEncoded] = parts;
+  const [headerEncoded] = parts;
 
   let header: Record<string, unknown>;
   try {
@@ -82,31 +90,50 @@ export function verifyVerifierToken(token: string): VerifierTokenPayload {
     throw new Error(`Invalid token: unsupported algorithm "${header['alg']}"`);
   }
 
-  const signingInput = `${headerEncoded}.${payloadEncoded}`;
-  const expectedSig = sign(signingInput, getSecret());
-  let actualSig: Buffer;
-  try {
-    actualSig = base64urlDecode(signatureEncoded);
-  } catch {
-    throw new Error('Invalid token: signature segment is not valid base64url');
-  }
-  if (expectedSig.length !== actualSig.length || !timingSafeEqual(expectedSig, actualSig)) {
-    throw new Error('Invalid token: signature verification failed');
-  }
+  const secret = getSecret();
 
   let payload: VerifierTokenPayload;
   try {
-    payload = JSON.parse(base64urlDecode(payloadEncoded).toString('utf8'));
-  } catch {
-    throw new Error('Invalid token: payload is not valid base64url-encoded JSON');
+    // clockTolerance stays unset (0): jose compares `exp <= now - tolerance`,
+    // which at zero is exactly the strict `exp <= now` rejection the pinned
+    // "exp exactly equals now" vector depends on.
+    const result = await jwtVerify(token, secret, {
+      algorithms: [ALGORITHM],
+      currentDate: new Date(Date.now()),
+    });
+    payload = result.payload as unknown as VerifierTokenPayload;
+  } catch (err) {
+    throw translateJoseError(err);
   }
 
-  const now = Math.floor(Date.now() / 1000);
-  if (typeof payload.exp !== 'number' || payload.exp <= now) {
-    throw new Error('Invalid token: token has expired');
-  }
   if (!payload.verifierId) throw new Error('Invalid token: missing verifierId claim');
   if (!payload.releaseStateId) throw new Error('Invalid token: missing releaseStateId claim');
 
   return payload;
+}
+
+/**
+ * Restates jose's failures in this module's existing vocabulary.
+ *
+ * The messages are load-bearing: 22 negative vectors assert on them, and they
+ * are what distinguishes "your link expired, ask for another" from "this
+ * signature is forged" when someone is reading a log during an emergency.
+ */
+function translateJoseError(err: unknown): Error {
+  const code = (err as { code?: string })?.code;
+
+  if (code === 'ERR_JWT_EXPIRED' || err instanceof joseErrors.JWTExpired) {
+    return new Error('Invalid token: token has expired');
+  }
+  if (
+    code === 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED' ||
+    err instanceof joseErrors.JWSSignatureVerificationFailed
+  ) {
+    return new Error('Invalid token: signature verification failed');
+  }
+  // Anything structural jose rejected that the pre-checks let through — a
+  // payload that is not base64url JSON, most often. Mapped to the structural
+  // message rather than the signature one, because calling a malformed token
+  // "forged" sends whoever reads it hunting for an attacker.
+  return new Error('Invalid token: payload is not valid base64url-encoded JSON');
 }

@@ -58,35 +58,35 @@ describe('alg:none and algorithm-downgrade rejection', () => {
     exp: 9_999_999_999,
   };
 
-  it('recipient: rejects an unsigned alg:none token (empty signature)', () => {
+  it('recipient: rejects an unsigned alg:none token (empty signature)', async () => {
     const token = `${b64url({ alg: 'none', typ: 'JWT' })}.${b64url(recipientClaims)}.`;
-    expect(() => verifyRecipientToken(token)).toThrow('unsupported algorithm');
+    await expect(verifyRecipientToken(token)).rejects.toThrow('unsupported algorithm');
   });
 
-  it('verifier: rejects an unsigned alg:none token (empty signature)', () => {
+  it('verifier: rejects an unsigned alg:none token (empty signature)', async () => {
     const token = `${b64url({ alg: 'none', typ: 'JWT' })}.${b64url(verifierClaims)}.`;
-    expect(() => verifyVerifierToken(token)).toThrow('unsupported algorithm');
+    await expect(verifyVerifierToken(token)).rejects.toThrow('unsupported algorithm');
   });
 
   it.each(['NONE', 'HS512', 'RS256', 'ES256'])(
     'recipient: rejects alg "%s" even with an otherwise well-formed token',
-    (alg) => {
+    async (alg) => {
       const token = `${b64url({ alg, typ: 'JWT' })}.${b64url(recipientClaims)}.AAAA`;
-      expect(() => verifyRecipientToken(token)).toThrow('unsupported algorithm');
+      await expect(verifyRecipientToken(token)).rejects.toThrow('unsupported algorithm');
     },
   );
 
   it.each(['NONE', 'HS512', 'RS256', 'ES256'])(
     'verifier: rejects alg "%s" even with an otherwise well-formed token',
-    (alg) => {
+    async (alg) => {
       const token = `${b64url({ alg, typ: 'JWT' })}.${b64url(verifierClaims)}.AAAA`;
-      expect(() => verifyVerifierToken(token)).toThrow('unsupported algorithm');
+      await expect(verifyVerifierToken(token)).rejects.toThrow('unsupported algorithm');
     },
   );
 
-  it('rejects a header with a missing alg claim', () => {
+  it('rejects a header with a missing alg claim', async () => {
     const token = `${b64url({ typ: 'JWT' })}.${b64url(recipientClaims)}.AAAA`;
-    expect(() => verifyRecipientToken(token)).toThrow('unsupported algorithm');
+    await expect(verifyRecipientToken(token)).rejects.toThrow('unsupported algorithm');
   });
 });
 
@@ -95,36 +95,36 @@ describe('alg:none and algorithm-downgrade rejection', () => {
 // ---------------------------------------------------------------------------
 
 describe('signature integrity', () => {
-  it('recipient: rejects a valid token whose signature segment is emptied', () => {
-    const [h, p] = issueRecipientToken('rec-1', 'rs-1', 1n).split('.');
-    expect(() => verifyRecipientToken(`${h}.${p}.`)).toThrow(
+  it('recipient: rejects a valid token whose signature segment is emptied', async () => {
+    const [h, p] = (await issueRecipientToken('rec-1', 'rs-1', 1n)).split('.');
+    await expect(verifyRecipientToken(`${h}.${p}.`)).rejects.toThrow(
       'signature verification failed',
     );
   });
 
-  it('verifier: rejects a valid token whose signature segment is emptied', () => {
-    const [h, p] = issueVerifierToken('v-1', 'rs-1').split('.');
-    expect(() => verifyVerifierToken(`${h}.${p}.`)).toThrow(
+  it('verifier: rejects a valid token whose signature segment is emptied', async () => {
+    const [h, p] = (await issueVerifierToken('v-1', 'rs-1')).split('.');
+    await expect(verifyVerifierToken(`${h}.${p}.`)).rejects.toThrow(
       'signature verification failed',
     );
   });
 
-  it('verifier: rejects a single-bit flip in the signature', () => {
-    const token = issueVerifierToken('v-1', 'rs-1');
+  it('verifier: rejects a single-bit flip in the signature', async () => {
+    const token = await issueVerifierToken('v-1', 'rs-1');
     const [h, p, s] = token.split('.');
     const sig = Buffer.from(s, 'base64url');
     sig[0] ^= 0x01;
     const flipped = `${h}.${p}.${sig.toString('base64url')}`;
-    expect(() => verifyVerifierToken(flipped)).toThrow(
+    await expect(verifyVerifierToken(flipped)).rejects.toThrow(
       'signature verification failed',
     );
   });
 
-  it('recipient: rejects a token signed with the verifier secret', () => {
+  it('recipient: rejects a token signed with the verifier secret', async () => {
     process.env.RECIPIENT_JWT_SECRET = VERIFIER_SECRET;
-    const token = issueRecipientToken('rec-1', 'rs-1', 0n);
+    const token = await issueRecipientToken('rec-1', 'rs-1', 0n);
     process.env.RECIPIENT_JWT_SECRET = RECIPIENT_SECRET;
-    expect(() => verifyRecipientToken(token)).toThrow(
+    await expect(verifyRecipientToken(token)).rejects.toThrow(
       'signature verification failed',
     );
   });
@@ -135,37 +135,37 @@ describe('signature integrity', () => {
 // ---------------------------------------------------------------------------
 
 describe('expiry enforcement', () => {
-  it('verifier: rejects a token older than its 72h TTL', () => {
+  it('verifier: rejects a token older than its 72h TTL', async () => {
     const realNow = Date.now.bind(global.Date);
-    const token = issueVerifierToken('v-1', 'rs-1');
+    const token = await issueVerifierToken('v-1', 'rs-1');
     vi.spyOn(global.Date, 'now').mockReturnValue(realNow() + 73 * 60 * 60 * 1000);
     try {
-      expect(() => verifyVerifierToken(token)).toThrow('expired');
+      await expect(verifyVerifierToken(token)).rejects.toThrow('expired');
     } finally {
       vi.restoreAllMocks();
     }
   });
 
-  it('verifier: still accepts a token 71h after issuance (inside TTL)', () => {
+  it('verifier: still accepts a token 71h after issuance (inside TTL)', async () => {
     const realNow = Date.now.bind(global.Date);
-    const token = issueVerifierToken('v-1', 'rs-1');
+    const token = await issueVerifierToken('v-1', 'rs-1');
     vi.spyOn(global.Date, 'now').mockReturnValue(realNow() + 71 * 60 * 60 * 1000);
     try {
-      expect(verifyVerifierToken(token).verifierId).toBe('v-1');
+      expect((await verifyVerifierToken(token)).verifierId).toBe('v-1');
     } finally {
       vi.restoreAllMocks();
     }
   });
 
-  it('recipient: rejects a hand-crafted token with exp exactly equal to now', () => {
+  it('recipient: rejects a hand-crafted token with exp exactly equal to now', async () => {
     // exp <= now must be rejected (strict inequality on validity)
     const nowSec = Math.floor(Date.now() / 1000);
     vi.spyOn(global.Date, 'now').mockReturnValue(nowSec * 1000);
-    const token = issueRecipientToken('rec-1', 'rs-1', 0n);
+    const token = await issueRecipientToken('rec-1', 'rs-1', 0n);
     // Fast-forward exactly TTL so exp === "now"
     vi.spyOn(global.Date, 'now').mockReturnValue((nowSec + 24 * 60 * 60) * 1000);
     try {
-      expect(() => verifyRecipientToken(token)).toThrow('expired');
+      await expect(verifyRecipientToken(token)).rejects.toThrow('expired');
     } finally {
       vi.restoreAllMocks();
     }
@@ -177,21 +177,21 @@ describe('expiry enforcement', () => {
 // ---------------------------------------------------------------------------
 
 describe('cross-token-type confusion', () => {
-  it('a recipient token is rejected by the verifier verifier (different secrets)', () => {
-    const recipientToken = issueRecipientToken('rec-1', 'rs-1', 0n);
-    expect(() => verifyVerifierToken(recipientToken)).toThrow(
+  it('a recipient token is rejected by the verifier verifier (different secrets)', async () => {
+    const recipientToken = await issueRecipientToken('rec-1', 'rs-1', 0n);
+    await expect(verifyVerifierToken(recipientToken)).rejects.toThrow(
       'signature verification failed',
     );
   });
 
-  it('a verifier token is rejected by the recipient verifier (different secrets)', () => {
-    const verifierToken = issueVerifierToken('v-1', 'rs-1');
-    expect(() => verifyRecipientToken(verifierToken)).toThrow(
+  it('a verifier token is rejected by the recipient verifier (different secrets)', async () => {
+    const verifierToken = await issueVerifierToken('v-1', 'rs-1');
+    await expect(verifyRecipientToken(verifierToken)).rejects.toThrow(
       'signature verification failed',
     );
   });
 
-  it('even under a shared secret, a recipient token fails verifier claim checks', () => {
+  it('even under a shared secret, a recipient token fails verifier claim checks', async () => {
     // Worst-case misconfiguration: both token types share one signing secret.
     // The signature then verifies, so the claim schema is the only remaining
     // guard — the verifier payload requires verifierId.
@@ -199,19 +199,19 @@ describe('cross-token-type confusion', () => {
     process.env.RECIPIENT_JWT_SECRET = shared;
     process.env.VERIFIER_JWT_SECRET = shared;
 
-    const recipientToken = issueRecipientToken('rec-1', 'rs-1', 0n);
-    expect(() => verifyVerifierToken(recipientToken)).toThrow(
+    const recipientToken = await issueRecipientToken('rec-1', 'rs-1', 0n);
+    await expect(verifyVerifierToken(recipientToken)).rejects.toThrow(
       'missing verifierId claim',
     );
   });
 
-  it('even under a shared secret, a verifier token fails recipient claim checks', () => {
+  it('even under a shared secret, a verifier token fails recipient claim checks', async () => {
     const shared = 'one-shared-secret-for-both-token-types!!';
     process.env.RECIPIENT_JWT_SECRET = shared;
     process.env.VERIFIER_JWT_SECRET = shared;
 
-    const verifierToken = issueVerifierToken('v-1', 'rs-1');
-    expect(() => verifyRecipientToken(verifierToken)).toThrow(
+    const verifierToken = await issueVerifierToken('v-1', 'rs-1');
+    await expect(verifyRecipientToken(verifierToken)).rejects.toThrow(
       'missing recipientId claim',
     );
   });

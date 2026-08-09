@@ -44,14 +44,14 @@ it('403 on an invalid verifier token', async () => {
 });
 
 it('403 when the token is scoped to a different release', async () => {
-  mockVerify.mockReturnValueOnce({ verifierId: 'v1', releaseStateId: 'OTHER', iat: 0, exp: 9e9 });
+  mockVerify.mockResolvedValueOnce({ verifierId: 'v1', releaseStateId: 'OTHER', iat: 0, exp: 9e9 });
   const res = await POST(makeReq({}, { authorization: 'Bearer t' }), ctx);
   expect(res.status).toBe(403);
   expect(mockConfirm).not.toHaveBeenCalled();
 });
 
 it('200 and records a confirmation', async () => {
-  mockVerify.mockReturnValueOnce({ verifierId: 'v1', releaseStateId: 'rs-1', iat: 0, exp: 9e9 });
+  mockVerify.mockResolvedValueOnce({ verifierId: 'v1', releaseStateId: 'rs-1', iat: 0, exp: 9e9 });
   mockConfirm.mockResolvedValueOnce({ status: 'recorded', receivedConfirmations: 1, requiredConfirmations: 2, triggerType: 'emergency' });
   const res = await POST(makeReq({ method: 'app' }, { authorization: 'Bearer t' }), ctx);
   expect(res.status).toBe(200);
@@ -59,7 +59,7 @@ it('200 and records a confirmation', async () => {
 });
 
 it('notifies the owner on pending_grace', async () => {
-  mockVerify.mockReturnValueOnce({ verifierId: 'v1', releaseStateId: 'rs-1', iat: 0, exp: 9e9 });
+  mockVerify.mockResolvedValueOnce({ verifierId: 'v1', releaseStateId: 'rs-1', iat: 0, exp: 9e9 });
   mockConfirm.mockResolvedValueOnce({
     status: 'pending_grace',
     receivedConfirmations: 2,

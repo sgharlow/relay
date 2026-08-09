@@ -7,15 +7,28 @@
  * if the Release_State version advances after a token is issued the
  * server will reject subsequent requests from that token.
  *
- * Implementation uses the Node.js built-in `crypto` module (no external
- * JWT library required). Tokens follow the compact JWS serialisation:
- *   base64url(header).base64url(payload).base64url(signature)
+ * SIGNING IS DELEGATED TO jose (2026-08-08). This was hand-rolled on Node's
+ * `crypto` — three segments, an HMAC and a constant-time compare. It was, as
+ * far as anyone could tell, correct. But this is the code that decides whether
+ * a stranger holding a link may open someone's vault during an emergency, and
+ * "as far as anyone could tell" is the wrong standard for it. jose v6 is
+ * WebCrypto-backed and Promise-only, which is why this module's public
+ * interface is async and why the swap had to land across every call site at
+ * once rather than as an internals-only change.
+ *
+ * WHAT IS DELIBERATELY NOT DELEGATED. The structural, header and algorithm
+ * checks still run first, in this order. Two reasons: the error messages are
+ * pinned by 22 negative vectors and jose's own wording does not match them,
+ * and a token that downgrades `alg` while carrying a garbage signature must be
+ * refused for the *algorithm* specifically. Collapsing that into a generic
+ * signature failure would make a deliberate downgrade attempt indistinguishable
+ * from a corrupted link in the logs.
  *
  * Feature: relay-h0-mvp
  * Requirements: 15.2, 17.2
  */
 
-import { createHmac, timingSafeEqual } from 'crypto';
+import { SignJWT, jwtVerify, errors as joseErrors } from 'jose';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -49,16 +62,11 @@ const TOKEN_TTL_SECONDS = 24 * 60 * 60; // 24 hours (Requirement 17.2)
 // Helpers
 // ---------------------------------------------------------------------------
 
-function base64urlEncode(data: string | Buffer): string {
-  const buf = typeof data === 'string' ? Buffer.from(data, 'utf8') : data;
-  return buf.toString('base64url');
-}
-
 function base64urlDecode(encoded: string): Buffer {
   return Buffer.from(encoded, 'base64url');
 }
 
-function getSecret(): Buffer {
+function getSecret(): Uint8Array {
   const secret = process.env.RECIPIENT_JWT_SECRET;
   if (!secret || secret.length === 0) {
     throw new Error('RECIPIENT_JWT_SECRET environment variable is not set');
@@ -66,8 +74,29 @@ function getSecret(): Buffer {
   return Buffer.from(secret, 'utf8');
 }
 
-function sign(input: string, secret: Buffer): Buffer {
-  return createHmac('sha256', secret).update(input).digest();
+/**
+ * Restates jose's failures in this module's existing vocabulary.
+ *
+ * The messages are load-bearing. They are asserted by the negative vectors, and
+ * more importantly they are what tells whoever reads a log the difference
+ * between "this link timed out, send another" and "someone forged this".
+ */
+function translateJoseError(err: unknown): Error {
+  const code = (err as { code?: string })?.code;
+
+  if (code === 'ERR_JWT_EXPIRED' || err instanceof joseErrors.JWTExpired) {
+    return new Error('Invalid token: token has expired');
+  }
+  if (
+    code === 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED' ||
+    err instanceof joseErrors.JWSSignatureVerificationFailed
+  ) {
+    return new Error('Invalid token: signature verification failed');
+  }
+  // Structural failures the pre-checks let through — a payload segment that is
+  // not base64url JSON, typically. Mapped to the structural message rather than
+  // the signature one, so a mangled link does not read as an attack.
+  return new Error('Invalid token: payload is not valid base64url-encoded JSON');
 }
 
 // ---------------------------------------------------------------------------
@@ -85,55 +114,54 @@ function sign(input: string, secret: Buffer): Buffer {
  *
  * @throws {Error} if `RECIPIENT_JWT_SECRET` is not set
  */
-export function issueRecipientToken(
+export async function issueRecipientToken(
   recipientId: string,
   releaseStateId: string,
   version: bigint,
-): string {
+): Promise<string> {
+  const secret = getSecret();
+
+  // Epoch seconds computed here and passed explicitly, rather than letting jose
+  // default them. Its defaults call `new Date()`, which does not route through
+  // `Date.now` and so cannot be seen by the harness's `vi.spyOn(Date, 'now')`
+  // clock. Passing the value keeps every existing time-travel test working
+  // without a fake-timer rewrite or an injected-clock parameter in the API.
   const now = Math.floor(Date.now() / 1000);
 
-  const header = { alg: ALGORITHM, typ: 'JWT' };
-  const payload: RecipientTokenPayload = {
+  return new SignJWT({
     recipientId,
     releaseStateId,
     version: version.toString(10),
-    iat: now,
-    exp: now + TOKEN_TTL_SECONDS,
-  };
-
-  const headerEncoded = base64urlEncode(JSON.stringify(header));
-  const payloadEncoded = base64urlEncode(JSON.stringify(payload));
-  const signingInput = `${headerEncoded}.${payloadEncoded}`;
-
-  const secret = getSecret();
-  const signature = sign(signingInput, secret);
-  const signatureEncoded = base64urlEncode(signature);
-
-  return `${signingInput}.${signatureEncoded}`;
+  })
+    .setProtectedHeader({ alg: ALGORITHM, typ: 'JWT' })
+    .setIssuedAt(now)
+    .setExpirationTime(now + TOKEN_TTL_SECONDS)
+    .sign(secret);
 }
 
 /**
  * Verifies a recipient token and returns its decoded payload.
  *
- * Checks:
+ * Checks, in this order:
  *  1. Token structure (three base64url-encoded segments)
  *  2. Algorithm claim is `HS256`
- *  3. HMAC signature is valid (constant-time comparison)
- *  4. Token has not expired (`exp` > current epoch seconds)
+ *  3. HMAC signature is valid          (jose)
+ *  4. Token has not expired            (jose)
+ *  5. Required claims are present
  *
  * @param token - Compact JWS string to verify
  * @returns Decoded {@link RecipientTokenPayload}
  *
  * @throws {Error} with a descriptive message on any validation failure
  */
-export function verifyRecipientToken(token: string): RecipientTokenPayload {
+export async function verifyRecipientToken(token: string): Promise<RecipientTokenPayload> {
   // --- Structural check ---
   const parts = token.split('.');
   if (parts.length !== 3) {
     throw new Error('Invalid token: expected three dot-separated segments');
   }
 
-  const [headerEncoded, payloadEncoded, signatureEncoded] = parts;
+  const [headerEncoded] = parts;
 
   // --- Decode header ---
   let header: Record<string, unknown>;
@@ -149,37 +177,22 @@ export function verifyRecipientToken(token: string): RecipientTokenPayload {
     );
   }
 
-  // --- Verify signature (constant-time) ---
   const secret = getSecret();
-  const signingInput = `${headerEncoded}.${payloadEncoded}`;
-  const expectedSig = sign(signingInput, secret);
 
-  let actualSig: Buffer;
-  try {
-    actualSig = base64urlDecode(signatureEncoded);
-  } catch {
-    throw new Error('Invalid token: signature segment is not valid base64url');
-  }
-
-  if (
-    expectedSig.length !== actualSig.length ||
-    !timingSafeEqual(expectedSig, actualSig)
-  ) {
-    throw new Error('Invalid token: signature verification failed');
-  }
-
-  // --- Decode payload ---
+  // --- Signature + expiry (jose) ---
   let payload: RecipientTokenPayload;
   try {
-    payload = JSON.parse(base64urlDecode(payloadEncoded).toString('utf8'));
-  } catch {
-    throw new Error('Invalid token: payload is not valid base64url-encoded JSON');
-  }
-
-  // --- Expiry check ---
-  const now = Math.floor(Date.now() / 1000);
-  if (typeof payload.exp !== 'number' || payload.exp <= now) {
-    throw new Error('Invalid token: token has expired');
+    // clockTolerance stays unset (0). jose compares `exp <= now - tolerance`,
+    // which at zero is exactly the strict `exp <= now` rejection that the
+    // "exp exactly equals now" vector depends on. Any tolerance here would
+    // silently extend the life of every recipient token.
+    const result = await jwtVerify(token, secret, {
+      algorithms: [ALGORITHM],
+      currentDate: new Date(Date.now()),
+    });
+    payload = result.payload as unknown as RecipientTokenPayload;
+  } catch (err) {
+    throw translateJoseError(err);
   }
 
   // --- Required claims presence ---

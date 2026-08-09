@@ -21,16 +21,18 @@ import { DECISIONS, type Decision } from '../../../../../lib/release/verifier-de
 
 type Ctx = { params: { token: string } };
 
-function payloadOr403(token: string) {
+async function payloadOr403(token: string) {
   try {
-    return verifyVerifierToken(token);
+    // await inside the try, or the rejection escapes and a forged link 500s
+    // instead of being quietly refused.
+    return await verifyVerifierToken(token);
   } catch {
     return null;
   }
 }
 
 export async function GET(_req: NextRequest, { params }: Ctx): Promise<NextResponse> {
-  const payload = payloadOr403(params.token);
+  const payload = await payloadOr403(params.token);
   if (!payload) {
     return NextResponse.json({ error: 'Forbidden', message: 'This link is no longer valid' }, { status: 403 });
   }
@@ -41,7 +43,7 @@ export async function GET(_req: NextRequest, { params }: Ctx): Promise<NextRespo
 }
 
 export async function POST(req: NextRequest, { params }: Ctx): Promise<NextResponse> {
-  const payload = payloadOr403(params.token);
+  const payload = await payloadOr403(params.token);
   if (!payload) {
     return NextResponse.json({ error: 'Forbidden', message: 'This link is no longer valid' }, { status: 403 });
   }

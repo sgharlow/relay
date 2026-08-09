@@ -112,7 +112,7 @@ describe('Property 6: KMS unwrap scoped to access rules', () => {
           vi.clearAllMocks();
           mockDecrypt.mockResolvedValue('UNWRAPPED_PLAINTEXT_B64');
 
-          mockVerify.mockReturnValue({
+          mockVerify.mockResolvedValue({
             recipientId: 'r1',
             releaseStateId: 'rs1',
             version: '0',

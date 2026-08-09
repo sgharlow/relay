@@ -27,6 +27,47 @@
 >   executable design. The 22 negative-vector tests exist and are green against the *current*
 >   hand-rolled modules; they are the acceptance vectors for the migration.
 
+---
+
+## ✅ §B EXECUTED 2026-08-08 — and two ways this plan had gone stale
+
+Both modules now sign and verify through jose. All four §B.6 gate items pass: 22/22 negative
+vectors and the full recipient/verifier harness green under **mechanical sync→async edits only**
+(no assertion message, vector, secret or clock mechanism was touched — verify with
+`git show --stat`), full suite + `tsc --noEmit` + `next build` clean, and the completeness grep
+returns zero un-awaited call sites.
+
+**Two corrections future readers need, because this plan was written 2026-07-03 and executed after
+six more sprints landed:**
+
+1. **§B.4 says "all five production sites — exhaustive, grep-verified". There were TEN.** Sprints
+   2–6 added `lib/access/closure.ts`, `api/access/code/route.ts`, `api/access-requests/route.ts`,
+   `api/verify/code/route.ts` and `api/verify/[token]/route.ts`. Its line numbers had drifted too.
+   **Three of the five it missed produced NO TypeScript error** — `closure.ts` because an
+   `as unknown as` cast swallowed the type, and the two `code` routes because `NextResponse.json()`
+   accepts anything. Those three would have shipped a `Promise` serialised as `{}` into a live
+   token field: a recipient or verifier emailed a link that could never work, discovered by a
+   stranger mid-emergency. This is precisely why §B.6 item 4 demands a grep and not a clean `tsc`.
+   **An exhaustive list in a plan is only exhaustive on the day it was written — re-derive it.**
+
+2. **jose was 4.15.9, not the 6.2.3 the plan verified against** — and it was only present as
+   next-auth's transitive dependency, never a direct one. Now pinned directly at ^6 (6.2.8). Every
+   §B.2/§B.3 mechanism was re-verified against what is actually installed: `currentDate` at
+   `types.d.ts:618` (not :545), the `epoch(currentDate || new Date())` fallback at
+   `jwt_claims_set.js:121` (not :137), `exp <= now - tolerance` at :132 (not :154). The mechanisms
+   hold exactly as designed; only the citations had rotted.
+
+**One check this plan did not ask for, and should have:** tokens issued by the OLD code are still
+in flight when the new code deploys — recipient links live 24h, verifier links 72h. Every other
+test issues and verifies with the same implementation, so both halves would move together and
+agree perfectly while agreeing with nothing already sitting in someone's inbox.
+`lib/auth/token-migration-compat.test.ts` issues with the pre-migration hand-rolled algorithm and
+verifies with jose. It was confirmed able to fail: injecting `requiredClaims: ['jti']` turned it
+red, and removing it turned it green again.
+
+**Still not live-proven at time of writing** — deployed, but no real recipient or verifier link has
+been round-tripped against production since the swap. That is the next check, not an assumption.
+
 ## Inventory (live-verified 2026-07-03)
 
 | Module | Hand-rolled surface | Replacement | Status |

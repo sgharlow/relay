@@ -89,9 +89,12 @@ async function readReleaseState(id: string): Promise<ReleaseStateRow> {
   return r.rows[0];
 }
 
-function verifyTokenOr403(token: string) {
+async function verifyTokenOr403(token: string) {
   try {
-    return verifyRecipientToken(token);
+    // The `await` must stay INSIDE the try. Returning the promise unawaited
+    // would let the rejection escape this catch entirely, and a forged token
+    // would surface as an unhandled 500 instead of the 403 it has to be.
+    return await verifyRecipientToken(token);
   } catch {
     throw new AccessError('Invalid recipient token', 403);
   }
@@ -147,7 +150,7 @@ function toLimited(item: AccessItem): AccessItem {
 // ---------------------------------------------------------------------------
 
 export async function getAccessDashboard(token: string): Promise<AccessDashboard> {
-  const payload = verifyTokenOr403(token);
+  const payload = await verifyTokenOr403(token);
   const rs = await readReleaseState(payload.releaseStateId);
   assertVersion(rs, payload.version);
 
@@ -188,7 +191,7 @@ function byteaToBase64(v: unknown): string {
 }
 
 export async function decryptAccessItem(token: string, itemId: string): Promise<DecryptResult> {
-  const payload = verifyTokenOr403(token);
+  const payload = await verifyTokenOr403(token);
   const rs = await readReleaseState(payload.releaseStateId);
 
   // Audit EVERY decrypt request (authorized or denied), before any KMS work (Req 7.8).

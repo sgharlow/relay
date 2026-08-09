@@ -65,7 +65,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   let payload;
   try {
-    payload = verifyRecipientToken(token);
+    payload = await verifyRecipientToken(token);
   } catch {
     return NextResponse.json({ error: 'Forbidden', message: 'Invalid recipient token' }, { status: 403 });
   }

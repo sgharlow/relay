@@ -38,7 +38,7 @@ export async function POST(req: NextRequest, { params }: Ctx): Promise<NextRespo
 
   let payload;
   try {
-    payload = verifyVerifierToken(token);
+    payload = await verifyVerifierToken(token);
   } catch {
     return NextResponse.json({ error: 'Forbidden', message: 'Invalid verifier token' }, { status: 403 });
   }

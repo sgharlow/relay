@@ -62,7 +62,7 @@ interface TokenPayload {
 export async function getClosureSummary(token: string): Promise<ClosureSummary | null> {
   let payload: TokenPayload;
   try {
-    payload = verifyRecipientToken(token) as unknown as TokenPayload;
+    payload = (await verifyRecipientToken(token)) as unknown as TokenPayload;
   } catch {
     return null; // Unverified bearer — say nothing.
   }

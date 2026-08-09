@@ -52,7 +52,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   try {
     const { verifierId, releaseStateId } = await redeemVerifierCode(code);
-    return NextResponse.json({ token: issueVerifierToken(verifierId, releaseStateId) });
+    return NextResponse.json({ token: await issueVerifierToken(verifierId, releaseStateId) });
   } catch (err) {
     if (err instanceof VerifierCodeError) {
       // Count the miss against the code itself, so a targeted attack on one

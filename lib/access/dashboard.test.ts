@@ -34,7 +34,7 @@ const rsRow = (over: Record<string, unknown> = {}) => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockVerify.mockReturnValue({ recipientId: 'r-1', releaseStateId: 'rs-1', version: '3', iat: 0, exp: 9e9 });
+  mockVerify.mockResolvedValue({ recipientId: 'r-1', releaseStateId: 'rs-1', version: '3', iat: 0, exp: 9e9 });
 });
 
 // ---------------------------------------------------------------------------
@@ -109,7 +109,7 @@ describe('getAccessDashboard', () => {
   });
 
   it('403 on a stale token (version mismatch)', async () => {
-    mockVerify.mockReturnValueOnce({ recipientId: 'r-1', releaseStateId: 'rs-1', version: '2', iat: 0, exp: 9e9 });
+    mockVerify.mockResolvedValueOnce({ recipientId: 'r-1', releaseStateId: 'rs-1', version: '2', iat: 0, exp: 9e9 });
     mockQuery.mockResolvedValueOnce(qResult([rsRow({ version: 3 })]));
     await expect(getAccessDashboard('tok')).rejects.toMatchObject({ httpStatus: 403 });
   });
