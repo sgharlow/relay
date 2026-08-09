@@ -24,6 +24,13 @@ async function main(): Promise<void> {
         method: check.method ?? 'GET',
         headers: check.contentType ? { 'content-type': check.contentType } : undefined,
         body: check.body,
+        // Do NOT follow redirects. Every check here expects a terminal status
+        // from the app itself, so a redirect means something is standing in
+        // front of it. Following one turns a Vercel Deployment Protection wall
+        // into a 200 from an SSO login page and the whole suite reads as
+        // passing while never reaching the application at all — which is
+        // exactly what happened the first time this was pointed at a preview.
+        redirect: 'manual',
         signal: AbortSignal.timeout(TIMEOUT_MS),
       });
       status = res.status;
