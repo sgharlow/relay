@@ -36,26 +36,36 @@ Re-run all four checks at merge time if the branch has moved past `af4ddf3`.
 
 ## Sequence (from the disposition plan's WIN branch; LOSE/ZOMBIE = same minus winner badge)
 
-- [ ] **0. Disposition recorded** — `PROJECT.yaml` `gates.h0-verdict-disposition.met` filled in
+- [x] **0. Disposition recorded — DONE.** `PROJECT.yaml` `gates.h0-verdict-disposition.met` carries date 2026-08-07, result WIN, decision `commercialize`.
+      ORIGINAL: — `PROJECT.yaml` `gates.h0-verdict-disposition.met` filled in
   
       (paste-ready blocks: `h0-disposition-plan.md` appendix) + memory updated.
 
-- [ ] **1. jose migration (§B)** on `exp/security-remediation` — one session, gated by the plan's
+- [x] **1. jose migration (§B) — DONE (`befab71`).** Both token modules import from `jose`; the
+      22 negative vectors pass on master. The `createHmac` remaining in `signup.ts` and
+      `recovery-enrolment.ts` is out of §B scope and uses `timingSafeEqual`.
+      ORIGINAL: on `exp/security-remediation` — one session, gated by the plan's
   
       §B.6 acceptance (22 negative vectors + harness mechanical-only edits + full suite + tsc +
       build + grep completeness). This is pre-committed as the first post-verdict move.
 
-- [ ] **2. Merge order:** `exp/security-remediation` → master, then `exp/g1-caregiver-landing` →
+- [x] **2. Merge order — DONE, and the branch is retired.** `exp/g1-caregiver-landing` is merged.
+      `exp/security-remediation` reads NOT merged but is stale from 2026-07-03 — 2 commits ahead,
+      ~32,800 lines behind — and its substance (otplib adapter, negative vectors, plan doc) is all
+      on master. Do not merge it; it would revert six sprints. Delete when convenient.
+      ORIGINAL: `exp/security-remediation` → master, then `exp/g1-caregiver-landing` →
   
       master. (Independent trees — landing touches only `src/app/caregivers/` + docs — so
       conflicts are not expected; the security branch carries the superseding copy of
       `security-remediation-plan.md`, so take ITS version on any docs conflict.)
 
-- [ ] **3. WIN only:** add the "H0 winner ([track])" badge to landing copy + ad variants before
+- [x] **3. WIN badge — DONE.** `WINNER_BADGE` renders on `/caregivers`; the ad variants carry it.
+      ORIGINAL: add the "H0 winner ([track])" badge to landing copy + ad variants before
   
       first send (`h0-disposition-plan.md`).
 
-- [ ] **4. Push master** — verdict freeze is over at this point by definition. Vercel auto-deploys.
+- [x] **4. Push master — DONE.** HEAD == origin/master.
+      ORIGINAL: — verdict freeze is over at this point by definition. Vercel auto-deploys.
 
 - [x] **5. Enable Vercel Web Analytics** on the project (dashboard toggle, zero code) — this is
   
@@ -83,7 +93,9 @@ Re-run all four checks at merge time if the branch has moved past `af4ddf3`.
         `/opengraph-image` all **200**; `relay-three-henna.vercel.app` **308 →** the apex;
         `/api/health/scheduler` **200 `healthy:true`**.
 
-- [ ] **7. Teardown-aftermath check (post-7-25 deploys only):** the DB-backed app routes are
+- [x] **7. Teardown-aftermath check — N/A, premise void.** The 7-25 DSQL/KMS teardown never
+      happened: Steve ruled the infra KEPT after the H0 win. Landing returns 200.
+      ORIGINAL: the DB-backed app routes are
   
       expected dead — verify the landing's only outbound links (`/caregivers/interest`, footer
       `/`) don't land a qualified visitor on a 500. If `/` errors without DSQL, point the footer
