@@ -87,3 +87,40 @@ is therefore the one part of the webhook NOT exercised by this test.
 were proven end to end in TEST mode; the live path is verified only as far as
 session creation. One genuine purchase (then refund) is the remaining check, and
 it must happen before marketing spend rather than after.
+
+## Cancellation and the customer portal (2026-08-09)
+
+Until this date **nothing in the product could cancel a subscription**. There was
+no portal route and no cancel call anywhere in the codebase; `deleteAccount`
+removed the local `subscriptions` row and the user, and never told Stripe. So
+closing your account deleted the vault and left the card being charged annually,
+with no account left to sign in to. That is now closed:
+
+- `POST /api/stripe/portal` opens Stripe's hosted portal for the signed-in
+  owner's own customer id. The id is read from their row and never taken from
+  the request — on an account shared with report-bridge and skillcrossroads, a
+  caller-supplied customer id would be a cross-product takeover.
+- `deleteAccount` cancels at Stripe **first**, and aborts the whole deletion if
+  that fails. The local row is the only pointer to the Stripe object, so
+  deleting it first would make the charge unstoppable from inside the app.
+
+### ⚠️ ONE STEP IS NOT VERIFIED, AND IT IS IN THE DASHBOARD
+
+`billingPortal.sessions.create` fails with *"No configuration provided and your
+default configuration has not been created"* unless the **customer portal has
+been saved at least once in live mode**: Stripe Dashboard → Settings → Billing →
+Customer portal → configure → save.
+
+This could not be checked from the repo: `STRIPE_SECRET_KEY` is a Vercel
+*sensitive* variable, so `vercel env pull` returns it empty and there is no local
+key to call the API with. What IS proven live is that the route exists and
+refuses an unauthenticated caller with 401 rather than 500.
+
+So the button is **wired, not live-proven**. If that configuration has never been
+saved, every subscriber who clicks "Manage or cancel subscription" gets an error.
+Verify by signing in and clicking it once.
+
+While in that screen, note that **the portal's cancellation timing is set there,
+not in this code** — immediately vs. at period end. The terms page deliberately
+does not promise either; if you choose end-of-period, that is a fact worth adding
+to the Payment section.
