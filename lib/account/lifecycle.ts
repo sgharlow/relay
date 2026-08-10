@@ -28,6 +28,7 @@
 
 import { query } from '../db/connection';
 import { writeAuditEntry } from '../audit/audit-service';
+import { cancelSubscriptionForOwner } from '../billing/cancellation';
 
 export interface ExportedItem {
   id: string;
@@ -116,6 +117,14 @@ export interface DeletionReport {
  * exactly what such a log is supposed to prevent.
  */
 export async function deleteAccount(ownerId: string): Promise<DeletionReport> {
+  // FIRST, and deliberately so. The local subscriptions row was never what
+  // charged the customer — Stripe was — and deleting it destroys the only
+  // pointer to the Stripe object, making the charge unstoppable from inside
+  // the app. If this throws, nothing below runs: "your vault is gone and you
+  // are still being billed" is strictly worse than "we could not close your
+  // account, try again".
+  await cancelSubscriptionForOwner(ownerId);
+
   const audit = await query<{ n: string }>(
     `SELECT count(*)::text AS n FROM audit_log WHERE owner_id = $1`,
     [ownerId],

@@ -25,7 +25,15 @@ export async function requireOwner(): Promise<{ ownerId: string } | NextResponse
     const { ownerId } = await getOwnerSession();
     return { ownerId };
   } catch (res) {
-    return res as NextResponse;
+    // getOwnerSession throws a 401 NextResponse by design. Anything else — a
+    // TypeError, a session-backend outage — used to be returned as-is, which
+    // isResponse() rejected, leaving the caller to carry on with
+    // `ownerId: undefined`. That is fail-OPEN on an auth guard. Deny instead.
+    if (isResponse(res)) return res;
+    return NextResponse.json(
+      { error: 'Unauthorized', message: 'Valid owner session required' },
+      { status: 401 },
+    );
   }
 }
 

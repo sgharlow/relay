@@ -24,9 +24,10 @@ import { useRef, useState, type FormEvent } from 'react';
 
 import { CAREGIVER_CHECKOUT, CAREGIVER_LEAD, recallChannel } from '../analytics';
 import { recallClickId } from '../click-id';
+import { CONTACT_EMAIL } from '../../../../lib/contact';
 import { trackG1 } from '../track';
 
-const CONTACT_EMAIL = 'sgharlow+relay@gmail.com';
+
 const MAILTO = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('Founding family — Relay for caregivers')}`;
 
 type Status = 'idle' | 'sending' | 'sent' | 'error';

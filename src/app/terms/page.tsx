@@ -1,10 +1,15 @@
 /**
  * Terms of service.
  *
- * Deliberately short and honest about what Relay is today: pre-launch software
- * with no paying customers, no estate/legal capability cleared, and no
- * guarantee of continuity. Overclaiming here is the thing that would actually
- * hurt someone.
+ * Deliberately short and honest about what Relay is today: early software with
+ * no estate/legal capability cleared and no guarantee of continuity.
+ * Overclaiming here is the thing that would actually hurt someone.
+ *
+ * ⚠️ THIS DOCUMENT MAKES FACTUAL CLAIMS THAT GO STALE. It said "no paying
+ * customers yet" for a day after the first live charge, and "Relay is not
+ * currently taking payment" in the same week money was taken. Check the
+ * standing claims against reality whenever billing or account behaviour
+ * changes — a false statement here is worse than a missing one.
  *
  * Required alongside the privacy policy for Meta and Reddit ad accounts.
  *
@@ -13,12 +18,14 @@
  * Feature: relay-g1-wtp
  */
 
+import { CONTACT_EMAIL, CONTACT_MAILTO } from '../../../lib/contact';
+
 export const metadata = {
   title: 'Terms · Relay',
   description: 'What Relay promises, what it does not, and what stage it is at.',
 };
 
-const UPDATED = '7 August 2026';
+const UPDATED = '9 August 2026';
 
 export default function TermsPage() {
   return (
@@ -30,8 +37,8 @@ export default function TermsPage() {
         </header>
 
         <p className="rounded-lg border border-ochre bg-ochre-soft p-4">
-          <strong>Relay is early-stage software and has no paying customers yet.</strong> Please do
-          not make it the only place something important is written down.
+          <strong>Relay is early-stage software.</strong> Please do not make it the only place
+          something important is written down.
         </p>
 
         <section>
@@ -83,18 +90,41 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-t5 font-semibold text-ink">Payment</h2>
+          <h2 className="text-t5 font-semibold text-ink">Payment and renewal</h2>
           <p className="mt-2">
-            Relay is not currently taking payment. Where a price is shown, it is the intended
-            price; you will not be charged without a separate, explicit checkout step.
+            Relay costs $119 per year in US dollars. You are never charged without going through
+            checkout yourself, and there is a free tier you can stay on indefinitely.
+          </p>
+          <p className="mt-2">
+            <strong className="font-semibold text-ink">
+              A subscription renews automatically every year at $119
+            </strong>{' '}
+            until you cancel it, and the card you paid with is charged on each renewal date.
+            Payments are processed by Stripe; we never see or store your card details.
+          </p>
+          <p className="mt-2">
+            You can cancel at any time from the Subscription section of your account page, which
+            opens Stripe&rsquo;s billing page — the same place you can update your card or read past
+            invoices. Cancelling stops all future charges. Closing your account cancels the
+            subscription too, so you never need to do both.
+          </p>
+          <p className="mt-2">
+            We do not refund the unused part of a year by default, but if something has gone wrong,
+            email us and we will sort it out. Nothing here removes a refund right the law gives you.
           </p>
         </section>
 
         <section>
           <h2 className="text-t5 font-semibold text-ink">Ending it</h2>
           <p className="mt-2">
-            You can ask us to delete your account at any time. We may discontinue the service, and
-            if we do we will give notice and a way to export what you have stored.
+            You can close your account yourself, at any time, from your account page — it deletes
+            your vault and cancels any subscription in the same step. You can export everything
+            first. We may discontinue the service, and if we do we will give notice and a way to
+            export what you have stored.
+          </p>
+          <p className="mt-2">
+            Ending a subscription never deletes anything. Your vault stays exactly as it is; the
+            free-tier limits apply only to adding more.
           </p>
         </section>
 
@@ -109,8 +139,8 @@ export default function TermsPage() {
         <section>
           <h2 className="text-t5 font-semibold text-ink">Contact</h2>
           <p className="mt-2">
-            <a className="text-ink underline" href="mailto:sgharlow+relay@gmail.com">
-              sgharlow+relay@gmail.com
+            <a className="text-ink underline" href={CONTACT_MAILTO}>
+              {CONTACT_EMAIL}
             </a>
           </p>
         </section>

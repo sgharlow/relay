@@ -16,6 +16,8 @@
  * Feature: relay-g1-wtp
  */
 
+import { CONTACT_EMAIL, CONTACT_MAILTO } from '../../../lib/contact';
+
 export const metadata = {
   title: 'Privacy · Relay',
   description: 'What Relay stores, what it cannot read, and who it shares with.',
@@ -123,8 +125,8 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-t5 font-semibold text-ink">Contact</h2>
           <p className="mt-2">
-            <a className="text-ink underline" href="mailto:sgharlow+relay@gmail.com">
-              sgharlow+relay@gmail.com
+            <a className="text-ink underline" href={CONTACT_MAILTO}>
+              {CONTACT_EMAIL}
             </a>
           </p>
         </section>

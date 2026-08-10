@@ -16,6 +16,15 @@ authoritative_plan: specs/Relay_H0_Build_Spec_v2.md
 # spine remains dogfooded; the NEW surfaces (policies, delegation, verifier decisions, access
 # requests) are live-proven at the lib/API layer against the real cluster but have NOT been
 # dogfooded through the UI end to end. They are "live-proven", not "dogfooded" — do not conflate.
+#
+# SUPERSEDED 2026-08-08: all ten journeys were walked against production as a brand-new self-serve
+# account (sweep table at the top of docs/user-journeys.md), closing the distinction the note above
+# draws for those newer surfaces.
+#
+# STAYS `dogfooded` as of 2026-08-09, deliberately. A real card was charged on 2026-08-08 — but it
+# was the owner's own card. Paying yourself is not a customer, so it advances nothing here:
+# `customer-used` needs an arms-length user and `revenue-proven` needs arms-length money. Promotion
+# stays gated on G1/G2, and market.wtp_evidence is still `none`.
 ladder: dogfooded
 
 derived:
@@ -61,11 +70,21 @@ market:
     (props were being dropped by a wrong payload shape; the channel key was `channel` where the
     landing page uses `src`). Re-probe if the instrument is touched — a 200 response proves
     nothing about attribution."
-  wtp_evidence: none                     # G1 is the test; COMPETITORS.md implication: test at/above Everplans' $99/yr, lead with reversibility
+  wtp_evidence: none                     # UNCHANGED and load-bearing. One purchase by the owner is
+    # not arms-length demand, and caregiver_leads held ZERO rows as of 2026-08-09. G1 is still the
+    # test; COMPETITORS.md implication: test at/above Everplans' $99/yr, lead with reversibility.
 
-monetization_path: none   # Still none: there is NO payment processor and no money can be taken.
-# 2026-08-07: entitlement SCAFFOLDING now exists (subscriptions table + server-side free-tier caps
-# of 10 items / 1 recipient / no release, lib/billing/entitlements.ts). That is cap enforcement,
-# not monetization. G4 (Stripe) remains gated behind G1/G2 evidence by design.
+monetization_path: stripe_live_annual   # $119/yr, live-mode Stripe, charged end to end 2026-08-08.
+# CORRECTED 2026-08-09. This field read `none` with the comment "there is NO payment processor and
+# no money can be taken" for a day AFTER a real card was charged on relaystandby.com. That is the
+# exact drift the claim-discipline rule exists to prevent, in the one file the rule names as the
+# source of truth — so it is recorded here rather than quietly overwritten.
+#
+# What is actually true: checkout is live (src/app/api/stripe/checkout), the webhook reconciles
+# subscription state, entitlements read the tier, and as of 2026-08-09 a subscriber can cancel
+# self-serve through the Stripe billing portal (src/app/api/stripe/portal) — before that, nothing
+# in the product could cancel a subscription and closing an account left the card being charged.
+# Money can be taken AND stopped. That pair is what makes this a monetization path rather than a
+# checkout button.
 
 post_event_plan: "h0-verdict-disposition gate + auto-scheduled teardown (CCR triggers 7-25 + 7-31 tickler); commercial fork = the G1->G5 chain"

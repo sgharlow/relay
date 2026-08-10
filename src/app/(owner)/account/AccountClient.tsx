@@ -54,6 +54,32 @@ export default function AccountClient() {
   const [nameSaved, setNameSaved] = useState<string | null>(null);
   const [newCodes, setNewCodes] = useState<string[] | null>(null);
   const [regenerating, setRegenerating] = useState(false);
+  const [openingPortal, setOpeningPortal] = useState(false);
+
+  /**
+   * Hands off to Stripe's hosted portal, where cancelling, changing the card
+   * and reading past invoices all live. Until this existed a subscriber had no
+   * way to stop paying short of emailing us, which is not a cancellation
+   * mechanism.
+   */
+  async function onManageBilling() {
+    setError(null);
+    setOpeningPortal(true);
+    try {
+      const res = await fetch('/api/stripe/portal', { method: 'POST' });
+      if (res.status === 404) {
+        setError('There is no subscription on this account yet.');
+        return;
+      }
+      if (!res.ok) throw new Error('Could not open the billing page.');
+      const { url } = (await res.json()) as { url: string };
+      window.location.href = url;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not open the billing page.');
+    } finally {
+      setOpeningPortal(false);
+    }
+  }
 
   async function onExport() {
     setError(null);
@@ -232,6 +258,21 @@ export default function AccountClient() {
             </ul>
           </div>
         ) : null}
+      </section>
+      <section className="rounded border border-rule bg-paper-raised p-5">
+        <h2 className="text-t5 font-semibold text-ink">Subscription and billing</h2>
+        <p className="mt-2 text-t2 leading-relaxed text-muted">
+          Relay is $119 a year and renews automatically until you cancel. You can cancel at any
+          time from this page. Nothing in your vault is deleted when a subscription ends — it stays
+          exactly as it is, and the free limits apply only to adding more.
+        </p>
+        <button
+          onClick={onManageBilling}
+          disabled={openingPortal}
+          className="mt-4 rounded border border-rule-strong px-3 py-2 text-t2 font-medium text-ink hover:bg-paper-sunken disabled:opacity-50"
+        >
+          {openingPortal ? 'Opening…' : 'Manage or cancel subscription'}
+        </button>
       </section>
       <section className="rounded border border-rule bg-paper-raised p-5">
         <h2 className="text-t5 font-semibold text-ink">Export everything</h2>
