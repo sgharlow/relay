@@ -93,7 +93,20 @@ Re-run all four checks at merge time if the branch has moved past `af4ddf3`.
       cox.net is Yahoo-operated and Yahoo does not support `+tag` addressing, so
       `sgharlow+relay@cox.net` was never a real mailbox. The untagged address delivered.
       Full write-up: `docs/email-dns-runbook.md`.
-- [ ] **7d. Cloudflare Email Routing (added 2026-08-08, STEVE — DNS).** Apex has no MX, so
+- [x] **7d. Cloudflare Email Routing — DONE 2026-08-09.** Steve enabled routing; Claude verified
+      and switched the constant. **`hello@relaystandby.com` is now the public contact** on the
+      landing, interest, privacy and terms pages, and the personal Gmail is gone from the shipped
+      bundle (checked in the deployed JS chunk, not just the HTML).
+      Proven at the mailbox, not the API — both a message to `hello@` and an external control
+      landed in the **INBOX, not spam**. The control mattered: enabling routing rewrote the APEX
+      SPF, and had Resend's return-path been the apex rather than `send.`, every notification would
+      have started failing SPF at that moment. `send.` records confirmed intact.
+      🚨 **NO CATCH-ALL** — `support@` was accepted by Resend and then dropped in silence.
+      `lib/contact.ts` is typed against a `ROUTED_ADDRESSES` list with a test, so the public address
+      cannot be edited into a black hole. **One-click improvement, Steve's call:** Cloudflare →
+      Email → Routing → Catch-all → forward to the same inbox.
+      Full evidence table: `docs/email-dns-runbook.md` §6. ORIGINAL NOTE FOLLOWS.
+- [ ] ~~**7d. Cloudflare Email Routing (added 2026-08-08, STEVE — DNS).**~~ Apex has no MX, so
       `relay@relaystandby.com` cannot receive mail and the public contact address on the landing,
       privacy and terms pages is a personal Gmail. Enabling Email Routing gives
       `hello@relaystandby.com` forwarding to a real inbox and lets From and Reply-To match. Records

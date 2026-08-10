@@ -181,3 +181,64 @@ Any bounce from a tagged address is about the tag, not about your domain's reput
 Delivery to **Outlook.com / Hotmail** has never been tested, and Microsoft consumer filtering is
 stricter than Gmail's. Worth one send before paid traffic, since the caregiver audience skews older
 and Hotmail/Outlook addresses are common in that cohort.
+
+---
+
+## 6. Cloudflare Email Routing — LIVE and proven (2026-08-09)
+
+Steve enabled Email Routing on the zone; the verification below was run immediately after and is
+the record of what was actually measured, not what was expected.
+
+### DNS as it now stands (read with node `dns.resolveTxt` — Windows `nslookup` false-negatives TXT)
+
+| Record | Value | Meaning |
+|---|---|---|
+| `MX relaystandby.com` | `route1/2/3.mx.cloudflare.net` | Routing is live; the apex can now receive |
+| `TXT relaystandby.com` | `v=spf1 include:_spf.mx.cloudflare.net ~all` | **Added by Cloudflare when routing was enabled** |
+| `TXT send.relaystandby.com` | `v=spf1 include:amazonses.com ~all` | **INTACT** — this is the one Resend needs |
+| `MX send.relaystandby.com` | `feedback-smtp.us-east-1.amazonses.com` | Untouched |
+| `TXT _dmarc.relaystandby.com` | `v=DMARC1; p=none; rua=…; fo=1` | Untouched |
+| `A relaystandby.com` | `76.76.21.21` | Site unaffected |
+
+### ⚠️ The risk this created, and why it was tested rather than reasoned about
+
+Enabling routing **rewrote the apex SPF**. SPF is evaluated against the envelope return-path, which
+for Resend is `send.relaystandby.com` — so outbound is unaffected. But had the return-path been the
+apex, the new record would have started failing SPF for every invitation, owner challenge and
+verifier notification **the instant routing went on**, silently and with no code change to blame.
+
+So both legs were sent through the app's own path (`lib/notify/email.ts`) and **read in the
+mailbox**:
+
+| Leg | To | Result |
+|---|---|---|
+| A — outbound control | `sgharlow@gmail.com` | ✅ **INBOX**, not spam — outbound survived the SPF change |
+| B — inbound routing | `hello@relaystandby.com` | ✅ **INBOX** — routing forwards to the real mailbox |
+| C — the From address | `relay@relaystandby.com` | ✅ **INBOX** — replies to notifications reach a human |
+| D — catch-all probe | `support@relaystandby.com` | ❌ **never arrived** |
+
+### 🚨 THERE IS NO CATCH-ALL
+
+Leg D is the finding to remember. Resend **accepted** the send — a 200 and a message id — and
+Cloudflare then dropped it, because routing only delivers addresses that have been explicitly
+created. Searched `in:anywhere` (spam and trash included); it is a real absence, not a delay.
+
+Consequences:
+
+- A customer who guesses `support@`, `info@` or `contact@relaystandby.com` gets **silence**, and
+  nothing anywhere records that it happened.
+- `lib/contact.ts` is therefore typed against a `ROUTED_ADDRESSES` list with a test asserting
+  membership, so a plausible edit cannot quietly redirect the public address into a black hole.
+
+**One-click improvement, Steve's call:** Cloudflare → Email → Routing → **Catch-all address** →
+forward to the same inbox. It costs nothing and converts silent loss into delivered mail.
+
+### Still not proven
+
+`RESEND_REPLY_TO_ADDRESS` is a Vercel *sensitive* variable and reads back empty, so what a customer
+sees in Reply-To could not be confirmed from here. It reaches a working inbox either way, and the
+From address now routes. Changing it to `hello@relaystandby.com` would make From and Reply-To match
+— but it could not be verified or reversed from a session, so it was deliberately left alone.
+
+Outlook.com / Hotmail delivery (§5) remains untested and is still worth one send before paid
+traffic.
