@@ -16,7 +16,7 @@
 
 import { query } from '../db/connection';
 
-export async function resolveTotpSecret(email: string): Promise<string> {
+export async function resolveTotpSecret(email: string): Promise<string | null> {
   const normalised = email.trim().toLowerCase();
 
   const res = await query<{ totp_secret: string | null }>(
@@ -30,15 +30,18 @@ export async function resolveTotpSecret(email: string): Promise<string> {
     [normalised],
   );
 
-  const perUser = res.rows[0]?.totp_secret;
-  if (perUser) return perUser;
+  const row = res.rows[0];
 
-  const envSecret = process.env.TOTP_SECRET;
-  if (!envSecret) {
-    throw new Error(
-      'No per-user TOTP secret for this account and TOTP_SECRET is not set',
-    );
-  }
+  // No account. Not "no secret" — no account, so there is nothing to fall back
+  // FOR. The env fallback is scoped to rows that predate signup, and stretching
+  // it to cover an absent row is what made sign-in answer an unregistered
+  // address differently from a registered one.
+  if (!row) return null;
 
-  return envSecret;
+  if (row.totp_secret) return row.totp_secret;
+
+  // A pre-signup account (totp_secret IS NULL) still authenticates against the
+  // shared env secret. Absent or unusable, the caller rejects like any other
+  // bad code — it never becomes an error the caller can distinguish.
+  return process.env.TOTP_SECRET ?? null;
 }

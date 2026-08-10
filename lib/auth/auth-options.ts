@@ -74,10 +74,22 @@ export const authOptions: NextAuthOptions = {
         // --- MFA gate (Requirement 17.1) ---
         // Resolve THIS owner's secret. A shared secret would let any user mint a
         // valid second factor for any other account.
-        const totpSecret = await resolveTotpSecret(email);
-        const totpValid = validateTotpCodeFor(totpSecret, totpCode);
-        if (!totpValid) {
-          // TOTP factor invalid — reject session
+        //
+        // Every failure below returns the same `null`, and therefore the same
+        // CredentialsSignin response. An unknown address, a known address with
+        // the wrong code, and an account whose secret cannot be decoded are
+        // indistinguishable from outside — which is the point: answering them
+        // differently tells a stranger which emails hold a Relay account.
+        let totpSecret: string | null;
+        try {
+          totpSecret = await resolveTotpSecret(email);
+        } catch (err) {
+          // A lookup failure is ours, not the caller's. Log it; say nothing.
+          console.error('[auth] TOTP secret lookup failed:', err);
+          return null;
+        }
+
+        if (!totpSecret || !validateTotpCodeFor(totpSecret, totpCode)) {
           return null;
         }
 

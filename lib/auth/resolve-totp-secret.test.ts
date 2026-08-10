@@ -53,17 +53,30 @@ describe('resolveTotpSecret', () => {
     await expect(resolveTotpSecret('legacy@b.com')).resolves.toBe(ENV_SECRET);
   });
 
-  it('falls back to the env secret for an unknown email', async () => {
+  // The env fallback exists for accounts that PREDATE self-serve signup, which
+  // by definition have a row. Extending it to an email with no row at all had
+  // two consequences, both live on production until 2026-08-09:
+  //
+  //  1. Sign-in answered differently for a registered address than for an
+  //     unregistered one, which is an account-enumeration oracle on a product
+  //     whose signup rate limiter was deliberately built so that "a refused
+  //     request never reveals whether the email has an account".
+  //  2. Anyone holding the shared env secret could authenticate as an arbitrary
+  //     NEW address, and `authorize` upserts on success — so the sign-in page
+  //     doubled as an unmetered account-creation path.
+  it('returns null for an email with no account, instead of the env secret', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [] } as never);
 
-    await expect(resolveTotpSecret('nobody@b.com')).resolves.toBe(ENV_SECRET);
+    await expect(resolveTotpSecret('nobody@b.com')).resolves.toBeNull();
   });
 
-  it('throws when neither a per-user secret nor TOTP_SECRET is available', async () => {
+  it('returns null rather than throwing when no secret is available anywhere', async () => {
+    // Throwing is what leaked: NextAuth reflects the message into
+    // /api/auth/error?error=..., so the exception text itself became the tell.
     delete process.env.TOTP_SECRET;
-    mockQuery.mockResolvedValueOnce({ rows: [] } as never);
+    mockQuery.mockResolvedValueOnce({ rows: [{ totp_secret: null }] } as never);
 
-    await expect(resolveTotpSecret('nobody@b.com')).rejects.toThrow(/TOTP/);
+    await expect(resolveTotpSecret('legacy@b.com')).resolves.toBeNull();
   });
 
   it('looks the account up by normalised email', async () => {

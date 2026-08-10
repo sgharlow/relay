@@ -53,7 +53,23 @@ function decodeSecret(secret: string): Uint8Array {
   if (/^[0-9a-fA-F]+$/.test(secret) && secret.length % 2 === 0) {
     return Uint8Array.from(Buffer.from(secret, 'hex'));
   }
-  return base32.decode(secret.toUpperCase().replace(/=+$/, ''));
+
+  const cleaned = secret.toUpperCase().replace(/=+$/, '');
+
+  // A base32 string only lands on a byte boundary when its length is a multiple
+  // of 8; 20 characters is 100 bits, which is not. The strict decoder rejects
+  // that outright, and the secret deployed as TOTP_SECRET is exactly 20
+  // characters — so the env-fallback sign-in path threw on production while
+  // every fixture in the test suite (16 and 32 characters) sailed through.
+  //
+  // Pad with zero bits to the next boundary and keep only the whole bytes the
+  // secret actually carries. This reproduces what lenient base32 decoders do,
+  // which is what the authenticator entries in the field were provisioned
+  // against — changing the byte output here would invalidate them.
+  const padded = cleaned.padEnd(Math.ceil(cleaned.length / 8) * 8, 'A');
+  const usableBytes = Math.floor((cleaned.length * 5) / 8);
+
+  return base32.decode(padded).subarray(0, usableBytes);
 }
 
 /**
@@ -116,18 +132,32 @@ export function generateTotpCodeFor(secret: string, atMs = Date.now()): string {
 export function validateTotpCodeFor(secret: string, code: string, atMs = Date.now()): boolean {
   if (!/^\d{6}$/.test(code)) return false;
 
-  const result = verifySync({
-    secret: decodeSecret(secret),
-    token: code,
-    algorithm: 'sha1',
-    digits: TOTP_DIGITS,
-    period: TOTP_STEP_SECONDS,
-    epoch: Math.floor(atMs / 1000),
-    // epochTolerance is in seconds: ±1 step of 30s ≡ the old ±1 window loop.
-    epochTolerance: TOTP_WINDOW * TOTP_STEP_SECONDS,
-  });
+  // Fail closed on an unusable secret, whether it is undecodable or simply too
+  // short for the algorithm — otplib enforces a 16-byte floor and throws below
+  // it. Throwing here does not stay here: NextAuth turns an exception out of
+  // `authorize` into /api/auth/error?error=<message>, so a decoder complaint
+  // became a response the caller could read, and read differently depending on
+  // the account. Rejecting is the only safe answer; the floor is not lowered to
+  // accommodate a weak secret.
+  try {
+    const secretBytes = decodeSecret(secret);
+    if (secretBytes.length === 0) return false;
 
-  return result.valid;
+    const result = verifySync({
+      secret: secretBytes,
+      token: code,
+      algorithm: 'sha1',
+      digits: TOTP_DIGITS,
+      period: TOTP_STEP_SECONDS,
+      epoch: Math.floor(atMs / 1000),
+      // epochTolerance is in seconds: ±1 step of 30s ≡ the old ±1 window loop.
+      epochTolerance: TOTP_WINDOW * TOTP_STEP_SECONDS,
+    });
+
+    return result.valid;
+  } catch {
+    return false;
+  }
 }
 
 /**

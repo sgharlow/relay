@@ -223,3 +223,46 @@ describe('backward compatibility with the env secret', () => {
     expect(() => generateTotpCode(at)).toThrow(/TOTP_SECRET/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Secret decoding — the shapes that actually reach production
+// ---------------------------------------------------------------------------
+
+describe('secret decoding robustness', () => {
+  // Every fixture in this file is 16 or 32 base32 characters, i.e. a whole
+  // number of bytes. A secret is not obliged to be, and the strict decoder
+  // rejected any that was not — so the env-fallback sign-in path threw on
+  // production while this suite stayed green.
+  const NON_ALIGNED_SECRET = 'BKJ4XQZL7MNRTS2WVA6PQRSTUVWX'; // 28 chars = 140 bits
+
+  it('accepts a base32 secret whose length is not a whole number of bytes', () => {
+    const at = 1_700_000_015_000;
+    const code = generateTotpCodeFor(NON_ALIGNED_SECRET, at);
+
+    expect(code).toMatch(/^\d{6}$/);
+    expect(validateTotpCodeFor(NON_ALIGNED_SECRET, code, at)).toBe(true);
+  });
+
+  it('returns false instead of throwing when the secret is below the 128-bit floor', () => {
+    // The shape actually deployed as TOTP_SECRET: 20 *characters* of base32,
+    // which is 12 bytes — not the 20 *bytes* generateTotpSecret produces, and
+    // under otplib's 16-byte minimum. Bytes were confused for characters when
+    // the variable was set, and a lenient library accepted it at the time.
+    // It must now fail closed, not throw.
+    const TOO_SHORT = 'BKJ4XQZL7MNRTS2WVA6P'; // 20 chars = 12 usable bytes
+
+    expect(() => validateTotpCodeFor(TOO_SHORT, '123456')).not.toThrow();
+    expect(validateTotpCodeFor(TOO_SHORT, '123456')).toBe(false);
+  });
+
+  it('returns false instead of throwing when the secret is unusable', () => {
+    // Fail closed. A malformed secret must reject the sign-in, not surface an
+    // exception that NextAuth reflects back to the caller as an error string.
+    expect(() => validateTotpCodeFor('not valid base32 !!!', '123456')).not.toThrow();
+    expect(validateTotpCodeFor('not valid base32 !!!', '123456')).toBe(false);
+  });
+
+  it('returns false instead of throwing when the secret is empty', () => {
+    expect(validateTotpCodeFor('', '123456')).toBe(false);
+  });
+});
