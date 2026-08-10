@@ -282,7 +282,22 @@ unfalsifiable there — a working route and a broken one look identical. Send fr
 address, which is why the probes in §6 used the app's own Resend path rather than the destination
 inbox.
 
-### Still unexplained, and worth one look
+### 🔴 CONFIRMED 2026-08-09 — Resend SUPPRESSION, read from the dashboard
+
+The hypothesis below is **confirmed**. Resend's Emails list shows both `support@relaystandby.com`
+sends with status **`Suppressed`** and no Sent timestamp, while every other address on the same
+path in the same minutes reads **`Delivered`**.
+
+**The trap, precisely:** `emails.send` returned **200 with a message id** for every suppressed
+send. The application saw success. Nothing was ever transmitted. `sendEmail` was hardened in
+§1a to stop treating a Resend *error* as success — suppression is not an error, so it sails
+straight through that guard.
+
+`support@` earned its suppression by hard-bouncing on the very first probe, when no route existed
+for it. **One bounce, and that recipient is muted indefinitely** — the address now routes perfectly
+(catch-all delivers it) and Resend still will not send to it.
+
+ORIGINAL HYPOTHESIS FOLLOWS.
 
 The five `support@` failures above were sent through **Resend**, not from Gmail, so same-account
 dedup does not explain them. Every other address on the same path arrived. The leading hypothesis
@@ -299,3 +314,45 @@ failure mode `sendEmail` was hardened against at the API level, reappearing one 
 Worth checking in the Resend dashboard: **Suppressions / bounced addresses**, and whether
 `support@relaystandby.com` is listed. If it is, the hypothesis is confirmed and the product needs a
 view on suppression before it depends on notifying people at a crisis moment.
+
+---
+
+## 8. Outlook delivery — ACCEPTED by Microsoft (2026-08-09)
+
+A realistic verifier-confirmation notification (not a bare ping — content shape is an input to
+filtering, and a terse token message is itself spam-shaped) was sent to `relaystandby@outlook.com`.
+
+**Resend reports `Delivered`.** Microsoft **accepted** it: not rejected, not dropped, not deferred.
+So authentication and reputation cleared the door — SPF, the apex-aligned DKIM at
+`resend._domainkey.relaystandby.com`, and DMARC all pass, and the domain is on no blocklist
+(Spamhaus DBL, SURBL both clean).
+
+⚠️ **`Delivered` is the ESP's word for "the receiving server took it" — it says NOTHING about
+which folder.** Inbox vs Junk is decided after acceptance and is invisible from this side. It has
+to be read in the mailbox; **check Junk explicitly**. The apex-SPF question raised as a possible
+cause is moot: it did not block acceptance.
+
+## 9. 🔴 The suppression risk this exposed — OPEN, and it is a product risk
+
+`sendEmail` cannot tell a suppressed send from a delivered one. Both return 200 and a message id.
+That matters far beyond a test address, because these ride the same path:
+
+- verifier confirmation requests — the message that releases access during an emergency
+- owner challenges, invitations, access-request notifications
+
+**A recipient who bounces once — full mailbox, a bad afternoon at their provider, a typo'd address
+that later gets fixed — is muted from then on, while the code records success.** For a product
+whose entire function is reaching a human at the worst moment of their week, that is a silent
+single point of failure, and it is the exact shape the portfolio rule about dead-man's switches
+exists to prevent: the absence of the signal is not monitored.
+
+**Immediate:** remove `support@relaystandby.com` from Resend → Suppression list, now that it routes.
+
+**Structural (design, NOT yet built — G1 sequencing applies):** subscribe to Resend webhooks
+(`email.bounced`, `email.complained`, `email.delivery_delayed`), persist per-recipient delivery
+state, and surface "we could not reach X" to the OWNER — who is the only person able to fix a bad
+address for a verifier. A release that silently waits on an unreachable verifier is worse than one
+that fails loudly.
+
+Do not treat `recordSend()` as covering this: it records what the app attempted, not what the
+provider did with it.
