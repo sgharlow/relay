@@ -19,12 +19,18 @@
  * rather than the `send.` subdomain, every notification would have started
  * failing SPF the moment routing went on.
  *
- * ⚠️ THERE IS NO CATCH-ALL. Cloudflare routes only addresses that have been
- * explicitly created. Measured the same day: `hello@` and `relay@` arrive;
- * `support@` was accepted by Resend and then dropped in silence. Editing the
- * constant below to any address not in `ROUTED_ADDRESSES` would compile, ship,
- * render on four pages, and lose every customer email that followed it — so
- * that list is enforced by a test rather than left as a comment.
+ * A catch-all was enabled later the same day, so an arbitrary address at the
+ * domain now reaches the inbox too. `ROUTED_ADDRESSES` is kept anyway: with a
+ * catch-all, even a TYPO routes, which means a mistake here would look like it
+ * worked while putting an address on four public pages that nobody monitors as
+ * the contact. The list pins the address that is actually intended.
+ *
+ * ⚠️ When testing routing, never send from the account the rule forwards TO.
+ * Gmail deduplicates by Message-ID, so a forwarded copy of a message you sent
+ * is suppressed and never appears in the inbox — a working route and a broken
+ * one look identical. This cost an investigation; Cloudflare emits an automated
+ * notice about it. Send from an unrelated address. See
+ * `docs/email-dns-runbook.md` §7.
  *
  * Feature: relay-h0-mvp
  */

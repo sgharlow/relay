@@ -128,15 +128,17 @@ Re-run all four checks at merge time if the branch has moved past `af4ddf3`.
       challenge and verifier notification would have begun failing SPF at that instant, silently
       and with no code change to blame. `send.` records confirmed intact.
       
-      🚨 **THERE IS NO CATCH-ALL.** `support@relaystandby.com` was accepted by Resend — 200 and a
-      message id — then dropped by Cloudflare, which routes only addresses explicitly created.
-      Confirmed by searching `in:anywhere`, so the absence is real rather than a delay. A customer
-      guessing `support@` or `info@` gets silence and nothing records it. `lib/contact.ts` is
-      therefore typed against a `ROUTED_ADDRESSES` list with a test asserting membership, so the
-      public address cannot be edited into a black hole.
+      ✅ **Catch-all enabled and proven the same day.** Three different *invented* addresses
+      arrived — which is what separates a real catch-all from a few hand-made aliases — plus
+      `admin@` and `info@`, with no regression on `hello@`/`relay@`. A customer guessing any
+      address now reaches the inbox.
       
-      **One-click improvement, Steve's call:** Cloudflare → Email → Routing → **Catch-all address**
-      → forward to the same inbox. Converts silent loss into delivered mail.
+      ⚠️ **Never test a forwarding rule from the account it forwards TO.** Gmail deduplicates by
+      Message-ID, so the forwarded copy of a message you sent is suppressed and a working route is
+      indistinguishable from a broken one. This nearly produced two false findings; Cloudflare
+      emits an automated notice about it. Details and the one still-unexplained observation — a
+      possible **Resend suppression** on a previously-bounced recipient, which would silently
+      affect invitations and verifier notifications — are in `docs/email-dns-runbook.md` §7.
       
       Full evidence table, including the DNS state before and after:
       `docs/email-dns-runbook.md` §6. The original pending note and the Steve/Claude split that

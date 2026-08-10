@@ -217,7 +217,12 @@ mailbox**:
 | C — the From address | `relay@relaystandby.com` | ✅ **INBOX** — replies to notifications reach a human |
 | D — catch-all probe | `support@relaystandby.com` | ❌ **never arrived** |
 
-### 🚨 THERE IS NO CATCH-ALL
+### 🚨 THERE IS NO CATCH-ALL — **SUPERSEDED 2026-08-09, see §7**
+
+> A catch-all was enabled the same day and is proven delivering. The `support@` observation below
+> was additionally confounded by Gmail's same-account deduplication; §7 has the correction and the
+> rule that came out of it. The text is kept because the reasoning it records is still how the
+> question should be approached.
 
 Leg D is the finding to remember. Resend **accepted** the send — a 200 and a message id — and
 Cloudflare then dropped it, because routing only delivers addresses that have been explicitly
@@ -242,3 +247,55 @@ From address now routes. Changing it to `hello@relaystandby.com` would make From
 
 Outlook.com / Hotmail delivery (§5) remains untested and is still worth one send before paid
 traffic.
+
+---
+
+## 7. Catch-all enabled — and §6's `support@` finding CORRECTED (2026-08-09)
+
+**§6's "THERE IS NO CATCH-ALL" is superseded.** Steve enabled the catch-all; it forwards to
+`sgharlow@gmail.com` and is Active alongside the explicit `hello@`, `relay@` and `dmarc@` rules.
+
+### Proven delivering
+
+Three *different invented* addresses arrived, which is what distinguishes a real catch-all from a
+few hand-created aliases — plus `admin@` and `info@`, plus `hello@`/`relay@` with no regression.
+
+### ⚠️ The trap that nearly produced a false finding
+
+`support@` appeared to fail **five times** — in a burst, sent alone, and spaced 8s apart — while
+every other address succeeded. Two wrong conclusions were within reach: "catch-all is broken" and
+"there is a Drop rule on support@". Both were wrong, and the dashboard disproved the second.
+
+**Cloudflare itself supplied the answer**, via an automated notice it sends for exactly this case:
+
+> Are you missing an email sent from sgharlow@gmail.com to support@relaystandby.com? Some email
+> clients, such as Gmail, deduplicate emails. An email sent from the same account may not show up
+> in your inbox.
+
+**Gmail deduplicates by Message-ID.** Routing forwards the message *to the same Gmail account that
+sent it*, so Gmail sees a Message-ID already in Sent and suppresses the inbox copy. Verified: the
+test message exists with label **`SENT` only**, no `INBOX` copy — and the very existence of
+Cloudflare's notice proves Cloudflare **received and forwarded** the message to `support@`.
+
+**RULE: never test a forwarding rule by sending from the account it forwards to.** Absence is
+unfalsifiable there — a working route and a broken one look identical. Send from an unrelated
+address, which is why the probes in §6 used the app's own Resend path rather than the destination
+inbox.
+
+### Still unexplained, and worth one look
+
+The five `support@` failures above were sent through **Resend**, not from Gmail, so same-account
+dedup does not explain them. Every other address on the same path arrived. The leading hypothesis
+is a **Resend suppression**: `support@` is the one address probed *before* any route existed, so it
+hard-bounced, and ESPs suppress previously-bounced recipients — while `emails.send` still returns
+`200` and a message id. It could not be confirmed from here: the API key is **send-only** and
+`GET /emails/:id` returns **401**.
+
+**This matters beyond the test.** Relay's invitations, owner challenges and verifier notifications
+all go through this path. If a recipient bounces once — full mailbox, temporary outage — every
+later send to them may be silently suppressed while the code records success. That is precisely the
+failure mode `sendEmail` was hardened against at the API level, reappearing one layer down.
+
+Worth checking in the Resend dashboard: **Suppressions / bounced addresses**, and whether
+`support@relaystandby.com` is listed. If it is, the hypothesis is confirmed and the product needs a
+view on suppression before it depends on notifying people at a crisis moment.
