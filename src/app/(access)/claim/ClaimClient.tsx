@@ -56,7 +56,7 @@ export default function ClaimClient() {
   if (state.kind === 'error') {
     return (
       <div className="rounded-lg border border-rule-strong bg-paper-raised p-5">
-        <h1 className="text-t5 font-semibold text-ink">We couldn&rsquo;t open that link</h1>
+        <h1 className="text-t7 font-semibold text-ink">We couldn&rsquo;t open that link</h1>
         <p className="mt-2 text-ink">{state.message}</p>
         <p className="mt-3 text-muted">Ask whoever invited you to send a fresh one.</p>
       </div>
@@ -66,7 +66,7 @@ export default function ClaimClient() {
   if (state.kind === 'verifier') {
     return (
       <div className="rounded-lg border border-rule-strong bg-paper-raised p-5">
-        <h1 className="text-t5 font-semibold text-ink">You&rsquo;re on the list</h1>
+        <h1 className="text-t7 font-semibold text-ink">You&rsquo;re on the list</h1>
         <p className="mt-3 text-ink">
           If something happens, we may ask you one question: is this real?
         </p>
@@ -86,7 +86,7 @@ export default function ClaimClient() {
 
   return (
     <div className="rounded-lg border border-rule-strong bg-paper-raised p-5">
-      <h1 className="text-t5 font-semibold text-ink">You&rsquo;re set up</h1>
+      <h1 className="text-t7 font-semibold text-ink">You&rsquo;re set up</h1>
       <p className="mt-3 text-ink">
         Nothing is open right now, and nothing will be until a trigger is verified.
       </p>
@@ -138,7 +138,7 @@ function ClaimCodeEntry({ onCode }: { onCode: (c: string) => void }) {
 
   return (
     <div className="mx-auto max-w-md rounded-2xl border border-rule bg-paper-raised px-6 py-7">
-      <h1 className="text-[26px] font-semibold leading-snug text-ink">Enter your invitation code</h1>
+      <h1 className="text-t7 font-semibold leading-snug text-ink">Enter your invitation code</h1>
       <p className="mt-3 text-[17px] leading-relaxed text-ink">
         Someone has named you in their Relay plan. Type the code from the email they sent you.
       </p>

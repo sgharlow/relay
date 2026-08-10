@@ -28,7 +28,7 @@ export default function PrivacyPage() {
     <main className="min-h-screen bg-paper-raised px-6 py-12 text-[17px] leading-relaxed text-ink">
       <div className="mx-auto max-w-2xl space-y-6">
         <header>
-          <h1 className="text-t7 font-bold tracking-tight text-ink">Privacy</h1>
+          <h1 className="text-t7 font-semibold tracking-tight text-ink">Privacy</h1>
           <p className="mt-2 text-muted">Last updated {UPDATED}</p>
         </header>
 

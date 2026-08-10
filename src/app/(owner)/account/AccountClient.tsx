@@ -179,7 +179,7 @@ export default function AccountClient() {
   return (
     <div className="space-y-8">
       <section className="rounded border border-rule bg-paper-raised p-5">
-        <h2 className="font-medium text-ink">Your name</h2>
+        <h2 className="text-t5 font-semibold text-ink">Your name</h2>
         <p className="mt-2 text-t2 leading-relaxed text-muted">
           This is how you appear to the people you trust. They see it on every message Relay sends
           on your behalf — including the one that arrives when something has gone wrong, which is
@@ -203,7 +203,7 @@ export default function AccountClient() {
       </section>
 
       <section className="rounded border border-rule bg-paper-raised p-5">
-        <h2 className="font-medium text-ink">Recovery codes</h2>
+        <h2 className="text-t5 font-semibold text-ink">Recovery codes</h2>
         <p className="mt-2 text-t2 leading-relaxed text-muted">
           Relay has no password. If you lose the phone with your authenticator on it, these codes
           are the only way back in — so if you cannot find the list you were given at signup, get a
@@ -234,7 +234,7 @@ export default function AccountClient() {
         ) : null}
       </section>
       <section className="rounded border border-rule bg-paper-raised p-5">
-        <h2 className="font-medium text-ink">Export everything</h2>
+        <h2 className="text-t5 font-semibold text-ink">Export everything</h2>
         <p className="mt-2 text-t2 leading-relaxed text-muted">
           Downloads a readable file containing every item, decrypted here in your browser, plus the
           people you have designated. Keep it somewhere you would keep a password list — it is not
@@ -250,7 +250,7 @@ export default function AccountClient() {
       </section>
 
       <section className="rounded border border-clay bg-clay-soft p-5">
-        <h2 className="font-medium text-clay">Close this account</h2>
+        <h2 className="text-t5 font-semibold text-clay">Close this account</h2>
         <p className="mt-2 text-t2 leading-relaxed text-clay">
           Removes your vault, the people you designated, and your access rules. This cannot be
           undone, and anyone relying on this vault will lose their access immediately.

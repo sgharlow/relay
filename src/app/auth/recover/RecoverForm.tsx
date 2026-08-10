@@ -73,7 +73,7 @@ export default function RecoverForm() {
   if (phase === 'done') {
     return (
       <div>
-        <h1 className="text-t5 font-semibold text-ink">You&rsquo;re back in</h1>
+        <h1 className="text-t7 font-semibold text-ink">You&rsquo;re back in</h1>
         <p className="mt-3 text-[15px] leading-relaxed text-ink">
           Your new authenticator is set up. Your old one no longer works, and the recovery codes
           you had before have been replaced — here is a new set.
@@ -97,7 +97,7 @@ export default function RecoverForm() {
   if (phase === 'enrol') {
     return (
       <form onSubmit={onEnrol}>
-        <h1 className="text-t5 font-semibold text-ink">Set up your new authenticator</h1>
+        <h1 className="text-t7 font-semibold text-ink">Set up your new authenticator</h1>
         <p className="mt-3 text-[15px] leading-relaxed text-ink">
           In your authenticator app, choose &ldquo;enter a setup key&rdquo; and paste this:
         </p>
@@ -128,7 +128,7 @@ export default function RecoverForm() {
 
   return (
     <form onSubmit={onIdentify}>
-      <h1 className="text-t5 font-semibold text-ink">Get back in</h1>
+      <h1 className="text-t7 font-semibold text-ink">Get back in</h1>
       <p className="mt-3 text-[15px] leading-relaxed text-ink">
         Lost the phone with your authenticator? Use one of the recovery codes you saved when you
         created your vault. Your vault contents are untouched — this only replaces how you sign in.

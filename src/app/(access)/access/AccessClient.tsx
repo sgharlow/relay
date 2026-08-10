@@ -120,7 +120,7 @@ export default function AccessClient() {
   if (!data.released) {
     return (
       <div>
-        <h1 className="text-t7 font-bold">Access not yet active</h1>
+        <h1 className="text-t7 font-semibold">Access not yet active</h1>
         <p className="mt-2 text-muted">
           You have access to the items below, but the release is still pending. You can see what is
           covered, but not the contents yet.
@@ -149,13 +149,13 @@ export default function AccessClient() {
 
   return (
     <div>
-      <h1 className="text-t7 font-bold">Your access plan</h1>
+      <h1 className="text-t7 font-semibold">Your access plan</h1>
       <p className="mt-2 text-muted">Work top to bottom — the most consequential items come first.</p>
 
       <div className="mt-8 space-y-8">
         {BUCKET_ORDER.filter((b) => grouped[b].length > 0).map((bucket) => (
           <section key={bucket}>
-            <h2 className="mb-3 text-t2 font-bold uppercase tracking-widest text-ochre-text">{BUCKET_LABELS[bucket]}</h2>
+            <h2 className="mb-3 text-t5 font-semibold uppercase tracking-widest text-ochre-text">{BUCKET_LABELS[bucket]}</h2>
             <ol className="space-y-3">
               {grouped[bucket].map((item) => {
                 step += 1;
@@ -232,7 +232,7 @@ function ClosedGracefully({ summary }: { summary: ClosureSummary }) {
     <div className="mx-auto max-w-xl">
       <div className="rounded-2xl border border-rule bg-paper-raised px-6 py-7">
         <p className="text-[15px] uppercase tracking-wide text-muted">Access closed</p>
-        <h1 className="mt-3 text-[26px] font-semibold leading-snug text-ink">
+        <h1 className="mt-3 text-t7 font-semibold leading-snug text-ink">
           Everything is back to normal.
         </h1>
         <p className="mt-4 text-[18px] leading-relaxed text-ink">
@@ -336,7 +336,7 @@ function AccessCodeEntry({ onToken, onClosed }: { onToken: (t: string) => void; 
 
   return (
     <div className="mx-auto max-w-md rounded-2xl border border-rule bg-paper-raised px-6 py-7">
-      <h1 className="text-[26px] font-semibold leading-snug text-ink">Enter your code</h1>
+      <h1 className="text-t7 font-semibold leading-snug text-ink">Enter your code</h1>
       <p className="mt-3 text-[17px] leading-relaxed text-ink">
         Someone arranged for you to reach their accounts, and that access is open. Type the code
         from the email we sent you.

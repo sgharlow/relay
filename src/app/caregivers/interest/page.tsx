@@ -34,7 +34,7 @@ export default function CaregiverInterest() {
           <span className="h-1.5 w-1.5 rounded-full bg-ink" />
           Founding families
         </p>
-        <h1 className="mt-5 text-t7 font-bold tracking-tight sm:text-t9">
+        <h1 className="mt-5 text-t7 font-semibold tracking-tight">
           You can start right now.
         </h1>
         <p className="mt-4 leading-relaxed text-muted">

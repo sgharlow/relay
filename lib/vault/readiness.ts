@@ -23,6 +23,7 @@
  */
 
 import { query } from '../db/connection';
+import { assessPreparedness, type Preparedness } from './preparedness';
 
 export type BlockerCode =
   | 'no_items'
@@ -45,10 +46,17 @@ export interface Readiness {
   ready: boolean;
   blockers: Blocker[];
   counts: { items: number; recipients: number; rules: number; verifiers: number };
+  /**
+   * How prepared the vault actually is, as a number rather than a list of
+   * absences. The blockers say what is missing; this says what it costs.
+   */
+  preparedness: Preparedness;
+  /** Who would step in, for the sentence. Their name if there is exactly one. */
+  whoLabel: string;
 }
 
 export async function assessReadiness(ownerId: string): Promise<Readiness> {
-  const [items, recipients, rules, verifiers, states] = await Promise.all([
+  const [items, recipients, rules, verifiers, states, itemRows, ruleRows, recipientRows] = await Promise.all([
     query<{ n: string }>(`SELECT count(*)::text AS n FROM vault_items WHERE owner_id = $1`, [ownerId]),
     query<{ n: string }>(`SELECT count(*)::text AS n FROM recipients WHERE owner_id = $1`, [ownerId]),
     query<{ n: string }>(`SELECT count(*)::text AS n FROM access_rules WHERE owner_id = $1`, [ownerId]),
@@ -57,6 +65,17 @@ export async function assessReadiness(ownerId: string): Promise<Readiness> {
       `SELECT trigger_type, required_confirmations FROM release_state WHERE owner_id = $1`,
       [ownerId],
     ),
+    // Metadata only — never ciphertext (CC2).
+    query<{ id: string; title: string; criticality: string | null; is_root_credential: boolean }>(
+      `SELECT id, title, criticality, is_root_credential FROM vault_items WHERE owner_id = $1
+        ORDER BY is_root_credential DESC, importance_score DESC, title ASC`,
+      [ownerId],
+    ),
+    query<{ vault_item_id: string }>(
+      `SELECT DISTINCT vault_item_id FROM access_rules WHERE owner_id = $1`,
+      [ownerId],
+    ),
+    query<{ name: string }>(`SELECT name FROM recipients WHERE owner_id = $1 ORDER BY created_at ASC`, [ownerId]),
   ]);
 
   const counts = {
@@ -117,5 +136,21 @@ export async function assessReadiness(ownerId: string): Promise<Readiness> {
     });
   }
 
-  return { ready: blockers.length === 0, blockers, counts };
+  const preparedness = assessPreparedness({
+    items: itemRows.rows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      criticality: r.criticality,
+      is_root_credential: Boolean(r.is_root_credential),
+    })),
+    ruledItemIds: ruleRows.rows.map((r) => r.vault_item_id),
+    verifierCount: counts.verifiers,
+  });
+
+  // Naming the person is the point — "someone" is what every other product
+  // says. Falls back only when there is nobody, or more than one to name.
+  const names = recipientRows.rows.map((r) => r.name).filter(Boolean);
+  const whoLabel = names.length === 1 ? names[0] : names.length === 0 ? 'nobody' : 'the people you named';
+
+  return { ready: blockers.length === 0, blockers, counts, preparedness, whoLabel };
 }

@@ -131,7 +131,7 @@ export default function SecurityPage() {
 
       <section className="border-y border-rule bg-paper-sunken">
         <div className="mx-auto max-w-3xl px-6 py-12">
-          <h2 className="text-t7 font-semibold tracking-tight text-ink">How it is built</h2>
+          <h2 className="text-t5 font-semibold tracking-tight text-ink">How it is built</h2>
           <p className="mt-2 text-[16px] leading-relaxed text-muted">
             For readers who want the mechanism rather than the reassurance.
           </p>

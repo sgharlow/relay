@@ -18,13 +18,19 @@ import { assessReadiness } from './readiness';
 
 const mockQuery = vi.mocked(query);
 
-/** Order matches the Promise.all: items, recipients, rules, verifiers, states. */
+/**
+ * Order matches the Promise.all: counts, states, then the three rowsets the
+ * preparedness statement needs — item metadata, ruled item ids, recipient names.
+ */
 function setup(o: {
   items?: number;
   recipients?: number;
   rules?: number;
   verifiers?: number;
   states?: Array<{ trigger_type: string; required_confirmations: number }>;
+  itemRows?: Array<{ id: string; title: string; criticality: string | null; is_root_credential: boolean }>;
+  ruledItemIds?: string[];
+  recipientNames?: string[];
 }) {
   const n = (v = 0) => ({ rows: [{ n: String(v) }], rowCount: 1 }) as never;
   mockQuery
@@ -32,7 +38,10 @@ function setup(o: {
     .mockResolvedValueOnce(n(o.recipients ?? 1))
     .mockResolvedValueOnce(n(o.rules ?? 1))
     .mockResolvedValueOnce(n(o.verifiers ?? 1))
-    .mockResolvedValueOnce({ rows: o.states ?? [{ trigger_type: 'emergency', required_confirmations: 1 }], rowCount: 1 } as never);
+    .mockResolvedValueOnce({ rows: o.states ?? [{ trigger_type: 'emergency', required_confirmations: 1 }], rowCount: 1 } as never)
+    .mockResolvedValueOnce({ rows: o.itemRows ?? [], rowCount: 0 } as never)
+    .mockResolvedValueOnce({ rows: (o.ruledItemIds ?? []).map((id) => ({ vault_item_id: id })), rowCount: 0 } as never)
+    .mockResolvedValueOnce({ rows: (o.recipientNames ?? ['Sarah Chen']).map((name) => ({ name })), rowCount: 1 } as never);
 }
 
 beforeEach(() => vi.clearAllMocks());
@@ -107,5 +116,54 @@ describe('setup-in-progress blockers are not faults', () => {
     setup({ items: 0, recipients: 0, rules: 0, verifiers: 0, states: [] });
     const r = await assessReadiness('o-1');
     for (const b of r.blockers) expect(b.href).toMatch(/^\//);
+  });
+});
+
+/**
+ * Added 2026-08-09 with the standing readiness header.
+ *
+ * The audit's last open finding was that a preparedness product never states
+ * how prepared you are. These pin the statement itself, because it is shown on
+ * every owner screen and a wrong number there is worse than no number.
+ */
+describe('the preparedness statement', () => {
+  it('counts only what an access rule can actually open', async () => {
+    setup({
+      verifiers: 1,
+      itemRows: [
+        { id: 'a', title: 'Gmail', criticality: 'critical', is_root_credential: true },
+        { id: 'b', title: 'Verizon PIN', criticality: 'critical', is_root_credential: false },
+      ],
+      ruledItemIds: ['a'],
+      recipientNames: ['Sarah Chen'],
+    });
+
+    const r = await assessReadiness('o-1');
+
+    expect(r.preparedness.reachable).toBe(1);
+    expect(r.preparedness.mattering).toBe(2);
+    expect(r.preparedness.unreachable).toContain('Verizon PIN');
+  });
+
+  it('names the single recipient, because "someone" is what everyone else says', async () => {
+    setup({ recipientNames: ['Sarah Chen'] });
+    expect((await assessReadiness('o-1')).whoLabel).toBe('Sarah Chen');
+  });
+
+  it('falls back when there is more than one person to name', async () => {
+    setup({ recipientNames: ['Sarah Chen', 'Tom Chen'] });
+    expect((await assessReadiness('o-1')).whoLabel).toBe('the people you named');
+  });
+
+  it('says nobody when nobody is named', async () => {
+    setup({ recipients: 0, recipientNames: [] });
+    expect((await assessReadiness('o-1')).whoLabel).toBe('nobody');
+  });
+
+  it('flags a lone verifier as a gap rather than a blocker', async () => {
+    // One verifier works — until they are on the same flight as you.
+    setup({ verifiers: 1, itemRows: [{ id: 'a', title: 'Gmail', criticality: 'critical', is_root_credential: false }], ruledItemIds: ['a'] });
+    const r = await assessReadiness('o-1');
+    expect(r.preparedness.gaps).toContain('a second person who can confirm an emergency');
   });
 });

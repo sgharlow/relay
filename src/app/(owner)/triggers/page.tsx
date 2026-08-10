@@ -80,7 +80,7 @@ export default function TriggersPage() {
           {data.isDemo ? <SimulatePanel onDone={load} /> : null}
 
           <section className="space-y-3">
-            <h2 className="text-t2 font-semibold uppercase tracking-wide text-muted">Release states</h2>
+            <h2 className="text-t5 font-semibold uppercase tracking-wide text-muted">Release states</h2>
             {data.releaseStates.length === 0 ? (
               <p className="text-t2 text-muted">No triggers yet — create an access rule to provision one.</p>
             ) : null}
@@ -211,7 +211,7 @@ function SimulatePanel({ onDone }: { onDone: () => Promise<void> }) {
     <section className="rounded border border-ochre bg-ochre-soft p-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-t2 font-semibold text-ochre-text">Simulate emergency (demo)</h2>
+          <h2 className="text-t5 font-semibold text-ochre-text">Simulate emergency (demo)</h2>
           <p className="text-t1 text-ochre-text">Fast-forwards ARMED → PENDING → GRACE → RELEASED in ~10s using the real state machine.</p>
         </div>
         <button

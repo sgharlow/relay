@@ -129,7 +129,7 @@ export default function VerifyClient() {
       {/* Why now */}
       {ctx.escalationHistory.length > 0 && (
         <div className="rounded-lg border border-rule-strong bg-paper-raised p-6">
-          <h2 className="font-semibold">What has happened so far</h2>
+          <h2 className="text-t5 font-semibold">What has happened so far</h2>
           <ul className="mt-3 space-y-2">
             {ctx.escalationHistory.map((h, i) => (
               <li key={`${h.action}-${i}`} className="text-ink">
@@ -143,7 +143,7 @@ export default function VerifyClient() {
 
       {/* What confirming does — and what it does not */}
       <div className="rounded-lg border border-ochre bg-ochre-soft p-6">
-        <h2 className="font-semibold text-ink">If you confirm</h2>
+        <h2 className="text-t5 font-semibold text-ink">If you confirm</h2>
         <p className="mt-2 text-ink">
           They get access to <strong>{ctx.itemCount}</strong> item
           {ctx.itemCount === 1 ? '' : 's'}
@@ -160,7 +160,7 @@ export default function VerifyClient() {
       </div>
 
       <div className="rounded-lg border-2 border-rule-strong bg-paper-raised p-6">
-        <h2 className="font-semibold">What this does not do</h2>
+        <h2 className="text-t5 font-semibold">What this does not do</h2>
         <p className="mt-2 text-ink">
           <strong>You will never see any of their information.</strong> Not now, and not after you
           confirm. You are being asked one question only: whether the situation is genuine.

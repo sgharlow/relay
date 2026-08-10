@@ -17,7 +17,7 @@ export default function ErrorContent() {
   const message = MESSAGES[code] ?? 'Something went wrong during sign-in.';
   return (
     <div className="w-full max-w-sm rounded-lg border border-rule bg-paper-raised p-6 text-center shadow-sm">
-      <h1 className="text-t5 font-semibold text-ink">Sign-in error</h1>
+      <h1 className="text-t7 font-semibold text-ink">Sign-in error</h1>
       <p className="mt-2 text-t2 text-muted">{message}</p>
       <Link href="/auth/signin" className="mt-4 inline-block rounded bg-ink px-3 py-2 text-t2 font-semibold text-paper hover:bg-ink">
         Back to sign in

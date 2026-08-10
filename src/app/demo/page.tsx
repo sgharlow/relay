@@ -58,7 +58,7 @@ export default function DemoTour() {
         <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-ochre bg-ochre-soft px-3 py-1 text-t1 text-ochre-text">
           🏆 Winner — Most Impactful · H0: Hack the Zero Stack with Vercel and AWS Databases
         </p>
-        <h1 className="max-w-3xl font-serif text-t7 font-semibold tracking-tight sm:text-t9">
+        <h1 className="max-w-3xl font-serif text-t7 font-semibold tracking-tight">
           See what an owner sees.
         </h1>
         <p className="mt-4 max-w-2xl text-t5 leading-relaxed text-muted">
@@ -74,7 +74,7 @@ export default function DemoTour() {
       {/* 1 — Vault */}
       <section className="mx-auto max-w-5xl px-6 py-12">
         <div className="font-mono text-t2 text-ink">01 · The vault</div>
-        <h2 className="mt-1 text-t7 font-semibold tracking-tight">
+        <h2 className="mt-1 text-t5 font-semibold tracking-tight">
           Ranked by what matters in a crisis
         </h2>
         <p className="mt-2 max-w-2xl text-t2 leading-relaxed text-muted">
@@ -134,7 +134,7 @@ export default function DemoTour() {
       <section className="border-y border-rule bg-paper-sunken">
         <div className="mx-auto max-w-5xl px-6 py-12">
           <div className="font-mono text-t2 text-ink">02 · Zero-knowledge storage</div>
-          <h2 className="mt-1 text-t7 font-semibold tracking-tight">
+          <h2 className="mt-1 text-t5 font-semibold tracking-tight">
             This is everything the server has
           </h2>
           <p className="mt-2 max-w-2xl text-t2 leading-relaxed text-muted">
@@ -171,7 +171,7 @@ export default function DemoTour() {
       {/* 3 — State machine */}
       <section className="mx-auto max-w-5xl px-6 py-12">
         <div className="font-mono text-t2 text-ink">03 · The release state machine</div>
-        <h2 className="mt-1 text-t7 font-semibold tracking-tight">
+        <h2 className="mt-1 text-t5 font-semibold tracking-tight">
           One verified emergency, step by step
         </h2>
         <p className="mt-2 max-w-2xl text-t2 leading-relaxed text-muted">
@@ -205,7 +205,7 @@ export default function DemoTour() {
         <div className="mx-auto max-w-5xl px-6 py-12">
           <div className="font-mono text-t2 text-ink">04 · The audit trail</div>
           <div className="flex flex-wrap items-center gap-3">
-            <h2 className="mt-1 text-t7 font-semibold tracking-tight">
+            <h2 className="mt-1 text-t5 font-semibold tracking-tight">
               Append-only, hash-chained, tamper-evident
             </h2>
             <span
@@ -270,7 +270,7 @@ export default function DemoTour() {
 
       {/* CTA */}
       <section className="mx-auto max-w-5xl px-6 py-14">
-        <h2 className="text-t7 font-semibold tracking-tight">Want the full story?</h2>
+        <h2 className="text-t5 font-semibold tracking-tight">Want the full story?</h2>
         <p className="mt-1 text-muted">
           Two minutes of video shows the live system doing everything above — including a
           multi-region failover.

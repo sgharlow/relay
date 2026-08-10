@@ -166,7 +166,7 @@ export default function HowItWorksPage() {
       {/* Use cases. Estate is deliberately absent — see USE_CASES. */}
       <section className="border-y border-rule bg-paper-sunken">
         <div className="mx-auto max-w-3xl px-6 py-12">
-          <h2 className="text-t7 font-semibold tracking-tight text-ink">What people use it for</h2>
+          <h2 className="text-t5 font-semibold tracking-tight text-ink">What people use it for</h2>
           <div className="mt-6 grid gap-5 sm:grid-cols-3">
             {USE_CASES.map((u) => (
               <div key={u.title} className="rounded-xl border border-rule bg-paper-raised p-5">
@@ -184,7 +184,7 @@ export default function HowItWorksPage() {
 
       {/* The matrix. */}
       <section id="compare" className="mx-auto max-w-5xl px-6 py-12 scroll-mt-6">
-        <h2 className="text-t7 font-semibold tracking-tight text-ink">How it compares</h2>
+        <h2 className="text-t5 font-semibold tracking-tight text-ink">How it compares</h2>
         <p className="mt-3 max-w-3xl text-[17px] leading-relaxed text-ink">
           These are the four things people actually choose between. We have included the rows we
           lose, because a comparison where the newcomer wins everything is not worth reading.

@@ -166,7 +166,7 @@ function RuleBuilder({ items, recipients, onCreated }: { items: Named[]; recipie
           </a>
         </div>
       ) : null}
-      <h2 className="text-t2 font-semibold uppercase tracking-wide text-muted">New rule</h2>
+      <h2 className="text-t5 font-semibold uppercase tracking-wide text-muted">New rule</h2>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="text-t2">
           <span className="mb-1 block text-muted">Vault item</span>

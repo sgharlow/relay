@@ -131,7 +131,7 @@ export default function CircleClient() {
       {/* Proposals — the owner edits a draft (J4-R2) */}
       {proposals.length > 0 && (
         <section>
-          <h2 className="text-t2 font-semibold text-ink">Suggested starting point</h2>
+          <h2 className="text-t5 font-semibold text-ink">Suggested starting point</h2>
           <p className="mt-1 text-t2 text-muted">
             Built from what the importance engine already knows. Accept what fits.
           </p>
@@ -165,7 +165,7 @@ export default function CircleClient() {
 
       {/* Coverage matrix */}
       <section>
-        <h2 className="text-t2 font-semibold text-ink">Who holds what</h2>
+        <h2 className="text-t5 font-semibold text-ink">Who holds what</h2>
         {recipients.length === 0 ? (
           <p style={{ marginTop: 'var(--s2)', fontSize: 'var(--t2)', color: 'var(--ink-muted)' }}>
             Nobody named yet — add the first person below.

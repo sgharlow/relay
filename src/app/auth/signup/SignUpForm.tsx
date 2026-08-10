@@ -126,7 +126,7 @@ export default function SignUpForm() {
   if (phase === 'recovery') {
     return (
       <div>
-        <h1 className="text-t5 font-semibold text-ink">Save these somewhere safe</h1>
+        <h1 className="text-t7 font-semibold text-ink">Save these somewhere safe</h1>
         <p className="mt-3 text-[15px] leading-relaxed text-ink">
           Relay has no password. If you lose the phone with your authenticator on it, one of these
           codes is the only way back into your vault.

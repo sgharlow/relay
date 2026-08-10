@@ -16,7 +16,7 @@ export default function SignUpPage() {
       <div className="w-full max-w-sm rounded-lg border border-rule bg-paper-raised p-6 shadow-sm">
         <div className="mb-6">
           <div className="text-t5 font-semibold tracking-tight">Relay</div>
-          <h1 className="mt-1 text-t5 font-semibold">Create your vault</h1>
+          <h1 className="mt-1 text-t7 font-semibold">Create your vault</h1>
           <p className="mt-1 text-t2 text-muted">
             Two steps. An authenticator app is required — there is no password.
           </p>

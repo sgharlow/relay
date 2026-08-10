@@ -46,7 +46,7 @@ export default function Home() {
       </header>
 
       <section className="mx-auto max-w-3xl px-6 pb-16 pt-12 sm:pt-20">
-        <h1 className="font-serif text-t9 font-semibold leading-[1.06] tracking-tight sm:text-t9">
+        <h1 className="font-serif text-t9 font-semibold leading-[1.06] tracking-tight">
           The accounts someone would need, if you could not manage them.
         </h1>
         <p className="mt-6 text-t5 leading-relaxed text-muted">
@@ -76,14 +76,14 @@ export default function Home() {
       <section className="border-y border-rule bg-paper-sunken">
         <div className="mx-auto grid max-w-5xl gap-6 px-6 py-14 sm:grid-cols-3">
           <div>
-            <h2 className="text-t2 font-semibold text-ink">It closes again</h2>
+            <h2 className="text-t5 font-semibold text-ink">It closes again</h2>
             <p className="mt-2 text-t2 leading-relaxed text-muted">
               Every other way of doing this is a door you open once. Recover, check in, and access
               ends on its own — which is what makes it safe to set up before you need it.
             </p>
           </div>
           <div>
-            <h2 className="text-t2 font-semibold text-ink">We cannot read it</h2>
+            <h2 className="text-t5 font-semibold text-ink">We cannot read it</h2>
             <p className="mt-2 text-t2 leading-relaxed text-muted">
               Secrets are encrypted in your browser before they reach us. We hold ciphertext, and we
               are honest on{' '}
@@ -94,7 +94,7 @@ export default function Home() {
             </p>
           </div>
           <div>
-            <h2 className="text-t2 font-semibold text-ink">Someone has to say yes</h2>
+            <h2 className="text-t5 font-semibold text-ink">Someone has to say yes</h2>
             <p className="mt-2 text-t2 leading-relaxed text-muted">
               Nothing opens on a timer or a guess. A person you named confirms the situation is
               real, and never sees anything of yours.
