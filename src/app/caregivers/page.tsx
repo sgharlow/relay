@@ -37,6 +37,7 @@ import {
   SUBHEAD,
   TRUST_POINTS,
 } from './content';
+import { GUARANTEE_LABEL } from '../../../lib/offer';
 import QualifiedTracker from './QualifiedTracker';
 
 const OG_TITLE = 'Relay for caregivers — emergency access that closes itself';
@@ -290,6 +291,14 @@ export default function CaregiversLanding() {
             <Link href={intentHref('pricing')} style={{ ...primaryCta, marginTop: 'var(--s6)' }}>
               {CTA_LABEL}
             </Link>
+            {/*
+              A guarantee nobody is told about converts nobody. It sits under
+              the CTA rather than in the headline: the pitch is reversible
+              access, and leading with the refund would sell the exit.
+            */}
+            <p style={{ fontSize: 'var(--t2)', color: 'var(--ink-muted)', marginTop: 'var(--s4)' }}>
+              {GUARANTEE_LABEL}. Cancel any time from your account page.
+            </p>
           </div>
         </div>
       </section>

@@ -18,6 +18,7 @@ import { useEffect, useState } from 'react';
 
 import { PRICE_YEARLY_USD, ANCHOR } from '../../caregivers/content';
 import { emitFunnel, resolveChannel } from '../../../../lib/analytics/funnel';
+import { GUARANTEE_LABEL } from '../../../../lib/offer';
 import { buttonPrimary, cardPadded, meta, muted } from '../_lib/ui';
 
 /** Runtime-configurable so a price test does not require a deploy (J1-R8). */
@@ -98,7 +99,7 @@ export default function PriceCard() {
         </button>
 
         <p style={{ ...meta, marginTop: 'var(--s3)', textAlign: 'center' }}>
-          Free plan keeps your first 10 items. Nothing is deleted if you wait.
+          {GUARANTEE_LABEL}. Free plan keeps your first 10 items. Nothing is deleted if you wait.
         </p>
       </div>
 

@@ -88,3 +88,19 @@ monetization_path: stripe_live_annual   # $119/yr, live-mode Stripe, charged end
 # checkout button.
 
 post_event_plan: "h0-verdict-disposition gate + auto-scheduled teardown (CCR triggers 7-25 + 7-31 tickler); commercial fork = the G1->G5 chain"
+
+# Decisions ratified by Steve, recorded here so they stop reading as open items
+# in the pre-ads blocker list. Each one had been authored but never confirmed.
+ratified:
+  - id: refund-stance
+    date: 2026-08-09
+    decision: "30-day money-back guarantee on every charge (renewals included), then no refund of the unused part of a year"
+    supersedes: "no refund by default, with an email-us escape — authored, never confirmed"
+    implemented: "lib/offer.ts is the single definition; consumed by the Terms, the /caregivers price card and the in-product PriceCard, pinned by lib/offer.test.ts"
+    note: "Refunds are issued BY HAND in the Stripe dashboard — nothing in the codebase refunds, and Stripe's portal cancels without refunding. The copy routes to a human by design, and a test enforces that it keeps doing so."
+  - id: stripe-merchant-name
+    date: 2026-08-09
+    decision: "leave as-is for the G1 flight"
+    detail: "The live billing portal header reads 'Relay/ReportBridge/LearningAI365' — an account-level name on the Stripe account shared with report-bridge, learningai365 and skillcrossroads. Per-portal-configuration branding does not override it."
+    rationale: "G1 measures click-to-intent, which happens before checkout, so this cannot bias the gate reading. It is only seen by someone who reaches payment during the beta."
+    revisit: "if G1 passes — at which point the options are a neutral shared name or a Relay-only Stripe account"

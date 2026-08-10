@@ -19,13 +19,14 @@
  */
 
 import { CONTACT_EMAIL, CONTACT_MAILTO } from '../../../lib/contact';
+import { GUARANTEE_LABEL, REFUND_POLICY } from '../../../lib/offer';
 
 export const metadata = {
   title: 'Terms · Relay',
   description: 'What Relay promises, what it does not, and what stage it is at.',
 };
 
-const UPDATED = '9 August 2026';
+const UPDATED = '10 August 2026';
 
 export default function TermsPage() {
   return (
@@ -109,8 +110,7 @@ export default function TermsPage() {
             subscription too, so you never need to do both.
           </p>
           <p className="mt-2">
-            We do not refund the unused part of a year by default, but if something has gone wrong,
-            email us and we will sort it out. Nothing here removes a refund right the law gives you.
+            <strong className="font-semibold text-ink">{GUARANTEE_LABEL}.</strong> {REFUND_POLICY}
           </p>
         </section>
 
