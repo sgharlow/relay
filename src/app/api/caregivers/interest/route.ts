@@ -74,6 +74,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       note: str(body.note),
       src: str(body.src),
       cta: str(body.cta),
+      // Which ad actually paid for this visitor. Absent for organic arrivals,
+      // and never required — a lead without one is still a lead.
+      clickPlatform: str(body.clickPlatform),
+      clickId: str(body.clickId),
     });
 
     if (!outcome.stored && !outcome.notified) {

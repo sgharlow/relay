@@ -108,7 +108,7 @@ describe('recordLead attribution and content', () => {
   it('persists the channel and CTA that paid for the lead', async () => {
     await recordLead({ email: 'a@b.com', note: 'dad in hospital', src: 'reddit', cta: 'hero' });
     const params = query.mock.calls[0][1] as unknown[];
-    expect(params).toEqual(['a@b.com', 'dad in hospital', 'reddit', 'hero', true]);
+    expect(params).toEqual(['a@b.com', 'dad in hospital', 'reddit', 'hero', true, null, null]);
   });
 
   it('stores nulls, not undefined, for absent optional columns', async () => {
@@ -145,5 +145,36 @@ describe('recordLead attribution and content', () => {
     await recordLead({ email: 'a@b.com' });
     expect(sendEmail.mock.calls[0][0].to).toBe('fallback@example.com');
     delete process.env.RESEND_REPLY_TO_ADDRESS;
+  });
+});
+
+describe('ad attribution', () => {
+  it('stores the click platform and ID on the row', async () => {
+    // Without these, "reddit-ads produced 40 leads" is the most specific thing
+    // that can ever be said, and no offline conversion can be uploaded.
+    await recordLead({
+      email: 'a@b.com',
+      src: 'reddit-ads',
+      clickPlatform: 'reddit',
+      clickId: 'rd_7',
+    });
+    const params = query.mock.calls[0][1] as unknown[];
+    expect(params).toContain('reddit');
+    expect(params).toContain('rd_7');
+  });
+
+  it('stores nulls for an organic arrival rather than failing', async () => {
+    // Most leads have no click ID. A lead without one is still a lead, and
+    // nothing in the funnel may require it.
+    await expect(recordLead({ email: 'a@b.com' })).resolves.toMatchObject({ stored: true });
+  });
+
+  it('caps a click ID the client could have lengthened', async () => {
+    // The browser cap is a convenience; this endpoint is public, so the only
+    // cap that counts is the one on this side.
+    await recordLead({ email: 'a@b.com', clickPlatform: 'google', clickId: 'x'.repeat(900) });
+    const params = query.mock.calls[0][1] as unknown[];
+    const stored = params.find((p) => typeof p === 'string' && p.startsWith('xxx')) as string;
+    expect(stored.length).toBeLessThanOrEqual(255);
   });
 });

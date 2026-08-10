@@ -23,6 +23,7 @@
 import { useRef, useState, type FormEvent } from 'react';
 
 import { CAREGIVER_CHECKOUT, CAREGIVER_LEAD, recallChannel } from '../analytics';
+import { recallClickId } from '../click-id';
 import { trackG1 } from '../track';
 
 const CONTACT_EMAIL = 'sgharlow+relay@gmail.com';
@@ -50,6 +51,8 @@ export default function InterestForm() {
 
     try {
       const params = new URLSearchParams(window.location.search);
+      // Whichever ad paid for this visitor, parked on the landing page.
+      const click = recallClickId();
       const res = await fetch('/api/caregivers/interest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -60,6 +63,9 @@ export default function InterestForm() {
           renderedAt: renderedAt.current,
           src: recallChannel() ?? undefined,
           cta: params.get('src') ?? undefined,
+          // Whichever ad actually paid for this visitor, if any.
+          clickPlatform: click?.platform,
+          clickId: click?.id,
         }),
       });
 

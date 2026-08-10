@@ -256,7 +256,12 @@ describe('recipient-token — property tests', () => {
       ),
       { numRuns: 200 },
     );
-  });
+    // 200 rounds of real HS256 sign+verify take ~120ms on an idle machine, but
+    // the default 5s budget is the tightest in the suite and this is its slowest
+    // test — on a loaded runner it has gone 40x over and failed for want of CPU
+    // rather than for a broken property. Raised rather than trimming numRuns,
+    // which would buy green by testing less.
+  }, 30_000);
 
   /**
    * Property: exp is always iat + 24 hours (86400 seconds) — Requirement 17.2

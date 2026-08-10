@@ -19,6 +19,13 @@ import { query } from '../db/connection';
 import { sendEmail } from '../notify/email';
 
 export const MAX_NOTE_LENGTH = 1000;
+
+/**
+ * Click identifiers are bounded here, not just in the browser. The browser cap
+ * is a convenience for our own code; this endpoint is public and unauthenticated,
+ * so the only cap that counts is this one.
+ */
+export const MAX_CLICK_ID_LENGTH = 255;
 export const MAX_EMAIL_LENGTH = 254; // RFC 5321 practical maximum
 
 export interface LeadInput {
@@ -26,6 +33,11 @@ export interface LeadInput {
   note?: string;
   src?: string;
   cta?: string;
+  /** The ad platform that sold the click, when there was one. */
+  clickPlatform?: string;
+  /** That platform's identifier for the click. Never required — organic
+      arrivals have none, and a lead without one is still a lead. */
+  clickId?: string;
 }
 
 export interface LeadOutcome {
@@ -121,8 +133,17 @@ export async function recordLead(input: LeadInput): Promise<LeadOutcome> {
   let stored = false;
   try {
     await query(
-      `INSERT INTO caregiver_leads (email, note, src, cta, notified) VALUES ($1, $2, $3, $4, $5)`,
-      [lead.email, lead.note ?? null, input.src ?? null, input.cta ?? null, notified],
+      `INSERT INTO caregiver_leads (email, note, src, cta, notified, click_platform, click_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        lead.email,
+        lead.note ?? null,
+        input.src ?? null,
+        input.cta ?? null,
+        notified,
+        input.clickPlatform?.slice(0, MAX_CLICK_ID_LENGTH) ?? null,
+        input.clickId?.slice(0, MAX_CLICK_ID_LENGTH) ?? null,
+      ],
     );
     stored = true;
   } catch (err) {
