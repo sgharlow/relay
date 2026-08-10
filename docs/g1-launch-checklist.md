@@ -13,7 +13,7 @@
 > teardown. That teardown did not happen — the infra was kept by Steve's ruling — and the premise
 > went with it. `/caregivers/interest` now posts to `/api/caregivers/interest`, which writes a
 > `caregiver_leads` row, so points 1-3 below are deliberately false as of item 7e.
->
+> 
 > The trade was made knowingly: a `mailto:`-only conversion is immune to backend failure and
 > captures almost nobody on mobile, which is the traffic this gate buys. A capture path that can
 > break is worth more than one that cannot work — provided the break is loud, which is why every
@@ -37,22 +37,34 @@ Re-run all four checks at merge time if the branch has moved past `af4ddf3`.
 ## Sequence (from the disposition plan's WIN branch; LOSE/ZOMBIE = same minus winner badge)
 
 - [ ] **0. Disposition recorded** — `PROJECT.yaml` `gates.h0-verdict-disposition.met` filled in
+  
       (paste-ready blocks: `h0-disposition-plan.md` appendix) + memory updated.
+
 - [ ] **1. jose migration (§B)** on `exp/security-remediation` — one session, gated by the plan's
+  
       §B.6 acceptance (22 negative vectors + harness mechanical-only edits + full suite + tsc +
       build + grep completeness). This is pre-committed as the first post-verdict move.
+
 - [ ] **2. Merge order:** `exp/security-remediation` → master, then `exp/g1-caregiver-landing` →
+  
       master. (Independent trees — landing touches only `src/app/caregivers/` + docs — so
       conflicts are not expected; the security branch carries the superseding copy of
       `security-remediation-plan.md`, so take ITS version on any docs conflict.)
+
 - [ ] **3. WIN only:** add the "H0 winner ([track])" badge to landing copy + ad variants before
+  
       first send (`h0-disposition-plan.md`).
+
 - [ ] **4. Push master** — verdict freeze is over at this point by definition. Vercel auto-deploys.
+
 - [x] **5. Enable Vercel Web Analytics** on the project (dashboard toggle, zero code) — this is
+  
       the G1 measurement instrument; without it there is no denominator. **DONE** — confirmed by
       the events themselves, not by the toggle: `caregiver_qualified` and `caregiver_intent` both
       POST **200** to the first-party collector with `src` attached (5b below).
+
 - [x] **5b. Funnel instrument live-proven on relaystandby.com (added and DONE 2026-08-08).**
+  
       This was the single largest open risk: every sprint was built on a G1 waiver, so no reading
       was trustworthy, and the custom domain moved the surface after the last check. Driven in a
       real browser at a 390px viewport, `/caregivers?src=reddit_test` -> hero CTA:
@@ -60,7 +72,9 @@ Re-run all four checks at merge time if the branch has moved past `af4ddf3`.
       BOTH payloads carry `src: "reddit_test"` — numerator and denominator share the channel
       vocabulary, so the gate ratio is computable per lane. `cta: "hero"` rides alongside for
       lane-vs-lane analysis. Payloads read off the wire, not inferred from code.
+
 - [x] **6. Live post-deploy probes (re-run 2026-08-09):**
+  
       - `/caregivers` → **200**, price visible on CTA, reversibility-led hero. ✅
       - `/caregivers/interest?src=…&cta=…` → **200**, noindex meta present, form renders. ✅
       - `?src=` attribution survives the click-through path AND reaches the `caregiver_leads` row —
@@ -68,12 +82,16 @@ Re-run all four checks at merge time if the branch has moved past `af4ddf3`.
       - Also probed: `/terms`, `/privacy`, `/demo`, `/robots.txt`, `/sitemap.xml`,
         `/opengraph-image` all **200**; `relay-three-henna.vercel.app` **308 →** the apex;
         `/api/health/scheduler` **200 `healthy:true`**.
+
 - [ ] **7. Teardown-aftermath check (post-7-25 deploys only):** the DB-backed app routes are
+  
       expected dead — verify the landing's only outbound links (`/caregivers/interest`, footer
       `/`) don't land a qualified visitor on a 500. If `/` errors without DSQL, point the footer
       link at `/caregivers` or accept the dead home page explicitly — do not silently ship a
       broken first click.
+
 - [x] **7b. Verify a Resend sending domain (added 2026-08-07; DONE 2026-08-08).**
+  
       `relaystandby.com` verified in Resend; `RESEND_FROM_ADDRESS=relay@relaystandby.com` set in
       `.env.local` AND in Vercel production (value confirmed via `vercel env pull`, since the env
       listing shows only that a variable exists, not what it holds). Redeployed so the running app
@@ -87,49 +105,45 @@ Re-run all four checks at merge time if the branch has moved past `af4ddf3`.
       `RESEND_FROM_ADDRESS=relay@relaystandby.com`. Does NOT block Lane A (its conversion is an
       inbound `mailto:`), but every invitation, owner challenge and verifier notification depends
       on it — i.e. all of Lane B past signup.
+
 - [x] **7c. DMARC + reply capability (added and DONE 2026-08-08).** DMARC published and verified by
+  
       DoH. Reply capability shipped as a `Reply-To` header (`RESEND_REPLY_TO_ADDRESS`) and
       live-proven — the reply to test #3 arrived. The cox.net bounces were NOT a DMARC problem:
       cox.net is Yahoo-operated and Yahoo does not support `+tag` addressing, so
       `sgharlow+relay@cox.net` was never a real mailbox. The untagged address delivered.
       Full write-up: `docs/email-dns-runbook.md`.
+
 - [x] **7d. Cloudflare Email Routing — DONE 2026-08-09.** Steve enabled routing; Claude verified
+  
       and switched the constant. **`hello@relaystandby.com` is now the public contact** on the
       landing, interest, privacy and terms pages, and the personal Gmail is gone from the shipped
-      bundle (checked in the deployed JS chunk, not just the HTML).
-      Proven at the mailbox, not the API — both a message to `hello@` and an external control
-      landed in the **INBOX, not spam**. The control mattered: enabling routing rewrote the APEX
-      SPF, and had Resend's return-path been the apex rather than `send.`, every notification would
-      have started failing SPF at that moment. `send.` records confirmed intact.
-      🚨 **NO CATCH-ALL** — `support@` was accepted by Resend and then dropped in silence.
-      `lib/contact.ts` is typed against a `ROUTED_ADDRESSES` list with a test, so the public address
-      cannot be edited into a black hole. **One-click improvement, Steve's call:** Cloudflare →
-      Email → Routing → Catch-all → forward to the same inbox.
-      Full evidence table: `docs/email-dns-runbook.md` §6. ORIGINAL NOTE FOLLOWS.
-- [ ] ~~**7d. Cloudflare Email Routing (added 2026-08-08, STEVE — DNS).**~~ Apex has no MX, so
-      `relay@relaystandby.com` cannot receive mail and the public contact address on the landing,
-      privacy and terms pages is a personal Gmail. Enabling Email Routing gives
-      `hello@relaystandby.com` forwarding to a real inbox and lets From and Reply-To match. Records
-      in `docs/email-dns-runbook.md` §2. Not blocking — the Gmail works — but it is the last thing
-      on the paid surface that reads as unfinished.
+      bundle — checked in the deployed JS chunk, not just the rendered HTML, because two of the
+      four occurrences only render in post-submit and error states.
+      
+      Proven at the mailbox, not at the API. A message sent through the app's own send path to
+      `hello@` landed in the **INBOX, not spam**, and so did an external control. The control is
+      what makes this meaningful: enabling routing **rewrote the apex SPF**, and had Resend's
+      return-path been the apex rather than the `send.` subdomain, every invitation, owner
+      challenge and verifier notification would have begun failing SPF at that instant, silently
+      and with no code change to blame. `send.` records confirmed intact.
+      
+      🚨 **THERE IS NO CATCH-ALL.** `support@relaystandby.com` was accepted by Resend — 200 and a
+      message id — then dropped by Cloudflare, which routes only addresses explicitly created.
+      Confirmed by searching `in:anywhere`, so the absence is real rather than a delay. A customer
+      guessing `support@` or `info@` gets silence and nothing records it. `lib/contact.ts` is
+      therefore typed against a `ROUTED_ADDRESSES` list with a test asserting membership, so the
+      public address cannot be edited into a black hole.
+      
+      **One-click improvement, Steve's call:** Cloudflare → Email → Routing → **Catch-all address**
+      → forward to the same inbox. Converts silent loss into delivered mail.
+      
+      Full evidence table, including the DNS state before and after:
+      `docs/email-dns-runbook.md` §6. The original pending note and the Steve/Claude split that
+      preceded this are superseded and live in git history (`795b99e`).
 
-      **Split ruled 2026-08-09: Steve enables, Claude verifies and switches.** No Cloudflare
-      credential exists in this environment, so the DNS half cannot be done from here.
-
-      *Steve's half* (~3 minutes, Cloudflare dashboard → `relaystandby.com` → **Email** → Email
-      Routing → Enable):
-      1. Accept the MX + SPF records Cloudflare offers to add automatically. They are additive —
-         **they must not replace the existing `send.` subdomain SPF**, which is what Resend sends
-         through. Adding an apex MX does not affect outbound.
-      2. Create address `hello@relaystandby.com` → forward to the personal inbox.
-      3. Click the confirmation link Cloudflare emails to that inbox — routing stays inactive
-         until you do, and this is the step people skip.
-      4. Tell Claude it is done.
-
-      *Claude's half*: send a real message to `hello@relaystandby.com`, **confirm it arrives in the
-      mailbox** — not a 200 from an API, which proves nothing about delivery — re-verify the
-      `send.` SPF is intact, then change the one constant in `lib/contact.ts` and redeploy.
 - [x] **7e. Lead capture on the intent page (added and DONE 2026-08-08).** `/caregivers/interest`
+  
       offered only a `mailto:` link, which on the mobile traffic this gate buys means handing the
       visitor to an app many have never configured: intent would fire on the pageview while no
       contactable human was captured, and the gate would read as if it were working. Replaced with
@@ -138,7 +152,9 @@ Re-run all four checks at merge time if the branch has moved past `af4ddf3`.
       Live-proven end-to-end from a 390px viewport: `src`/`cta` attribution intact through to the
       row, honeypot silently discards, invalid email 400s, rate limiter 429s. Test rows purged —
       `caregiver_leads` starts the flight at 0.
+
 - [x] **7g. Form spam defences (added and DONE 2026-08-08).** Deliberately NO CAPTCHA: the form's
+  
       purpose is measuring conversion, so a visible challenge is friction applied to the exact
       behaviour being measured and biases the gate. reCAPTCHA is additionally excluded because the
       privacy page states there are no advertising or tracking cookies on the site. Shipped
@@ -151,13 +167,17 @@ Re-run all four checks at merge time if the branch has moved past `af4ddf3`.
       with `cta` attribution intact. **Escalation path if spam actually materialises:** Cloudflare
       Turnstile (free, DNS already there, no tracking cookie) — NOT reCAPTCHA. Trigger: more than
       a handful of junk rows in `caregiver_leads` during the flight.
+
 - [x] **7f. Ad-surface metadata (added and DONE 2026-08-08).** `metadataBase` still declared
+  
       `relay-three-henna.vercel.app`, so every `og:url`/`og:image` — including what Meta and Reddit
       crawl during ad review — pointed at the pre-domain deployment. Now `relaystandby.com`, with a
       caregiver-specific share card (the root card sells Aurora DSQL and a state machine, which is
       the wrong pitch for this audience), plus `robots.txt` and `sitemap.xml`, both previously 404.
       `/caregivers/interest` stays noindexed so intent counts paid clicks, not organic arrivals.
+
 - [x] **7h. The money path can be stopped, live-proven (added and DONE 2026-08-09).** The cancel
+  
       button had shipped as *wired, not live-proven*: `billingPortal.sessions.create` fails outright
       unless the customer portal has been saved once in LIVE mode, and that could not be checked
       from the repo because `STRIPE_SECRET_KEY` is a Vercel *sensitive* variable and pulls back
@@ -167,7 +187,9 @@ Re-run all four checks at merge time if the branch has moved past `af4ddf3`.
       was cancelled. **Finding recorded, not fixed:** the portal header reads
       "Relay/ReportBridge/LearningAI365" (shared-account business name) — ratified as leave-as-is
       for this flight, see `PROJECT.yaml` `ratified.stripe-merchant-name`.
+
 - [x] **7i. Sign-in stopped telling strangers who has an account (added and DONE 2026-08-09).**
+  
       Found while probing the above. An email with no row fell through to the shared env TOTP
       secret, which is 20 base32 characters — under otplib's 128-bit floor and not byte-aligned —
       so decoding threw, and NextAuth reflects a throw out of `authorize` into
@@ -178,17 +200,23 @@ Re-run all four checks at merge time if the branch has moved past `af4ddf3`.
       secret could authenticate as any *new* address, which `authorize` then upserts. Fixed, and
       **re-verified on production: all four cases — registered, legacy, and two never-existed —
       now return byte-identical responses.**
+
 - [x] **7j. Refund stance ratified (2026-08-09).** 30-day money-back guarantee on every charge,
+  
       renewals included, then no refund of the unused part of a year. Single definition in
       `lib/offer.ts`, consumed by the Terms and both price cards, pinned by a test that the copy
       keeps routing to a human — Stripe's portal cancels without refunding and nothing in the
       codebase issues a refund, so refunds are **issued by hand in the Stripe dashboard**.
+
 - [ ] **8. Launch paid lanes** per `g1-channel-send-kit.md` (ratified budget ceiling; `src`
+  
       values per lane). Organic participation stays Steve-voice-only per the channel-rules audit.
       **Paste-ready one-sitting walkthrough for both lanes: `docs/g1-ad-creatives.md`.**
       ⚠️ Its "verify the instrument" step is not optional — click your own live ad and confirm both
       events carry `src` before letting a lane run a full day.
+
 - [ ] **9. Log window start date** + N-counting rules in the gate tracking note; the gate
+  
       hard-stops per `PROJECT.yaml` (`g1-caregiver-wtp`, due 2026-09-15).
 
 ## Rollback
