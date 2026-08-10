@@ -47,7 +47,7 @@ primitives the app uses in production.
 
 ## Stack (locked)
 
-Next.js 14 (App Router, TypeScript) on **Vercel** · **Amazon Aurora DSQL**
+Next.js 16 (App Router, TypeScript) on **Vercel** · **Amazon Aurora DSQL**
 (two regions, active-active, IAM auth) · **AWS KMS** (`@aws-sdk/client-kms`)
 client-side envelope encryption · **NextAuth** + TOTP MFA · **OpenAI** (importance
 engine) · **Resend** (notifications) · **node-postgres** · Vitest + **fast-check**

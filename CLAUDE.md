@@ -10,7 +10,7 @@ verified trigger conditions. When a trigger fires, the system advances a release
 (`ARMED → PENDING → GRACE → RELEASED`) guarded by optimistic concurrency control. Emergencies are
 reversible; estate handoffs are permanent. The default-safe state is always `ARMED`.
 
-**Stack (locked):** Next.js 14 App Router (TypeScript) on Vercel · Aurora DSQL across two regions
+**Stack (locked):** Next.js 16 App Router (TypeScript) on Vercel · Aurora DSQL across two regions
 (us-east-1 / us-west-2) · AWS KMS client-side envelope encryption · Vercel Cron · OpenAI · Resend.
 
 The full source-of-truth specs live in `.kiro/specs/relay-h0-mvp/` (`requirements.md`, `design.md`,
