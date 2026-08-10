@@ -346,7 +346,10 @@ whose entire function is reaching a human at the worst moment of their week, tha
 single point of failure, and it is the exact shape the portfolio rule about dead-man's switches
 exists to prevent: the absence of the signal is not monitored.
 
-**Immediate:** remove `support@relaystandby.com` from Resend → Suppression list, now that it routes.
+**Immediate: ✅ DONE 2026-08-09.** `support@relaystandby.com` removed from Resend → Suppression
+list by Steve, and re-verified end to end: a send through `lib/notify/email.ts` arrived in the
+**INBOX**. Resend → Cloudflare catch-all → mailbox all work for the address that started this
+investigation. Note the removal is manual and per-address — it does not change the behaviour below.
 
 **Structural (design, NOT yet built — G1 sequencing applies):** subscribe to Resend webhooks
 (`email.bounced`, `email.complained`, `email.delivery_delayed`), persist per-recipient delivery
