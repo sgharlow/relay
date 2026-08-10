@@ -10,52 +10,26 @@
 
 ---
 
-## ⚠️ Domain status — resolve before booking
+## ✅ Destination — live and clear to book (re-verified 2026-08-09)
 
-**Chosen: `relaystandby.com`** (decided 2026-08-07). Every destination URL below already assumes
-it. **It is not purchased yet.** Registrar: **Cloudflare** (at-cost pricing, free WHOIS privacy).
+**`relaystandby.com` is purchased, pointed at Vercel, and serving.** This section previously read
+"it is not purchased yet" and told you not to book a flight; that was true on 2026-08-07 and false
+by 2026-08-08. Measured this session, not inferred:
 
-Vercel's CLI refuses domain purchase by an agent — and per the standing infra policy, **DNS
-changes are Steve's to apply, not Claude's**. Both steps below are his.
+| Check | Result |
+|---|---|
+| `https://relaystandby.com/caregivers?src=…` | **200** |
+| `https://relaystandby.com/caregivers/interest?src=…&cta=…` | **200** |
+| `/terms`, `/privacy` (required by both ad platforms) | **200**, footer-linked |
+| `/robots.txt`, `/sitemap.xml` | **200** |
+| `relay-three-henna.vercel.app` | **308 → relaystandby.com** — the old surface no longer splits traffic |
 
-### 1. Buy (Cloudflare)
+The old vercel.app subdomain concern is closed: the display URL in every ad is now the real domain.
+**No domain confound needs recording in the verdict line.**
 
-Cloudflare Registrar → Register → `relaystandby.com`. Cloudflare Registrar requires its own
-nameservers, which is fine — we point records at Vercel rather than delegating the zone.
-
-### 2. Point it at Vercel
-
-In Vercel, add the domain to the `relay` project:
-
-```
-vercel domains add relaystandby.com relay
-```
-
-Then in Cloudflare DNS (values confirmed 2026-08-07 against a live Vercel domain on this account):
-
-| Type | Name | Value | Proxy |
-|---|---|---|---|
-| A | `@` | `76.76.21.21` | **DNS only (grey)** |
-| CNAME | `www` | `cname.vercel-dns.com` | **DNS only (grey)** |
-
-**Grey cloud, not orange.** Proxying breaks Vercel's certificate issuance, and if it is ever
-turned on, Cloudflare SSL mode MUST be **Full (strict)** — Flexible produces a redirect loop with
-Vercel. This is the same configuration `learningai365.com` already runs.
-
-**Known artifact, not a bug:** grey-cloud means Cloudflare's own analytics will show ~0 requests
-for this domain. That is a proxy-visibility artifact and cost an investigation once already. G1
-reads from **Vercel Web Analytics**, which is unaffected.
-
-### Until it resolves
-
-The live destination is `relay-three-henna.vercel.app`. **Do not book a flight against it.** For a
-product whose proposition is *"trust us with your parent's passwords"*, a random subdomain in the
-ad's display URL is a substantive conversion risk — and a measurement risk, because a weak read
-would be attributable to the domain rather than the offer, biasing toward a **false kill** on a
-gate that can archive the product.
-
-If you fly without it anyway, record the domain as a known confound in the verdict line so a
-sub-2% read is not over-interpreted.
+**Known artifact, not a bug:** the DNS records are grey-cloud (DNS-only) at Cloudflare, so
+Cloudflare's own analytics shows ~0 requests for this domain. That is proxy visibility, and it cost
+an investigation once already. G1 reads from **Vercel Web Analytics**, which is unaffected.
 
 ---
 
@@ -102,6 +76,24 @@ reported as a success and `sendEmailBestEffort` never logged. The first test ema
 | `sgharlow+relay@gmail.com` | ❌ rejected — a `+` alias is a DIFFERENT address to Resend |
 | any third party | ❌ rejected — test mode permits only the account's own address |
 
+**✅ CLOSED 2026-08-08 — the required work below was done.** `relaystandby.com` is verified in
+Resend, `RESEND_FROM_ADDRESS=relay@relaystandby.com` is set in Vercel production (value confirmed
+this session by `vercel env pull`, since the env listing shows only that a variable exists), and
+SPF/DKIM/DMARC are published. A send to a **different domain that is not the Resend account
+address** was accepted — the exact case the old shared-domain sender rejected outright. The
+original text is kept below because the failure mode it describes is the one to re-check if the
+sender is ever changed again.
+
+⚠️ Two live traps this left behind: Windows `nslookup` reports the DMARC TXT record as **absent** —
+a false negative; use node's `dns.resolveTxt`. And Yahoo-operated domains (including cox.net) do
+not support `+tag` addressing, so a bounce there is not a DMARC problem.
+
+⚠️ Still true: `relaystandby.com` has **no MX**, so mail can be sent from it but not received. The
+public contact address is deliberately a personal Gmail until Cloudflare Email Routing exists —
+see `docs/email-dns-runbook.md` §2. **This does not block either lane.**
+
+ORIGINAL NOTE FOLLOWS.
+
 **What is still unproven:** delivery to anyone who is not Steve. The sender is
 `onboarding@resend.dev`, Resend's shared test domain, and shared-domain reputation is precisely
 what causes spam-foldering on third-party inboxes. A successful send to your own address does not
@@ -144,6 +136,11 @@ Everything below is limited to what is built and live-proven. Nothing here needs
 - Every open and release lands in a hash-chained audit log.
 - Winner, Most Impactful — H0 Hackathon 2026.
 - $119/yr, one price. Free plan keeps the first 10 items.
+- **30-day money-back guarantee** (ratified 2026-08-09; `lib/offer.ts` is the single definition,
+  and it is on the Terms and both price cards). Say "30-day money-back guarantee" — do not
+  paraphrase it into "free trial", which is a different product and is not what is built.
+- Cancel yourself at any time from the account page — this is a real self-serve button through
+  Stripe's hosted portal, live-proven on production 2026-08-09, not an email-us process.
 
 **Must NOT appear:**
 - Any testimonial, customer count, "trusted by N families" — there are none.
@@ -177,7 +174,8 @@ violate those subs' promotion rules.
 > Encrypted in your browser, so we only ever hold ciphertext. Trusted contacts confirm a real
 > emergency; they never see any of the contents.
 >
-> $119/yr for the whole family. Free plan keeps your first 10 accounts.
+> $119/yr for the whole family, with a 30-day money-back guarantee. Free plan keeps your first 10
+> accounts.
 >
 > *Winner — Most Impactful, H0 Hackathon 2026*
 
@@ -192,7 +190,7 @@ violate those subs' promotion rules.
 > access to end.
 >
 > Relay opens only what she granted you, only when a real trigger fires, and closes itself when
-> she recovers. Encrypted in your browser — we can't read it. $119/yr.
+> she recovers. Encrypted in your browser — we can't read it. $119/yr, 30 days to change your mind.
 >
 > *Winner — Most Impactful, H0 Hackathon 2026*
 
@@ -228,7 +226,7 @@ Meta truncates hard, so each variant is `primary text` / `headline` / `descripti
 >
 > **Headline:** Emergency access that closes itself — $119/yr
 >
-> **Description:** Free plan keeps your first 10 accounts.
+> **Description:** 30-day money-back guarantee. Free plan keeps your first 10 accounts.
 
 ### M2 — the notebook
 
@@ -238,7 +236,7 @@ Meta truncates hard, so each variant is `primary text` / `headline` / `descripti
 >
 > **Headline:** The reversible way to share a parent's accounts — $119/yr
 >
-> **Description:** Winner, Most Impactful — H0 Hackathon 2026.
+> **Description:** 30 days to change your mind. Winner, Most Impactful — H0 Hackathon 2026.
 
 ### M3 — free-first *(feeds Lane B: measures WTP after the reveal)*
 
@@ -283,8 +281,8 @@ is the signal that the product funnel is worth routing paid traffic through.
 
 ## Flight sequence
 
-1. **Buy `relaystandby.com` and point it at Vercel** — blocking; see the domain status above.
-2. Create the ad accounts. Billing is Steve's card, by policy.
+1. ~~Buy `relaystandby.com`~~ — **done**; the destination is live, see the top of this doc.
+2. Create the ad accounts. Billing is Steve's card, by policy. **Walkthrough below.**
 3. Launch **R1** alone first. It is the closest to the ratified positioning and gives a clean
    baseline before any variant muddies attribution.
 4. Add **R2/R3** at day 2–3 once R1 has a CPC to compare against.
@@ -292,3 +290,67 @@ is the signal that the product funnel is worth routing paid traffic through.
 6. Daily: check the snapshot. Record N, both ratios, and CPC per lane.
 7. At N≥100 or window end: write the verdict line — metric, N, threshold, ship/kill — reading the
    gate on the **Lane-A-only ratio**, with the blended and Lane-B ratios reported alongside.
+
+---
+
+## One-sitting setup — Reddit Ads (lane 1)
+
+> Everything a human has to type, in order, so account creation and launch is one uninterrupted
+> sitting. **Nothing here spends until the final step.** Steve does this; Claude can drive the
+> browser and read each screen back if you'd rather co-pilot it.
+
+**Have ready before you start:** the card, and this file open. Nothing else — the creatives,
+destination URLs and targeting are all below and are copy-paste.
+
+| # | Screen | What to enter |
+|---|---|---|
+| 1 | ads.reddit.com → Sign up | Use the Reddit account you want permanently attached to billing. A brand-new account with no karma is fine for advertising. |
+| 2 | Business details | Name: whatever you want on the invoice. Country **US**, currency **USD**. |
+| 3 | Payment method | The card. **Reddit may place a small temporary authorisation — that is not the flight budget.** |
+| 4 | Create campaign → Objective | **Traffic**. Not Conversions — we have no pixel and do not want one; the privacy page says there are no advertising or tracking cookies on the site, and a pixel would make that false. |
+| 5 | Campaign budget | **Daily cap $25**, campaign lifetime cap **$150** for this lane. Leaves $100 of the $250 ceiling for Meta. |
+| 6 | Ad group → Targeting | Location **United States**. Interests/communities: `r/AgingParents`, `r/CaregiverSupport`, `r/Alzheimers`, `r/dementia`, `r/eldercare`. **Community targeting, not posting** — ads are platform-sanctioned and do not violate those subs' promotion rules. |
+| 7 | Ad group → Bid | Leave automatic for the first flight. A manual bid with no CPC history is a guess. |
+| 8 | Ad → Format | **Promoted post**, text. |
+| 9 | Ad → Title / Body | **R1**, copied verbatim from this file. R1 only — R2/R3 wait for step 4 of the sequence. |
+| 10 | Ad → Destination URL | `https://relaystandby.com/caregivers?src=reddit-ads` — **the `src` is the whole measurement.** A URL without it is invisible to the gate and the spend is wasted. |
+| 11 | Review & submit | Submit and **stop**. Policy review is free and is the only authoritative approval signal; the compliance table above is a self-assessment. |
+
+**After approval, before you let it run a full day:** click your own live ad once, then confirm the
+click was counted — see the verification step below. A flight that spends against a broken `src` is
+the single most expensive failure available here.
+
+## One-sitting setup — Meta Ads (lane 2, only if lane 1 under-delivers)
+
+| # | Screen | What to enter |
+|---|---|---|
+| 1 | business.facebook.com → Create account | A Business account, not a personal boost. Boosted posts cannot carry a `src` parameter reliably. |
+| 2 | Payment | The card. Same $250 ceiling — **$100 remaining** if Reddit took $150. |
+| 3 | Campaign objective | **Traffic**. Same no-pixel reasoning as Reddit. |
+| 4 | Audience | US, **age 40–65**, exclude under-30. Interests: family caregiving, eldercare, aging parents, power of attorney, Alzheimer's/dementia caregiving. |
+| 5 | Placements | Automatic. |
+| 6 | Ad creative | **M1** first. Image per the direction section above — no stock photos of smiling seniors. |
+| 7 | Destination URL | `https://relaystandby.com/caregivers?src=meta-ads` |
+| 8 | Publish | Submit for review and stop. |
+
+## Verify the instrument before letting either lane run
+
+The funnel has been silently dead before — `window.va` was undefined at the moment both trackers
+fired, and optional chaining swallowed every event. It was invisible for weeks and was only found
+by driving a real browser. **Do not trust a green suite here.**
+
+After the first ad is approved, click your own ad, then:
+
+1. Land on `/caregivers` and confirm the URL carries `?src=reddit-ads` (or `meta-ads`).
+2. Click the priced CTA through to `/caregivers/interest`.
+3. In Vercel Analytics → Events, confirm **`caregiver_qualified`** and **`caregiver_intent`** both
+   appear, and that **both carry `src` = the lane**. Numerator and denominator must share the
+   channel vocabulary or the ratio is not computable.
+4. Submit the interest form once, then confirm a `caregiver_leads` row exists with the `src` and
+   the click ID intact.
+5. **Delete that test row before reading the gate.** `caregiver_leads` held **0 rows** at
+   2026-08-09; the flight must start from zero or N is contaminated from the first day.
+
+If any of steps 1–4 fails, **pause the campaign before fixing it.** Spend against a broken
+instrument buys nothing, and a low reading from it would trip the <0.5% KILL threshold on evidence
+that does not exist.
