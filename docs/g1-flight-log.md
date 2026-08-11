@@ -78,6 +78,60 @@ Per the 2026-08-08 amendment (approved by Steve). Write all five; do not stop at
 > **a ship or kill call on line 1 alone is not permitted for this flight.** Lines 3 and 4 —
 > the leads and what they say — are expected to carry the decision.
 
+## Pre-flight gate — PASSED 2026-08-10 (co-pilot sitting 1, no money committed)
+
+Driven in a real browser against production, payloads read off the wire. This closes the
+pre-flight gate in `g1-ad-creatives.md`; the ad accounts may now be created.
+
+| Step | Evidence | Result |
+|---|---|---|
+| Clean session | `sessionStorage` empty, no auth cookie, before first load | ✅ |
+| 1–2 · denominator | instrument loaded first-party (`/b079b94dacb289b4/script.js`), channel parked as `qa` | ✅ |
+| 3 · Lane-A numerator | `caregiver_intent` `{"src":"qa","cta":"hero"}` — **same `src` both sides** | ✅ |
+| 4 · lead capture | POST carried `src:"qa"`, `cta:"hero"`, honeypot empty, `renderedAt` present; `caregiver_lead_submitted` `{"src":"qa","cta":"hero","withNote":"true"}`; row written with `notified:true` | ✅ |
+| **5 · Lane-B numerator** | **first live proof — see below** | ✅ |
+| 6 · cleanup | test account deleted (8 vault items), lead row deleted, `caregiver_leads` re-read at **0**, users back to the 2 protected baselines | ✅ |
+
+### Step 5 — the Lane-B numerator, live-proven for the first time
+
+It had been **unit-pinned only** since the 2026-08-10 fix. Defect A shipped for two days with the
+suite green, so a passing test was not accepted as proof. Walked end to end: signup → TOTP
+enrolment → 8-item seed → risk-graph reveal → price card, stopping at Stripe's hosted page without
+completing checkout. Captured in order:
+
+| # | Event | Payload |
+|---|---|---|
+| 1 | `POST /api/stripe/checkout` | the **Stripe branch** was taken (session came back `cs_live_…`) |
+| 2 | `intent_clicked` | `{"src":"qa","cta":"start-price-card","price":"119"}` |
+| 3 | **`caregiver_intent`** | **`{"src":"qa","cta":"start"}`** — exactly one |
+
+Three things this proves that the unit test could not: the numerator fires **on the Stripe branch**
+(the branch a real buyer takes), `src` resolves to the **parked channel** `qa` rather than the
+`hero-product` value sitting in the URL — so Lane B is keyed to the channel like the denominator —
+and `cta:"start"` is present, which is what makes the ratified Lane-A-only ratio separable.
+Envelope encryption was observed working live alongside it (`/api/kms/wrap` → `/api/vault/items`).
+
+⚠️ **An abandoned `cs_live_` checkout session exists from this walk.** Nothing was charged — no
+payment details were entered — and Stripe expires uncompleted sessions. No action needed; recorded
+so it is not mistaken later for a real customer starting checkout.
+
+### 🔴 Finding — the LANDING PAGE carries the copy shape the ads were just rewritten to avoid
+
+Observed while walking the funnel. `/caregivers` leads with:
+
+> "When a parent lands in the hospital, **you** need **their** accounts NOW"
+
+That is the same second-person-plus-family-health construction that `g1-ad-creatives.md` §1a
+removed from four creatives — and **ad reviewers visit the destination**, so compliant ad copy
+pointing at a non-compliant landing page is only a partial mitigation.
+
+**Deliberately NOT changed, and it needs a decision before submission.** `SUBHEAD` in
+`src/app/caregivers/content.ts` is the ratified instrument copy, pinned by `content.test.ts`
+(reversibility-led). Editing it mid-flight changes the thing being measured, and the gate rules
+were set against this page. The options are (a) leave it and let review rule, (b) rewrite the
+subhead into third person before the first submission — cheapest now, before any traffic exists to
+invalidate, or (c) rewrite only if a creative is rejected on personal attributes. **Steve's call.**
+
 ## Corrections applied before the flight (2026-08-10, pre-send audit)
 
 Three measurement defects were found and fixed before any money was spent. Recorded here
