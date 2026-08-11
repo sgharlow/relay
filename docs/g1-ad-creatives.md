@@ -339,18 +339,47 @@ The funnel has been silently dead before — `window.va` was undefined at the mo
 fired, and optional chaining swallowed every event. It was invisible for weeks and was only found
 by driving a real browser. **Do not trust a green suite here.**
 
-After the first ad is approved, click your own ad, then:
+> 🔴 **Read this before you click anything.** An earlier version of this section told you to verify
+> by clicking your own live ad, i.e. with `src=reddit-ads`. That injects **one qualified and one
+> intent at 100% conversion into the real lane** — a full percentage point on a 2% ship line at
+> N=100, biasing toward a **false PASS**. And while step 5 below can delete the `caregiver_leads`
+> row, **a Vercel Analytics event cannot be deleted**: that half of the contamination is permanent.
+>
+> So the verification is split in two. **Part 1 exercises the whole funnel under a QA source the
+> gate ignores** (`QA_SRCS` in `src/app/caregivers/content.ts`, pinned by `content.test.ts`).
+> **Part 2 is a single click on the real ad**, which exists only to prove the ad platform passes
+> `src` through — the one thing part 1 cannot cover — and is recorded as a known offset in
+> `docs/g1-flight-log.md`.
 
-1. Land on `/caregivers` and confirm the URL carries `?src=reddit-ads` (or `meta-ads`).
-2. Click the priced CTA through to `/caregivers/interest`.
-3. In Vercel Analytics → Events, confirm **`caregiver_qualified`** and **`caregiver_intent`** both
-   appear, and that **both carry `src` = the lane**. Numerator and denominator must share the
-   channel vocabulary or the ratio is not computable.
-4. Submit the interest form once, then confirm a `caregiver_leads` row exists with the `src` and
-   the click ID intact.
-5. **Delete that test row before reading the gate.** `caregiver_leads` held **0 rows** at
-   2026-08-09; the flight must start from zero or N is contaminated from the first day.
+### Part 1 — full funnel, gate-safe (do this first, before the ad is even approved)
 
-If any of steps 1–4 fails, **pause the campaign before fixing it.** Spend against a broken
-instrument buys nothing, and a low reading from it would trip the <0.5% KILL threshold on evidence
-that does not exist.
+1. Open `https://relaystandby.com/caregivers?src=qa` in a **fresh browser profile or a new private
+   window.** Not optional: the channel is parked in `sessionStorage` and survives the visit, so a
+   profile that has ever carried another `src` will re-attribute this walk to it. That is exactly
+   how a stray `src=visual-check` intent reached production analytics on 2026-08-10.
+2. Confirm on the wire (devtools → Network → the first-party `…/event` POST) that
+   **`caregiver_qualified`** carries `"src":"qa"`.
+3. Click the priced CTA through to `/caregivers/interest`, and confirm **`caregiver_intent`**
+   carries `"src":"qa"` and `"cta":"hero"`. **Both events must carry the same `src`** — numerator
+   and denominator share one vocabulary or the ratio is not computable.
+4. Submit the interest form once; confirm a `caregiver_leads` row with the `src` and click ID
+   intact.
+5. Lane B: from `/caregivers?src=qa`, take the subordinate link → sign up → seed → reveal → price
+   card. Confirm the price CTA emits **`caregiver_intent`** with `"cta":"start"` *before* the Stripe
+   redirect. **Do not complete the checkout.** This path emitted no numerator at all between
+   2026-08-08 and 2026-08-10 — see `lib/analytics/lane-b.ts`.
+6. **Delete the test lead row and the test account before reading the gate.** `caregiver_leads` held
+   **0 rows** at 2026-08-09; the flight must start from zero or N is contaminated from day one.
+
+### Part 2 — one real click, to prove the platform passes `src` through
+
+7. After the ad is approved, click it **once**. Confirm the landing URL carries `?src=reddit-ads`
+   (or `meta-ads`) and that `caregiver_qualified` reports that value.
+8. **Stop there — do not click the CTA.** One qualified with no intent is a conservative
+   contamination (it moves the ratio *down*, never up), whereas completing the funnel would inflate
+   it.
+9. Record the click in `docs/g1-flight-log.md` under "known offsets", so the verdict subtracts it.
+
+If any step 1–7 fails, **pause the campaign before fixing it.** Spend against a broken instrument
+buys nothing, and a low reading from it would trip the <0.5% KILL threshold on evidence that does
+not exist.

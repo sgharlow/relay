@@ -229,9 +229,14 @@ Re-run all four checks at merge time if the branch has moved past `af4ddf3`.
       ⚠️ Its "verify the instrument" step is not optional — click your own live ad and confirm both
       events carry `src` before letting a lane run a full day.
 
-- [ ] **9. Log window start date** + N-counting rules in the gate tracking note; the gate
+- [x] **9. Gate tracking note — BUILT 2026-08-10: `docs/g1-flight-log.md`.** It carries the
   
-      hard-stops per `PROJECT.yaml` (`g1-caregiver-wtp`, due 2026-09-15).
+      N-counting rules (including both exclusion sets and why each exists), the four ratios to
+      record, the known-offsets table, the daily snapshot table, and the amended five-line verdict
+      template. The gate hard-stops per `PROJECT.yaml` (`g1-caregiver-wtp`, due 2026-09-15).
+      **The window start date is deliberately left blank** — it is the day the first ad is APPROVED
+      AND SERVING, which is not knowable until step 8 happens. Fill it then; everything else is
+      pre-committed so the verdict cannot be reverse-engineered from whichever number looked better.
 
 ## Rollback
 

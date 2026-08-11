@@ -11,16 +11,18 @@
 
 import { useEffect } from 'react';
 
-import { CAREGIVER_QUALIFIED, rememberChannel, srcFromSearch } from './analytics';
+import { CAREGIVER_QUALIFIED, qualifiedProps } from './analytics';
 import { clickIdFrom, rememberClickId } from './click-id';
 import { trackG1 } from './track';
 
 export default function QualifiedTracker() {
   useEffect(() => {
-    const props = srcFromSearch(window.location.search);
-    // Park the inbound channel so the intent event on the next page can report it —
-    // its own ?src= is the CTA position, not the channel. See analytics.ts.
-    rememberChannel(props.src);
+    // qualifiedProps parks the inbound channel (so the intent event on the next page
+    // can report it — that page's own ?src= is the CTA position, not the channel) and
+    // then reports the channel THIS SESSION carries, which is exactly what the
+    // numerator will report. Reading window.location.search here directly would make
+    // the two sides of the ratio disagree on an untagged return visit. See analytics.ts.
+    const props = qualifiedProps(window.location.search);
     // The click ID exists on this URL and nowhere after it. Parked alongside
     // the channel so it survives the walk to the conversion page.
     rememberClickId(clickIdFrom(window.location.search));

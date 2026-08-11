@@ -19,6 +19,7 @@ import {
   isGateQualifyingSrc,
   LANDING_HREF,
   PRICE_YEARLY_USD,
+  QA_SRCS,
   SHOWCASE_SRCS,
   SUBHEAD,
 } from './content';
@@ -59,6 +60,25 @@ describe('G1 caregiver WTP instrument', () => {
     // Real caregiver channels still qualify.
     expect(isGateQualifyingSrc('reddit-ads')).toBe(true);
     expect(isGateQualifyingSrc('meta-ads')).toBe(true);
+  });
+
+  it('QA traffic is EXCLUDED from the gate, so verifying the instrument cannot move it', () => {
+    // docs/g1-ad-creatives.md makes "click your own live ad and confirm both events
+    // carry src" a NON-OPTIONAL pre-flight step. Executed with a lane src it injects a
+    // qualified + an intent at 100% conversion: a full point on a 2% ship line at N=100,
+    // biasing toward the FALSE PASS that doc elsewhere calls the costlier error. And
+    // unlike the caregiver_leads row, a Vercel Analytics event CANNOT be deleted.
+    for (const src of QA_SRCS) {
+      expect(isGateQualifyingSrc(src)).toBe(false);
+    }
+  });
+
+  it('keeps QA and showcase exclusions distinct — they are excluded for different reasons', () => {
+    // Showcase = real humans from a non-caregiver audience (read as a secondary segment).
+    // QA = us. Merging them would let our own clicks be reported as audience signal.
+    for (const src of QA_SRCS) {
+      expect(SHOWCASE_SRCS as readonly string[]).not.toContain(src);
+    }
   });
 
   it('names the real competitive frames, not strawmen', () => {

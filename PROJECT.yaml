@@ -98,6 +98,22 @@ ratified:
     supersedes: "no refund by default, with an email-us escape — authored, never confirmed"
     implemented: "lib/offer.ts is the single definition; consumed by the Terms, the /caregivers price card and the in-product PriceCard, pinned by lib/offer.test.ts"
     note: "Refunds are issued BY HAND in the Stripe dashboard — nothing in the codebase refunds, and Stripe's portal cancels without refunding. The copy routes to a human by design, and a test enforces that it keeps doing so."
+  - id: g1-flight-power
+    date: 2026-08-10
+    decision: "hold the $250 ceiling and accept a DIRECTIONAL G1 read"
+    detail: "The 2026-08-08 amendment to docs/g1-wtp-test-design.md puts the honest minimum at
+      N ~= 250 for the ratio to distinguish 2% from 0.5%. The ratified $250 ceiling buys roughly
+      125-200 clicks at $1-2 CPC per g1-channel-send-kit.md, less ad-blocker suppression of the
+      analytics events -- so this flight is expected to land near N = 100-180, structurally short."
+    rationale: "Steve chose the cheaper path to real caregiver words over a decisive ratio. The
+      amendment already forbids a bare ship OR kill call on the ratio below N=250, and promotes the
+      lead count and lead notes to a co-equal read, so the flight still produces a decision -- just
+      one carried by lines 3 and 4 of the verdict rather than line 1."
+    implemented: "Recorded at the top of the verdict section in docs/g1-flight-log.md, so the
+      constraint is in front of whoever writes the verdict rather than in a decision log they may
+      not open."
+    revisit: "if the observed CPC comes in materially under $1, topping up toward N=250 becomes
+      cheap enough to reconsider mid-flight"
   - id: stripe-merchant-name
     date: 2026-08-09
     decision: "leave as-is for the G1 flight"

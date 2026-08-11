@@ -9,6 +9,7 @@ import {
   CAREGIVER_QUALIFIED,
   CHANNEL_STORAGE_KEY,
   intentProps,
+  qualifiedProps,
   recallChannel,
   rememberChannel,
   srcFromSearch,
@@ -119,5 +120,50 @@ describe('G1 channel attribution — numerator and denominator share one vocabul
 
   it('labels a missing CTA position rather than silently emitting an empty dimension', () => {
     expect(intentProps('', 'reddit-ads')).toEqual({ src: 'reddit-ads', cta: 'unknown' });
+  });
+});
+
+describe('G1 denominator resolves the channel exactly as the numerator does', () => {
+  it('reports a tagged landing visit under its own channel, and parks it', () => {
+    const store = givenSessionStorage();
+    expect(qualifiedProps('?src=reddit-ads')).toEqual({ src: 'reddit-ads' });
+    expect(store.get(CHANNEL_STORAGE_KEY)).toBe('reddit-ads');
+  });
+
+  it('reports an untagged landing visit under the channel already parked this session', () => {
+    // OBSERVED ON PRODUCTION 2026-08-10: one walk emitted
+    //   caregiver_qualified {"src":"direct"}   (excluded from N)
+    //   caregiver_intent    {"src":"visual-check","cta":"hero"}   (counted in N)
+    // because the denominator read the URL while the numerator read parked storage.
+    // A numerator entry with no denominator entry biases the ratio UP — toward a
+    // false PASS of the 2% gate.
+    givenSessionStorage({ [CHANNEL_STORAGE_KEY]: 'reddit-ads' });
+    expect(qualifiedProps('')).toEqual({ src: 'reddit-ads' });
+  });
+
+  it('agrees with the numerator on the same untagged visit — the invariant that makes the ratio a ratio', () => {
+    givenSessionStorage({ [CHANNEL_STORAGE_KEY]: 'meta-ads' });
+    const qualified = qualifiedProps('');
+    const intent = intentProps('?src=hero', recallChannel());
+    expect(intent.src).toBe(qualified.src);
+  });
+
+  it('is still "direct" when the session never carried a channel', () => {
+    givenSessionStorage();
+    expect(qualifiedProps('')).toEqual({ src: 'direct' });
+    expect(qualifiedProps('?x=1')).toEqual({ src: 'direct' });
+  });
+
+  it('degrades to "direct" on disabled storage rather than throwing', () => {
+    givenBrokenStorage();
+    expect(() => qualifiedProps('?src=reddit-ads')).not.toThrow();
+    expect(qualifiedProps('?src=reddit-ads')).toEqual({ src: 'direct' });
+  });
+
+  it('keeps the showcase exclusion symmetric on an untagged return visit', () => {
+    givenSessionStorage({ [CHANNEL_STORAGE_KEY]: 'h0-demo' });
+    // Must NOT become 'direct' — that would drop it from the denominator while the
+    // numerator still reported 'h0-demo', re-creating the asymmetry the exclusion fixed.
+    expect(qualifiedProps('').src).toBe('h0-demo');
   });
 });

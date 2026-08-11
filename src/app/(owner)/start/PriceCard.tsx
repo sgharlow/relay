@@ -18,6 +18,7 @@ import { useEffect, useState } from 'react';
 
 import { PRICE_YEARLY_USD, ANCHOR } from '../../caregivers/content';
 import { emitFunnel, resolveChannel } from '../../../../lib/analytics/funnel';
+import { completeLaneBIntent } from '../../../../lib/analytics/lane-b';
 import { GUARANTEE_LABEL } from '../../../../lib/offer';
 import { buttonPrimary, cardPadded, meta, muted } from '../_lib/ui';
 
@@ -39,30 +40,27 @@ export default function PriceCard() {
   }, [price]);
 
   async function onIntent() {
-    await emitFunnel('intent_clicked', {
-      channel: resolveChannel(window.location.search),
-      cta: 'start-price-card',
+    // Try real checkout first. It 503s until Stripe is configured, and the interest
+    // page is the fallback. That ordering matters: the button says "Keep my vault —
+    // $119/yr", and sending someone who wants to pay to a waitlist when checkout
+    // exists would be a bait.
+    //
+    // completeLaneBIntent owns the measurement, because the two branches must emit
+    // DIFFERENT things: the Stripe branch takes the visitor away from
+    // /caregivers/interest, so it has to emit the gate numerator itself, while the
+    // fallback branch must NOT — that page emits its own. Getting this wrong either
+    // loses every paying Lane-B visitor from the gate (which is what shipped between
+    // 2026-08-08 and 2026-08-10) or counts one click twice. See lib/analytics/lane-b.ts.
+    window.location.href = await completeLaneBIntent({
+      search: window.location.search,
       price: String(price),
-    });
-    // Try real checkout first. It 503s until Stripe is configured, and the
-    // interest page is the fallback — the G1 lane, which still fires
-    // caregiver_intent, so the gate reads the same either way. That ordering
-    // matters: the button says "Keep my vault — $119/yr", and sending someone
-    // who wants to pay to a waitlist when checkout exists would be a bait.
-    try {
-      const res = await fetch('/api/stripe/checkout', { method: 'POST' });
-      if (res.ok) {
+      startCheckout: async () => {
+        const res = await fetch('/api/stripe/checkout', { method: 'POST' });
+        if (!res.ok) return null;
         const { url } = (await res.json()) as { url?: string };
-        if (url) {
-          window.location.href = url;
-          return;
-        }
-      }
-    } catch {
-      /* fall through to the interest lane */
-    }
-
-    window.location.href = '/caregivers/interest?src=start';
+        return url ?? null;
+      },
+    });
   }
 
   return (

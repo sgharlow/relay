@@ -40,10 +40,16 @@ export const WINNER_BADGE = 'Winner — Most Impactful, H0 Hackathon 2026';
  * which measures willingness to pay AFTER the stakes have been demonstrated
  * rather than from the landing copy alone.
  *
- * It does not split the gate. A visitor who converts through the product path
- * still lands on /caregivers/interest, so caregiver_intent still fires; the `cta`
- * dimension ('start') is what separates the two paths in analysis. One traffic
- * buy, two conversion routes, two readings.
+ * It does not split the gate: both paths emit caregiver_intent with `cta: 'start'`,
+ * which is what separates them in analysis. One traffic buy, two conversion routes,
+ * two readings.
+ *
+ * CORRECTED 2026-08-10. This comment used to say a Lane-B conversion "still lands on
+ * /caregivers/interest, so caregiver_intent still fires". That stopped being true the
+ * moment live Stripe checkout landed (2026-08-08): the price card now redirects to
+ * Stripe and the interest page is only the fallback, so a visitor who BOUGHT emitted no
+ * numerator at all. The emission moved into lib/analytics/lane-b.ts, which owns the
+ * branch and guarantees exactly one numerator per click.
  */
 export const SECONDARY_CTA_LABEL = 'Or see it on your own family first — free, 10 items';
 
@@ -80,11 +86,34 @@ export function caregiversHref(src?: string): string {
  */
 export const SHOWCASE_SRCS = ['h0-demo', 'h0-home'] as const;
 
-/** True when a src counts toward the G1 gate ratio (tagged, and caregiver-targeted). */
+/**
+ * OUR OWN traffic — instrument verification, not audience.
+ *
+ * `docs/g1-ad-creatives.md` makes "click your own live ad and confirm both events carry
+ * `src`" a non-optional pre-flight step, and it is the right step: this funnel has been
+ * silently dead twice and only a real browser has ever caught it. But performed with a
+ * lane value it injects one qualified and one intent at 100% conversion — a full
+ * percentage point on a 2% ship line at N=100, biasing toward the FALSE PASS that funds a
+ * build on demand that does not exist.
+ *
+ * That contamination is not recoverable. The verification step can delete its
+ * `caregiver_leads` row; it cannot delete a Vercel Analytics event. So the exclusion has
+ * to exist BEFORE the first verification click, not be corrected afterwards.
+ *
+ * Kept separate from SHOWCASE_SRCS deliberately: showcase traffic is real humans from the
+ * wrong audience and is read as a secondary segment, whereas this is us. Folding them
+ * together would let our own clicks be reported as audience signal.
+ */
+export const QA_SRCS = ['qa', 'preflight'] as const;
+
+/** Sources that are tagged but must never reach the gate ratio, for any reason. */
+const NON_QUALIFYING_SRCS: readonly string[] = [...SHOWCASE_SRCS, ...QA_SRCS];
+
+/** True when a src counts toward the G1 gate ratio (tagged, caregiver-targeted, not ours). */
 export function isGateQualifyingSrc(src: string): boolean {
   const s = src.trim();
   if (!s || s === 'direct') return false;
-  return !(SHOWCASE_SRCS as readonly string[]).includes(s);
+  return !NON_QUALIFYING_SRCS.includes(s);
 }
 
 export const DIFFERENTIATORS = [

@@ -99,6 +99,29 @@ export function recallChannel(): string {
 }
 
 /**
+ * Props for the DENOMINATOR: park this visit's inbound tag, then report the channel the
+ * session actually carries — the same value the numerator will report.
+ *
+ * WHY THIS EXISTS (observed on production 2026-08-10, one walk, one page pair):
+ *   caregiver_qualified {"src":"direct"}                        -> EXCLUDED from N
+ *   caregiver_intent    {"src":"visual-check","cta":"hero"}     -> COUNTED in N
+ * The denominator read `window.location.search` while the numerator read the parked
+ * channel, so the two disagreed whenever a session already had a channel and the current
+ * landing hit was untagged. A numerator entry with no matching denominator entry biases
+ * click-to-intent UP — toward a false PASS of the 2% gate, the costlier error.
+ *
+ * Parking BEFORE recalling preserves every ratified behaviour: a tagged visit parks its own
+ * src and reports it; an untagged visit does not overwrite a stored channel (rememberChannel
+ * returns early on 'direct'); a session that never carried a channel still reports 'direct'
+ * and stays out of N.
+ */
+export function qualifiedProps(search: string): { src: string } {
+  const inbound = srcFromSearch(search);
+  rememberChannel(inbound.src);
+  return { src: recallChannel() };
+}
+
+/**
  * Props for the numerator: `src` is the inbound CHANNEL (so it shares a vocabulary with the
  * denominator and the ratio is computable), `cta` is which button was pressed.
  */

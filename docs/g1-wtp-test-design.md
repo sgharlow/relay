@@ -111,9 +111,23 @@ by the same ads landing on `/caregivers`, and the visitor self-selects.
 | **B — product** | `/caregivers` → subordinate link → signup → seed → **risk-graph reveal** → price | Will they pay *after* the stakes are demonstrated? |
 
 **The gate metric is UNCHANGED**: `count(caregiver_intent) ÷ count(caregiver_qualified)`, tagged-only,
-showcase excluded. Lane B does not create a second numerator — a lane-B conversion still lands on
-`/caregivers/interest` and fires `caregiver_intent`. The `cta` dimension separates them:
-`hero`/`nav`/`pricing` = lane A, `start` = lane B.
+showcase excluded. Lane B does not create a second numerator — it emits the same
+`caregiver_intent`. The `cta` dimension separates them: `hero`/`nav`/`pricing` = lane A,
+`start` = lane B.
+
+> ⚠️ **Corrected 2026-08-10, before the first send.** This paragraph used to read "a lane-B
+> conversion still lands on `/caregivers/interest` and fires `caregiver_intent`." That was true
+> when written on 8-07 and false from 8-08, when live Stripe checkout shipped: the `/start` price
+> card redirects to Stripe on success and only falls back to `/caregivers/interest`, so **a Lane-B
+> visitor who actually bought emitted no numerator at all** while still counting in the denominator
+> — biasing the gate toward a **false KILL**. The single live proof of the old behaviour
+> (`docs/user-journeys.md` J1, "`caregiver_intent` fired with `cta=start`") was captured the same
+> day, while checkout still 503'd, and described a path the code no longer took.
+>
+> Fixed in `lib/analytics/lane-b.ts`: the branch that takes the visitor to Stripe emits the
+> numerator itself, the fallback branch does not (that page emits its own), and `lane-b.test.ts`
+> pins **exactly one numerator per click on either branch**. Containment #3 below — "Lane B cannot
+> by itself trigger the kill" — only actually holds now that this is true.
 
 ### ⚠️ The risk this introduces, and the rule that contains it
 
