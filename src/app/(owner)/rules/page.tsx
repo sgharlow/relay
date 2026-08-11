@@ -17,7 +17,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import {
-  VALID_TRIGGER_TYPES,
+  USER_SELECTABLE_TRIGGER_TYPES,
   VALID_SCOPES,
   type TriggerType,
   type Scope,
@@ -193,7 +193,7 @@ function RuleBuilder({ items, recipients, onCreated }: { items: Named[]; recipie
         <label className="text-t2">
           <span className="mb-1 block text-muted">Trigger type</span>
           <select className={`${inputCls} w-full`} value={form.trigger_type} onChange={(e) => setTrigger(e.target.value as TriggerType)}>
-            {VALID_TRIGGER_TYPES.map((t) => (
+            {USER_SELECTABLE_TRIGGER_TYPES.map((t) => (
               <option key={t} value={t}>
                 {t}
               </option>

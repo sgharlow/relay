@@ -14,7 +14,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { requireOwner, readJson, isResponse, mapError } from '../../../../../../lib/http/owner-route';
 import { setRequiredConfirmations } from '../../../../../../lib/release/provisioning';
 import { getVerifierCount } from '../../../../../../lib/release/release-list';
-import { VALID_TRIGGER_TYPES } from '../../../../../../lib/domain/enums';
+import { isUserSelectableTriggerType } from '../../../../../../lib/domain/enums';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -23,7 +23,9 @@ export async function PUT(req: NextRequest, { params }: Ctx): Promise<NextRespon
   if (isResponse(auth)) return auth;
 
   const triggerType = (await params).id;
-  if (!VALID_TRIGGER_TYPES.includes(triggerType as never)) {
+  // Configuring an estate trigger's N-of-M is part of arming it, so it is
+  // gated with the rest pending g2-counsel-opinion.
+  if (!isUserSelectableTriggerType(triggerType)) {
     return NextResponse.json({ error: 'BadRequest', message: 'Unknown trigger type' }, { status: 400 });
   }
 

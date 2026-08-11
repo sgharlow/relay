@@ -25,8 +25,12 @@ import { writeAuditEntry } from '../../../../lib/audit/audit-service';
 import { ValidationError } from '../../../../lib/validation';
 import { validatePolicyPredicate } from '../../../../lib/rules/policy-predicate';
 import { materializePolicy } from '../../../../lib/rules/policy-materialize';
+import { USER_SELECTABLE_TRIGGER_TYPES } from '../../../../lib/domain/enums';
 
-const TRIGGER_TYPES = ['emergency', 'travel', 'caregiver', 'business', 'estate'];
+// Was a hand-copied literal that duplicated VALID_TRIGGER_TYPES and drifted
+// from the Terms. Now the single shared definition of what a user may choose —
+// estate excluded pending g2-counsel-opinion (see lib/domain/enums.ts).
+const TRIGGER_TYPES: readonly string[] = USER_SELECTABLE_TRIGGER_TYPES;
 const SCOPES = ['view', 'act'];
 
 export async function GET(): Promise<NextResponse> {

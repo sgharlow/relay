@@ -18,7 +18,7 @@ import { initiateTrigger, TriggerError } from '../../../../../../lib/release/tri
 import { ReleaseStateMachine } from '../../../../../../lib/release/state-machine';
 import { listVerifiers } from '../../../../../../lib/people/verifiers';
 import { notifyVerifiersForTrigger } from '../../../../../../lib/notify/notifications';
-import { VALID_TRIGGER_TYPES } from '../../../../../../lib/rules/access-rules';
+import { isUserSelectableTriggerType } from '../../../../../../lib/domain/enums';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -27,7 +27,11 @@ export async function POST(_req: NextRequest, { params }: Ctx): Promise<NextResp
   if (isResponse(auth)) return auth;
 
   const triggerType = (await params).id; // [id] carries the trigger type for initiate
-  if (!VALID_TRIGGER_TYPES.includes(triggerType as never)) {
+  // This is the route that FIRES a release, and an estate release is permanent
+  // by design (Property 7) with no correction path. Gated on
+  // g2-counsel-opinion — defence in depth behind the creation gate, so a rule
+  // predating the gate still cannot be fired.
+  if (!isUserSelectableTriggerType(triggerType)) {
     return NextResponse.json({ error: 'BadRequest', message: 'Unknown trigger type' }, { status: 400 });
   }
 

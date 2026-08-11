@@ -114,6 +114,28 @@ ratified:
       not open."
     revisit: "if the observed CPC comes in materially under $1, topping up toward N=250 becomes
       cheap enough to reconsider mid-flight"
+  - id: estate-gated-until-counsel
+    date: 2026-08-10
+    decision: "estate stays OUT of the product until g2-counsel-opinion produces a written opinion"
+    detail: "Found 2026-08-10: src/app/terms/page.tsx states 'Estate and inheritance functionality
+      is not offered', and src/app/how-it-works deliberately excludes it -- while /rules rendered
+      its trigger dropdown straight from VALID_TRIGGER_TYPES, so any signed-in owner could create a
+      PERMANENT, irreversible estate handoff. The API accepted it too. Live Stripe means such a user
+      is a paying estate customer, which is exactly what the g2 gate says requires counsel first."
+    rationale: "Steve's call after pushback. The deciding argument was asymmetry, not law: with
+      caregiver_leads at 0 and wtp_evidence none there is no estate customer to win today, so
+      offering it early buys zero revenue against an uninsurable and irreversible risk -- while
+      offering it after counsel costs only waiting. Secondary: every ad creative and the G1
+      thresholds are calibrated on the emergency/incapacity positioning, so widening to estate 8
+      days before the serving-by date would change what the gate measures."
+    implemented: "USER_SELECTABLE_TRIGGER_TYPES in lib/domain/enums.ts, kept deliberately SEPARATE
+      from VALID_TRIGGER_TYPES -- the domain still supports estate because Property 7, heartbeat
+      blocking and grace windows depend on it, and existing rows must keep working. Enforced at the
+      trust boundary, not in the dropdown: /api/rules, /api/policies, /api/triggers/[id]/initiate
+      and /api/triggers/[id]/config all refuse it. Pinned by lib/domain/enums.test.ts, which fails
+      if the list widens by accident. The estate acknowledgement path in /api/policies is left
+      dormant rather than deleted."
+    revisit: "when g2-counsel-opinion is met -- re-enabling is moving one string into one list"
   - id: stripe-merchant-name
     date: 2026-08-09
     decision: "leave as-is for the G1 flight"

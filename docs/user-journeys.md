@@ -36,7 +36,7 @@ two disagree on.
 | J7 | The verifier's moment | **PASS** | `/verify?token=` rendered case ref `RLY-992C-TXYS`, scope, reversibility and "you will never see any of their information"; confirming drove 0/1 → 1/1 → **RELEASED** |
 | J8 | Hands on the account · **PRIMARY DEMAND** | **PASS** | recipient opened a prioritised access plan and **Reveal returned the exact plaintext the owner had typed** — full KMS unwrap + client decrypt round-trip |
 | J9 | Standing down · **DIFFERENTIATOR** | **PASS after three fixes** | GRACE → stand down → ARMED → re-initiate; RELEASED → close → ARMED with confirmations reset 1/1 → 0/1; the recipient's live token then leaked no plaintext, and now renders the **graceful close** instead of an expiry error |
-| J10 | The permanent handoff | **BLOCKED BY DESIGN** | estate rule creates and initiates; correctly offers **no** reversal control. Remains gated on `g2-counsel-opinion` |
+| J10 | The permanent handoff | **GATED IN THE PRODUCT (changed 2026-08-10)** | ~~estate rule creates and initiates~~ — that was true when swept on 8-08 and is deliberately false now. `estate` is no longer user-selectable: the `/rules` dropdown offers only `USER_SELECTABLE_TRIGGER_TYPES`, and `/api/rules`, `/api/policies`, `/api/triggers/[id]/initiate` and `/api/triggers/[id]/config` all refuse it. The domain still supports estate (Property 7, heartbeat blocking, grace windows) — only user selection is closed. Reason: `src/app/terms/page.tsx` states estate "is not offered" while the product offered it, on a surface taking live payments, with `g2-counsel-opinion` unmet. Re-enable by moving `'estate'` into that one list once counsel clears |
 
 ### Defects the sweep found — all fixed and re-proven live
 
