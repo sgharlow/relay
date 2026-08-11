@@ -205,7 +205,19 @@ says**. Tightening DMARC to `p=quarantine` would buy nothing here — DMARC alre
 DNS change is explicitly NOT indicated, and mail-DNS changes on this domain have already come one
 misconfiguration away from silently breaking every notification.
 
-**🔴 Prime suspect, and it is a one-line fix: the `Reply-To` is a personal Gmail.**
+**🚫 The Reply-To theory was TESTED AND REFUTED 2026-08-11.** Kept below because the fix was
+shipped anyway and because the reasoning is worth not repeating. Test 1 changed
+`RESEND_REPLY_TO_ADDRESS` to `hello@relaystandby.com` and re-sent with subject and body
+byte-identical but for the case code. Result: `Reply-To: hello@relaystandby.com` confirmed on the
+wire, and **the verdict did not move** — `SCL:5`, `X-Message-Delivery` SCL=6 (a byte-identical
+base64 string to the baseline), `RF:JunkEmail`, `BCL:0`, and the **same 23 `ARA` rules fired**,
+merely reordered. A hypothesis this clean deserved the experiment; the experiment says no.
+
+⚠️ **The fix stays** — the privacy leak it closed was real and independent of deliverability.
+
+**Superseded reasoning follows.**
+
+**~~Prime suspect, and it is a one-line fix: the `Reply-To` is a personal Gmail.~~**
 
 ```
 From:     relay@relaystandby.com        <- authenticated, DMARC-aligned
@@ -229,15 +241,37 @@ Microsoft never discloses which rule fired, so these are ranked suspicions, not 
 
 **Fix and re-test, one variable at a time** — the SCL in the next message's headers is the readout:
 
-| Test | Change | Read |
+| Test | Change | Result |
 |---|---|---|
-| 0 | *(baseline, done)* | SCL 5/6 → Junk |
-| 1 | `RESEND_REPLY_TO_ADDRESS=hello@relaystandby.com` — nothing else | SCL, folder |
-| 2 | only if still junked: subject without "Action needed" | SCL, folder |
-| 3 | only if still junked: add an HTML alternative part | SCL, folder |
+| 0 | *(baseline)* | SCL 5/6 → Junk |
+| 1 | `RESEND_REPLY_TO_ADDRESS=hello@relaystandby.com`, nothing else | 🚫 **REFUTED** — SCL unchanged, same rules |
+| 2 | not run: add an HTML `multipart/alternative` part | — |
+| 3 | not run: subject without "Action needed" | — |
 
 ⚠️ Send each test to a **fresh** Outlook address, and do not click "It's not junk" on any of them —
 that trains the filter and destroys the baseline the next test is measured against.
+
+### What is left, and why the investigation stops here for now
+
+With auth, bulk classification, user rules and Reply-To all eliminated by evidence, two candidates
+remain, and **we control only one of them:**
+
+1. **Message shape.** The mail is **`text/plain` only** — no `multipart/alternative` HTML part.
+   Genuine brand transactional mail almost always carries both, so a bare-text message pairing a
+   numeric code with a link is an unusual silhouette. This is the highest-value remaining test and
+   it is a change to `lib/notify/email.ts`, not config.
+2. **Shared-IP and new-domain reputation — largely outside our control.** The two sends left from
+   `54.240.11.140` and `54.240.11.138`: Resend's **shared Amazon SES pool**. We do not own that IP
+   reputation and cannot register it with Microsoft SNDS, and `relaystandby.com` itself has
+   near-zero sending history. Microsoft consumer filtering is at its harshest on exactly that
+   combination, and the usual remedy is time and engagement rather than a setting.
+
+**Deliberately not pursued further before the flight.** It blocks neither lane — Lane A converts on
+a form POST and the Lane-B numerator was live-proven to fire with no email verification step
+anywhere in the path — and the G1 window has a hard serving-by date. **This is a pre-`customer-used`
+defect, not a pre-flight one:** it must be closed before real families depend on a verifier
+confirmation arriving, and it compounds the confirmed Resend suppression behaviour on the same path.
+Every further test also costs another junked message to the same mailbox, which is not free.
 
 **What it does and does not block:**
 
