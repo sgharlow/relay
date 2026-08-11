@@ -17,6 +17,7 @@
 
 import { query } from './connection';
 import { withOccRetry } from './occ';
+import { isUuid } from '../validation';
 
 // ---------------------------------------------------------------------------
 // IntegrityError
@@ -65,6 +66,21 @@ export async function assertOwns(
   table: string,
   id: string,
 ): Promise<void> {
+  // A malformed id cannot identify a row, so answering NOT_FOUND is both true
+  // and the safest thing to say. Without this the value reached the driver,
+  // which raised SQLSTATE 22P02 — and routes that do not use the shared
+  // mapError (39 of them) rendered that as a 500. Proven on production
+  // 2026-08-10: DELETE /api/vault/items/not-a-uuid returned 500 while
+  // /api/policies/not-a-uuid, which does use mapError, returned 400.
+  //
+  // Guarding HERE rather than per-route is what makes it structural: every
+  // ownership check in the app funnels through this function, and each caller
+  // already handles IntegrityError. It also keeps Requirement 1.8 intact —
+  // malformed, missing and someone-else's ids stay indistinguishable.
+  if (!isUuid(id)) {
+    throw new IntegrityError('NOT_FOUND', `Row not found: ${table}`);
+  }
+
   await withOccRetry(async () => {
     // Parameterised table names are not supported by pg; table is validated by
     // being a trusted internal string — callers are server-side only.

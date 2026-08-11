@@ -101,10 +101,10 @@ describe('IntegrityError', () => {
 // ---------------------------------------------------------------------------
 
 describe('assertOwns', () => {
-  const OWNER = 'owner-uuid-1';
-  const OTHER = 'owner-uuid-2';
+  const OWNER = 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa';
+  const OTHER = 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb';
   const TABLE = 'vault_items';
-  const ID = 'item-uuid-1';
+  const ID = 'cccccccc-3333-4333-8333-cccccccccccc';
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -178,7 +178,7 @@ describe('assertOwns', () => {
 
 describe('cascadeDelete', () => {
   const TABLE = 'access_rules';
-  const PARENT_ID = 'vault-item-uuid-1';
+  const PARENT_ID = '44444444-dddd-4ddd-8ddd-444444444444';
   const FK_COLUMN = 'vault_item_id';
 
   beforeEach(() => {
@@ -230,7 +230,7 @@ describe('cascadeDelete', () => {
 // ---------------------------------------------------------------------------
 
 describe('assertNoCrossOwner', () => {
-  const OWNER = 'owner-uuid-1';
+  const OWNER = 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa';
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -241,8 +241,8 @@ describe('assertNoCrossOwner', () => {
     mockQuery.mockResolvedValue(makeQueryResult([{ owner_id: OWNER }]) as never);
 
     const refs = [
-      { table: 'vault_items', id: 'id-1' },
-      { table: 'recipients', id: 'id-2' },
+      { table: 'vault_items', id: '11111111-aaaa-4aaa-8aaa-111111111111' },
+      { table: 'recipients', id: '22222222-bbbb-4bbb-8bbb-222222222222' },
     ];
     await expect(assertNoCrossOwner(OWNER, refs)).resolves.toBeUndefined();
   });
@@ -259,8 +259,8 @@ describe('assertNoCrossOwner', () => {
       .mockResolvedValueOnce(makeQueryResult([], 0) as never);
 
     const refs = [
-      { table: 'vault_items', id: 'id-1' },
-      { table: 'recipients', id: 'id-missing' },
+      { table: 'vault_items', id: '11111111-aaaa-4aaa-8aaa-111111111111' },
+      { table: 'recipients', id: '77777777-0000-4000-8000-777777777777' },
     ];
     await expect(assertNoCrossOwner(OWNER, refs)).rejects.toMatchObject({
       code: 'NOT_FOUND',
@@ -270,11 +270,11 @@ describe('assertNoCrossOwner', () => {
   it('rejects with UNAUTHORIZED if any ref is owned by a different owner', async () => {
     mockQuery
       .mockResolvedValueOnce(makeQueryResult([{ owner_id: OWNER }]) as never)
-      .mockResolvedValueOnce(makeQueryResult([{ owner_id: 'other-owner' }]) as never);
+      .mockResolvedValueOnce(makeQueryResult([{ owner_id: '88888888-1111-4111-8111-888888888888' }]) as never);
 
     const refs = [
-      { table: 'vault_items', id: 'id-1' },
-      { table: 'access_rules', id: 'id-2' },
+      { table: 'vault_items', id: '11111111-aaaa-4aaa-8aaa-111111111111' },
+      { table: 'access_rules', id: '22222222-bbbb-4bbb-8bbb-222222222222' },
     ];
     await expect(assertNoCrossOwner(OWNER, refs)).rejects.toMatchObject({
       code: 'UNAUTHORIZED',
@@ -285,9 +285,9 @@ describe('assertNoCrossOwner', () => {
     mockQuery.mockResolvedValue(makeQueryResult([{ owner_id: OWNER }]) as never);
 
     const refs = [
-      { table: 'vault_items', id: 'id-1' },
-      { table: 'vault_items', id: 'id-2' },
-      { table: 'recipients', id: 'id-3' },
+      { table: 'vault_items', id: '11111111-aaaa-4aaa-8aaa-111111111111' },
+      { table: 'vault_items', id: '22222222-bbbb-4bbb-8bbb-222222222222' },
+      { table: 'recipients', id: '33333333-cccc-4ccc-8ccc-333333333333' },
     ];
     await assertNoCrossOwner(OWNER, refs);
 
@@ -298,8 +298,8 @@ describe('assertNoCrossOwner', () => {
     mockQuery.mockResolvedValue(makeQueryResult([{ owner_id: OWNER }]) as never);
 
     const refs = [
-      { table: 'vault_items', id: 'id-a' },
-      { table: 'vault_items', id: 'id-b' },
+      { table: 'vault_items', id: '55555555-eeee-4eee-8eee-555555555555' },
+      { table: 'vault_items', id: '66666666-ffff-4fff-8fff-666666666666' },
     ];
     await assertNoCrossOwner(OWNER, refs);
 
@@ -410,4 +410,30 @@ describe('assertNoCrossOwner — property tests', () => {
       );
     },
   );
+});
+
+/**
+ * A malformed id used to reach the driver, raise SQLSTATE 22P02 and render a
+ * 500 on any route not using the shared mapError — 39 of them. Proven on
+ * production 2026-08-10: DELETE /api/vault/items/not-a-uuid returned 500.
+ *
+ * Guarded here because every ownership check funnels through assertOwns, so no
+ * route can be missed. NOT_FOUND keeps malformed, missing and someone-else's
+ * ids indistinguishable (Requirement 1.8).
+ */
+describe('assertOwns rejects malformed identifiers before they reach the driver', () => {
+  for (const bad of ['not-a-uuid', 'v', '', '123', 'x'.repeat(36)]) {
+    it(`refuses ${JSON.stringify(bad)} without querying`, async () => {
+      vi.clearAllMocks();
+      await expect(assertOwns('owner-1', 'vault_items', bad)).rejects.toBeInstanceOf(IntegrityError);
+      expect(vi.mocked(query)).not.toHaveBeenCalled();
+    });
+  }
+
+  it('does not leak the table/id shape difference — same code as a missing row', async () => {
+    vi.clearAllMocks();
+    await expect(assertOwns('owner-1', 'vault_items', 'not-a-uuid')).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+    });
+  });
 });
