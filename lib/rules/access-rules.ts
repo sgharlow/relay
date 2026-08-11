@@ -20,7 +20,7 @@
 import { query } from '../db/connection';
 import { withOccRetry } from '../db/occ';
 import { assertNoCrossOwner } from '../db/integrity';
-import { ValidationError, isNonEmptyString } from '../validation';
+import { ValidationError, isNonEmptyString, isUuid } from '../validation';
 import { VALID_TRIGGER_TYPES, VALID_SCOPES, type TriggerType, type Scope } from '../domain/enums';
 
 export { VALID_TRIGGER_TYPES, VALID_SCOPES, type TriggerType, type Scope };
@@ -58,8 +58,11 @@ export function validateAccessRuleInput(body: unknown): AccessRuleInput {
   const b = body as Record<string, unknown>;
   const invalid: string[] = [];
 
-  if (!isNonEmptyString(b.vault_item_id)) invalid.push('vault_item_id');
-  if (!isNonEmptyString(b.recipient_id)) invalid.push('recipient_id');
+  // Not just non-empty: every id column is a UUID, so a non-UUID string can
+  // only be a caller mistake. It used to reach the driver, raise SQLSTATE 22P02
+  // and render a 500 (found by probing production 2026-08-10).
+  if (!isUuid(b.vault_item_id)) invalid.push('vault_item_id');
+  if (!isUuid(b.recipient_id)) invalid.push('recipient_id');
   if (!isNonEmptyString(b.trigger_type) || !VALID_TRIGGER_TYPES.includes(b.trigger_type as TriggerType)) {
     invalid.push('trigger_type');
   }

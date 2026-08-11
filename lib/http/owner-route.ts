@@ -60,5 +60,34 @@ export function mapError(err: unknown): NextResponse {
       { status: 403 },
     );
   }
+  // A malformed identifier is the CALLER's mistake, not a server fault. Every
+  // id column is a UUID, so a non-UUID string reaches the driver and raises
+  // SQLSTATE 22P02 — which this mapper used to rethrow, rendering a 500.
+  // Nothing in the codebase validated UUID shape and 17 routes share this
+  // mapper, so the fix belongs here rather than in each caller.
+  //
+  // The message is deliberately generic: the driver's text embeds the offending
+  // value ("invalid input syntax for type uuid: \"…\""), and reflecting caller
+  // input back is how probes get confirmed. It also stays distinct from the 403
+  // above only by SHAPE, never by existence — a well-formed id that is missing
+  // and a well-formed id owned by someone else both still return the same 403,
+  // so this adds no enumeration oracle.
+  if (isMalformedIdentifier(err)) {
+    return NextResponse.json(
+      { error: 'ValidationError', message: 'Malformed identifier' },
+      { status: 400 },
+    );
+  }
   throw err;
+}
+
+/** Postgres/DSQL `invalid_text_representation`, confirmed against live DSQL. */
+const INVALID_TEXT_REPRESENTATION = '22P02';
+
+function isMalformedIdentifier(err: unknown): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    (err as { code?: unknown }).code === INVALID_TEXT_REPRESENTATION
+  );
 }

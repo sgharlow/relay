@@ -33,8 +33,8 @@ function qResult(rows: unknown[]) {
 
 function validRule(overrides: Record<string, unknown> = {}) {
   return {
-    vault_item_id: 'item-1',
-    recipient_id: 'rec-1',
+    vault_item_id: '11111111-1111-4111-8111-111111111111',
+    recipient_id: '22222222-2222-4222-8222-222222222222',
     trigger_type: 'emergency',
     scope: 'view',
     reversible: true,
@@ -149,8 +149,8 @@ describe('createRule', () => {
     mockQuery.mockResolvedValueOnce(qResult([{ id: 'rule-1', ...validRule(), created_at: new Date() }]));
     await createRule('owner-1', validateAccessRuleInput(validRule()));
     expect(mockAssert).toHaveBeenCalledWith('owner-1', [
-      { table: 'vault_items', id: 'item-1' },
-      { table: 'recipients', id: 'rec-1' },
+      { table: 'vault_items', id: '11111111-1111-4111-8111-111111111111' },
+      { table: 'recipients', id: '22222222-2222-4222-8222-222222222222' },
     ]);
   });
 
@@ -165,5 +165,43 @@ describe('trigger/scope enums', () => {
   it('expose the schema-aligned sets', () => {
     expect(VALID_TRIGGER_TYPES).toContain('estate');
     expect(VALID_SCOPES).toEqual(['view', 'act']);
+  });
+});
+
+/**
+ * Ids that are not UUIDs used to travel to the driver, which raised 22P02 and
+ * rendered a 500. `mapError` now catches that class for all 17 routes sharing
+ * it; this refuses the value at the edge so the response names the field.
+ *
+ * The fixture above previously used 'item-1' / 'rec-1' — ids that could never
+ * exist, since every id column is a UUID. Tests pinning phantom values cannot
+ * see this bug, which is why it survived to production.
+ */
+describe('malformed identifiers are rejected at the edge, naming the field', () => {
+  for (const bad of ['item-1', 'not-a-uuid', '123', 'x'.repeat(36)]) {
+    it(`rejects vault_item_id ${JSON.stringify(bad)} with a field-level error`, () => {
+      try {
+        validateAccessRuleInput(validRule({ vault_item_id: bad }));
+        throw new Error('expected ValidationError');
+      } catch (e) {
+        expect(e).toBeInstanceOf(ValidationError);
+        expect((e as ValidationError).field).toBe('vault_item_id');
+      }
+    });
+  }
+
+  it('names recipient_id when that is the malformed one', () => {
+    try {
+      validateAccessRuleInput(validRule({ recipient_id: 'rec-1' }));
+      throw new Error('expected ValidationError');
+    } catch (e) {
+      expect((e as ValidationError).field).toBe('recipient_id');
+    }
+  });
+
+  it('still accepts canonical UUIDs in either case', () => {
+    const upper = '3F2504E0-4F89-41D3-9A0C-0305E82C3301';
+    const r = validateAccessRuleInput(validRule({ vault_item_id: upper }));
+    expect(r.vault_item_id).toBe(upper);
   });
 });
