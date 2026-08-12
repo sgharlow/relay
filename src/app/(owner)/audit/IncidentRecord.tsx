@@ -59,10 +59,10 @@ export default function IncidentRecord() {
   }
 
   return (
+    // No heading of its own: the page's h1 already says "What happened", and
+    // stacking the same words twice was a duplication introduced when this
+    // section landed.
     <section className="mb-6">
-      <h2 style={{ fontSize: 'var(--t5)', fontWeight: 600, marginBottom: 'var(--s2)' }}>
-        What happened
-      </h2>
       <div className="space-y-3">
         {incidents.map((i) => (
           <div
