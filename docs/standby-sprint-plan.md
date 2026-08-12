@@ -944,3 +944,92 @@ All were built; none were written down.
 
 **Materially missing and NOT merely undocumented: A2 and A3.** Everything else in this section is a
 defect in something that exists.
+
+---
+
+## 15. Gap-closure plan — ratified by Steve 2026-08-12
+
+Closes §14. Four waves. **Every fix is one of three shapes this architecture has already
+ratified** — nothing new is invented, no state machine, crypto boundary, quorum predicate or module
+contract changes.
+
+| Shape | Precedent | Applied to |
+|---|---|---|
+| Add a field to an existing context | — | A1, A4, A5 |
+| A second door onto one authorization core | recipient decrypt; the verifier decision path (§12 item 2) | A3 |
+| Reuse the one per-person notify decision | `verifier-notice-class.ts` (§12 item 5) | A2 |
+
+### Steve's rulings
+
+1. **A3 requester bar: `claimed`, not revoked** — NOT `confirmed`. Break-glass redemption sets
+   `claimed`, so requiring `confirmed` would exclude the exact person break-glass exists for. The
+   request grants nothing by itself: `assertRequestAllowed` caps 3 per 24h, the owner is challenged
+   first, and N-of-M **confirmed** verifiers still gate the outcome. The petition is bounded
+   downstream, so the bar to make it belongs at the bottom.
+2. **No verifier "raise the alarm" control.** Out of scope, and a person who can start a release
+   should not also be able to confirm it without a new separation-of-duties rule. Revisit only with
+   that rule written first.
+3. **Build the J3 delegation create UI now** (wave 4). ⚠️ It grants a second person setup rights
+   over a vault, and the consent artifact is the only thing making that legitimate — the same path
+   that carried a cross-owner hole until §13. Consent must be presented as **evidence**, and
+   J3-R3's in-person and paper routes must be first-class, because the parent being delegated for is
+   the person least likely to own a smartphone.
+4. **All waves in one pass.**
+
+### Facts verified before planning, not assumed
+
+- **`estate` is NOT user-selectable** (`USER_SELECTABLE_TRIGGER_TYPES`, gated on
+  `g2-counsel-opinion`). So `Initiate`'s missing confirmation step is a usability wart today, not a
+  safety hole — every selectable trigger is reversible and Stand down exists. ⏸️ **It becomes a
+  safety hole the day that gate opens: a confirmation step on Initiate is a PRECONDITION on
+  `g2-counsel-opinion`, not work for now.**
+- **`assertRequestAllowed` already caps 3 requests / 24h** — A3's abuse bound exists.
+- **`/api/access/resend` is a complete template for A2** — rate limit, audit write, owner label,
+  constant response, sends to the address on file.
+- **Nothing consumes `preparedness.ready`** but the banner colour, so changing what it counts is
+  contained.
+- **`initiated_by` is structured** (`owner:<id>` · `cron` · `challenge_lapsed:<id>` ·
+  `owner_consent:<id>`), so J7-R3's *why now* needs no new data.
+- 🔴 **Correction to §14/A1: the verifier EMAILS do not name the owner either** — only the
+  `not_counted` branch written today does, while the recipient email always has. A1 is an omission
+  across the whole verifier channel, not one page.
+
+### Wave 1 — say who, and stop contradicting ourselves
+
+- **A1** `VerifierContext` gains `ownerLabel` (via the existing `getOwnerLabel`, not a new SQL join —
+  one authoritative definition of how an owner is named) and `whyNow` derived from `initiated_by`.
+  Rendered on the decision page and added to the verifier emails.
+  *Not a leak:* anyone reaching that page already holds the power to confirm the release, which is
+  strictly greater than knowing whose it is — and a request that cannot name its subject is
+  indistinguishable from phishing, which is the risk J7-R3 exists to remove.
+- **A4** `standby-resolve` selects `display_name` and routes through `formatOwnerLabel`. Sweep every
+  contact-facing surface for the same defect.
+- **A5** pass `ableVerifiers` to `assessPreparedness` **and** refuse sage whenever a fatal blocker
+  exists — the second is structural, so no future computation can put a green statement above a red
+  one. Plus *"all 2 of"* → *"both"*.
+- Demo vocabulary off real owners' screens; claim copy stops assuming email; break-glass copy names
+  the true alternative (others can still answer); audit actors resolved **at render time only —
+  never rewrite the hash chain**, fall back to the raw id for deleted people.
+
+### Wave 2 — A2, the verifier's way back
+
+Extract `notifyOneVerifier` from `notifyVerifiersForTrigger` so both paths share ONE definition of
+what a verifier receives, then `POST /api/verify/resend` cloned from `/api/access/resend`:
+classify one person, dispatch, audit, constant response in all four classes. Serves *"I never got
+it"* as well as *"it expired"* — the deliverability case is the commoner one.
+⚠️ **Known limitation, stated not solved:** a resend to a Resend-suppressed address silently
+succeeds and delivers nothing.
+
+### Wave 3 — A3, the door J6 never had
+
+Session path beside the existing recipient-token path on `POST /api/access-requests`; roster row
+resolved from the DATABASE (§3.7 rule 1). Control on the standby dashboard under *"Nothing open."*
+🚫 **An unauthenticated request form is rejected**: it would let a stranger challenge any owner by
+guessing addresses and, per J6-R9, broadcast that to their whole circle — a harassment vector and an
+enumeration oracle. The dashboard already has two ways in (claim, break-glass), so the covered
+population lands exactly on §8.1's existing boundary, neither widened nor narrowed.
+
+### Wave 4 — J3 delegation, made reachable
+
+Owner-side invite → consent → active, with in-person and paper consent as peers of the link, and the
+owner-scoped `recordConsent` from §13 underneath.

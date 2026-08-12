@@ -63,7 +63,7 @@ misspelled word in the one line of copy is worse than no line at all.
 | `meta-m1-1080x1350.png` | 1080 × 1350 (4:5) | Meta feed, M1 | A, vertical crop | **recommended — see the note below** |
 | `meta-m2-1080.png` | 1080 × 1080 | Meta feed, M2 notebook | **B — the copies that cannot be recalled** | needed before the Meta lane opens |
 | `meta-m3-1080.png` | 1080 × 1080 | Meta feed, M3 free-first | **C — the dependency reveal** | needed before the Meta lane opens |
-| `meta-f1-1080.png` | 1080 × 1080 | Meta feed, **F1 free plan** | **D — the ten slots** | new creative, see §3 |
+| `meta-f1-1080.png` | 1080 × 1080 | Meta feed, **F1 price-led / free on-ramp** | **D — the ten slots** | new creative, see §3. Only if F1 replaces an M variant; F1 runs on Reddit by preference |
 | `story-1080x1920.png` | 1080 × 1920 (9:16) | Stories / Reels | A, vertical | **see the automatic-placements note** |
 | `reddit-r1-1200x628.png` | 1200 × 628 | Reddit free-form, R1 | **E — the aperture, wide** | optional; the free-form ad runs text-only |
 | `avatar-400.png` | 400 × 400 | Ad-account profile image, both platforms | **F — the relay mark** | needed at account creation, before any creative |
@@ -276,12 +276,22 @@ prompt only if a softer, more brand-like avatar is wanted. The SVG is the author
 
 ---
 
-## 3. F1 — the free-plan creative *(new; copy, not just an image)*
+## 3. F1 — the creative that carries the free plan *(new; copy, not just an image)*
 
-The six existing creatives are all price-forward or product-forward. **None of them leads with the
-free plan** — M3 is described as "free-first" but its hook is the risk-graph reveal, and "free"
-appears only in its last sentence. If a free on-ramp is meant to carry any of the traffic, it needs
-a creative that opens with it. This is that creative.
+> **Scope ruled by Steve 2026-08-12: G1 only, no beta-recruitment ads — and free is *mentioned*,
+> not led.** F1 is therefore a **price-led** variant whose free on-ramp is stated plainly, not a
+> free-first ad. The earlier free-led draft of this section is superseded and does not run.
+
+Of the six existing creatives, M1 and M2 mention the free plan only in a 25-character description
+field, and M3 — the one described as "free-first" — carries no price at all. F1 is the variant that
+does both jobs in one: the price is the headline, and the free on-ramp is a full sentence rather
+than a truncated fragment.
+
+**Run it on the Reddit lane by preference.** Reddit is lane 1, its free-form body is effectively
+unlimited, and the free plan needs a sentence to land honestly. The Meta version is provided for
+completeness, but note that the Meta lane opens only if Reddit under-delivers and carries the
+smaller share of the ratified ceiling — a fourth Meta variant would split that share too thin to
+read. Adding it there means **replacing** a variant, not appending one.
 
 ⚠️ **Before running it, verify three things against the source and not against this file:**
 
@@ -293,34 +303,44 @@ a creative that opens with it. This is that creative.
    because the day that flag flips, a running ad becomes a false claim with nothing to catch it.
 3. That signup still takes no card. The copy says so.
 
-**F1 — Meta** *(field limits per `g1-ad-creatives.md` §1b: ~125 primary before the fold, 40
-headline, ~25 description)*
+**F1 — Reddit free-form** *(preferred placement; title under ~80 chars, body effectively unlimited)*
 
-> **Primary text (first sentence = 86 chars, inside the fold):** The first ten accounts a family
-> would need in an emergency are free to set up in Relay. Add the handful of people who might one
-> day need them, and see which single account everything else depends on. Encrypted in the browser;
-> the server only ever holds ciphertext. Winner, Most Impactful — H0 Hackathon 2026.
->
-> **Headline (34):** Start free — 10 accounts, 4 people
->
-> **Description (16):** No card to start
-
-**F1 — Reddit free-form** *(title under ~80 chars; body effectively unlimited)*
-
-> **Title (66 chars):** The free plan covers the ten accounts a family actually needs first
+> **Title (68 chars):** One price for the whole family — and the first ten accounts are free
 >
 > **Body:**
 > Most families never write any of it down, because the moment you do, the only way to share it is
-> to share everything with everyone, permanently.
+> to share everything with everyone, permanently. That works right up until it doesn't, and it
+> can't be undone.
 >
-> Relay's free plan is a place to start instead: ten accounts, up to four people who could be
-> granted access, no card. Everything is encrypted in the browser before it leaves, so the server
-> only ever holds ciphertext — there is nothing on our side to read.
+> Relay is the reversible version, and it is one price for the whole family — no per-person tier,
+> no upsell for the second sibling. Access opens only what the owner granted, only when a real
+> trigger is verified, and seals itself again when they check back in.
 >
-> It also shows something most families have never looked at: which single account, if it were
-> locked, would make every other password useless.
+> Encrypted in the browser, so the server only ever holds ciphertext. There is nothing on our side
+> to read.
+>
+> The first ten accounts are free to set up, with no card, if it makes more sense to see it on a
+> real family before paying for it.
 >
 > *Winner — Most Impactful, H0 Hackathon 2026*
+
+**F1 — Meta** *(only as a replacement for an existing M variant, not a fourth; field limits per
+`g1-ad-creatives.md` §1b: ~125 primary before the fold, 40 headline, ~25 description)*
+
+> **Primary text (first sentence = 103 chars, inside the fold):** One price covers a whole family's
+> emergency access, and the first ten accounts cost nothing to set up. Relay opens exactly what the
+> owner granted when a real trigger is verified, and seals itself again when they check back in.
+> Encrypted in the browser; the server only ever holds ciphertext. 30-day money-back guarantee.
+>
+> **Headline (35):** $119/yr for the family — start free
+>
+> **Description (19):** First 10 items free
+
+⚠️ The headline carries the price because `g1-channel-send-kit.md` requires it **visible pre-click
+wherever the format allows**, and because this is the price-led variant. It is the one number in
+this file written into ad copy — **check it against `PRICE_YEARLY_USD` in
+`src/app/caregivers/content.ts` before pasting**, and re-count the field if it ever changes: at 35
+of 40 characters there are only 5 to spare.
 
 **Compliance note:** both are third person throughout. "A family", "most families", "the people who
 might need them" — never "your mother", never "you" attached to a health event. This is §1a, and
@@ -335,7 +355,7 @@ the F1 copy was drafted under it rather than rewritten into it.
 | M1 reversibility | **A — aperture** | The iris is the only metaphor here that closes on its own |
 | M2 notebook | **B — escaping copies** | States the permanence problem the copy names |
 | M3 dependency reveal | **C — node graph** | Literally the product's own output; sets an accurate expectation |
-| **F1 free plan** | **D — ten slots** | Counted, bounded, unlocked — an on-ramp, not a vault door |
+| **F1 price-led / free on-ramp** | **D — ten slots** | Counted, bounded, unlocked — an on-ramp, not a vault door. Reddit-first, so the image is optional |
 | R1 Reddit | **E — aperture, wide** — or no image at all | Free-form ads run text-only; R1's body is the creative |
 
 ---
@@ -365,23 +385,32 @@ is discarded and regenerated; it is not "fixed" in the ad platform.
 
 ---
 
-## 6. Still open — decisions this file cannot make
+## 6. Scope ruling, and what is still open
 
-1. **Which campaign these serve.** Everything in `g1-ad-creatives.md` is calibrated to the **G1 WTP
-   gate**: a $250 directional flight, priced CTA, measured as click-to-intent, submitting ~2026-10-01
-   per the rebased date. A **beta-recruitment** campaign is a different objective with a different
-   conversion, and F1 above leans that way. If both run, see (2).
-2. **`src` isolation, if beta traffic and G1 traffic ever run at once.** `isGateQualifyingSrc()` in
-   `src/app/caregivers/content.ts` counts *every* tagged non-excluded `src` toward N. A beta ad
-   pointed at the same funnel would enter the G1 denominator, and free-plan traffic converting on a
-   free signup rather than the priced CTA biases the ratio **down** — toward a false KILL on the
-   gate that decides the product. The existing mechanism is already the right one: a `BETA_SRCS`
-   exclusion set beside `SHOWCASE_SRCS` and `QA_SRCS`, pinned by `content.test.ts`, **added before
-   the first beta ad runs**, not after.
-3. **The landing page's own copy.** `g1-flight-log.md` records that `SUBHEAD` still carries the
+### Ruled 2026-08-12 (Steve) — closed, recorded so it is not reopened
+
+**These ads serve the G1 WTP gate and nothing else. There is no beta-recruitment campaign.** The
+lanes, ceiling, thresholds, srcs and the ~2026-10-01 submit-by in `g1-ad-creatives.md` stand exactly
+as written — this ruling changes nothing in that file, which is why nothing was edited there and no
+new `PROJECT.yaml` entry was added. The free plan is **mentioned, not led** (§3).
+
+**Consequently `BETA_SRCS` is NOT needed and was not built.** It would have been required only if
+beta traffic and gate traffic shared the funnel. `isGateQualifyingSrc()` in
+`src/app/caregivers/content.ts` is unchanged, and `SHOWCASE_SRCS` / `QA_SRCS` remain the only two
+exclusion sets. ⚠️ **If a beta or founding-family campaign is ever revived, this becomes a
+pre-flight blocker again:** every tagged non-excluded `src` counts toward N, free-signup conversions
+emit no priced numerator, and the ratio would be biased **down** — toward a false KILL on the gate
+that decides the product. A Vercel Analytics event cannot be deleted, so the exclusion has to exist
+*before* the first such ad, not after.
+
+### Still open — decisions this file cannot make
+
+1. **The landing page's own copy.** `g1-flight-log.md` records that `SUBHEAD` still carries the
    exact second-person-plus-family-health construction §1a removed from four creatives — and ad
    reviewers visit the destination. Recorded there as **Steve's call** and still undecided. Compliant
    creatives pointing at a non-compliant landing page is a partial mitigation, not a fix.
-4. **Whether the free plan is even mentioned on the landing page's terms.** `SECONDARY_CTA_LABEL`
-   says "free, 10 items" and says nothing about the four people. If F1 runs, the destination should
-   confirm what the ad promised, or the click bounces.
+2. **What the destination says about the free plan.** `SECONDARY_CTA_LABEL` reads "free, 10 items"
+   and says nothing about the recipient cap. F1 states the free on-ramp in the ad; the destination
+   should confirm it, or the click bounces on a promise the page does not repeat.
+3. **Placements: Automatic without a 9:16 asset** (§1). Decide deliberately — supply the vertical
+   crop, or restrict to Feed.
