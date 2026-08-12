@@ -416,10 +416,34 @@ change is one string and the consequences are not:
   is not cover. Nothing yet tells an owner which of their people hold an unredeemed code, so
   "everyone has a fallback" is currently unknowable from inside the product.
 
+### ✅ Assurance — shipped and live-proven 2026-08-12
+
+**The circle light goes green for the first time.** Walked on production: B claims → A's circle shows
+amber with *Check it is really them* → the phrase appears → *The words matched* → **green**, and
+`standby_state = 'confirmed'`. The phrase the owner is shown was verified identical to
+`fingerprintFor` derived from the binding.
+
+`/api/circle` never returned the phrase, so a confirm button would have asked the owner to assert "I
+compared a phrase and it matched" having never been shown one — the assurance model deleting itself.
+It is derived per request and never stored, so it changes the moment a different human claims the
+slot and an old confirmation stops reading as valid (Risk 8).
+
+**N14 was still missing and is now built.** `unconfirmPerson` is guarded on `confirmed`, so it could
+not touch the case that actually happens: a mismatch found during the setup call, when the person is
+`claimed` and never was confirmed. `rejectClaim` treats it as a security event — severs the binding,
+returns to `invited`, and kills every live ticket, because the ticket channel is what was
+compromised. Proven live: reject → `invited`, phrase gone, light red, outstanding invitation marked
+spent, and the re-invite control offered in its place. Reissue is deliberately manual: after an
+interception the owner should choose the channel.
+
+Both answers carry equal weight in the UI, and reject asks once before acting. §3.3's warning is
+honoured — the control lives in owner mode only and says *call them*, because letting the contact
+confirm alone is the simplification that breaks the property.
+
 ### 🔴 Still open
 
-1. **Assurance controls are API-only**: fingerprint confirm and resign have routes and no UI, so the
-   circle light can never go green and a contact cannot leave.
+1. **Resign has no UI.** `/api/standby/leave` has no caller, so a standby contact cannot leave —
+   N15/N16 remain API-only, and a free user with an account has no way out.
 2. ✅ **Break-glass is complete — issue and redeem both shipped and live-proven 2026-08-12.**
    Full loop walked with no scripts on either end: owner opens *Emergency code* on `/circle` →
    reads the explanation → creates a code → a different person redeems it at `/break-glass` and
