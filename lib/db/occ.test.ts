@@ -228,7 +228,13 @@ describe('withOccRetry — property tests', () => {
           async (value) => {
             const fn = async () => value;
             const result = await withOccRetry(fn, noopSleep);
-            return result === value;
+            // Object.is, NOT ===. `fc.anything()` generates NaN on some seeds,
+            // and NaN === NaN is false, so this property failed at random
+            // roughly whenever fast-check happened to pick it — a latent flake
+            // that fired in CI on 2026-08-12 while passing locally on a
+            // different seed. Object.is is also the comparison this property
+            // actually means: the identical value came back out.
+            return Object.is(result, value);
           }
         ),
         { numRuns: 50 }
