@@ -20,9 +20,10 @@
  * Requirements: J4-R9, J4-R10, J4-R11
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import StandbyPasskeyCard from './StandbyPasskeyCard';
+import LeaveControl from './LeaveControl';
 
 interface Grant {
   itemCount: number;
@@ -33,6 +34,8 @@ interface Grant {
 interface Relationship {
   ownerId: string;
   ownerLabel: string;
+  /** The roster row this person fills — what leaving unbinds. */
+  personId: string;
   personType: 'recipient' | 'verifier';
   state: string;
   grant?: Grant;
@@ -147,12 +150,19 @@ export default function StandbyClient() {
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetch('/api/standby')
+  // Extracted so leaving a circle can re-read it: the card must disappear when
+  // somebody steps down, or they are left looking at a relationship they have
+  // just ended and wondering whether it worked.
+  const load = useCallback(() => {
+    fetch('/api/standby', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then(setData)
       .catch(() => setError('We could not load this just now.'));
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   if (error) return <p style={{ fontSize: 18 }}>{error}</p>;
   if (!data) return <p style={{ fontSize: 18, color: '#6b6257' }}>Loading…</p>;
@@ -210,6 +220,14 @@ export default function StandbyClient() {
           ) : (
             <p style={{ fontSize: 16, marginTop: 12, color: '#6b6257' }}>Nothing open.</p>
           )}
+
+          <LeaveControl
+            personId={rel.personId}
+            personType={rel.personType}
+            ownerLabel={rel.ownerLabel}
+            somethingOpen={rel.openRelease !== null}
+            onLeft={load}
+          />
         </section>
       ))}
 
