@@ -369,3 +369,57 @@ describe('[A3] fragility — ruled 2026-08-12', () => {
     expect(r.blockers.find((b) => b.code === 'fragile_quorum')).toBeUndefined();
   });
 });
+
+describe('🔴 the standing sentence counts ABLE verifiers — found by writing the user manual', () => {
+  it('does not call a plan ready when its only verifier is named but not verified', async () => {
+    // `verifierCount` was `SELECT count(*) FROM verifiers` -- any state -- so
+    // `ready` went true on the strength of somebody having been TYPED IN. Full
+    // coverage plus one unverified verifier produced a sage "could reach all N
+    // of the things that matter" stacked directly above the clay "This vault
+    // would not open in an emergency."
+    //
+    // Third occurrence of the same NAMED-vs-ABLE confusion producing a wrong
+    // colour, one level further out each time.
+    setup({
+      items: 1,
+      verifiers: 1,
+      itemRows: [{ id: 'i-1', title: 'Gmail', criticality: 'critical', is_root_credential: true }],
+      ruledItemIds: ['i-1'],
+      verifierStates: [{ id: 'v-0', standby_state: 'invited' }],
+    });
+
+    const r = await assessReadiness('o-1');
+    expect(r.preparedness.ready).toBe(false);
+    // ...and the fatal blocker that contradicted it is still raised.
+    expect(r.blockers.some((b) => b.fatal)).toBe(true);
+  });
+
+  it('is ready when the same plan has a VERIFIED verifier', async () => {
+    setup({
+      items: 1,
+      verifiers: 1,
+      itemRows: [{ id: 'i-1', title: 'Gmail', criticality: 'critical', is_root_credential: true }],
+      ruledItemIds: ['i-1'],
+      verifierStates: [{ id: 'v-0', standby_state: 'confirmed' }],
+    });
+
+    const r = await assessReadiness('o-1');
+    expect(r.preparedness.ready).toBe(true);
+    expect(r.blockers.filter((b) => b.fatal)).toEqual([]);
+  });
+
+  it('a break-glass-only verifier does not make a plan ready either', async () => {
+    // §8.1's documented exclusion: they will never count, and the sentence must
+    // not imply otherwise.
+    setup({
+      items: 1,
+      verifiers: 1,
+      itemRows: [{ id: 'i-1', title: 'Gmail', criticality: 'critical', is_root_credential: true }],
+      ruledItemIds: ['i-1'],
+      verifierStates: [{ id: 'v-0', standby_state: 'invited' }],
+    });
+
+    const r = await assessReadiness('o-1');
+    expect(r.preparedness.ready).toBe(false);
+  });
+});

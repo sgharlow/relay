@@ -19,6 +19,10 @@ import { useSearchParams } from 'next/navigation';
 
 interface Context {
   caseId: string;
+  /** Whose vault. J7-R3's "who is asking" — see the note on `VerifierContext`. */
+  ownerLabel: string;
+  /** Why now, derived from `initiated_by`. The other half of J7-R3. */
+  whyNow: string;
   triggerType: string;
   itemCount: number;
   categories: string[];
@@ -177,10 +181,25 @@ export default function VerifyClient() {
     <div className="space-y-5">
       <div className="rounded-lg border border-rule-strong bg-paper-raised p-6">
         <p className="text-[16px] uppercase tracking-wide text-muted">Reference {ctx.caseId}</p>
-        <h1 className="mt-2 text-t7 font-semibold">Is this real?</h1>
+        {/*
+          🔴 J7-R3 SAYS "WHO IS ASKING" FIRST, and until 2026-08-12 this said
+          "Someone has asked for {trigger} access to a vault you agreed to help
+          protect" — naming nobody. The context loaded `owner_id` and never
+          resolved it, so the email that summoned this person named the owner
+          and the page they landed on did not.
+
+          A doctor cannot responsibly attest that an unnamed person's emergency
+          is genuine, and somebody standing by for two people (§3.7) could not
+          tell which one this was about. Found by writing the user manual: the
+          sentence "the page tells you whose emergency it is" could not be
+          written truthfully.
+        */}
+        <h1 className="mt-2 text-t7 font-semibold">Is this real, for {ctx.ownerLabel}?</h1>
         <p className="mt-3 text-ink">
-          Someone has asked for {ctx.triggerType} access to a vault you agreed to help protect.
+          A {ctx.triggerType} release has been started on <strong>{ctx.ownerLabel}</strong>&rsquo;s
+          vault, and you are one of the people they chose to ask.
         </p>
+        <p className="mt-2 text-ink">{ctx.whyNow}</p>
       </div>
 
       {/* Why now */}

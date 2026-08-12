@@ -215,3 +215,59 @@ describe('resolveStandbyFor', () => {
     expect(mockQuery).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('🔴 owner label — found by writing the user manual 2026-08-12', () => {
+  it('prefers the display name over the email address', async () => {
+    // This selected `u.email` and nothing else, so the one screen a standby
+    // contact returns to for years said someone@gmail.com while every message
+    // Relay sent on the owner's behalf said "Margaret". The Account page's own
+    // copy names the cost: "the worst possible moment for it to say an email
+    // address they do not recognise."
+    mockQuery.mockReset();
+    mockQuery
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            person_id: 'p-1',
+            person_type: 'recipient',
+            owner_id: 'o-1',
+            owner_email: 'margaret@example.com',
+            owner_display_name: 'Margaret Chen',
+            standby_state: 'confirmed',
+          },
+        ],
+      } as never)
+      .mockResolvedValue({ rows: [], rowCount: 0 } as never);
+
+    const res = await resolveStandbyFor({ userId: 'u-1' });
+    expect(res.relationships[0].ownerLabel).toBe('Margaret Chen');
+  });
+
+  it('falls back to the address when no name is set, never to nothing', async () => {
+    mockQuery.mockReset();
+    mockQuery
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            person_id: 'p-1',
+            person_type: 'recipient',
+            owner_id: 'o-1',
+            owner_email: 'margaret@example.com',
+            owner_display_name: null,
+            standby_state: 'confirmed',
+          },
+        ],
+      } as never)
+      .mockResolvedValue({ rows: [], rowCount: 0 } as never);
+
+    const res = await resolveStandbyFor({ userId: 'u-1' });
+    expect(res.relationships[0].ownerLabel).toBe('margaret@example.com');
+  });
+
+  it('actually asks the database for the display name', async () => {
+    mockQuery.mockReset();
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+    await resolveStandbyFor({ userId: 'u-1' });
+    expect(String(mockQuery.mock.calls[0][0])).toMatch(/display_name/);
+  });
+});

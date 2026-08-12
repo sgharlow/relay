@@ -332,7 +332,21 @@ export async function assessReadiness(ownerId: string): Promise<Readiness> {
       is_root_credential: Boolean(r.is_root_credential),
     })),
     ruledItemIds: ruleRows.rows.map((r) => r.vault_item_id),
-    verifierCount: counts.verifiers,
+    /**
+     * 🔴 ABLE VERIFIERS, NOT ROSTER ROWS. This passed `counts.verifiers` —
+     * `SELECT count(*) FROM verifiers`, any state — so `preparedness.ready` went
+     * true on the strength of somebody having been TYPED IN. An owner with full
+     * coverage and one named-but-unverified verifier therefore got a sage
+     * "could reach all N of the things that matter" stacked directly above the
+     * clay "This vault would not open in an emergency."
+     *
+     * Found by writing the user manual: the sentence explaining what the green
+     * banner means could not be written without contradicting the box beneath
+     * it. The same false-green shape as the coverage banner and the /circle box,
+     * one level further out again — this is the third time this exact confusion
+     * between NAMED and ABLE has produced a wrong colour.
+     */
+    verifierCount: ableVerifiers,
   });
 
   // Naming the person is the point — "someone" is what every other product

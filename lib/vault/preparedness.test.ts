@@ -146,3 +146,26 @@ describe('the missing clause', () => {
     expect(p.unreachable.length).toBe(2);
   });
 });
+
+describe('🔴 small numbers — found by writing the user manual 2026-08-12', () => {
+  it('says "both" rather than "all 2 of"', () => {
+    // "all 2 of the things that matter" is how a template reads when nobody
+    // checked the small numbers -- and small numbers are the COMMON case, since
+    // the whole point of the importance engine is that four or five items
+    // matter, not ninety.
+    const p = { reachable: 2, mattering: 2, unreachable: [], gaps: [], ready: true };
+    expect(preparednessSentence(p, 'Jordan')).toContain('both of the things that matter');
+    expect(preparednessSentence(p, 'Jordan')).not.toContain('all 2');
+  });
+
+  it('says "the one thing" rather than "all 1 of"', () => {
+    const p = { reachable: 1, mattering: 1, unreachable: [], gaps: [], ready: true };
+    expect(preparednessSentence(p, 'Jordan')).toContain('the one thing that matters');
+    expect(preparednessSentence(p, 'Jordan')).not.toContain('all 1');
+  });
+
+  it('still counts plainly from three up', () => {
+    const p = { reachable: 7, mattering: 7, unreachable: [], gaps: [], ready: true };
+    expect(preparednessSentence(p, 'Jordan')).toContain('all 7 of the things that matter');
+  });
+});

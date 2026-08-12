@@ -181,6 +181,13 @@ export async function notifyVerifiersForTrigger(
   // `claimed`, and why a break-glass code does not suppress the mail.
   const classes = await classifyOrFailOpen(verifiers.map((v) => v.id));
 
+  // WHOSE EMERGENCY THIS IS. The recipient mail has always named the owner
+  // ("${ownerLabel} arranged for you to be able to reach…"); the verifier mail
+  // never did, in any branch, so the person being asked to vouch for somebody
+  // was not told who. Same omission as the decision page (J7-R3) — found by
+  // writing the user manual, and fixed in the same pass.
+  const ownerLabel = ownerId ? await getOwnerLabel(ownerId) : 'Someone';
+
   const results = await Promise.all(
     verifiers.map(async (v) => {
       const noticeClass = classes.get(v.id) ?? 'code';
@@ -216,7 +223,9 @@ export async function notifyVerifiersForTrigger(
           subject: `Action needed: confirm ${article(triggerType)} ${triggerType} trigger (${caseId})`,
           text:
             `Hi ${v.name},\n\n` +
-            `You've been asked to confirm ${article(triggerType)} "${triggerType}" release trigger.\n\n` +
+            `${ownerLabel} named you as one of the people who would be asked whether an emergency is real, ` +
+            `and ${article(triggerType)} "${triggerType}" release has now been started on their ` +
+            `account.\n\n` +
             `Sign in the way you normally do and the request will be waiting for you:\n\n` +
             `    ${appUrl()}/standby\n\n` +
             `Case ${caseId}.\n\n` +
@@ -234,13 +243,13 @@ export async function notifyVerifiersForTrigger(
       // told — they were named, the request is real, and being able to say "I
       // was never set up" to whoever is in the room is worth more than silence.
       if (noticeClass === 'not_counted') {
-        const who = ownerId ? await getOwnerLabel(ownerId) : 'Someone';
+        const who = ownerLabel;
         return sendEmailBestEffort({
           to: v.email,
           subject: `${who} named you — but you are not set up to answer (${caseId})`,
           text:
             `Hi ${v.name},\n\n` +
-            `${who} named you as someone who would be asked whether an emergency is real. ` +
+            `${who} named you as one of the people who would be asked whether an emergency is real. ` +
             `That question has just been raised.\n\n` +
             `You cannot answer it yet. Setting you up was never finished — ${who} still has to ` +
             `confirm it is really you — so an answer from you would not count towards anything, ` +
@@ -255,7 +264,9 @@ export async function notifyVerifiersForTrigger(
       // verifier who cannot answer at all is a worse outcome than a link.
       const body = code
         ? `Hi ${v.name},\n\n` +
-          `You've been asked to confirm ${article(triggerType)} "${triggerType}" release trigger.\n\n` +
+          `${ownerLabel} named you as one of the people who would be asked whether an emergency is real, ` +
+          `and ${article(triggerType)} "${triggerType}" release has now been started on their ` +
+          `account.\n\n` +
           `Go to ${appUrl()}/verify and enter this code:\n\n` +
           `    ${code}\n\n` +
           `Case ${caseId} · the code expires in 72 hours.\n\n` +
@@ -264,8 +275,9 @@ export async function notifyVerifiersForTrigger(
           `Relay will never send you a link that signs you in. If a message claiming to ` +
           `be from us asks you to click one, it is not from us.\n`
         : `Hi ${v.name},\n\n` +
-          `You've been asked to confirm ${article(triggerType)} "${triggerType}" release trigger. ` +
-          `If you recognise this request, confirm here:\n\n` +
+          `${ownerLabel} named you as one of the people who would be asked whether an emergency is real, ` +
+          `and ${article(triggerType)} "${triggerType}" release has now been started on their ` +
+          `account. If you recognise this request, confirm here:\n\n` +
           `${appUrl()}/verify?token=${encodeURIComponent(await issueVerifierToken(v.id, releaseStateId))}\n\n` +
           `You will not be given access to any private data — you are only confirming the trigger.\n`;
 

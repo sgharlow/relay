@@ -63,6 +63,20 @@ export default function ReadinessBanner() {
   const p = data.preparedness;
   const missing = missingClause(p);
 
+  /**
+   * STRUCTURAL GUARD, added 2026-08-12 alongside the fix to what `ready`
+   * counts. Sage is refused whenever a fatal blocker exists, whatever the
+   * preparedness calculation concluded.
+   *
+   * The calculation was fixed in `readiness.ts`; this makes the bad state
+   * IMPOSSIBLE rather than merely currently-absent. A green statement sitting
+   * directly above "This vault would not open in an emergency" is the worst
+   * output this component can produce, and it should not depend on every future
+   * change to a separate module getting its arithmetic right. Safety by
+   * structure, not by convention.
+   */
+  const green = p.ready && fatal.length === 0;
+
   return (
     <div className="mb-6 space-y-3">
       {/*
@@ -77,12 +91,12 @@ export default function ReadinessBanner() {
       <div
         style={{
           borderRadius: 'var(--radius-owner)',
-          border: `1px solid ${p.ready ? 'var(--sage)' : 'var(--ochre)'}`,
-          background: p.ready ? 'var(--sage-soft)' : 'var(--ochre-soft)',
+          border: `1px solid ${green ? 'var(--sage)' : 'var(--ochre)'}`,
+          background: green ? 'var(--sage-soft)' : 'var(--ochre-soft)',
           padding: 'var(--s3) var(--s4)',
         }}
       >
-        <p style={{ fontSize: 'var(--t3)', fontWeight: 600, color: p.ready ? 'var(--sage-text)' : 'var(--ink)' }}>
+        <p style={{ fontSize: 'var(--t3)', fontWeight: 600, color: green ? 'var(--sage-text)' : 'var(--ink)' }}>
           {preparednessSentence(p, data.whoLabel)}
         </p>
         {missing ? (

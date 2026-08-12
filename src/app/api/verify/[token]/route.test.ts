@@ -88,6 +88,8 @@ describe('GET /api/verify/[token]', () => {
       triggerType: 'emergency',
       itemCount: 4,
       categories: ['financial'],
+      ownerLabel: 'Margaret Chen',
+      whyNow: 'They started this themselves, before becoming unreachable.',
       requiredConfirmations: 1,
       receivedConfirmations: 0,
       graceEndsAt: null,

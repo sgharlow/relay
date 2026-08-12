@@ -494,3 +494,54 @@ describe('adaptive minting (Option 2, ratified 2026-08-12)', () => {
     expect(byTo.get('cal@example.com')).toContain('would not count');
   });
 });
+
+/**
+ * 🔴 The verifier mail named nobody, in any branch.
+ *
+ * The recipient mail has always opened "${ownerLabel} arranged for you…"; the
+ * verifier mail said "You've been asked to confirm a … release trigger" and left
+ * the person being asked to vouch for somebody with no idea who. Same omission
+ * as the decision page (J7-R3), found by writing the user manual.
+ *
+ * Requirements: J7-R3
+ */
+describe('verifier mail names the owner', () => {
+  function routeFor(verifiers: { id: string; standby_state: string | null; claimed_user_id: string | null }[], passkeyUsers: string[] = []) {
+    mockQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes('FROM verifiers')) return qResult(verifiers) as never;
+      if (sql.includes('webauthn_credentials')) return qResult(passkeyUsers.map((user_id) => ({ user_id }))) as never;
+      if (sql.includes('totp_secret')) return qResult([]) as never;
+      if (sql.includes('FROM users')) return qResult([{ display_name: 'Margaret Chen', email: 'm@example.com' }]) as never;
+      return qResult([]) as never;
+    });
+  }
+
+  it('names them in the code branch', async () => {
+    _setResendClientForTesting(stubResend());
+    routeFor([{ id: 'v1', standby_state: 'confirmed', claimed_user_id: 'u1' }]);
+    await notifyVerifiersForTrigger([{ id: 'v1', name: 'Dr Patel', email: 'v@example.com' }], 'emergency', 'rs-1', 'owner-1');
+    expect(sent[0].text).toContain('Margaret Chen');
+  });
+
+  it('names them in the sign-in branch', async () => {
+    _setResendClientForTesting(stubResend());
+    routeFor([{ id: 'v1', standby_state: 'confirmed', claimed_user_id: 'u1' }], ['u1']);
+    await notifyVerifiersForTrigger([{ id: 'v1', name: 'Dr Patel', email: 'v@example.com' }], 'emergency', 'rs-1', 'owner-1');
+    expect(sent[0].text).toContain('Margaret Chen');
+  });
+
+  it('names them in the not-counted branch', async () => {
+    _setResendClientForTesting(stubResend());
+    routeFor([{ id: 'v1', standby_state: 'claimed', claimed_user_id: 'u1' }]);
+    await notifyVerifiersForTrigger([{ id: 'v1', name: 'Dr Patel', email: 'v@example.com' }], 'emergency', 'rs-1', 'owner-1');
+    expect(sent[0].text).toContain('Margaret Chen');
+  });
+
+  it('still sends something sensible when there is no owner id at all', async () => {
+    // The legacy token fallback takes this path; it must not render "undefined".
+    _setResendClientForTesting(stubResend());
+    await notifyVerifiersForTrigger([{ id: 'v1', name: 'Dr Patel', email: 'v@example.com' }], 'emergency', 'rs-1');
+    expect(sent[0].text).not.toContain('undefined');
+    expect(sent[0].text).toContain("Someone named you as one of the people");
+  });
+});

@@ -15,9 +15,64 @@ import { query } from '../db/connection';
 import { TriggerError } from './triggers';
 import { isReversibleTrigger } from './state-machine';
 import { caseIdFor } from './case-id';
+import { getOwnerLabel } from '../people/owner-label';
+
+/**
+ * `initiated_by` in a sentence a human can act on.
+ *
+ * The column is already structured — `owner:<id>`, `cron`, `owner_consent:<id>`,
+ * `challenge_lapsed:<requestId>`, `simulate` — so J7-R3's *why now* needs no new
+ * data, only reading what is already written. The distinction is not cosmetic:
+ * "they started this themselves" and "nobody has heard from them" call for
+ * different answers from the same verifier.
+ *
+ * An unrecognised value falls back to the vaguest true sentence rather than
+ * echoing the raw string, which would leak an internal id onto a page reachable
+ * with a mailed code.
+ */
+export function describeInitiation(initiatedBy: string | null): string {
+  const kind = (initiatedBy ?? '').split(':')[0];
+  switch (kind) {
+    case 'owner':
+      return 'They started this themselves, before becoming unreachable.';
+    case 'owner_consent':
+      return 'They were asked, and they agreed to it.';
+    case 'cron':
+      return 'Nobody has heard from them for longer than they said to wait.';
+    case 'challenge_lapsed':
+      return 'Someone asked for access, they were given the chance to answer, and they did not.';
+    case 'simulate':
+      return 'This is a demonstration, not a real emergency.';
+    default:
+      return 'A release was started on their account.';
+  }
+}
 
 export interface VerifierContext {
   caseId: string;
+  /**
+   * WHOSE VAULT THIS IS. J7-R3 puts "who is asking" first in the list of things
+   * the decision page SHALL state, and until 2026-08-12 the page said "Someone
+   * has asked for … access to a vault you agreed to help protect" — this row
+   * loaded `owner_id` and never resolved it.
+   *
+   * A verifier who cannot be told whose emergency they are attesting to cannot
+   * answer responsibly, and the request is indistinguishable from a phishing
+   * attempt. It is also unanswerable in the multi-hat case §3.7 designs for:
+   * somebody standing by for two people has no way to tell which one this is.
+   *
+   * NOT A LEAK. Anyone who reaches this page already holds the power to CONFIRM
+   * the release — strictly greater than knowing whose it is — and the standby
+   * dashboard already names the owner to the same person.
+   */
+  ownerLabel: string;
+  /**
+   * Why this is being asked NOW, derived from `release_state.initiated_by`
+   * rather than from new data. The other half of J7-R3's requirement, and the
+   * difference between "they asked for this themselves" and "nobody has heard
+   * from them" changes what a reasonable answer is.
+   */
+  whyNow: string;
   triggerType: string;
   /** How many items the requester would reach — not which. */
   itemCount: number;
@@ -42,9 +97,10 @@ export async function buildVerifierContext(
     grace_ends_at: string | null;
     required_confirmations: number;
     received_confirmations: number;
+    initiated_by: string | null;
   }>(
     `SELECT id, owner_id, case_id, trigger_type, grace_ends_at,
-            required_confirmations, received_confirmations
+            required_confirmations, received_confirmations, initiated_by
        FROM release_state
       WHERE id = $1
       LIMIT 1`,
@@ -93,6 +149,12 @@ export async function buildVerifierContext(
 
   return {
     caseId: caseIdFor(row),
+    // Resolved through the shared helper rather than joined into the SELECT
+    // above. One extra query on a page that already makes three is nothing; two
+    // definitions of how an owner is named is the drift that put an email
+    // address on the standby dashboard while every message said "Margaret".
+    ownerLabel: await getOwnerLabel(row.owner_id),
+    whyNow: describeInitiation(row.initiated_by),
     triggerType: row.trigger_type,
     itemCount,
     categories,

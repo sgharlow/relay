@@ -69,7 +69,18 @@ export default function TriggersPage() {
     <div className="mx-auto max-w-3xl space-y-8">
       <header>
         <h1 className="text-t7 font-semibold tracking-tight">Triggers</h1>
-        <p className="text-t2 text-muted">Release state, check-in cadence, and (for demo accounts) the simulate control.</p>
+        {/*
+          This read "Release state, check-in cadence, and (for demo accounts)
+          the simulate control" — three pieces of engineering vocabulary and a
+          parenthetical about a mode most owners are not in, on the screen that
+          decides when their family gets access. Every other owner surface says
+          "Who would step in"; this one alone spoke schema. Found by writing the
+          user manual, where the sentence had to be translated to be usable.
+        */}
+        <p className="text-t2 text-muted">
+          What would have to happen before anything opens, and how long Relay waits before it starts
+          asking whether you are all right.
+        </p>
       </header>
 
       {error ? <p className="rounded border border-clay bg-clay-soft px-4 py-3 text-t2 text-clay">{error}</p> : null}
@@ -80,7 +91,7 @@ export default function TriggersPage() {
           {data.isDemo ? <SimulatePanel onDone={load} /> : null}
 
           <section className="space-y-3">
-            <h2 className="text-t5 font-semibold uppercase tracking-wide text-muted">Release states</h2>
+            <h2 className="text-t5 font-semibold uppercase tracking-wide text-muted">Your triggers</h2>
             {data.releaseStates.length === 0 ? (
               <p className="text-t2 text-muted">No triggers yet — create an access rule to provision one.</p>
             ) : null}
@@ -325,7 +336,7 @@ function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promi
       ) : null}
 
       <div className="mt-3 flex items-center gap-2">
-        <span className="text-t1 text-muted">Required confirmations (N):</span>
+        <span className="text-t1 text-muted">People who must agree first:</span>
         <input
           type="number"
           min={1}

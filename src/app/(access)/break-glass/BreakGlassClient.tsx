@@ -118,9 +118,12 @@ export default function BreakGlassClient() {
       ) : null}
 
       <p style={{ fontSize: 16, lineHeight: 1.6, marginTop: 28, color: '#6b6257' }}>
-        No code? Ask the person who named you — they can issue a new one. Relay cannot send you one
-        directly, because a code that arrives in an email is a code anyone who reaches that inbox
-        could use.
+        No code? Ask the person who named you, if you can reach them — they can issue a new one.
+        Relay cannot send you one directly, because a code that arrives in an email is a code anyone
+        who reaches that inbox could use.
+        {' '}
+        If you cannot reach them, that is what the others they named are for: a decision does not
+        wait on any one person, and the rest of their circle can still answer without you.
       </p>
     </div>
   );

@@ -27,6 +27,7 @@ import { buildStandbyView, type StandbyView } from '../people/invitations';
 import { escalateLapsedRequestsForOwners } from '../release/escalation';
 import { ReleaseStateMachine } from '../release/state-machine';
 import { readStandbyState, type StandbyState } from '../people/standby-state';
+import { formatOwnerLabel } from '../people/owner-label';
 
 export type StandbyPersonType = 'recipient' | 'verifier';
 
@@ -39,7 +40,20 @@ export interface OpenRelease {
 
 export interface StandbyRelationship {
   ownerId: string;
-  /** What to call them on screen. The address the owner signed up with. */
+  /**
+   * What to call them on screen.
+   *
+   * 🔴 THIS WAS `u.email`, FULL STOP, until 2026-08-12 — the query never even
+   * selected `display_name`. So the one screen a standby contact returns to for
+   * years said `someone@gmail.com` while every message Relay sent on the owner's
+   * behalf said "Margaret", and the Account page's own copy states the cost
+   * exactly: "the worst possible moment for it to say an email address they do
+   * not recognise."
+   *
+   * Now routed through `formatOwnerLabel`, the same precedence every email uses.
+   * One definition of how an owner is named, per the cross-boundary contract
+   * rule — two was how this drifted in the first place.
+   */
   ownerLabel: string;
   personId: string;
   personType: StandbyPersonType;
@@ -77,15 +91,16 @@ export async function resolveStandbyFor(params: {
     person_type: StandbyPersonType;
     owner_id: string;
     owner_email: string;
+    owner_display_name: string | null;
     standby_state: string | null;
   }>(
     `SELECT r.id AS person_id, 'recipient' AS person_type, r.owner_id, u.email AS owner_email,
-            r.standby_state
+            u.display_name AS owner_display_name, r.standby_state
        FROM recipients r JOIN users u ON u.id = r.owner_id
       WHERE r.claimed_user_id = $1 AND coalesce(r.standby_state, 'invited') <> 'revoked'
       UNION ALL
      SELECT v.id AS person_id, 'verifier' AS person_type, v.owner_id, u.email AS owner_email,
-            v.standby_state
+            u.display_name AS owner_display_name, v.standby_state
        FROM verifiers v JOIN users u ON u.id = v.owner_id
       WHERE v.claimed_user_id = $1 AND coalesce(v.standby_state, 'invited') <> 'revoked'`,
     [params.userId],
@@ -153,7 +168,7 @@ export async function resolveStandbyFor(params: {
 
     const rel: StandbyRelationship = {
       ownerId: row.owner_id,
-      ownerLabel: row.owner_email,
+      ownerLabel: formatOwnerLabel(row.owner_display_name, row.owner_email),
       personId: row.person_id,
       personType: row.person_type,
       state: readStandbyState(row.standby_state),

@@ -92,6 +92,16 @@ export function preparednessSentence(p: Preparedness, whoLabel: string): string 
     return `If something happened tomorrow, ${whoLabel} could reach none of the ${p.mattering} things that matter.`;
   }
   if (p.reachable === p.mattering) {
+    // "all 2 of the things that matter" is how a template reads when nobody
+    // checked the small numbers — and small numbers are the common case, since
+    // the whole point of the importance engine is that four or five items
+    // matter, not ninety.
+    if (p.mattering === 1) {
+      return `If something happened tomorrow, ${whoLabel} could reach the one thing that matters.`;
+    }
+    if (p.mattering === 2) {
+      return `If something happened tomorrow, ${whoLabel} could reach both of the things that matter.`;
+    }
     return `If something happened tomorrow, ${whoLabel} could reach all ${p.mattering} of the things that matter.`;
   }
   return `If something happened tomorrow, ${whoLabel} could reach ${p.reachable} of the ${p.mattering} things that matter.`;

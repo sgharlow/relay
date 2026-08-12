@@ -156,7 +156,7 @@ function ClaimCodeEntry({ onCode }: { onCode: (c: string) => void }) {
     <div className="mx-auto max-w-md rounded-2xl border border-rule bg-paper-raised px-6 py-7">
       <h1 className="text-t7 font-semibold leading-snug text-ink">Enter your invitation code</h1>
       <p className="mt-3 text-[17px] leading-relaxed text-ink">
-        Someone has named you in their Relay plan. Type the code from the email they sent you.
+        Someone has named you in their Relay plan. Type the code they gave you — they may have read it out, texted it, or written it down.
       </p>
 
       <form

@@ -56,6 +56,7 @@ async function verifyClient(entries: AuditEntry[]): Promise<Verification> {
 
 export default function AuditPage() {
   const [entries, setEntries] = useState<AuditEntry[]>([]);
+  const [actorNames, setActorNames] = useState<Record<string, string>>({});
   const [serverV, setServerV] = useState<Verification | null>(null);
   const [clientV, setClientV] = useState<Verification | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -66,8 +67,13 @@ export default function AuditPage() {
     fetch('/api/audit')
       .then(async (res) => {
         if (!res.ok) throw new Error(`Failed to load audit log (${res.status})`);
-        const data = (await res.json()) as { entries: AuditEntry[]; verification: Verification };
+        const data = (await res.json()) as {
+          entries: AuditEntry[];
+          verification: Verification;
+          actorNames?: Record<string, string>;
+        };
         setEntries(data.entries);
+        setActorNames(data.actorNames ?? {});
         setServerV(data.verification);
       })
       .catch((e) => setError(String(e.message)));
@@ -132,7 +138,24 @@ export default function AuditPage() {
               <tr key={e.id || e.seq} className={broken === e.seq ? 'bg-clay-soft' : ''}>
                 <td className="px-3 py-1.5 tabular-nums text-muted">{e.seq}</td>
                 <td className="px-3 py-1.5 text-t1 text-muted">{new Date(e.ts).toLocaleString()}</td>
-                <td className="px-3 py-1.5">{e.actor}</td>
+                {/*
+                  Names resolved at read time and applied HERE, on top of the
+                  stored value — never substituted into the entry, because
+                  `entry_hash` covers `actor` and the client re-verification
+                  below recomputes it from these same rows. Somebody the owner
+                  has since deleted falls through to the raw actor, which is
+                  honest: the record outlives the roster row on purpose.
+                */}
+                <td className="px-3 py-1.5">
+                  {actorNames[e.actor] ? (
+                    <>
+                      {actorNames[e.actor]}
+                      <span className="block text-t1 text-muted">{e.actor}</span>
+                    </>
+                  ) : (
+                    e.actor
+                  )}
+                </td>
                 <td className="px-3 py-1.5 font-medium">{e.action}</td>
                 <td className="px-3 py-1.5 text-muted">
                   {e.entity}

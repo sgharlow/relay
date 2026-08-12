@@ -14,7 +14,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../db/connection', () => ({ query: vi.fn() }));
 
 import { query } from '../db/connection';
-import { buildVerifierContext } from './verifier-context';
+import { buildVerifierContext, describeInitiation } from './verifier-context';
 
 const mockQuery = vi.mocked(query);
 
@@ -161,5 +161,42 @@ describe('buildVerifierContext — missing release state', () => {
       name: 'TriggerError',
       httpStatus: 404,
     });
+  });
+});
+
+/**
+ * 🔴 J7-R3 — "who is asking", and "why now".
+ *
+ * Until 2026-08-12 the decision page said "Someone has asked for {trigger}
+ * access to a vault you agreed to help protect" and named nobody. This context
+ * loaded `owner_id` and never resolved it, so the email that summoned a verifier
+ * named the owner and the page they landed on did not — and somebody standing by
+ * for two people (§3.7) had no way to tell which one it was about.
+ *
+ * Feature: relay-standby
+ * Requirements: J7-R3
+ */
+describe('describeInitiation', () => {
+  it.each([
+    ['owner:abc', /started this themselves/i],
+    ['owner_consent:abc', /they agreed to it/i],
+    ['cron', /Nobody has heard from them/i],
+    ['challenge_lapsed:req-1', /did not/i],
+    ['simulate', /demonstration/i],
+  ])('reads %s as a sentence a person can act on', (raw, pattern) => {
+    expect(describeInitiation(raw)).toMatch(pattern);
+  });
+
+  it('NEVER echoes an unrecognised value back to the page', () => {
+    // The page is reachable with a mailed code, so an internal id must not
+    // arrive there by way of a fallback that prints whatever it was given.
+    const out = describeInitiation('some_new_kind:9f1c-secret-internal-id');
+    expect(out).not.toContain('9f1c');
+    expect(out).not.toContain('some_new_kind');
+    expect(out).toMatch(/A release was started/i);
+  });
+
+  it('handles a null initiator without throwing', () => {
+    expect(describeInitiation(null)).toMatch(/A release was started/i);
   });
 });
