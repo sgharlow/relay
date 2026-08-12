@@ -39,6 +39,100 @@ interface Relationship {
   openRelease: { releaseStateId: string; state: string; caseId: string | null } | null;
 }
 
+/**
+ * What is open, and what this person does about it.
+ *
+ * TWO DEFECTS THIS CLOSES, both found in the 2026-08-12 beta reassessment.
+ *
+ * 1. THERE WAS NO ACTION. This rendered "Open now · case RLY-XXXX" as text, with
+ *    no link anywhere. Core principle 5 says *every participant can do their job
+ *    by visiting the site*, and §4.4 rests its whole derive-on-read argument on a
+ *    verifier loading this page and finding lapsed requests actionable here — so
+ *    escalation ran on load (it is invoked from `resolveStandbyFor`) and then
+ *    stranded the person it had just made responsible.
+ *
+ * 2. "OPEN NOW" WAS OFTEN FALSE. `openRelease` covers pending, grace AND
+ *    released, so a recipient was told "Open now" while a release was merely
+ *    being confirmed and nothing was open at all. In a product whose entire claim
+ *    is that access is controlled, saying it is open when it is not is the worst
+ *    available error.
+ *
+ * The action is a LINK, not an inline form. J7-R3 requires the decision surface
+ * to state who is asking, why now, what has been attempted, and what confirming
+ * will and will not cause, with deny at equal prominence (J7-R6) — a real screen,
+ * already built and carefully worded. Reproducing it here would duplicate it and
+ * invite the two copies to drift.
+ */
+function OpenRelease({ rel }: { rel: Relationship }) {
+  const open = rel.openRelease;
+  if (!open) return null;
+
+  const caseRef = open.caseId ? ` · case ${open.caseId}` : '';
+  const awaitingDecision = open.state === 'pending' || open.state === 'grace';
+
+  // A verifier is asked to decide while the release is pending or in grace —
+  // matching `submitConfirmation`'s own guard, so the button is never offered
+  // for a decision the server would refuse.
+  if (rel.personType === 'verifier') {
+    return awaitingDecision ? (
+      <div style={{ marginTop: 12 }}>
+        <p style={{ fontSize: 17, fontWeight: 600 }}>They need your answer{caseRef}</p>
+        <a
+          href={`/verify?release=${encodeURIComponent(open.releaseStateId)}`}
+          style={{
+            display: 'inline-block',
+            marginTop: 10,
+            minHeight: 48,
+            lineHeight: '48px',
+            padding: '0 20px',
+            borderRadius: 6,
+            background: '#211d18',
+            color: '#fffdf9',
+            fontSize: 17,
+            fontWeight: 600,
+            textDecoration: 'none',
+          }}
+        >
+          Answer now
+        </a>
+      </div>
+    ) : (
+      <p style={{ fontSize: 16, marginTop: 12, color: '#6b6257' }}>
+        Answered — nothing more is needed from you{caseRef}.
+      </p>
+    );
+  }
+
+  // A recipient can open nothing until the release is actually RELEASED.
+  return open.state === 'released' ? (
+    <div style={{ marginTop: 12 }}>
+      <p style={{ fontSize: 17, fontWeight: 600 }}>Open now{caseRef}</p>
+      <a
+        href="/access"
+        style={{
+          display: 'inline-block',
+          marginTop: 10,
+          minHeight: 48,
+          lineHeight: '48px',
+          padding: '0 20px',
+          borderRadius: 6,
+          background: '#211d18',
+          color: '#fffdf9',
+          fontSize: 17,
+          fontWeight: 600,
+          textDecoration: 'none',
+        }}
+      >
+        Open what they left you
+      </a>
+    </div>
+  ) : (
+    <p style={{ fontSize: 16, marginTop: 12, color: '#6b6257' }}>
+      Being confirmed now{caseRef}. Nothing is open yet, and there is nothing for you to do.
+    </p>
+  );
+}
+
 export default function StandbyClient() {
   const [data, setData] = useState<{
     relationships: Relationship[];
@@ -107,10 +201,7 @@ export default function StandbyClient() {
           ) : null}
 
           {rel.openRelease ? (
-            <p style={{ fontSize: 17, fontWeight: 600, marginTop: 12 }}>
-              Open now
-              {rel.openRelease.caseId ? ` · case ${rel.openRelease.caseId}` : ''}
-            </p>
+            <OpenRelease rel={rel} />
           ) : (
             <p style={{ fontSize: 16, marginTop: 12, color: '#6b6257' }}>Nothing open.</p>
           )}

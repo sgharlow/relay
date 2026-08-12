@@ -47,16 +47,38 @@ export default function VerifyClient() {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<Decision | null>(null);
   const [busy, setBusy] = useState(false);
+  // A CLAIMED verifier arrives with no token at all — they followed the CTA on
+  // their standby dashboard. Until this existed they were shown the code-entry
+  // form, asked for a credential that is deliberately no longer sent to them.
+  // `null` means "not asked yet", so the code form never flashes at them.
+  const [signedIn, setSignedIn] = useState<boolean | null>(null);
+  // Which open release, when one person stands by for two owners at once. Not a
+  // credential: the server re-checks the roster row whatever this says.
+  const release = useSearchParams().get('release');
+
+  useEffect(() => {
+    if (token) return; // A token wins — the unclaimed path is untouched.
+    fetch('/api/auth/session')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s) => setSignedIn(Boolean(s?.user)))
+      .catch(() => setSignedIn(false));
+  }, [token]);
 
   const load = useCallback(async () => {
-    if (!token) return; // No token yet — the code form is shown instead.
-    const res = await fetch(`/api/verify/${encodeURIComponent(token)}`);
+    if (!token && !signedIn) return; // Neither route yet — the code form shows.
+    const url = token
+      ? `/api/verify/${encodeURIComponent(token)}`
+      : `/api/verify${release ? `?release=${encodeURIComponent(release)}` : ''}`;
+    const res = await fetch(url);
     if (!res.ok) {
-      setError((await res.json().catch(() => ({}))).message ?? 'This link is no longer valid.');
+      setError(
+        (await res.json().catch(() => ({}))).message ??
+          (token ? 'This link is no longer valid.' : 'There is no decision waiting for you.'),
+      );
       return;
     }
     setCtx((await res.json()) as Context);
-  }, [token]);
+  }, [token, signedIn, release]);
 
   useEffect(() => {
     void load();
@@ -64,11 +86,19 @@ export default function VerifyClient() {
 
   async function decide(decision: Decision) {
     setBusy(true);
-    const res = await fetch(`/api/verify/${encodeURIComponent(token ?? '')}`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ decision }),
-    });
+    // Signed in: no token in the URL and none in the body. The server resolves
+    // the roster row from the session on this request (§3.7 rule 1).
+    const res = token
+      ? await fetch(`/api/verify/${encodeURIComponent(token)}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ decision }),
+        })
+      : await fetch('/api/verify', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ decision, releaseStateId: release ?? undefined }),
+        });
     setBusy(false);
     if (res.ok) setDone(decision);
     else setError('We could not record that. Try again in a moment.');
@@ -83,10 +113,14 @@ export default function VerifyClient() {
     );
   }
 
-  // No token yet: ask for the code from the email. This is the default entry
-  // point now — the emailed link is bare, so arriving here with nothing is the
-  // normal path rather than an error.
-  if (!token) return <CodeEntry onToken={setToken} />;
+  // Still establishing whether they are signed in. Showing the code form here
+  // would flash "type your code" at a claimed verifier who was never sent one.
+  if (!token && signedIn === null) return <p className="text-muted">Loading…</p>;
+
+  // No token and no session: ask for the code from the email. This is the
+  // unclaimed verifier's entry point, guaranteed permanently by J7-R1, and the
+  // emailed link is bare — so arriving here with nothing is normal, not an error.
+  if (!token && !signedIn) return <CodeEntry onToken={setToken} />;
 
   if (!ctx) return <p className="text-muted">Loading…</p>;
 

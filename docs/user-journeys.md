@@ -1084,8 +1084,22 @@ flowchart TD
 
 ### Requirements
 
-- **J7-R1** A verifier SHALL be able to render a decision without creating an account.
-- **J7-R2** Verifier links SHALL be signed, single-use, and short-TTL.
+- **J7-R1** *(amended 2026-08-12, ratified by Steve — supersedes "A verifier SHALL be able to render
+  a decision without creating an account.")* A verifier SHALL never be required to create an account,
+  choose a password, or complete any enrolment step **at decision time**. Enrolment happens in calm,
+  as a standby account (`docs/standby-architecture.md` §3.3); a verifier who never enrolled SHALL
+  still decide via a single-use code.
+
+  > **Why the wording changed.** hybrid+6 ratified that a named contact *does* create an account — as
+  > a standby, months before any emergency — so the original phrasing had become false for the
+  > primary path while still being cited as authoritative. What it was protecting was never
+  > account-lessness for its own sake: it was the absence of a signup wall between a verifier and an
+  > urgent decision, the doctor mid-emergency being asked to pick a password. Moving enrolment into
+  > calm serves that intent *better* than the original wording did, and the unclaimed-contact code
+  > path keeps the guarantee absolute for anyone who never enrolled.
+- **J7-R2** Verifier links SHALL be signed, single-use, and short-TTL. *(Applies to the unclaimed
+  fallback. A claimed verifier receives no link and no code — they act from their standby dashboard,
+  and there is nothing in the message to intercept.)*
 - **J7-R3** The decision page SHALL state who is asking, for what, why now, what has already been attempted, and precisely what confirming will and will not cause.
 - **J7-R4** The page SHALL state explicitly that the verifier will never see vault contents.
 - **J7-R5** The system SHALL support **confirm**, **deny**, and **abstain** as distinct recorded decisions.

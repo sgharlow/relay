@@ -32,7 +32,20 @@ because without it the standby dashboard has nothing to show in the case this pr
 
 These are the invariants. Any future change that violates one is a different product.
 
-1. **No secret is ever transmitted at release time.** The person is already authenticated.
+1. **No secret is transmitted at release time to a contact who has claimed.** They are already
+   authenticated, so there is nothing to send and nothing to intercept.
+
+   ⚠️ **Amended 2026-08-12 (ratified by Steve) — this principle is CONDITIONAL, and the condition is
+   claim conversion.** It previously read "No secret is *ever* transmitted at release time. The person
+   is already authenticated," which is not true of the unclaimed fallback that §3.6 deliberately
+   retains: an unclaimed contact must still be sent a single-use code at release time, because the
+   alternative is excluding them. Stating the principle absolutely made the architecture sound
+   finished when what it actually does is *earn the property one contact at a time*.
+   **So: the share of a circle that has claimed is the share for which this principle holds** — which
+   makes Phase 0's claim-conversion number a security measurement, not only a retention one.
+   Measured against the code on 2026-08-12, the property held for claimed *recipients* and for **no
+   verifier at all** (`lib/notify/notifications.ts` skipped the code for a claimed recipient and
+   minted one unconditionally for every verifier). §3.2 now covers both.
 2. **No standing credential is ever printed.** A single-use code that dies on redemption is not a
    standing credential; a permanent one is. This is the line.
 3. **Relay never sends a link that signs you in.** Invitations are *codes*, delivered by the owner.
@@ -62,7 +75,23 @@ contact who changes address stays connected with no reconfiguration.
 |---|---|---|---|
 | Owner | passkey or password + TOTP | yes | own vault |
 | Recipient (standby) | passkey or bound device | no | that they are on standby and for whom, plus **the shape of the grant — counts and categories** (J4-R10) |
-| Verifier (standby) | passkey or bound device | no | pending decisions only, never vault shape |
+| Verifier (standby) | passkey or bound device | no | pending decisions only, and **never vault content** — see the correction below |
+
+⚠️ **Corrected 2026-08-12 (ratified by Steve) — the verifier row, for the same reason the recipient
+row was corrected a day earlier.** It read "never vault shape," absolutely, which contradicts
+**J7-R3** (*the decision page SHALL state who is asking, **for what**…*) and the shipped
+`buildVerifierContext`, which returns `itemCount` and `categories`. The real line is **content, not
+shape** — J7-R4 promises the verifier "will never see vault **contents**" and J7-R11 forbids
+"ciphertext or decrypted content." Neither forbids scale.
+
+The qualifier doing invisible work was temporal, so it is now explicit:
+
+- **Before a decision is asked of them:** nothing about the vault at all — not counts, not
+  categories. The standby dashboard builds no grant view for a verifier (`standby-resolve.ts`
+  constructs `grant` only for recipients).
+- **At decision time:** counts and categories, never titles and never content. A verifier judging
+  whether a release is *proportionate* cannot do it blind to scale, which is precisely what J7-R3
+  asks them to weigh.
 
 ⚠️ **Corrected 2026-08-11.** This row previously read "**Not** the vault shape," which contradicted
 **J4-R10** in `docs/user-journeys.md`: *"The recipient standby view SHALL disclose the shape of the
@@ -84,6 +113,36 @@ What changes is what `RELEASED` *causes*.
 The version check survives — it moves from a JWT claim to a server-side comparison on each request.
 A re-arm bumps the version and every open dashboard closes on its next call. Same guarantee,
 enforced in a better place.
+
+⚠️ **Added 2026-08-12 (ratified by Steve) — THE VERIFIER TAKES THE SAME SWAP, and this plan did not
+say so.** Everything above is written in recipient vocabulary ("recipient redeems it for a JWT",
+"`/access?token=`"), and §6 Phase 2 said only "claimed **recipients** stop receiving codes." §5's
+change list named no verifier module. Sprint D therefore swapped the recipient and left the verifier
+on tokens — faithfully implementing what was written.
+
+That omission contradicted two other parts of this same document: §3.1 gives Verifier (standby) an
+auth method of "passkey or bound device", and §4.4 rests its whole derive-on-read argument on a
+verifier *loading their standby dashboard* and finding lapsed requests actionable there. It also
+broke core principle 5 — *every participant can do their job by visiting the site* — which was
+**false for claimed verifiers** until this was built, and left §4.4's escalation computing
+actionability that no surface could act on.
+
+So, symmetrically with the recipient:
+
+- **A claimed verifier resolves their pending decision from their session.** `resolveVerifierFor`
+  reads the roster row and the open release from the database (§3.7 rule 1, never from the token),
+  and `/api/verify` (no token segment) serves context and accepts confirm/deny/abstain.
+- **`buildVerifierContext` and `submitConfirmation` are unchanged.** Both already take a plain
+  `releaseStateId` + `verifierId`; the token was only ever how those two ids were obtained. One
+  authorization core, two doors — the same split applied to recipient decrypt and the closure summary.
+- **The unclaimed verifier keeps the emailed code, permanently, by requirement.** J7-R1 (amended)
+  guarantees no enrolment step at decision time. This is additive; rollback is a code revert.
+- **§3.7 rule 8 binds here:** the verifier decision route must NOT record deliberate activity, or
+  answering someone else's emergency would extend the verifier's own dead-man's-switch.
+- ⏸️ **Ceasing to mint codes for claimed verifiers is a SEPARATE, GATED step** — see §3.6 and §8.1.
+  A claimed verifier who cannot sign in at the moment of crisis has only break-glass, and break-glass
+  is issue-only today (there is no redeem endpoint). Until that exists, minting continues and
+  principle 1 stays unrealised for verifiers **by choice, not by oversight**.
 
 ### 3.3 Invitation and assurance
 
@@ -317,6 +376,7 @@ Deltas this plan adds:
 
 | Area | Addition |
 |---|---|
+| `lib/release/verifier-session.ts` | **Added 2026-08-12.** `resolveVerifierFor(userId)` — the verifier counterpart to `lib/access/session-access.ts`. Its absence from this table is why the verifier swap was missed (§3.2) |
 | `lib/rules/access-rules.ts` | `validateNofM` takes a confirmed-participant count (§4.3) |
 | `lib/release/access-request.ts` | derive-on-read escalation past a lapsed challenge window (§4.4) |
 | `lib/people/invitations.ts` | owner-brokered ticket issuance; single-use break-glass issue + redeem |
@@ -369,7 +429,9 @@ Two confounds must be removed first or the number cannot bear the weight the arc
 **Phase 1 — passkey claim.** The direct mitigation for the category's known failure mode.
 
 **Phase 2 — standby resolution and the release-path swap.** Claimed recipients stop receiving
-codes; person state replaces the dead column; three-position light.
+codes; **claimed verifiers and recipients both resolve their surface from the session** (§3.2, added
+2026-08-12 — this line said "recipients" only, and the verifier was consequently left on tokens);
+person state replaces the dead column; three-position light.
 
 **Phase 3 — fingerprint confirm, secondary address, readiness blockers, quorum validation (§4.3),
 escalation (§4.4).**
