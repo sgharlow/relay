@@ -46,6 +46,12 @@ async function bindStandby(
 
   const { id: userId } = await upsertUser(`standby:${email.trim().toLowerCase()}`, email);
 
+  // Flagged as demo accounts so they are identifiable as fixtures. Without it
+  // the seed quietly adds four rows to `users` that look exactly like real
+  // signups — and the first metric anyone reaches for during a beta is how many
+  // people signed up. A demo should not be able to inflate that number.
+  await query(`UPDATE users SET is_demo_account = true WHERE id = $1`, [userId]);
+
   await query(
     `UPDATE ${table}
         SET claimed_user_id = $1,
