@@ -118,10 +118,20 @@ export default function CircleClient() {
 
       {error && <p className="text-t2 text-clay">{error}</p>}
 
-      {/* Circle-complete state, with its unmet condition named (J4-R13) */}
+      {/*
+        Circle-complete state, with its unmet condition named (J4-R13).
+
+        🔴 THE COLOUR KEYS ON THE MESSAGE, NOT ON COVERAGE ALONE. Found by
+        looking at the rendered page on 2026-08-12: when the unverified warning
+        was added inside this container, the container still styled itself on
+        `circleComplete` — so "2 of them have not been verified yet" was painted
+        in the SUCCESS colour. That is the false-green defect again, this time in
+        the palette rather than the words, and no amount of DOM measurement would
+        have found it.
+      */}
       <div
         className={`rounded-lg border p-4 ${
-          coverage.circleComplete
+          coverage.circleComplete && unverified === 0
             ? 'border-sage bg-sage-soft'
             : 'border-ochre bg-ochre-soft'
         }`}
