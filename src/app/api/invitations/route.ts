@@ -25,7 +25,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const body = await readJson(req);
   if (isResponse(body)) return body;
 
-  const { personId, personType } = (body ?? {}) as Record<string, unknown>;
+  const { personId, personType, deliveryChannel } = (body ?? {}) as Record<string, unknown>;
 
   try {
     if (typeof personId !== 'string') {
@@ -38,10 +38,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // DSQL has no FKs — confirm the person belongs to this owner (R16.1).
     await assertOwns(auth.ownerId, personType === 'recipient' ? 'recipients' : 'verifiers', personId);
 
+    // Recorded on the invitation row, which is what makes Phase 0 readable: an
+    // invitation with no channel cannot be attributed to an arm, and every
+    // invitation the product issued carried none until 2026-08-12.
+    const channel = deliveryChannel === 'owner' ? 'owner' : 'email';
+
     const { claimUrl, expiresAt, emailDelivered, claimCode } = await inviteAndNotify(
       auth.ownerId,
       personId,
       personType as PersonType,
+      channel,
     );
 
     await writeAuditEntry(auth.ownerId, {
@@ -55,7 +61,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // `claimCode` goes back to the owner deliberately: only a hash is stored, so
     // this response is the one moment it is readable, and the owner delivering it
     // by voice is the channel this architecture actually trusts.
-    return NextResponse.json({ claimUrl, expiresAt, emailDelivered, claimCode }, { status: 201 });
+    return NextResponse.json(
+      { claimUrl, expiresAt, emailDelivered, claimCode, deliveryChannel: channel },
+      { status: 201 },
+    );
   } catch (err) {
     return mapError(err);
   }

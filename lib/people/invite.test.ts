@@ -28,6 +28,7 @@ vi.mock('./owner-label', () => ({ getOwnerLabel: vi.fn(async () => 'Margaret') }
 
 import { query } from '../db/connection';
 import { notifyInvitation } from '../notify/notifications';
+import { createInvitation } from './invitations';
 import { inviteAndNotify } from './invite';
 
 const mockQuery = vi.mocked(query);
@@ -82,5 +83,44 @@ describe('inviteAndNotify', () => {
     expect(res.emailDelivered).toBe(false);
     expect(res.claimCode).toBe('ABCDE-FGHJK');
     expect(mockNotify).not.toHaveBeenCalled();
+  });
+});
+
+describe('Phase 0 — the delivery split', () => {
+  it('records the arm on the invitation, or nothing can be attributed', async () => {
+    // Every invitation the PRODUCT issued carried no channel until 2026-08-12,
+    // so all real traffic landed in the report's "unknown" bucket and the split
+    // that de-confounds the whole measurement never happened.
+    await inviteAndNotify(OWNER, PERSON, 'recipient', 'owner');
+
+    expect(vi.mocked(createInvitation)).toHaveBeenCalledWith(
+      OWNER,
+      expect.objectContaining({ deliveryChannel: 'owner' }),
+    );
+  });
+
+  it('does NOT email on the owner-delivered arm', async () => {
+    // Sending it "as a backup" would put the code in both channels at once:
+    // every invitation would belong to both arms and neither number would mean
+    // anything. It would also mail a live credential the owner is about to
+    // speak aloud, through the channel measured broken on 2026-08-11.
+    const res = await inviteAndNotify(OWNER, PERSON, 'recipient', 'owner');
+
+    expect(mockNotify).not.toHaveBeenCalled();
+    expect(res.emailDelivered).toBe(false);
+    // They still get the code — that is the whole point of this arm.
+    expect(res.claimCode).toBe('ABCDE-FGHJK');
+  });
+
+  it('still emails on the email arm', async () => {
+    const res = await inviteAndNotify(OWNER, PERSON, 'recipient', 'email');
+
+    expect(mockNotify).toHaveBeenCalled();
+    expect(res.emailDelivered).toBe(true);
+  });
+
+  it('defaults to email, so every pre-existing caller is unchanged', async () => {
+    await inviteAndNotify(OWNER, PERSON, 'recipient');
+    expect(mockNotify).toHaveBeenCalled();
   });
 });

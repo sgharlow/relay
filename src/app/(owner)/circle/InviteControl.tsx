@@ -34,6 +34,8 @@ interface Issued {
   claimUrl: string;
   expiresAt: string;
   emailDelivered: boolean;
+  /** Which arm this invitation belongs to — see the choice below. */
+  deliveryChannel: 'owner' | 'email';
 }
 
 export default function InviteControl({
@@ -46,18 +48,19 @@ export default function InviteControl({
   name: string;
 }) {
   const [issued, setIssued] = useState<Issued | null>(null);
+  const [picking, setPicking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  async function issue() {
+  async function issue(deliveryChannel: 'owner' | 'email') {
     setBusy(true);
     setError(null);
     try {
       const res = await fetch('/api/invitations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ personId, personType }),
+        body: JSON.stringify({ personId, personType, deliveryChannel }),
       });
       const body = (await res.json().catch(() => ({}))) as Partial<Issued> & { message?: string };
       if (!res.ok || !body.claimCode) {
@@ -114,9 +117,11 @@ export default function InviteControl({
           {Number.isNaN(expires.getTime()) ? 'soon' : expires.toLocaleDateString()}
         </div>
         <div style={{ fontSize: 'var(--t1)', marginTop: 'var(--s2)', color: 'var(--ink-muted)' }}>
-          {issued.emailDelivered
-            ? 'Also emailed to them — but say it out loud if you can. Email is the part that fails.'
-            : '⚠️ The email did not go through. Reading it to them is now the only way they will get it.'}
+          {issued.deliveryChannel === 'owner'
+            ? 'Not emailed, as you chose — this code exists only here and in what you tell them.'
+            : issued.emailDelivered
+              ? 'Emailed to them as well — but say it out loud if you get the chance. Email is the part that fails.'
+              : '⚠️ The email did not go through. Reading it to them is now the only way they will get it.'}
         </div>
         <button
           type="button"
@@ -138,30 +143,54 @@ export default function InviteControl({
     );
   }
 
+  const choice: React.CSSProperties = {
+    minHeight: 32,
+    padding: '0 var(--s3)',
+    borderRadius: 'var(--radius-owner)',
+    border: '1px solid var(--rule-strong)',
+    background: 'transparent',
+    color: 'var(--ink)',
+    fontSize: 'var(--t1)',
+    cursor: busy ? 'default' : 'pointer',
+    opacity: busy ? 0.6 : 1,
+  };
+
+  /*
+    ASKING IS THE MEASUREMENT, and it is also the better product.
+    §3.3 says the owner delivers the code however they like and email is one
+    option among several — but the code used to email it AND show it every time,
+    so every invitation was in both channels at once. That made Phase 0's split
+    unreadable (nothing could be attributed to an arm) and put a live credential
+    into the channel measured broken on 2026-08-11 even when the owner was about
+    to phone the person anyway.
+
+    One label was previously used because "already invited" is not knowable.
+    That still holds — neither of these says "again".
+  */
   return (
     <div style={{ marginTop: 'var(--s1, 4px)' }}>
-      <button
-        type="button"
-        onClick={issue}
-        disabled={busy}
-        style={{
-          minHeight: 32,
-          padding: '0 var(--s3)',
-          borderRadius: 'var(--radius-owner)',
-          border: '1px solid var(--rule-strong)',
-          background: 'transparent',
-          color: 'var(--ink)',
-          fontSize: 'var(--t1)',
-          cursor: busy ? 'default' : 'pointer',
-          opacity: busy ? 0.6 : 1,
-        }}
-      >
-        {/* One label, because "already invited" is not knowable: adding a person
-            auto-sends an invitation and `standby_state` has no value meaning
-            "never invited". This describes what the button DOES, which is true
-            in either case. */}
-        {busy ? 'Making a code…' : 'Get a code to read them'}
-      </button>
+      {!picking ? (
+        <button type="button" onClick={() => setPicking(true)} style={choice}>
+          Give them a code
+        </button>
+      ) : (
+        <div>
+          <div style={{ fontSize: 'var(--t1)', color: 'var(--ink-muted)', marginBottom: '6px' }}>
+            How will {name} get it?
+          </div>
+          <div style={{ display: 'flex', gap: 'var(--s2)', flexWrap: 'wrap' }}>
+            <button type="button" disabled={busy} onClick={() => issue('owner')} style={choice}>
+              {busy ? 'Working…' : 'I will tell them myself'}
+            </button>
+            <button type="button" disabled={busy} onClick={() => issue('email')} style={choice}>
+              {busy ? 'Working…' : 'Email it to them'}
+            </button>
+          </div>
+          <div style={{ fontSize: 'var(--t1)', color: 'var(--ink-muted)', marginTop: '6px' }}>
+            Telling them yourself is more reliable, and it proves it is really you.
+          </div>
+        </div>
+      )}
       {error ? (
         <p role="alert" style={{ fontSize: 'var(--t1)', color: 'var(--clay)', marginTop: '4px' }}>
           {error}

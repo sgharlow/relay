@@ -67,8 +67,24 @@ export async function inviteAndNotify(
   ownerId: string,
   personId: string,
   personType: PersonType,
+  /**
+   * How the owner says they will actually deliver it. Defaults to `email` so
+   * every existing caller behaves exactly as before.
+   *
+   * TWO REASONS THIS IS A PARAMETER, not an assumption. It is the split that
+   * makes Phase 0 interpretable at all — without it, "nobody claimed" and "the
+   * code never arrived" produce the same number, and those have opposite
+   * consequences. And when an owner is going to read the code down the phone,
+   * emailing it anyway puts a live credential into the channel measured broken
+   * on 2026-08-11 for no benefit.
+   */
+  deliveryChannel: 'email' | 'owner' = 'email',
 ): Promise<InviteResult> {
-  const { token, expiresAt } = await createInvitation(ownerId, { personId, personType });
+  const { token, expiresAt } = await createInvitation(ownerId, {
+    personId,
+    personType,
+    deliveryChannel,
+  });
   // BARE link plus a typed code. The credential no longer travels in the URL,
   // so a forwarded invitation grants nothing, and Relay's claim that it never
   // sends a sign-in link now holds across every message it sends.
@@ -80,16 +96,22 @@ export async function inviteAndNotify(
     `SELECT name, email FROM ${table} WHERE id = $1 AND owner_id = $2 LIMIT 1`,
     [personId, ownerId],
   );
-  const emailDelivered = person.rows[0]
-    ? await notifyInvitation({
-        to: person.rows[0].email,
-        name: person.rows[0].name,
-        personType,
-        claimUrl,
-        claimCode,
-        ownerLabel: await getOwnerLabel(ownerId),
-      })
-    : false;
+  // Not sent at all on the owner-delivered arm. Sending it "as a backup" would
+  // put the code into both channels at once, which destroys the split — every
+  // invitation would be in both arms and neither number would mean anything —
+  // and it would do so by mailing a live credential the owner already intends
+  // to speak aloud.
+  const emailDelivered =
+    deliveryChannel === 'email' && person.rows[0]
+      ? await notifyInvitation({
+          to: person.rows[0].email,
+          name: person.rows[0].name,
+          personType,
+          claimUrl,
+          claimCode,
+          ownerLabel: await getOwnerLabel(ownerId),
+        })
+      : false;
 
   return { claimUrl, expiresAt, emailDelivered, claimCode };
 }

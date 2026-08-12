@@ -163,23 +163,49 @@ re-confirm cadence.
 
 ---
 
-## 2a. ⏸️ Phase 0 — instrumented, PARKED by Steve 2026-08-12
+## 2a. ▶️ Phase 0 — UNPARKED 2026-08-12, instrument live in the product
 
-The funnel is built and live (migration 024, `scripts/phase0-invite.ts`,
-`scripts/phase0-report.ts`). What remains is not engineering: it needs ~20 real
-invitations, split across the two delivery arms, and only Steve can spend that
-social capital.
+Parked earlier the same day ("build first, measure later"), on the stated risk
+that every sprint compounds on an unvalidated bet. The build is now done, so the
+reason for parking has expired and the measurement is live.
 
-**Steve's call: build first, measure later.**
+**Unparking it exposed two defects that would have made the number meaningless.**
+Phase 0 was designed when a script was the only way to invite; the product grew
+its own invite path on 2026-08-12 and the instrument was never connected to it.
 
-**The risk that decision accepts, stated plainly so it is not rediscovered later:**
-every sprint from here compounds on an unvalidated bet. `risk 1` of the
-architecture is "claim conversion is the whole bet", and Phase 0 exists precisely
-to find out before more is built on it. Parking it does not make the bet smaller;
-it makes it later and more expensive to lose.
+1. 🔴 **The product recorded no arm.** `inviteAndNotify` called `createInvitation`
+   without `deliveryChannel`, so every invitation issued through `/circle` landed
+   in the report's `unknown` bucket. The split is the entire de-confounding
+   mechanism — without it, *"people will not claim"* and *"the code never
+   arrived"* produce the same number and have opposite consequences.
+2. 🔴 **`opened_at` was lost on successful claims.** `markInvitationOpened`
+   guarded on `claimed_at IS NULL`, and `ClaimClient` fires it fire-and-forget
+   immediately before `signIn` — so when the claim won the race the marker was
+   never written. That drops the marker precisely on the claims that SUCCEEDED,
+   which can make `opened` read lower than `claimed`: an impossible funnel, and
+   one that reads as "nobody is opening it" when they opened it and finished.
 
-**Re-raise at every `/daily-priority`.** A parked item that is not re-raised is a
-dropped one, and this is the measurement the architecture rests on.
+**The product now asks how the code will be delivered**, and honours the answer:
+the owner-delivered arm sends no email at all. That is both the measurement and
+the better product — emailing a code the owner is about to read aloud puts a live
+credential into the channel measured broken on 2026-08-11, for no benefit, and it
+would have put every invitation in both arms at once.
+
+### Reading it
+
+```
+npx tsx --env-file=.env.local scripts/phase0-report.ts        # all invitations
+npx tsx --env-file=.env.local scripts/phase0-report.ts <tag>  # one deliberate run
+```
+
+### What it cannot tell us yet
+
+**N is 0 and will stay 0 until real owners invite real people.** The instrument
+is correct and live-proven; it cannot manufacture demand. The threshold is
+already recorded in `phase0-report.ts` so it cannot move after seeing the result:
+below roughly 50% the fallback carries more traffic than the primary path and the
+ranking swings back toward durable artifacts. ⚠️ Twenty invitations is a
+directional read, not a decisive one — the same limitation ratified for G1.
 
 ## 3a. 🔴 Found while building Sprint D — a session outlives its account
 

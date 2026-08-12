@@ -191,8 +191,16 @@ export async function buildStandbyView(
 export async function markInvitationOpened(token: string): Promise<void> {
   try {
     await query(
+      // `claimed_at IS NULL` was a condition here until 2026-08-12 and it
+      // corrupted the funnel it exists to measure. ClaimClient fires this
+      // fire-and-forget and then immediately calls signIn, so the two race —
+      // and when the claim wins, `opened_at` is never set. That loses the marker
+      // precisely on the SUCCESSFUL claims, which can make `opened` read lower
+      // than `claimed`: an impossible funnel, and one that would have been read
+      // as "people are not opening it" when they were opening and finishing.
+      // `opened_at IS NULL` alone is all the idempotency this needs.
       `UPDATE invitations SET opened_at = now()
-        WHERE token_hash = $1 AND opened_at IS NULL AND claimed_at IS NULL`,
+        WHERE token_hash = $1 AND opened_at IS NULL`,
       [hashToken(token)],
     );
   } catch {
