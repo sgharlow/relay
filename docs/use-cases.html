@@ -76,9 +76,16 @@
 
 <div class="note">
   <b>Two access paths are covered throughout.</b> A contact who has <i>accepted a standby account</i>
-  signs in as themselves and nothing secret is transmitted when a release opens. A contact who never
-  accepted still acts using a single-use code — guaranteed permanently by J7-R1, and the reason
-  UC-09, UC-10 and UC-11 show code-entry screens rather than sessions.
+  signs in as themselves and nothing secret is transmitted when a release opens. A contact who
+  cannot sign in — a recipient who never accepted, or a verified verifier holding no passkey and no
+  authenticator — acts using a single-use code, which is why UC-09, UC-10 and UC-11 show code-entry
+  screens rather than sessions.
+  <br><br>
+  <b>Updated 2026-08-12.</b> This paragraph previously said an unaccepted contact keeps the code
+  “guaranteed permanently by J7-R1”. That guarantee was withdrawn the same day: quorum now counts
+  only <i>verified</i> people, so a code mailed to an unverified verifier bought a vote with no
+  effect, and the release path stopped minting one. Verifier codes now go only to somebody whose
+  answer counts and who has no other way in.
 </div>
 
 <!-- UC-01 -->
@@ -206,9 +213,9 @@
   <div class="row"><span class="k">Actor</span><span>Verifier</span></div>
   <div class="row"><span class="k">Goal</span><span>Attest that an emergency is genuine, without an account and without seeing the vault.</span></div>
   <div class="row"><span class="k">Expected</span><span>Three distinct answers — yes, no, I don’t know — with “no” at equal prominence. Scale is shown so proportionality can be judged; contents never are.</span></div>
-  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> A verified verifier answers from their dashboard with no token in the URL. An unverified one may still answer; the answer is recorded and audited but does not advance the threshold, and the screen says so rather than thanking them.</span></div>
+  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> A verified verifier answers from their dashboard with no token in the URL. An unverified one who has accepted may still answer from their own dashboard; the answer is recorded and audited but does not advance the threshold, and the screen says so rather than thanking them. Since 2026-08-12 they are no longer <i>mailed</i> a code to do it with — the notice tells them plainly that their answer would not count yet.</span></div>
 </div>
-<figure class="phone"><img src="screens/uc10-verify-code-phone.png" alt="Verify"><figcaption>UC-10 — the unclaimed verifier’s entry point, guaranteed permanently by J7-R1.</figcaption></figure>
+<figure class="phone"><img src="screens/uc10-verify-code-phone.png" alt="Verify"><figcaption>UC-10 — code entry, the way in for a verified verifier who holds no passkey and no authenticator.</figcaption></figure>
 </section>
 
 <!-- UC-11 -->
