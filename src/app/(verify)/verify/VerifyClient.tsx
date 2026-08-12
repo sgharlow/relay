@@ -274,12 +274,22 @@ export default function VerifyClient() {
       </div>
 
       {/* Three actions of equal weight (J7-R6) */}
+      {/*
+        🔴 J7-R6: "Deny SHALL be presented with EQUAL PROMINENCE and equal
+        effort to confirm." Until 2026-08-12 "Yes" was a filled black button and
+        "No" was an outline — equal effort, unequal prominence, on the screen
+        whose stated failure mode is rubber-stamping. The file header claimed
+        all three carried equal weight; the render did not.
+
+        All three now share one treatment. The words differ; nothing else does,
+        so nothing on the page leans on the answer.
+      */}
       <div className="space-y-3">
         <button
           type="button"
           disabled={busy}
           onClick={() => decide('confirm')}
-          className="w-full rounded border-2 border-rule bg-ink px-5 py-4 font-semibold text-paper hover:bg-ink disabled:opacity-50"
+          className="w-full rounded border-2 border-rule-strong bg-paper-raised px-5 py-4 font-semibold text-ink hover:bg-paper-sunken disabled:opacity-50"
         >
           Yes — this is real
         </button>
@@ -287,7 +297,7 @@ export default function VerifyClient() {
           type="button"
           disabled={busy}
           onClick={() => decide('deny')}
-          className="w-full rounded border-2 border-rule bg-paper-raised px-5 py-4 font-semibold text-ink hover:bg-paper-sunken disabled:opacity-50"
+          className="w-full rounded border-2 border-rule-strong bg-paper-raised px-5 py-4 font-semibold text-ink hover:bg-paper-sunken disabled:opacity-50"
         >
           No — this is not right
         </button>
