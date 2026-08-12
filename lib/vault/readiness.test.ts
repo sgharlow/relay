@@ -67,7 +67,13 @@ function confirmedRows(count: number, prefix: string) {
   }));
 }
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  // Anything the setup() sequence does not spell out answers EMPTY rather than
+  // undefined. The fourth time a positional mock has broken on an unrelated
+  // added query — here the [A3] passkey and emergency-code lookups.
+  mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+});
 
 describe('the defect this exists for', () => {
   it('flags a vault with rules and NO verifier as FATAL', async () => {
@@ -107,7 +113,13 @@ describe('the defect this exists for', () => {
 describe('a complete vault', () => {
   it('is ready', async () => {
     setup({});
-    await expect(assessReadiness('o-1')).resolves.toMatchObject({ ready: true, blockers: [] });
+    // `fragile_quorum` is expected here and does NOT make a vault un-ready: one
+    // confirmed verifier with no passkey and no emergency code is a working plan
+    // that rests on a single thread. [A3] ruling, 2026-08-12.
+    const r = await assessReadiness('o-1');
+    expect(r.ready).toBe(true);
+    expect(r.blockers.filter((b) => b.fatal)).toEqual([]);
+    expect(r.blockers.map((b) => b.code)).toEqual(['fragile_quorum']);
   });
 
   it('is ready when verifiers exceed the threshold', async () => {
@@ -304,5 +316,56 @@ describe('[A3] — the light reports something at last', () => {
 
     expect(r.circle.light).toBe('red');
     expect(r.circle.nextAction).toBeTruthy();
+  });
+});
+
+describe('[A3] fragility — ruled 2026-08-12', () => {
+  it('warns when the plan rests on somebody with no way back in', async () => {
+    // The audit case: green and executable, and the only counting verifier had
+    // neither a passkey nor an emergency code, so the plan worked for exactly as
+    // long as they kept hold of their phone.
+    setup({ verifiers: 1, states: [{ trigger_type: 'emergency', required_confirmations: 1 }] });
+
+    const r = await assessReadiness('o-1');
+    const f = r.blockers.find((b) => b.code === 'fragile_quorum');
+
+    expect(f).toBeDefined();
+    expect(f?.fatal).toBe(false);
+    expect(f?.message).toContain('no way back in');
+  });
+
+  it('does NOT make the vault un-ready — it works today', async () => {
+    setup({ verifiers: 1, states: [{ trigger_type: 'emergency', required_confirmations: 1 }] });
+    await expect(assessReadiness('o-1')).resolves.toMatchObject({ ready: true });
+  });
+
+  it('stays quiet when the quorum has slack', async () => {
+    // Two confirmed verifiers for a threshold of one: losing a device is
+    // survivable, and saying otherwise is the nagging §4.5 rejects.
+    setup({
+      verifiers: 2,
+      states: [{ trigger_type: 'emergency', required_confirmations: 1 }],
+      verifierStates: [
+        { id: 'v-0', standby_state: 'confirmed' },
+        { id: 'v-1', standby_state: 'confirmed' },
+      ],
+    });
+
+    const r = await assessReadiness('o-1');
+    expect(r.blockers.find((b) => b.code === 'fragile_quorum')).toBeUndefined();
+  });
+
+  it('never competes with a FATAL blocker', async () => {
+    // Two urgent paragraphs is how a banner becomes wallpaper. If the plan
+    // cannot run at all, that is the thing to say.
+    setup({
+      verifiers: 1,
+      states: [{ trigger_type: 'emergency', required_confirmations: 2 }],
+      verifierStates: [{ id: 'v-0', standby_state: 'confirmed' }],
+    });
+
+    const r = await assessReadiness('o-1');
+    expect(r.blockers.some((b) => b.fatal)).toBe(true);
+    expect(r.blockers.find((b) => b.code === 'fragile_quorum')).toBeUndefined();
   });
 });

@@ -13,6 +13,7 @@
 
 import { useEffect, useState } from 'react';
 import { GENESIS_PREV_HASH, canonicalJson } from '../../../../lib/audit/canonical';
+import IncidentRecord from './IncidentRecord';
 
 interface AuditEntry {
   id: string;
@@ -86,8 +87,10 @@ export default function AuditPage() {
     <div className="mx-auto max-w-5xl">
       <header className="mb-5 flex items-center justify-between">
         <div>
-          <h1 className="text-t7 font-semibold tracking-tight">Audit log</h1>
-          <p className="text-t2 text-muted">{entries.length} entries · append-only, hash-chained.</p>
+          <h1 className="text-t7 font-semibold tracking-tight">What happened</h1>
+          <p className="text-t2 text-muted">
+            {entries.length} entries · append-only, hash-chained.
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <ChainBadge label="Server" v={serverV} />
@@ -99,6 +102,17 @@ export default function AuditPage() {
       </header>
 
       {error ? <p className="rounded border border-clay bg-clay-soft px-4 py-3 text-t2 text-clay">{error}</p> : null}
+
+      {/* §8.2: the record we promise, above the proof that it is intact. */}
+      <IncidentRecord />
+
+      <h2 style={{ fontSize: 'var(--t5)', fontWeight: 600, marginBottom: 'var(--s2)' }}>
+        Every entry
+      </h2>
+      <p style={{ fontSize: 'var(--t2)', color: 'var(--ink-muted)', marginBottom: 'var(--s2)' }}>
+        The full record, in the order it happened. Nothing here can be edited or removed — that is
+        what makes the summary above trustworthy rather than merely reassuring.
+      </p>
 
       <div className="overflow-hidden rounded border border-rule">
         <table className="w-full text-left text-t2">

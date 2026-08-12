@@ -38,7 +38,13 @@ export type BlockerCode =
    * give them. Distinct from `not_enough_verifiers`, which counted ROSTER ROWS
    * and therefore counted revoked people as if they could still answer.
    */
-  | 'unsatisfiable_quorum';
+  | 'unsatisfiable_quorum'
+  /**
+   * [A3] ruling, 2026-08-12. The plan CAN run — and it depends on somebody who
+   * has no way back in if they lose the device they signed in on. Non-fatal on
+   * purpose: it is a fragility, not a fault, and today it works.
+   */
+  | 'fragile_quorum';
 
 export interface Blocker {
   code: BlockerCode;
@@ -104,8 +110,14 @@ export async function assessReadiness(ownerId: string): Promise<Readiness> {
     query<{ name: string }>(`SELECT name FROM recipients WHERE owner_id = $1 ORDER BY created_at ASC`, [ownerId]),
     // Person state, for §4.3 and [A3]. Counting rows was the original defect:
     // a revoked verifier is a row that can never answer.
-    query<{ id: string; standby_state: string | null; break_glass_only: boolean | null }>(
-      `SELECT id, standby_state, break_glass_only FROM verifiers WHERE owner_id = $1`,
+    query<{
+      id: string;
+      standby_state: string | null;
+      break_glass_only: boolean | null;
+      claimed_user_id: string | null;
+    }>(
+      `SELECT id, standby_state, break_glass_only, claimed_user_id
+         FROM verifiers WHERE owner_id = $1`,
       [ownerId],
     ),
     query<{ id: string; standby_state: string | null }>(
@@ -236,6 +248,77 @@ export async function assessReadiness(ownerId: string): Promise<Readiness> {
     });
   }
 
+  /**
+   * [A3] RULING, 2026-08-12 — green means the plan can run, and now says when it
+   * runs on one thread.
+   *
+   * The audit found a circle reading GREEN and EXECUTABLE whose only counting
+   * verifier had neither a passkey nor an emergency code: the plan worked for
+   * exactly as long as that person kept hold of their phone. That is the same
+   * shape as the coverage false-green closed the same morning, one level out.
+   *
+   * ⚠️ WHY THIS DOES NOT MAKE GREEN STRICTER. Requiring every counting person to
+   * hold a fallback would gate green on passkey adoption, which will never be
+   * 100% — and §4.5 rejects exactly that move: "perpetual amber readiness that
+   * owners learn to ignore" is the objection the whole [A3] design answers.
+   * Green keeps meaning *configured and verified*; the fragility gets its own
+   * line, non-fatal, and only when it is real.
+   *
+   * Raised only when the quorum has NO SLACK — every confirmed verifier is
+   * needed — because with slack the loss of one device is survivable and saying
+   * so would be the nagging this exists to avoid.
+   */
+  // Who could still get in on a new device — the same two facts /api/circle
+  // shows the owner per person, asked here for the confirmed verifiers only.
+  const confirmedVerifierRows = verifierStates.rows.filter(
+    (v) => readStandbyState(v.standby_state) === 'confirmed',
+  );
+  const confirmedUserIds = confirmedVerifierRows
+    .map((v) => v.claimed_user_id)
+    .filter((id): id is string => Boolean(id));
+
+  const [pkRows, bgRows] = await Promise.all([
+    confirmedUserIds.length
+      ? query<{ user_id: string }>(
+          `SELECT DISTINCT user_id FROM webauthn_credentials WHERE user_id = ANY($1)`,
+          [confirmedUserIds],
+        )
+      : Promise.resolve({ rows: [] as { user_id: string }[] }),
+    confirmedVerifierRows.length
+      ? query<{ person_id: string }>(
+          `SELECT DISTINCT person_id FROM break_glass_codes
+            WHERE person_id = ANY($1) AND used_at IS NULL AND expires_at > now()`,
+          [confirmedVerifierRows.map((v) => v.id)],
+        )
+      : Promise.resolve({ rows: [] as { person_id: string }[] }),
+  ]);
+
+  const passkeyUsers = new Set(pkRows.rows.map((r) => r.user_id));
+  const codePeople = new Set(bgRows.rows.map((r) => r.person_id));
+
+  const strandedVerifiers = confirmedVerifierRows.filter(
+    (v) => !(v.claimed_user_id && passkeyUsers.has(v.claimed_user_id)) && !codePeople.has(v.id),
+  ).length;
+
+  if (
+    blockers.every((b) => !b.fatal) &&
+    highestRequired > 0 &&
+    ableVerifiers === highestRequired &&
+    strandedVerifiers > 0
+  ) {
+    blockers.push({
+      code: 'fragile_quorum',
+      message:
+        `Your plan works, but it needs every one of your ${ableVerifiers} verified ` +
+        `contact${ableVerifiers === 1 ? '' : 's'} — and ` +
+        `${strandedVerifiers === 1 ? 'one of them has' : `${strandedVerifiers} of them have`} no ` +
+        'way back in if they lose the device they signed in on. A passkey or an emergency code ' +
+        'would fix that.',
+      href: '/circle',
+      fatal: false,
+    });
+  }
+
   const preparedness = assessPreparedness({
     items: itemRows.rows.map((r) => ({
       id: r.id,
@@ -270,5 +353,19 @@ export async function assessReadiness(ownerId: string): Promise<Readiness> {
     recipients: recipientStates.rows,
   });
 
-  return { ready: blockers.length === 0, blockers, counts, preparedness, whoLabel, circle };
+  return {
+    /**
+     * `fragile_quorum` is excluded deliberately. Every other blocker names
+     * something still to SET UP; this one names a plan that is set up, works,
+     * and rests on one thread. Letting it flip `ready` to false would tell an
+     * owner their vault is not ready when it is — the precise overstatement the
+     * [A3] ruling was careful not to make.
+     */
+    ready: blockers.filter((b) => b.code !== 'fragile_quorum').length === 0,
+    blockers,
+    counts,
+    preparedness,
+    whoLabel,
+    circle,
+  };
 }
