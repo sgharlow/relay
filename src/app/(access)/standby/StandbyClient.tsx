@@ -22,6 +22,8 @@
 
 import { useEffect, useState } from 'react';
 
+import StandbyPasskeyCard from './StandbyPasskeyCard';
+
 interface Grant {
   itemCount: number;
   categories: Record<string, number>;
@@ -42,6 +44,7 @@ export default function StandbyClient() {
     relationships: Relationship[];
     anythingOpen: boolean;
     hasOwnVault: boolean;
+    hasPasskey?: boolean;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -113,6 +116,12 @@ export default function StandbyClient() {
           )}
         </section>
       ))}
+
+      {/* Only for someone who is actually covering a person, and only if they
+          have not already done it. `=== false` rather than `!`: if the field is
+          ever absent the card stays hidden, because the failure mode of a
+          deferrable prompt is nagging somebody who already complied. */}
+      {data.relationships.length > 0 && data.hasPasskey === false ? <StandbyPasskeyCard /> : null}
 
       {!data.hasOwnVault ? (
         <section

@@ -15,46 +15,14 @@
  * Requirements: J4-R9, J4-R11
  */
 
-import { useState } from 'react';
-import { startRegistration } from '@simplewebauthn/browser';
+import { useAddPasskey } from '../../../hooks/useAddPasskey';
 
 export default function PasskeySection() {
-  const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function add() {
-    setError(null);
-    setBusy(true);
-    try {
-      const optRes = await fetch('/api/webauthn/register/options', { method: 'POST' });
-      if (!optRes.ok) throw new Error('unavailable');
-      const { options, challengeToken } = await optRes.json();
-
-      const attestation = await startRegistration({ optionsJSON: options });
-
-      const verifyRes = await fetch('/api/webauthn/register/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ response: attestation, challengeToken }),
-      });
-
-      if (!verifyRes.ok) {
-        const j = await verifyRes.json().catch(() => ({}));
-        setError(j.message ?? 'That passkey could not be saved.');
-        return;
-      }
-      setDone(true);
-    } catch (err) {
-      const name = (err as { name?: string })?.name;
-      // Cancelling is a decision, not a failure.
-      if (name !== 'NotAllowedError' && name !== 'AbortError') {
-        setError('Your device could not complete that.');
-      }
-    } finally {
-      setBusy(false);
-    }
-  }
+  // Shared with the standby dashboard so the two surfaces cannot drift on what
+  // an error means — notably `InvalidStateError`, which this page used to
+  // report as a device failure when it in fact means "already protected".
+  const { outcome, add } = useAddPasskey();
+  const done = outcome.kind === 'added' || outcome.kind === 'already';
 
   return (
     <section className="rounded border border-rule bg-paper-raised p-5">
@@ -66,21 +34,25 @@ export default function PasskeySection() {
       </p>
 
       {done ? (
-        <p className="mt-3 text-t2 text-ink">Passkey added. You can use it to sign in.</p>
+        <p className="mt-3 text-t2 text-ink">
+          {outcome.kind === 'already'
+            ? 'This device already has a passkey for your account — you can use it to sign in.'
+            : 'Passkey added. You can use it to sign in.'}
+        </p>
       ) : (
         <button
           type="button"
           onClick={add}
-          disabled={busy}
+          disabled={outcome.kind === 'busy'}
           className="mt-3 min-h-[44px] rounded border border-ink bg-ink px-4 text-t2 font-semibold text-paper disabled:opacity-60"
         >
-          {busy ? 'Waiting for your device…' : 'Add a passkey'}
+          {outcome.kind === 'busy' ? 'Waiting for your device…' : 'Add a passkey'}
         </button>
       )}
 
-      {error ? (
+      {outcome.kind === 'error' ? (
         <p role="alert" className="mt-3 text-t2 text-clay">
-          {error}
+          {outcome.message}
         </p>
       ) : null}
     </section>

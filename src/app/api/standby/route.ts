@@ -16,6 +16,7 @@ import { NextResponse } from 'next/server';
 
 import { requireOwner, isResponse, mapError } from '../../../../lib/http/owner-route';
 import { resolveStandbyFor } from '../../../../lib/access/standby-resolve';
+import { listCredentialIdsForUser } from '../../../../lib/auth/webauthn';
 import { query } from '../../../../lib/db/connection';
 
 export async function GET(): Promise<NextResponse> {
@@ -35,9 +36,15 @@ export async function GET(): Promise<NextResponse> {
       [auth.ownerId],
     );
 
+    // Drives stage two of the claim ([A1]). Additive: the dashboard offers
+    // enrolment only to someone who has not done it, and asking here costs one
+    // indexed read rather than a second round trip from the client.
+    const credentialIds = await listCredentialIdsForUser(auth.ownerId);
+
     return NextResponse.json({
       ...resolution,
       hasOwnVault: Number(own.rows[0]?.n ?? 0) > 0,
+      hasPasskey: credentialIds.length > 0,
     });
   } catch (err) {
     return mapError(err);
