@@ -61,8 +61,15 @@ contact who changes address stays connected with no reconfiguration.
 | Principal | Auth | Pays | Sees before release |
 |---|---|---|---|
 | Owner | passkey or password + TOTP | yes | own vault |
-| Recipient (standby) | passkey or bound device | no | that they are on standby, and for whom. **Not the vault shape** |
+| Recipient (standby) | passkey or bound device | no | that they are on standby and for whom, plus **the shape of the grant — counts and categories** (J4-R10) |
 | Verifier (standby) | passkey or bound device | no | pending decisions only, never vault shape |
+
+⚠️ **Corrected 2026-08-11.** This row previously read "**Not** the vault shape," which contradicted
+**J4-R10** in `docs/user-journeys.md`: *"The recipient standby view SHALL disclose the shape of the
+grant — counts and categories — and SHALL NOT disclose item titles for sensitive categories or any
+content."* The journey requirement is the better formulation — it already carves out sensitive
+categories, and giving a standby recipient something real to see is what makes **[A6]** work. The
+plan yields to it.
 
 ### 3.2 Release path
 
@@ -318,6 +325,20 @@ use case — closer to a defect than a feature.
 
 ---
 
+### 3.7 Event transparency (J6 step 6) — an anti-abuse control, not roster exposure
+
+When a request is made, **every other member of the circle sees that it happened.** Covert access
+requests become impossible. Under standby this is nearly free: everyone has a dashboard, so rung 0
+carries it with no delivery dependency.
+
+**This is distinct from circle visibility and must not be conflated with it.** Risk 3 puts the
+*roster* behind an owner toggle, default off, because a list of who is trusted is reconnaissance
+for a controlling household member. An *event* notice — "someone requested access on 3 August" —
+exposes no roster and is a defence against exactly that person acting covertly. Events on by
+default; roster off by default.
+
+---
+
 ## 7. Risks
 
 1. **Claim conversion is the whole bet.** Phase 0 exists to find out before Phase 1 is built.
@@ -335,3 +356,96 @@ use case — closer to a defect than a feature.
    most, satisfiable in one click, and it must not become the nagging problem it replaced.
 6. **Recovery must not reintroduce email.** Standby account recovery is break-glass plus owner
    re-issue, not an emailed reset link.
+7. **Shared devices.** An elderly couple on one iPad means a passkey either of them can use. No
+   clean fix; accept and note.
+8. **Fingerprint invalidation on re-claim.** A new `claimed_user_id` correctly changes the derived
+   phrase and invalidates the owner's confirmation. The light must drop to amber **and say why**.
+9. **Role collision.** A user who is both an owner and someone else's standby. Minor — and it is
+   the *expected* state if the acquisition argument works, so the UI should assume it, not treat
+   it as an edge case.
+
+---
+
+## 8. QA findings carried forward (2026-08-11)
+
+Three things the QA pass surfaced that are not design changes and must not be lost.
+
+### 8.1 The break-glass tension — read §3.6 again before building
+
+Principle 2 says "a single-use code that dies on redemption is not a standing credential." That
+sentence carries more weight than it can. For an **unclaimed** contact — the 70-year-old with no
+smartphone — break-glass must be issuable *without* a claim, and then sits unused in a drawer for
+years. **Until redeemed it is functionally indistinguishable from the standing printed credential
+this architecture exists to eliminate**, and it lands with the population most exposed to it.
+
+It is bounded: single-use, audited, notifies the owner, and §4.3 excludes break-glass-only contacts
+from N. So the plan is internally consistent. The question to answer deliberately is narrower than
+a redesign:
+
+> Is a break-glass-only contact **covered**, or a **documented exclusion**?
+
+§4.3's answer is *exclusion*. If that is what we mean, the product must say so plainly rather than
+let a red light imply "not yet" when the truth is "not ever, on this device."
+
+### 8.2 A promise that outruns its implementation
+
+`src/app/how-it-works/page.tsx` tells customers: *"Margaret gets a record of exactly what was
+opened while she was away."* The only surface is `/audit` — a raw hash-chained log whose sole
+"summary" is an HTML `<details>` toggle. The data exists; the experience does not.
+
+This matters more under this plan than before, because the post-incident record is the **emotional
+payoff of the reversibility story** — the thing that turns "access closed itself" from an absence
+into evidence of control. It is invisible in the plan precisely because the audit log technically
+satisfies the claim.
+
+### 8.3 A limitation to state, not solve
+
+Rung 0 answers *"can they act,"* not *"do they know to look."* For requester-initiated cases the
+family already knows — that is the insight the design rests on. For a **heartbeat lapse nobody has
+noticed**, rungs 1–3 are all measured-unreliable and the re-confirm cadence is annual (Risk 5).
+
+The plan is sound here because it is honest that alerting is best-effort. What is missing is that
+this is not written as a scope boundary: **marketing must not promise the nobody-noticed case.**
+Claim discipline, not architecture.
+
+---
+
+## 9. Consistency with the rest of the repo
+
+### 9.1 Corroboration — this is a convergence, not a departure
+
+Checked 2026-08-11 against the specs, journeys and site copy. Three independent places already
+carry this design:
+
+- **`specs/Relay_H0_Build_Spec_v2.md` line 3** — the product's own tagline is *"**Standby access**
+  for the people who'll need it — when you can't be there,"* and "Standby" is listed as an
+  alternate product name. This plan returns to the spec's original vocabulary.
+- **`docs/user-journeys.md` J4-R9** — *"Recipients SHALL claim their role and complete identity
+  verification **before** any trigger fires,"* annotated as *"the single highest-leverage change in
+  this document,"* and it already names the referral loop. The acquisition argument predates the
+  pivot by days and was reached independently.
+- **`docs/user-journeys.md` J6 step 4c** — the challenge-window escalation was already classified
+  `[BUILT]` transition, `[GAP]` routing. §4.4 closes a gap that was already diagnosed correctly.
+- **`.kiro/specs/relay-h0-mvp/design.md`** state diagram carries the same seven transitions this
+  plan preserves. No conflict.
+
+### 9.2 Deltas recorded, deliberately not edited
+
+- **`.kiro/specs/**` describe verifier confirmation as scoped-JWT-only (`design.md` §635, §677).
+  Under this plan that is the *unclaimed fallback*. Left unedited by repo convention: the `.kiro`
+  specs are records of what H0 built, not claims about today.
+- **`docs/COMPETITORS.md`** names 1Password and Bitwarden emergency access but not Proton, and its
+  differentiation reasoning predates an architecture change that moves Relay structurally closer to
+  both. Tied to Risk 2 — revise deliberately when that risk is decided, not blindly now.
+
+### 9.3 Ship-gates — must be true before this ships, not before it is built
+
+- **Terms.** `src/app/terms/page.tsx` describes a free tier for *owners* ("a free tier you can stay
+  on indefinitely", free-tier limits on adding items). A standby account is a different principal
+  with no vault of its own and must never be billed or counted against a cap. **Terms need a
+  standby clause before standby accounts exist in production** — and not before, because Terms
+  describing an unbuilt capability is the estate error in reverse.
+- **Privacy.** The claim is scoped to "no *advertising or tracking* cookies," which functional
+  session cookies do not violate — owners already carry one. Re-read when standby sessions ship.
+- **`/caregivers` copy** promises access *"NOW."* That is only true once §4.4 is built. Until then
+  the fast path for incapacity is the heartbeat lapse.

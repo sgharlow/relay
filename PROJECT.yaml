@@ -9,6 +9,14 @@ name: relay
 # sequencing, which the gates below supply).
 authoritative_plan: specs/Relay_H0_Build_Spec_v2.md
 
+# Ratified architecture direction as of 2026-08-11. Subsidiary to the Build Spec above, which stays
+# authoritative for strategy; this is authoritative for HOW release access is delivered. It removes
+# the credential from the delivery path: every named person claims a standby account in calm, and at
+# release nothing secret is transmitted. Supersedes relay-standby-pivot.md, which is retained for
+# its reasoning. Recorded here because a direction that is not discoverable from this file is a
+# direction the next session will not find.
+architecture_plan: docs/standby-architecture.md   # version: hybrid+6
+
 # dogfooded = deployed live + full E2E dogfood on real Aurora DSQL + KMS (2026-06-27), H0-submitted.
 # Promote to customer-used only at the first arms-length user — which is gated on G1/G2 below.
 #

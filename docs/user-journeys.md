@@ -18,6 +18,14 @@
 
 ---
 
+> ⚠️ **Read with `docs/standby-architecture.md` (hybrid+6, 2026-08-11).** The sweep below is an
+> accurate record of what was walked on 2026-08-08, but several journeys are evidenced by
+> mechanisms that plan **replaces**: `/verify?token=` (J7), the recipient's token-scoped access
+> (J8, J9), and J4's invitation *email* path. Under hybrid+6 those become the **unclaimed
+> fallback**, not the primary path — a claimed recipient or verifier signs into a standby account
+> and nothing secret is transmitted at release. The verdicts stand; the mechanisms they cite are
+> being superseded. J4-R10 and J4-R11 below are amended in place.
+
 ## ✅ Live journey sweep — 2026-08-08
 
 **Every journey below was walked against production** (`relaystandby.com`) as a brand-new
@@ -757,7 +765,15 @@ materialization calls `assertOwns` and `assertNoCrossOwner`; recipient deletion 
 - **J4-R8** N-of-M configuration SHALL enforce `N ≥ 1`, `M ≥ 1`, `N ≤ M` and SHALL reject violations with a validation error.
 - **J4-R9** Recipients SHALL claim their role and complete identity verification **before** any trigger fires.
 - **J4-R10** The recipient standby view SHALL disclose the shape of the grant — counts and categories — and SHALL NOT disclose item titles for sensitive categories or any content.
-- **J4-R11** Verifiers SHALL NOT be required to create an account.
+- **J4-R11** ⚠️ **AMENDED 2026-08-11 — `docs/standby-architecture.md` (hybrid+6).** Was: *"Verifiers
+  SHALL NOT be required to create an account."* That contradicted the standby architecture, which
+  asks every named person to bind an identity in calm so that nothing secret has to be transmitted
+  at release time. The requirement's **intent** was no friction wall for a person who may act once
+  in five years, not a literal ban on identity — so it is restated at that intent rather than
+  discarded: verifiers SHALL NOT be required to invent a password, verify an email address, or
+  install an app. A one-tap device binding (**[A1]** stage one) is permitted and is the lowest
+  friction identity available. Whether real verifiers complete even that is the question Phase 0
+  exists to answer; if they do not, this requirement is the one to revisit first.
 - **J4-R12** Verifier onboarding SHALL state plainly that the verifier will never see vault contents.
 - **J4-R13** The system SHALL define an explicit circle-complete state and name its unmet conditions.
 - **J4-R14** Editing or deleting a policy SHALL reconcile its materialized `access_rules` rows in the same operation, and the owner SHALL be shown which grants are being revoked **before** confirming. A policy edit that silently widens access is the inverse of the coverage bug it fixes.

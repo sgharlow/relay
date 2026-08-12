@@ -117,6 +117,15 @@ These cut across multiple files and are easy to break. Preserve them.
   via scoped HS256 JWT (`lib/auth/recipient-token.ts`) carrying `release_state_id` + `version`; a
   JWT whose `version` ≠ the current `release_state.version` is rejected (re-arm invalidates tokens).
 
+  ⚠️ **The token model is being demoted to a fallback — see `docs/standby-architecture.md`
+  (hybrid+6, the ratified direction as of 2026-08-11).** Under that plan a recipient or verifier who
+  has claimed a **standby account** signs in as themselves and the dashboard resolves an open
+  release server-side; no code is minted, nothing secret is emailed, and `?token=` leaves the URL.
+  The version check survives — it moves from a JWT claim to a server-side comparison per request,
+  so a re-arm still closes every open dashboard on its next call. `recipient-token.ts` is retained
+  for **unclaimed** contacts only. Do not build new work against the token path assuming it is the
+  primary one.
+
 - **Audit log is append-only and hash-chained per owner.** Each entry:
   `entry_hash = SHA-256(prev_hash || canonicalJson(entry))`, first entry `prev_hash = '0'*64`.
   INSERT-only, never UPDATE/DELETE. Audit writes **block** the triggering operation if they fail —
