@@ -26,7 +26,7 @@ export const metadata = {
   description: 'What Relay promises, what it does not, and what stage it is at.',
 };
 
-const UPDATED = '10 August 2026';
+const UPDATED = '12 August 2026';
 
 export default function TermsPage() {
   return (
@@ -90,11 +90,59 @@ export default function TermsPage() {
           </p>
         </section>
 
+        {/*
+          Added 2026-08-12. Standby accounts went live days before this section
+          existed, so the document described a product with one kind of user
+          while shipping two — the §9.3 ship-gate, breached in the direction of
+          the product outrunning the paperwork. Everything below states what the
+          software already does; none of it is a new promise.
+        */}
+        <section>
+          <h2 className="text-t5 font-semibold text-ink">If someone names you</h2>
+          <p className="mt-2">
+            Someone can name you as a person who would receive access, or as someone who would be
+            asked whether an emergency is real. When they do, they give you a code — read out, texted,
+            or handed to you — and that code sets up a <strong>standby account</strong> in your name.
+          </p>
+          <p className="mt-2">
+            A standby account is free, and stays free. It holds no vault of its own and it is never
+            billed — not to you, and not to the person who named you. If you also keep a vault of
+            your own, standing by for other people uses none of its allowance. We will never send you
+            a link that signs you in; if a message claiming to be Relay contains one, it is not from
+            us.
+          </p>
+          <p className="mt-2">
+            Nothing is asked of you until something happens. Until then you can see that you are on
+            standby and who for. If you would receive access, you can see <em>how much</em> was set
+            aside for you and roughly what kind of thing it is — never the contents, and never before
+            the conditions they set are met. If you would be asked to confirm an emergency, you are
+            shown nothing about their vault until you are actually asked; at that moment you are told
+            how many things are involved and what kinds, so you can judge whether what is being asked
+            for is proportionate. You are never shown a title, and never the contents — not then, and
+            not afterwards.
+          </p>
+          <p className="mt-2">
+            <strong className="font-semibold text-ink">You can step down at any time</strong>, from
+            your standby page, and you do not need a reason. The person who named you is told, so
+            they can find someone else — that is the point of telling them, and it is why stepping
+            down is not something we will do quietly on your behalf. If you close your account
+            entirely, you are released from every circle you were part of and each of those people
+            is told.
+          </p>
+          <p className="mt-2">
+            What you do in Relay is recorded in <em>their</em> log — when you accepted, when you
+            answered, when you opened something. That is deliberate: it is how they know their plan
+            is real. If you stand by for more than one person, none of them can learn about the
+            others.
+          </p>
+        </section>
+
         <section>
           <h2 className="text-t5 font-semibold text-ink">Payment and renewal</h2>
           <p className="mt-2">
-            Relay costs $119 per year in US dollars. You are never charged without going through
-            checkout yourself, and there is a free tier you can stay on indefinitely.
+            Relay costs $119 per year in US dollars for a vault of your own. You are never charged
+            without going through checkout yourself, and there is a free tier you can stay on
+            indefinitely. Standby accounts, described above, are free and are not part of this.
           </p>
           <p className="mt-2">
             <strong className="font-semibold text-ink">
@@ -125,6 +173,12 @@ export default function TermsPage() {
           <p className="mt-2">
             Ending a subscription never deletes anything. Your vault stays exactly as it is; the
             free-tier limits apply only to adding more.
+          </p>
+          <p className="mt-2">
+            Closing your account also releases you from anyone else&rsquo;s plan you were standing by
+            for, and tells them so. We do not remove you from their list on your behalf — their
+            record of you stays, marked as no longer set up, so their plan gets weaker visibly rather
+            than silently.
           </p>
         </section>
 

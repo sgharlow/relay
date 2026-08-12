@@ -205,6 +205,12 @@ export async function deleteAccount(ownerId: string): Promise<DeletionReport> {
     // person id, and their roster rows have just been deleted, so leaving them
     // retains a credential for a circle that no longer exists.
     `DELETE FROM invitations WHERE owner_id = $1`,
+    // Emergency codes this owner issued, for the same reason and more sharply:
+    // a break-glass code is a live bearer credential with a one-year life, and
+    // leaving one behind after the account is gone is the retention gap that was
+    // already fixed for passkeys. Found 2026-08-12 while writing the privacy
+    // page, which was about to claim these were removed.
+    `DELETE FROM break_glass_codes WHERE owner_id = $1`,
   ]) {
     try {
       await query(sql, [ownerId]);

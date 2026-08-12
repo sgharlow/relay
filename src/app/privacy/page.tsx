@@ -23,7 +23,7 @@ export const metadata = {
   description: 'What Relay stores, what it cannot read, and who it shares with.',
 };
 
-const UPDATED = '7 August 2026';
+const UPDATED = '12 August 2026';
 
 export default function PrivacyPage() {
   return (
@@ -99,9 +99,73 @@ export default function PrivacyPage() {
           <h2 className="text-t5 font-semibold text-ink">People you designate</h2>
           <p className="mt-2">
             When you name a recipient or a trusted contact, we store their name and contact details
-            and may email them. A trusted contact is only ever asked whether a situation is real —
-            they are never shown your vault, before or after. A recipient sees only what you
-            granted them, and only after the conditions you set are met.
+            and may email them. A recipient sees only what you granted them, and only after the
+            conditions you set are met.
+          </p>
+          {/*
+            Sharpened 2026-08-12. This said a trusted contact is "never shown
+            your vault, before or after", which is not precise: at the moment
+            they are asked, they are shown how many items and which categories,
+            because J7-R3 requires them to judge whether the request is
+            proportionate and nobody can do that blind to scale. The line that
+            actually holds is CONTENT, not scale — the same correction made to
+            §3.1 of the architecture the same day, for the same reason.
+          */}
+          <p className="mt-2">
+            A trusted contact is only ever asked whether a situation is real. Until they are asked
+            they see nothing about your vault; at that moment they are told how many items are
+            involved and which categories, so they can judge whether the request is proportionate.
+            They are never shown a title and never any content, at any point.
+          </p>
+          <p className="mt-2">
+            They can also set up a free <strong>standby account</strong> of their own, described
+            below. If they do, they sign in as themselves rather than following a link you forwarded,
+            and nothing secret is sent to them when your plan opens.
+          </p>
+        </section>
+
+        {/*
+          Added 2026-08-12. Standby accounts shipped days before this page
+          mentioned them, so it described what we hold about designated people
+          as though they were only rows in someone else's vault. They are users
+          now, and a privacy policy that does not say what it holds about a
+          person is the wrong document to be vague in.
+        */}
+        <section>
+          <h2 className="text-t5 font-semibold text-ink">If someone named you</h2>
+          <p className="mt-2">
+            Someone can name you in their plan and give you a code that sets up a standby account.
+            About you, we then hold:
+          </p>
+          <ul className="mt-3 list-disc space-y-1 pl-6">
+            <li>
+              the name and contact details <em>they</em> entered for you — not what you told us
+            </li>
+            <li>a sign-in session, kept in a cookie that exists only to keep you signed in</li>
+            <li>
+              if you set up a passkey, the public half of it — never anything that could sign as you
+            </li>
+            <li>
+              a scrambled form of any emergency code you were given, which we cannot turn back into
+              the code
+            </li>
+          </ul>
+          <p className="mt-3">
+            <strong>What you do is recorded in their log, not yours.</strong> When you accepted, when
+            you answered a question, when you opened something they left you — all of it lands in the
+            tamper-evident record described above, which belongs to the person who named you. That is
+            how they know their plan works, and you should know it is the arrangement before you take
+            part.
+          </p>
+          <p className="mt-3">
+            If you stand by for more than one person, <strong>none of them can learn about the
+            others</strong>. There is no screen anywhere that shows one of them your other
+            relationships.
+          </p>
+          <p className="mt-3">
+            You can step down from any circle at any time from your standby page, and you can close
+            your account outright. Either way the people affected are told, because a plan that
+            quietly gets weaker is the failure this product exists to prevent.
           </p>
         </section>
 
@@ -116,9 +180,22 @@ export default function PrivacyPage() {
 
         <section>
           <h2 className="text-t5 font-semibold text-ink">Deleting your data</h2>
+          {/*
+            Corrected 2026-08-12. This said "email us and we will delete your
+            account" after self-serve export and deletion had shipped (J13) —
+            understating the product rather than overstating it, but still not
+            what the software does. Both directions are the same defect.
+          */}
           <p className="mt-2">
-            Email us and we will delete your account and vault contents. The append-only event log
-            described above is the one exception, and it contains no secret material.
+            You can close your account yourself from your account page, at any time, and export
+            everything first. It removes your vault, the people you listed, your passkeys and any
+            emergency codes you had issued. If you would rather we did it, email us.
+          </p>
+          <p className="mt-2">
+            Two things deliberately survive. The append-only event log described above stays, and it
+            contains no secret material. And if you were standing by for someone else, their record
+            of you stays on their list — unlinked from you and marked as no longer set up — because
+            deleting it would quietly shrink their plan without telling them.
           </p>
         </section>
 

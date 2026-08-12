@@ -109,6 +109,14 @@ describe('deleteAccount', () => {
     expect(sql.some((s) => /DELETE FROM audit_log/i.test(s))).toBe(false);
   });
 
+  it('removes emergency codes — a live bearer credential must not outlive the account', async () => {
+    // A break-glass code has a one-year life and grants somebody's place once.
+    // Found 2026-08-12 while writing the privacy page, which was about to claim
+    // these were deleted when they were not.
+    await deleteAccount('owner-1');
+    expect(sqlIssued().some((s) => /DELETE FROM break_glass_codes/i.test(s))).toBe(true);
+  });
+
   it('removes the passkeys — a public key must not outlive the account', async () => {
     // Proven on production 2026-08-12: webauthn_credentials rows survived the
     // user row. Sign-in still failed safely, but the data was retained against
