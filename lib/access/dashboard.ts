@@ -23,6 +23,7 @@ import { query } from '../db/connection';
 import { writeAuditEntry } from '../audit/audit-service';
 import { verifyRecipientToken } from '../auth/recipient-token';
 import { decryptDataKey } from '../kms/kms-client';
+import { resolveReleaseForUser } from './session-access';
 import type { ReleaseStateRow } from '../release/state-machine';
 
 export class AccessError extends Error {
@@ -216,8 +217,72 @@ function byteaToBase64(v: unknown): string {
   return String(v);
 }
 
+/**
+ * Who is asking, and by which route.
+ *
+ * A recipient TOKEN carries a snapshot of `release_state.version` taken when it
+ * was minted, so the gate below has to compare it against the row — the gap
+ * between those two is where staleness lives. A SESSION carries no version at
+ * all: the row is read on this request and is the only source, so a re-arm
+ * closes access by construction rather than by comparison. That is why `version`
+ * is optional here and its absence is not a weaker check — it is the absence of
+ * anything that could go stale.
+ *
+ * Everything downstream is identical for both, deliberately: same released
+ * check, same Property 6 scope query, same audit-before-KMS ordering. The route
+ * in is the only thing that differs.
+ */
+interface DecryptPrincipal {
+  recipientId: string;
+  releaseStateId: string;
+  /** Token path only — the snapshot to reconcile against the row. */
+  version?: string;
+}
+
 export async function decryptAccessItem(token: string, itemId: string): Promise<DecryptResult> {
   const payload = await verifyTokenOr403(token);
+  return decryptForPrincipal(
+    {
+      recipientId: payload.recipientId,
+      releaseStateId: payload.releaseStateId,
+      version: String(payload.version),
+    },
+    itemId,
+  );
+}
+
+/**
+ * Decrypt for a CLAIMED recipient who is signed in — hybrid+6's primary path.
+ *
+ * Until this existed the session path could list a release plan and open
+ * nothing: `/api/access` resolved a dashboard from the session, and every Reveal
+ * then posted an empty token and took a 401. J8, the primary demand journey, did
+ * not work on the architecture meant to replace the token.
+ *
+ * Membership is resolved from the database by `resolveReleaseForUser`, never
+ * from the session token (§3.7 rule 1) — the JWT establishes WHO you are, and
+ * what that person may open is a question only the row can answer.
+ */
+export async function decryptAccessItemForUser(
+  userId: string,
+  itemId: string,
+): Promise<DecryptResult> {
+  const resolved = await resolveReleaseForUser(userId);
+  if (!resolved) {
+    // Indistinguishable from a scope failure on purpose: "you are not a claimed
+    // recipient" and "that item is not yours" tell an attacker different things.
+    throw new AccessError('Item not in scope', 403);
+  }
+  return decryptForPrincipal(
+    { recipientId: resolved.recipientId, releaseStateId: resolved.releaseStateId },
+    itemId,
+  );
+}
+
+async function decryptForPrincipal(
+  payload: DecryptPrincipal,
+  itemId: string,
+): Promise<DecryptResult> {
   const rs = await readReleaseState(payload.releaseStateId);
 
   // Audit EVERY decrypt request (authorized or denied), before any KMS work (Req 7.8).
@@ -235,7 +300,10 @@ export async function decryptAccessItem(token: string, itemId: string): Promise<
     throw new AccessError(message, 403);
   };
 
-  if (String(rs.version) !== String(payload.version)) return deny('Session is stale');
+  // Token path only. A session has no snapshot to reconcile — see DecryptPrincipal.
+  if (payload.version !== undefined && String(rs.version) !== payload.version) {
+    return deny('Session is stale');
+  }
   if (rs.state !== 'released') return deny('Release is not active');
 
   const rule = await query<{ id: string }>(

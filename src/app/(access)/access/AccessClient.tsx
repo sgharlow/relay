@@ -45,10 +45,26 @@ export default function AccessClient() {
   const [error, setError] = useState<string | null>(null);
   const [closure, setClosure] = useState<ClosureSummary | null>(null);
   const [revealed, setRevealed] = useState<Record<string, string>>({});
+  // A CLAIMED recipient is signed in and has no token at all. Until this existed
+  // they were shown the code-entry form — asked for a credential the whole
+  // architecture was built to stop sending them — because this component
+  // returned early whenever `token` was empty. `null` means "not asked yet".
+  const [signedIn, setSignedIn] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (!token) return; // No token yet — the code form is shown instead.
-    fetch(`/api/access?token=${encodeURIComponent(token)}`)
+    if (token) return; // A token wins: unclaimed recipients keep the old path.
+    fetch('/api/auth/session')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s) => setSignedIn(Boolean(s?.user)))
+      .catch(() => setSignedIn(false));
+  }, [token]);
+
+  useEffect(() => {
+    // Either a token, or a session to resolve from. Neither yet → the code form.
+    if (!token && !signedIn) return;
+    // No token: the server resolves membership from the row (§3.7 rule 1).
+    const url = token ? `/api/access?token=${encodeURIComponent(token)}` : '/api/access';
+    fetch(url)
       .then(async (res) => {
         if (res.status === 403) {
           // The graceful close (J9-R4). A 403 carrying a summary means the owner
@@ -68,7 +84,7 @@ export default function AccessClient() {
         setData((await res.json()) as Dashboard);
       })
       .catch((e) => setError(String(e.message)));
-  }, [token]);
+  }, [token, signedIn]);
 
   const decrypt = useCallback(
     async (item: AccessItem) => {
@@ -76,7 +92,10 @@ export default function AccessClient() {
         const res = await fetch(`/api/access/${item.id}/decrypt`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token }),
+          // Omitted entirely when signed in — an empty string is a token the
+          // server would reject, which is how Reveal used to 401 on the session
+          // path while the plan above it rendered perfectly well.
+          body: JSON.stringify(token ? { token } : {}),
         });
         if (!res.ok) throw new Error('denied');
         const { plaintext_data_key, ciphertext } = (await res.json()) as { plaintext_data_key: string; ciphertext: string };
@@ -93,7 +112,12 @@ export default function AccessClient() {
   if (closure) {
     return <ClosedGracefully summary={closure} />;
   }
-  if (!token) {
+  // Still asking whether they are signed in. Showing the code form here would
+  // flash "type your code" at somebody who never received one.
+  if (!token && signedIn === null) {
+    return <p style={{ fontSize: 18, color: '#6b6257' }}>Loading…</p>;
+  }
+  if (!token && !signedIn) {
     return (
       <AccessCodeEntry
         onToken={setToken}
