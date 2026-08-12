@@ -1,7 +1,11 @@
-# Relay standby architecture — the plan
+# Relay standby architecture — the plan (**hybrid+6**)
 
 Status: **proposal, ratified as the direction 2026-08-11.** Supersedes `relay-standby-pivot.md`
 (kept for its reasoning and its repo change list, both still valid).
+
+**Version `hybrid+6`** = the standby-account pivot, plus four grafts that close gaps it leaves open
+(§1), plus six amendments from the 2026-08-11 QA pass that target the ease-of-use cost (marked
+**[A1]**–**[A6]** in place below). Nothing in the amendments relaxes a principle in §2.
 
 This is an architecture plan, not the roadmap. `PROJECT.yaml` remains authoritative for gates and
 volatile facts; `specs/Relay_H0_Build_Spec_v2.md` remains the authoritative plan. Numbers from
@@ -81,9 +85,40 @@ delivers it however they like — read aloud on a call, texted, AirDropped, hand
 emailed. Email becomes one option among several rather than the only one. The ticket is single-use,
 TTL-bounded, and dies on redemption.
 
-**Assurance is a fingerprint phrase** confirmed out of band, exactly as the pivot specifies: one
-boolean per person, set by the owner after comparing a short phrase with the contact. No webhook
-ledger, no ack state machine, no scheduled sweep.
+Codes must be **voice-safe**, because the guided setup call below is the primary delivery path and
+a code that cannot be dictated cleanly breaks it. ✅ **Already satisfied — reuse, do not rebuild:**
+`CASE_ID_ALPHABET` (`lib/release/case-id.ts`) is `23456789ABCDEFGHJKLMNPQRSTVWXYZ`, documented
+"No I, O, U, 0 or 1 — the characters people mishear or mistype", and already shared by
+`recipient-code.ts` and `recovery-code.ts`.
+
+**[A1] Claim is two-stage.** Stage one is *acknowledge and bind this device* — near-instant, no
+passkey, no password. Stage two is *add a passkey*, prompted afterwards and deferrable. Anyone who
+stops at stage one still holds a bound device and a break-glass code.
+
+> Why: the architecture's whole bet is claim conversion, and the first thing a contact currently
+> meets is a security ceremony for a product they do not use. This turns one high-friction gate
+> into a low one plus an upgrade — and it makes Phase 0 measurable as a two-step funnel, which is
+> what makes the number interpretable at all.
+
+**Assurance is a fingerprint phrase** confirmed out of band: one boolean per person, set by the
+owner after comparing a short phrase with the contact. No webhook ledger, no ack state machine, no
+scheduled sweep.
+
+**[A2] Delivery and assurance happen in one interaction — the guided setup call.** "Set up Sarah"
+shows the code, the phrase, and a script: *call her, read her the code, she'll see a phrase — check
+it matches.* She claims during the call; both see the phrase; the owner taps Confirm while still on
+the phone. Two async chores collapse into one event.
+
+> ⚠️ **Do not let the contact confirm the phrase alone.** It is the obvious simplification and it
+> breaks the property: if a ticket were intercepted, the interceptor sees a phrase too and would
+> confirm it, and the owner would go green without ever speaking to the real person. The owner's
+> out-of-band act is load-bearing. What is negotiable is *when* it happens, never *whether*.
+
+**[A6] Standby accounts carry a job on day one.** A contact who claims and then experiences nothing
+for years will not return, and three-to-five free accounts per owner only become a beachhead if
+those people come back. The standby dashboard shows what they would be asked to do, who they stand
+by for, current status ("nothing is open"), and **"start your own plan."** That conversion surface
+is the mechanism the acquisition argument in `relay-standby-pivot.md` §2 otherwise lacks.
 
 ### 3.4 Channels
 
@@ -112,6 +147,11 @@ recipient permanently while returning 200. A channel allowed to fail must still 
 - **Positioning:** tell owners to keep a copy with their estate-planning documents. The fire safe
   already exists.
 - **Never printed:** any standing credential, ever.
+- **[A5] The owner's one-page plan.** Per-contact cards exist; an owner-level summary did not. One
+  page: who is on standby, in what role, what triggers exist, what happens when one fires, and
+  where the cards went. This is the artifact families actually want and do not have, and it is
+  demo-able. Same rule as the cards — slow-changing facts only, dashboard canonical for anything
+  live, and every printed artifact carries an issue date and points at the site for current status.
 
 ### 3.6 Break-glass — the people who never claim
 
@@ -173,6 +213,33 @@ anywhere. Revocation can create the same condition after the fact.
 - `validateNofM` gains a confirmed-participant count, not a roster count.
 - Revoking or un-confirming a person **re-validates every trigger's quorum** and raises a readiness
   blocker if any became unsatisfiable.
+- A break-glass-only contact (§3.6) is **not** a confirmed participant and does not count toward N.
+
+### 4.5 [A3] Readiness turns green at *executable*, not at *complete*
+
+Green means the plan can actually run: **N confirmed verifiers plus at least one confirmed
+recipient.** Not every roster row confirmed.
+
+> Why: the pivot's strongest objection to the design it rejected was "perpetual amber readiness
+> that owners learn to ignore." Gating green on M rather than N reintroduces exactly that. Paired
+> with §4.3 this also makes green a true claim rather than a decoration.
+
+Anything short of green states the **single fastest next action**, not just a colour — "your plan
+cannot run yet; the quickest fix is a two-minute call with Tom to confirm his phrase." A status
+light that does not say what to do is the amber owners learn to ignore.
+
+### 4.6 [A4] Any deliberate authenticated owner action counts as a check-in
+
+The signal worth having is "is this person still operating," not "did they press a button." This
+removes the only recurring friction in the product and is a more accurate liveness measure. The
+reversibility claim is untouched — it broadens what a check-in *is*, not what it *does*, and it
+resolves toward ARMED, which is the safe direction (principle 4).
+
+> ⚠️ **Count deliberate actions only — a mutation or a fresh sign-in. Never a passive GET or a
+> background refresh.** A phone left logged in in a hospital drawer, polling, would otherwise
+> suppress the dead-man's-switch at exactly the moment it exists to fire. This fails safe rather
+> than open, so it is a silent-feature-death risk rather than a security hole — which is precisely
+> the class of failure this codebase keeps producing.
 
 ### 4.4 Challenge-window escalation — the missing transition
 
