@@ -27,6 +27,7 @@
 
 import { query } from '../db/connection';
 import { verifyRecipientToken } from '../auth/recipient-token';
+import { resolveReleaseForUser } from './session-access';
 
 export interface ClosureItem {
   /** Item label — the recipient already saw this while access was open. */
@@ -66,7 +67,33 @@ export async function getClosureSummary(token: string): Promise<ClosureSummary |
   } catch {
     return null; // Unverified bearer — say nothing.
   }
+  return summaryFor(payload.recipientId, payload.releaseStateId);
+}
 
+/**
+ * The same summary for a CLAIMED recipient who is signed in.
+ *
+ * THE DEFECT THIS CLOSES, seen on production 2026-08-12: when the owner checked
+ * back in, the session path fell through to "This access link is invalid or has
+ * expired." There is no link on this path — and that sentence is the exact one
+ * the graceful close exists to replace, shown to somebody who dropped everything
+ * during an emergency. J9 is the differentiator; getting its last screen wrong
+ * on the primary path undoes the journey it was built for.
+ *
+ * Returns null for a user who is not a claimed recipient, which reads as "say
+ * nothing" exactly as an unverifiable token does.
+ */
+export async function getClosureSummaryForUser(userId: string): Promise<ClosureSummary | null> {
+  const resolved = await resolveReleaseForUser(userId);
+  if (!resolved) return null;
+  return summaryFor(resolved.recipientId, resolved.releaseStateId);
+}
+
+async function summaryFor(
+  recipientId: string,
+  releaseStateId: string,
+): Promise<ClosureSummary | null> {
+  const payload = { recipientId, releaseStateId };
   const rs = await query<{ owner_id: string; trigger_type: string; version: string }>(
     `SELECT owner_id, trigger_type, version FROM release_state WHERE id = $1 LIMIT 1`,
     [payload.releaseStateId],

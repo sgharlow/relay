@@ -72,10 +72,22 @@ export default function AccessClient() {
           // product working, and this person just helped during someone's worst
           // week; an expiry error is the wrong last word.
           const body = (await res.json().catch(() => null)) as
-            | { closed?: boolean; summary?: ClosureSummary }
+            | { closed?: boolean; summary?: ClosureSummary | null }
             | null;
-          if (body?.closed && body.summary) {
-            setClosure(body.summary);
+          if (body?.closed) {
+            // `closed` alone is enough. Requiring a summary too meant a missing
+            // one fell through to "invalid or has expired" — the sentence this
+            // screen exists to replace — and a recipient who looked but opened
+            // nothing legitimately has little to summarise. Zeroes are truthful.
+            setClosure(
+              body.summary ?? {
+                grantedCount: 0,
+                opened: [],
+                firstSeenAt: null,
+                lastSeenAt: null,
+                hoursOfAccess: 0,
+              },
+            );
             return;
           }
           throw new Error('This access link is invalid or has expired.');

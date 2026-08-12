@@ -17,7 +17,7 @@ import {
 } from '../../../../lib/access/dashboard';
 import { resolveReleaseForUser } from '../../../../lib/access/session-access';
 import { getOwnerSession } from '../../../../lib/auth/session';
-import { getClosureSummary } from '../../../../lib/access/closure';
+import { getClosureSummary, getClosureSummaryForUser } from '../../../../lib/access/closure';
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const authz = req.headers.get('authorization');
@@ -38,12 +38,20 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         if (!resolved.released) {
           // Same graceful close the token path gives (J9-R4): the owner checked
           // back in, which is the product working rather than a fault.
+          //
+          // The SUMMARY is what makes that true rather than merely intended. The
+          // client only renders the close when one is present, so omitting it —
+          // as this branch did until 2026-08-12 — fell through to "This access
+          // link is invalid or has expired": no link exists on this path, and it
+          // is the precise sentence the graceful close was written to replace.
+          const summary = await getClosureSummaryForUser(session.ownerId);
           return NextResponse.json(
             {
               error: 'AccessClosed',
               closed: true,
               message: 'That access has closed because they checked back in.',
               state: resolved.state,
+              summary,
             },
             { status: 403 },
           );
