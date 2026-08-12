@@ -21,6 +21,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../db/connection', () => ({ query: vi.fn() }));
 vi.mock('../audit/audit-service', () => ({ writeAuditEntry: vi.fn(async () => ({})) }));
+// Mocked because claim.ts must NOT re-derive the upsert: this data layer needs
+// the app-level intent-read, and INSERT ... ON CONFLICT (auth_sub) 500s on real
+// DSQL. Mocking it here keeps this file testing claim.ts's own decisions.
+vi.mock('../auth/upsert-user', () => ({
+  upsertUser: vi.fn(async () => ({ id: 'user-9', email: 'sister@example.com', is_demo_account: false })),
+}));
 
 import { query } from '../db/connection';
 import { writeAuditEntry } from '../audit/audit-service';
@@ -52,7 +58,6 @@ describe('claimStandbyRole — binding an identity to a roster row', () => {
       [INVITE], // find invitation
       [], // mark claimed
       [{ email: 'sister@example.com' }], // roster row email
-      [{ id: 'user-9' }], // upsert user
       [], // link claimed_user_id + standby_state
     );
 
@@ -93,7 +98,6 @@ describe('claimStandbyRole — binding an identity to a roster row', () => {
       [{ ...INVITE, person_type: 'verifier', person_id: 'ver-1' }],
       [],
       [{ email: 'uncle@example.com' }],
-      [{ id: 'user-4' }],
       [],
     );
 
@@ -103,7 +107,7 @@ describe('claimStandbyRole — binding an identity to a roster row', () => {
   });
 
   it('records the claim in the audit log against the OWNER, whose circle changed', async () => {
-    rows([INVITE], [], [{ email: 'sister@example.com' }], [{ id: 'user-9' }], []);
+    rows([INVITE], [], [{ email: 'sister@example.com' }], []);
 
     await claimStandbyRole({ token: 'ABCDE-FGHIJ' });
 

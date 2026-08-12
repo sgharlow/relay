@@ -29,6 +29,7 @@ import { query } from '../db/connection';
 import { writeAuditEntry } from '../audit/audit-service';
 import { ValidationError } from '../validation';
 import { hashToken, type PersonType } from './invitations';
+import { upsertUser } from '../auth/upsert-user';
 
 /**
  * Matches `recipient_codes` (migration 017) and `verifier_codes` (015), which
@@ -113,14 +114,19 @@ export async function claimStandbyRole(params: {
     const email = person.rows[0]?.email;
     if (!email) throw new ValidationError(REFUSAL, 'token');
 
-    const upserted = await query<{ id: string }>(
-      `INSERT INTO users (email, auth_sub)
-       VALUES ($1, $2)
-       ON CONFLICT (auth_sub) DO UPDATE SET last_active_at = now()
-       RETURNING id`,
-      [email, `standby:${email.trim().toLowerCase()}`],
-    );
-    userId = upserted.rows[0].id;
+    // Reuse `upsertUser` rather than writing this INSERT here. It implements the
+    // app-level intent-read (SELECT → UPDATE or INSERT) that this data layer
+    // requires: migration 002, which would have made `auth_sub` UNIQUE, is a
+    // DRAFT that was deliberately never applied, because Aurora DSQL may not
+    // enforce UNIQUE secondary indexes — so `INSERT … ON CONFLICT (auth_sub)`
+    // errors on real infra.
+    //
+    // This comment exists because the first version of this file used
+    // ON CONFLICT and returned a 500 from production on the very first live
+    // claim. Unit tests could not see it: the failure lives in the database, not
+    // in the logic.
+    const record = await upsertUser(`standby:${email.trim().toLowerCase()}`, email);
+    userId = record.id;
     linkedExisting = false;
   }
 
