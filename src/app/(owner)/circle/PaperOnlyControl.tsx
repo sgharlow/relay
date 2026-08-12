@@ -71,6 +71,10 @@ export default function PaperOnlyControl({
   }
 
   const link: React.CSSProperties = {
+    // WCAG 2.5.8: 24x24 minimum. These measured 19px on 2026-08-12.
+    minHeight: 24,
+    display: 'inline-flex',
+    alignItems: 'center',
     padding: 0,
     border: 'none',
     background: 'none',

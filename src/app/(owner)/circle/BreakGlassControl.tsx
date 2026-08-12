@@ -91,6 +91,12 @@ export default function BreakGlassControl({
         onClick={() => setOpen(true)}
         style={{
           marginTop: '6px',
+          // WCAG 2.5.8 wants a 24x24 CSS px target. Measured at 19px on
+          // 2026-08-12 — a text-styled control is still a control, and this one
+          // sits in the owner path, used by people who may be older.
+          minHeight: 24,
+          display: 'inline-flex',
+          alignItems: 'center',
           padding: 0,
           border: 'none',
           background: 'none',
