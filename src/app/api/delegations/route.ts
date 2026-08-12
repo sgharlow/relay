@@ -84,8 +84,22 @@ export async function GET(): Promise<NextResponse> {
 
   const alreadyDelegate = new Set(delegations.rows.map((d) => d.delegate_user_id));
 
+  /**
+   * 🔴 THE DELEGATION NEEDS ITS OWN NAME. Found by looking at the rendered page
+   * 2026-08-12: the UI built its name lookup from `candidates`, and a person is
+   * removed from that list the moment they become a delegate — so the row for
+   * the helper you just added read "Your helper · not active yet", on the screen
+   * where you are deciding whether to hand somebody setup rights over your
+   * vault. Naming the wrong thing there is not cosmetic.
+   */
+  const byUser = new Map(candidates.rows.map((c) => [c.user_id, c]));
+
   return NextResponse.json({
-    delegations: delegations.rows,
+    delegations: delegations.rows.map((d) => ({
+      ...d,
+      name: byUser.get(d.delegate_user_id)?.name ?? null,
+      email: byUser.get(d.delegate_user_id)?.email ?? null,
+    })),
     concentrationWarning: detectRoleConcentration(circle),
     candidates: candidates.rows
       .filter((c) => !alreadyDelegate.has(c.user_id))

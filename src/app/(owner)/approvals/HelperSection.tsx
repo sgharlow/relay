@@ -31,6 +31,14 @@ export interface Delegation {
   delegate_user_id: string;
   status: string;
   granted_at: string | null;
+  /**
+   * Carried on the delegation itself, because a person is removed from
+   * `candidates` the moment they become one — so a lookup built from that list
+   * is empty for exactly the rows that need it. Nullable: a delegate whose
+   * roster row was later deleted still has a delegation.
+   */
+  name: string | null;
+  email: string | null;
 }
 
 export interface Candidate {
@@ -71,7 +79,6 @@ export default function HelperSection({
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [consenting, setConsenting] = useState<string | null>(null);
-  const nameFor = new Map(candidates.map((c) => [c.user_id, c.name]));
 
   async function send(url: string, method: string, body?: unknown) {
     setErr(null);
@@ -130,7 +137,7 @@ export default function HelperSection({
           {delegations.map((d) => (
             <li key={d.id} className="rounded-lg border border-rule bg-paper-raised p-4">
               <p className="font-medium text-ink">
-                {nameFor.get(d.delegate_user_id) ?? 'Your helper'}
+                {d.name ?? 'Your helper'}
                 {d.status === 'active' ? (
                   <span className="ml-2 text-t2 text-sage-text">· helping you now</span>
                 ) : (
