@@ -316,3 +316,59 @@ whether a call succeeds.
 A resident credential whose database row is gone yields "That passkey was not recognised" with no
 recovery guidance. Reachable today only by deleting rows out of band, which is what made it visible;
 worth a friendlier message if passkey deletion is ever offered in-product.
+
+## 9. Beta readiness — reassessed 2026-08-12
+
+The sprint shipped real, tested backend capability and **wired almost none of it to a surface**. Four
+blockers, all of the same shape: server built and correct, client never connected. Two are now closed.
+
+### ✅ Closed 2026-08-12, live-proven on production
+
+**Decrypt on the session path.** Sprint D swapped the recipient READ path to sessions and stopped
+there, so `/api/access` resolved a full plan for a claimed recipient while every Reveal posted
+`{ token: '' }` and took a 401 — a dashboard that listed everything and opened nothing. **J8, the
+journey carrying primary demand, did not work on the architecture built to replace the token.**
+
+*Decision: the route ACCEPTS A SESSION rather than minting a short-lived token.* Minting one would
+put a bearer credential back in the browser — precisely what hybrid+6 removes — and restore the
+staleness window a session does not have. The version check exists only because a token carries a
+snapshot; a session reads the row on the request, so a re-arm closes access by construction. `version`
+is therefore optional on the shared authorization core, and its absence is not a weaker check.
+
+Proven by the gate gradient, each step past the previous door: **401 at the door (before) → 403
+"Release is not active" while ARMED → 403 on an out-of-scope item (Property 6) → reaches KMS on the
+in-scope released item** (`InvalidCiphertextException` in the runtime log, on deliberately-junk
+fixture ciphertext). `/access` renders the plan with a session and no token in the URL.
+
+Found while proving it: standing down showed *"This access link is invalid or has expired"* on the
+session path — no link exists there, and it is the exact sentence J9's graceful close replaced.
+Fixed on both sides (`getClosureSummaryForUser`; the client treats `closed` alone as sufficient).
+
+**Owner-initiated invitation.** `POST /api/invitations` was complete and **nothing called it**.
+Adding a person auto-mints and emails an invitation, but the owner could not see the code, resend, or
+learn whether delivery worked — `inviteOnCreateBestEffort` promises "the owner can always resend from
+the invitations surface" and no such surface existed. Every invitation in testing came from a script.
+
+The card shows the CODE, because delivery is the measured-broken part: the owner reads it down the
+phone, which is both the reliable channel and stronger assurance than an inbox. Live-proven end to
+end — owner clicks *Get a code to read them* → code displayed → a different person types it at
+`/claim` → lands on `/standby` bound to that owner. No scripts.
+
+### 🔴 Still open
+
+1. **The standby dashboard has no action on an open release.** It renders `Open now · case RLY-XXXX`
+   as text, with no link to `/access`. The contact is told something is happening and given nothing
+   to do. *(Highest remaining priority — the two closed items are useless without it.)*
+2. **The verifier path was never swapped.** `VerifyClient` and `/api/verify/[token]` are entirely
+   token-keyed; a claimed verifier has no session route to confirm. §4.3 quorum still counts
+   `claimed`, so releases are not bricked — but the verifier's moment (J7) still rides the token.
+3. **Assurance controls are API-only**: fingerprint confirm, break-glass, and resign have routes and
+   no UI. The circle light can therefore never go green, a contact cannot leave, and a lost device
+   needs an operator.
+4. **`lib/vault/circle-readiness.ts` is dead code** — [A3], tested, imported by nothing but its test.
+
+### Verified sound, unchanged
+
+[A4] passive check-in is genuinely wired (`recordDeliberateActivity` in `lib/http/owner-route.ts`).
+Quorum still counts "can answer by ANY route" rather than `confirmed`, so §5's ordering trap #2 —
+the one that would make every quorum unsatisfiable — was correctly avoided.
