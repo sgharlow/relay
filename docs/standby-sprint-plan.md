@@ -682,19 +682,41 @@ paper-only reads as a choice, invited-with-code shows its fallback.
 ### 🔴 Findings this audit produced
 
 1. ✅ **Sub-minimum tap targets** — fixed in `995f797`.
-2. 🟠 **[A3] green does not consider whether a confirmed person can still be REACHED.** The fixture
-   ended green and executable while its only counting verifier had no passkey and no emergency code
-   — the plan works only for as long as he still holds that phone. This is the same shape as the
-   coverage false-green closed earlier today, one level further out. It is a **judgement call about
-   what green means**, not an obvious defect, so it is recorded rather than changed: green currently
-   means *configured and verified*, and device loss is a future event rather than a present state.
-   The data to decide it now exists (`has_passkey`, `has_break_glass`).
-3. 🟠 **§8.2 is still open and is now the largest experience gap.** `/audit` renders a raw
-   `SEQ / TIME / ACTOR / ACTION / ENTITY / HASH` table. The site promises *"Margaret gets a record of
-   exactly what was opened while she was away"* — a hash table is not that record. It matters more
-   under this architecture than before, because the post-incident record is the emotional payoff of
-   the reversibility story, and it is invisible in the plan precisely because the log technically
-   satisfies the claim.
+2. ✅ **[A3] fragility — RULED AND SHIPPED.** The audit fixture read green and executable while its
+   only counting verifier had neither passkey nor emergency code: the plan worked for exactly as
+   long as he kept that phone.
+
+   **Green was NOT made stricter, deliberately.** Gating it on everyone holding a fallback gates it
+   on passkey adoption, which will never be 100%, and §4.5 rejects that move by name — *"perpetual
+   amber readiness that owners learn to ignore"* is the objection [A3] exists to answer. Green keeps
+   meaning *configured and verified*; the fragility is a new **non-fatal** `fragile_quorum` line,
+   raised only when the quorum has **no slack** (with slack, losing one device is survivable and
+   warning would be the nagging this avoids) and never alongside a fatal blocker. It is excluded
+   from `ready`, because every other blocker names something still to set up while this one names a
+   plan that is set up and works.
+
+   Live: *"Your plan works, but it rests entirely on one person — and they have no way back in if
+   they lose the device they signed in on."*
+
+3. ✅ **§8.2 — CLOSED.** `/audit` now leads with **what happened**, in sentences: when it started,
+   who confirmed it was real, what was opened and when, and that it is closed again. Proven live on
+   a full episode: *"On 8/12/2026 an emergency was raised, Dr. Alex Chen confirmed it was real, and
+   2 things you had set aside were opened. It is closed again now."* — with the items listed and
+   repeat opens counted once.
+
+   Derived from the append-only log on every read, so it cannot drift from the record it summarises,
+   and placed **above** the hash table rather than instead of it: the chain is the proof and stays
+   exactly as it was. Openings attribute positionally, because `vault_item_decrypted` records the
+   item and not the release — the only honest link is that the opening happened while that episode
+   was open, which is also precisely what the sentence claims.
+
+   The quiet state is the design centre: most owners open this having had no emergency at all, and
+   *"Nothing has ever been opened"* beats an empty table.
+
+### Noted, not changed
+The demo account now raises `fragile_quorum` — its estate trigger needs both verifiers and neither
+holds a passkey or code. That is truthful, and consistent with the seed already leaving one contact
+amber so the demo shows its controls rather than only its happy path.
 
 ---
 
