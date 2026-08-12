@@ -579,14 +579,22 @@ readiness banner is the mitigation and it is loud, but beta onboarding should sa
 *naming people is not enough; you have to check it is really them.*
 
 ### Blockers to a beta cohort — none are code
-1. **The demo account's two triggers are unsatisfiable** (both verifiers `invited`). Fine as a
-   demonstration of the banner; wrong if that account is shown to anyone as a working example.
-2. **§8.1 unanswered** — covered-or-excluded for a break-glass-only contact. Now the last thing
-   gating Option 2.
-3. **Option 2** — stop minting codes for claimed verifiers. Needs (2), plus a way for an owner to
+1. ✅ **The demo account is fixed** (2026-08-12). It went red / `unsatisfiable_quorum` the moment
+   quorum tightened, because the seed left every contact at `invited`. Fixed in the **generator**,
+   not the rows — hand-editing would have drifted back on the next reset — and the seed now BINDS
+   contacts to standby accounts rather than writing `confirmed` onto an unbound row, which would be
+   a state the product itself can never produce. Live: green, executable, no fatal blockers, with
+   one contact deliberately left amber so the demo also shows the confirm control. Seeded standby
+   users are flagged `is_demo_account` so they cannot inflate a signup count.
+2. ✅ **Phase 0 is unparked and the instrument is live** — see §2a. N stays 0 until real owners
+   invite real people; it cannot manufacture demand.
+3. **§8.1 unanswered** — covered-or-excluded for a break-glass-only contact. The last thing gating
+   Option 2.
+4. **Option 2** — stop minting codes for claimed verifiers. Needs (3), plus a way for an owner to
    see who holds an unredeemed code.
-4. **Phase 0 measurement is still parked**, so claim conversion — the number the whole architecture
-   is bet on — remains unmeasured. The instrument exists (`scripts/phase0-report.ts`).
+5. **Onboarding must say the quiet part out loud.** Naming people is no longer enough: an owner who
+   never makes the confirm call has a plan that does nothing. The banner says so on every screen,
+   but a beta invitation should say it before they build the plan, not after.
 
 ### Deferred, and genuinely optional
 §3.8 event transparency · `email_secondary` (rung 2) · [A2] guided-setup-call UI, which is packaging
