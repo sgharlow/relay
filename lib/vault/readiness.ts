@@ -24,13 +24,21 @@
 
 import { query } from '../db/connection';
 import { assessPreparedness, type Preparedness } from './preparedness';
+import { assessCircle, type CircleAssessment } from './circle-readiness';
+import { readStandbyState } from '../people/standby-state';
 
 export type BlockerCode =
   | 'no_items'
   | 'no_recipients'
   | 'no_rules'
   | 'no_verifiers'
-  | 'not_enough_verifiers';
+  | 'not_enough_verifiers'
+  /**
+   * §4.3: a trigger needs more confirmations than it has people who could ever
+   * give them. Distinct from `not_enough_verifiers`, which counted ROSTER ROWS
+   * and therefore counted revoked people as if they could still answer.
+   */
+  | 'unsatisfiable_quorum';
 
 export interface Blocker {
   code: BlockerCode;
@@ -53,10 +61,28 @@ export interface Readiness {
   preparedness: Preparedness;
   /** Who would step in, for the sentence. Their name if there is exactly one. */
   whoLabel: string;
+  /**
+   * [A3] §4.5 — can the plan actually RUN, and if not, the single fastest thing
+   * to do about it. Distinct from `blockers`, which say what is absent; this
+   * says whether what exists is executable, and it is the assessment the circle
+   * light is drawn from.
+   */
+  circle: CircleAssessment;
 }
 
 export async function assessReadiness(ownerId: string): Promise<Readiness> {
-  const [items, recipients, rules, verifiers, states, itemRows, ruleRows, recipientRows] = await Promise.all([
+  const [
+    items,
+    recipients,
+    rules,
+    verifiers,
+    states,
+    itemRows,
+    ruleRows,
+    recipientRows,
+    verifierStates,
+    recipientStates,
+  ] = await Promise.all([
     query<{ n: string }>(`SELECT count(*)::text AS n FROM vault_items WHERE owner_id = $1`, [ownerId]),
     query<{ n: string }>(`SELECT count(*)::text AS n FROM recipients WHERE owner_id = $1`, [ownerId]),
     query<{ n: string }>(`SELECT count(*)::text AS n FROM access_rules WHERE owner_id = $1`, [ownerId]),
@@ -76,6 +102,16 @@ export async function assessReadiness(ownerId: string): Promise<Readiness> {
       [ownerId],
     ),
     query<{ name: string }>(`SELECT name FROM recipients WHERE owner_id = $1 ORDER BY created_at ASC`, [ownerId]),
+    // Person state, for §4.3 and [A3]. Counting rows was the original defect:
+    // a revoked verifier is a row that can never answer.
+    query<{ id: string; standby_state: string | null }>(
+      `SELECT id, standby_state FROM verifiers WHERE owner_id = $1`,
+      [ownerId],
+    ),
+    query<{ id: string; standby_state: string | null }>(
+      `SELECT id, standby_state FROM recipients WHERE owner_id = $1`,
+      [ownerId],
+    ),
   ]);
 
   const counts = {
@@ -116,6 +152,12 @@ export async function assessReadiness(ownerId: string): Promise<Readiness> {
   // own threshold, or it can enter GRACE and never leave.
   const highestRequired = states.rows.reduce((max, r) => Math.max(max, Number(r.required_confirmations)), 0);
 
+  // Everyone who is not revoked — see the blocker below for why that is the
+  // right line for a FATAL check.
+  const ableVerifiers = verifierStates.rows.filter(
+    (v) => readStandbyState(v.standby_state) !== 'revoked',
+  ).length;
+
   if (states.rows.length > 0 && counts.verifiers === 0) {
     blockers.push({
       code: 'no_verifiers',
@@ -125,12 +167,30 @@ export async function assessReadiness(ownerId: string): Promise<Readiness> {
       href: '/recipients',
       fatal: true,
     });
-  } else if (counts.verifiers > 0 && highestRequired > counts.verifiers) {
+  } else if (counts.verifiers > 0 && highestRequired > ableVerifiers) {
+    // §4.3, and the reason it needed saying: this compared `highestRequired`
+    // against the ROSTER COUNT, so a revoked verifier still counted toward a
+    // quorum they can never answer. Two verifiers, both revoked, N=2 read as
+    // satisfiable — and §4.3 describes what that produces exactly: "the release
+    // stalls permanently with no error anywhere".
+    //
+    // ABLE means "could answer by ANY route" — claimed people act from their
+    // session, unclaimed ones still hold the emailed-code path (retained by
+    // J7-R1). Only `revoked` is genuinely incapable. Deliberately NOT
+    // confirmed-only: this blocker is FATAL, and a fatal warning that is untrue
+    // for a plan that would in fact run is worse than none, because a banner
+    // owners learn to disbelieve stops working for the cases that are real.
+    // Confirmation is graded by the [A3] light below instead.
+    const shortfall = counts.verifiers - ableVerifiers;
     blockers.push({
-      code: 'not_enough_verifiers',
+      code: 'unsatisfiable_quorum',
       message:
-        `A trigger needs ${highestRequired} confirmations but you have ${counts.verifiers} trusted ` +
-        `contact${counts.verifiers === 1 ? '' : 's'}. It could never reach that number.`,
+        `A trigger needs ${highestRequired} confirmations but only ${ableVerifiers} of your ` +
+        `trusted contacts could give one` +
+        (shortfall > 0
+          ? ` — ${shortfall} ${shortfall === 1 ? 'has' : 'have'} been removed. ` +
+            'An emergency could start and never resolve.'
+          : '. It could never reach that number.'),
       href: '/triggers',
       fatal: true,
     });
@@ -152,5 +212,23 @@ export async function assessReadiness(ownerId: string): Promise<Readiness> {
   const names = recipientRows.rows.map((r) => r.name).filter(Boolean);
   const whoLabel = names.length === 1 ? names[0] : names.length === 0 ? 'nobody' : 'the people you named';
 
-  return { ready: blockers.length === 0, blockers, counts, preparedness, whoLabel };
+  /**
+   * [A3] §4.5 — green at EXECUTABLE, not at complete. `assessCircle` had been
+   * written, tested, and imported by nothing since sprint E; this is the
+   * consumer it was missing, so the light finally reports something.
+   *
+   * It grades on CONFIRMED, which is stricter than the fatal blocker above and
+   * deliberately so: "could this run at all" and "has this been verified" are
+   * different questions, and conflating them either produces false alarms or
+   * hides real ones. Being stricter here errs toward asking the owner to make a
+   * two-minute phone call, which is the safe direction — the opposite error is
+   * a green light on a plan whose participants were never checked.
+   */
+  const circle = assessCircle({
+    requiredConfirmations: highestRequired,
+    verifiers: verifierStates.rows,
+    recipients: recipientStates.rows,
+  });
+
+  return { ready: blockers.length === 0, blockers, counts, preparedness, whoLabel, circle };
 }

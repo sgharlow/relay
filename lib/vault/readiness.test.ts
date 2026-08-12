@@ -31,6 +31,14 @@ function setup(o: {
   itemRows?: Array<{ id: string; title: string; criticality: string | null; is_root_credential: boolean }>;
   ruledItemIds?: string[];
   recipientNames?: string[];
+  /**
+   * Person state, added 2026-08-12 for §4.3 and [A3]. Defaults to every roster
+   * row `confirmed`, which reproduces the pre-change behaviour exactly — able
+   * count equals roster count — so the tests above keep asserting what they
+   * were written to assert.
+   */
+  verifierStates?: Array<{ id: string; standby_state: string | null }>;
+  recipientStates?: Array<{ id: string; standby_state: string | null }>;
 }) {
   const n = (v = 0) => ({ rows: [{ n: String(v) }], rowCount: 1 }) as never;
   mockQuery
@@ -41,7 +49,22 @@ function setup(o: {
     .mockResolvedValueOnce({ rows: o.states ?? [{ trigger_type: 'emergency', required_confirmations: 1 }], rowCount: 1 } as never)
     .mockResolvedValueOnce({ rows: o.itemRows ?? [], rowCount: 0 } as never)
     .mockResolvedValueOnce({ rows: (o.ruledItemIds ?? []).map((id) => ({ vault_item_id: id })), rowCount: 0 } as never)
-    .mockResolvedValueOnce({ rows: (o.recipientNames ?? ['Sarah Chen']).map((name) => ({ name })), rowCount: 1 } as never);
+    .mockResolvedValueOnce({ rows: (o.recipientNames ?? ['Sarah Chen']).map((name) => ({ name })), rowCount: 1 } as never)
+    .mockResolvedValueOnce({
+      rows: o.verifierStates ?? confirmedRows(o.verifiers ?? 1, 'v'),
+      rowCount: 1,
+    } as never)
+    .mockResolvedValueOnce({
+      rows: o.recipientStates ?? confirmedRows(o.recipients ?? 1, 'r'),
+      rowCount: 1,
+    } as never);
+}
+
+function confirmedRows(count: number, prefix: string) {
+  return Array.from({ length: count }, (_, i) => ({
+    id: `${prefix}-${i}`,
+    standby_state: 'confirmed',
+  }));
 }
 
 beforeEach(() => vi.clearAllMocks());
@@ -67,7 +90,7 @@ describe('the defect this exists for', () => {
     setup({ verifiers: 1, states: [{ trigger_type: 'emergency', required_confirmations: 3 }] });
     const r = await assessReadiness('o-1');
 
-    const blocker = r.blockers.find((b) => b.code === 'not_enough_verifiers');
+    const blocker = r.blockers.find((b) => b.code === 'unsatisfiable_quorum');
     expect(blocker?.fatal).toBe(true);
     expect(blocker?.message).toContain('3 confirmations');
   });
@@ -165,5 +188,111 @@ describe('the preparedness statement', () => {
     setup({ verifiers: 1, itemRows: [{ id: 'a', title: 'Gmail', criticality: 'critical', is_root_credential: false }], ruledItemIds: ['a'] });
     const r = await assessReadiness('o-1');
     expect(r.preparedness.gaps).toContain('a second person who can confirm an emergency');
+  });
+});
+
+describe('§4.3 — a quorum nobody left can satisfy', () => {
+  it('counts people who could ANSWER, not roster rows', async () => {
+    // The defect: this compared the threshold against the roster count, so two
+    // verifiers both REVOKED read as able to give two confirmations. §4.3
+    // describes the result exactly — "the release stalls permanently with no
+    // error anywhere" — and nothing anywhere said so.
+    setup({
+      verifiers: 2,
+      states: [{ trigger_type: 'emergency', required_confirmations: 2 }],
+      verifierStates: [
+        { id: 'v-0', standby_state: 'revoked' },
+        { id: 'v-1', standby_state: 'revoked' },
+      ],
+    });
+
+    const r = await assessReadiness('owner-1');
+
+    const blocker = r.blockers.find((b) => b.code === 'unsatisfiable_quorum');
+    expect(blocker?.fatal).toBe(true);
+    expect(blocker?.message).toContain('been removed');
+  });
+
+  it('does NOT cry wolf over people who merely have not confirmed', async () => {
+    // A claimed-but-unconfirmed verifier can still answer, and an unclaimed one
+    // still holds the emailed-code path (J7-R1). A FATAL warning that is untrue
+    // for a plan that would in fact run teaches owners to disbelieve the banner,
+    // which then fails for the cases that are real.
+    setup({
+      verifiers: 2,
+      states: [{ trigger_type: 'emergency', required_confirmations: 2 }],
+      verifierStates: [
+        { id: 'v-0', standby_state: 'invited' },
+        { id: 'v-1', standby_state: 'claimed' },
+      ],
+    });
+
+    const r = await assessReadiness('owner-1');
+
+    expect(r.blockers.find((b) => b.code === 'unsatisfiable_quorum')).toBeUndefined();
+  });
+
+  it('fires when a resignation drops the pool below the threshold', async () => {
+    // The path that made this newly reachable: three ways to remove a
+    // participant shipped on 2026-08-12 where before there was one.
+    setup({
+      verifiers: 2,
+      states: [{ trigger_type: 'emergency', required_confirmations: 2 }],
+      verifierStates: [
+        { id: 'v-0', standby_state: 'confirmed' },
+        { id: 'v-1', standby_state: 'revoked' },
+      ],
+    });
+
+    const r = await assessReadiness('owner-1');
+
+    expect(r.blockers.some((b) => b.code === 'unsatisfiable_quorum' && b.fatal)).toBe(true);
+  });
+});
+
+describe('[A3] — the light reports something at last', () => {
+  it('is GREEN only when the plan can actually run', async () => {
+    setup({
+      verifiers: 1,
+      recipients: 1,
+      states: [{ trigger_type: 'emergency', required_confirmations: 1 }],
+    });
+
+    const r = await assessReadiness('owner-1');
+
+    expect(r.circle.light).toBe('green');
+    expect(r.circle.executable).toBe(true);
+    expect(r.circle.nextAction).toBeNull();
+  });
+
+  it('is AMBER with a confirmed verifier but nobody able to receive', async () => {
+    setup({
+      verifiers: 1,
+      recipients: 1,
+      states: [{ trigger_type: 'emergency', required_confirmations: 1 }],
+      recipientStates: [{ id: 'r-0', standby_state: 'claimed' }],
+    });
+
+    const r = await assessReadiness('owner-1');
+
+    expect(r.circle.light).toBe('amber');
+    expect(r.circle.executable).toBe(false);
+    // Not just a colour — §4.5 requires the single fastest next action.
+    expect(r.circle.nextAction).toContain('Confirm a recipient');
+  });
+
+  it('is RED when nobody has claimed at all', async () => {
+    setup({
+      verifiers: 1,
+      recipients: 1,
+      states: [{ trigger_type: 'emergency', required_confirmations: 1 }],
+      verifierStates: [{ id: 'v-0', standby_state: 'invited' }],
+      recipientStates: [{ id: 'r-0', standby_state: 'invited' }],
+    });
+
+    const r = await assessReadiness('owner-1');
+
+    expect(r.circle.light).toBe('red');
+    expect(r.circle.nextAction).toBeTruthy();
   });
 });

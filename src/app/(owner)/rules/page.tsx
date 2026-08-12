@@ -142,7 +142,16 @@ function RuleBuilder({ items, recipients, onCreated }: { items: Named[]; recipie
       // step that silently made the vault unopenable.
       try {
         const r = (await apiGet('/api/readiness')) as { blockers?: Array<{ code: string; message: string }> };
-        const fatal = (r.blockers ?? []).find((b) => b.code === 'no_verifiers' || b.code === 'not_enough_verifiers');
+        // `unsatisfiable_quorum` added 2026-08-12 alongside the §4.3 fix. The
+        // old code is kept in the list rather than swapped: this page is a live
+        // consumer, and quietly changing the string it matches on is how a
+        // warning stops appearing without anything failing.
+        const fatal = (r.blockers ?? []).find(
+          (b) =>
+            b.code === 'no_verifiers' ||
+            b.code === 'not_enough_verifiers' ||
+            b.code === 'unsatisfiable_quorum',
+        );
         setWarning(fatal ? fatal.message : null);
       } catch {
         setWarning(null);

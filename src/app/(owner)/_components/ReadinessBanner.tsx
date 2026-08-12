@@ -36,6 +36,12 @@ interface Readiness {
   blockers: Blocker[];
   preparedness: Preparedness;
   whoLabel: string;
+  /** [A3] §4.5 — can the plan RUN, and the one thing to do if not. */
+  circle?: {
+    light: 'red' | 'amber' | 'green';
+    executable: boolean;
+    nextAction: string | null;
+  };
 }
 
 export default function ReadinessBanner() {
@@ -98,6 +104,38 @@ export default function ReadinessBanner() {
               </li>
             ))}
           </ul>
+        </div>
+      ) : null}
+
+      {/*
+        [A3] §4.5 — the one thing to do next, shown only when the plan cannot
+        run and there is no FATAL blocker already saying something louder.
+        Suppressed alongside a fatal one on purpose: two red-ish paragraphs
+        competing for the same attention is how a banner becomes wallpaper, and
+        the fatal message is the more urgent of the two.
+
+        This is deliberately an ACTION, not a colour. "A status light that does
+        not say what to do is the amber owners learn to ignore, just with more
+        colours."
+      */}
+      {fatal.length === 0 && data.circle && !data.circle.executable && data.circle.nextAction ? (
+        <div
+          style={{
+            borderRadius: 'var(--radius-owner)',
+            border: '1px solid var(--ochre)',
+            background: 'var(--ochre-soft)',
+            padding: 'var(--s3) var(--s4)',
+          }}
+        >
+          <p style={{ fontSize: 'var(--t3)', fontWeight: 600, color: 'var(--ochre-text)' }}>
+            Your plan cannot run yet
+          </p>
+          <p style={{ fontSize: 'var(--t2)', lineHeight: 1.55, color: 'var(--ink)', marginTop: 'var(--s1)' }}>
+            {data.circle.nextAction}{' '}
+            <Link href="/circle" className="font-medium underline">
+              Go to your circle
+            </Link>
+          </p>
         </div>
       ) : null}
 
