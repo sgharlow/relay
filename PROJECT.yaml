@@ -122,6 +122,23 @@ ratified:
       not open."
     revisit: "if the observed CPC comes in materially under $1, topping up toward N=250 becomes
       cheap enough to reconsider mid-flight"
+  - id: build-standby-before-g1
+    date: 2026-08-11
+    decision: "build the standby architecture now rather than waiting for G1 evidence"
+    supersedes: "the sequencing rule above -- 'NO further building until G1 produces evidence'"
+    rationale: "Steve's ruling: the only way we get to G1 is to finish building the modified
+      product for beta testing. The sequencing rule was written to stop horizontal build ahead of
+      demand, and it is a good rule -- but it assumed the product could be tested as it stands.
+      The 2026-08-11 analysis found it cannot: the escalation transition was missing, so the
+      incapacity fast path did not work at all, and credential delivery rides a channel measured
+      broken (Outlook SCL 5, Resend suppression returning 200). Buying traffic for a funnel whose
+      product cannot serve its headline case spends the G1 budget on a known-bad reading."
+    scope: "docs/standby-sprint-plan.md sprints A-F. Sprint A shipped 2026-08-11 (b5dc339) as a
+      defect fix in its own right and did not need this override."
+    unchanged: "G1 itself, its thresholds and its 2026-09-15 hard stop are untouched, as is
+      g2-counsel-opinion. This changes WHEN building happens, not what the gates measure."
+    risk_accepted: "If claim conversion is poor (sprint plan Phase 0), this build is partly wasted.
+      Phase 0 exists to find that out and can run in parallel at no engineering cost."
   - id: estate-gated-until-counsel
     date: 2026-08-10
     decision: "estate stays OUT of the product until g2-counsel-opinion produces a written opinion"

@@ -48,12 +48,12 @@ export async function GET(): Promise<NextResponse> {
       `SELECT vault_item_id, recipient_id FROM access_rules WHERE owner_id = $1`,
       [auth.ownerId],
     ),
-    query<{ id: string; name: string; role: string; email: string }>(
-      `SELECT id, name, role, email FROM recipients WHERE owner_id = $1`,
+    query<{ id: string; name: string; role: string; email: string; standby_state: string | null }>(
+      `SELECT id, name, role, email, standby_state FROM recipients WHERE owner_id = $1`,
       [auth.ownerId],
     ),
-    query<{ id: string; name: string; email: string }>(
-      `SELECT id, name, email FROM verifiers WHERE owner_id = $1`,
+    query<{ id: string; name: string; email: string; standby_state: string | null }>(
+      `SELECT id, name, email, standby_state FROM verifiers WHERE owner_id = $1`,
       [auth.ownerId],
     ),
     query<{ id: string }>(`SELECT id FROM access_policies WHERE owner_id = $1`, [auth.ownerId]),

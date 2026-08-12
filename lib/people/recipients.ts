@@ -12,6 +12,7 @@ import { query } from '../db/connection';
 import { withOccRetry } from '../db/occ';
 import { cascadeDelete } from '../db/integrity';
 import { ValidationError, isNonEmptyString } from '../validation';
+import { readStandbyState, type StandbyState } from './standby-state';
 import { VALID_ROLES, type RecipientRole } from '../domain/enums';
 
 export { VALID_ROLES, type RecipientRole };
@@ -26,10 +27,11 @@ export interface RecipientInput {
 
 export interface Recipient extends RecipientInput {
   id: string;
+  standby_state: StandbyState;
   created_at: string;
 }
 
-const COLUMNS = 'id, name, relationship, email, phone, role, created_at';
+const COLUMNS = 'id, name, relationship, email, phone, role, standby_state, created_at';
 
 function isEmail(v: unknown): v is string {
   return typeof v === 'string' && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v);
@@ -64,6 +66,7 @@ function toRecipient(row: Record<string, unknown>): Recipient {
     email: String(row.email),
     phone: (row.phone as string | null) ?? null,
     role: row.role as RecipientRole,
+    standby_state: readStandbyState(row.standby_state),
     created_at: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
   };
 }

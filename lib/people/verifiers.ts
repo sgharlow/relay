@@ -13,6 +13,7 @@ import { query } from '../db/connection';
 import { withOccRetry } from '../db/occ';
 import { cascadeDelete } from '../db/integrity';
 import { ValidationError, isNonEmptyString } from '../validation';
+import { readStandbyState, type StandbyState } from './standby-state';
 
 export interface VerifierInput {
   name: string;
@@ -22,11 +23,18 @@ export interface VerifierInput {
 
 export interface Verifier extends VerifierInput {
   id: string;
+  /**
+   * @deprecated Dead since migration 001 — declared NOT NULL DEFAULT 'pending',
+   * written by nothing, rendered as a permanent chip. Superseded by
+   * `standby_state`. Kept on the read only so removing the column is a separate,
+   * revertible change.
+   */
   verification_status: string;
+  standby_state: StandbyState;
   created_at: string;
 }
 
-const COLUMNS = 'id, name, email, phone, verification_status, created_at';
+const COLUMNS = 'id, name, email, phone, verification_status, standby_state, created_at';
 
 function isEmail(v: unknown): v is string {
   return typeof v === 'string' && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v);
@@ -53,6 +61,7 @@ function toVerifier(row: Record<string, unknown>): Verifier {
     email: String(row.email),
     phone: (row.phone as string | null) ?? null,
     verification_status: String(row.verification_status ?? 'pending'),
+    standby_state: readStandbyState(row.standby_state),
     created_at: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
   };
 }

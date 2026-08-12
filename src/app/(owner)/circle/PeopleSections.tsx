@@ -22,6 +22,7 @@ import { useState } from 'react';
 
 import { apiSend } from '../_lib/api';
 import { VALID_ROLES, type RecipientRole } from '../../../../lib/domain/enums';
+import { readStandbyState, circleLight } from '../../../../lib/people/standby-state';
 
 /*
   Display shapes, deliberately wider than the form's. /api/circle returns role
@@ -35,13 +36,65 @@ export interface Recipient {
   email: string;
   relationship?: string | null;
   role: string;
+  standby_state?: string;
 }
 
 export interface Verifier {
   id: string;
   name: string;
   email: string;
+  /** @deprecated dead column — see StandbyLight below. */
   verification_status?: string;
+  standby_state?: string;
+}
+
+/**
+ * Three positions, and green is a claim about CAPABILITY.
+ *
+ * This replaces a chip that rendered `verification_status` — a column declared
+ * NOT NULL DEFAULT 'pending' in migration 001 and written by nothing, so every
+ * person in every circle showed the word "pending" forever. It looked like
+ * status and carried none.
+ *
+ * Red is honest right now: claiming does not exist until the identity sprint, so
+ * nobody has an account yet and nobody can act through one. The existing
+ * invitation path still works for them meanwhile.
+ */
+function StandbyLight({ state }: { state?: string }) {
+  const s = readStandbyState(state);
+  const light = circleLight(s);
+
+  const tone = {
+    green: { dot: 'var(--ok, #2e7d32)', label: 'Ready' },
+    amber: { dot: 'var(--warn, #b26a00)', label: 'Claimed — confirm it is really them' },
+    red: { dot: 'var(--rule-strong)', label: s === 'revoked' ? 'Removed' : 'Not claimed yet' },
+  }[light];
+
+  return (
+    <span
+      title={tone.label}
+      style={{
+        marginLeft: 'var(--s2)',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '6px',
+        fontSize: 'var(--t1)',
+        color: 'var(--ink-muted)',
+      }}
+    >
+      <span
+        aria-hidden
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: '50%',
+          background: tone.dot,
+          display: 'inline-block',
+        }}
+      />
+      {tone.label}
+    </span>
+  );
 }
 
 const field: React.CSSProperties = {
@@ -176,6 +229,7 @@ export function RecipientSection({
               >
                 {r.role}
               </span>
+              <StandbyLight state={r.standby_state} />
               <div style={{ fontSize: 'var(--t1)', color: 'var(--ink-muted)' }}>
                 {r.email}
                 {r.relationship ? ` · ${r.relationship}` : ''}
@@ -271,20 +325,7 @@ export function VerifierSection({
           >
             <div>
               <span style={{ fontSize: 'var(--t3)', fontWeight: 500 }}>{v.name}</span>
-              {v.verification_status ? (
-                <span
-                  style={{
-                    marginLeft: 'var(--s2)',
-                    fontSize: 'var(--t1)',
-                    padding: '2px 6px',
-                    borderRadius: 'var(--radius-owner)',
-                    background: 'var(--paper-sunken)',
-                    color: 'var(--ink-muted)',
-                  }}
-                >
-                  {v.verification_status}
-                </span>
-              ) : null}
+              <StandbyLight state={v.standby_state} />
               <div style={{ fontSize: 'var(--t1)', color: 'var(--ink-muted)' }}>{v.email}</div>
             </div>
             <RemoveButton onClick={() => remove(v.id)} label={`Remove ${v.name}`} />

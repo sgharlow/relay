@@ -1,0 +1,21 @@
+-- Invitation redemption gets the same brute-force guard the other code paths
+-- already have.
+--
+-- `verifier_codes` (015) and `recipient_codes` (017) both carry
+-- `failed_attempts INT NOT NULL DEFAULT 0` with a DB-backed MAX_FAILED_ATTEMPTS.
+-- Invitations never did, so redemption is guarded only by
+-- lib/http/rate-limit.ts — which its own header correctly calls per-instance
+-- memory and NOT a security boundary.
+--
+-- That was a tolerable gap while an invitation was a convenience. Under the
+-- standby architecture the invitation code becomes the FRONT DOOR: it is what
+-- binds a human identity to a roster row, so guessing one is how an attacker
+-- would install themselves in a family's circle of trust. Fix it before it
+-- carries that weight, not after.
+--
+-- Nullable because DSQL cannot add NOT NULL to an existing table (see 008);
+-- readers treat NULL as 0.
+--
+-- Requirements: J4-R9, CC7
+
+ALTER TABLE invitations ADD COLUMN IF NOT EXISTS failed_attempts INT;
