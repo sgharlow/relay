@@ -71,10 +71,17 @@ describe('CONSENT_METHODS', () => {
 
 describe('createDelegation', () => {
   it('creates a PENDING delegation — never active on creation', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [{ id: 'd-1' }] } as never);
+    // Two queries since 2026-08-12: the circle check, then the INSERT. Asserting
+    // on the INSERT by SQL rather than by position, because a positional mock
+    // has broken on an added query four times in this codebase now.
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ id: 'r-1' }], rowCount: 1 } as never)
+      .mockResolvedValueOnce({ rows: [{ id: 'd-1' }] } as never);
 
     await expect(createDelegation('o-1', 'u-2')).resolves.toEqual({ id: 'd-1', status: 'pending' });
-    expect(mockQuery.mock.calls[0][0] as string).toMatch(/'pending'/);
+
+    const insert = mockQuery.mock.calls.map((c) => String(c[0])).find((q) => q.includes('INSERT INTO delegations'));
+    expect(insert).toMatch(/'pending'/);
   });
 
   it('refuses a delegate who is also the owner', async () => {
@@ -230,5 +237,41 @@ describe('🔴 cross-owner activation — found by the 2026-08-12 security revie
     await expect(
       recordConsent('someone-elses', { method: 'link', evidenceRef: null, ownerId: 'attacker' }),
     ).rejects.toThrow(/No pending delegation/i);
+  });
+});
+
+describe('🔴 a helper must already be in the circle — 2026-08-12 security review', () => {
+  it('refuses a user who is not a claimed contact of this owner', async () => {
+    // `createDelegation` accepted ANY user id. Not exploitable — a UUID is
+    // unguessable, the delegate is never notified and cannot act without the
+    // owner's id — but it let an owner record "we agreed in person" about
+    // somebody they had never named. The consent artifact is the single thing
+    // separating a helper from a stranger with write access, and a FALSE
+    // artifact is worse than none because it looks like the control working.
+    mockQuery.mockReset();
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+
+    await expect(createDelegation('o-1', 'a-stranger')).rejects.toThrow(ValidationError);
+  });
+
+  it('never reaches the INSERT when the delegate is outside the circle', async () => {
+    mockQuery.mockReset();
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+
+    await expect(createDelegation('o-1', 'a-stranger')).rejects.toThrow();
+    expect(mockQuery.mock.calls.some((c) => String(c[0]).includes('INSERT INTO delegations'))).toBe(false);
+  });
+
+  it('accepts a claimed recipient or verifier, and excludes revoked in SQL', async () => {
+    mockQuery.mockReset();
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ id: 'r-1' }], rowCount: 1 } as never)
+      .mockResolvedValueOnce({ rows: [{ id: 'd-1' }], rowCount: 1 } as never);
+
+    await expect(createDelegation('o-1', 'u-2')).resolves.toEqual({ id: 'd-1', status: 'pending' });
+
+    const lookup = String(mockQuery.mock.calls[0][0]);
+    expect(lookup).toMatch(/claimed_user_id = \$2/);
+    expect(lookup).toMatch(/<>\s*'revoked'/);
   });
 });

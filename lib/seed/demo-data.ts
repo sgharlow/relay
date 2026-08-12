@@ -92,7 +92,7 @@ export interface SeedReleaseState {
 }
 
 export interface DemoData {
-  user: { email: string; is_demo_account: boolean; checkin_interval_days: number };
+  user: { email: string; displayName: string; is_demo_account: boolean; checkin_interval_days: number };
   vaultItems: SeedVaultItem[];
   recipients: SeedRecipient[];
   verifiers: SeedVerifier[];
@@ -198,10 +198,19 @@ export function buildDemoData(): DemoData {
   ];
 
   // Emergency access (reversible) to the spouse for the critical items.
+  //
+  // 🔴 THIS COMMENT WAS FALSE UNTIL 2026-08-12: `coinbase` is `critical` and was
+  // not in this list, so the demo's standing statement read "could reach 3 of
+  // the 4 things that matter" in amber on every screen. A demo whose own
+  // top-line claim is amber is demonstrating an unfinished plan, and the gap was
+  // an oversight rather than a point being made — the seed's ability to show an
+  // uncovered critical item is exercised properly by an owner mid-setup, not by
+  // shipping the demo permanently short of its own comment.
   const rules: SeedRule[] = [
     { vaultItemKey: 'gmail', recipientKey: 'spouse', trigger_type: 'emergency', scope: 'view', reversible: true },
     { vaultItemKey: 'onepassword', recipientKey: 'spouse', trigger_type: 'emergency', scope: 'view', reversible: true },
     { vaultItemKey: 'chase', recipientKey: 'spouse', trigger_type: 'emergency', scope: 'view', reversible: true },
+    { vaultItemKey: 'coinbase', recipientKey: 'spouse', trigger_type: 'emergency', scope: 'view', reversible: true },
     // Permanent estate handoff to the executor (irreversible).
     { vaultItemKey: 'passport', recipientKey: 'attorney', trigger_type: 'estate', scope: 'view', reversible: false },
   ];
@@ -212,7 +221,18 @@ export function buildDemoData(): DemoData {
   ];
 
   return {
-    user: { email: 'demo@relay.test', is_demo_account: true, checkin_interval_days: 30 },
+    /**
+     * 🔴 `displayName` ADDED 2026-08-12. The demo owner had none, so every
+     * contact standing by for them saw `demo@relay.test` on their dashboard and
+     * in every message — the exact defect the standby label fix closed the same
+     * day, sitting unnoticed in the one account most people will ever look at.
+     */
+    user: {
+      email: 'demo@relay.test',
+      displayName: 'Margaret Chen',
+      is_demo_account: true,
+      checkin_interval_days: 30,
+    },
     vaultItems,
     recipients,
     verifiers,

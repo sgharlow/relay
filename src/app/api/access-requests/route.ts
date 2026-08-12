@@ -23,6 +23,7 @@ import { formatCaseId } from '../../../../lib/release/case-id';
 import {
   assertRequestAllowed,
   challengeExpiry,
+  sanitiseRequestReason,
   CHALLENGE_WINDOW_SECONDS,
   type TriggerType,
 } from '../../../../lib/release/access-request';
@@ -31,6 +32,8 @@ import {
   notifyOwnerOfAccessRequest,
   notifyCircleOfRequest,
 } from '../../../../lib/notify/notifications';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function GET(): Promise<NextResponse> {
   const auth = await requireOwner();
@@ -86,7 +89,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const auth = await requireOwner();
     if (isResponse(auth)) return auth;
 
-    if (typeof owner_id !== 'string') {
+    // Shape-checked here rather than left to the database: `owner_id` lands in a
+    // UUID column, so a malformed value became a Postgres cast error and a 500 —
+    // an outage-shaped response to a client mistake.
+    if (typeof owner_id !== 'string' || !UUID_RE.test(owner_id)) {
       return NextResponse.json(
         { error: 'BadRequest', message: 'owner_id is required' },
         { status: 400 },
@@ -125,6 +131,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
     assertRequestAllowed(recent.rows);
 
+    // Sanitised ONCE, and the same value is stored and mailed — so the owner
+    // reading /challenge and the owner reading their inbox see the same text.
+    const safeReason = sanitiseRequestReason(reason);
+
     const now = new Date();
     const caseId = formatCaseId(`${payload.recipientId}:${now.toISOString()}`);
     const inserted = await query<{ id: string }>(
@@ -136,7 +146,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         ownerId,
         payload.recipientId,
         trigger_type,
-        typeof reason === 'string' ? reason : null,
+        safeReason,
         caseId,
         challengeExpiry(trigger_type as TriggerType, now),
       ],
@@ -171,7 +181,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           to: ownerRow.rows[0].email,
           requesterName,
           triggerType: trigger_type,
-          reason: typeof reason === 'string' ? reason : null,
+          reason: safeReason,
           caseId,
           expiresAt,
         })

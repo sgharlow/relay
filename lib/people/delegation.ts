@@ -57,6 +57,45 @@ export async function createDelegation(
     throw new ValidationError('An owner cannot be their own delegate', 'delegateUserId');
   }
 
+  /**
+   * 🔴 THE DELEGATE MUST ALREADY BE IN THIS OWNER'S CIRCLE, added by the
+   * 2026-08-12 security review after the create UI shipped.
+   *
+   * This accepted ANY user id. Not exploitable — a UUID is unguessable, the
+   * delegate is never notified, and without the owner's id they cannot act — so
+   * the practical worst case was an owner harming only themselves. What made it
+   * worth closing is what delegation RESTS on: the consent artifact (J3-R2) is
+   * the single thing separating "a helper" from "a stranger with write access to
+   * someone's vault", and an owner could record "we agreed in person" about a
+   * person they had never named. A false artifact is worse than no artifact,
+   * because it looks like the control working.
+   *
+   * The UI has always offered circle members only; this makes that the rule
+   * rather than a rendering choice.
+   *
+   * ⚠️ LIMITATION THIS BAKES IN, deliberately and reversibly: a helper who is
+   * NOT also a recipient or verifier — a paid organiser, say — has to be named
+   * in the circle first, which grants more than intended. If that case matters,
+   * the answer is a third person type, not a looser API.
+   */
+  const inCircle = await query<{ id: string }>(
+    `SELECT id FROM recipients
+      WHERE owner_id = $1 AND claimed_user_id = $2
+        AND coalesce(standby_state, 'invited') <> 'revoked'
+      UNION
+     SELECT id FROM verifiers
+      WHERE owner_id = $1 AND claimed_user_id = $2
+        AND coalesce(standby_state, 'invited') <> 'revoked'
+      LIMIT 1`,
+    [ownerId, delegateUserId],
+  );
+  if (inCircle.rows.length === 0) {
+    throw new ValidationError(
+      'A helper must be someone you have already named who has accepted',
+      'delegateUserId',
+    );
+  }
+
   const res = await query<{ id: string }>(
     `INSERT INTO delegations (owner_id, delegate_user_id, status)
      VALUES ($1, $2, 'pending')

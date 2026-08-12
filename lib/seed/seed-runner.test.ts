@@ -36,7 +36,11 @@ describe('seedDemo', () => {
     expect(result.items).toBe(25);
     expect(result.recipients).toBe(2);
     expect(result.verifiers).toBe(2);
-    expect(result.rules).toBe(4);
+    // 5 since 2026-08-12: `coinbase` is `critical` and was missing from the
+    // emergency rules, so the demo's standing statement sat permanently amber at
+    // "3 of the 4 things that matter" while the seed's own comment claimed the
+    // critical items were covered.
+    expect(result.rules).toBe(5);
     expect(mockEnsure).toHaveBeenCalledTimes(2); // emergency + estate
   });
 

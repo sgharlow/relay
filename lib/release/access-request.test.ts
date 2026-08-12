@@ -13,6 +13,8 @@
 
 import { describe, it, expect } from 'vitest';
 import {
+  sanitiseRequestReason,
+  MAX_REASON_CHARS,
   CHALLENGE_WINDOW_SECONDS,
   MAX_REQUESTS_PER_WINDOW,
   VELOCITY_WINDOW_SECONDS,
@@ -86,5 +88,54 @@ describe('assertRequestAllowed', () => {
     const recent = Array.from({ length: MAX_REQUESTS_PER_WINDOW }, () => ({ created_at: exactly }));
     // On the boundary still counts — the limit is deliberately conservative.
     expect(() => assertRequestAllowed(recent, now)).toThrow(ValidationError);
+  });
+});
+
+/**
+ * 🔴 Reason sanitisation — added by the 2026-08-12 security review.
+ *
+ * The reason was stored and mailed verbatim, which was inert while the endpoint
+ * required a token nobody could obtain before a release. Giving J6 a front door
+ * turned it into attacker-controlled text that Relay sends from its own domain
+ * to the owner's inbox, and the attacker is the contact this architecture
+ * already names as a threat: somebody named, who accepted, then turned hostile.
+ *
+ * Requirements: J6-R8
+ */
+describe('sanitiseRequestReason', () => {
+  it('collapses newlines so the quoted block cannot be forged', () => {
+    // The reason sits inside `They said: "..."` in a plain-text body. Newlines
+    // let a sender close that quote visually and append text reading as Relay's.
+    const forged = 'Mum fell.\n\n"\n\nRelay: confirm your identity at once.';
+    const out = sanitiseRequestReason(forged) as string;
+    expect(out).not.toMatch(/\n/);
+    expect(out).toBe('Mum fell. " Relay: confirm your identity at once.');
+  });
+
+  it.each([
+    'go to https://evil.example/login now',
+    'see http://evil.example',
+    'visit www.evil.example/login',
+    'try HTTPS://EVIL.EXAMPLE',
+  ])('removes links: %s', (raw) => {
+    const out = sanitiseRequestReason(raw) as string;
+    expect(out).toContain('[link removed]');
+    expect(out.toLowerCase()).not.toContain('evil.example');
+  });
+
+  it('does not mangle ordinary prose', () => {
+    const raw = "She fell at St. Mary's and I need the utility account.";
+    expect(sanitiseRequestReason(raw)).toBe(raw);
+  });
+
+  it('caps the length so one request cannot carry a payload', () => {
+    const out = sanitiseRequestReason('x'.repeat(50_000)) as string;
+    expect(out).toHaveLength(MAX_REASON_CHARS);
+  });
+
+  it('treats blank and non-string input as no reason', () => {
+    expect(sanitiseRequestReason('   \n\t ')).toBeNull();
+    expect(sanitiseRequestReason(undefined)).toBeNull();
+    expect(sanitiseRequestReason(42)).toBeNull();
   });
 });

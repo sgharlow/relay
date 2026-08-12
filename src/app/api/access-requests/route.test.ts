@@ -37,6 +37,10 @@ const mockAuth = vi.mocked(requireOwner);
 const mockResolve = vi.mocked(resolveRequesterFor);
 const mockToken = vi.mocked(verifyRecipientToken);
 
+/** Real UUIDs: `owner_id` is shape-checked before it reaches a UUID column. */
+const OWNER = '9510683f-af55-4265-8840-b2986824a2e1';
+const OTHER = '1463e162-6602-473d-bddb-8fe30524f7c7';
+
 function req(body: unknown, headers: Record<string, string> = {}): NextRequest {
   return new NextRequest('https://relaystandby.com/api/access-requests', {
     method: 'POST',
@@ -64,16 +68,16 @@ beforeEach(() => {
 describe('the session door — J6 had no entry point at all before this', () => {
   it('accepts a signed-in recipient asking about a vault they are named on', async () => {
     seedInsertPath();
-    const res = await POST(req({ owner_id: 'o-1', trigger_type: 'emergency', reason: 'in hospital' }));
+    const res = await POST(req({ owner_id: OWNER, trigger_type: 'emergency', reason: 'in hospital' }));
     expect(res.status).toBe(201);
-    expect(mockResolve).toHaveBeenCalledWith('u-1', 'o-1');
+    expect(mockResolve).toHaveBeenCalledWith('u-1', OWNER);
   });
 
   it('REFUSES a signed-in user who is not named on that vault', async () => {
     // The whole point of resolving from the roster: a session proves who you
     // are, not what you may ask about.
     mockResolve.mockResolvedValueOnce(null);
-    const res = await POST(req({ owner_id: 'somebody-elses', trigger_type: 'emergency' }));
+    const res = await POST(req({ owner_id: OTHER, trigger_type: 'emergency' }));
     expect(res.status).toBe(403);
   });
 
@@ -85,18 +89,26 @@ describe('the session door — J6 had no entry point at all before this', () => 
     expect(mockResolve).not.toHaveBeenCalled();
   });
 
+  it('refuses a malformed owner_id with 400, not a database cast error', async () => {
+    // `owner_id` lands in a UUID column, so a junk value became a Postgres cast
+    // failure and a 500 — an outage-shaped response to a client mistake.
+    const res = await POST(req({ owner_id: 'not-a-uuid', trigger_type: 'emergency' }));
+    expect(res.status).toBe(400);
+    expect(mockResolve).not.toHaveBeenCalled();
+  });
+
   it('refuses when there is no session and no token', async () => {
     // Must be a NextResponse: `isResponse` is an instanceof check, so a plain
     // Response would fall through and be treated as a successful auth.
     mockAuth.mockResolvedValueOnce(
       NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) as never,
     );
-    const res = await POST(req({ owner_id: 'o-1', trigger_type: 'emergency' }));
+    const res = await POST(req({ owner_id: OWNER, trigger_type: 'emergency' }));
     expect(res.status).toBe(401);
   });
 
   it('still validates the trigger type on the session path', async () => {
-    const res = await POST(req({ owner_id: 'o-1', trigger_type: 'not_a_trigger' }));
+    const res = await POST(req({ owner_id: OWNER, trigger_type: 'not_a_trigger' }));
     expect(res.status).toBeGreaterThanOrEqual(400);
   });
 });

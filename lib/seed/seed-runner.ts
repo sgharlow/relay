@@ -83,9 +83,9 @@ export async function seedDemo(): Promise<SeedResult> {
   // see lib/auth/auth-options.ts) so signing in as the demo email lands on this
   // seeded row (ON CONFLICT keeps is_demo_account=true).
   const u = await query<{ id: string }>(
-    `INSERT INTO users (email, auth_sub, is_demo_account, checkin_interval_days)
-     VALUES ($1, $2, true, $3) RETURNING id`,
-    [data.user.email, `credentials:${data.user.email}`, data.user.checkin_interval_days],
+    `INSERT INTO users (email, auth_sub, is_demo_account, checkin_interval_days, display_name)
+     VALUES ($1, $2, true, $3, $4) RETURNING id`,
+    [data.user.email, `credentials:${data.user.email}`, data.user.checkin_interval_days, data.user.displayName],
   );
   const ownerId = u.rows[0].id;
 

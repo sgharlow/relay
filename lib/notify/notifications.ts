@@ -451,9 +451,15 @@ export async function notifyOwnerOfAccessRequest(params: {
       `${params.requesterName} has asked for ${params.triggerType} access to your vault.
 
 ` +
-      (params.reason ? `They said: "${params.reason}"
+      (params.reason
+        ? `They said: "${params.reason}"
 
-` : '') +
+` +
+          `(That is their wording, not ours. We remove any links other people write, because a ` +
+          `message from Relay never asks you to click one.)
+
+`
+        : '') +
       `If you are fine, say so and nothing opens:
 ${appUrl()}/challenge
 

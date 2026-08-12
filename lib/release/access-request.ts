@@ -42,6 +42,46 @@ export const CHALLENGE_WINDOW_SECONDS: Record<TriggerType, number> = {
 export const MAX_REQUESTS_PER_WINDOW = 3;
 export const VELOCITY_WINDOW_SECONDS = 86400;
 
+/**
+ * The free-text reason, made safe to put in an email.
+ *
+ * 🔴 THIS BECAME REACHABLE ON 2026-08-12. The reason was stored and mailed
+ * verbatim, which was inert while `POST /api/access-requests` required a
+ * recipient token nobody could obtain before a release. Giving J6 a front door
+ * turned it into **attacker-controlled text that Relay sends from its own domain
+ * to the owner's inbox**, and the attacker is exactly the person this
+ * architecture already names as a threat: a named contact who accepted, then
+ * turned hostile.
+ *
+ * Two things are removed, for two different reasons.
+ *
+ * NEWLINES COLLAPSE. The reason is interpolated into a plain-text body inside a
+ * quoted block. Newlines let a sender close that quote visually and append text
+ * that reads as Relay's own — the ordinary email-body forgery. One line cannot
+ * do that.
+ *
+ * LINKS ARE REMOVED, and the message says so. Relay's anti-phishing promise is
+ * that a message from us never asks you to click; a Relay-branded email carrying
+ * a stranger's URL, arriving during someone's emergency, spends the domain
+ * reputation that promise is built on. A legitimate requester rarely needs a
+ * link and can be asked. Stated rather than silently stripped, because a
+ * requester who wrote one deserves to know it did not arrive.
+ *
+ * ⚠️ RESIDUAL, ACCEPTED: bare hostnames with no scheme (`evil.com`) are not
+ * stripped, because the patterns that catch them also catch "St. Mary's" and
+ * ordinary filenames. Some clients auto-link them. The cap and the attribution
+ * bound what that is worth.
+ */
+export const MAX_REASON_CHARS = 500;
+
+const URLISH = /(?:[a-z][a-z0-9+.-]*:\/\/|www\.)\S+/gi;
+
+export function sanitiseRequestReason(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const flat = raw.replace(URLISH, '[link removed]').replace(/\s+/g, ' ').trim();
+  return flat ? flat.slice(0, MAX_REASON_CHARS) : null;
+}
+
 export function challengeExpiry(triggerType: TriggerType, now: Date = new Date()): string {
   const window = CHALLENGE_WINDOW_SECONDS[triggerType] ?? CHALLENGE_WINDOW_SECONDS.emergency;
   return new Date(now.getTime() + window * 1000).toISOString();
