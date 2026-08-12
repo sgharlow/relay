@@ -222,26 +222,30 @@ export async function redeemBreakGlass(params: {
   // mail outage cannot be allowed to stop them. The audit entry above is the
   // durable record; this is the alert. Failure is swallowed the same way every
   // other notification in this codebase swallows it.
-  void (async () => {
-    try {
-      const contact = await query<{ name: string; email: string }>(
-        `SELECT p.name, u.email
-           FROM ${table} p JOIN users u ON u.id = p.owner_id
-          WHERE p.id = $1 LIMIT 1`,
-        [row.person_id],
-      );
-      const c = contact.rows[0];
-      if (c?.email) {
-        await notifyOwnerOfBreakGlass({
-          to: c.email,
-          personName: c.name,
-          personType: row.person_type,
-        });
-      }
-    } catch {
-      /* alerting is allowed to fail (principle 5) */
+  // Awaited-with-catch rather than fire-and-forget, matching how
+  // `notifyRecipientsOfRelease` is called from `submitConfirmation`. Fire-and-
+  // forget would make the one alert that justifies this credential both
+  // untestable and silent when it breaks — and "allowed to fail" is not the same
+  // as "allowed to fail invisibly" (§3.4: a channel allowed to fail must still
+  // fail visibly).
+  try {
+    const contact = await query<{ name: string; email: string }>(
+      `SELECT p.name, u.email
+         FROM ${table} p JOIN users u ON u.id = p.owner_id
+        WHERE p.id = $1 LIMIT 1`,
+      [row.person_id],
+    );
+    const c = contact.rows[0];
+    if (c?.email) {
+      await notifyOwnerOfBreakGlass({
+        to: c.email,
+        personName: c.name,
+        personType: row.person_type,
+      });
     }
-  })();
+  } catch (err) {
+    process.stderr.write(`[break-glass] owner notification failed: ${String(err)}\n`);
+  }
 
   return {
     userId,

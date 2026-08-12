@@ -19,9 +19,11 @@ vi.mock('../audit/audit-service', () => ({ writeAuditEntry: vi.fn(async () => ({
 vi.mock('../auth/upsert-user', () => ({
   upsertUser: vi.fn(async () => ({ id: 'user-9', email: 'aunt@example.com', is_demo_account: false })),
 }));
+vi.mock('../notify/notifications', () => ({ notifyOwnerOfBreakGlass: vi.fn(async () => true) }));
 
 import { query } from '../db/connection';
 import { writeAuditEntry } from '../audit/audit-service';
+import { notifyOwnerOfBreakGlass } from '../notify/notifications';
 import {
   issueBreakGlass,
   redeemBreakGlass,
@@ -146,6 +148,37 @@ describe('redeemBreakGlass', () => {
     expect(out.userId).toBe('user-77');
     const sql = mockQuery.mock.calls.map((c) => String(c[0])).join(' | ');
     expect(sql).not.toContain('INSERT INTO users');
+  });
+
+  it('TELLS THE OWNER — the alert is what makes a year-old code defensible', async () => {
+    // §3.6 requires redemption to notify the owner, and nothing did until
+    // 2026-08-12: the audit entry recorded it for anyone who went looking, which
+    // is not the same as telling the one person who needs to know. §8.1 accepts
+    // this bearer credential only because using it is LOUD.
+    rows([CODE_ROW], [ROSTER_OK], [], [{ email: 'aunt@example.com' }], [], [
+      { name: 'Aunt Jo', email: 'margaret@example.com' },
+    ]);
+
+    await redeemBreakGlass({ code: 'ABCD2345EFGH' });
+
+    expect(vi.mocked(notifyOwnerOfBreakGlass)).toHaveBeenCalledWith({
+      to: 'margaret@example.com',
+      personName: 'Aunt Jo',
+      personType: 'verifier',
+    });
+  });
+
+  it('still redeems when the owner cannot be emailed — they are mid-emergency', async () => {
+    // Alerting is allowed to fail (principle 5). The audit entry is the durable
+    // record; a mail outage must not strand somebody trying to get in.
+    rows([CODE_ROW], [ROSTER_OK], [], [{ email: 'aunt@example.com' }], [], [
+      { name: 'Aunt Jo', email: 'margaret@example.com' },
+    ]);
+    vi.mocked(notifyOwnerOfBreakGlass).mockRejectedValueOnce(new Error('resend down'));
+
+    await expect(redeemBreakGlass({ code: 'ABCD2345EFGH' })).resolves.toMatchObject({
+      personId: 'ver-1',
+    });
   });
 
   it('REFUSES a revoked person — revocation outranks a code in a drawer', async () => {
