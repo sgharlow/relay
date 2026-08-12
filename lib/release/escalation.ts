@@ -167,14 +167,49 @@ export async function escalateLapsedRequests(
       WHERE status = 'awaiting_owner' AND expires_at <= $1`,
     [now.toISOString()],
   );
+  return escalateEach(lapsed.rows, machine, now);
+}
 
+/**
+ * The derive-on-read half, scoped to the owners one person stands by for.
+ *
+ * This is what §4.4 originally specified and Sprint A could not yet implement:
+ * "when a verifier loads their standby dashboard, requests whose challenge window
+ * has lapsed are computed as verifier-actionable". The reader did not exist then.
+ * It does now, so the lapse fires the moment somebody looks rather than waiting
+ * for the next scheduled sweep — which matters, because the person looking is
+ * usually the person waiting.
+ *
+ * Both paths are CAS-guarded and idempotent, so running the cron and this on the
+ * same request is safe: the first writer wins and the second changes nothing.
+ */
+export async function escalateLapsedRequestsForOwners(
+  ownerIds: string[],
+  machine: Machine,
+  now: Date = new Date(),
+): Promise<EscalationResult[]> {
+  if (ownerIds.length === 0) return [];
+
+  const lapsed = await query<{ id: string }>(
+    `SELECT id FROM access_requests
+      WHERE status = 'awaiting_owner' AND expires_at <= $1 AND owner_id = ANY($2)`,
+    [now.toISOString(), ownerIds],
+  );
+  return escalateEach(lapsed.rows, machine, now);
+}
+
+async function escalateEach(
+  rows: { id: string }[],
+  machine: Machine,
+  now: Date,
+): Promise<EscalationResult[]> {
   const results: EscalationResult[] = [];
-  for (const { id } of lapsed.rows) {
+  for (const { id } of rows) {
     try {
       const out = await escalateLapsedRequest({ requestId: id, machine, now });
       if (out) results.push(out);
     } catch {
-      // Independent owners; the next sweep re-evaluates this one.
+      // Independent owners; the next reader or sweep re-evaluates this one.
     }
   }
   return results;
