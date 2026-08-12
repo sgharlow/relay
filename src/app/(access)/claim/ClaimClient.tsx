@@ -41,7 +41,11 @@ export default function ClaimClient() {
     // authentication, and the session it mints is the device binding.
     signIn('standby-claim', { token, redirect: false })
       .then((res) => {
-        if (!res || res.error) {
+        // `ok` explicitly, not merely "no error". A falsy or partial result --
+        // seen on 2026-08-12 when a TLS-interception proxy mangled the callback
+        // -- must not read as success and send someone to a dashboard for a
+        // claim that never happened.
+        if (!res || res.error || res.ok !== true) {
           setState({
             kind: 'error',
             message: 'That code is not valid, or it has already been used.',

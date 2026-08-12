@@ -163,6 +163,30 @@ re-confirm cadence.
 
 ---
 
+## 3a. 🔴 Found while building Sprint D — a session outlives its account
+
+**A deleted user's session keeps working until the JWT expires.** Proven on
+production 2026-08-12: a browser holding a session for a user that had been
+deleted from `users` was still accepted — `/api/standby` answered **200** rather
+than 401, because `getOwnerSession` reads a self-contained JWT and nothing checks
+that `users.id` still exists.
+
+Impact **today is low**: every owner query is scoped by `owner_id`, so a deleted
+account's session reads its own absent data and nothing else, and
+`resolveStandbyFor` returns zero relationships. Nothing leaks.
+
+It matters because of what it means rather than what it does: **"delete my
+account" does not mean "signed out", and revocation is not immediate.** That is
+the §3.7 rule 1 concern made real — the JWT is a snapshot, and the gap between
+snapshot and truth is exactly where revocation lives. §3.7 rule 3 already
+requires a standby deletion to degrade the owner's circle, which it does in the
+database; the person simply keeps a working cookie for up to 24 hours.
+
+Not fixed here, deliberately: the honest fix is session invalidation (a token
+version on `users`, checked per request), which is a design decision with a
+per-request cost, not something to bolt on at the end of a sprint. **Do it before
+beta**, since a beta is when real people start deleting real accounts.
+
 ## 4. Gaps this analysis found
 
 **N14 — the fingerprint mismatch path was unspecified, and it is the whole point of the control.**
