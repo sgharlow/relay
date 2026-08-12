@@ -48,3 +48,8 @@ demo-out/*.jpeg
 # Scratch probe scripts. These are throwaway files written at the repo root to
 # exercise live behaviour; one of them once carried a TOTP secret into a commit.
 _*.ts
+
+# Throwaway QA fixtures. They label themselves "not committed" and three of
+# them still reached the repo, because `git add -A` plus a `git checkout -- .`
+# that restored deletions is enough to defeat any convention.
+scripts/scratch-*.ts
