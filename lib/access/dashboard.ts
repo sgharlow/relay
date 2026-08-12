@@ -153,13 +153,39 @@ export async function getAccessDashboard(token: string): Promise<AccessDashboard
   const payload = await verifyTokenOr403(token);
   const rs = await readReleaseState(payload.releaseStateId);
   assertVersion(rs, payload.version);
+  return buildDashboard(payload.recipientId, rs);
+}
 
-  const scoped = await fetchScopedItems(payload.recipientId, rs.trigger_type, rs.owner_id);
+/**
+ * The same dashboard, for a recipient resolved from a SESSION rather than a
+ * token (Sprint D).
+ *
+ * No `assertVersion` here, and that is not an omission. The token path needs it
+ * because a JWT carries a snapshot of `version` that can go stale between issue
+ * and use; a session carries nothing, so this reads the row fresh on every call
+ * and staleness cannot exist. Same guarantee, enforced in a better place.
+ *
+ * Both paths funnel into `buildDashboard`, so scoping, ranking, the limited-field
+ * rule and the audit entry can never drift between them.
+ */
+export async function getAccessDashboardForRecipient(
+  recipientId: string,
+  releaseStateId: string,
+): Promise<AccessDashboard> {
+  const rs = await readReleaseState(releaseStateId);
+  return buildDashboard(recipientId, rs);
+}
+
+async function buildDashboard(
+  recipientId: string,
+  rs: ReleaseStateRow,
+): Promise<AccessDashboard> {
+  const scoped = await fetchScopedItems(recipientId, rs.trigger_type, rs.owner_id);
   const released = rs.state === 'released';
 
   // Page render is always audited (Req 7.7).
   await writeAuditEntry(rs.owner_id, {
-    actor: `recipient:${payload.recipientId}`,
+    actor: `recipient:${recipientId}`,
     action: 'recipient_dashboard_viewed',
     entity: 'release_state',
     entityId: rs.id,

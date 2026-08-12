@@ -69,14 +69,22 @@ function article(word: string): 'a' | 'an' {
  *
  * Requirements: 7.1, 15.2
  */
+/** Not an error — a claimed recipient deliberately gets no code. */
+class SkipCodeForClaimedRecipient extends Error {}
+
 export async function notifyRecipientsOfRelease(params: {
   releaseStateId: string;
   ownerId: string;
   triggerType: string;
   version: string | number;
 }): Promise<number> {
-  const recipients = await query<{ id: string; name: string; email: string }>(
-    `SELECT DISTINCT r.id, r.name, r.email
+  const recipients = await query<{
+    id: string;
+    name: string;
+    email: string;
+    claimed_user_id: string | null;
+  }>(
+    `SELECT DISTINCT r.id, r.name, r.email, r.claimed_user_id
        FROM recipients r
        JOIN access_rules ar ON ar.recipient_id = r.id
       WHERE ar.owner_id = $1 AND ar.trigger_type = $2`,
@@ -92,8 +100,15 @@ export async function notifyRecipientsOfRelease(params: {
       // credential of the two, because it opens the vault rather than asking one
       // question. Forwarding this email to a sibling used to hand over access to
       // a parent's accounts.
+      // A CLAIMED recipient needs no code: they sign into an account they
+      // already have and the release resolves server-side. Minting one anyway
+      // would put a working credential into an email for somebody who does not
+      // need it — which is the exact thing this architecture exists to stop.
+      // The notification still goes out; it is now purely a notification, and
+      // it is allowed to fail.
       let code: string | null = null;
       try {
+        if (r.claimed_user_id) throw new SkipCodeForClaimedRecipient();
         code = formatCode(
           await issueRecipientCode({
             recipientId: r.id,
