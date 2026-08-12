@@ -24,6 +24,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import StandbyPasskeyCard from './StandbyPasskeyCard';
 import LeaveControl from './LeaveControl';
+import AskControl from './AskControl';
 
 interface Grant {
   itemCount: number;
@@ -218,7 +219,19 @@ export default function StandbyClient() {
           {rel.openRelease ? (
             <OpenRelease rel={rel} />
           ) : (
-            <p style={{ fontSize: 16, marginTop: 12, color: '#6b6257' }}>Nothing open.</p>
+            <>
+              <p style={{ fontSize: 16, marginTop: 12, color: '#6b6257' }}>Nothing open.</p>
+              {/*
+                J6's front door, and it belongs exactly here — next to the
+                sentence saying nothing is open, which is the moment somebody
+                realises they need something and has nowhere to go. Recipients
+                only: a verifier receives no access, so "ask them to open it"
+                would be asking on somebody else's behalf.
+              */}
+              {rel.personType === 'recipient' ? (
+                <AskControl ownerId={rel.ownerId} ownerLabel={rel.ownerLabel} onAsked={load} />
+              ) : null}
+            </>
           )}
 
           <LeaveControl

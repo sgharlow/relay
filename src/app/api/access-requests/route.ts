@@ -15,6 +15,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
 import { requireOwner, readJson, isResponse, mapError } from '../../../../lib/http/owner-route';
+import { resolveRequesterFor } from '../../../../lib/access/requester-session';
 import { verifyRecipientToken } from '../../../../lib/auth/recipient-token';
 import { query } from '../../../../lib/db/connection';
 import { writeAuditEntry } from '../../../../lib/audit/audit-service';
@@ -51,23 +52,56 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const body = await readJson(req);
   if (isResponse(body)) return body;
 
-  const { recipient_token, trigger_type, reason } = (body ?? {}) as Record<string, unknown>;
+  const { recipient_token, trigger_type, reason, owner_id } = (body ?? {}) as Record<string, unknown>;
 
   const authz = req.headers.get('authorization');
   const token = authz?.startsWith('Bearer ') ? authz.slice(7) : recipient_token;
 
-  if (typeof token !== 'string') {
-    return NextResponse.json(
-      { error: 'Unauthorized', message: 'Recipient credentials required' },
-      { status: 401 },
-    );
-  }
+  /**
+   * TWO DOORS, ONE AUTHORIZATION CORE — the same split already applied to
+   * recipient decrypt and the verifier decision. Everything below keys on
+   * `recipientId`; the only thing that changed is how it is obtained.
+   *
+   * 🔴 THE TOKEN DOOR WAS THE ONLY ONE, AND IT LED NOWHERE. Recipient tokens are
+   * minted only after a release is already open, so the sole person who could
+   * ask for access was one who already had it — and J6 was unreachable in a
+   * product that had built the owner's challenge screen, the escalation and the
+   * circle broadcast for it. Found by writing the user manual 2026-08-12.
+   *
+   * The token path is UNCHANGED and stays: an unclaimed recipient holding a live
+   * access code is still a legitimate requester.
+   */
+  let payload: { recipientId: string } | null = null;
 
-  let payload;
-  try {
-    payload = await verifyRecipientToken(token);
-  } catch {
-    return NextResponse.json({ error: 'Forbidden', message: 'Invalid recipient token' }, { status: 403 });
+  if (typeof token === 'string') {
+    try {
+      payload = await verifyRecipientToken(token);
+    } catch {
+      return NextResponse.json({ error: 'Forbidden', message: 'Invalid recipient token' }, { status: 403 });
+    }
+  } else {
+    // ⚠️ `requireOwner()` called WITHOUT `req`, deliberately (§3.7 rule 8).
+    // Passing it records deliberate activity, and asking somebody else to open
+    // their vault must not extend the requester's OWN dead-man's-switch.
+    const auth = await requireOwner();
+    if (isResponse(auth)) return auth;
+
+    if (typeof owner_id !== 'string') {
+      return NextResponse.json(
+        { error: 'BadRequest', message: 'owner_id is required' },
+        { status: 400 },
+      );
+    }
+
+    // §3.7 rule 1: the roster row decides, not the session token.
+    const resolved = await resolveRequesterFor(auth.ownerId, owner_id);
+    if (!resolved) {
+      return NextResponse.json(
+        { error: 'Forbidden', message: 'You are not named on that vault.' },
+        { status: 403 },
+      );
+    }
+    payload = { recipientId: resolved.recipientId };
   }
 
   try {
