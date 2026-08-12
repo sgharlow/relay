@@ -19,17 +19,15 @@ vi.mock('../../../../lib/release/provisioning', () => ({ setRequiredConfirmation
 vi.mock('../../../../lib/db/connection', () => ({ query: vi.fn() }));
 
 import { getOwnerSession } from '../../../../lib/auth/session';
-import { listReleaseStates, getCheckinInterval, getVerifierCount } from '../../../../lib/release/release-list';
+import { listReleaseStates, getCheckinInterval } from '../../../../lib/release/release-list';
 import { setRequiredConfirmations } from '../../../../lib/release/provisioning';
 import { query as dbQuery } from '../../../../lib/db/connection';
-import { ValidationError } from '../../../../lib/validation';
 import { GET } from './route';
 import { PUT } from './[id]/config/route';
 
 const mockSession = vi.mocked(getOwnerSession);
 const mockList = vi.mocked(listReleaseStates);
 const mockInterval = vi.mocked(getCheckinInterval);
-const mockVerifierCount = vi.mocked(getVerifierCount);
 const mockSetN = vi.mocked(setRequiredConfirmations);
 const mockQuery = vi.mocked(dbQuery);
 

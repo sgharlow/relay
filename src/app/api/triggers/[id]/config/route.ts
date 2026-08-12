@@ -15,7 +15,6 @@ import { requireOwner, readJson, isResponse, mapError } from '../../../../../../
 import { setRequiredConfirmations } from '../../../../../../lib/release/provisioning';
 import { countEligibleVerifiers, assertQuorumSatisfiable } from '../../../../../../lib/release/quorum';
 import { query } from '../../../../../../lib/db/connection';
-import { getVerifierCount } from '../../../../../../lib/release/release-list';
 import { isUserSelectableTriggerType } from '../../../../../../lib/domain/enums';
 
 type Ctx = { params: Promise<{ id: string }> };
