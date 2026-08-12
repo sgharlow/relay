@@ -37,6 +37,8 @@ interface Relationship {
   state: string;
   grant?: Grant;
   openRelease: { releaseStateId: string; state: string; caseId: string | null } | null;
+  /** Verifiers only: is their answer still outstanding? */
+  awaitingDecision?: boolean;
 }
 
 /**
@@ -68,7 +70,10 @@ function OpenRelease({ rel }: { rel: Relationship }) {
   if (!open) return null;
 
   const caseRef = open.caseId ? ` · case ${open.caseId}` : '';
-  const awaitingDecision = open.state === 'pending' || open.state === 'grace';
+  // Resolved server-side (`standby-resolve.ts`) so this card and /api/verify
+  // cannot disagree about whether an answer is still wanted. Defaults to false
+  // when absent: silence is better than asking someone twice.
+  const awaitingDecision = rel.awaitingDecision === true;
 
   // A verifier is asked to decide while the release is pending or in grace —
   // matching `submitConfirmation`'s own guard, so the button is never offered

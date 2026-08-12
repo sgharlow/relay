@@ -47,6 +47,16 @@ export interface StandbyRelationship {
   /** Recipients only. Counts and categories — never titles (J4-R10). */
   grant?: StandbyView;
   openRelease: OpenRelease | null;
+  /**
+   * Verifiers only, and only while a release is open: is this person's answer
+   * still outstanding? Undefined for recipients.
+   *
+   * The dashboard must not keep asking somebody who has already answered — see
+   * the note in `verifier-session.ts`. Computed here rather than left to the
+   * client so the card and `/api/verify` cannot disagree about whether a
+   * decision is waiting.
+   */
+  awaitingDecision?: boolean;
 }
 
 export interface StandbyResolution {
@@ -117,6 +127,22 @@ export async function resolveStandbyFor(params: {
     });
   }
 
+  // Which verifier rows have already answered, in one query rather than one per
+  // person. Keyed by verifier+release because the same person may stand by for
+  // several owners with separate open releases.
+  const verifierIds = found.rows
+    .filter((r) => r.person_type === 'verifier')
+    .map((r) => r.person_id);
+  const answered = new Set<string>();
+  if (verifierIds.length > 0) {
+    const decided = await query<{ verifier_id: string; release_state_id: string }>(
+      `SELECT verifier_id, release_state_id FROM verifier_confirmations
+        WHERE verifier_id = ANY($1)`,
+      [verifierIds],
+    );
+    for (const d of decided.rows) answered.add(`${d.verifier_id}:${d.release_state_id}`);
+  }
+
   const relationships: StandbyRelationship[] = [];
   for (const row of found.rows) {
     // Belt and braces. The SQL above already excludes `revoked`; this repeats it
@@ -138,6 +164,12 @@ export async function resolveStandbyFor(params: {
     // no knowledge of what is inside — so we never even build the view.
     if (row.person_type === 'recipient') {
       rel.grant = await buildStandbyView(row.owner_id, row.person_id);
+    } else if (rel.openRelease) {
+      // `released` is not a question: the decision has already been made and
+      // acted on, so nothing is outstanding regardless of who answered what.
+      rel.awaitingDecision =
+        rel.openRelease.state !== 'released' &&
+        !answered.has(`${row.person_id}:${rel.openRelease.releaseStateId}`);
     }
 
     relationships.push(rel);

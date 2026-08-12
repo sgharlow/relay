@@ -63,6 +63,12 @@ const VERIFIER_ROW = {
 beforeEach(() => {
   vi.clearAllMocks();
   mockQuery.mockReset();
+  // Anything the `rows(...)` sequence does not spell out answers empty rather
+  // than undefined. These tests assert on ONE thing each, and a positional mock
+  // that crashes the moment an unrelated query is added makes every future
+  // change look like a regression in tests that were never about it — which is
+  // exactly what happened when the already-answered lookup landed.
+  mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
 });
 
 describe('resolveStandbyFor', () => {
@@ -106,6 +112,55 @@ describe('resolveStandbyFor', () => {
 
     const passed = vi.mocked(escalateLapsedRequestsForOwners).mock.calls[0][0];
     expect([...passed].sort()).toEqual(['owner-1', 'owner-2']);
+  });
+
+  it('stops asking a verifier who has already answered', async () => {
+    // Found live on 2026-08-12: after confirming, the card went on saying "They
+    // need your answer". Submitting again was safely idempotent, but being asked
+    // the same question twice during an emergency reads as the product having
+    // lost the answer — and a verifier who stops trusting the ask stops
+    // answering, which is the one failure this journey cannot absorb.
+    rows(
+      [VERIFIER_ROW],
+      [{ owner_id: 'owner-2', release_state_id: 'rs-1', trigger_type: 'emergency', state: 'grace', case_id: 'RLY-A' }],
+      [{ verifier_id: 'ver-1', release_state_id: 'rs-1' }],
+    );
+
+    const out = await resolveStandbyFor({ userId: 'user-1' });
+
+    expect(out.relationships[0].awaitingDecision).toBe(false);
+  });
+
+  it('still asks a verifier who has not answered THIS release', async () => {
+    rows(
+      [VERIFIER_ROW],
+      [{ owner_id: 'owner-2', release_state_id: 'rs-1', trigger_type: 'emergency', state: 'pending', case_id: 'RLY-A' }],
+      // An answer to a DIFFERENT release must not silence this one.
+      [{ verifier_id: 'ver-1', release_state_id: 'rs-earlier' }],
+    );
+
+    const out = await resolveStandbyFor({ userId: 'user-1' });
+
+    expect(out.relationships[0].awaitingDecision).toBe(true);
+  });
+
+  it('asks nothing of a verifier once the release is RELEASED', async () => {
+    // The decision has been made and acted on; there is no question left.
+    rows(
+      [VERIFIER_ROW],
+      [{ owner_id: 'owner-2', release_state_id: 'rs-1', trigger_type: 'emergency', state: 'released', case_id: 'RLY-A' }],
+      [],
+    );
+
+    const out = await resolveStandbyFor({ userId: 'user-1' });
+
+    expect(out.relationships[0].awaitingDecision).toBe(false);
+  });
+
+  it('leaves awaitingDecision undefined for a recipient', async () => {
+    rows([RECIPIENT_ROW], []);
+    const out = await resolveStandbyFor({ userId: 'user-1' });
+    expect(out.relationships[0].awaitingDecision).toBeUndefined();
   });
 
   it('reports open work so rung 0 shows something without anyone being told', async () => {

@@ -52,6 +52,14 @@ export interface ResolvedVerifier {
  * owners with simultaneous open releases; the dashboard always passes it. It is
  * not a credential — holding it grants nothing without a session, and the roster
  * row is re-checked here regardless of what was passed.
+ *
+ * A release this verifier has ALREADY ANSWERED does not resolve. Found live on
+ * 2026-08-12: after confirming, this still returned the release, so the dashboard
+ * went on saying "They need your answer" and the decision page re-asked.
+ * Submitting again was safely idempotent — `submitConfirmation` intent-reads and
+ * returns `duplicate`, so nothing was ever double-counted — but being asked the
+ * same question twice during someone's emergency reads as the product having lost
+ * the answer, and a verifier who stops trusting the ask stops answering.
  */
 export async function resolveVerifierFor(
   userId: string,
@@ -70,6 +78,11 @@ export async function resolveVerifierFor(
         AND coalesce(v.standby_state, 'invited') <> 'revoked'
         AND rs.state IN ('pending', 'grace')
         AND ($2::uuid IS NULL OR rs.id = $2::uuid)
+        -- Already answered is not still waiting -- see the note above.
+        AND NOT EXISTS (
+          SELECT 1 FROM verifier_confirmations vc
+           WHERE vc.release_state_id = rs.id AND vc.verifier_id = v.id
+        )
       ORDER BY CASE rs.state WHEN 'pending' THEN 0 ELSE 1 END,
                rs.initiated_at NULLS LAST,
                rs.id
