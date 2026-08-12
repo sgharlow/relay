@@ -14,6 +14,7 @@
 import { query } from '../db/connection';
 import { ensureReleaseState } from '../release/provisioning';
 import { upsertUser } from '../auth/upsert-user';
+import { issueBreakGlass } from '../people/break-glass';
 import { buildDemoData } from './demo-data';
 
 /**
@@ -136,6 +137,11 @@ export async function seedDemo(): Promise<SeedResult> {
       [ownerId, v.name, v.email, v.phone],
     );
     await bindStandby('verifiers', r.rows[0].id, v.email, v.standby ?? 'invited');
+    if (v.breakGlass) {
+      // So the seeded plan is resilient rather than merely configured — see the
+      // note on SeedVerifier.breakGlass.
+      await issueBreakGlass({ ownerId, personId: r.rows[0].id, personType: 'verifier' });
+    }
   }
 
   // 6. Access rules (keys resolved).

@@ -66,6 +66,16 @@ export interface SeedVerifier {
   phone: string | null;
   /** Person state to seed. Omitted means `invited`, as before. */
   standby?: SeedStandbyState;
+  /**
+   * Issue them an emergency code as part of the seed.
+   *
+   * Not decoration: with both verifiers confirmed and the estate trigger needing
+   * both, the quorum has no slack, so [A3] correctly raised `fragile_quorum` —
+   * the plan rested on two people who had no way back in if they lost a phone.
+   * A demo should show a plan that is actually resilient, and giving verifiers a
+   * code is exactly what the product asks a diligent owner to do.
+   */
+  breakGlass?: boolean;
 }
 
 export interface SeedRule {
@@ -183,8 +193,8 @@ export function buildDemoData(): DemoData {
   ];
 
   const verifiers: SeedVerifier[] = [
-    { key: 'doctor', name: 'Dr. Alex Chen', email: 'achen@example.com', phone: '+15555556666', standby: 'confirmed' },
-    { key: 'brother', name: 'Sam Rivera', email: 'sam@example.com', phone: '+15557778888', standby: 'confirmed' },
+    { key: 'doctor', name: 'Dr. Alex Chen', email: 'achen@example.com', phone: '+15555556666', standby: 'confirmed', breakGlass: true },
+    { key: 'brother', name: 'Sam Rivera', email: 'sam@example.com', phone: '+15557778888', standby: 'confirmed', breakGlass: true },
   ];
 
   // Emergency access (reversible) to the spouse for the critical items.
