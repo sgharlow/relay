@@ -403,13 +403,28 @@ happened, that the light is amber and why, and the one action that matters if it
 deliberately does not say what the person can now reach: if the code was used by the wrong hands,
 that message is going to the right ones and must not become a map.
 
+### Option 2 is unblocked — but it needs a decision, not just a code change
+
+Ceasing to mint codes for claimed verifiers is now *safe to build*: a claimed verifier who cannot
+sign in has a working fallback for the first time. Two things should be settled first, because the
+change is one string and the consequences are not:
+
+- **§8.1's question is still unanswered.** Is a break-glass-only contact **covered** or a
+  **documented exclusion**? §4.3 says exclusion; the product says nothing, and the circle light
+  shows red — which reads "not yet" when the truth may be "not ever, on this device".
+- **The fallback is only as good as its distribution.** A code that exists but was never handed over
+  is not cover. Nothing yet tells an owner which of their people hold an unredeemed code, so
+  "everyone has a fallback" is currently unknowable from inside the product.
+
 ### 🔴 Still open
 
 1. **Assurance controls are API-only**: fingerprint confirm and resign have routes and no UI, so the
    circle light can never go green and a contact cannot leave.
-2. **Break-glass has no ISSUE UI.** ✅ *Redeem shipped and live-proven 2026-08-12 — see below.*
-   `POST /api/people/[id]/break-glass` still has no caller, so an owner cannot hand anyone a code
-   and the path is reachable only by script. That is now the whole of what blocks Option 2.
+2. ✅ **Break-glass is complete — issue and redeem both shipped and live-proven 2026-08-12.**
+   Full loop walked with no scripts on either end: owner opens *Emergency code* on `/circle` →
+   reads the explanation → creates a code → a different person redeems it at `/break-glass` and
+   lands on their standby dashboard. **Option 2 is therefore unblocked** — see the decision note
+   below before taking it.
 3. **`lib/vault/circle-readiness.ts` is dead code** — [A3], tested, imported by nothing but its test.
 4. **§9.3's Terms ship-gate is breached.** *"Terms need a standby clause before standby accounts
    exist in production."* They exist; `terms/page.tsx` and `privacy/page.tsx` contain zero
