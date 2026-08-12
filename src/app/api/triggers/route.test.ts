@@ -39,7 +39,16 @@ function rosterReturns(verifiers: unknown[], conflictedRecipients: unknown[] = [
     rowCount: conflictedRecipients.length,
   } as never);
 }
-const eligible = (id: string) => ({ id, claimed_user_id: null, standby_state: null });
+/**
+ * Someone whose answer COUNTS. `standby_state: 'confirmed'` since 2026-08-12 —
+ * before the §4.3 tightening any non-revoked row counted, so this fixture used
+ * `null`. The rename would be silent otherwise: a fixture that no longer means
+ * what its name says is how a test keeps passing while testing nothing.
+ */
+const eligible = (id: string) => ({ id, claimed_user_id: null, standby_state: 'confirmed' });
+
+/** Claimed but never checked — may answer, does not count. */
+const unverified = (id: string) => ({ id, claimed_user_id: `u-${id}`, standby_state: 'claimed' });
 
 function makeReq(body: unknown) {
   return { json: async () => body } as never;
@@ -99,6 +108,17 @@ it('does not count a verifier who is also a recipient on this release', async ()
     [{ id: 'v-1', claimed_user_id: 'user-1', standby_state: 'confirmed' }, eligible('v-2')],
     [{ claimed_user_id: 'user-1' }],
   );
+  const res = await PUT(makeReq({ required_confirmations: 2 }), { params: Promise.resolve({ id: 'emergency' }) });
+  expect(res.status).toBe(400);
+  expect(mockSetN).not.toHaveBeenCalled();
+});
+
+it('config PUT does not count verifiers the owner has never verified', async () => {
+  // §4.3, tightened 2026-08-12. Three people are named and none has been
+  // checked, so N=2 is refused: their answers would be recorded and would move
+  // nothing. Before the tightening this was accepted and the shortfall only
+  // showed up as a release that quietly never completed.
+  rosterReturns([unverified('v-1'), unverified('v-2'), unverified('v-3')]);
   const res = await PUT(makeReq({ required_confirmations: 2 }), { params: Promise.resolve({ id: 'emergency' }) });
   expect(res.status).toBe(400);
   expect(mockSetN).not.toHaveBeenCalled();

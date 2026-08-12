@@ -152,10 +152,24 @@ export async function assessReadiness(ownerId: string): Promise<Readiness> {
   // own threshold, or it can enter GRACE and never leave.
   const highestRequired = states.rows.reduce((max, r) => Math.max(max, Number(r.required_confirmations)), 0);
 
-  // Everyone who is not revoked — see the blocker below for why that is the
-  // right line for a FATAL check.
+  /**
+   * TIGHTENED 2026-08-12 from "not revoked" to "confirmed", in the same change
+   * that tightened the quorum itself.
+   *
+   * This deliberately read "could answer by ANY route" that morning, because a
+   * fatal warning that is untrue for a plan that would in fact run teaches
+   * owners to disbelieve the banner. That reasoning has not changed — what
+   * changed is the truth underneath it. An unconfirmed verifier's answer no
+   * longer advances the quorum (§4.3), so a plan whose threshold exceeds its
+   * confirmed count now genuinely cannot complete, and saying so is accurate
+   * rather than alarmist.
+   *
+   * Conflicts (rules 6/7) are per-trigger and not computed here, so this is an
+   * upper bound — it can only ever UNDER-report a problem, never invent one,
+   * which is the safe direction for something fatal.
+   */
   const ableVerifiers = verifierStates.rows.filter(
-    (v) => readStandbyState(v.standby_state) !== 'revoked',
+    (v) => readStandbyState(v.standby_state) === 'confirmed',
   ).length;
 
   if (states.rows.length > 0 && counts.verifiers === 0) {
@@ -181,17 +195,22 @@ export async function assessReadiness(ownerId: string): Promise<Readiness> {
     // for a plan that would in fact run is worse than none, because a banner
     // owners learn to disbelieve stops working for the cases that are real.
     // Confirmation is graded by the [A3] light below instead.
-    const shortfall = counts.verifiers - ableVerifiers;
+    // Names the fix, not just the fault. The shortfall is almost always people
+    // who have claimed but were never checked, and that is a phone call — so
+    // the message says so and points at the circle rather than at /triggers,
+    // which would suggest lowering the threshold instead.
+    const unchecked = counts.verifiers - ableVerifiers;
     blockers.push({
       code: 'unsatisfiable_quorum',
       message:
-        `A trigger needs ${highestRequired} confirmations but only ${ableVerifiers} of your ` +
-        `trusted contacts could give one` +
-        (shortfall > 0
-          ? ` — ${shortfall} ${shortfall === 1 ? 'has' : 'have'} been removed. ` +
-            'An emergency could start and never resolve.'
-          : '. It could never reach that number.'),
-      href: '/triggers',
+        `A trigger needs ${highestRequired} confirmations, but only ${ableVerifiers} of your ` +
+        `trusted contacts ${ableVerifiers === 1 ? 'is' : 'are'} verified` +
+        (unchecked > 0
+          ? `. ${unchecked === 1 ? 'One is' : `${unchecked} are`} waiting on you to check it is ` +
+            'really them — until then their answer would not count, and an emergency could start ' +
+            'and never resolve.'
+          : '. An emergency could start and never resolve.'),
+      href: unchecked > 0 ? '/circle' : '/triggers',
       fatal: true,
     });
   }

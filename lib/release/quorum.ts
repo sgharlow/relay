@@ -9,20 +9,35 @@
  * Nobody is told. That is the shape of bug this codebase keeps producing, and it
  * is why this module exists.
  *
- * ⚠️ THE STAGING TRAP — READ BEFORE TIGHTENING THIS.
- * §4.3 of the architecture says quorum counts *confirmed* participants. Shipping
- * that literally, today, would mean nobody is confirmed and **every quorum in the
- * product becomes unsatisfiable at once**. During the transition an unclaimed
- * verifier can still act by emailed token, so eligibility is "can this person
- * answer by ANY route", not "have they claimed". Tighten to confirmed-only when
- * the token fallback is actually retired — and not before.
+ * ✅ TIGHTENED TO CONFIRMED 2026-08-12 — the staging note below is now history,
+ * kept because the reasoning still governs what may NOT be done here.
  *
- * The one thing the identity model lets us tighten NOW is separation of duties.
- * With `claimed_user_id` on both roster tables, "the same human" is provable
- * rather than inferred from an email spelling, so a verifier who is also a
- * recipient on the same release can be excluded from the count that authorizes
- * their own access. `detectRoleConcentration` could only ever warn about that,
- * and only in the extreme case where one person held every role.
+ * The note said: tighten when the token fallback is retired, and not before,
+ * because shipping confirmed-only while nobody could be confirmed would make
+ * every quorum in the product unsatisfiable at once. Assurance shipped earlier
+ * the same day — an owner can compare a fingerprint phrase and press one button
+ * — so `confirmed` is reachable for the first time and the trap is closed.
+ *
+ * ⚠️ THE FALLBACK IS NOT RETIRED, AND WILL NOT BE. J7-R1 (amended 2026-08-12)
+ * permanently guarantees that a verifier who never enrolled can still render a
+ * decision by single-use code. That is why eligibility and *answering* are now
+ * separate questions: an unconfirmed verifier may still answer, and their answer
+ * is recorded, but it does not advance the quorum. Both statements have to hold
+ * at once — "you may always decide" and "a quorum is made of people whose
+ * identity was actually checked" — and they only fit together this way.
+ *
+ * WHY CONFIRMED AND NOT MERELY CLAIMED. Claiming proves somebody spent a code.
+ * Confirming proves the owner spoke to them. The claim ticket is a bearer secret
+ * for the hours between sending and spending (§3.3), so an interceptor who
+ * claimed the slot is indistinguishable from the intended person by every
+ * measure the database has. Counting them would let the interception authorize
+ * the release it was staged to obtain.
+ *
+ * Separation of duties rides on the same identity. `claimed_user_id` makes "the
+ * same human" provable rather than inferred from an email spelling, so a
+ * verifier who is also a recipient on the same release is excluded from the
+ * count that authorizes their own access, and an owner is not an independent
+ * attestation about themselves.
  *
  * Feature: relay-standby
  * Requirements: 3.9, J4-R13
@@ -44,24 +59,36 @@ export interface EligibilityContext {
   ownerUserId?: string;
 }
 
+/**
+ * Does this one verifier's answer count toward the quorum?
+ *
+ * Single-row form, so the configuration check and the runtime check cannot
+ * drift: a threshold validated against one definition of "counts" and enforced
+ * against another is how a plan passes validation and then stalls.
+ */
+export function isEligibleVerifier(
+  row: VerifierEligibilityRow,
+  ctx: EligibilityContext,
+): boolean {
+  // §4.3. `invited` and `claimed` may both still ANSWER — they are simply not
+  // people whose identity the owner has checked, so their answer does not
+  // advance a threshold that exists to represent verified attestation.
+  if (readStandbyState(row.standby_state) !== 'confirmed') return false;
+
+  // Nobody helps authorize their own access (rule 6), and an owner is not an
+  // independent attestation about themselves (rule 7).
+  const conflicted = new Set(ctx.recipientUserIds);
+  if (ctx.ownerUserId) conflicted.add(ctx.ownerUserId);
+  if (row.claimed_user_id && conflicted.has(row.claimed_user_id)) return false;
+
+  return true;
+}
+
 export function countEligibleVerifiers(
   rows: VerifierEligibilityRow[],
   ctx: EligibilityContext,
 ): number {
-  const conflicted = new Set(ctx.recipientUserIds);
-  if (ctx.ownerUserId) conflicted.add(ctx.ownerUserId);
-
-  return rows.filter((r) => {
-    // Revoked is the only state that removes the ability to act. `invited` still
-    // counts while the emailed-token fallback exists — see the staging note.
-    if (readStandbyState(r.standby_state) === 'revoked') return false;
-
-    // Nobody helps authorize their own access, and an owner is not an
-    // independent attestation about themselves.
-    if (r.claimed_user_id && conflicted.has(r.claimed_user_id)) return false;
-
-    return true;
-  }).length;
+  return rows.filter((r) => isEligibleVerifier(r, ctx)).length;
 }
 
 /**

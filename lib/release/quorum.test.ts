@@ -40,26 +40,45 @@ type Row = {
   standby_state: string | null;
 };
 
-describe('countEligibleVerifiers — who can actually answer', () => {
-  it('counts a claimed verifier: they can sign in and confirm', () => {
-    expect(countEligibleVerifiers([claimed()], { recipientUserIds: [] })).toBe(1);
-  });
+/** A verifier whose identity the owner has actually checked. */
+function confirmed(over: Partial<Row> = {}): Row {
+  return claimed({ standby_state: 'confirmed', ...over });
+}
 
+describe('countEligibleVerifiers — whose answer actually counts', () => {
   it('counts a confirmed verifier', () => {
     expect(countEligibleVerifiers([claimed({ standby_state: 'confirmed' })], { recipientUserIds: [] })).toBe(1);
   });
 
-  it('STILL counts an unclaimed verifier during the transition — the token path works', () => {
-    // The trap. Excluding these would strand releases by leaving out people who
-    // can genuinely still act.
+  it('does NOT count a claimed verifier — claiming is not being checked', () => {
+    // TIGHTENED 2026-08-12, and this reversal is the point of the change.
+    // Claiming proves somebody spent a code; the ticket is a bearer secret for
+    // the hours between sending and spending, so an interceptor who claimed the
+    // slot looks identical to the intended person by every measure the database
+    // has. Counting them lets the interception authorize the release it was
+    // staged to obtain. They may still ANSWER (J7-R1) — it just does not count.
+    expect(countEligibleVerifiers([claimed()], { recipientUserIds: [] })).toBe(0);
+  });
+
+  it('does NOT count an unclaimed verifier', () => {
+    // Before assurance existed this counted, because excluding people who could
+    // genuinely still act by emailed token would have stranded every release.
+    // Assurance shipped the same day this tightened, so `confirmed` is now
+    // reachable and the staging is over.
     expect(
       countEligibleVerifiers([{ id: 'v-1', claimed_user_id: null, standby_state: null }], {
         recipientUserIds: [],
       }),
-    ).toBe(1);
+    ).toBe(0);
   });
 
   it('never counts a revoked verifier, claimed or not', () => {
+    expect(
+      countEligibleVerifiers([claimed({ standby_state: 'revoked' })], { recipientUserIds: [] }),
+    ).toBe(0);
+  });
+
+  it('never counts a revoked verifier even if they were once confirmed', () => {
     expect(
       countEligibleVerifiers([claimed({ standby_state: 'revoked' })], { recipientUserIds: [] }),
     ).toBe(0);
@@ -69,17 +88,19 @@ describe('countEligibleVerifiers — who can actually answer', () => {
     // Separation of duties, enforceable for the first time because both roster
     // rows now point at the same claimed_user_id. Under email-keyed rows this
     // was only a warning, and only in the extreme case.
-    expect(countEligibleVerifiers([claimed()], { recipientUserIds: ['user-1'] })).toBe(0);
+    expect(
+      countEligibleVerifiers([confirmed()], { recipientUserIds: ['user-1'] }),
+    ).toBe(0);
   });
 
   it('counts the others when only one verifier is conflicted', () => {
-    const rows = [claimed({ id: 'v-1' }), claimed({ id: 'v-2', claimed_user_id: 'user-2' })];
+    const rows = [confirmed({ id: 'v-1' }), confirmed({ id: 'v-2', claimed_user_id: 'user-2' })];
     expect(countEligibleVerifiers(rows, { recipientUserIds: ['user-1'] })).toBe(1);
   });
 
   it('excludes the owner — they may be the incapacitated or coerced party', () => {
     expect(
-      countEligibleVerifiers([claimed({ claimed_user_id: 'owner-1' })], {
+      countEligibleVerifiers([confirmed({ claimed_user_id: 'owner-1' })], {
         recipientUserIds: [],
         ownerUserId: 'owner-1',
       }),

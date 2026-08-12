@@ -210,14 +210,19 @@ describe('§4.3 — a quorum nobody left can satisfy', () => {
 
     const blocker = r.blockers.find((b) => b.code === 'unsatisfiable_quorum');
     expect(blocker?.fatal).toBe(true);
-    expect(blocker?.message).toContain('been removed');
+    expect(blocker?.message).toContain('verified');
   });
 
-  it('does NOT cry wolf over people who merely have not confirmed', async () => {
-    // A claimed-but-unconfirmed verifier can still answer, and an unclaimed one
-    // still holds the emailed-code path (J7-R1). A FATAL warning that is untrue
-    // for a plan that would in fact run teaches owners to disbelieve the banner,
-    // which then fails for the cases that are real.
+  it('WARNS about people who have not been verified — reversed 2026-08-12', async () => {
+    // This test asserted the opposite that morning, and the reversal is
+    // deliberate rather than a correction. The reasoning then was that a fatal
+    // warning must not be untrue for a plan that would in fact run: a
+    // claimed-but-unconfirmed verifier could still answer and their answer
+    // counted. §4.3 changed the second half — an unverified answer is now
+    // recorded and does NOT advance the quorum — so the plan genuinely cannot
+    // complete and saying so is accurate.
+    //
+    // The principle did not move. What moved was the truth it was applied to.
     setup({
       verifiers: 2,
       states: [{ trigger_type: 'emergency', required_confirmations: 2 }],
@@ -229,7 +234,12 @@ describe('§4.3 — a quorum nobody left can satisfy', () => {
 
     const r = await assessReadiness('owner-1');
 
-    expect(r.blockers.find((b) => b.code === 'unsatisfiable_quorum')).toBeUndefined();
+    const blocker = r.blockers.find((b) => b.code === 'unsatisfiable_quorum');
+    expect(blocker?.fatal).toBe(true);
+    // Points at the circle, not at /triggers: the fix is a phone call, not a
+    // lower threshold.
+    expect(blocker?.href).toBe('/circle');
+    expect(blocker?.message).toContain('really them');
   });
 
   it('fires when a resignation drops the pool below the threshold', async () => {

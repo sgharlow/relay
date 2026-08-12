@@ -57,7 +57,12 @@ function makeRow(overrides: Partial<ReleaseStateRow> = {}): ReleaseStateRow {
 }
 
 /** In-memory release_state + verifier_confirmations behind the query mock. */
-function installSim(initial: ReleaseStateRow, verifierPool = 3) {
+/**
+ * `verifierState` drives the §4.3 eligibility gate added 2026-08-12. Defaults to
+ * `confirmed`, which is what every test written before that change assumed
+ * without having to say so — an answer that counts.
+ */
+function installSim(initial: ReleaseStateRow, verifierPool = 3, verifierState = 'confirmed') {
   const row = { ...initial } as ReleaseStateRow & { version: number };
   row.version = Number(initial.version);
   const confirmations: Array<{ id: string; release_state_id: string; verifier_id: string }> = [];
@@ -75,6 +80,15 @@ function installSim(initial: ReleaseStateRow, verifierPool = 3) {
       row.received_denials = Number(row.received_denials ?? 0) + 1;
       row.version += 1;
       return qResult([{ ...row }]);
+    }
+    // The eligibility row must be matched BEFORE the bare count below: both
+    // mention `FROM verifiers`, and the count shape would read as a person with
+    // no standby_state — i.e. never eligible.
+    if (sql.includes('claimed_user_id, standby_state FROM verifiers')) {
+      return qResult([{ id: p[0], claimed_user_id: null, standby_state: verifierState }]);
+    }
+    if (sql.includes('FROM recipients r')) {
+      return qResult([]); // no dual-role conflicts in these fixtures
     }
     if (sql.includes('FROM verifiers')) {
       return qResult([{ n: String(verifierPool) }]);
@@ -500,5 +514,71 @@ describe('submitConfirmation — deny and abstain', () => {
     const out = await submitConfirmation({ releaseStateId: 'rs-1', verifierId: 'v-1', machine, now });
 
     expect(out.status).toBe('released');
+  });
+});
+
+describe('§4.3 — an unverified answer is recorded but does not count', () => {
+  it('does NOT advance the quorum for a merely CLAIMED verifier', async () => {
+    // The runtime half of the tightening. Without it the configuration check and
+    // the readiness banner would both be claiming something the release path
+    // does not actually enforce — a lie with a green tick on it.
+    installSim(makeRow({ state: 'pending', received_confirmations: 0 }), 3, 'claimed');
+
+    const out = await submitConfirmation({
+      releaseStateId: 'rs-1',
+      verifierId: 'v-1',
+      machine: machineStub(),
+      now: new Date(),
+    });
+
+    expect(out.status).toBe('not_counted');
+    expect(out.receivedConfirmations).toBe(0);
+  });
+
+  it('records the answer anyway — J7-R1 says they may always decide', async () => {
+    installSim(makeRow({ state: 'pending', received_confirmations: 0 }), 3, 'invited');
+
+    await submitConfirmation({
+      releaseStateId: 'rs-1',
+      verifierId: 'v-1',
+      machine: machineStub(),
+      now: new Date(),
+    });
+
+    const inserted = mockQuery.mock.calls
+      .map((c) => String(c[0]))
+      .some((sql) => sql.includes('INSERT INTO verifier_confirmations'));
+    expect(inserted).toBe(true);
+  });
+
+  it('blocks an unverified DENY too — a denial can halt a release', async () => {
+    // Checked before the decision branches on purpose: if only `confirm` were
+    // gated, an unverified party could still stand a genuine release down, and
+    // the same gap would be open facing the other way.
+    installSim(makeRow({ state: 'pending', received_confirmations: 0 }), 3, 'claimed');
+
+    const out = await submitConfirmation({
+      releaseStateId: 'rs-1',
+      verifierId: 'v-1',
+      decision: 'deny',
+      machine: machineStub(),
+      now: new Date(),
+    });
+
+    expect(out.status).toBe('not_counted');
+  });
+
+  it('counts normally once the owner has confirmed them', async () => {
+    installSim(makeRow({ state: 'pending', received_confirmations: 0 }), 3, 'confirmed');
+
+    const out = await submitConfirmation({
+      releaseStateId: 'rs-1',
+      verifierId: 'v-1',
+      machine: machineStub(),
+      now: new Date(),
+    });
+
+    expect(out.status).not.toBe('not_counted');
+    expect(out.receivedConfirmations).toBe(1);
   });
 });

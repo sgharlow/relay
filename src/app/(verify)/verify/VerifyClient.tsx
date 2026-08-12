@@ -46,6 +46,7 @@ export default function VerifyClient() {
   const [ctx, setCtx] = useState<Context | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<Decision | null>(null);
+  const [notCounted, setNotCounted] = useState(false);
   const [busy, setBusy] = useState(false);
   // A CLAIMED verifier arrives with no token at all — they followed the CTA on
   // their standby dashboard. Until this existed they were shown the code-entry
@@ -100,8 +101,15 @@ export default function VerifyClient() {
           body: JSON.stringify({ decision, releaseStateId: release ?? undefined }),
         });
     setBusy(false);
-    if (res.ok) setDone(decision);
-    else setError('We could not record that. Try again in a moment.');
+    if (res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { status?: string };
+      // §4.3: recorded, but it does not advance the quorum because the person
+      // who named them has not yet checked their identity. Saying "thank you,
+      // that's recorded" here would be technically true and practically a lie —
+      // they would walk away believing they had helped.
+      setNotCounted(body.status === 'not_counted');
+      setDone(decision);
+    } else setError('We could not record that. Try again in a moment.');
   }
 
   if (error) {
@@ -129,7 +137,22 @@ export default function VerifyClient() {
     return (
       <div className="rounded-lg border border-rule-strong bg-paper-raised p-6">
         <h1 className="text-t7 font-semibold">Thank you</h1>
-        {done === 'confirm' && (
+        {/*
+          §4.3. Their answer is on the record but does not move the count,
+          because the person who named them never confirmed who they were
+          speaking to. Shown FIRST and plainly: letting somebody leave believing
+          they had helped, during an emergency, is the worst thing this screen
+          could do. It also gives them the one action that fixes it, which is a
+          phone call they can make themselves.
+        */}
+        {notCounted && (
+          <p className="mt-3 rounded-lg border border-ochre bg-ochre-soft p-3 text-ink">
+            Your answer is recorded, but it will not open anything on its own yet — they had not
+            confirmed it was really you before this happened. If you can reach them, ask them to
+            verify you in Relay; your answer counts from then on.
+          </p>
+        )}
+        {done === 'confirm' && !notCounted && (
           <p className="mt-3 text-ink">
             Recorded. {ctx.reversible ? 'They can reverse this at any time.' : 'This one is permanent, as they arranged.'}
           </p>

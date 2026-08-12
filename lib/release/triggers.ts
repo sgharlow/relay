@@ -22,6 +22,7 @@ import { assertCanRelease } from '../billing/entitlements';
 import { isSqlState40001, withOccRetry } from '../db/occ';
 import { writeAuditEntry } from '../audit/audit-service';
 import { DECISIONS, evaluateOutcome, type Decision } from './verifier-decision';
+import { isEligibleVerifier } from './quorum';
 import { notifyRecipientsOfRelease, notifyRecipientsOfClosure } from '../notify/notifications';
 import {
   canRelease,
@@ -292,7 +293,14 @@ export type ConfirmStatus =
   | 'pending_grace'
   | 'inactive'
   /** Denials made the quorum unreachable; the release stood down to ARMED. */
-  | 'halted';
+  | 'halted'
+  /**
+   * §4.3 — the answer was RECORDED but does not advance the quorum, because the
+   * owner has not confirmed this verifier's identity (or they are conflicted out
+   * under rules 6/7). J7-R1 guarantees anyone named may render a decision; it
+   * does not promise that every decision counts.
+   */
+  | 'not_counted';
 
 export interface ConfirmOutcome {
   status: ConfirmStatus;
@@ -398,6 +406,41 @@ async function denyConfirmation(args: {
   return outcome('halted', await readState(releaseStateId));
 }
 
+/**
+ * Does this verifier's answer advance the quorum on THIS release?
+ *
+ * Reads the same rows the configuration check reads and applies the same
+ * predicate, so "what N was validated against" and "what actually counts" are
+ * one definition rather than two that can drift apart.
+ */
+async function verifierCountsTowardQuorum(
+  ownerId: string,
+  triggerType: string,
+  verifierId: string,
+): Promise<boolean> {
+  const [verifier, recipients] = await Promise.all([
+    query<{ id: string; claimed_user_id: string | null; standby_state: string | null }>(
+      `SELECT id, claimed_user_id, standby_state FROM verifiers WHERE id = $1 AND owner_id = $2 LIMIT 1`,
+      [verifierId, ownerId],
+    ),
+    query<{ claimed_user_id: string | null }>(
+      `SELECT DISTINCT r.claimed_user_id
+         FROM recipients r
+         JOIN access_rules ar ON ar.recipient_id = r.id
+        WHERE ar.owner_id = $1 AND ar.trigger_type = $2 AND r.claimed_user_id IS NOT NULL`,
+      [ownerId, triggerType],
+    ),
+  ]);
+
+  const row = verifier.rows[0];
+  if (!row) return false;
+
+  return isEligibleVerifier(row, {
+    recipientUserIds: recipients.rows.map((r) => r.claimed_user_id as string),
+    ownerUserId: ownerId,
+  });
+}
+
 export async function submitConfirmation(params: SubmitConfirmationParams): Promise<ConfirmOutcome> {
   const { releaseStateId, verifierId, machine, now } = params;
   const sleep = params.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
@@ -418,6 +461,30 @@ export async function submitConfirmation(params: SubmitConfirmationParams): Prom
   }
   if (head.state !== 'pending' && head.state !== 'grace') {
     return outcome('inactive', head); // not in a confirmable window
+  }
+
+  // §4.3, tightened 2026-08-12. Checked BEFORE any decision branch so it applies
+  // to confirm, deny and abstain alike — a denial from an unverified party must
+  // not be able to halt a release either, or the same gap reopens facing the
+  // other way.
+  //
+  // The answer is still recorded below. J7-R1 guarantees that anyone named may
+  // render a decision; what changed is that a decision only advances the
+  // threshold when the owner has actually checked who they were speaking to.
+  if (!(await verifierCountsTowardQuorum(head.owner_id, head.trigger_type, verifierId))) {
+    await query(
+      `INSERT INTO verifier_confirmations (release_state_id, verifier_id, method, decision)
+       VALUES ($1, $2, $3, $4)`,
+      [releaseStateId, verifierId, method, params.decision ?? 'confirm'],
+    );
+    await writeAuditEntry(head.owner_id, {
+      actor: `verifier:${verifierId}`,
+      action: 'verifier_answer_not_counted',
+      entity: 'release_state',
+      entityId: releaseStateId,
+      detail: { decision: params.decision ?? 'confirm', reason: 'not_confirmed_or_conflicted' },
+    });
+    return outcome('not_counted', head);
   }
 
   const decision: Decision = DECISIONS.includes(params.decision as Decision)
