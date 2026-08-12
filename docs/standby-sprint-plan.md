@@ -481,11 +481,28 @@ that fixes it, and each is a chance to leave a stale alarm.
 
 ### 🔴 Still open — rewritten 2026-08-12, the earlier numbering had gone stale
 
-1. **Runtime quorum still counts `claimed`, while readiness grades on `confirmed`.** A known and
-   deliberate asymmetry, not a bug: readiness is the stricter of the two and errs toward asking for
-   a phone call. §5's ordering trap #2 said to tighten *when assurance ships* — it shipped
-   2026-08-12, so this is now takeable. Do it after checking no live circle is relying on an
-   unconfirmed participant, since tightening can itself make a quorum unsatisfiable.
+1. ✅ **Quorum tightened to `confirmed` 2026-08-12 — §5's ordering trap #2, closed.** Count, runtime
+   and readiness now share one predicate (`isEligibleVerifier`). Tightening the count alone would
+   have shipped a lie: `countEligibleVerifiers` only ever governed *configuration*, and nothing
+   checked eligibility when a confirmation actually arrived, so the config check and the banner
+   would both have asserted something the release path does not enforce.
+
+   **Answering and counting are now separate**, which is what lets J7-R1 and §4.3 both hold: an
+   unverified verifier may still decide, the answer is audited, and it does not advance the
+   threshold. The verify screen says so plainly rather than thanking them. Gated before the decision
+   branches, so an unverified *deny* cannot halt a genuine release either.
+
+   ⚠️ **Blast radius, measured before the change:** both configured triggers on the live demo
+   account became unsatisfiable, because both its verifiers are `invited`. Not a regression — the
+   true state, reported for the first time — but **every beta owner must make the confirm call
+   before their plan can fire**, and the banner now says so on every screen.
+
+   🔴 **A defect in the change itself, found by walking it live and fixed:** the idempotency
+   intent-read keys on `verifier_confirmations`, so writing the non-counting answer there made every
+   later attempt return `duplicate` — a verifier who answered before being verified could never
+   count, permanently and silently. That is the *ordinary* beta sequence, not an edge case. The
+   non-counting answer now lands in the audit log only. Proven live end to end: answered unverified
+   → recorded, count 0 → owner verifies → answered again → count 1.
 2. **Option 2 — stop minting codes for claimed verifiers.** Unblocked (break-glass works end to
    end). Wants the §8.1 ruling first, plus a way for an owner to see who actually holds an
    unredeemed code — a fallback nobody was handed is not cover.
@@ -509,5 +526,42 @@ that fixes it, and each is a chance to leave a stale alarm.
 ### Verified sound, unchanged
 
 [A4] passive check-in is genuinely wired (`recordDeliberateActivity` in `lib/http/owner-route.ts`),
-and §5's ordering trap #2 was correctly avoided throughout — quorum counted `claimed` while nobody
-could yet be `confirmed`, which is exactly the staging the plan called for.
+and §5's ordering trap #2 was navigated exactly as the plan called for: quorum counted `claimed`
+while nobody could yet be `confirmed`, and tightened the same day assurance made `confirmed`
+reachable.
+
+---
+
+## 10. Beta readiness — reassessed 2026-08-12 (second pass)
+
+**The product is beta-ready; the estate is not yet configured for it.** Every journey now works end
+to end on production without a script, and the remaining items are operational or decisions rather
+than engineering.
+
+### What a beta owner can now do, all live-proven
+Invite someone from `/circle` and read them the code · have them claim, land on a standby dashboard,
+and enrol a passkey · verify a fingerprint phrase by phone and watch the light go green · be told the
+single fastest next action when their plan cannot run · issue and redeem an emergency code · have a
+claimed verifier answer from their dashboard with no token · have a claimed recipient open the plan
+and reach the KMS boundary with no token · stand somebody down and watch access close · leave a
+circle · close an account and have every circle degrade visibly.
+
+### The one thing that changed for beta today
+Quorum now counts only verified people. **An owner who never makes the confirm call has a plan that
+does nothing** — which is the correct security posture and a new operational requirement. The
+readiness banner is the mitigation and it is loud, but beta onboarding should say it out loud too:
+*naming people is not enough; you have to check it is really them.*
+
+### Blockers to a beta cohort — none are code
+1. **The demo account's two triggers are unsatisfiable** (both verifiers `invited`). Fine as a
+   demonstration of the banner; wrong if that account is shown to anyone as a working example.
+2. **§8.1 unanswered** — covered-or-excluded for a break-glass-only contact. Now the last thing
+   gating Option 2.
+3. **Option 2** — stop minting codes for claimed verifiers. Needs (2), plus a way for an owner to
+   see who holds an unredeemed code.
+4. **Phase 0 measurement is still parked**, so claim conversion — the number the whole architecture
+   is bet on — remains unmeasured. The instrument exists (`scripts/phase0-report.ts`).
+
+### Deferred, and genuinely optional
+§3.8 event transparency · `email_secondary` (rung 2) · [A2] guided-setup-call UI, which is packaging
+around an assurance flow that already works.
