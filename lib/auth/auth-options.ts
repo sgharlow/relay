@@ -20,6 +20,7 @@ import { validateTotpCodeFor } from './totp';
 import { resolveTotpSecret } from './resolve-totp-secret';
 import { upsertUser, type UserRecord } from './upsert-user';
 import { openChallenge, finishAuthentication } from './webauthn';
+import { claimStandbyRole } from '../people/claim';
 import { query } from '../db/connection';
 
 // ---------------------------------------------------------------------------
@@ -115,6 +116,64 @@ export const authOptions: NextAuthOptions = {
           ownerId: userRecord.id,
           isDemo: userRecord.is_demo_account,
         } as User & { ownerId: string; isDemo: boolean };
+      },
+    }),
+
+    /**
+     * Claim a standby role AND get a session in one step — [A1] stage one,
+     * "acknowledge and bind this device".
+     *
+     * WHY THIS IS A PROVIDER RATHER THAN A REST CALL. A freshly-claimed contact
+     * has no TOTP secret and no passkey, so binding their identity in the
+     * database and stopping there leaves them with an account they can never sign
+     * into. The bind IS the session: redeeming the code is the one-time
+     * authentication, and the session cookie it mints is the device binding the
+     * architecture is describing.
+     *
+     * A passkey (stage two) is offered afterwards and is deferrable. Until they
+     * add one, this session is what they have — which is why it is worth nothing
+     * more than the single-use code that produced it.
+     *
+     * `existingUserId` is passed by the caller when someone is already signed in,
+     * so a second relationship LINKS rather than minting a second account
+     * (§3.7 rule 2).
+     */
+    CredentialsProvider({
+      id: 'standby-claim',
+      name: 'Standby claim',
+      credentials: {
+        token: { label: 'Code', type: 'text' },
+        existingUserId: { label: 'Existing user', type: 'text' },
+      },
+
+      async authorize(credentials): Promise<User | null> {
+        if (!credentials?.token) return null;
+
+        try {
+          const claim = await claimStandbyRole({
+            token: credentials.token,
+            existingUserId: credentials.existingUserId || undefined,
+          });
+
+          const rec = await query<{ id: string; email: string; is_demo_account: boolean }>(
+            `SELECT id, email, is_demo_account FROM users WHERE id = $1 LIMIT 1`,
+            [claim.userId],
+          );
+          const user = rec.rows[0];
+          if (!user) return null;
+
+          return {
+            id: user.id,
+            email: user.email,
+            ownerId: user.id,
+            isDemo: user.is_demo_account,
+          } as User & { ownerId: string; isDemo: boolean };
+        } catch (err) {
+          // Unknown, expired and already-used all arrive here and all return the
+          // same null, so which it was does not leak.
+          console.error('[auth] standby claim rejected:', err);
+          return null;
+        }
       },
     }),
 

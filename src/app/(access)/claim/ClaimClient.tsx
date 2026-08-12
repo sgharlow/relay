@@ -13,6 +13,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 
 interface Standby {
@@ -33,20 +34,25 @@ export default function ClaimClient() {
   useEffect(() => {
     if (!token) return; // Show the code form instead.
 
-    fetch(`/api/invitations/${encodeURIComponent(token)}`, { method: 'POST' })
-      .then(async (res) => {
-        const body = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          setState({ kind: 'error', message: body.message ?? 'That invitation is not valid.' });
+    // Claiming IS signing in ([A1] stage one, "acknowledge and bind this
+    // device"). A freshly-claimed contact has no TOTP secret and no passkey, so
+    // binding their identity and stopping there would leave them with an account
+    // they could never sign into. Redeeming the single-use code is the one-time
+    // authentication, and the session it mints is the device binding.
+    signIn('standby-claim', { token, redirect: false })
+      .then((res) => {
+        if (!res || res.error) {
+          setState({
+            kind: 'error',
+            message: 'That code is not valid, or it has already been used.',
+          });
           return;
         }
-        setState(
-          body.personType === 'verifier'
-            ? { kind: 'verifier' }
-            : { kind: 'recipient', standby: body.standby as Standby },
-        );
+        // Rung 0 — where they can see what they now stand for, and come back to
+        // later without being told anything.
+        window.location.href = '/standby';
       })
-      .catch(() => setState({ kind: 'error', message: 'Something went wrong. Try the link again.' }));
+      .catch(() => setState({ kind: 'error', message: 'Something went wrong. Try again.' }));
   }, [token]);
 
   if (!token) return <ClaimCodeEntry onCode={setToken} />;
