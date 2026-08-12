@@ -453,27 +453,52 @@ Warns when a release is open for that owner but does **not** block: this is a ri
 that traps somebody in an obligation during another person's emergency has misunderstood which of
 the two it serves.
 
-### 🔴 Still open
+### ✅ §4.3 quorum + [A3] readiness — shipped and live-proven 2026-08-12
 
-1. 🔴 **Nothing re-validates quorum when the participant pool shrinks (§4.3).** `validateNofM` is
-   called only at provisioning (`lib/release/provisioning.ts:84`) and never again — so resigning,
-   rejecting a claim, revoking, or un-confirming can leave a trigger needing more confirmations than
-   it has people who can give them. §4.3's own words for that state: *"the release stalls permanently
-   with no error anywhere."* **Newly more reachable**, because 2026-08-12 shipped three new ways to
-   remove a participant (reject, resign, withdraw-confirmation) where before there was one.
-   Pairs with item 2 — readiness is the surface the blocker would appear on.
-2. ✅ **Break-glass is complete — issue and redeem both shipped and live-proven 2026-08-12.**
-   Full loop walked with no scripts on either end: owner opens *Emergency code* on `/circle` →
-   reads the explanation → creates a code → a different person redeems it at `/break-glass` and
-   lands on their standby dashboard. **Option 2 is therefore unblocked** — see the decision note
-   below before taking it.
-3. **`lib/vault/circle-readiness.ts` is dead code** — [A3], tested, imported by nothing but its test.
-4. **§9.3's Terms ship-gate is breached.** *"Terms need a standby clause before standby accounts
-   exist in production."* They exist; `terms/page.tsx` and `privacy/page.tsx` contain zero
-   occurrences of "standby", and Terms still frames the free tier as an owner's.
+**The count was the bug.** `assessReadiness` compared a trigger's threshold against the ROSTER COUNT
+of verifiers, so two verifiers who had both been revoked read as able to give two confirmations.
+Now it counts people who could answer, and a new fatal `unsatisfiable_quorum` blocker names it.
+
+Proven live: healthy plan (2 confirmed verifiers, N=2) → green, banner silent. Revoke one → *"A
+trigger needs 2 confirmations but only 1 of your trusted contacts could give one — 1 has been
+removed. An emergency could start and never resolve."*
+
+**ABLE means "by any route"** — claimed people act from their session, unclaimed ones still hold the
+emailed-code path J7-R1 keeps permanently, and only `revoked` is genuinely incapable. Deliberately
+*not* confirmed-only even though §4.3's end state is confirmed: this blocker is FATAL, and a fatal
+warning that is untrue for a plan that would in fact run teaches owners to disbelieve the banner,
+which then fails for the cases that are real.
+
+**[A3] grades that separately, and finally has a consumer.** `circle-readiness.ts` had been written
+and tested since sprint E with zero importers, so the light it computed reported to nobody.
+Readiness returns it and the banner shows the single fastest next action. Proven live: verifier
+restored + recipient un-confirmed → no false fatal, *"Your plan cannot run yet — Confirm a recipient
+who has already claimed…"* with a link to the circle. The two signals do not collide; the [A3] card
+is suppressed while a fatal blocker is speaking.
+
+Derive-on-read rather than a stored blocker (principle 6): a stored one needs clearing on every path
+that fixes it, and each is a chance to leave a stale alarm.
+
+### 🔴 Still open — rewritten 2026-08-12, the earlier numbering had gone stale
+
+1. **Runtime quorum still counts `claimed`, while readiness grades on `confirmed`.** A known and
+   deliberate asymmetry, not a bug: readiness is the stricter of the two and errs toward asking for
+   a phone call. §5's ordering trap #2 said to tighten *when assurance ships* — it shipped
+   2026-08-12, so this is now takeable. Do it after checking no live circle is relying on an
+   unconfirmed participant, since tightening can itself make a quorum unsatisfiable.
+2. **Option 2 — stop minting codes for claimed verifiers.** Unblocked (break-glass works end to
+   end). Wants the §8.1 ruling first, plus a way for an owner to see who actually holds an
+   unredeemed code — a fallback nobody was handed is not cover.
+3. **§9.3's Terms ship-gate is breached.** *"Terms need a standby clause before standby accounts
+   exist in production."* They exist and are taking payments; `terms/page.tsx` and
+   `privacy/page.tsx` contain zero occurrences of "standby", and Terms still frames the free tier
+   as an owner's. Not a build item — a written promise that does not match the product.
+4. **Deferred sprint E items:** §3.8 event transparency, `email_secondary` (rung 2), and [A2]'s
+   guided-setup-call UI. The assurance flow works without [A2]; it is a smoother packaging of the
+   same two acts.
 
 ### Verified sound, unchanged
 
-[A4] passive check-in is genuinely wired (`recordDeliberateActivity` in `lib/http/owner-route.ts`).
-Quorum still counts "can answer by ANY route" rather than `confirmed`, so §5's ordering trap #2 —
-the one that would make every quorum unsatisfiable — was correctly avoided.
+[A4] passive check-in is genuinely wired (`recordDeliberateActivity` in `lib/http/owner-route.ts`),
+and §5's ordering trap #2 was correctly avoided throughout — quorum counted `claimed` while nobody
+could yet be `confirmed`, which is exactly the staging the plan called for.
