@@ -75,6 +75,45 @@ export async function GET(): Promise<NextResponse> {
     query<{ id: string }>(`SELECT id FROM access_policies WHERE owner_id = $1`, [auth.ownerId]),
   ]);
 
+  /**
+   * WHO COULD STILL GET IN IF THEY LOST THEIR PHONE.
+   *
+   * The owner had no way to know this, and it is the question that decides
+   * whether a plan survives contact with a real emergency: a confirmed verifier
+   * whose device is gone, with no passkey and no emergency code, cannot act at
+   * all — and nothing said so. It is also the precondition for ever ceasing to
+   * mint release-time codes, because "everybody has a fallback" was previously
+   * unknowable from inside the product.
+   *
+   * Two batched lookups rather than per-person queries. An unclaimed contact has
+   * no user id and therefore no passkey, which is why the passkey set is keyed
+   * on `claimed_user_id` and the code set on the roster row.
+   */
+  const claimedUserIds = [...recipients.rows, ...verifiers.rows]
+    .map((p) => p.claimed_user_id)
+    .filter((id): id is string => Boolean(id));
+  const personIds = [...recipients.rows, ...verifiers.rows].map((p) => p.id);
+
+  const [passkeyRows, codeRows] = await Promise.all([
+    claimedUserIds.length
+      ? query<{ user_id: string }>(
+          `SELECT DISTINCT user_id FROM webauthn_credentials WHERE user_id = ANY($1)`,
+          [claimedUserIds],
+        )
+      : Promise.resolve({ rows: [] as { user_id: string }[] }),
+    personIds.length
+      ? query<{ person_id: string }>(
+          // Unredeemed AND unexpired. A spent or lapsed code is not a way back in.
+          `SELECT DISTINCT person_id FROM break_glass_codes
+            WHERE person_id = ANY($1) AND used_at IS NULL AND expires_at > now()`,
+          [personIds],
+        )
+      : Promise.resolve({ rows: [] as { person_id: string }[] }),
+  ]);
+
+  const withPasskey = new Set(passkeyRows.rows.map((r) => r.user_id));
+  const withCode = new Set(codeRows.rows.map((r) => r.person_id));
+
   const coverage = computeCoverage(items.rows, rules.rows);
 
   /**
@@ -101,6 +140,10 @@ export async function GET(): Promise<NextResponse> {
         fingerprint: claimed_user_id
           ? fingerprintFor({ ownerId, personId: person.id, claimedUserId: claimed_user_id })
           : null,
+        // Booleans, never the credential itself: the owner needs to know a way
+        // back in EXISTS, and knowing more than that would not help them.
+        has_passkey: Boolean(claimed_user_id && withPasskey.has(claimed_user_id)),
+        has_break_glass: withCode.has(person.id),
       };
     };
   }

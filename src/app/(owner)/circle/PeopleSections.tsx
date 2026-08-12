@@ -26,6 +26,7 @@ import { readStandbyState, circleLight } from '../../../../lib/people/standby-st
 import InviteControl from './InviteControl';
 import BreakGlassControl from './BreakGlassControl';
 import FingerprintControl from './FingerprintControl';
+import FallbackLine from './FallbackLine';
 
 /**
  * Someone who has not bound an account yet still needs a way in. `revoked` is
@@ -67,6 +68,9 @@ export interface Recipient {
   standby_state?: string;
   /** Derived per request from the binding; null until somebody has claimed. */
   fingerprint?: string | null;
+  /** Could they get back in on a new device? Only meaningful once claimed. */
+  has_passkey?: boolean;
+  has_break_glass?: boolean;
 }
 
 export interface Verifier {
@@ -78,6 +82,9 @@ export interface Verifier {
   standby_state?: string;
   /** Derived per request from the binding; null until somebody has claimed. */
   fingerprint?: string | null;
+  /** Could they get back in on a new device? Only meaningful once claimed. */
+  has_passkey?: boolean;
+  has_break_glass?: boolean;
 }
 
 /**
@@ -275,6 +282,13 @@ export function RecipientSection({
               {needsClaimCode(r.standby_state) ? (
                 <InviteControl personId={r.id} personType="recipient" name={r.name} />
               ) : null}
+              {hasClaimed(r.standby_state) ? (
+                <FallbackLine
+                  name={r.name}
+                  hasPasskey={Boolean(r.has_passkey)}
+                  hasBreakGlass={Boolean(r.has_break_glass)}
+                />
+              ) : null}
               {/* Assurance sits directly under the light it turns green. */}
               {r.fingerprint && hasClaimed(r.standby_state) ? (
                 <FingerprintControl
@@ -397,6 +411,13 @@ export function VerifierSection({
               <div style={{ fontSize: 'var(--t1)', color: 'var(--ink-muted)' }}>{v.email}</div>
               {needsClaimCode(v.standby_state) ? (
                 <InviteControl personId={v.id} personType="verifier" name={v.name} />
+              ) : null}
+              {hasClaimed(v.standby_state) ? (
+                <FallbackLine
+                  name={v.name}
+                  hasPasskey={Boolean(v.has_passkey)}
+                  hasBreakGlass={Boolean(v.has_break_glass)}
+                />
               ) : null}
               {v.fingerprint && hasClaimed(v.standby_state) ? (
                 <FingerprintControl
