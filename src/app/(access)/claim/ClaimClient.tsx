@@ -34,6 +34,12 @@ export default function ClaimClient() {
   useEffect(() => {
     if (!token) return; // Show the code form instead.
 
+    // Phase 0 middle-of-funnel marker, before anything can fail. Fire-and-forget:
+    // a measurement must never be able to stop somebody claiming.
+    void fetch(`/api/invitations/${encodeURIComponent(token)}/opened`, { method: 'POST' }).catch(
+      () => {},
+    );
+
     // Claiming IS signing in ([A1] stage one, "acknowledge and bind this
     // device"). A freshly-claimed contact has no TOTP secret and no passkey, so
     // binding their identity and stopping there would leave them with an account

@@ -69,7 +69,14 @@ function generateInviteCode(): string {
 
 export async function createInvitation(
   ownerId: string,
-  input: { personId: string; personType: PersonType },
+  input: {
+    personId: string;
+    personType: PersonType;
+    /** How the owner intends to get this to them. Splitting on it is what isolates delivery. */
+    deliveryChannel?: 'email' | 'owner';
+    /** Free-text tag so a deliberate Phase 0 run reads apart from ordinary traffic. */
+    cohort?: string;
+  },
 ): Promise<{ token: string; expiresAt: string }> {
   if (!PERSON_TYPES.includes(input.personType)) {
     throw new ValidationError('personType must be recipient or verifier', 'personType');
@@ -83,9 +90,18 @@ export async function createInvitation(
   const expiresAt = new Date(Date.now() + INVITE_TTL_DAYS * 86400_000).toISOString();
 
   await query(
-    `INSERT INTO invitations (owner_id, person_id, person_type, token_hash, expires_at)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [ownerId, input.personId, input.personType, hashToken(token), expiresAt],
+    `INSERT INTO invitations
+       (owner_id, person_id, person_type, token_hash, expires_at, delivery_channel, cohort)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [
+      ownerId,
+      input.personId,
+      input.personType,
+      hashToken(token),
+      expiresAt,
+      input.deliveryChannel ?? null,
+      input.cohort ?? null,
+    ],
   );
 
   return { token, expiresAt };
@@ -162,4 +178,24 @@ export async function buildStandbyView(
   }
 
   return { itemCount, categories, triggerTypes };
+}
+
+/**
+ * Records that the claim page loaded with this code — the middle of the funnel.
+ *
+ * First open wins: this measures "did it reach a human", not how many times they
+ * looked. Failures are swallowed because a measurement must never be able to stop
+ * somebody claiming; a missing timestamp costs us a data point, and a thrown
+ * error would cost them their place in a family's plan.
+ */
+export async function markInvitationOpened(token: string): Promise<void> {
+  try {
+    await query(
+      `UPDATE invitations SET opened_at = now()
+        WHERE token_hash = $1 AND opened_at IS NULL AND claimed_at IS NULL`,
+      [hashToken(token)],
+    );
+  } catch {
+    // Instrumentation is never load-bearing.
+  }
 }
