@@ -1033,3 +1033,34 @@ population lands exactly on §8.1's existing boundary, neither widened nor narro
 
 Owner-side invite → consent → active, with in-person and paper consent as peers of the link, and the
 owner-scoped `recordConsent` from §13 underneath.
+
+### Waves 1-4 — SHIPPED and live-proven 2026-08-12
+
+All four ratified waves are in production. Every claim below was walked against the live site or
+asserted against production Aurora DSQL, not inferred from the diff.
+
+| Gap | Shipped | Live proof |
+|---|---|---|
+| **A1** verifier never told whose vault | `ownerLabel` + `whyNow` on `VerifierContext`, and the owner named in every verifier **email** branch | Context returned "Margaret Chen" and *"They started this themselves"* against production; both mails named her |
+| **A2** verifier had no way back | `POST /api/verify/resend` + the affordance on `/verify`, dispatching through the SAME classifier as the release path | Affordance rendered and opened on relaystandby.com |
+| **A3** J6 unreachable | Session door on `POST /api/access-requests` + *"Ask … to open it"* on the standby dashboard | Full loop: asked → row `awaiting_owner` with case id → **the owner's `/challenge` screen showed "Jordan Rivera is asking for access"** with the reason and a countdown. That screen had never had anything to show |
+| **A4** email where a name belongs | `standby-resolve` routed through `formatOwnerLabel` | Standby card read "Margaret Chen" |
+| **A5** sage above clay | `ableVerifiers` into `assessPreparedness`, **plus** a structural guard refusing sage whenever a fatal blocker exists | Banner rendered OCHRE above the clay box, and *"the one thing that matters"* rather than "all 1 of" |
+| **A6** copy, demo leak, audit names | Triggers page stops speaking schema; claim stops assuming email; break-glass names the real alternative; audit actors resolved at read time | Audit table showed "You (Margaret Chen)" and "Jordan Rivera" with **Server: intact** — the chain still verifies, because names are display-only |
+| **J3** delegation unreachable | Candidate list + create + consent + revoke on `/approvals` | Walked end to end: ask → *not active yet* → consent form with all three methods → *helping you now* → stop |
+
+**Two defects found in this work, by looking rather than by testing.** The resend endpoint hardcoded
+`triggerType: 'emergency'`, which would have told a verifier the wrong thing about a caregiver
+release — and the trigger type is precisely what tells them how much is at stake. And the delegation
+row rendered *"Your helper · not active yet"* because the name lookup was built from `candidates`,
+which excludes anybody who has already become one; the name now travels on the delegation.
+
+**One non-finding, recorded so it is not re-investigated.** A fixture signed in and got an empty
+vault: `upsertUser` keys on `auth_sub` while `resolveTotpSecret` keys on `email`, so a row whose
+`auth_sub` does not match `authSubFor(email)` authenticates and then mints a second user. Not
+reachable in production — `signup.ts` already carries a comment demanding they match, and nothing
+grants a standby row a `totp_secret`, so email+TOTP is refused for them. The fixture was wrong.
+
+⏸️ **Still open, and deliberately:** a confirmation step on **Initiate** before `g2-counsel-opinion`
+opens (harmless today because `estate` is not user-selectable and every other trigger is
+reversible); ESP suppression silently swallowing a resend; and §3.8 event transparency.
