@@ -555,18 +555,24 @@ The gate hard-stops **2026-09-15** (`PROJECT.yaml`) and the window is **4 weeks 
 first ad is approved and serving** (decision #4). Those two facts multiply out to a deadline this
 plan never stated:
 
-> **The first ad must be APPROVED AND SERVING by 2026-08-18** to get a full 4-week window inside
-> the hard stop. Ad review is typically ~24h and can run longer on a brand-new account, so
-> **submit by 2026-08-16.** Slipping does not move the hard stop — it shortens the window, and at
-> a flight already expected to land short of the honest N, every lost day comes straight off N.
+> ⚠️ **REBASED 2026-08-11.** The gate moved to **2026-10-31** (`PROJECT.yaml`
+> `gates.g1-caregiver-wtp.moved`) because the standby build has to land first — flying against the
+> funnel being replaced would buy a reading of the old product. The derived deadline moves with it:
+> **the first ad must be APPROVED AND SERVING by ~2026-10-03** for a full 4-week window, so submit
+> by ~2026-10-01. Everything else in this file stands.
+>
+> ~~The first ad must be APPROVED AND SERVING by 2026-08-18~~ — superseded. The reasoning still
+> holds and is why the date is derived rather than chosen: slipping does not move the hard stop, it
+> shortens the window, and at a flight already expected to land short of the honest N, every lost
+> day comes straight off N.
 
 | Date | What must have happened |
 |---|---|
-| **2026-08-16** | R1 submitted for review (both accounts created, caps set, pre-flight passed) |
-| **2026-08-18** | R1 approved and serving → **window start recorded in `g1-flight-log.md`** |
-| ~2026-08-20 | R2/R3 added, once R1 has a CPC to compare against |
-| ~2026-08-21 | Meta lane opens *only if* pace misses N=100-by-day-10 |
-| **2026-09-15** | Gate hard stop — verdict written regardless of N |
+| **~2026-10-01** | R1 submitted for review (both accounts created, caps set, pre-flight passed) |
+| **~2026-10-03** | R1 approved and serving → **window start recorded in `g1-flight-log.md`** |
+| ~2026-10-05 | R2/R3 added, once R1 has a CPC to compare against |
+| ~2026-10-06 | Meta lane opens *only if* pace misses N=100-by-day-10 |
+| **2026-10-31** | Gate hard stop — verdict written regardless of N |
 
 ## Flight sequence
 
