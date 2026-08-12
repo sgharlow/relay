@@ -591,3 +591,40 @@ readiness banner is the mitigation and it is loud, but beta onboarding should sa
 ### Deferred, and genuinely optional
 §3.8 event transparency · `email_secondary` (rung 2) · [A2] guided-setup-call UI, which is packaging
 around an assurance flow that already works.
+
+---
+
+## 11. hybrid+6 conformance — audited 2026-08-12
+
+Against the plan **as amended and ratified today** (J7-R1 restated temporally, principle 1 made
+conditional, §3.1's verifier row corrected to content-not-shape, §3.2/§5/§6 given the verifier swap).
+
+### The seven invariants (§2)
+
+| # | Invariant | State |
+|---|---|---|
+| 1 | No secret transmitted at release to a **claimed** contact | ✅ Holds for claimed recipients and, since today, claimed verifiers. Conditional by amendment — unclaimed contacts still get a code, and claim conversion is what buys the property per person |
+| 2 | No standing credential printed | ✅ Invitations, break-glass and recovery codes are all single-use. §8.1's residual risk is accepted and bounded |
+| 3 | Relay never sends a link that signs you in | ✅ Bare `/claim` URL plus a typed code; stated in Terms |
+| 4 | Release machine gains zero states | ✅ Still seven edges; `not_counted` is an outcome, not a state |
+| 5 | Pull before push — every participant can do their job by visiting the site | ✅ Was **false for claimed verifiers** until today |
+| 6 | Derive on read, no second scheduler | ✅ Escalation, `unreachable`, quorum satisfiability and readiness are all read-time |
+| 7 | Plaintext never leaves the browser; contacts never see contents; everything audited | ✅ Session decrypt returns a wrapped key for the browser to open, exactly as the token path did |
+
+### The sixteen new flows (§3 of this plan)
+
+**Built and live-proven:** N1 two-stage claim · N3 rung 0 · N4 standby→owner in place (rule 2 holds
+by construction: `/start` is inside the authenticated owner group, so a conversion writes under the
+existing user id and cannot mint a second account) · N5 break-glass issue **and** redeem · N6
+multi-hat switching · N7 verifier acts on a lapsed window · N9 circle degrades on deletion ·
+N10 reissue · N11 deferred passkey · N12 device change via break-glass · N13 claim while signed in ·
+N14 fingerprint mismatch · N15 resign · N16 reject.
+
+**Not built:** N2 (the [A2] guided setup call is a *packaging* of two acts that both work — issue a
+code, confirm a phrase) and N8 (§3.8 event transparency).
+
+### Amendments honoured, not just recorded
+J7-R1's guarantee is load-bearing in code, not only in prose: the unclaimed verifier's code path is
+what made "answering" and "counting" separate concepts when quorum tightened. Principle 1's
+conditionality is why Phase 0's number is a **security** measurement rather than only a retention
+one. §3.1's correction is reflected in the verifier decision surface and in both legal pages.
