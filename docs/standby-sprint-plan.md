@@ -354,18 +354,40 @@ phone, which is both the reliable channel and stronger assurance than an inbox. 
 end — owner clicks *Get a code to read them* → code displayed → a different person types it at
 `/claim` → lands on `/standby` bound to that owner. No scripts.
 
+### ✅ Also closed 2026-08-12 — Option 1, and the plan gap behind it
+
+**The verifier now acts from rung 0, and the dashboard routes.** `resolveVerifierFor` +
+`/api/verify` (no token segment) + a session branch in `VerifyClient`; the standby card gains a CTA
+per principal. `buildVerifierContext` and `submitConfirmation` are untouched — both already took a
+plain `releaseStateId` + `verifierId`, so this is the same core-plus-two-doors split used for
+recipient decrypt and the closure summary. `/api/verify/[token]` is permanent, per amended J7-R1.
+
+**The gap was in the PLAN first**, which is why the code had it — see `standby-architecture.md` §3.2
+(amended). §6 Phase 2 said "claimed *recipients* stop receiving codes"; §5 named no verifier module;
+this plan's own flow-coverage table promised *"Session replaces `/verify?token=` for claimed
+verifiers"* under sprints C–D while Sprint D's task list said recipients only. Core principle 5 —
+*every participant can do their job by visiting the site* — was **false for claimed verifiers**, and
+§4.4's escalation ran on dashboard load and then stranded the person it had made responsible.
+
+Two defects found while proving it: the card said **"Open now"** for `pending`/`grace`/`released`
+alike, telling a recipient access was open while a release was merely being confirmed; and a
+verifier who had answered was **still being asked** (safe — `submitConfirmation` intent-reads and
+returns `duplicate` — but it reads as the product having lost their answer). Both fixed; the second
+is resolved server-side as `awaitingDecision` so the card and `/api/verify` cannot disagree.
+
 ### 🔴 Still open
 
-1. **The standby dashboard has no action on an open release.** It renders `Open now · case RLY-XXXX`
-   as text, with no link to `/access`. The contact is told something is happening and given nothing
-   to do. *(Highest remaining priority — the two closed items are useless without it.)*
-2. **The verifier path was never swapped.** `VerifyClient` and `/api/verify/[token]` are entirely
-   token-keyed; a claimed verifier has no session route to confirm. §4.3 quorum still counts
-   `claimed`, so releases are not bricked — but the verifier's moment (J7) still rides the token.
-3. **Assurance controls are API-only**: fingerprint confirm, break-glass, and resign have routes and
-   no UI. The circle light can therefore never go green, a contact cannot leave, and a lost device
-   needs an operator.
-4. **`lib/vault/circle-readiness.ts` is dead code** — [A3], tested, imported by nothing but its test.
+1. **Assurance controls are API-only**: fingerprint confirm and resign have routes and no UI, so the
+   circle light can never go green and a contact cannot leave.
+2. 🔴 **Break-glass is issue-only — there is no redeem endpoint at all.** `redeemBreakGlass` exists
+   in `lib` with no route, so §3.6's answer for "the lost authenticator" cannot be exercised. **This
+   is the gate on ceasing to mint codes for claimed verifiers** (principle 1's remaining half): stop
+   minting before break-glass works and a claimed verifier who cannot sign in at the moment of
+   crisis has nothing at all. §8.1's unanswered *covered-or-excluded* question now sits on this path.
+3. **`lib/vault/circle-readiness.ts` is dead code** — [A3], tested, imported by nothing but its test.
+4. **§9.3's Terms ship-gate is breached.** *"Terms need a standby clause before standby accounts
+   exist in production."* They exist; `terms/page.tsx` and `privacy/page.tsx` contain zero
+   occurrences of "standby", and Terms still frames the free tier as an owner's.
 
 ### Verified sound, unchanged
 
