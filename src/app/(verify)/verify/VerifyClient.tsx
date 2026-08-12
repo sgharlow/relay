@@ -129,9 +129,16 @@ export default function VerifyClient() {
   // would flash "type your code" at a claimed verifier who was never sent one.
   if (!token && signedIn === null) return <p className="text-muted">Loading…</p>;
 
-  // No token and no session: ask for the code from the email. This is the
-  // unclaimed verifier's entry point, guaranteed permanently by J7-R1, and the
-  // emailed link is bare — so arriving here with nothing is normal, not an error.
+  // No token and no session: ask for the code. This is the entry point for a
+  // verified verifier who holds no passkey and no authenticator — the only class
+  // still sent a code since adaptive minting. The emailed link is bare, so
+  // arriving here with nothing is normal rather than an error.
+  //
+  // ⚠️ This comment said "guaranteed permanently by J7-R1" until 2026-08-12.
+  // That guarantee was withdrawn the same day: quorum counts only confirmed
+  // people, so a code mailed to an unverified verifier bought a vote with no
+  // effect. The path is not permanent by requirement any more — it is here
+  // because a confirmed verifier with no device genuinely needs it.
   if (!token && !signedIn) return <CodeEntry onToken={setToken} />;
 
   if (!ctx) return <p className="text-muted">Loading…</p>;
@@ -321,8 +328,7 @@ function CodeEntry({ onToken }: { onToken: (t: string) => void }) {
     <div className="rounded-lg border border-rule-strong bg-paper-raised p-6">
       <h1 className="text-t7 font-semibold text-ink">Enter your code</h1>
       <p className="mt-3 text-[17px] leading-relaxed text-ink">
-        Someone has asked you to confirm that a situation is genuine. Type the code from the email
-        we sent you.
+        Someone has asked you to confirm that a situation is genuine. Type the code we sent you.
       </p>
 
       <form onSubmit={submit} className="mt-6">
@@ -352,10 +358,102 @@ function CodeEntry({ onToken }: { onToken: (t: string) => void }) {
         </button>
       </form>
 
+      <ExpiredCodeHelp />
+
       <p className="mt-6 text-[15px] leading-relaxed text-muted">
         You will never be shown anyone&rsquo;s private information — not now, and not after you
         answer. Relay will never send you a link that signs you in.
       </p>
     </div>
+  );
+}
+
+/**
+ * "My code has expired" — and, just as often, "I never got one".
+ *
+ * THE GAP THIS CLOSES. `/access` grew this affordance because the owner is, by
+ * the nature of this product, the person in hospital, so a locked-out contact
+ * had nobody able to help. The verifier had no equivalent, and their code lasts
+ * 72 hours — which is worse in one specific way: a stalled recipient
+ * inconveniences themselves, while a stalled verifier holds up the release for
+ * everybody else.
+ *
+ * Both wordings lead here on purpose. Deliverability was measured broken on
+ * 2026-08-11, so "it never arrived" is the commoner of the two.
+ *
+ * What arrives depends on how the person is set up — the endpoint reuses the
+ * same classifier the release path uses — so this promises "what they need"
+ * rather than "a code", which would be false for anyone who correctly receives
+ * none.
+ */
+function ExpiredCodeHelp() {
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState('');
+  const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  if (sent) {
+    return (
+      <p className="mt-6 rounded-md bg-paper-sunken px-4 py-3 text-[16px] leading-relaxed text-ink">
+        If that address is expected on an open request, we have sent it what it needs. It can take a
+        minute to arrive.
+      </p>
+    );
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mt-5 min-h-[24px] text-[16px] text-muted underline underline-offset-4 hover:text-ink"
+      >
+        My code has expired, or never arrived
+      </button>
+    );
+  }
+
+  return (
+    <form
+      className="mt-5 rounded-md bg-paper-sunken p-4"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (busy) return;
+        setBusy(true);
+        try {
+          await fetch('/api/verify/resend', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+          });
+        } finally {
+          setBusy(false);
+          setSent(true);
+        }
+      }}
+    >
+      <label htmlFor="vresend" className="block text-[16px] font-medium text-ink">
+        The email address they used for you
+      </label>
+      <p className="mt-1 text-[15px] leading-relaxed text-muted">
+        We send to the address already on file, never to one typed here — so this cannot be used to
+        redirect anything.
+      </p>
+      <input
+        id="vresend"
+        type="email"
+        value={email}
+        onChange={(ev) => setEmail(ev.target.value)}
+        autoComplete="email"
+        className="mt-2 min-h-[52px] w-full rounded-md border border-rule-strong px-4 text-[17px] text-ink focus:border-rule focus:outline-none"
+      />
+      <button
+        type="submit"
+        disabled={busy || !email.trim()}
+        className="mt-3 min-h-[52px] w-full rounded-md border border-rule-strong px-6 text-[17px] font-semibold text-ink disabled:opacity-50"
+      >
+        {busy ? 'Sending…' : 'Send it again'}
+      </button>
+    </form>
   );
 }

@@ -21,7 +21,7 @@ import { formatCaseId } from '../release/case-id';
 import { issueRecipientToken } from '../auth/recipient-token';
 import { query } from '../db/connection';
 import { getOwnerLabel } from '../people/owner-label';
-import { classifyOrFailOpen } from './verifier-notice-class';
+import { classifyOrFailOpen, type VerifierNoticeClass } from './verifier-notice-class';
 
 /**
  * The origin every emailed link is built on.
@@ -189,106 +189,139 @@ export async function notifyVerifiersForTrigger(
   const ownerLabel = ownerId ? await getOwnerLabel(ownerId) : 'Someone';
 
   const results = await Promise.all(
-    verifiers.map(async (v) => {
-      const noticeClass = classes.get(v.id) ?? 'code';
-
-      // Revoked. The owner removed this person deliberately; telling them an
-      // emergency is under way — which this path did until 2026-08-12, with a
-      // working code attached — is a leak, not a courtesy.
-      if (noticeClass === 'skip') return false;
-
-      // A typed code, not a token in the URL. The link is BARE: clicking it
-      // grants nothing, so a forwarded email — much the likeliest leak, since
-      // forwarding one to a family member is a perfectly reasonable thing to do
-      // — no longer hands over the ability to confirm someone's release.
-      //
-      // It also lets us say, and mean, that Relay never sends a link that signs
-      // you in. That claim is worth more than any single control: once it holds
-      // absolutely, an email containing such a link is self-evidently not us.
-      let code: string | null = null;
-      if (ownerId && noticeClass === 'code') {
-        try {
-          code = formatCode(await issueVerifierCode({ verifierId: v.id, releaseStateId, ownerId }));
-        } catch (err) {
-          process.stderr.write(`[notify] verifier code issue failed: ${String(err)}\n`);
-        }
-      }
-
-      // Someone who can sign in gets told, and gets nothing to lose. This is
-      // core principle 1 finally holding on the verifier side: there is no
-      // secret in this message, so intercepting it accomplishes nothing.
-      if (noticeClass === 'sign_in') {
-        return sendEmailBestEffort({
-          to: v.email,
-          subject: `Action needed: confirm ${article(triggerType)} ${triggerType} trigger (${caseId})`,
-          text:
-            `Hi ${v.name},\n\n` +
-            `${ownerLabel} named you as one of the people who would be asked whether an emergency is real, ` +
-            `and ${article(triggerType)} "${triggerType}" release has now been started on their ` +
-            `account.\n\n` +
-            `Sign in the way you normally do and the request will be waiting for you:\n\n` +
-            `    ${appUrl()}/standby\n\n` +
-            `Case ${caseId}.\n\n` +
-            `There is no code in this message, and no link that signs you in — deliberately. ` +
-            `Relay never sends one. If a message claiming to be from us asks you to click one, ` +
-            `it is not from us.\n\n` +
-            `You will not be given access to any private data — you are only confirming ` +
-            `whether the situation is genuine.\n`,
-        });
-      }
-
-      // Named, never verified. Since quorum tightened to `confirmed` (§4.3) an
-      // answer from this person is recorded and counts towards nothing, so a
-      // code would be a live credential bought for no outcome. They are still
-      // told — they were named, the request is real, and being able to say "I
-      // was never set up" to whoever is in the room is worth more than silence.
-      if (noticeClass === 'not_counted') {
-        const who = ownerLabel;
-        return sendEmailBestEffort({
-          to: v.email,
-          subject: `${who} named you — but you are not set up to answer (${caseId})`,
-          text:
-            `Hi ${v.name},\n\n` +
-            `${who} named you as one of the people who would be asked whether an emergency is real. ` +
-            `That question has just been raised.\n\n` +
-            `You cannot answer it yet. Setting you up was never finished — ${who} still has to ` +
-            `confirm it is really you — so an answer from you would not count towards anything, ` +
-            `and we would rather say that than let you believe you had helped.\n\n` +
-            `Nothing is expected of you right now. If you would like to be able to help next ` +
-            `time, ask ${who}, or whoever is with them, to finish setting you up.\n\n` +
-            `Case ${caseId}.\n`,
-        });
-      }
-
-      // Falls back to the legacy token link when a code cannot be issued. A
-      // verifier who cannot answer at all is a worse outcome than a link.
-      const body = code
-        ? `Hi ${v.name},\n\n` +
-          `${ownerLabel} named you as one of the people who would be asked whether an emergency is real, ` +
-          `and ${article(triggerType)} "${triggerType}" release has now been started on their ` +
-          `account.\n\n` +
-          `Go to ${appUrl()}/verify and enter this code:\n\n` +
-          `    ${code}\n\n` +
-          `Case ${caseId} · the code expires in 72 hours.\n\n` +
-          `You will not be given access to any private data — you are only confirming ` +
-          `whether the situation is genuine.\n\n` +
-          `Relay will never send you a link that signs you in. If a message claiming to ` +
-          `be from us asks you to click one, it is not from us.\n`
-        : `Hi ${v.name},\n\n` +
-          `${ownerLabel} named you as one of the people who would be asked whether an emergency is real, ` +
-          `and ${article(triggerType)} "${triggerType}" release has now been started on their ` +
-          `account. If you recognise this request, confirm here:\n\n` +
-          `${appUrl()}/verify?token=${encodeURIComponent(await issueVerifierToken(v.id, releaseStateId))}\n\n` +
-          `You will not be given access to any private data — you are only confirming the trigger.\n`;
-
-      return sendEmailBestEffort({
-        to: v.email,
-        subject: `Action needed: confirm ${article(triggerType)} ${triggerType} trigger (${caseId})`,
-        text: body,
-      });
-    }),
+    verifiers.map((v) =>
+      notifyOneVerifier(v, {
+        noticeClass: classes.get(v.id) ?? 'code',
+        triggerType,
+        releaseStateId,
+        ownerId,
+        ownerLabel,
+        caseId,
+      }),
+    ),
   );
   return results.filter(Boolean).length;
+}
+
+/**
+ * ONE VERIFIER, ONE MESSAGE — the single definition of what a verifier receives.
+ *
+ * Extracted 2026-08-12 so `notifyVerifiersForTrigger` and `/api/verify/resend`
+ * cannot drift. A resend that re-derived "who gets a code" would be a second copy
+ * of the adaptive-minting rule, and a second copy of a security rule is how the
+ * two ends of a contract stop agreeing — the exact failure the cross-boundary
+ * contract rule exists to prevent.
+ *
+ * Returns whether a message was actually sent. `skip` returns false and sends
+ * nothing, which is why the caller's count can be lower than the roster.
+ */
+export async function notifyOneVerifier(
+  v: VerifierContact,
+  ctx: {
+    noticeClass: VerifierNoticeClass;
+    triggerType: string;
+    releaseStateId: string;
+    ownerId?: string;
+    ownerLabel: string;
+    caseId: string;
+  },
+): Promise<boolean> {
+  const { noticeClass, triggerType, releaseStateId, ownerId, ownerLabel, caseId } = ctx;
+
+  // Revoked. The owner removed this person deliberately; telling them an
+  // emergency is under way — which this path did until 2026-08-12, with a
+  // working code attached — is a leak, not a courtesy.
+  if (noticeClass === 'skip') return false;
+
+  // A typed code, not a token in the URL. The link is BARE: clicking it
+  // grants nothing, so a forwarded email — much the likeliest leak, since
+  // forwarding one to a family member is a perfectly reasonable thing to do
+  // — no longer hands over the ability to confirm someone's release.
+  //
+  // It also lets us say, and mean, that Relay never sends a link that signs
+  // you in. That claim is worth more than any single control: once it holds
+  // absolutely, an email containing such a link is self-evidently not us.
+  let code: string | null = null;
+  if (ownerId && noticeClass === 'code') {
+    try {
+      code = formatCode(await issueVerifierCode({ verifierId: v.id, releaseStateId, ownerId }));
+    } catch (err) {
+      process.stderr.write(`[notify] verifier code issue failed: ${String(err)}\n`);
+    }
+  }
+
+  // Someone who can sign in gets told, and gets nothing to lose. This is
+  // core principle 1 finally holding on the verifier side: there is no
+  // secret in this message, so intercepting it accomplishes nothing.
+  if (noticeClass === 'sign_in') {
+    return sendEmailBestEffort({
+      to: v.email,
+      subject: `Action needed: confirm ${article(triggerType)} ${triggerType} trigger (${caseId})`,
+      text:
+        `Hi ${v.name},\n\n` +
+        `${ownerLabel} named you as one of the people who would be asked whether an emergency is real, ` +
+        `and ${article(triggerType)} "${triggerType}" release has now been started on their ` +
+        `account.\n\n` +
+        `Sign in the way you normally do and the request will be waiting for you:\n\n` +
+        `    ${appUrl()}/standby\n\n` +
+        `Case ${caseId}.\n\n` +
+        `There is no code in this message, and no link that signs you in — deliberately. ` +
+        `Relay never sends one. If a message claiming to be from us asks you to click one, ` +
+        `it is not from us.\n\n` +
+        `You will not be given access to any private data — you are only confirming ` +
+        `whether the situation is genuine.\n`,
+    });
+  }
+
+  // Named, never verified. Since quorum tightened to `confirmed` (§4.3) an
+  // answer from this person is recorded and counts towards nothing, so a
+  // code would be a live credential bought for no outcome. They are still
+  // told — they were named, the request is real, and being able to say "I
+  // was never set up" to whoever is in the room is worth more than silence.
+  if (noticeClass === 'not_counted') {
+    const who = ownerLabel;
+    return sendEmailBestEffort({
+      to: v.email,
+      subject: `${who} named you — but you are not set up to answer (${caseId})`,
+      text:
+        `Hi ${v.name},\n\n` +
+        `${who} named you as one of the people who would be asked whether an emergency is real. ` +
+        `That question has just been raised.\n\n` +
+        `You cannot answer it yet. Setting you up was never finished — ${who} still has to ` +
+        `confirm it is really you — so an answer from you would not count towards anything, ` +
+        `and we would rather say that than let you believe you had helped.\n\n` +
+        `Nothing is expected of you right now. If you would like to be able to help next ` +
+        `time, ask ${who}, or whoever is with them, to finish setting you up.\n\n` +
+        `Case ${caseId}.\n`,
+    });
+  }
+
+  // Falls back to the legacy token link when a code cannot be issued. A
+  // verifier who cannot answer at all is a worse outcome than a link.
+  const body = code
+    ? `Hi ${v.name},\n\n` +
+      `${ownerLabel} named you as one of the people who would be asked whether an emergency is real, ` +
+      `and ${article(triggerType)} "${triggerType}" release has now been started on their ` +
+      `account.\n\n` +
+      `Go to ${appUrl()}/verify and enter this code:\n\n` +
+      `    ${code}\n\n` +
+      `Case ${caseId} · the code expires in 72 hours.\n\n` +
+      `You will not be given access to any private data — you are only confirming ` +
+      `whether the situation is genuine.\n\n` +
+      `Relay will never send you a link that signs you in. If a message claiming to ` +
+      `be from us asks you to click one, it is not from us.\n`
+    : `Hi ${v.name},\n\n` +
+      `${ownerLabel} named you as one of the people who would be asked whether an emergency is real, ` +
+      `and ${article(triggerType)} "${triggerType}" release has now been started on their ` +
+      `account. If you recognise this request, confirm here:\n\n` +
+      `${appUrl()}/verify?token=${encodeURIComponent(await issueVerifierToken(v.id, releaseStateId))}\n\n` +
+      `You will not be given access to any private data — you are only confirming the trigger.\n`;
+
+  return sendEmailBestEffort({
+    to: v.email,
+    subject: `Action needed: confirm ${article(triggerType)} ${triggerType} trigger (${caseId})`,
+    text: body,
+  });
 }
 
 /** Notifies the owner that confirmations are met but the grace window is still open (Req 6.6). */
