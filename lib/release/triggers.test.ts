@@ -535,7 +535,12 @@ describe('§4.3 — an unverified answer is recorded but does not count', () => 
     expect(out.receivedConfirmations).toBe(0);
   });
 
-  it('records the answer anyway — J7-R1 says they may always decide', async () => {
+  it('does NOT write to the quorum ledger, so a later verified answer still counts', async () => {
+    // The defect this guards, found live on 2026-08-12: the idempotency
+    // intent-read keys on verifier_confirmations, so writing a non-counting row
+    // there made every later attempt return `duplicate`. A verifier who
+    // answered before the owner verified them could then NEVER count —
+    // permanently and silently, in what is the ordinary beta sequence.
     installSim(makeRow({ state: 'pending', received_confirmations: 0 }), 3, 'invited');
 
     await submitConfirmation({
@@ -545,10 +550,28 @@ describe('§4.3 — an unverified answer is recorded but does not count', () => 
       now: new Date(),
     });
 
-    const inserted = mockQuery.mock.calls
+    const wroteLedger = mockQuery.mock.calls
       .map((c) => String(c[0]))
       .some((sql) => sql.includes('INSERT INTO verifier_confirmations'));
-    expect(inserted).toBe(true);
+    expect(wroteLedger).toBe(false);
+  });
+
+  it('lets the same verifier count once the owner has verified them', async () => {
+    // Answer first, get verified, answer again — the sequence that will happen
+    // constantly during a beta.
+    installSim(makeRow({ state: 'pending', received_confirmations: 0 }), 3, 'invited');
+    const first = await submitConfirmation({
+      releaseStateId: 'rs-1', verifierId: 'v-1', machine: machineStub(), now: new Date(),
+    });
+    expect(first.status).toBe('not_counted');
+
+    installSim(makeRow({ state: 'pending', received_confirmations: 0 }), 3, 'confirmed');
+    const second = await submitConfirmation({
+      releaseStateId: 'rs-1', verifierId: 'v-1', machine: machineStub(), now: new Date(),
+    });
+
+    expect(second.status).not.toBe('duplicate');
+    expect(second.receivedConfirmations).toBe(1);
   });
 
   it('blocks an unverified DENY too — a denial can halt a release', async () => {

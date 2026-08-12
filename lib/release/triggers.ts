@@ -472,11 +472,18 @@ export async function submitConfirmation(params: SubmitConfirmationParams): Prom
   // render a decision; what changed is that a decision only advances the
   // threshold when the owner has actually checked who they were speaking to.
   if (!(await verifierCountsTowardQuorum(head.owner_id, head.trigger_type, verifierId))) {
-    await query(
-      `INSERT INTO verifier_confirmations (release_state_id, verifier_id, method, decision)
-       VALUES ($1, $2, $3, $4)`,
-      [releaseStateId, verifierId, method, params.decision ?? 'confirm'],
-    );
+    // RECORDED IN THE AUDIT LOG ONLY, and deliberately NOT in
+    // verifier_confirmations. That table is the quorum ledger, and the
+    // idempotency intent-read above keys on it: writing a non-counting row there
+    // would make every later attempt return `duplicate`, so a verifier who
+    // answered before the owner got round to verifying them could NEVER count —
+    // permanently, and silently. That is the ordinary beta sequence (they
+    // answer, the owner then makes the call), so it would have been the common
+    // case rather than an edge one.
+    //
+    // Leaving the ledger untouched means they can simply answer again once
+    // verified, and the audit entry below is the durable record that they did
+    // respond — which is the thing the owner needs to know.
     await writeAuditEntry(head.owner_id, {
       actor: `verifier:${verifierId}`,
       action: 'verifier_answer_not_counted',
