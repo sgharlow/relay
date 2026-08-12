@@ -592,9 +592,18 @@ readiness banner is the mitigation and it is loud, but beta onboarding should sa
    Option 2.
 4. **Option 2** — stop minting codes for claimed verifiers. Needs (3), plus a way for an owner to
    see who holds an unredeemed code.
-5. **Onboarding must say the quiet part out loud.** Naming people is no longer enough: an owner who
-   never makes the confirm call has a plan that does nothing. The banner says so on every screen,
-   but a beta invitation should say it before they build the plan, not after.
+5. ✅ **Onboarding copy fixed 2026-08-12.** The `/circle` header now states that naming is the
+   first half of two, each light says what is MISSING rather than naming a state
+   (*"Accepted — not yet verified, so their answer would not count"*), and the completeness banner
+   counts the unverified instead of declaring success.
+
+   **It closed a false green.** *"Every critical item has someone who can reach it"* was a statement
+   about coverage — items joined to recipients — and stayed green while nobody named could act.
+   That is the screen where an owner decides they are finished, which makes it the worst place to
+   say "done" when the truth is "named, not yet checked".
+
+   Walked live on an owner mid-setup: everyone named and nobody verified → the banner names the
+   shortfall and the reason → verified both through the real control → green, executable, earned.
 
 ### Deferred, and genuinely optional
 §3.8 event transparency · `email_secondary` (rung 2) · [A2] guided-setup-call UI, which is packaging
