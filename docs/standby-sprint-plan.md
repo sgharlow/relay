@@ -588,10 +588,37 @@ readiness banner is the mitigation and it is loud, but beta onboarding should sa
    users are flagged `is_demo_account` so they cannot inflate a signup count.
 2. ✅ **Phase 0 is unparked and the instrument is live** — see §2a. N stays 0 until real owners
    invite real people; it cannot manufacture demand.
-3. **§8.1 unanswered** — covered-or-excluded for a break-glass-only contact. The last thing gating
-   Option 2.
-4. **Option 2** — stop minting codes for claimed verifiers. Needs (3), plus a way for an owner to
-   see who holds an unredeemed code.
+3. ✅ **Fallback visibility shipped 2026-08-12.** `/api/circle` returns `has_passkey` and
+   `has_break_glass` per claimed contact, and the circle says plainly when somebody could not get
+   back in. A passkey and an unredeemed code are deliberately **not** treated as equal evidence: a
+   passkey is on a device they demonstrably used, while an unredeemed code proves one was *issued*,
+   not that they can still find it. Booleans only, never the credential.
+
+4. ▶️ **§8.1 RULED (Steve, 2026-08-12): Option A — documented exclusion.** The exclusion is already
+   mechanically true (a break-glass redeem sets `claimed`, and quorum requires `confirmed`), so what
+   is left to build is the product SAYING it: a "break-glass only" marker, an honest light instead
+   of a permanent red, and readiness that names the person as not counting.
+
+   Three constraints found while briefing it, all still open:
+   - **Marking somebody must re-run the quorum check and say the result**, or A converts a nagging
+     red into a comfortable silence, which is worse than the nag.
+   - **It applies to recipients too, meaning something different** — a verifier does not count
+     toward N; a recipient does not satisfy [A3]'s "somebody able to receive".
+   - **The marker must clear on redemption**, because redeeming binds an identity and sets
+     `claimed` — a stale marker would keep excluding somebody who now has an account.
+
+5. ▶️ **Option 2 RULED: C now (adaptive minting), B later.** ⚠️ **C's condition is narrower than
+   first specified.** An emailed verifier code only *functions* for a `confirmed` verifier — for
+   anyone else the vote is recorded and does not count — and "has an unredeemed break-glass code"
+   must **not** suppress the code, since a lost code is indistinguishable from a held one. So C is:
+   **mint only for a `confirmed` verifier with no passkey.**
+
+   🔴 **This puts J7-R1 under pressure and needs an explicit ruling before building.** J7-R1
+   guarantees an unenrolled verifier can always decide by code; post-tightening that decision does
+   not count, so the guarantee protects a right to cast a vote with no effect — and it is the only
+   reason a live credential still goes into the channel measured broken. The likely resolution is
+   to narrow it again (*no enrolment required at decision time*, rather than *a code is always
+   sent*) and serve the informational value by telling the **owner** instead.
 5. ✅ **Onboarding copy fixed 2026-08-12.** The `/circle` header now states that naming is the
    first half of two, each light says what is MISSING rather than naming a state
    (*"Accepted — not yet verified, so their answer would not count"*), and the completeness banner
