@@ -268,3 +268,51 @@ Every sprint ends with a live probe against production, not a green suite — th
 produced silent failures behind passing tests repeatedly. Sprint D additionally requires **both**
 modes proven in one session: a claimed contact resolving by session, and an unclaimed one still
 resolving by token.
+
+## 8. Passkey ceremony — tested with a virtual authenticator, 2026-08-12
+
+Driven against **production** with a CDP virtual authenticator (`WebAuthn.addVirtualAuthenticator`,
+resident key, UV on), as a real claimed standby contact. Fixtures created and torn down; the estate
+ended at the two protected baselines with zero orphans.
+
+### The ceremony itself — all green, nothing changed
+
+Register → sign out → sign back in **with no identifier typed** → session restored → `/api/standby`
+200. Adversarially: a registration challenge replayed on the authentication path is refused, a
+tampered signature is refused, a forged challenge token is refused, a replayed assertion is refused,
+unauthenticated registration is 401, and `excludeCredentials` stops a second enrolment of the same
+device. The signature counter advances and persists (observed 0 → 9), and `last_used_at` stamps.
+An epoch bump kills a live session while passkey re-entry still works — so revocation does not lock
+a passkey user out.
+
+### Four defects found, all fixed and live-proven
+
+None were visible to the API tests, because each is about **reachability or aftermath** rather than
+whether a call succeeds.
+
+1. **Enrolment was unreachable for the people it was for.** The only UI was `/account`, inside the
+   *owner* route group — a standby contact who found it landed in a vault dashboard being told their
+   vault was empty. [A1]'s "offered afterwards, deferrable" had no afterwards. Now a card on the
+   standby dashboard in access mode, shown only to someone covering a person who has not enrolled.
+
+2. **An already-enrolled device was reported as broken.** `InvalidStateError` — the *correct*
+   response to a duplicate enrolment — displayed "Your device could not complete that." The taxonomy
+   now lives in `lib/auth/passkey-errors.ts` with tests, shared by both surfaces.
+
+3. **Sign-in destinations were hardcoded** — passkey → `/start`, email-and-code → `/vault`. Neither
+   asked who the person was, so a contact signing in with their new passkey got an onboarding funnel.
+   `/continue` resolves it from the database. Relatedly, owner mode linked to `/standby` from
+   **nowhere**, so a §3.7 both-hats user could not reach it; the sidebar now carries "Standing by (n)".
+
+4. **Deleting an account left other people's circles bound to a ghost.** `deleteAccount` is scoped
+   `WHERE owner_id = $1`, but standby roles live in *other* owners' rosters: after deletion the owner
+   still read `standby_state = 'claimed'` pointing at a user id that no longer existed — a covered
+   circle that is not covered, which only reveals itself on the day it is needed. Deletion now
+   resigns from every circle first (reusing `resignFromCircle`, so the other owner gets the audit
+   entry) and removes passkeys and invitations.
+
+### Known and accepted
+
+A resident credential whose database row is gone yields "That passkey was not recognised" with no
+recovery guidance. Reachable today only by deleting rows out of band, which is what made it visible;
+worth a friendlier message if passkey deletion is ever offered in-product.
