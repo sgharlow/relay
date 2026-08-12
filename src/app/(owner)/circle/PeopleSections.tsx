@@ -24,6 +24,7 @@ import { apiSend } from '../_lib/api';
 import { VALID_ROLES, type RecipientRole } from '../../../../lib/domain/enums';
 import { readStandbyState, circleLight } from '../../../../lib/people/standby-state';
 import InviteControl from './InviteControl';
+import BreakGlassControl from './BreakGlassControl';
 
 /**
  * Someone who has not bound an account yet still needs a way in. `revoked` is
@@ -33,6 +34,21 @@ import InviteControl from './InviteControl';
 function needsClaimCode(state?: string): boolean {
   const s = readStandbyState(state);
   return s === 'invited';
+}
+
+/**
+ * Everyone except a revoked person. `redeemBreakGlass` refuses those outright —
+ * revocation outranks a code in a drawer — so offering to mint one would be
+ * offering something that cannot work.
+ */
+function canHoldBreakGlass(state?: string): boolean {
+  return readStandbyState(state) !== 'revoked';
+}
+
+/** Drives only the wording: a claimed person needs this for a lost device. */
+function hasClaimed(state?: string): boolean {
+  const s = readStandbyState(state);
+  return s === 'claimed' || s === 'confirmed';
 }
 
 /*
@@ -248,6 +264,14 @@ export function RecipientSection({
               {needsClaimCode(r.standby_state) ? (
                 <InviteControl personId={r.id} personType="recipient" name={r.name} />
               ) : null}
+              {canHoldBreakGlass(r.standby_state) ? (
+                <BreakGlassControl
+                  personId={r.id}
+                  personType="recipient"
+                  name={r.name}
+                  hasClaimed={hasClaimed(r.standby_state)}
+                />
+              ) : null}
             </div>
             <RemoveButton onClick={() => remove(r.id)} label={`Remove ${r.name}`} />
           </li>
@@ -343,6 +367,14 @@ export function VerifierSection({
               <div style={{ fontSize: 'var(--t1)', color: 'var(--ink-muted)' }}>{v.email}</div>
               {needsClaimCode(v.standby_state) ? (
                 <InviteControl personId={v.id} personType="verifier" name={v.name} />
+              ) : null}
+              {canHoldBreakGlass(v.standby_state) ? (
+                <BreakGlassControl
+                  personId={v.id}
+                  personType="verifier"
+                  name={v.name}
+                  hasClaimed={hasClaimed(v.standby_state)}
+                />
               ) : null}
             </div>
             <RemoveButton onClick={() => remove(v.id)} label={`Remove ${v.name}`} />

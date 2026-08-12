@@ -17,6 +17,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
 import { requireOwner, readJson, isResponse, mapError } from '../../../../../../lib/http/owner-route';
+import { assertOwns } from '../../../../../../lib/db/integrity';
 import { issueBreakGlass, formatBreakGlass } from '../../../../../../lib/people/break-glass';
 import { ValidationError } from '../../../../../../lib/validation';
 
@@ -35,6 +36,18 @@ export async function POST(req: NextRequest, { params }: Ctx): Promise<NextRespo
     if (personType !== 'recipient' && personType !== 'verifier') {
       throw new ValidationError('personType must be recipient or verifier', 'personType');
     }
+
+    // DSQL has no FKs, so cross-owner references are refused in the application
+    // layer or not at all — and this route skipped the check that every sibling
+    // route makes. Issuing against another owner's person id was never
+    // exploitable (redemption re-checks `owner_id`, so the code would be inert)
+    // but it wrote junk rows and put a stranger's person id in this owner's
+    // audit chain. Added 2026-08-12 for consistency with /api/invitations.
+    await assertOwns(
+      auth.ownerId,
+      personType === 'recipient' ? 'recipients' : 'verifiers',
+      (await params).id,
+    );
 
     const { code, expiresAt } = await issueBreakGlass({
       ownerId: auth.ownerId,
