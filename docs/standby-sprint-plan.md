@@ -594,18 +594,27 @@ readiness banner is the mitigation and it is loud, but beta onboarding should sa
    passkey is on a device they demonstrably used, while an unredeemed code proves one was *issued*,
    not that they can still find it. Booleans only, never the credential.
 
-4. ▶️ **§8.1 RULED (Steve, 2026-08-12): Option A — documented exclusion.** The exclusion is already
-   mechanically true (a break-glass redeem sets `claimed`, and quorum requires `confirmed`), so what
-   is left to build is the product SAYING it: a "break-glass only" marker, an honest light instead
-   of a permanent red, and readiness that names the person as not counting.
+4. ✅ **§8.1 ANSWERED and SHIPPED 2026-08-12: documented exclusion.** Migration 026 adds
+   `break_glass_only` to both roster tables — a column rather than a fifth `standby_state`, because
+   a new state would join the machine driving quorum, lights, resolution and
+   `PERMITTED_STANDBY_EDGES`, and §4.2 fixes that progression at four values with a single writer.
+   The person really *is* `invited`; this records that staying there is deliberate.
 
-   Three constraints found while briefing it, all still open:
-   - **Marking somebody must re-run the quorum check and say the result**, or A converts a nagging
-     red into a comfortable silence, which is worse than the nag.
-   - **It applies to recipients too, meaning something different** — a verifier does not count
-     toward N; a recipient does not satisfy [A3]'s "somebody able to receive".
-   - **The marker must clear on redemption**, because redeeming binds an identity and sets
-     `claimed` — a stale marker would keep excluding somebody who now has an account.
+   All three constraints from the briefing are met and live-proven:
+   - **It re-runs the quorum check and says the result.** Walked live: marking the second of two
+     verifiers stopped the "has not accepted yet" nag *and* immediately reported
+     *"only 1 of your trusted contacts is verified — one is covered by an emergency code only and
+     will never count."* The `href` points at `/triggers`, not `/circle`, because chasing somebody
+     who is never coming is not a fix.
+   - **Recipients too**, meaning something different: a verifier does not count toward N, a
+     recipient does not satisfy [A3]'s "somebody able to receive".
+   - **The marker clears on redemption**, in the SAME UPDATE that binds the identity rather than by
+     a follow-up call that a future binding path could forget. Proven end to end: marked → issued a
+     code → redeemed → `claimed`, marker `false`.
+
+   Refused for anybody who has already claimed (it would record a falsehood and exclude somebody
+   able to act); undo is never blocked, because the guard exists to stop a false record, not to trap
+   somebody inside one.
 
 5. ▶️ **Option 2 RULED: C now (adaptive minting), B later.** ⚠️ **C's condition is narrower than
    first specified.** An emailed verifier code only *functions* for a `confirmed` verifier — for
