@@ -96,10 +96,16 @@ function StandbyLight({ state }: { state?: string }) {
   const s = readStandbyState(state);
   const light = circleLight(s);
 
+  // Amber and red both say what is MISSING rather than only what state a row is
+  // in. Since quorum tightened, an unverified person contributes nothing, so
+  // "Claimed" alone would let an owner read progress where there is none.
   const tone = {
-    green: { dot: 'var(--ok, #2e7d32)', label: 'Ready' },
-    amber: { dot: 'var(--warn, #b26a00)', label: 'Claimed — confirm it is really them' },
-    red: { dot: 'var(--rule-strong)', label: s === 'revoked' ? 'Removed' : 'Not claimed yet' },
+    green: { dot: 'var(--ok, #2e7d32)', label: 'Verified — their answer counts' },
+    amber: { dot: 'var(--warn, #b26a00)', label: 'Accepted — not yet verified, so their answer would not count' },
+    red: {
+      dot: 'var(--rule-strong)',
+      label: s === 'revoked' ? 'Removed' : 'Has not accepted yet — give them their code',
+    },
   }[light];
 
   return (
@@ -225,7 +231,7 @@ export function RecipientSection({
 
   return (
     <section>
-      <SectionHeading hint="The people who would receive access. Nothing opens for them until a trigger fires and someone confirms it is real.">
+      <SectionHeading hint="The people who would receive access. Nothing opens for them until a trigger fires and the people you named confirm it is real — and a person you have not verified cannot receive anything.">
         Who would step in
       </SectionHeading>
 
@@ -355,7 +361,15 @@ export function VerifierSection({
 
   return (
     <section>
-      <SectionHeading hint="They confirm an emergency is real. They never see anything inside your vault — not now, and not after they answer.">
+      {/*
+        Amended 2026-08-12. The old hint promised they "never see anything
+        inside your vault", which is imprecise in the same way §3.1 was: at the
+        moment they are asked they see how many items and which categories, so
+        they can judge whether the request is proportionate. The line that holds
+        is contents, not scale — and the hint now also names the step that
+        decides whether their answer counts at all.
+      */}
+      <SectionHeading hint="They are asked whether an emergency is real. Their answer only counts once you have checked it is really them. They never see what is inside your vault — only how much, and only when they are asked.">
         Who confirms it is real
       </SectionHeading>
 

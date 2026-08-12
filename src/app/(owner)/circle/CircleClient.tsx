@@ -32,8 +32,8 @@ interface CircleData {
     circleComplete: boolean;
   };
   proposals: Proposal[];
-  recipients: { id: string; name: string; role: string; email: string }[];
-  verifiers: { id: string; name: string; email: string }[];
+  recipients: { id: string; name: string; role: string; email: string; standby_state?: string }[];
+  verifiers: { id: string; name: string; email: string; standby_state?: string }[];
   policyCount: number;
   itemCount: number;
 }
@@ -88,12 +88,31 @@ export default function CircleClient() {
   const { coverage, proposals, recipients, verifiers } = data;
   const nameById = new Map(recipients.map((r) => [r.id, r.name]));
 
+  // Anyone still named but not verified. `revoked` is excluded — the owner
+  // removed them on purpose and is not waiting on a call.
+  const unverified = [...recipients, ...verifiers].filter(
+    (p) => p.standby_state !== 'confirmed' && p.standby_state !== 'revoked',
+  ).length;
+
   return (
     <div className="space-y-8">
       <header>
         <h1 style={{ fontSize: 'var(--t7)', fontWeight: 600, letterSpacing: '-0.02em' }}>People</h1>
+        {/*
+          Naming and verifying were previously blurred by this very sentence:
+          "who confirms it is real" meant a verifier attesting to an emergency,
+          and an owner could easily read it as the checking THEY have to do.
+          Since quorum tightened, that difference decides whether a plan works,
+          so the two steps are now stated as two steps.
+        */}
         <p style={{ fontSize: 'var(--t3)', color: 'var(--ink-muted)', marginTop: 'var(--s1)' }}>
-          Who would step in, who confirms it is real, and what each of them could reach.
+          Who would step in, who would be asked whether an emergency is real, and what each of them
+          could reach.
+        </p>
+        <p style={{ fontSize: 'var(--t2)', color: 'var(--ink-muted)', marginTop: 'var(--s2)' }}>
+          <strong style={{ color: 'var(--ink)' }}>Naming someone is the first half.</strong> Once
+          they accept, call them and check the phrase matches — until you do, their answer would not
+          count towards opening anything.
         </p>
       </header>
 
@@ -107,10 +126,33 @@ export default function CircleClient() {
             : 'border-ochre bg-ochre-soft'
         }`}
       >
-        {coverage.circleComplete ? (
+        {coverage.circleComplete && unverified === 0 ? (
           <p className="text-t2 font-medium text-sage-text">
             Every critical item has someone who can reach it.
           </p>
+        ) : coverage.circleComplete ? (
+          /*
+            A FALSE GREEN, CLOSED 2026-08-12. "Every critical item has someone
+            who can reach it" was a statement about COVERAGE — items joined to
+            recipients — and it stayed green while nobody named could actually
+            act. Since quorum tightened to `confirmed`, an unverified person's
+            answer does not count, so this sentence could be true and the plan
+            still open nothing.
+
+            This is the screen where an owner decides they are finished, so it
+            is the worst possible place to say "done" when the answer is "named,
+            not yet checked".
+          */
+          <>
+            <p className="text-t2 font-medium text-ochre-text">
+              Everyone is named — but {unverified} of them{' '}
+              {unverified === 1 ? 'has' : 'have'} not been verified yet.
+            </p>
+            <p className="mt-1 text-t2 text-ochre-text">
+              Until you check it is really them, their answer would not count and nothing would
+              open. It is a two-minute call each.
+            </p>
+          </>
         ) : (
           <>
             <p className="text-t2 font-medium text-ochre-text">
