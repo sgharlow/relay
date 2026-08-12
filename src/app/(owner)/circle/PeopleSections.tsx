@@ -27,6 +27,7 @@ import InviteControl from './InviteControl';
 import BreakGlassControl from './BreakGlassControl';
 import FingerprintControl from './FingerprintControl';
 import FallbackLine from './FallbackLine';
+import PaperOnlyControl from './PaperOnlyControl';
 
 /**
  * Someone who has not bound an account yet still needs a way in. `revoked` is
@@ -71,6 +72,8 @@ export interface Recipient {
   /** Could they get back in on a new device? Only meaningful once claimed. */
   has_passkey?: boolean;
   has_break_glass?: boolean;
+  /** §8.1: the owner has recorded that this person will never hold an account. */
+  break_glass_only?: boolean | null;
 }
 
 export interface Verifier {
@@ -85,6 +88,8 @@ export interface Verifier {
   /** Could they get back in on a new device? Only meaningful once claimed. */
   has_passkey?: boolean;
   has_break_glass?: boolean;
+  /** §8.1: the owner has recorded that this person will never hold an account. */
+  break_glass_only?: boolean | null;
 }
 
 /**
@@ -99,9 +104,34 @@ export interface Verifier {
  * nobody has an account yet and nobody can act through one. The existing
  * invitation path still works for them meanwhile.
  */
-function StandbyLight({ state }: { state?: string }) {
+function StandbyLight({ state, paperOnly }: { state?: string; paperOnly?: boolean | null }) {
   const s = readStandbyState(state);
   const light = circleLight(s);
+
+  // §8.1: a red light saying "has not accepted yet" tells the owner to chase
+  // somebody who is never coming. Once they have recorded that, it stops being a
+  // failure and becomes a choice — so it reads as one, and in a neutral tone.
+  if (paperOnly && s === 'invited') {
+    return (
+      <span
+        title="Covered by an emergency code only — does not count towards a release"
+        style={{
+          marginLeft: 'var(--s2)',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          fontSize: 'var(--t1)',
+          color: 'var(--ink-muted)',
+        }}
+      >
+        <span
+          aria-hidden
+          style={{ width: 8, height: 8, borderRadius: 2, background: 'var(--rule-strong)', display: 'inline-block' }}
+        />
+        Emergency code only
+      </span>
+    );
+  }
 
   // Amber and red both say what is MISSING rather than only what state a row is
   // in. Since quorum tightened, an unverified person contributes nothing, so
@@ -274,13 +304,22 @@ export function RecipientSection({
               >
                 {r.role}
               </span>
-              <StandbyLight state={r.standby_state} />
+              <StandbyLight state={r.standby_state} paperOnly={r.break_glass_only} />
               <div style={{ fontSize: 'var(--t1)', color: 'var(--ink-muted)' }}>
                 {r.email}
                 {r.relationship ? ` · ${r.relationship}` : ''}
               </div>
-              {needsClaimCode(r.standby_state) ? (
+              {needsClaimCode(r.standby_state) && !r.break_glass_only ? (
                 <InviteControl personId={r.id} personType="recipient" name={r.name} />
+              ) : null}
+              {needsClaimCode(r.standby_state) ? (
+                <PaperOnlyControl
+                  personId={r.id}
+                  personType="recipient"
+                  name={r.name}
+                  marked={Boolean(r.break_glass_only)}
+                  onChanged={onChange}
+                />
               ) : null}
               {hasClaimed(r.standby_state) ? (
                 <FallbackLine
@@ -407,10 +446,19 @@ export function VerifierSection({
           >
             <div>
               <span style={{ fontSize: 'var(--t3)', fontWeight: 500 }}>{v.name}</span>
-              <StandbyLight state={v.standby_state} />
+              <StandbyLight state={v.standby_state} paperOnly={v.break_glass_only} />
               <div style={{ fontSize: 'var(--t1)', color: 'var(--ink-muted)' }}>{v.email}</div>
-              {needsClaimCode(v.standby_state) ? (
+              {needsClaimCode(v.standby_state) && !v.break_glass_only ? (
                 <InviteControl personId={v.id} personType="verifier" name={v.name} />
+              ) : null}
+              {needsClaimCode(v.standby_state) ? (
+                <PaperOnlyControl
+                  personId={v.id}
+                  personType="verifier"
+                  name={v.name}
+                  marked={Boolean(v.break_glass_only)}
+                  onChanged={onChange}
+                />
               ) : null}
               {hasClaimed(v.standby_state) ? (
                 <FallbackLine

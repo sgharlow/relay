@@ -199,7 +199,8 @@ export async function redeemBreakGlass(params: {
 
   await query(
     `UPDATE ${table}
-        SET claimed_user_id = $1, standby_state = 'claimed', fingerprint_confirmed_at = NULL
+        SET claimed_user_id = $1, standby_state = 'claimed', fingerprint_confirmed_at = NULL,
+            break_glass_only = false
       WHERE id = $2 AND owner_id = $3`,
     [userId, row.person_id, row.owner_id],
   );

@@ -155,5 +155,9 @@ describe('re-claiming invalidates a confirmation made about someone else', () =>
     const bind = String(mockQuery.mock.calls.at(-1)?.[0]);
     expect(bind).toContain('fingerprint_confirmed_at = NULL');
     expect(bind).toContain("standby_state = 'claimed'");
+    // §8.1: the marker records that somebody will never hold an account, and
+    // they just did. Cleared in the SAME statement as the binding, so it cannot
+    // be forgotten by a future path that binds an identity.
+    expect(bind).toContain('break_glass_only = false');
   });
 });

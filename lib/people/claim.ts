@@ -136,8 +136,14 @@ export async function claimStandbyRole(params: {
   // slot and must not silently stand. The owner's light drops to amber and they
   // are asked again (Risk 8).
   await query(
+    // `break_glass_only` is cleared in the SAME statement as the binding, not by
+    // a follow-up call: the marker records that somebody will never hold an
+    // account, and they just did. A separate write could be forgotten or fail on
+    // its own, leaving an exclusion outliving its reason — which is the failure
+    // this feature exists to make visible, not to cause (§8.1).
     `UPDATE ${table}
-        SET claimed_user_id = $1, standby_state = 'claimed', fingerprint_confirmed_at = NULL
+        SET claimed_user_id = $1, standby_state = 'claimed', fingerprint_confirmed_at = NULL,
+            break_glass_only = false
       WHERE id = $2 AND owner_id = $3`,
     [userId, invite.person_id, invite.owner_id],
   );

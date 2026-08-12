@@ -124,6 +124,11 @@ describe('redeemBreakGlass', () => {
     expect(bind).toContain("standby_state = 'claimed'");
     expect(bind).not.toContain("'confirmed'");
     expect(bind).toContain('fingerprint_confirmed_at = NULL');
+    // §8.1: the marker records that somebody will never hold an account, and
+    // they just did. Cleared in the SAME statement as the binding — a separate
+    // write could be forgotten by the next path that binds, leaving an
+    // exclusion still excluding a person who can now act.
+    expect(bind).toContain('break_glass_only = false');
   });
 
   it('makes noise: a distinct action that flags re-confirmation is needed', async () => {

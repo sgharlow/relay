@@ -1,0 +1,31 @@
+-- The documented exclusion (§8.1, ruled 2026-08-12).
+--
+-- §8.1 asked one question and left it open: is a break-glass-only contact
+-- COVERED, or a DOCUMENTED EXCLUSION? §4.3 answered exclusion, and since quorum
+-- tightened to `confirmed` that answer is already mechanically true — a
+-- break-glass redeem sets `claimed`, which does not count. What was missing is
+-- the product SAYING it.
+--
+-- Without this the owner sees a permanent red light reading "has not accepted
+-- yet", which implies "chase them" when the truth for this person is "not ever,
+-- on this device". §8.1 names that precisely: a red light must not imply "not
+-- yet" when the answer is "not ever".
+--
+-- WHY A COLUMN AND NOT A NEW `standby_state`. A fifth state would join the
+-- machine that drives quorum, lights, resolution and PERMITTED_STANDBY_EDGES —
+-- §4.2 is explicit that person state is invited → claimed → confirmed → revoked
+-- and that it has a single writer. This is orthogonal to that progression: the
+-- person really is `invited`, and this records that staying there is DELIBERATE.
+-- Two independent facts, two columns.
+--
+-- Nullable, and NULL means false: DSQL cannot add NOT NULL to an existing table
+-- (see 008), and every existing contact is by definition not paper-only.
+--
+-- Cleared automatically when somebody claims or redeems a break-glass code —
+-- see lib/people/break-glass-only.ts. A stale marker would keep excluding a
+-- person who now holds an account.
+--
+-- Requirements: J4-R13
+
+ALTER TABLE recipients ADD COLUMN IF NOT EXISTS break_glass_only BOOLEAN;
+ALTER TABLE verifiers  ADD COLUMN IF NOT EXISTS break_glass_only BOOLEAN;

@@ -104,8 +104,8 @@ export async function assessReadiness(ownerId: string): Promise<Readiness> {
     query<{ name: string }>(`SELECT name FROM recipients WHERE owner_id = $1 ORDER BY created_at ASC`, [ownerId]),
     // Person state, for §4.3 and [A3]. Counting rows was the original defect:
     // a revoked verifier is a row that can never answer.
-    query<{ id: string; standby_state: string | null }>(
-      `SELECT id, standby_state FROM verifiers WHERE owner_id = $1`,
+    query<{ id: string; standby_state: string | null; break_glass_only: boolean | null }>(
+      `SELECT id, standby_state, break_glass_only FROM verifiers WHERE owner_id = $1`,
       [ownerId],
     ),
     query<{ id: string; standby_state: string | null }>(
@@ -199,17 +199,38 @@ export async function assessReadiness(ownerId: string): Promise<Readiness> {
     // who have claimed but were never checked, and that is a phone call — so
     // the message says so and points at the circle rather than at /triggers,
     // which would suggest lowering the threshold instead.
-    const unchecked = counts.verifiers - ableVerifiers;
+    // §8.1: somebody the owner marked paper-only is never coming, so "waiting on
+    // you to check" would be false for them. Naming the two groups separately is
+    // the difference between an action and a nag — one is a phone call, the
+    // other means adding a person or lowering the threshold.
+    const paperOnly = verifierStates.rows.filter((v) => v.break_glass_only === true).length;
+    const unchecked = counts.verifiers - ableVerifiers - paperOnly;
+
+    const parts: string[] = [];
+    if (unchecked > 0) {
+      parts.push(
+        `${unchecked === 1 ? 'One is' : `${unchecked} are`} waiting on you to check it is really ` +
+          'them',
+      );
+    }
+    if (paperOnly > 0) {
+      parts.push(
+        `${paperOnly === 1 ? 'one is' : `${paperOnly} are`} covered by an emergency code only and ` +
+          'will never count',
+      );
+    }
+
     blockers.push({
       code: 'unsatisfiable_quorum',
       message:
         `A trigger needs ${highestRequired} confirmations, but only ${ableVerifiers} of your ` +
         `trusted contacts ${ableVerifiers === 1 ? 'is' : 'are'} verified` +
-        (unchecked > 0
-          ? `. ${unchecked === 1 ? 'One is' : `${unchecked} are`} waiting on you to check it is ` +
-            'really them — until then their answer would not count, and an emergency could start ' +
-            'and never resolve.'
+        (parts.length > 0
+          ? ` — ${parts.join(', and ')}. An emergency could start and never resolve.`
           : '. An emergency could start and never resolve.'),
+      // Point at the circle only when a call would fix it. If the shortfall is
+      // all paper-only, no amount of chasing helps and the answer is a different
+      // threshold or another person.
       href: unchecked > 0 ? '/circle' : '/triggers',
       fatal: true,
     });

@@ -56,8 +56,9 @@ export async function GET(): Promise<NextResponse> {
       email: string;
       standby_state: string | null;
       claimed_user_id: string | null;
+      break_glass_only: boolean | null;
     }>(
-      `SELECT id, name, role, email, standby_state, claimed_user_id
+      `SELECT id, name, role, email, standby_state, claimed_user_id, break_glass_only
          FROM recipients WHERE owner_id = $1`,
       [auth.ownerId],
     ),
@@ -67,8 +68,9 @@ export async function GET(): Promise<NextResponse> {
       email: string;
       standby_state: string | null;
       claimed_user_id: string | null;
+      break_glass_only: boolean | null;
     }>(
-      `SELECT id, name, email, standby_state, claimed_user_id
+      `SELECT id, name, email, standby_state, claimed_user_id, break_glass_only
          FROM verifiers WHERE owner_id = $1`,
       [auth.ownerId],
     ),
