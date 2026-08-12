@@ -173,6 +173,49 @@ mode this whole exercise exists to remove.
 
 ---
 
+### 3.7 One human, many hats — the multi-role identity rules
+
+**All three combinations are supported by the schema as planned, and none needs a new table or
+column.** `users` carries no owner flag — owner-ness is implied by owning rows — so the same
+`users.id` can own a vault *and* be `claimed_user_id` on any number of other owners' roster rows.
+An owner with many standbys is the existing 1:N roster. The design work is in application logic,
+and it is the kind that is cheap now and expensive to retrofit.
+
+If the acquisition argument works, **the multi-hat user is the normal case, not an edge case.**
+Design for it accordingly.
+
+| # | Rule | Why |
+|---|---|---|
+| 1 | **`standbyFor` in the JWT is a rendering hint, never an authorization.** Every resolve reads the DB. | Sessions are `strategy: 'jwt'` with no adapter, so the token is a snapshot. Reading authorization from it delays **revocation** by the token lifetime — and revocation is the safety control behind Risk 3. Same reasoning that already moves the release version check server-side (§3.2). |
+| 2 | **Standby → owner conversion upgrades in place.** [A6]'s "start your own plan" attaches a vault and subscription to the existing `users.id`. It must never route through fresh signup. | A second `users` row severs every standby link this person holds. That would silently break the exact acquisition loop the architecture is adopted for. |
+| 3 | **Account deletion degrades other owners' circles; it does not delete from them.** NULL the `claimed_user_id`, drop that roster row to `invited`/red, tell that owner, and **re-validate their quorum** (§4.3). | `deleteAccount` already has the right precedent — `DELETE FROM delegations WHERE owner_id = $1 OR delegate_user_id = $1` cleans up references held by others. But deleting a roster row would silently shrink someone else's circle, which is the failure this whole architecture exists to prevent. Losing a confirmed participant can also make an existing N unsatisfiable. |
+| 4 | **Cross-owner confidentiality.** An owner must never be able to enumerate a contact's other standby relationships. | If Sarah stands by for Margaret and for Tom, neither may learn of the other. Easy to leak accidentally — a "standby for 3 people" badge, a profile page, an error message. This confidentiality boundary only exists once multi-owner standby does. |
+| 5 | **Role concentration keys on identity, not email spelling.** | `detectRoleConcentration` (`lib/people/role-concentration.ts`) already normalises email so "the same human under two spellings never counts as their own independent cover." `claimed_user_id` makes that **provable** rather than inferred — a free upgrade to an existing control. |
+| 6 | **A verifier who is also a recipient on the same release does not count toward N** (§4.3). | Nobody should help authorize their own access. Today the roles live in separate tables and the existing check only *warns*, and only when one person holds all three roles and is the sole cover. Identity makes separation of duties enforceable for the first time. |
+| 7 | **An owner is not an independent verifier of their own release.** Refuse or exclude from N. | No self-reference guard exists today. The owner is precisely the person who may be incapacitated or coerced; counting them makes the quorum weaker than its stated strength. |
+| 8 | **Check-in counts only for actions in the user's own owner context** (§4.6). | `users.checkin_interval_days` is `NOT NULL DEFAULT 30` for *every* user, standby-only ones included. Acting on someone else's standby dashboard must not extend your own liveness. |
+| 9 | **Being a standby never consumes the person's own entitlement and never bills the owner.** | Sharpens the pivot's entitlement note for the multi-hat case, where both a subscription and standby relationships exist on one row. |
+| 10 | **Cap how many standby relationships one user may hold.** | Bounds the abuse surface Risk 4 names. |
+
+Two consequences for the UI: the `(owner)` and `(access)` route groups use deliberately different
+visual modes, so a multi-hat user needs an unambiguous context switch; and duplicate-person guards
+(`"… is already a recipient for this vault"`) must key on `claimed_user_id` as well as email, in
+the application layer per the existing no-FK convention.
+
+### 3.8 Event transparency (J6 step 6) — an anti-abuse control, not roster exposure
+
+When a request is made, **every other member of the circle sees that it happened.** Covert access
+requests become impossible. Under standby this is nearly free: everyone has a dashboard, so rung 0
+carries it with no delivery dependency.
+
+**This is distinct from circle visibility and must not be conflated with it.** Risk 3 puts the
+*roster* behind an owner toggle, default off, because a list of who is trusted is reconnaissance
+for a controlling household member. An *event* notice — "someone requested access on 3 August" —
+exposes no roster and is a defence against exactly that person acting covertly. Events on by
+default; roster off by default.
+
+---
+
 ## 4. State model
 
 ### 4.1 Release state: no new states
@@ -322,20 +365,6 @@ escalation (§4.4).**
 evidence work and is in bounds. Phases 1–4 are building and the rule applies. The one item with a
 defensible claim to jump the queue is **§4.4**, which is a shipped product not serving its headline
 use case — closer to a defect than a feature.
-
----
-
-### 3.7 Event transparency (J6 step 6) — an anti-abuse control, not roster exposure
-
-When a request is made, **every other member of the circle sees that it happened.** Covert access
-requests become impossible. Under standby this is nearly free: everyone has a dashboard, so rung 0
-carries it with no delivery dependency.
-
-**This is distinct from circle visibility and must not be conflated with it.** Risk 3 puts the
-*roster* behind an owner toggle, default off, because a list of who is trusted is reconnaissance
-for a controlling household member. An *event* notice — "someone requested access on 3 August" —
-exposes no roster and is a defence against exactly that person acting covertly. Events on by
-default; roster off by default.
 
 ---
 
