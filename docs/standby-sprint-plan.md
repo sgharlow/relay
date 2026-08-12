@@ -375,15 +375,41 @@ verifier who had answered was **still being asked** (safe — `submitConfirmatio
 returns `duplicate` — but it reads as the product having lost their answer). Both fixed; the second
 is resolved server-side as `awaitingDecision` so the card and `/api/verify` cannot disagree.
 
+### ✅ Break-glass redeem — shipped and live-proven 2026-08-12
+
+`redeemBreakGlass` had sat in `lib` since sprint E with no route, so §3.6's answer for the lost
+authenticator and the contact who never claimed could not be exercised by anyone. Now a `break-glass`
+credentials provider (the code IS the authentication, exactly once, mirroring `standby-claim`) plus
+`/break-glass` in access mode.
+
+Walked on production: redeem → session → `/standby` 200; the same code again → refused, no session;
+the person drops to `claimed` with `fingerprint_confirmed_at` cleared, so the owner's light goes
+amber; `break_glass_redeemed` in the audit chain. Runtime log shows **200** on the redeem and **401**
+on both refusals, worded identically.
+
+**🔴 A security hole was found while wiring it and fixed before shipping.** Nothing retires a
+break-glass code when an owner revokes somebody, and `redeemBreakGlass` never read `standby_state` —
+so a revoked contact holding a year-old code could redeem it and set themselves back to `claimed`
+with a session. The person an owner most urgently removes is the controlling household member of
+Risk 3, and revocation is the control that answers them; a bearer credential outliving it makes
+revocation decorative. It was latent only because the function was unreachable. The guard runs
+**before the burn**, so a refused attempt does not consume a legitimate holder's only way in —
+verified live: after the refusal the code was still unused.
+
+**§3.6's required owner notification did not exist either.** The audit entry recorded the event for
+anyone who went looking, which is not telling the one person who needs to know — and "loud" is
+exactly what §8.1 accepts this credential in exchange for. `notifyOwnerOfBreakGlass` now says what
+happened, that the light is amber and why, and the one action that matters if it was not them. It
+deliberately does not say what the person can now reach: if the code was used by the wrong hands,
+that message is going to the right ones and must not become a map.
+
 ### 🔴 Still open
 
 1. **Assurance controls are API-only**: fingerprint confirm and resign have routes and no UI, so the
    circle light can never go green and a contact cannot leave.
-2. 🔴 **Break-glass is issue-only — there is no redeem endpoint at all.** `redeemBreakGlass` exists
-   in `lib` with no route, so §3.6's answer for "the lost authenticator" cannot be exercised. **This
-   is the gate on ceasing to mint codes for claimed verifiers** (principle 1's remaining half): stop
-   minting before break-glass works and a claimed verifier who cannot sign in at the moment of
-   crisis has nothing at all. §8.1's unanswered *covered-or-excluded* question now sits on this path.
+2. **Break-glass has no ISSUE UI.** ✅ *Redeem shipped and live-proven 2026-08-12 — see below.*
+   `POST /api/people/[id]/break-glass` still has no caller, so an owner cannot hand anyone a code
+   and the path is reachable only by script. That is now the whole of what blocks Option 2.
 3. **`lib/vault/circle-readiness.ts` is dead code** — [A3], tested, imported by nothing but its test.
 4. **§9.3's Terms ship-gate is breached.** *"Terms need a standby clause before standby accounts
    exist in production."* They exist; `terms/page.tsx` and `privacy/page.tsx` contain zero
