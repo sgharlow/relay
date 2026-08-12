@@ -324,18 +324,38 @@ export async function notifyOneVerifier(
   });
 }
 
-/** Notifies the owner that confirmations are met but the grace window is still open (Req 6.6). */
+/**
+ * Notifies the owner that confirmations are met (Req 6.6).
+ *
+ * 🔴 THIS PROMISED A DELAY THAT DOES NOT EXIST, corrected 2026-08-12. It said
+ * "Release will complete when the grace window elapses. If this is a false
+ * alarm, check in now to cancel" — and `GRACE_WINDOW_MS` is **0**, deliberately,
+ * with an invariant test guarding it. So "when the grace window elapses" means
+ * "at the next sweep", and "check in now to cancel" invited the owner into a
+ * race they would lose. Found by walking a real release on production.
+ *
+ * What is actually true is stronger, and it is the reversibility story rather
+ * than a countdown: access opens as soon as enough people agree, and checking in
+ * CLOSES IT AGAIN — `processCheckin` reverses pending, grace and released alike.
+ * The owner is not protected by a delay; they are protected by being able to
+ * undo it the moment they surface.
+ *
+ * ⏸️ Whether the window should be non-zero is a PRODUCT decision that the
+ * constant's own comment defers — "how long should an owner get to stop a false
+ * alarm?" Rewording this does not settle it, and must not imply it has been.
+ */
 export async function notifyOwnerReleasePendingGrace(
   ownerEmail: string,
   triggerType: string,
 ): Promise<void> {
   await sendEmailBestEffort({
     to: ownerEmail,
-    subject: `Your ${triggerType} release is pending the grace window`,
+    subject: `Your ${triggerType} release has been confirmed`,
     text:
-      `All required confirmations for your "${triggerType}" trigger have been received. ` +
-      `Release will complete when the grace window elapses. ` +
-      `If this is a false alarm, check in now to cancel.\n`,
+      `Everyone you asked has now confirmed your "${triggerType}" trigger, so the access you ` +
+      `arranged is opening.\n\n` +
+      `If this is a false alarm, check in and it closes again — everything reversible you set up ` +
+      `shuts immediately, and you do not have to undo anything by hand.\n`,
   });
 }
 

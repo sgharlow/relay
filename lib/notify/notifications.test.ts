@@ -136,11 +136,25 @@ describe('notifyRecipientsOfRelease', () => {
 });
 
 describe('notifyOwnerReleasePendingGrace', () => {
-  it('sends the owner a grace-pending notice', async () => {
+  it('tells the owner the release is confirmed and how to undo it', async () => {
     _setResendClientForTesting(stubResend());
     await notifyOwnerReleasePendingGrace('owner@example.com', 'emergency');
     expect(sent[0].to).toBe('owner@example.com');
-    expect(sent[0].subject).toContain('grace window');
+    expect(sent[0].subject).toContain('confirmed');
+    expect(sent[0].text).toMatch(/check in and it closes again/i);
+  });
+
+  it('🔴 NEVER promises a delay, because GRACE_WINDOW_MS is 0', async () => {
+    // This said "Release will complete when the grace window elapses. If this is
+    // a false alarm, check in now to cancel" — inviting the owner into a race
+    // they would lose, since the window is zero by design. What protects them is
+    // reversibility, not a countdown, and that is what the message now says.
+    _setResendClientForTesting(stubResend());
+    await notifyOwnerReleasePendingGrace('owner@example.com', 'emergency');
+
+    const all = `${sent[0].subject} ${sent[0].text}`.toLowerCase();
+    expect(all).not.toContain('grace window');
+    expect(all).not.toContain('elapses');
   });
 });
 
