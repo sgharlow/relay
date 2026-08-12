@@ -647,6 +647,57 @@ around an assurance flow that already works.
 
 ---
 
+## 12. Full beta preparedness — audited 2026-08-12 (UI + functionality + use cases)
+
+Derived live, not quoted: `master` @ `995f797`, **1376 passed / 1 skipped across 139 files**, build
+and typecheck clean, every public surface 200, estate at five demo rows plus one real account with
+zero orphans, demo circle green and executable.
+
+### UI review — measured, not eyeballed
+
+Screenshots would not reach the filesystem, so the review was done by measuring the DOM, which is
+better evidence for the risks that actually mattered after five controls were added to each person
+row today.
+
+| Check | Result |
+|---|---|
+| Horizontal overflow, owner mode @1280 | None |
+| Person row height | 109–160px — dense but coherent |
+| Reading order on the densest row | who → status → what is missing → what to do. Sound |
+| Access mode @390 (phone) overflow | None on any of /standby, /access, /claim, /verify, /break-glass |
+| Access mode tap targets | 26–52px |
+| **Owner-mode tap targets** | 🔴 **19px on three text-styled controls — below WCAG 2.5.8's 24×24. FIXED (`995f797`).** |
+
+The densest row (a claimed-but-unverified recipient) carries: name and role, the light with its
+consequence, email, the fallback warning naming the action, and three controls. It reads in the
+right order and the guidance sits immediately above the control that resolves it.
+
+### Functionality — every surface answers
+
+`/api/readiness`, `/api/circle`, `/api/standby`, `/api/audit`, `/api/triggers` all 200 with coherent
+state. A five-person fixture spanning every person state rendered correctly: confirmed+passkey reads
+settled, confirmed-without-fallback warns, claimed-unverified says its answer would not count,
+paper-only reads as a choice, invited-with-code shows its fallback.
+
+### 🔴 Findings this audit produced
+
+1. ✅ **Sub-minimum tap targets** — fixed in `995f797`.
+2. 🟠 **[A3] green does not consider whether a confirmed person can still be REACHED.** The fixture
+   ended green and executable while its only counting verifier had no passkey and no emergency code
+   — the plan works only for as long as he still holds that phone. This is the same shape as the
+   coverage false-green closed earlier today, one level further out. It is a **judgement call about
+   what green means**, not an obvious defect, so it is recorded rather than changed: green currently
+   means *configured and verified*, and device loss is a future event rather than a present state.
+   The data to decide it now exists (`has_passkey`, `has_break_glass`).
+3. 🟠 **§8.2 is still open and is now the largest experience gap.** `/audit` renders a raw
+   `SEQ / TIME / ACTOR / ACTION / ENTITY / HASH` table. The site promises *"Margaret gets a record of
+   exactly what was opened while she was away"* — a hash table is not that record. It matters more
+   under this architecture than before, because the post-incident record is the emotional payoff of
+   the reversibility story, and it is invisible in the plan precisely because the log technically
+   satisfies the claim.
+
+---
+
 ## 11. hybrid+6 conformance — audited 2026-08-12
 
 Against the plan **as amended and ratified today** (J7-R1 restated temporally, principle 1 made
