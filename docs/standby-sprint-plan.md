@@ -529,9 +529,19 @@ that fixes it, and each is a chance to leave a stale alarm.
    count, permanently and silently. That is the *ordinary* beta sequence, not an edge case. The
    non-counting answer now lands in the audit log only. Proven live end to end: answered unverified
    → recorded, count 0 → owner verifies → answered again → count 1.
-2. **Option 2 — stop minting codes for claimed verifiers.** Unblocked (break-glass works end to
-   end). Wants the §8.1 ruling first, plus a way for an owner to see who actually holds an
-   unredeemed code — a fallback nobody was handed is not cover.
+2. ✅ **Option 2 — SHIPPED and live-proven 2026-08-12.** Both preconditions were met first: §8.1 was
+   ruled (documented exclusion) and fallback visibility shipped, so *"everybody has a fallback"*
+   became answerable from inside the product rather than assumed. Detail in §12 item 5.
+
+   The condition landed as **confirmed and able to sign in**, not *claimed* — and "able to sign in"
+   is a passkey **or** an authenticator, which widened during the build once the multi-hat case was
+   considered. Live-proved against production DSQL with a five-verifier fixture covering all four
+   classes: **exactly one code minted for five verifiers**, four messages sent, none carrying a
+   token link, and the revoked person receiving nothing at all. Fixture torn down; estate back to
+   baseline.
+
+   Part **B** of the ruling — a second look at what the sign-in branch's message should say — stays
+   deferred until after Phase 0, as Steve ruled.
 3. ✅ **§9.3's Terms ship-gate — CLOSED 2026-08-12.** Terms gained *"If someone names you"* and
    Privacy gained *"If someone named you"*; both live. Counsel review under `g2-counsel-opinion` is
    still outstanding and this does not substitute for it — what it does is make the documents true,
