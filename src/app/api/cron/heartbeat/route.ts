@@ -13,6 +13,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { runHeartbeatSweep, resolveElapsedGrace } from '../../../../../lib/release/heartbeat';
 import { ReleaseStateMachine } from '../../../../../lib/release/state-machine';
 import { recordSchedulerRun } from '../../../../../lib/release/scheduler-ledger';
+import { escalateLapsedRequests } from '../../../../../lib/release/escalation';
 
 async function handle(req: NextRequest): Promise<NextResponse> {
   const secret = process.env.CRON_SECRET;
@@ -34,10 +35,19 @@ async function handle(req: NextRequest): Promise<NextResponse> {
   // owner-cancel window it appears to offer.
   const graceReleased = await resolveElapsedGrace(machine);
 
+  // Requests the owner never answered. CHALLENGE_WINDOW_SECONDS promised that
+  // verifiers get contacted once the window lapses; nothing read `expires_at`, so
+  // when the owner was incapacitated — the case this product exists for — the
+  // request sat in `awaiting_owner` forever. It runs HERE rather than on a reader
+  // because the reader it is specified against (a verifier's standby dashboard)
+  // does not exist yet, and it adds no second scheduler: this one is already
+  // running. See lib/release/escalation.ts.
+  const escalated = await escalateLapsedRequests(machine);
+
   // CC9: record the run so its ABSENCE is detectable by /api/health/scheduler.
   await recordSchedulerRun(summary);
 
-  return NextResponse.json({ ...summary, graceReleased });
+  return NextResponse.json({ ...summary, graceReleased, escalated: escalated.length });
 }
 
 /** Vercel Cron invokes cron paths with GET. */

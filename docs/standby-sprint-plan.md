@@ -52,6 +52,21 @@ lapsed becomes verifier-actionable. No sweeper.
 - **Exit:** a request left unanswered past `CHALLENGE_WINDOW_SECONDS` is actionable by a verifier,
   live-proven on production, and `claimRequest`'s owner-only path is unchanged for the in-window case.
 
+> ⚠️ **Design correction found while building (2026-08-11).** The architecture plan §4.4 specifies
+> **derive-on-read**, justified by "rung 0 guarantees someone is looking." **That reader does not
+> exist until Sprint D.** Wiring escalation only to a read would mean it never fires for an
+> incapacitated owner — nobody is looking, which is precisely why the request is stuck. So Sprint A
+> runs it from the **existing heartbeat cron**, which honours the principle as written ("do not add
+> a *second* thing that can silently stop") because it adds no new scheduler. Sprint D adds the read
+> path as an additional, faster trigger; both are CAS-guarded and idempotent, so running both is
+> safe.
+>
+> Two implementation notes worth carrying forward. `access_requests.status` **already permits
+> `'escalated'`** in its CHECK constraint — the schema anticipated this, so no migration was needed.
+> And escalation must **not** copy the owner-consent path's quorum auto-satisfaction: an owner
+> agreeing is stronger than third parties attesting for them, but a lapse is the *absence* of a
+> signal, so N-of-M applies in full.
+
 ### Sprint B — Foundations *(all additive; no path switches)*
 
 - Migration **020** (nullable `claimed_user_id`, `email_secondary`, `standby_state`,

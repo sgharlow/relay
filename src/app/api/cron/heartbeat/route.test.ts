@@ -27,10 +27,17 @@ vi.mock('../../../../../lib/release/state-machine', () => ({
 vi.mock('../../../../../lib/release/scheduler-ledger', () => ({
   recordSchedulerRun: vi.fn(async () => undefined),
 }));
+// Requests the owner never answered. It rides this cron rather than a reader
+// because the reader it is specified against — a verifier's standby dashboard —
+// does not exist yet, and this scheduler is already running.
+vi.mock('../../../../../lib/release/escalation', () => ({
+  escalateLapsedRequests: vi.fn(async () => []),
+}));
 
 import { GET, POST } from './route';
 import { runHeartbeatSweep } from '../../../../../lib/release/heartbeat';
 import { recordSchedulerRun } from '../../../../../lib/release/scheduler-ledger';
+import { escalateLapsedRequests } from '../../../../../lib/release/escalation';
 
 function req(authz?: string) {
   return {
@@ -100,5 +107,28 @@ describe('cron heartbeat route', () => {
 
     expect(res.status).toBe(200);
     expect(runHeartbeatSweep).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * The escalation sweep must be part of the SAME scheduled run. If it were only
+ * wired to a reader it would never fire for an incapacitated owner — nobody is
+ * looking, which is the whole reason the request is stuck.
+ */
+describe('cron heartbeat route — lapsed challenge escalation', () => {
+  it('sweeps lapsed access requests on the same run and reports the count', async () => {
+    vi.mocked(escalateLapsedRequests).mockResolvedValueOnce([
+      { requestId: 'r-1', caseId: 'RLY-A', ownerId: 'o-1', triggerType: 'emergency', releaseStateId: 'rs-1' },
+    ] as never);
+
+    const res = await GET(req('Bearer test-secret'));
+
+    expect(escalateLapsedRequests).toHaveBeenCalled();
+    await expect(res.json()).resolves.toMatchObject({ escalated: 1 });
+  });
+
+  it('does not run the sweep for an unauthorized caller', async () => {
+    await GET(req('Bearer wrong'));
+    expect(escalateLapsedRequests).not.toHaveBeenCalled();
   });
 });
