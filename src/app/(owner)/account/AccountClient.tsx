@@ -18,6 +18,7 @@
  */
 
 import { useRouter } from 'next/navigation';
+import PasskeySection from './PasskeySection';
 import { useState } from 'react';
 
 import { CryptoService, base64ToBytes, unpackIvCiphertext } from '../../../../lib/crypto/crypto-service';
@@ -227,6 +228,8 @@ export default function AccountClient() {
           {nameSaved ? <span className="text-t2 text-muted">Saved: {nameSaved}</span> : null}
         </form>
       </section>
+
+      <PasskeySection />
 
       <section className="rounded border border-rule bg-paper-raised p-5">
         <h2 className="text-t5 font-semibold text-ink">Recovery codes</h2>
