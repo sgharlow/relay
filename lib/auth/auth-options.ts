@@ -19,6 +19,8 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import { validateTotpCodeFor } from './totp';
 import { resolveTotpSecret } from './resolve-totp-secret';
 import { upsertUser, type UserRecord } from './upsert-user';
+import { openChallenge, finishAuthentication } from './webauthn';
+import { query } from '../db/connection';
 
 // ---------------------------------------------------------------------------
 // Extend next-auth types
@@ -113,6 +115,69 @@ export const authOptions: NextAuthOptions = {
           ownerId: userRecord.id,
           isDemo: userRecord.is_demo_account,
         } as User & { ownerId: string; isDemo: boolean };
+      },
+    }),
+
+    /**
+     * Passkey sign-in — stage two of the claim, and the only path a standby
+     * contact has onto a NEW device without the owner reissuing anything.
+     *
+     * It is a credentials provider because next-auth v4 on a JWT session with no
+     * adapter has no first-class passkey provider; the cryptography happens in
+     * lib/auth/webauthn.ts and this is only the bridge to a session.
+     *
+     * The sealed challenge travels through the client, which is safe because it
+     * is signed, expires in five minutes, and carries a purpose claim — a
+     * registration challenge cannot be spent here.
+     *
+     * NO TOTP, and that is the point. TOTP is owner-grade friction, correct for
+     * someone protecting a vault and wrong for a contact who may act once in five
+     * years. A passkey is a stronger factor than a shared secret anyway: it is
+     * phishing-resistant by construction, which is what makes "Relay never sends
+     * a link that signs you in" architectural rather than aspirational.
+     */
+    CredentialsProvider({
+      id: 'passkey',
+      name: 'Passkey',
+      credentials: {
+        response: { label: 'Assertion', type: 'text' },
+        challengeToken: { label: 'Challenge', type: 'text' },
+      },
+
+      async authorize(credentials): Promise<User | null> {
+        if (!credentials?.response || !credentials?.challengeToken) return null;
+
+        try {
+          const expectedChallenge = await openChallenge(
+            credentials.challengeToken,
+            'authentication',
+          );
+          const parsed = JSON.parse(credentials.response);
+          const { userId } = await finishAuthentication({
+            response: parsed,
+            expectedChallenge,
+          });
+
+          const rec = await query<{ id: string; email: string; is_demo_account: boolean }>(
+            `SELECT id, email, is_demo_account FROM users WHERE id = $1 LIMIT 1`,
+            [userId],
+          );
+          const user = rec.rows[0];
+          if (!user) return null;
+
+          return {
+            id: user.id,
+            email: user.email,
+            ownerId: user.id,
+            isDemo: user.is_demo_account,
+          } as User & { ownerId: string; isDemo: boolean };
+        } catch (err) {
+          // Every failure returns the same null, so an expired challenge, an
+          // unknown credential and a bad signature are indistinguishable from
+          // outside — the same discipline the TOTP path above already keeps.
+          console.error('[auth] passkey assertion rejected:', err);
+          return null;
+        }
       },
     }),
   ],
