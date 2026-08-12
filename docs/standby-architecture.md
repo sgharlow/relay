@@ -333,6 +333,21 @@ a security boundary.
 
 ## 6. Sequencing
 
+> ⚠️ **Corrected by `docs/standby-sprint-plan.md` (2026-08-11).** Two ordering errors in the phases
+> below were found when the execution plan was written, and the sprint plan's ordering wins:
+>
+> 1. **§4.4 escalation moves to the front**, ahead of all standby work. It is listed in Phase 3
+>    below, after the Phase 2 release swap — but a swapped release path still shows an empty standby
+>    dashboard in the incapacity case if requests stall at `awaiting_owner`. It has no standby
+>    dependency and improves the product as it stands.
+> 2. 🔴 **§4.3 must be staged.** It requires quorum to count *confirmed* participants, and
+>    `confirmed` requires the fingerprint flow in Phase 3. Shipping §4.3 with the Phase 2 release
+>    swap would mean nobody is confirmed, **every quorum becomes unsatisfiable, and no release could
+>    ever complete.** Count `claimed` first; tighten to `confirmed` when assurance ships.
+>
+> The sprint plan also records four flows this section does not cover — fingerprint **mismatch**,
+> resigning from a circle, rejecting an unexpected invitation, and claiming while already signed in.
+
 **Phase 0 — claim conversion test. No code. Runs in parallel with G1, not instead of it.**
 
 The pivot proposes this as a better first G1 instrument. It is not a substitute: G1 asks *will
