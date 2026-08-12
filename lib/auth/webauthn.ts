@@ -1,0 +1,247 @@
+/**
+ * Passkeys — stage two of the two-stage claim (docs/standby-architecture.md [A1]).
+ *
+ * WHY THIS IS HAND-ROLLED. next-auth v4 on `strategy: 'jwt'` with no DB adapter
+ * has no first-class passkey provider. The two options were to implement WebAuthn
+ * directly behind a credentials provider, or move to Auth.js v5; the former keeps
+ * the JWT session model the rest of this codebase already reasons about, which is
+ * worth more than the ceremony it costs.
+ *
+ * WHERE THE CHALLENGE LIVES. A WebAuthn ceremony needs a challenge to survive one
+ * round trip. This seals it into a short-lived signed JWT (via `jose`, already a
+ * dependency) which the route puts in an httpOnly cookie. No new table and
+ * therefore no expiry sweep — one scheduler ledger is already carried and a
+ * second thing that can silently stop is exactly what the architecture forbids.
+ *
+ * The `purpose` claim is not decoration. Without it, a challenge minted for an
+ * authenticated user REGISTERING a passkey could be replayed into the
+ * AUTHENTICATION path.
+ *
+ * Feature: relay-standby
+ * Requirements: J4-R9, J4-R11
+ */
+
+import { SignJWT, jwtVerify } from 'jose';
+import {
+  generateRegistrationOptions,
+  verifyRegistrationResponse,
+  generateAuthenticationOptions,
+  verifyAuthenticationResponse,
+} from '@simplewebauthn/server';
+import type {
+  RegistrationResponseJSON,
+  AuthenticationResponseJSON,
+  AuthenticatorTransportFuture,
+} from '@simplewebauthn/server';
+
+import { query } from '../db/connection';
+import { ValidationError } from '../validation';
+
+export const CHALLENGE_TTL_SECONDS = 300;
+
+export type ChallengePurpose = 'registration' | 'authentication';
+
+export interface RpConfig {
+  rpID: string;
+  rpName: string;
+  origin: string;
+}
+
+/**
+ * The relying party is the ORIGIN, and a passkey registered against the wrong RP
+ * id is unusable — so this is derived from configuration rather than written down
+ * twice. The RP id is the host with no scheme and no port; the origin keeps both,
+ * which is what makes `http://localhost:3000` work in development.
+ */
+export function rpConfig(): RpConfig {
+  const raw = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
+  const url = new URL(raw);
+  return {
+    rpID: url.hostname,
+    rpName: 'Relay',
+    origin: url.origin,
+  };
+}
+
+function secret(): Uint8Array {
+  const s = process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET;
+  if (!s) throw new Error('NEXTAUTH_SECRET is not set');
+  return new TextEncoder().encode(s);
+}
+
+export async function sealChallenge(challenge: string, purpose: ChallengePurpose): Promise<string> {
+  return new SignJWT({ challenge, purpose })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime(`${CHALLENGE_TTL_SECONDS}s`)
+    .sign(secret());
+}
+
+/** Throws on a bad signature, an expired seal, or a purpose mismatch. */
+export async function openChallenge(sealed: string, purpose: ChallengePurpose): Promise<string> {
+  const { payload } = await jwtVerify(sealed, secret());
+  if (payload.purpose !== purpose) {
+    throw new ValidationError('That challenge was not issued for this step.', 'challenge');
+  }
+  const challenge = payload.challenge;
+  if (typeof challenge !== 'string') {
+    throw new ValidationError('Malformed challenge.', 'challenge');
+  }
+  return challenge;
+}
+
+// ---------------------------------------------------------------------------
+// Storage. base64url TEXT rather than BYTEA — see migration 022 for why.
+// ---------------------------------------------------------------------------
+
+interface StoredCredential {
+  id: string;
+  user_id: string;
+  credential_id: string;
+  public_key: string;
+  /** BIGINT — node-postgres hands this back as a STRING. Never pass it through raw. */
+  counter: string | number;
+  transports: string | null;
+}
+
+async function findCredential(credentialId: string): Promise<StoredCredential | null> {
+  const res = await query<StoredCredential>(
+    `SELECT id, user_id, credential_id, public_key, counter, transports
+       FROM webauthn_credentials WHERE credential_id = $1 LIMIT 1`,
+    [credentialId],
+  );
+  return res.rows[0] ?? null;
+}
+
+export async function listCredentialIdsForUser(userId: string): Promise<string[]> {
+  const res = await query<{ credential_id: string }>(
+    `SELECT credential_id FROM webauthn_credentials WHERE user_id = $1`,
+    [userId],
+  );
+  return res.rows.map((r) => r.credential_id);
+}
+
+// ---------------------------------------------------------------------------
+// Registration
+// ---------------------------------------------------------------------------
+
+export async function beginRegistration(user: {
+  id: string;
+  email: string;
+}): Promise<{ options: Awaited<ReturnType<typeof generateRegistrationOptions>>; challenge: string }> {
+  const { rpID, rpName } = rpConfig();
+  const existing = await listCredentialIdsForUser(user.id);
+
+  const options = await generateRegistrationOptions({
+    rpName,
+    rpID,
+    userName: user.email,
+    userDisplayName: user.email,
+    // Excluding what they already have stops a confusing "you already registered
+    // this device" dead end.
+    excludeCredentials: existing.map((id) => ({ id })),
+    authenticatorSelection: {
+      // Discoverable so the contact can sign in without typing anything — the
+      // whole point of [A1] is that the person who may act once in five years
+      // meets as little as possible.
+      residentKey: 'preferred',
+      userVerification: 'preferred',
+    },
+  });
+
+  return { options, challenge: options.challenge };
+}
+
+export async function finishRegistration(args: {
+  userId: string;
+  response: RegistrationResponseJSON;
+  expectedChallenge: string;
+  label?: string;
+}): Promise<{ credentialId: string }> {
+  const { rpID, origin } = rpConfig();
+
+  const verification = await verifyRegistrationResponse({
+    response: args.response,
+    expectedChallenge: args.expectedChallenge,
+    expectedOrigin: origin,
+    expectedRPID: rpID,
+    requireUserVerification: false,
+  });
+
+  if (!verification.verified || !verification.registrationInfo) {
+    throw new ValidationError('That passkey could not be verified.', 'response');
+  }
+
+  const { credential } = verification.registrationInfo;
+
+  await query(
+    `INSERT INTO webauthn_credentials (user_id, credential_id, public_key, counter, transports, device_label)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [
+      args.userId,
+      credential.id,
+      Buffer.from(credential.publicKey).toString('base64url'),
+      credential.counter,
+      credential.transports?.join(',') ?? null,
+      args.label ?? null,
+    ],
+  );
+
+  return { credentialId: credential.id };
+}
+
+// ---------------------------------------------------------------------------
+// Authentication
+// ---------------------------------------------------------------------------
+
+export async function beginAuthentication(): Promise<{
+  options: Awaited<ReturnType<typeof generateAuthenticationOptions>>;
+  challenge: string;
+}> {
+  const { rpID } = rpConfig();
+  // No allowCredentials: discoverable credentials mean the browser offers the
+  // right passkey and the user never types an identifier.
+  const options = await generateAuthenticationOptions({ rpID, userVerification: 'preferred' });
+  return { options, challenge: options.challenge };
+}
+
+export async function finishAuthentication(args: {
+  response: AuthenticationResponseJSON;
+  expectedChallenge: string;
+}): Promise<{ userId: string }> {
+  const { rpID, origin } = rpConfig();
+
+  const stored = await findCredential(args.response.id);
+  if (!stored) {
+    // Same refusal shape as an unknown account elsewhere in this codebase: it
+    // must not tell a stranger which credentials exist.
+    throw new ValidationError('That passkey is not recognised.', 'response');
+  }
+
+  const verification = await verifyAuthenticationResponse({
+    response: args.response,
+    expectedChallenge: args.expectedChallenge,
+    expectedOrigin: origin,
+    expectedRPID: rpID,
+    requireUserVerification: false,
+    credential: {
+      id: stored.credential_id,
+      publicKey: new Uint8Array(Buffer.from(stored.public_key, 'base64url')),
+      // Number(), deliberately: BIGINT arrives as a string and a string counter
+      // silently defeats the clone-detection the counter exists for.
+      counter: Number(stored.counter),
+      transports: (stored.transports?.split(',') as AuthenticatorTransportFuture[]) ?? undefined,
+    },
+  });
+
+  if (!verification.verified) {
+    throw new ValidationError('That passkey could not be verified.', 'response');
+  }
+
+  await query(
+    `UPDATE webauthn_credentials SET counter = $1, last_used_at = now() WHERE id = $2`,
+    [verification.authenticationInfo.newCounter, stored.id],
+  );
+
+  return { userId: stored.user_id };
+}
