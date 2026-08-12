@@ -21,6 +21,7 @@ import { resolveTotpSecret } from './resolve-totp-secret';
 import { upsertUser, type UserRecord } from './upsert-user';
 import { openChallenge, finishAuthentication } from './webauthn';
 import { claimStandbyRole } from '../people/claim';
+import { redeemBreakGlass } from '../people/break-glass';
 import { readSessionEpoch } from './session-epoch';
 import { query } from '../db/connection';
 
@@ -173,6 +174,65 @@ export const authOptions: NextAuthOptions = {
           // Unknown, expired and already-used all arrive here and all return the
           // same null, so which it was does not leak.
           console.error('[auth] standby claim rejected:', err);
+          return null;
+        }
+      },
+    }),
+
+    /**
+     * Break-glass — the way back in when every normal path is gone (§3.6).
+     *
+     * Two people need it: the contact who never claimed, and the contact whose
+     * authenticator is in a river. Without it the first is excluded from the
+     * circle entirely and the second must reach the owner — who may be precisely
+     * the person who cannot be reached.
+     *
+     * A credentials provider for the same reason `standby-claim` is one: the code
+     * IS the authentication, exactly once, and everything after it needs to be an
+     * ordinary session so that /standby, /access and /verify all simply work.
+     *
+     * NO SEPARATE RATE LIMIT, deliberately, matching `standby-claim`. The code is
+     * twelve characters from a 31-character alphabet (~59 bits), so guessing is
+     * not the attack; the per-code attempt budget in `redeemBreakGlass` bounds
+     * repetition against a code that is known-but-spent, and `lib/http/rate-limit`
+     * is per-instance memory that its own header says is not a security boundary.
+     * Adding it here would be theatre.
+     */
+    CredentialsProvider({
+      id: 'break-glass',
+      name: 'Emergency code',
+      credentials: {
+        code: { label: 'Emergency code', type: 'text' },
+        existingUserId: { label: 'Existing user', type: 'text' },
+      },
+
+      async authorize(credentials): Promise<User | null> {
+        if (!credentials?.code) return null;
+
+        try {
+          const redeemed = await redeemBreakGlass({
+            code: credentials.code,
+            existingUserId: credentials.existingUserId || undefined,
+          });
+
+          const rec = await query<{ id: string; email: string; is_demo_account: boolean }>(
+            `SELECT id, email, is_demo_account FROM users WHERE id = $1 LIMIT 1`,
+            [redeemed.userId],
+          );
+          const user = rec.rows[0];
+          if (!user) return null;
+
+          return {
+            id: user.id,
+            email: user.email,
+            ownerId: user.id,
+            isDemo: user.is_demo_account,
+          } as User & { ownerId: string; isDemo: boolean };
+        } catch (err) {
+          // Unknown, expired, spent, and belonging-to-a-revoked-person all arrive
+          // here and all return the same null. Telling them apart would let
+          // someone probe which codes were ever real.
+          console.error('[auth] break-glass rejected:', err);
           return null;
         }
       },

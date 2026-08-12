@@ -42,6 +42,9 @@ const CODE_ROW = {
   failed_attempts: 0,
 };
 
+/** A live, non-revoked roster row — the guard added 2026-08-12 reads this. */
+const ROSTER_OK = { standby_state: 'confirmed' };
+
 function rows(...batches: unknown[][]) {
   for (const b of batches) mockQuery.mockResolvedValueOnce({ rows: b, rowCount: b.length } as never);
 }
@@ -92,27 +95,37 @@ describe('issueBreakGlass', () => {
 
 describe('redeemBreakGlass', () => {
   it('burns the code BEFORE binding, so a partial redeem cannot be replayed', async () => {
-    rows([CODE_ROW], [], [{ email: 'aunt@example.com' }], []);
+    rows([CODE_ROW], [ROSTER_OK], [], [{ email: 'aunt@example.com' }], []);
 
     await redeemBreakGlass({ code: 'ABCD2345EFGH' });
 
-    const burn = mockQuery.mock.calls[1];
-    expect(String(burn[0])).toContain('used_at = now()');
+    // Located by CONTENT, not by index: the guard added on 2026-08-12 inserted a
+    // query ahead of these and broke three positional assertions that were never
+    // about ordering with it. What this test actually claims is that the burn
+    // happens before the bind, so that is what it now asserts.
+    const sqls = mockQuery.mock.calls.map((c) => String(c[0]));
+    const burnAt = sqls.findIndex((s) => /UPDATE break_glass_codes SET used_at = now\(\)\s+WHERE id/.test(s));
+    const bindAt = sqls.findIndex((s) => s.includes('claimed_user_id = $1'));
+
+    expect(burnAt).toBeGreaterThanOrEqual(0);
+    expect(bindAt).toBeGreaterThanOrEqual(0);
+    expect(burnAt).toBeLessThan(bindAt);
   });
 
   it('drops the person to CLAIMED, never confirmed — the owner must re-verify', async () => {
-    rows([CODE_ROW], [], [{ email: 'aunt@example.com' }], []);
+    rows([CODE_ROW], [ROSTER_OK], [], [{ email: 'aunt@example.com' }], []);
 
     await redeemBreakGlass({ code: 'ABCD2345EFGH' });
 
-    const bind = String(mockQuery.mock.calls.at(-1)?.[0]);
+    const bind =
+      mockQuery.mock.calls.map((c) => String(c[0])).find((s) => s.includes('claimed_user_id = $1')) ?? '';
     expect(bind).toContain("standby_state = 'claimed'");
     expect(bind).not.toContain("'confirmed'");
     expect(bind).toContain('fingerprint_confirmed_at = NULL');
   });
 
   it('makes noise: a distinct action that flags re-confirmation is needed', async () => {
-    rows([CODE_ROW], [], [{ email: 'aunt@example.com' }], []);
+    rows([CODE_ROW], [ROSTER_OK], [], [{ email: 'aunt@example.com' }], []);
 
     await redeemBreakGlass({ code: 'ABCD2345EFGH' });
 
@@ -126,13 +139,67 @@ describe('redeemBreakGlass', () => {
   });
 
   it('links an already-signed-in user rather than minting a second account', async () => {
-    rows([CODE_ROW], [], []);
+    rows([CODE_ROW], [ROSTER_OK], [], []);
 
     const out = await redeemBreakGlass({ code: 'ABCD2345EFGH', existingUserId: 'user-77' });
 
     expect(out.userId).toBe('user-77');
     const sql = mockQuery.mock.calls.map((c) => String(c[0])).join(' | ');
     expect(sql).not.toContain('INSERT INTO users');
+  });
+
+  it('REFUSES a revoked person — revocation outranks a code in a drawer', async () => {
+    // The hole this closes, found 2026-08-12 while building the redeem endpoint:
+    // nothing retires a break-glass code when an owner revokes somebody, and this
+    // function did not read `standby_state`. A revoked contact — plausibly the
+    // controlling household member of Risk 3, who is exactly who an owner removes
+    // in a hurry — could redeem a year-old code and set themselves back to
+    // `claimed`. A bearer credential that survives revocation makes revocation
+    // decorative.
+    rows([CODE_ROW], [{ standby_state: 'revoked' }]);
+
+    await expect(redeemBreakGlass({ code: 'ABCD2345EFGH' })).rejects.toBeInstanceOf(ValidationError);
+
+    const sql = mockQuery.mock.calls.map((c) => String(c[0])).join(' | ');
+    expect(sql).not.toContain('claimed_user_id = $1');
+  });
+
+  it('does NOT burn the code when it refuses a revoked person', async () => {
+    // Otherwise one attempt against a revoked row would destroy a legitimate
+    // holder's only way in. The attempt budget is what bounds repetition.
+    rows([CODE_ROW], [{ standby_state: 'revoked' }]);
+
+    await redeemBreakGlass({ code: 'ABCD2345EFGH' }).catch(() => undefined);
+
+    const sql = mockQuery.mock.calls.map((c) => String(c[0])).join(' | ');
+    expect(sql).not.toContain('used_at = now()');
+  });
+
+  it('refuses when the roster row is gone — there is nothing left to bind to', async () => {
+    rows([CODE_ROW], []);
+    await expect(redeemBreakGlass({ code: 'ABCD2345EFGH' })).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it('refuses a revoked person with the SAME words as an unknown code', async () => {
+    // Distinguishable refusals would let someone probe which codes were real and
+    // which people had been removed.
+    const refusal = async (code: string): Promise<ValidationError> => {
+      try {
+        await redeemBreakGlass({ code });
+        throw new Error('expected a refusal');
+      } catch (e) {
+        return e as ValidationError;
+      }
+    };
+
+    rows([CODE_ROW], [{ standby_state: 'revoked' }]);
+    const revoked = await refusal('ABCD2345EFGH');
+
+    mockQuery.mockReset();
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+    const unknown = await refusal('NOPENOPENOPE');
+
+    expect(revoked.message).toBe(unknown.message);
   });
 
   it('refuses unknown, expired and already-used identically', async () => {

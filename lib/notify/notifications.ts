@@ -358,6 +358,50 @@ ${appUrl()}/challenge
   });
 }
 
+/**
+ * Somebody used a break-glass code (§3.6).
+ *
+ * This message is the reason a break-glass code is permitted to exist. §8.1 is
+ * blunt that until it is redeemed it is "functionally indistinguishable from the
+ * standing printed credential this architecture exists to eliminate" — what
+ * bounds it is that using it is *loud*: single-use, audited, and this.
+ *
+ * So it is written to be acted on by someone who may be reading it in a hurry:
+ * it says who, it says the light has gone amber and why, and it gives the one
+ * response that matters if this was not them. No reassuring preamble.
+ *
+ * Deliberately says nothing about what the person can now reach. If the code was
+ * used by the wrong hands, this email is going to the right ones — and it must
+ * not become a map.
+ */
+export async function notifyOwnerOfBreakGlass(params: {
+  to: string;
+  personName: string;
+  personType: 'recipient' | 'verifier';
+}): Promise<boolean> {
+  return sendEmailBestEffort({
+    to: params.to,
+    subject: `${params.personName} used their emergency code`,
+    text:
+      `${params.personName}, who you named as a ${params.personType}, has just used the emergency ` +
+      `code you gave them to get back into Relay.
+
+` +
+      `That code is now used up and cannot be used again.
+
+` +
+      `We have set them back to "not yet verified", so your circle shows them amber until you ` +
+      `confirm it really was them. That check is worth doing — a code can be found, and this is ` +
+      `the moment to be sure.
+
+` +
+      `If this was NOT them, remove them now and everything they hold closes:
+` +
+      `${appUrl()}/circle
+`,
+  });
+}
+
 /** Honest status back to the requester, whatever the outcome (J6-R10). */
 export async function notifyRequesterOfOutcome(params: {
   to: string;

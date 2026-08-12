@@ -33,6 +33,8 @@ import { writeAuditEntry } from '../audit/audit-service';
 import { ValidationError } from '../validation';
 import { CASE_ID_ALPHABET } from '../release/case-id';
 import { upsertUser } from '../auth/upsert-user';
+import { readStandbyState } from './standby-state';
+import { notifyOwnerOfBreakGlass } from '../notify/notifications';
 import type { PersonType } from './invitations';
 
 /** Same budget as recipient_codes (017) and verifier_codes (015). */
@@ -150,11 +152,35 @@ export async function redeemBreakGlass(params: {
     throw new ValidationError(REFUSAL, 'code');
   }
 
+  const table = row.person_type === 'verifier' ? 'verifiers' : 'recipients';
+
+  // REVOCATION OUTRANKS A CODE IN A DRAWER, and until 2026-08-12 it did not.
+  //
+  // Nothing retires a break-glass code when an owner revokes someone, and this
+  // function did not look at `standby_state` — so a revoked contact holding a
+  // year-old code could redeem it and set themselves straight back to `claimed`
+  // with a bound session. The person an owner most urgently removes is a
+  // controlling household member (Risk 3), and revocation is the control that
+  // answers them; a bearer credential that survives it is not a control at all.
+  //
+  // Checked BEFORE the burn, deliberately: a refused attempt must not consume
+  // the code, or an attacker could disarm a legitimate holder's only way in by
+  // trying it once. The attempt budget above is what bounds repetition.
+  //
+  // A missing roster row is refused for the same reason and with the same words:
+  // the person was deleted, and there is nothing left to bind to.
+  const roster = await query<{ standby_state: string | null }>(
+    `SELECT standby_state FROM ${table} WHERE id = $1 AND owner_id = $2 LIMIT 1`,
+    [row.person_id, row.owner_id],
+  );
+  const personState = roster.rows[0];
+  if (!personState || readStandbyState(personState.standby_state) === 'revoked') {
+    throw new ValidationError(REFUSAL, 'code');
+  }
+
   // Burn it before doing anything else. A code that survives a partial redeem is
   // a code that can be replayed.
   await query(`UPDATE break_glass_codes SET used_at = now() WHERE id = $1`, [row.id]);
-
-  const table = row.person_type === 'verifier' ? 'verifiers' : 'recipients';
 
   let userId: string;
   if (params.existingUserId) {
@@ -185,6 +211,37 @@ export async function redeemBreakGlass(params: {
     entityId: row.person_id,
     detail: { personType: row.person_type, requiresReconfirmation: true },
   });
+
+  // §3.6 requires this to NOTIFY THE OWNER, and nothing did until 2026-08-12 —
+  // the audit entry existed, which records the event for anyone who goes looking
+  // rather than telling the one person who needs to know. "Loud" is what makes a
+  // year-old bearer credential acceptable (§8.1), and a loud event nobody hears
+  // is the quiet alternative sign-in this was explicitly not supposed to be.
+  //
+  // Best-effort, and it must stay that way: the redeemer is mid-emergency and a
+  // mail outage cannot be allowed to stop them. The audit entry above is the
+  // durable record; this is the alert. Failure is swallowed the same way every
+  // other notification in this codebase swallows it.
+  void (async () => {
+    try {
+      const contact = await query<{ name: string; email: string }>(
+        `SELECT p.name, u.email
+           FROM ${table} p JOIN users u ON u.id = p.owner_id
+          WHERE p.id = $1 LIMIT 1`,
+        [row.person_id],
+      );
+      const c = contact.rows[0];
+      if (c?.email) {
+        await notifyOwnerOfBreakGlass({
+          to: c.email,
+          personName: c.name,
+          personType: row.person_type,
+        });
+      }
+    } catch {
+      /* alerting is allowed to fail (principle 5) */
+    }
+  })();
 
   return {
     userId,
