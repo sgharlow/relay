@@ -1084,22 +1084,48 @@ flowchart TD
 
 ### Requirements
 
-- **J7-R1** *(amended 2026-08-12, ratified by Steve — supersedes "A verifier SHALL be able to render
-  a decision without creating an account.")* A verifier SHALL never be required to create an account,
-  choose a password, or complete any enrolment step **at decision time**. Enrolment happens in calm,
-  as a standby account (`docs/standby-architecture.md` §3.3); a verifier who never enrolled SHALL
-  still decide via a single-use code.
+- **J7-R1** *(amended twice on 2026-08-12, both ratified by Steve — supersedes "A verifier SHALL be
+  able to render a decision without creating an account", then supersedes the first amendment's "a
+  verifier who never enrolled SHALL still decide via a single-use code")* **No verifier SHALL be
+  required to create an account, choose a password, or complete any enrolment step at decision
+  time.** Enrolment happens in calm, as a standby account (`docs/standby-architecture.md` §3.3).
+  A verifier who can already sign in SHALL decide from their standby dashboard and SHALL be sent no
+  credential; a verifier who is confirmed but has no way to sign in SHALL be sent a single-use code.
 
-  > **Why the wording changed.** hybrid+6 ratified that a named contact *does* create an account — as
-  > a standby, months before any emergency — so the original phrasing had become false for the
-  > primary path while still being cited as authoritative. What it was protecting was never
-  > account-lessness for its own sake: it was the absence of a signup wall between a verifier and an
-  > urgent decision, the doctor mid-emergency being asked to pick a password. Moving enrolment into
-  > calm serves that intent *better* than the original wording did, and the unclaimed-contact code
-  > path keeps the guarantee absolute for anyone who never enrolled.
+  > **Why the wording changed the first time.** hybrid+6 ratified that a named contact *does* create
+  > an account — as a standby, months before any emergency — so the original phrasing had become
+  > false for the primary path while still being cited as authoritative. What it was protecting was
+  > never account-lessness for its own sake: it was the absence of a signup wall between a verifier
+  > and an urgent decision, the doctor mid-emergency being asked to pick a password. Moving
+  > enrolment into calm serves that intent *better* than the original wording did.
+
+  > **Why it changed again the same day.** The first amendment kept a promise the product could no
+  > longer honour: *a verifier who never enrolled SHALL still decide via a single-use code*. Once
+  > §4.3 quorum tightened to `confirmed`, an unenrolled verifier's answer is recorded and counts
+  > towards nothing — so that sentence guaranteed the right to cast a vote with no effect, and it
+  > was the **only** remaining reason to put a live credential into email for someone who did not
+  > need one. Keeping a promise by mailing a credential that does nothing is the worst of both:
+  > full risk, zero function.
+  >
+  > The guarantee that survives is the one that was always the point — **no enrolment at decision
+  > time**. It now holds absolutely, for every class of verifier, because nobody is ever asked to
+  > enrol in order to answer. What is no longer promised is that an unverified stranger can vote.
+  >
+  > The informational value that sentence was quietly carrying — *the owner learns that Dr Chen
+  > says it is real* — is served where it belongs and where it is actionable: **to the owner, in
+  > calm**, by `[A3]` readiness, which refuses to call a circle ready when the people in it cannot
+  > act (`unsatisfiable_quorum`, `fragile_quorum`). An emergency is the wrong moment to discover it,
+  > and an unverified person is the wrong messenger.
 - **J7-R2** Verifier links SHALL be signed, single-use, and short-TTL. *(Applies to the unclaimed
-  fallback. A claimed verifier receives no link and no code — they act from their standby dashboard,
-  and there is nothing in the message to intercept.)*
+  fallback. A verifier who can sign in receives no link and no code — they act from their standby
+  dashboard, and there is nothing in the message to intercept.)*
+
+  > **This requirement described the product before the product did it.** From the hybrid+6
+  > ratification until 2026-08-12 the parenthetical said a claimed verifier receives no code while
+  > `notifyVerifiersForTrigger` minted one for every verifier unconditionally. The spec was right
+  > and the code was three sprints behind it; adaptive minting closed the gap. The wording is now
+  > *can sign in* rather than *claimed*, because claiming is not what makes the code unnecessary —
+  > holding a passkey or an authenticator is.
 - **J7-R3** The decision page SHALL state who is asking, for what, why now, what has already been attempted, and precisely what confirming will and will not cause.
 - **J7-R4** The page SHALL state explicitly that the verifier will never see vault contents.
 - **J7-R5** The system SHALL support **confirm**, **deny**, and **abstain** as distinct recorded decisions.

@@ -4,9 +4,10 @@
  * Composes subject/body and dispatches via the email boundary. All sends are
  * best-effort so a mail failure never rolls back a committed state transition.
  *
- * Verifier confirmation requests carry a scoped verifier JWT in the link
- * (issued per (verifier, release_state)); verifiers never receive any secret
- * material (Req 6.8).
+ * Verifiers never receive any secret material (Req 6.8), and since 2026-08-12
+ * most of them receive no credential at all: a verifier who can sign in is told
+ * to sign in, and a verifier whose answer would not count is told that instead
+ * of being handed a code that buys nothing (`verifier-notice-class.ts`).
  *
  * Feature: relay-h0-mvp
  * Requirements: 4.4, 6.2, 6.6
@@ -20,6 +21,7 @@ import { formatCaseId } from '../release/case-id';
 import { issueRecipientToken } from '../auth/recipient-token';
 import { query } from '../db/connection';
 import { getOwnerLabel } from '../people/owner-label';
+import { classifyOrFailOpen } from './verifier-notice-class';
 
 /**
  * The origin every emailed link is built on.
@@ -154,8 +156,12 @@ export interface VerifierContact {
 }
 
 /**
- * Emails every verifier a confirmation request with a scoped token link
- * (Req 6.2). Returns the number of messages successfully sent.
+ * Emails every verifier a confirmation request (Req 6.2). Returns the number of
+ * messages successfully sent — which since 2026-08-12 can be lower than the
+ * number of verifiers passed in, because a revoked one is deliberately skipped.
+ *
+ * WHAT IS IN THE MESSAGE NOW DEPENDS ON THE PERSON, and only one of the four
+ * cases carries a credential. See `verifier-notice-class.ts`.
  */
 export async function notifyVerifiersForTrigger(
   verifiers: VerifierContact[],
@@ -168,8 +174,22 @@ export async function notifyVerifiersForTrigger(
   // nothing; the code below is the secret.
   const caseId = formatCaseId(releaseStateId);
 
+  // WHO ACTUALLY NEEDS A CREDENTIAL. Resolved here rather than passed in, so
+  // that every caller — the initiate route, the escalation sweep, the demo
+  // script — gets the same answer without any of them having to know the rule.
+  // See `verifier-notice-class.ts` for why the condition is `confirmed` and not
+  // `claimed`, and why a break-glass code does not suppress the mail.
+  const classes = await classifyOrFailOpen(verifiers.map((v) => v.id));
+
   const results = await Promise.all(
     verifiers.map(async (v) => {
+      const noticeClass = classes.get(v.id) ?? 'code';
+
+      // Revoked. The owner removed this person deliberately; telling them an
+      // emergency is under way — which this path did until 2026-08-12, with a
+      // working code attached — is a leak, not a courtesy.
+      if (noticeClass === 'skip') return false;
+
       // A typed code, not a token in the URL. The link is BARE: clicking it
       // grants nothing, so a forwarded email — much the likeliest leak, since
       // forwarding one to a family member is a perfectly reasonable thing to do
@@ -179,12 +199,56 @@ export async function notifyVerifiersForTrigger(
       // you in. That claim is worth more than any single control: once it holds
       // absolutely, an email containing such a link is self-evidently not us.
       let code: string | null = null;
-      if (ownerId) {
+      if (ownerId && noticeClass === 'code') {
         try {
           code = formatCode(await issueVerifierCode({ verifierId: v.id, releaseStateId, ownerId }));
         } catch (err) {
           process.stderr.write(`[notify] verifier code issue failed: ${String(err)}\n`);
         }
+      }
+
+      // Someone who can sign in gets told, and gets nothing to lose. This is
+      // core principle 1 finally holding on the verifier side: there is no
+      // secret in this message, so intercepting it accomplishes nothing.
+      if (noticeClass === 'sign_in') {
+        return sendEmailBestEffort({
+          to: v.email,
+          subject: `Action needed: confirm ${article(triggerType)} ${triggerType} trigger (${caseId})`,
+          text:
+            `Hi ${v.name},\n\n` +
+            `You've been asked to confirm ${article(triggerType)} "${triggerType}" release trigger.\n\n` +
+            `Sign in the way you normally do and the request will be waiting for you:\n\n` +
+            `    ${appUrl()}/standby\n\n` +
+            `Case ${caseId}.\n\n` +
+            `There is no code in this message, and no link that signs you in — deliberately. ` +
+            `Relay never sends one. If a message claiming to be from us asks you to click one, ` +
+            `it is not from us.\n\n` +
+            `You will not be given access to any private data — you are only confirming ` +
+            `whether the situation is genuine.\n`,
+        });
+      }
+
+      // Named, never verified. Since quorum tightened to `confirmed` (§4.3) an
+      // answer from this person is recorded and counts towards nothing, so a
+      // code would be a live credential bought for no outcome. They are still
+      // told — they were named, the request is real, and being able to say "I
+      // was never set up" to whoever is in the room is worth more than silence.
+      if (noticeClass === 'not_counted') {
+        const who = ownerId ? await getOwnerLabel(ownerId) : 'Someone';
+        return sendEmailBestEffort({
+          to: v.email,
+          subject: `${who} named you — but you are not set up to answer (${caseId})`,
+          text:
+            `Hi ${v.name},\n\n` +
+            `${who} named you as someone who would be asked whether an emergency is real. ` +
+            `That question has just been raised.\n\n` +
+            `You cannot answer it yet. Setting you up was never finished — ${who} still has to ` +
+            `confirm it is really you — so an answer from you would not count towards anything, ` +
+            `and we would rather say that than let you believe you had helped.\n\n` +
+            `Nothing is expected of you right now. If you would like to be able to help next ` +
+            `time, ask ${who}, or whoever is with them, to finish setting you up.\n\n` +
+            `Case ${caseId}.\n`,
+        });
       }
 
       // Falls back to the legacy token link when a code cannot be issued. A

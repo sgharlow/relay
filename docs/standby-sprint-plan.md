@@ -616,19 +616,48 @@ readiness banner is the mitigation and it is loud, but beta onboarding should sa
    able to act); undo is never blocked, because the guard exists to stop a false record, not to trap
    somebody inside one.
 
-5. ▶️ **Option 2 RULED: C now (adaptive minting), B later.** ⚠️ **C's condition is narrower than
-   first specified.** An emailed verifier code only *functions* for a `confirmed` verifier — for
-   anyone else the vote is recorded and does not count — and "has an unredeemed break-glass code"
-   must **not** suppress the code, since a lost code is indistinguishable from a held one. So C is:
-   **mint only for a `confirmed` verifier with no passkey.**
+5. ✅ **Option 2 (adaptive minting) SHIPPED 2026-08-12, with the J7-R1 amendment Steve ratified
+   alongside it.** B — a second look at what the sign-in-capable branch should say — stays deferred
+   until after Phase 0, as ruled.
 
-   🔴 **This puts J7-R1 under pressure and needs an explicit ruling before building.** J7-R1
-   guarantees an unenrolled verifier can always decide by code; post-tightening that decision does
-   not count, so the guarantee protects a right to cast a vote with no effect — and it is the only
-   reason a live credential still goes into the channel measured broken. The likely resolution is
-   to narrow it again (*no enrolment required at decision time*, rather than *a code is always
-   sent*) and serve the informational value by telling the **owner** instead.
-5. ✅ **Onboarding copy fixed 2026-08-12.** The `/circle` header now states that naming is the
+   **What ships.** `notifyVerifiersForTrigger` now classifies each verifier
+   (`lib/notify/verifier-notice-class.ts`) and only one of four cases carries a credential:
+
+   | Verifier | Gets | Why |
+   |---|---|---|
+   | Confirmed, no passkey and no authenticator | **A single-use code** | Their answer counts and they have no other way in |
+   | Confirmed, holds a passkey or an authenticator | A notice, no credential | Principle 1 finally holds on the verifier side — nothing in the message to intercept |
+   | Named but not confirmed | A notice saying plainly that their answer would not count | Post-tightening it would not; a code buys a vote with no effect at full risk |
+   | Revoked | **Nothing** | Until today they received the emergency *and* a working code |
+
+   ⚠️ **The condition is `confirmed`, not `claimed`** — the obvious mirror of the recipient branch,
+   and wrong in both directions: claiming gets you an account, being confirmed is what makes your
+   answer count. ⚠️ **An unredeemed break-glass code does not suppress the mail**, though `[A3]`
+   readiness counts one as a way back in — readiness asks whether the owner left a fallback, this
+   asks whether the person can act in the next hour, and a lost code looks identical in the database
+   to one in a wallet. ⚠️ **Classification failure mints for everyone**: a stalled release is worse
+   than one unnecessary code, and the runtime quorum gate still refuses to count an unconfirmed
+   answer.
+
+   **The `sign_in` branch also widened during the build.** The brief said *"no passkey"*; a verifier
+   who is also an owner of their own vault signs in with email + TOTP and has never needed a
+   passkey (§3.7 rule 2 links a second relationship rather than minting an account). Keying on
+   passkeys alone would have mailed a live code to the one class of person most obviously already
+   holding a way in. The condition implemented is *no passkey **and** no authenticator*.
+
+   **J7-R1 amended a second time, same day.** It had guaranteed that an unenrolled verifier can
+   always decide by code. Post-tightening that decision counts towards nothing, so the guarantee
+   protected a right to cast a vote with no effect — and it was the only remaining reason to put a
+   live credential into the channel measured broken on 2026-08-11. The surviving guarantee is the
+   one that was always the point: **no enrolment at decision time**, which now holds absolutely for
+   every class of verifier. The informational value the old sentence carried is served by `[A3]`
+   readiness, to the owner, in calm, where it is actionable.
+
+   **J7-R2 was already describing this.** Its parenthetical had said a claimed verifier receives no
+   code since the hybrid+6 ratification, while the code minted one for everybody — the spec was
+   right and the implementation three sprints behind it.
+
+6. ✅ **Onboarding copy fixed 2026-08-12.** The `/circle` header now states that naming is the
    first half of two, each light says what is MISSING rather than naming a state
    (*"Accepted — not yet verified, so their answer would not count"*), and the completeness banner
    counts the unverified instead of declaring success.
@@ -767,7 +796,7 @@ conditional, §3.1's verifier row corrected to content-not-shape, §3.2/§5/§6 
 
 | # | Invariant | State |
 |---|---|---|
-| 1 | No secret transmitted at release to a **claimed** contact | ✅ Holds for claimed recipients and, since today, claimed verifiers. Conditional by amendment — unclaimed contacts still get a code, and claim conversion is what buys the property per person |
+| 1 | No secret transmitted at release to a **claimed** contact | ✅ Holds for claimed recipients, and for verifiers who can sign in. 🔴 **This row was WRONG when first written this morning** — it claimed the property for claimed verifiers on the strength of the session path shipping, while `notifyVerifiersForTrigger` went on minting a code for every verifier regardless. Building the door does not stop the credential going out; adaptive minting is what actually closed it, later the same day. Conditional by amendment — a confirmed verifier with no passkey and no authenticator still gets a code, and claim-plus-enrolment is what buys the property per person |
 | 2 | No standing credential printed | ✅ Invitations, break-glass and recovery codes are all single-use. §8.1's residual risk is accepted and bounded |
 | 3 | Relay never sends a link that signs you in | ✅ Bare `/claim` URL plus a typed code; stated in Terms |
 | 4 | Release machine gains zero states | ✅ Still seven edges; `not_counted` is an outcome, not a state |
@@ -788,7 +817,10 @@ N14 fingerprint mismatch · N15 resign · N16 reject.
 code, confirm a phrase) and N8 (§3.8 event transparency).
 
 ### Amendments honoured, not just recorded
-J7-R1's guarantee is load-bearing in code, not only in prose: the unclaimed verifier's code path is
-what made "answering" and "counting" separate concepts when quorum tightened. Principle 1's
-conditionality is why Phase 0's number is a **security** measurement rather than only a retention
-one. §3.1's correction is reflected in the verifier decision surface and in both legal pages.
+J7-R1 is load-bearing in code, not only in prose — though what it now guarantees is narrower than
+it was this morning. Its second amendment withdrew *"an unenrolled verifier can always decide by
+code"*, because §4.3 had made that decision count towards nothing; what survives is **no enrolment
+at decision time**, which holds for every class of verifier because none of them is ever asked to
+enrol in order to answer. Principle 1's conditionality is why Phase 0's number is a **security**
+measurement rather than only a retention one. §3.1's correction is reflected in the verifier
+decision surface and in both legal pages.

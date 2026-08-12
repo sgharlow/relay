@@ -335,3 +335,162 @@ describe('delegation confirmation to the owner', () => {
     expect(sent[0].text).toContain('end it at any time');
   });
 });
+
+/**
+ * ADAPTIVE MINTING — who gets a live credential in their email.
+ *
+ * The unit-level rule is asserted in `verifier-notice-class.test.ts`; these
+ * assert the thing that actually reaches an inbox, because the rule being right
+ * and the message being right are two different failures. A code that is not
+ * minted but is still described in the body is worse than either.
+ *
+ * Feature: relay-standby
+ * Requirements: J7-R1, J7-R2
+ */
+describe('adaptive minting (Option 2, ratified 2026-08-12)', () => {
+  /**
+   * Routes on SQL rather than call order: the classifier makes one, two or three
+   * queries depending on who is in the circle, so a positional mock would encode
+   * the implementation instead of the behaviour.
+   */
+  function routeVerifierQueries(
+    verifiers: { id: string; standby_state: string | null; claimed_user_id: string | null }[],
+    opts: { passkeyUsers?: string[]; totpUsers?: string[] } = {},
+  ) {
+    mockQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes('FROM verifiers')) return qResult(verifiers) as never;
+      if (sql.includes('webauthn_credentials')) {
+        return qResult((opts.passkeyUsers ?? []).map((user_id) => ({ user_id }))) as never;
+      }
+      if (sql.includes('totp_secret')) {
+        return qResult((opts.totpUsers ?? []).map((id) => ({ id }))) as never;
+      }
+      if (sql.includes('FROM users')) {
+        return qResult([{ display_name: 'Margaret Chen', email: 'm@example.com' }]) as never;
+      }
+      return qResult([]) as never; // the code INSERT
+    });
+  }
+
+  it('mails a code to a confirmed verifier who cannot sign in', async () => {
+    _setResendClientForTesting(stubResend());
+    routeVerifierQueries([{ id: 'v1', standby_state: 'confirmed', claimed_user_id: 'u1' }]);
+
+    await notifyVerifiersForTrigger(
+      [{ id: 'v1', name: 'Dr Patel', email: 'v@example.com' }],
+      'emergency',
+      'rs-1',
+      'owner-1',
+    );
+
+    expect(sent[0].text).toContain('/verify and enter this code');
+    expect(sent[0].text).not.toContain('?token=');
+  });
+
+  it('mails NO credential to a confirmed verifier who holds a passkey', async () => {
+    _setResendClientForTesting(stubResend());
+    routeVerifierQueries([{ id: 'v1', standby_state: 'confirmed', claimed_user_id: 'u1' }], {
+      passkeyUsers: ['u1'],
+    });
+
+    await notifyVerifiersForTrigger(
+      [{ id: 'v1', name: 'Dr Patel', email: 'v@example.com' }],
+      'emergency',
+      'rs-1',
+      'owner-1',
+    );
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0].text).toContain('/standby');
+    expect(sent[0].text).toContain('There is no code in this message');
+    expect(sent[0].text).not.toContain('?token=');
+    expect(sent[0].text).not.toMatch(/enter this code/);
+    // No credential was minted, either — the assertion above only proves the
+    // body does not MENTION one.
+    expect(mockQuery.mock.calls.map((c) => String(c[0])).join('\n')).not.toMatch(
+      /INSERT INTO verifier_codes/i,
+    );
+  });
+
+  it('tells an unverified verifier plainly that their answer would not count', async () => {
+    _setResendClientForTesting(stubResend());
+    routeVerifierQueries([{ id: 'v1', standby_state: 'claimed', claimed_user_id: 'u1' }]);
+
+    await notifyVerifiersForTrigger(
+      [{ id: 'v1', name: 'Dr Patel', email: 'v@example.com' }],
+      'emergency',
+      'rs-1',
+      'owner-1',
+    );
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0].text).toContain('would not count');
+    expect(sent[0].text).toContain('Margaret Chen');
+    expect(sent[0].text).not.toContain('?token=');
+    expect(sent[0].text).not.toMatch(/enter this code/);
+    expect(mockQuery.mock.calls.map((c) => String(c[0])).join('\n')).not.toMatch(
+      /INSERT INTO verifier_codes/i,
+    );
+  });
+
+  it('sends a REVOKED verifier nothing at all', async () => {
+    _setResendClientForTesting(stubResend());
+    routeVerifierQueries([{ id: 'v1', standby_state: 'revoked', claimed_user_id: 'u1' }]);
+
+    const n = await notifyVerifiersForTrigger(
+      [{ id: 'v1', name: 'Removed', email: 'gone@example.com' }],
+      'emergency',
+      'rs-1',
+      'owner-1',
+    );
+
+    // Until 2026-08-12 this person received the emergency AND a working code.
+    expect(n).toBe(0);
+    expect(sent).toHaveLength(0);
+  });
+
+  it('mints for everyone when the classifier itself fails — a stalled release is worse', async () => {
+    _setResendClientForTesting(stubResend());
+    mockQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes('FROM verifiers')) throw new Error('DSQL unavailable');
+      return qResult([]) as never;
+    });
+
+    await notifyVerifiersForTrigger(
+      [{ id: 'v1', name: 'Dr Patel', email: 'v@example.com' }],
+      'emergency',
+      'rs-1',
+      'owner-1',
+    );
+
+    expect(sent[0].text).toContain('enter this code');
+  });
+
+  it('gives each person in a mixed circle their own message', async () => {
+    _setResendClientForTesting(stubResend());
+    routeVerifierQueries(
+      [
+        { id: 'v1', standby_state: 'confirmed', claimed_user_id: 'u1' },
+        { id: 'v2', standby_state: 'confirmed', claimed_user_id: 'u2' },
+        { id: 'v3', standby_state: 'invited', claimed_user_id: null },
+      ],
+      { passkeyUsers: ['u1'] },
+    );
+
+    await notifyVerifiersForTrigger(
+      [
+        { id: 'v1', name: 'Ana', email: 'ana@example.com' },
+        { id: 'v2', name: 'Ben', email: 'ben@example.com' },
+        { id: 'v3', name: 'Cal', email: 'cal@example.com' },
+      ],
+      'emergency',
+      'rs-1',
+      'owner-1',
+    );
+
+    const byTo = new Map(sent.map((m) => [m.to, m.text]));
+    expect(byTo.get('ana@example.com')).toContain('/standby');
+    expect(byTo.get('ben@example.com')).toContain('enter this code');
+    expect(byTo.get('cal@example.com')).toContain('would not count');
+  });
+});

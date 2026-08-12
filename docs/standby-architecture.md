@@ -46,6 +46,19 @@ These are the invariants. Any future change that violates one is a different pro
    Measured against the code on 2026-08-12, the property held for claimed *recipients* and for **no
    verifier at all** (`lib/notify/notifications.ts` skipped the code for a claimed recipient and
    minted one unconditionally for every verifier). §3.2 now covers both.
+
+   ✅ **Closed the same day (Option 2, ratified by Steve).** `notifyVerifiersForTrigger` now decides
+   per person (`lib/notify/verifier-notice-class.ts`). The condition for suppressing the code is
+   **confirmed and able to sign in** — deliberately *not* the recipient branch's `claimed`, because
+   claiming gets you an account while being confirmed is what makes your answer count, and because
+   a confirmed verifier with no passkey and no authenticator has no other way in. A revoked verifier
+   is now sent nothing at all; until this change they received the emergency *and* a working code.
+
+   ⚠️ **A break-glass code does not count as "able to sign in" here**, though `[A3]` readiness counts
+   one as a way back in. The two are asking different questions: readiness asks whether the owner
+   left a fallback, which is a fact about the plan; this asks whether the person can act in the next
+   hour, and an issued code that is lost is indistinguishable in the database from one held in a
+   wallet. Suppressing on it would silently strand the person the quorum depends on.
 2. **No standing credential is ever printed.** A single-use code that dies on redemption is not a
    standing credential; a permanent one is. This is the line.
 3. **Relay never sends a link that signs you in.** Invitations are *codes*, delivered by the owner.
@@ -135,14 +148,22 @@ So, symmetrically with the recipient:
 - **`buildVerifierContext` and `submitConfirmation` are unchanged.** Both already take a plain
   `releaseStateId` + `verifierId`; the token was only ever how those two ids were obtained. One
   authorization core, two doors — the same split applied to recipient decrypt and the closure summary.
-- **The unclaimed verifier keeps the emailed code, permanently, by requirement.** J7-R1 (amended)
-  guarantees no enrolment step at decision time. This is additive; rollback is a code revert.
+- **A verifier who cannot sign in keeps the emailed code.** ⚠️ **Superseded 2026-08-12 (Option 2,
+  ratified by Steve).** This bullet read *"The unclaimed verifier keeps the emailed code,
+  permanently, by requirement"* and cited J7-R1's guarantee that an unenrolled verifier can still
+  decide via a code. That guarantee was withdrawn the same day, because §4.3 quorum had tightened to
+  `confirmed` and an unenrolled verifier's answer counts towards nothing — so the requirement was
+  buying a live credential in an uncontrolled channel in exchange for a vote with no effect. The
+  code now goes only to a **confirmed** verifier with no passkey and no authenticator, which is
+  exactly the set of people who need one and whose answer counts.
 - **§3.7 rule 8 binds here:** the verifier decision route must NOT record deliberate activity, or
   answering someone else's emergency would extend the verifier's own dead-man's-switch.
-- ⏸️ **Ceasing to mint codes for claimed verifiers is a SEPARATE, GATED step** — see §3.6 and §8.1.
-  A claimed verifier who cannot sign in at the moment of crisis has only break-glass, and break-glass
-  is issue-only today (there is no redeem endpoint). Until that exists, minting continues and
-  principle 1 stays unrealised for verifiers **by choice, not by oversight**.
+- ✅ **Ceasing to mint codes for signed-in-capable verifiers — the gated step, TAKEN 2026-08-12.**
+  The gate was that break-glass was issue-only, so a claimed verifier who could not sign in during a
+  crisis had no path at all. The redeem endpoint and the issue UI both shipped before this, closing
+  §8.1; principle 1 now holds for every verifier who has a passkey or an authenticator, and the
+  people who do not have one still get their code. Rollback is a revert of
+  `lib/notify/verifier-notice-class.ts` and the branch in `notifyVerifiersForTrigger`.
 
 ### 3.3 Invitation and assurance
 
