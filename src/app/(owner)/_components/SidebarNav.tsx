@@ -7,6 +7,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 const LINKS = [
   { href: '/vault', label: 'Vault' },
@@ -31,9 +32,36 @@ const LINKS = [
 
 export default function SidebarNav() {
   const pathname = usePathname();
+
+  // §3.7: the same person may own a vault AND stand by for other people. Owner
+  // mode had no link to /standby from anywhere, so a both-hats user could not
+  // reach the page showing whether someone they cover needs them — the one
+  // screen that is urgent when it matters. Shown only when they actually stand
+  // by for somebody, so it never appears for an owner it does not concern.
+  const [standingBy, setStandingBy] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/standby')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (!cancelled && j) setStandingBy((j.relationships ?? []).length);
+      })
+      .catch(() => {
+        // A nav link is not worth an error state. Absent is the safe default.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const links =
+    standingBy > 0
+      ? [...LINKS, { href: '/standby', label: `Standing by (${standingBy})` }]
+      : LINKS;
+
   return (
     <nav className="flex flex-col gap-0.5" aria-label="Owner navigation">
-      {LINKS.map((link) => {
+      {links.map((link) => {
         const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
         return (
           <Link

@@ -20,7 +20,10 @@ import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { startAuthentication } from '@simplewebauthn/browser';
 
-export default function PasskeyButton({ callbackUrl = '/start' }: { callbackUrl?: string }) {
+// `/continue` rather than a hardcoded page: a passkey signs in owners, standby
+// contacts, and people who are both, and sending them all to the same place was
+// wrong for at least two of the three. It resolves who they are and forwards.
+export default function PasskeyButton({ callbackUrl = '/continue' }: { callbackUrl?: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

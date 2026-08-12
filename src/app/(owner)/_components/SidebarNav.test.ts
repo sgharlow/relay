@@ -24,6 +24,7 @@ import { readdirSync, readFileSync } from 'fs';
 import { join } from 'path';
 
 const OWNER_DIR = join(process.cwd(), 'src/app/(owner)');
+const ACCESS_DIR = join(process.cwd(), 'src/app/(access)');
 
 /**
  * Pages deliberately absent from the sidebar. Each needs a reason, and the
@@ -42,10 +43,28 @@ function navHrefs(): string[] {
   return [...src.matchAll(/href:\s*'([^']+)'/g)].map((m) => m[1]);
 }
 
-function ownerPages(): string[] {
-  return readdirSync(OWNER_DIR, { withFileTypes: true })
+function pagesIn(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true })
     .filter((d) => d.isDirectory() && !d.name.startsWith('_') && !d.name.startsWith('('))
     .map((d) => d.name);
+}
+
+function ownerPages(): string[] {
+  return pagesIn(OWNER_DIR);
+}
+
+/**
+ * Route groups do not appear in the URL, so an owner-sidebar link may legitimately
+ * point into (access) — and one does. §3.7 allows the same human to own a vault
+ * AND stand by for other people, and owner mode previously linked to /standby
+ * from nowhere at all, which left a both-hats user unable to reach the screen
+ * that matters most when it matters. The link is conditional on actually
+ * standing by for somebody, so it never shows for an owner it does not concern.
+ *
+ * The guard keeps its teeth: the destination still has to EXIST somewhere.
+ */
+function linkablePages(): string[] {
+  return [...pagesIn(OWNER_DIR), ...pagesIn(ACCESS_DIR)];
 }
 
 describe('owner navigation covers the owner app', () => {
@@ -71,8 +90,16 @@ describe('owner navigation covers the owner app', () => {
   });
 
   it('every sidebar link points at a page that exists', () => {
-    const pages = new Set(ownerPages());
+    const pages = new Set(linkablePages());
     const broken = navHrefs().filter((h) => !pages.has(h.replace(/^\//, '')));
     expect(broken, `Sidebar links to non-existent pages: ${broken.join(', ')}`).toEqual([]);
+  });
+
+  it('links the both-hats user to their standby page', () => {
+    // Regression guard for the reachability defect found on 2026-08-12: owner
+    // mode linked to /standby from nowhere, so somebody who both owned a vault
+    // and stood by for a parent could not get to the page that tells them
+    // whether they are needed.
+    expect(navHrefs()).toContain('/standby');
   });
 });
