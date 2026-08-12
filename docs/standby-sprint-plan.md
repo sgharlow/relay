@@ -440,10 +440,28 @@ Both answers carry equal weight in the UI, and reject asks once before acting. �
 honoured — the control lives in owner mode only and says *call them*, because letting the contact
 confirm alone is the simplification that breaks the property.
 
+### ✅ Leaving a circle — shipped and live-proven 2026-08-12
+
+N15/N16. `/api/standby/leave` had existed since sprint C4 with no caller. Walked on production for
+both reasons: card disappears, `relationships` drops to 0, the contact stays signed in, and the
+owner's roster row survives unbound at `invited` with `claimed_user_id` NULL — **degrade, never
+delete** (§3.7 rule 3). The two reasons record distinctly in the owner's audit chain,
+`standby_resigned` vs `standby_rejected`, because "an invitation reached the wrong inbox" is a
+different thing for an owner to learn than "I am stepping down".
+
+Warns when a release is open for that owner but does **not** block: this is a right, and a product
+that traps somebody in an obligation during another person's emergency has misunderstood which of
+the two it serves.
+
 ### 🔴 Still open
 
-1. **Resign has no UI.** `/api/standby/leave` has no caller, so a standby contact cannot leave —
-   N15/N16 remain API-only, and a free user with an account has no way out.
+1. 🔴 **Nothing re-validates quorum when the participant pool shrinks (§4.3).** `validateNofM` is
+   called only at provisioning (`lib/release/provisioning.ts:84`) and never again — so resigning,
+   rejecting a claim, revoking, or un-confirming can leave a trigger needing more confirmations than
+   it has people who can give them. §4.3's own words for that state: *"the release stalls permanently
+   with no error anywhere."* **Newly more reachable**, because 2026-08-12 shipped three new ways to
+   remove a participant (reject, resign, withdraw-confirmation) where before there was one.
+   Pairs with item 2 — readiness is the surface the blocker would appear on.
 2. ✅ **Break-glass is complete — issue and redeem both shipped and live-proven 2026-08-12.**
    Full loop walked with no scripts on either end: owner opens *Emergency code* on `/circle` →
    reads the explanation → creates a code → a different person redeems it at `/break-glass` and
