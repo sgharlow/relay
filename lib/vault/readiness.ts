@@ -308,12 +308,17 @@ export async function assessReadiness(ownerId: string): Promise<Readiness> {
   ) {
     blockers.push({
       code: 'fragile_quorum',
+      // Written twice because "every one of your 1 verified contact" is how a
+      // template reads when nobody checked the singular.
       message:
-        `Your plan works, but it needs every one of your ${ableVerifiers} verified ` +
-        `contact${ableVerifiers === 1 ? '' : 's'} — and ` +
-        `${strandedVerifiers === 1 ? 'one of them has' : `${strandedVerifiers} of them have`} no ` +
-        'way back in if they lose the device they signed in on. A passkey or an emergency code ' +
-        'would fix that.',
+        ableVerifiers === 1
+          ? 'Your plan works, but it rests entirely on one person — and they have no way back in ' +
+            'if they lose the device they signed in on. Give them an emergency code, or ask them ' +
+            'to add a passkey.'
+          : `Your plan works, but it needs all ${ableVerifiers} of your verified contacts — and ` +
+            `${strandedVerifiers === 1 ? 'one of them has' : `${strandedVerifiers} of them have`} ` +
+            'no way back in if they lose the device they signed in on. An emergency code or a ' +
+            'passkey would fix that.',
       href: '/circle',
       fatal: false,
     });
