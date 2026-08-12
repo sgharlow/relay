@@ -11,32 +11,39 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 
-import { redeemInvitation, buildStandbyView } from '../../../../../lib/people/invitations';
-import { writeAuditEntry } from '../../../../../lib/audit/audit-service';
+import { buildStandbyView } from '../../../../../lib/people/invitations';
+import { claimStandbyRole } from '../../../../../lib/people/claim';
+import { getOwnerSession } from '../../../../../lib/auth/session';
 import { ValidationError } from '../../../../../lib/validation';
 
 type Ctx = { params: Promise<{ token: string }> };
 
 export async function POST(_req: NextRequest, { params }: Ctx): Promise<NextResponse> {
   try {
-    const claim = await redeemInvitation((await params).token);
+    // If they are already someone here — an owner, or already standing by for
+    // somebody else — this claim LINKS a second relationship. Minting a new
+    // account would sever every standby link they already hold (§3.7 rule 2).
+    // Absence of a session is the normal case, not an error.
+    const existing = await getOwnerSession().catch(() => null);
 
-    await writeAuditEntry(claim.ownerId, {
-      actor: `${claim.personType}:${claim.personId}`,
-      action: 'invitation_claimed',
-      entity: claim.personType,
-      entityId: claim.personId,
-      detail: { personType: claim.personType },
+    const claim = await claimStandbyRole({
+      token: (await params).token,
+      existingUserId: existing?.ownerId,
     });
 
     if (claim.personType === 'verifier') {
       // Verifiers hold no grant and must never see vault shape (R6.8).
-      return NextResponse.json({ personType: 'verifier', claimed: true });
+      return NextResponse.json({
+        personType: 'verifier',
+        claimed: true,
+        linkedExisting: claim.linkedExisting,
+      });
     }
 
     return NextResponse.json({
       personType: 'recipient',
       claimed: true,
+      linkedExisting: claim.linkedExisting,
       standby: await buildStandbyView(claim.ownerId, claim.personId),
     });
   } catch (err) {
