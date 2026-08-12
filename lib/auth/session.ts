@@ -25,6 +25,7 @@
  */
 
 import { getServerSession } from 'next-auth/next';
+import { isSessionCurrent } from './session-epoch';
 import { NextResponse } from 'next/server';
 import { authOptions } from './auth-options';
 import type { Session } from 'next-auth';
@@ -73,6 +74,21 @@ export async function getOwnerSession(): Promise<OwnerSession> {
   if (!isValidOwnerSession(session)) {
     throw NextResponse.json(
       { error: 'Unauthorized', message: 'Valid owner session required' },
+      { status: 401 },
+    );
+  }
+
+  // Revocation. A JWT is a snapshot taken at sign-in, so without this a DELETED
+  // user's session keeps working until it expires -- proven on production
+  // 2026-08-12, where /api/standby answered 200 for exactly that. One indexed
+  // primary-key read is the honest price of immediate revocation on a stateless
+  // session, and it denies on failure: a database blip signs people out rather
+  // than honouring a stale token, and every route behind this queries the
+  // database anyway.
+  const epoch = (session as { sessionEpoch?: number }).sessionEpoch;
+  if (!(await isSessionCurrent(session.ownerId, epoch))) {
+    throw NextResponse.json(
+      { error: 'Unauthorized', message: 'That session is no longer valid. Please sign in again.' },
       { status: 401 },
     );
   }

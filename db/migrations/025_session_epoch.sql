@@ -1,0 +1,28 @@
+-- Session invalidation.
+--
+-- THE DEFECT, proven on production 2026-08-12: a browser holding a session for a
+-- user that had been DELETED from `users` was still accepted -- /api/standby
+-- answered 200 rather than 401 -- because the session is a self-contained JWT and
+-- nothing checked that the id still existed. "Delete my account" did not mean
+-- "signed out", and there was no way to revoke a session at all.
+--
+-- That is docs/standby-architecture.md §3.7 rule 1 made real: the token is a
+-- snapshot taken at sign-in, and the gap between snapshot and truth is exactly
+-- where revocation lives. The rule already says `standbyFor` must never be read
+-- as authorization for that reason; this closes the same gap for the session
+-- itself.
+--
+-- The epoch is stamped into the JWT at sign-in and compared against this column
+-- on every authenticated request. Bumping it invalidates every session that user
+-- holds, which is what "sign out everywhere" needs and what a compromised device
+-- needs.
+--
+-- Nullable, read as 0: DSQL cannot add NOT NULL to an existing table (see 008),
+-- and sessions minted before this shipped carry no epoch claim. Honouring those
+-- against an unbumped user is deliberate -- rejecting them would sign out every
+-- existing user on deploy, which is worse than letting them expire naturally --
+-- and one bump is enough to invalidate them.
+--
+-- Requirements: 17.1
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS session_epoch INT;

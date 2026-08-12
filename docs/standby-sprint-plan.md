@@ -163,6 +163,24 @@ re-confirm cadence.
 
 ---
 
+## 2a. ⏸️ Phase 0 — instrumented, PARKED by Steve 2026-08-12
+
+The funnel is built and live (migration 024, `scripts/phase0-invite.ts`,
+`scripts/phase0-report.ts`). What remains is not engineering: it needs ~20 real
+invitations, split across the two delivery arms, and only Steve can spend that
+social capital.
+
+**Steve's call: build first, measure later.**
+
+**The risk that decision accepts, stated plainly so it is not rediscovered later:**
+every sprint from here compounds on an unvalidated bet. `risk 1` of the
+architecture is "claim conversion is the whole bet", and Phase 0 exists precisely
+to find out before more is built on it. Parking it does not make the bet smaller;
+it makes it later and more expensive to lose.
+
+**Re-raise at every `/daily-priority`.** A parked item that is not re-raised is a
+dropped one, and this is the measurement the architecture rests on.
+
 ## 3a. 🔴 Found while building Sprint D — a session outlives its account
 
 **A deleted user's session keeps working until the JWT expires.** Proven on

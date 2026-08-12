@@ -21,6 +21,7 @@ import { resolveTotpSecret } from './resolve-totp-secret';
 import { upsertUser, type UserRecord } from './upsert-user';
 import { openChallenge, finishAuthentication } from './webauthn';
 import { claimStandbyRole } from '../people/claim';
+import { readSessionEpoch } from './session-epoch';
 import { query } from '../db/connection';
 
 // ---------------------------------------------------------------------------
@@ -253,6 +254,9 @@ export const authOptions: NextAuthOptions = {
         token.ownerId = u.ownerId;
         token.isDemo = u.isDemo;
         token.sub = u.id;
+        // Stamped once, at sign-in. Compared against the row on every request,
+        // which is what makes revocation immediate rather than "within 24 hours".
+        token.sessionEpoch = (await readSessionEpoch(u.ownerId)) ?? 0;
       }
       return token;
     },
@@ -268,6 +272,8 @@ export const authOptions: NextAuthOptions = {
           token.ownerId as string;
         (session as Record<string, unknown> & typeof session).isDemo =
           (token.isDemo as boolean) ?? false;
+        (session as Record<string, unknown> & typeof session).sessionEpoch =
+          token.sessionEpoch as number | undefined;
       }
       return session;
     },

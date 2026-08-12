@@ -20,11 +20,16 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 vi.mock('next-auth/next', () => ({
   getServerSession: vi.fn(),
 }));
+// getOwnerSession now checks revocation on every call: a JWT is a snapshot, and
+// without this a DELETED user's session kept working until it expired.
+vi.mock('./session-epoch', () => ({ isSessionCurrent: vi.fn(async () => true) }));
 
 import { getServerSession } from 'next-auth/next';
+import { isSessionCurrent } from './session-epoch';
 import { getOwnerSession } from './session';
 
 const mockGetServerSession = vi.mocked(getServerSession);
+const mockCurrent = vi.mocked(isSessionCurrent);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -139,5 +144,30 @@ describe('getOwnerSession', () => {
     }
     expect(thrown).toBeDefined();
     expect((thrown as Response).status).toBe(401);
+  });
+});
+
+
+describe('getOwnerSession — revocation', () => {
+  it('rejects a session whose user has been deleted or whose epoch was bumped', async () => {
+    // The defect this closes, proven on production 2026-08-12: a browser holding
+    // a session for a deleted user was accepted, and /api/standby answered 200.
+    mockGetServerSession.mockResolvedValue({ ownerId: 'user-1', isDemo: false } as never);
+    mockCurrent.mockResolvedValueOnce(false);
+
+    await expect(getOwnerSession()).rejects.toBeDefined();
+  });
+
+  it('checks the CURRENT epoch against the token on every call, not just at sign-in', async () => {
+    mockGetServerSession.mockResolvedValue({
+      ownerId: 'user-1',
+      isDemo: false,
+      sessionEpoch: 3,
+    } as never);
+    mockCurrent.mockResolvedValueOnce(true);
+
+    await getOwnerSession();
+
+    expect(mockCurrent).toHaveBeenCalledWith('user-1', 3);
   });
 });
