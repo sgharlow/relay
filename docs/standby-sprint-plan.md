@@ -489,10 +489,19 @@ that fixes it, and each is a chance to leave a stale alarm.
 2. **Option 2 — stop minting codes for claimed verifiers.** Unblocked (break-glass works end to
    end). Wants the §8.1 ruling first, plus a way for an owner to see who actually holds an
    unredeemed code — a fallback nobody was handed is not cover.
-3. **§9.3's Terms ship-gate is breached.** *"Terms need a standby clause before standby accounts
-   exist in production."* They exist and are taking payments; `terms/page.tsx` and
-   `privacy/page.tsx` contain zero occurrences of "standby", and Terms still frames the free tier
-   as an owner's. Not a build item — a written promise that does not match the product.
+3. ✅ **§9.3's Terms ship-gate — CLOSED 2026-08-12.** Terms gained *"If someone names you"* and
+   Privacy gained *"If someone named you"*; both live. Counsel review under `g2-counsel-opinion` is
+   still outstanding and this does not substitute for it — what it does is make the documents true,
+   which is the part that could not wait.
+
+   Writing them found three defects, all the same class in different directions: `deleteAccount`
+   did **not** remove `break_glass_codes` (the privacy page was about to claim it did — fixed,
+   tested, and proven live: 1 → 0 with zero orphans); a first draft claimed a trusted contact is
+   *"never shown anything about their vault"*, which is false at decision time and is the same
+   content-not-scale correction made to §3.1 that morning; and another claimed a standby account
+   *"does not count against anyone's limits"* when the free tier does cap recipients. Also corrected
+   a pre-existing **understatement** — Privacy told people to email us to delete their account,
+   months after self-serve deletion shipped.
 4. **Deferred sprint E items:** §3.8 event transparency, `email_secondary` (rung 2), and [A2]'s
    guided-setup-call UI. The assurance flow works without [A2]; it is a smoother packaging of the
    same two acts.
