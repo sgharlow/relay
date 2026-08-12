@@ -17,6 +17,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const query = vi.fn();
 const writeAuditEntry = vi.fn();
 const cancelSubscriptionForOwner = vi.fn();
+const resignFromCircle = vi.fn();
 
 vi.mock('../db/connection', () => ({ query: (...a: unknown[]) => query(...a) }));
 vi.mock('../audit/audit-service', () => ({
@@ -24,6 +25,9 @@ vi.mock('../audit/audit-service', () => ({
 }));
 vi.mock('../billing/cancellation', () => ({
   cancelSubscriptionForOwner: (...a: unknown[]) => cancelSubscriptionForOwner(...a),
+}));
+vi.mock('../people/resign', () => ({
+  resignFromCircle: (...a: unknown[]) => resignFromCircle(...a),
 }));
 
 import { deleteAccount } from './lifecycle';
@@ -33,10 +37,24 @@ const sqlIssued = (): string[] =>
   query.mock.calls.map((c) => String(c[0]).replace(/\s+/g, ' ').trim());
 
 beforeEach(() => {
-  query.mockReset().mockResolvedValue({ rows: [{ n: '0' }], rowCount: 0 });
+  // Empty by default. A blanket one-row answer made the standby-role lookup
+  // return a phantom role and call resign with undefined ids — the "unit tests
+  // pin phantom objects" trap. Tests that need rows say so explicitly.
+  query.mockReset().mockResolvedValue({ rows: [], rowCount: 0 });
   writeAuditEntry.mockReset().mockResolvedValue(undefined);
   cancelSubscriptionForOwner.mockReset().mockResolvedValue({ cancelled: true });
+  resignFromCircle.mockReset().mockResolvedValue({ ownerId: 'other-owner' });
 });
+
+/** Make the standby-role lookup return roles this user holds in OTHER circles. */
+function standingBy(roles: Array<{ person_id: string; person_type: string }>): void {
+  query.mockImplementation(async (sql: string) => {
+    if (/FROM recipients WHERE claimed_user_id/i.test(sql)) {
+      return { rows: roles, rowCount: roles.length };
+    }
+    return { rows: [], rowCount: 0 };
+  });
+}
 
 describe('deleteAccount', () => {
   it('cancels the subscription at Stripe', async () => {
@@ -89,5 +107,47 @@ describe('deleteAccount', () => {
     }
     // Retained on purpose and stated on the privacy page.
     expect(sql.some((s) => /DELETE FROM audit_log/i.test(s))).toBe(false);
+  });
+
+  it('removes the passkeys — a public key must not outlive the account', async () => {
+    // Proven on production 2026-08-12: webauthn_credentials rows survived the
+    // user row. Sign-in still failed safely, but the data was retained against
+    // the promise on the privacy page, with nothing left able to delete it.
+    await deleteAccount('owner-1');
+    expect(sqlIssued().some((s) => /DELETE FROM webauthn_credentials/i.test(s))).toBe(true);
+  });
+
+  it('leaves every OTHER circle this person stood by for', async () => {
+    // The rows live in other owners' rosters, so `WHERE owner_id = $1` never
+    // touched them. Production kept `standby_state = 'claimed'` pointing at a
+    // deleted user: the owner is shown a covered circle that is not covered.
+    standingBy([{ person_id: 'p-1', person_type: 'recipient' }]);
+
+    const report = await deleteAccount('leaver');
+
+    expect(resignFromCircle).toHaveBeenCalledWith({
+      userId: 'leaver',
+      personId: 'p-1',
+      personType: 'recipient',
+    });
+    expect(report.standbyRolesReleased).toBe(1);
+  });
+
+  it('resigns BEFORE deleting anything, so a failure leaves the account intact', async () => {
+    // Same discipline as the Stripe cancellation above: half-deleted is the one
+    // state with no recovery. If the other owner's audit write fails, nothing
+    // has been destroyed and the user can try again.
+    standingBy([{ person_id: 'p-1', person_type: 'recipient' }]);
+    resignFromCircle.mockRejectedValue(new Error('audit chain unavailable'));
+
+    await expect(deleteAccount('leaver')).rejects.toThrow(/audit chain unavailable/);
+
+    expect(sqlIssued().filter((s) => /^DELETE/i.test(s))).toEqual([]);
+  });
+
+  it('closes an account that stands by for nobody without calling resign', async () => {
+    await deleteAccount('owner-1');
+    expect(resignFromCircle).not.toHaveBeenCalled();
+    expect(sqlIssued().some((s) => /DELETE FROM users/i.test(s))).toBe(true);
   });
 });

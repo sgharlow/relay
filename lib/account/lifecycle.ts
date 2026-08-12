@@ -29,6 +29,7 @@
 import { query } from '../db/connection';
 import { writeAuditEntry } from '../audit/audit-service';
 import { cancelSubscriptionForOwner } from '../billing/cancellation';
+import { resignFromCircle } from '../people/resign';
 
 export interface ExportedItem {
   id: string;
@@ -106,6 +107,10 @@ export interface DeletionReport {
   accessRules: number;
   releaseStates: number;
   auditEntriesRetained: number;
+  /** Passkeys removed from this account. */
+  passkeys: number;
+  /** Other people's circles this account was standing by for, now released. */
+  standbyRolesReleased: number;
 }
 
 /**
@@ -124,6 +129,37 @@ export async function deleteAccount(ownerId: string): Promise<DeletionReport> {
   // are still being billed" is strictly worse than "we could not close your
   // account, try again".
   await cancelSubscriptionForOwner(ownerId);
+
+  // SECOND, and before anything destructive, for the same reason billing goes
+  // first: if this throws, the account is still intact and can be retried.
+  //
+  // A user is not only an owner (§3.7). They may also stand by for other people,
+  // and those roles live in OTHER owners' rosters — rows this function's
+  // `WHERE owner_id = $1` deletes never touch. Proven on production 2026-08-12:
+  // after deleting a standby contact's account, the owner's roster still read
+  // `standby_state = 'claimed'` pointing at a user id that no longer existed.
+  //
+  // For a continuity product that is the worst kind of wrong. The owner is shown
+  // a covered circle, the readiness banner stays quiet, and the person it names
+  // is gone — a failure that only reveals itself on the day it is needed.
+  //
+  // Deleting their account is leaving every circle, so it is expressed as
+  // exactly that rather than as a bespoke UPDATE: `resignFromCircle` owns what
+  // leaving means (unbind, degrade to `invited`, clear the fingerprint) and
+  // writes the audit entry against the OTHER owner, which is how they find out.
+  const standbyRoles = await query<{ person_id: string; person_type: 'recipient' | 'verifier' }>(
+    `SELECT id AS person_id, 'recipient' AS person_type FROM recipients WHERE claimed_user_id = $1
+     UNION ALL
+     SELECT id AS person_id, 'verifier'  AS person_type FROM verifiers  WHERE claimed_user_id = $1`,
+    [ownerId],
+  );
+  for (const role of standbyRoles.rows) {
+    await resignFromCircle({
+      userId: ownerId,
+      personId: role.person_id,
+      personType: role.person_type,
+    });
+  }
 
   const audit = await query<{ n: string }>(
     `SELECT count(*)::text AS n FROM audit_log WHERE owner_id = $1`,
@@ -149,6 +185,12 @@ export async function deleteAccount(ownerId: string): Promise<DeletionReport> {
   const recipients = await counted(`DELETE FROM recipients WHERE owner_id = $1`);
   const verifiers = await counted(`DELETE FROM verifiers WHERE owner_id = $1`);
 
+  // A passkey is account data and the privacy page promises account data goes.
+  // These outlived the user row until 2026-08-12: sign-in still failed safely,
+  // because `authorize` looks the user up and finds nothing, but a public key
+  // tied to a deleted person sat in the table with nothing left to delete it.
+  const passkeys = await counted(`DELETE FROM webauthn_credentials WHERE user_id = $1`);
+
   // Best-effort for tables a given deployment may not have; a missing optional
   // table must not leave an account half-deleted.
   for (const sql of [
@@ -159,6 +201,10 @@ export async function deleteAccount(ownerId: string): Promise<DeletionReport> {
     `DELETE FROM access_policies WHERE owner_id = $1`,
     `DELETE FROM approvals WHERE owner_id = $1`,
     `DELETE FROM subscriptions WHERE owner_id = $1`,
+    // Outstanding invitations this owner issued. They carry a token hash and a
+    // person id, and their roster rows have just been deleted, so leaving them
+    // retains a credential for a circle that no longer exists.
+    `DELETE FROM invitations WHERE owner_id = $1`,
   ]) {
     try {
       await query(sql, [ownerId]);
@@ -178,5 +224,7 @@ export async function deleteAccount(ownerId: string): Promise<DeletionReport> {
     // Retained on purpose, and stated on the privacy page. Reported so the
     // number is visible to the person leaving rather than a silent exception.
     auditEntriesRetained: Number(audit.rows[0]?.n ?? 0),
+    passkeys,
+    standbyRolesReleased: standbyRoles.rows.length,
   };
 }
