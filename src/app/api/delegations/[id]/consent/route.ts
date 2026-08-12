@@ -37,6 +37,11 @@ export async function POST(req: NextRequest, { params }: Ctx): Promise<NextRespo
       await recordConsent((await params).id, {
         method: method as ConsentMethod,
         evidenceRef: typeof evidenceRef === 'string' ? evidenceRef : null,
+        // 🔴 Security review 2026-08-12: this route authenticated a user and
+        // then passed the path id through unscoped, so any signed-in user could
+        // activate anybody's pending delegation. The owner is now part of the
+        // WHERE clause rather than an assumption.
+        ownerId: auth.ownerId,
       }),
     );
   } catch (err) {

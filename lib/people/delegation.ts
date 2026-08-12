@@ -73,7 +73,26 @@ export async function createDelegation(
  */
 export async function recordConsent(
   delegationId: string,
-  input: { method: ConsentMethod; evidenceRef: string | null },
+  input: {
+    method: ConsentMethod;
+    evidenceRef: string | null;
+    /**
+     * The owner whose delegation this is.
+     *
+     * 🔴 ADDED 2026-08-12 BY THE SECURITY REVIEW. This function previously took
+     * no owner at all and activated `WHERE id = $1 AND status = 'pending'`, while
+     * the route authenticated a user and passed the path id straight through
+     * with no `assertOwns`. Any signed-in user could therefore activate ANY
+     * pending delegation — granting a stranger setup rights over somebody else's
+     * vault, and defeating the consent step that is the entire control making
+     * delegation legitimate (J3).
+     *
+     * Unguessable UUIDs made it hard to exploit rather than safe. This data
+     * layer has no foreign keys, so a cross-owner reference is refused in the
+     * application or not at all — which is precisely why the convention exists.
+     */
+    ownerId: string;
+  },
 ): Promise<{ status: 'active' }> {
   if (!CONSENT_METHODS.includes(input.method)) {
     throw new ValidationError(
@@ -94,9 +113,9 @@ export async function recordConsent(
   const updated = await query<{ id: string; owner_id: string }>(
     `UPDATE delegations
         SET status = 'active', granted_at = now(), consent_artifact_id = $2
-      WHERE id = $1 AND status = 'pending'
+      WHERE id = $1 AND owner_id = $3 AND status = 'pending'
       RETURNING id, owner_id`,
-    [delegationId, artifact.rows[0].id],
+    [delegationId, artifact.rows[0].id, input.ownerId],
   );
 
   const row = updated.rows[0];

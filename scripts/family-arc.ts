@@ -93,7 +93,7 @@ async function main(): Promise<void> {
   console.log(`   delegation: ${del.status}`);
   if (await getActiveDelegation(sarahUser, margaret)) note('Delegation was ACTIVE before consent.');
 
-  await recordConsent(del.id, { method: 'in_person', evidenceRef: 'Sat 8 Aug, at her kitchen table' });
+  await recordConsent(del.id, { method: 'in_person', evidenceRef: 'Sat 8 Aug, at her kitchen table', ownerId: margaret });
   const active = await getActiveDelegation(sarahUser, margaret);
   console.log(`   after consent: ${active ? 'active' : 'STILL INACTIVE'}`);
   if (!active) note('Consent recorded but delegation did not activate.');

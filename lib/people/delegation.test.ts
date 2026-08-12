@@ -94,7 +94,7 @@ describe('recordConsent', () => {
     'accepts consent method %s',
     async (method) => {
       pendingThenUpdate();
-      await expect(recordConsent('d-1', { method, evidenceRef: 'ref' })).resolves.toEqual({
+      await expect(recordConsent('d-1', { method, evidenceRef: 'ref', ownerId: 'owner-1' })).resolves.toEqual({
         status: 'active',
       });
     },
@@ -102,14 +102,14 @@ describe('recordConsent', () => {
 
   it('REJECTS an unknown method before touching the database', async () => {
     await expect(
-      recordConsent('d-1', { method: 'verbal' as never, evidenceRef: null }),
+      recordConsent('d-1', { method: 'verbal' as never, evidenceRef: null, ownerId: 'owner-1' }),
     ).rejects.toThrow(ValidationError);
     expect(mockQuery).not.toHaveBeenCalled();
   });
 
   it('writes the consent artifact to the audit log', async () => {
     pendingThenUpdate();
-    await recordConsent('d-1', { method: 'in_person', evidenceRef: null });
+    await recordConsent('d-1', { method: 'in_person', evidenceRef: null, ownerId: 'owner-1' });
 
     expect(writeAuditEntry).toHaveBeenCalledWith(
       'o-1',
@@ -122,7 +122,7 @@ describe('recordConsent', () => {
       .mockResolvedValueOnce({ rows: [{ id: 'a-1' }] } as never)
       .mockResolvedValueOnce({ rows: [] } as never);
 
-    await expect(recordConsent('nope', { method: 'link', evidenceRef: null })).rejects.toThrow(
+    await expect(recordConsent('nope', { method: 'link', evidenceRef: null, ownerId: 'owner-1' })).rejects.toThrow(
       ValidationError,
     );
     expect(writeAuditEntry).not.toHaveBeenCalled();
@@ -130,7 +130,7 @@ describe('recordConsent', () => {
 
   it('only activates a delegation that is still pending', async () => {
     pendingThenUpdate();
-    await recordConsent('d-1', { method: 'link', evidenceRef: null });
+    await recordConsent('d-1', { method: 'link', evidenceRef: null, ownerId: 'owner-1' });
 
     const update = mockQuery.mock.calls[1][0] as string;
     expect(update).toMatch(/status\s*=\s*'active'/i);
@@ -196,5 +196,39 @@ describe('revokeDelegation', () => {
 describe('delegateActor', () => {
   it('namespaces the audit actor so delegate action is distinguishable', () => {
     expect(delegateActor('d-1')).toBe('delegate:d-1');
+  });
+});
+
+describe('🔴 cross-owner activation — found by the 2026-08-12 security review', () => {
+  it('scopes the activation to the OWNER, not just the delegation id', async () => {
+    // This function took no owner at all and updated `WHERE id = $1 AND status =
+    // 'pending'`, while the route authenticated a user and passed the path id
+    // straight through with no assertOwns. Any signed-in user could activate any
+    // pending delegation — granting a stranger setup rights over somebody else's
+    // vault and defeating the consent step that makes delegation legitimate.
+    mockQuery.mockReset();
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ id: 'art-1' }], rowCount: 1 } as never)
+      .mockResolvedValueOnce({ rows: [{ id: 'd-1', owner_id: 'owner-1' }], rowCount: 1 } as never)
+      .mockResolvedValue({ rows: [], rowCount: 0 } as never);
+
+    await recordConsent('d-1', { method: 'link', evidenceRef: null, ownerId: 'owner-1' });
+
+    const update = mockQuery.mock.calls.map((c) => String(c[0])).find((q) => q.includes('UPDATE delegations'));
+    expect(update).toContain('owner_id = $3');
+    expect(mockQuery.mock.calls.find((c) => String(c[0]).includes('UPDATE delegations'))?.[1]).toContain('owner-1');
+  });
+
+  it('refuses when the delegation belongs to somebody else', async () => {
+    mockQuery.mockReset();
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ id: 'art-1' }], rowCount: 1 } as never)
+      // Owner-scoped UPDATE matches nothing for a stranger.
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 } as never)
+      .mockResolvedValue({ rows: [], rowCount: 0 } as never);
+
+    await expect(
+      recordConsent('someone-elses', { method: 'link', evidenceRef: null, ownerId: 'attacker' }),
+    ).rejects.toThrow(/No pending delegation/i);
   });
 });
