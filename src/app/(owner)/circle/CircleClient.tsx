@@ -32,8 +32,21 @@ interface CircleData {
     circleComplete: boolean;
   };
   proposals: Proposal[];
-  recipients: { id: string; name: string; role: string; email: string; standby_state?: string }[];
-  verifiers: { id: string; name: string; email: string; standby_state?: string }[];
+  recipients: {
+    id: string;
+    name: string;
+    role: string;
+    email: string;
+    standby_state?: string;
+    break_glass_only?: boolean | null;
+  }[];
+  verifiers: {
+    id: string;
+    name: string;
+    email: string;
+    standby_state?: string;
+    break_glass_only?: boolean | null;
+  }[];
   policyCount: number;
   itemCount: number;
 }
@@ -88,10 +101,25 @@ export default function CircleClient() {
   const { coverage, proposals, recipients, verifiers } = data;
   const nameById = new Map(recipients.map((r) => [r.id, r.name]));
 
-  // Anyone still named but not verified. `revoked` is excluded — the owner
-  // removed them on purpose and is not waiting on a call.
+  /**
+   * Anyone still named but not verified — i.e. somebody the owner is genuinely
+   * waiting on.
+   *
+   * `revoked` is excluded because the owner removed them on purpose.
+   *
+   * 🔴 `break_glass_only` IS EXCLUDED TOO, added 2026-08-12 after looking at a
+   * circle containing one. §8.1's ruling is explicit that the product must not
+   * "let a red light imply 'not yet' when the truth is 'not ever, on this
+   * device'" — and this counted such a person as unverified and told the owner
+   * to go and check it was really them. The per-person line directly beneath
+   * said the opposite ("will not count towards your plan, by your choice"), so
+   * the screen argued with itself about somebody the owner had already ruled on.
+   */
   const unverified = [...recipients, ...verifiers].filter(
-    (p) => p.standby_state !== 'confirmed' && p.standby_state !== 'revoked',
+    (p) =>
+      p.standby_state !== 'confirmed' &&
+      p.standby_state !== 'revoked' &&
+      !p.break_glass_only,
   ).length;
 
   return (
@@ -158,9 +186,21 @@ export default function CircleClient() {
               Everyone is named — but {unverified} of them{' '}
               {unverified === 1 ? 'has' : 'have'} not been verified yet.
             </p>
+            {/*
+              🔴 THIS SAID "and nothing would open", which was FALSE whenever a
+              plan already had enough verified people — and it appeared directly
+              under a sage banner saying the plan works. Two boxes on one screen,
+              flatly contradicting each other, on the screen where an owner
+              decides whether they are finished.
+
+              Whether the plan can run is the readiness banner's verdict and it
+              owns it; this box says only what is true of the unverified people
+              themselves. A screen with two sources of truth about the same
+              question will eventually disagree, and this one did.
+            */}
             <p className="mt-1 text-t2 text-ochre-text">
-              Until you check it is really them, their answer would not count and nothing would
-              open. It is a two-minute call each.
+              Until you check it is really them, their answer would not count towards opening
+              anything. It is a two-minute call each.
             </p>
           </>
         ) : (

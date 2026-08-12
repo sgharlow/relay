@@ -51,8 +51,24 @@ export default function FallbackLine({
     );
   }
 
+  /*
+    🔴 CLAY WAS WRONG HERE, corrected 2026-08-12 by measuring the rendered page.
+    This line is a nudge about a hypothetical — somebody MIGHT lose a phone — and
+    it was painted rgb(178,64,44), the colour this design system reserves for
+    what cannot be taken back. The triggers screen states the rule outright:
+    "clay is reserved for what cannot be undone... spending clay here would leave
+    nothing to mark the estate handoff."
+
+    Two costs, both real. It over-alarms an owner whose plan is working, and it
+    spends the one colour that has to still mean something on the day an estate
+    release is offered. Ochre is the product's word for "in motion, worth
+    attention, not a failure", which is exactly this.
+
+    Same class as the sage-coloured warning found in August: the words were
+    right and the palette said something else.
+  */
   return (
-    <div style={{ fontSize: 'var(--t1)', color: 'var(--clay)', marginTop: '4px' }}>
+    <div style={{ fontSize: 'var(--t1)', color: 'var(--ochre-text)', marginTop: '4px' }}>
       If {name} loses the device they signed in on, they cannot get back in. Give them an emergency
       code, or ask them to add a passkey.
     </div>

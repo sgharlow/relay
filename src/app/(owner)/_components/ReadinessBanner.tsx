@@ -160,7 +160,17 @@ export default function ReadinessBanner() {
             {setup.map((b) => (
               <li key={b.code} style={{ fontSize: 'var(--t2)', lineHeight: 1.55, color: 'var(--ink-muted)' }}>
                 {b.message}{' '}
-                <Link href={b.href} className="font-medium underline">
+                {/*
+                  Measured at 18x17 on 2026-08-12, below WCAG 2.5.8's 24x24
+                  minimum — the same defect as the three owner controls fixed in
+                  August, missed then because this link only renders when a
+                  NON-FATAL blocker exists. `inline-block` plus padding gives it
+                  a real box without changing how the sentence reads.
+                */}
+                <Link
+                  href={b.href}
+                  className="inline-block min-h-[24px] px-1 py-0.5 font-medium underline"
+                >
                   Go
                 </Link>
               </li>
