@@ -13,7 +13,48 @@
 
 import { query } from '../db/connection';
 import { ensureReleaseState } from '../release/provisioning';
+import { upsertUser } from '../auth/upsert-user';
 import { buildDemoData } from './demo-data';
+
+/**
+ * Bind a seeded contact to a standby account and set their person state.
+ *
+ * WHY THE DEMO NEEDS THIS AT ALL. Quorum tightened to `confirmed` on
+ * 2026-08-12, and the seed left every contact at `invited` — so both demo
+ * triggers became unsatisfiable and the account rendered the fatal readiness
+ * banner. An account used to show people what the product does must not be a
+ * demonstration of a broken plan.
+ *
+ * AND WHY IT BINDS RATHER THAN JUST WRITING 'confirmed'. Setting the state
+ * without a `claimed_user_id` would seed a row the product itself can never
+ * produce — `confirmPerson` only promotes from `claimed`, which only exists
+ * once somebody has bound an identity. A fixture in an impossible state is how
+ * code grows assumptions that hold everywhere except in the demo, and it would
+ * also show a green light with no fingerprint behind it, which is precisely the
+ * false green this codebase keeps producing.
+ *
+ * Idempotent: `upsertUser` keys on the auth sub, so reseeding reuses the same
+ * standby rows rather than accumulating a new set each time.
+ */
+async function bindStandby(
+  table: 'recipients' | 'verifiers',
+  personId: string,
+  email: string,
+  state: 'invited' | 'claimed' | 'confirmed',
+): Promise<void> {
+  if (state === 'invited') return;
+
+  const { id: userId } = await upsertUser(`standby:${email.trim().toLowerCase()}`, email);
+
+  await query(
+    `UPDATE ${table}
+        SET claimed_user_id = $1,
+            standby_state = $2,
+            fingerprint_confirmed_at = ${state === 'confirmed' ? 'now()' : 'NULL'}
+      WHERE id = $3`,
+    [userId, state, personId],
+  );
+}
 
 const CIPHERTEXT_PLACEHOLDER = Buffer.from('relay-demo-seed-placeholder');
 const KMS_KEY_PLACEHOLDER = 'demo-seed';
@@ -79,13 +120,16 @@ export async function seedDemo(): Promise<SeedResult> {
       [ownerId, rec.name, rec.relationship, rec.email, rec.phone, rec.role],
     );
     recipientIdByKey.set(rec.key, r.rows[0].id);
+    await bindStandby('recipients', r.rows[0].id, rec.email, rec.standby ?? 'invited');
   }
 
   // 5. Verifiers.
   for (const v of data.verifiers) {
-    await query(`INSERT INTO verifiers (owner_id, name, email, phone) VALUES ($1,$2,$3,$4)`, [
-      ownerId, v.name, v.email, v.phone,
-    ]);
+    const r = await query<{ id: string }>(
+      `INSERT INTO verifiers (owner_id, name, email, phone) VALUES ($1,$2,$3,$4) RETURNING id`,
+      [ownerId, v.name, v.email, v.phone],
+    );
+    await bindStandby('verifiers', r.rows[0].id, v.email, v.standby ?? 'invited');
   }
 
   // 6. Access rules (keys resolved).

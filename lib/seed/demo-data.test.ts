@@ -63,3 +63,40 @@ describe('demo dataset', () => {
     for (const rs of data.releaseStates) expect(rs.required_confirmations).toBeGreaterThanOrEqual(1);
   });
 });
+
+describe('the demo is a WORKING example, not a broken one', () => {
+  it('seeds enough confirmed verifiers for every trigger it configures', () => {
+    // The defect this pins, live on 2026-08-12: quorum tightened to `confirmed`
+    // and the seed left every contact at `invited`, so BOTH demo triggers became
+    // unsatisfiable and the account rendered the fatal readiness banner — on the
+    // one account used to show people what the product does.
+    //
+    // Guards the forward direction too: raising a trigger's threshold, or
+    // dropping a verifier to `claimed`, now fails here instead of quietly
+    // producing a demo of a plan that cannot run.
+    const data = buildDemoData();
+    const confirmedVerifiers = data.verifiers.filter((v) => v.standby === 'confirmed').length;
+
+    for (const rs of data.releaseStates) {
+      expect(
+        rs.required_confirmations,
+        `${rs.trigger_type} needs ${rs.required_confirmations} confirmations but the seed ` +
+          `confirms ${confirmedVerifiers} verifiers`,
+      ).toBeLessThanOrEqual(confirmedVerifiers);
+    }
+  });
+
+  it('seeds at least one confirmed recipient, so [A3] can go green', () => {
+    // §4.5: executable means N confirmed verifiers AND somebody able to receive.
+    const data = buildDemoData();
+    expect(data.recipients.some((r) => r.standby === 'confirmed')).toBe(true);
+  });
+
+  it('leaves one contact unconfirmed, so the demo also shows the amber light', () => {
+    // An all-green circle hides the control that gets you there. Deliberate, and
+    // asserted so a later "tidy-up" does not silently remove the demonstration.
+    const data = buildDemoData();
+    const people = [...data.recipients, ...data.verifiers];
+    expect(people.some((p) => p.standby === 'claimed')).toBe(true);
+  });
+});

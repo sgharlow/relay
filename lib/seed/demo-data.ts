@@ -41,6 +41,13 @@ export interface SeedVaultItem {
   backup_note: string | null;
 }
 
+/**
+ * Seeded person state. `revoked` is deliberately absent: a demo of a removed
+ * contact is a demo of nothing working, and the seed exists to show the product
+ * in a state somebody could actually be shown.
+ */
+export type SeedStandbyState = 'invited' | 'claimed' | 'confirmed';
+
 export interface SeedRecipient {
   key: string;
   name: string;
@@ -48,6 +55,8 @@ export interface SeedRecipient {
   email: string;
   phone: string | null;
   role: 'recipient' | 'executor' | 'caregiver' | 'partner';
+  /** Person state to seed. Omitted means `invited`, as before. */
+  standby?: SeedStandbyState;
 }
 
 export interface SeedVerifier {
@@ -55,6 +64,8 @@ export interface SeedVerifier {
   name: string;
   email: string;
   phone: string | null;
+  /** Person state to seed. Omitted means `invited`, as before. */
+  standby?: SeedStandbyState;
 }
 
 export interface SeedRule {
@@ -152,17 +163,28 @@ export function buildDemoData(): DemoData {
     item('aws', 'AWS Console', 'Amazon Web Services', 'https://aws.amazon.com', 'professional', 'high', 0.7),
   ];
 
+  /*
+    PERSON STATE, added 2026-08-12. Quorum now counts only `confirmed` people, so
+    a demo seeded entirely at `invited` is a demo of a plan that cannot run — the
+    fatal readiness banner, on the account used to show people the product.
+
+    The mix is chosen, not uniform. Both verifiers are confirmed because the
+    estate trigger needs two, and one recipient is left CLAIMED so the circle
+    shows an amber light next to the green ones: the demo then displays both the
+    working end state and the control that gets you there, which an all-green
+    circle would hide.
+  */
   const recipients: SeedRecipient[] = [
     // Recipient inbox for the demo. Defaults to a placeholder for the public repo;
     // set DEMO_RECIPIENT_EMAIL to your real inbox before reseeding to capture the
     // on-camera access-link delivery (see demo-out/RECORDING-PLAN.md).
-    { key: 'spouse', name: 'Jordan Rivera', relationship: 'Spouse', email: process.env.DEMO_RECIPIENT_EMAIL ?? 'jordan@example.com', phone: '+15551112222', role: 'partner' },
-    { key: 'attorney', name: 'Pat Morgan', relationship: 'Estate attorney', email: 'pat@example.com', phone: '+15553334444', role: 'executor' },
+    { key: 'spouse', name: 'Jordan Rivera', relationship: 'Spouse', email: process.env.DEMO_RECIPIENT_EMAIL ?? 'jordan@example.com', phone: '+15551112222', role: 'partner', standby: 'confirmed' },
+    { key: 'attorney', name: 'Pat Morgan', relationship: 'Estate attorney', email: 'pat@example.com', phone: '+15553334444', role: 'executor', standby: 'claimed' },
   ];
 
   const verifiers: SeedVerifier[] = [
-    { key: 'doctor', name: 'Dr. Alex Chen', email: 'achen@example.com', phone: '+15555556666' },
-    { key: 'brother', name: 'Sam Rivera', email: 'sam@example.com', phone: '+15557778888' },
+    { key: 'doctor', name: 'Dr. Alex Chen', email: 'achen@example.com', phone: '+15555556666', standby: 'confirmed' },
+    { key: 'brother', name: 'Sam Rivera', email: 'sam@example.com', phone: '+15557778888', standby: 'confirmed' },
   ];
 
   // Emergency access (reversible) to the spouse for the critical items.
