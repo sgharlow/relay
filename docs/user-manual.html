@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Relay — A Guide for You and Your Family</title>
+<style>
+  @page { size: A4; margin: 16mm 14mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: #211d18; line-height: 1.55; font-size: 10.5pt; margin: 0;
+  }
+  h1 { font-size: 24pt; margin: 0 0 6pt; letter-spacing: -0.02em; }
+  h2 { font-size: 15pt; margin: 0 0 3pt; letter-spacing: -0.01em; }
+  h3 { font-size: 11.5pt; margin: 15pt 0 4pt; }
+  .sub { color: #6b6257; font-size: 10.5pt; margin: 0 0 16pt; }
+  .part { page-break-before: always; border-top: 3px solid #211d18; padding-top: 10pt; margin-top: 0; }
+  .part:first-of-type { page-break-before: auto; }
+  .part-label { font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.1em; color: #a8722c; margin: 0 0 4pt; }
+  .uc { page-break-before: always; }
+  .who { font-size: 9pt; color: #6b6257; margin: 0 0 8pt; }
+  .why { background: #f6f3ee; border-left: 3px solid #a8722c; padding: 8pt 12pt; margin: 8pt 0 12pt; font-size: 10pt; }
+  .why b { color: #211d18; }
+  table { width: 100%; border-collapse: collapse; font-size: 9.5pt; margin: 8pt 0 14pt; }
+  th, td { text-align: left; padding: 5pt 6pt; border-bottom: 1px solid #e4ded4; vertical-align: top; }
+  th { background: #f6f3ee; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.04em; color: #6b6257; }
+  ol, ul { margin: 5pt 0 5pt 17pt; padding: 0; }
+  li { margin-bottom: 3pt; }
+  figure { margin: 10pt 0 0; page-break-inside: avoid; }
+  figure img { width: 100%; border: 1px solid #cfc7ba; border-radius: 4px; }
+  figcaption { font-size: 8.5pt; color: #6b6257; margin-top: 4pt; }
+  .phone img { width: 58%; }
+  .note { background: #fdf6ea; border: 1px solid #e8d9b8; border-radius: 6px; padding: 9pt 11pt; font-size: 9.5pt; margin: 10pt 0; }
+  .warn { background: #fbeceb; border: 1px solid #e8c4c0; border-radius: 6px; padding: 9pt 11pt; font-size: 9.5pt; margin: 10pt 0; }
+  .never { background: #f2f4f2; border: 1px solid #cfd8cf; border-radius: 6px; padding: 9pt 11pt; font-size: 9.5pt; margin: 10pt 0; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 9pt; background: #f6f3ee; padding: 1pt 3pt; border-radius: 3px; }
+  .toc { font-size: 10pt; }
+  .toc td { border-bottom: none; padding: 2pt 6pt; }
+  .lead { font-size: 11.5pt; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<h1>Relay</h1>
+<p class="sub">A guide for you and the people you trust — what it does, how each part works, and why
+it is built the way it is.</p>
+
+<p class="lead">Relay holds the things your family would need if you could not be reached — the
+account that everything else recovers through, the bank, the policy number, the instruction that
+only lives in your head — and hands them to specific people, only when specific people agree
+something has actually happened.</p>
+
+<p>It is not a password manager, and it is not a will. A password manager assumes you are there to
+open it. A will assumes you are not coming back. Relay is for the long middle: the surgery, the
+accident, the three weeks in hospital, the trip where nobody could reach you. <b>Everything it does
+is reversible by you, right up until you choose something that is not.</b></p>
+
+<h3>The one idea worth understanding</h3>
+<p>Nothing opens because a computer decided it should. Something opens because <i>people you named
+in advance</i> said it was real. Relay's job is to make that agreement possible at three in the
+morning, between people who may never have met, without any of them having to trust a stranger's
+email.</p>
+
+<div class="never">
+  <b>Three promises the design keeps, everywhere, without exception.</b>
+  <ul>
+    <li><b>Relay never sends you a link that signs you in.</b> Not one. So any message claiming to
+      be us that asks you to click one is, categorically, not us. This is why you type short codes
+      instead of clicking links — it is mildly less convenient and it removes an entire class of
+      attack on your family.</li>
+    <li><b>What is inside your vault never leaves your browser unencrypted.</b> Relay cannot read
+      your items. Neither can anyone who steals the database.</li>
+    <li><b>Everything that happens is written to a record that cannot be edited or deleted</b> —
+      including by us. That is what makes the summary you read afterwards trustworthy rather than
+      merely reassuring.</li>
+  </ul>
+</div>
+
+<h3>What is in this guide</h3>
+<table class="toc">
+  <tr><td><b>Part 1</b></td><td>Setting it up — the four things you do once</td></tr>
+  <tr><td><b>Part 2</b></td><td>Living with it — the part that lasts for years</td></tr>
+  <tr><td><b>Part 3</b></td><td>For the people you name — what they see and what is asked of them</td></tr>
+  <tr><td><b>Part 4</b></td><td>The day it matters — how a release actually runs</td></tr>
+  <tr><td><b>Part 5</b></td><td>When something goes wrong — lost phones, false alarms, leaving</td></tr>
+  <tr><td><b>Part 6</b></td><td>What Relay will not do, stated plainly</td></tr>
+</table>
+
+<!-- ================= PART 1 ================= -->
+<div class="part">
+<p class="part-label">Part 1</p>
+<h2>Setting it up</h2>
+<p class="sub">Four things, done once. Most people finish in under an hour, and the order matters
+more than the speed.</p>
+
+<h3>1.1 — Put in what actually matters</h3>
+<p class="who">You · the Vault screen</p>
+
+<div class="why"><b>Why this exists.</b> The instinct is to put in everything. That is the wrong
+instinct, and it is the main reason plans like this fail: a list of ninety accounts is a list nobody
+can act on. Your family needs the four or five things that unlock the rest.</div>
+
+<p><b>How it works.</b> Add an item and Relay encrypts it <i>in your browser</i> before it is sent
+anywhere. It then scores each item for consequence and sorts the list with the most consequential
+first — the account that other accounts recover through outranks the one with the biggest balance,
+because losing the recovery path means losing everything downstream.</p>
+
+<ul>
+  <li>Items are ordered by what would be hardest to live without, not by when you added them.</li>
+  <li>The line under each item tells you <i>why</i> it is ranked where it is.</li>
+  <li><b>Import CSV</b> takes an export from a password manager if you would rather start from one.</li>
+</ul>
+
+<p>The banner across the top is the single most useful thing on the screen. It answers one question
+— <i>if something happened tomorrow, would this work?</i> — and it is honest about the answer.</p>
+
+<figure><img src="screens/uc01-owner-vault.png" alt="The vault screen"><figcaption>The vault, most
+consequential first. The prompt at the bottom points at the next thing that would actually help —
+a vault nobody can open is a vault that does nothing.</figcaption></figure>
+
+<h3>1.2 — Name the people</h3>
+<p class="who">You · the People screen</p>
+
+<div class="why"><b>Why this exists.</b> Two different jobs get confused constantly, and confusing
+them is how a plan ends up doing nothing. <b>Some people receive access. Other people are asked
+whether the emergency is real.</b> They can be the same person, but the roles are separate, and a
+plan needs both.</div>
+
+<table>
+  <thead><tr><th style="width:110pt">Role</th><th>What they do</th><th>What they see</th></tr></thead>
+  <tbody>
+    <tr><td><b>Who would step in</b><br>(recipients)</td><td>Receive access to the items you assign
+      them, and only after a release opens.</td><td>Before a release: that they are standing by, for
+      whom, and how much is set aside — counts and categories only, never titles.</td></tr>
+    <tr><td><b>Who confirms it is real</b><br>(verifiers)</td><td>Answer one question — is this
+      genuine? — and nothing else. They never receive access.</td><td>At the moment they are asked:
+      how much is at stake and what kind of thing it is. Never a title, never a contents.</td></tr>
+  </tbody>
+</table>
+
+<p><b>Naming someone is only the first half.</b> Once they accept, Relay derives a short phrase from
+their account. You call them — an actual call — and check the phrase they read out matches the one
+on your screen. That call is what turns "someone with this email address accepted" into "this is my
+sister". Until you make it, <b>their answer does not count towards opening anything.</b></p>
+
+<div class="note"><b>Why a phone call, in a product that is otherwise entirely software.</b> Every
+purely-digital way of proving identity here reduces to trusting an email inbox, and an inbox is the
+thing most likely to be compromised in exactly the scenario this product exists for. Two minutes on
+the phone is stronger than anything we could build, and it costs you one call per person, once.</div>
+
+<figure><img src="screens/uc02-owner-circle.png" alt="The People screen"><figcaption>The People
+screen: the coverage table, then the two rosters. Each person's line says what is still missing
+rather than merely what state they are in.</figcaption></figure>
+
+<h3>1.3 — Decide who can reach what</h3>
+<p class="who">You · the Rules screen</p>
+
+<div class="why"><b>Why this exists.</b> "My family gets everything" is not a plan, it is an
+abdication. The person helping with your mother's care needs the health portal and the utility
+account; they do not need your solicitor's file. Scoping access is what makes it safe to name more
+than one person.</div>
+
+<p>A rule is one sentence: <i>this item</i> → <i>this person</i>, under <i>this kind of emergency</i>,
+to <i>view</i> or to <i>act</i>. You can build them by hand, or accept the suggestions Relay drafts
+from what it already knows about your items — most people accept the draft and edit two lines.</p>
+
+<ul>
+  <li><b>View</b> means read it. <b>Act</b> means use it — sign in, pay the bill, call the bank.</li>
+  <li><b>Reversible</b> means access closes again when you check back in. This is the default and it
+    is the whole reason an emergency release is not frightening.</li>
+  <li><b>Release after N days</b> holds a rule back — useful when you want the urgent things open
+    immediately and the rest only if you are still unreachable a week later.</li>
+</ul>
+
+<div class="warn"><b>Estate rules are permanent and Relay will not let you pretend otherwise.</b>
+The reversible option is disabled for them, because a handover that can be taken back is not a
+handover. Everything else can be undone by checking in.</div>
+
+<figure><img src="screens/uc03-owner-rules.png" alt="The Rules screen"><figcaption>Existing rules
+read as sentences. The trigger a rule is written for is created the moment you write the rule —
+which is why an unused trigger never appears and can never fire.</figcaption></figure>
+
+<h3>1.4 — Set the conditions</h3>
+<p class="who">You · the Triggers screen</p>
+
+<div class="why"><b>Why this exists.</b> The dangerous failure is not "it opened too late". It is
+"it opened when nothing was wrong". Every default here leans towards staying shut.</div>
+
+<p>Two settings, and one button you will hopefully never press.</p>
+
+<ul>
+  <li><b>Check-in interval.</b> How long Relay waits before it starts asking whether you are all
+    right. Thirty days suits most people. Any deliberate action in the product counts as checking
+    in, so ordinary use keeps it quiet — you are not being asked to remember a chore.</li>
+  <li><b>Required confirmations.</b> How many of your verifiers must agree before anything opens.
+    One is enough for a small circle. Two is meaningfully harder to fake and is worth it if you have
+    three or more verified people.</li>
+  <li><b>Initiate</b> fires that trigger yourself, now — the "I know I am about to be unreachable"
+    button. It still requires your verifiers to confirm. It does not skip anyone.</li>
+</ul>
+
+<figure><img src="screens/uc04-owner-triggers.png" alt="The Triggers screen"><figcaption>A trigger
+sits <b>ARMED</b> and does nothing until either you initiate it or you stop checking in. Armed is
+the safe state, and every failure inside Relay resolves back to it.</figcaption></figure>
+
+</div>
+
+<!-- ================= PART 2 ================= -->
+<div class="part">
+<p class="part-label">Part 2</p>
+<h2>Living with it</h2>
+<p class="sub">This is the part that lasts for years, and the part most products get wrong by
+demanding attention they have not earned.</p>
+
+<h3>2.1 — Knowing whether it would actually work</h3>
+<p class="who">You · the banner on every screen</p>
+
+<div class="why"><b>Why this exists.</b> The worst outcome for a product like this is not failing.
+It is <i>appearing to work</i> for four years and then failing on the one day it is needed. So the
+banner is deliberately hard to satisfy and deliberately specific about what is missing.</div>
+
+<p>It goes green when the plan could actually run — not when you have filled in every field. And
+when it is not green it names <b>the single fastest thing you could do next</b>, rather than listing
+everything imperfect about your setup.</p>
+
+<table>
+  <thead><tr><th style="width:120pt">What it says</th><th>What it means</th></tr></thead>
+  <tbody>
+    <tr><td>Green</td><td>Enough verified people, enough coverage. If something happened tomorrow,
+      this works.</td></tr>
+    <tr><td>Nobody could confirm</td><td>You have named verifiers but not verified them, so nothing
+      can open. This is the most common state for a new plan and the phone call fixes it.</td></tr>
+    <tr><td>Your plan rests on one person</td><td>It works, but every verified person is needed and
+      at least one of them has no way back in if they lose their phone. Not urgent; worth an
+      afternoon.</td></tr>
+  </tbody>
+</table>
+
+<h3>2.2 — Checking in</h3>
+<p class="who">You · anywhere</p>
+<p>Signing in and doing something deliberate is a check-in. There is also an explicit <b>I'm fine —
+check in</b> button on the Triggers screen for when you want to be certain. A check-in does three
+things at once: it resets the clock, it reverses a release that is in progress, and it closes access
+that has already opened. One action, all of it.</p>
+
+<h3>2.3 — Reading what happened</h3>
+<p class="who">You · the Audit screen</p>
+
+<div class="why"><b>Why this exists.</b> Coming home and finding that people could see your accounts
+is unsettling even when everything worked exactly as designed. The record is what converts that from
+a vague unease into something you can actually check.</div>
+
+<p>The top of the screen is the story in sentences: what was raised, who confirmed it, what was
+opened, when it closed, and why. Beneath it is every entry in order, hash-chained so that changing
+any one of them breaks the chain visibly. <b>Verify chain</b> re-computes it in front of you.</p>
+
+<figure><img src="screens/uc05-owner-audit.png" alt="The Audit screen"><figcaption>The summary
+answers the questions a person actually has. The table beneath is the proof that the summary is
+not just a nice sentence.</figcaption></figure>
+
+<h3>2.4 — Your account</h3>
+<p class="who">You · the Account screen</p>
+<p>Five things worth doing once, and one you may never need.</p>
+<ul>
+  <li><b>Your name.</b> This is how you appear to everyone you trust. Set it. An emergency message
+    that says <code>someone@gmail.com</code> instead of "Margaret" is the worst possible moment for
+    your family to wonder whether the message is real.</li>
+  <li><b>Passkey.</b> Your face, fingerprint or device PIN. Nothing to remember and nothing anyone
+    can email you that a stranger could imitate.</li>
+  <li><b>Recovery codes.</b> Relay has no password. If you lose the phone with your authenticator on
+    it, these are the only way back. Get them now, while you still can.</li>
+  <li><b>Export everything.</b> A readable file of every item, decrypted in your browser. Your data
+    is yours and leaving is not punished.</li>
+  <li><b>Subscription.</b> Cancel any time. Nothing in your vault is deleted when a subscription
+    ends — the free limits apply only to adding more.</li>
+  <li><b>Close this account.</b> Removes the vault, the people and the rules. Anyone relying on it
+    loses access immediately, and this cannot be undone.</li>
+</ul>
+
+<figure><img src="screens/uc06-owner-account.png" alt="The Account screen"><figcaption>Leaving is a
+first-class path, not a support ticket. Export first, then close.</figcaption></figure>
+
+</div>
+
+<!-- ================= PART 3 ================= -->
+<div class="part">
+<p class="part-label">Part 3</p>
+<h2>For the people you name</h2>
+<p class="sub">Hand this part to them. It is written to be read by someone who has just been asked
+to do something they did not sign up for.</p>
+
+<h3>3.1 — Someone has named you. What now?</h3>
+<p class="who">Your person · the Accept screen</p>
+
+<div class="why"><b>Why you are being asked to do anything at all, in advance.</b> The alternative
+is that the first time you hear from Relay is during an emergency, in an email, asking you to make a
+decision about someone you love while holding a code you have never seen before. Accepting now — on
+a calm Tuesday — means that on the bad day you simply sign in as yourself. There is nothing to
+intercept, because nothing is sent.</div>
+
+<p><b>How it works.</b> The person who named you gives you a short code. They choose how: read out
+on a call, texted, written down, handed over. You type it in, and you have an account. It is free,
+it holds nothing of yours, and it exists so you can be recognised later.</p>
+
+<div class="never"><b>Accepting does not open anything.</b> It does not give you access to their
+vault, and it does not tell them anything except that you have seen it. If you would rather not be
+part of this, the honest thing is to say so — and there is a control for stepping down at any
+time.</div>
+
+<figure class="phone"><img src="screens/uc08-claim-phone.png" alt="Accepting a place"><figcaption>
+Typing a short code rather than clicking a link. That is deliberate: Relay never sends a link that
+signs you in, so a message with one in it is not from us.</figcaption></figure>
+
+<h3>3.2 — Standing by</h3>
+<p class="who">Your person · their Standby screen</p>
+
+<p>Most of the time this screen says the most valuable thing it can say: <b>nothing is open, and
+there is nothing you need to do today.</b> It shows who you are standing by for, what would happen
+if an emergency were confirmed, and — if you are a recipient — how much has been set aside for you,
+as counts and categories. Never titles. Never contents.</p>
+
+<p>It also offers to set up a passkey. Worth doing: it is what lets you get back in on a new phone
+without anyone having to reissue anything, and it means there is no code to keep track of.</p>
+
+<figure class="phone"><img src="screens/uc07-standby-dashboard.png" alt="The standby dashboard">
+<figcaption>Standing by. <b>Step down from this</b> is always available — being named is not a trap,
+and someone who quietly stopped agreeing is worse than useless in an emergency.</figcaption></figure>
+
+<h3>3.3 — The phone call</h3>
+<p class="who">Both of you · two minutes, once</p>
+<p>After you accept, the person who named you calls and asks you to read out a short phrase from
+your screen. If it matches theirs, they mark you verified and your answer starts counting. If it
+does not match, something is wrong and they should not proceed — that is the entire point of doing
+it out loud.</p>
+
+</div>
+
+<!-- ================= PART 4 ================= -->
+<div class="part">
+<p class="part-label">Part 4</p>
+<h2>The day it matters</h2>
+<p class="sub">What actually happens, in order, and who is asked what.</p>
+
+<h3>4.1 — Something starts it</h3>
+<p>Either you initiated a trigger yourself, or you stopped checking in for longer than your interval
+and Relay began asking. The trigger moves from <b>ARMED</b> to <b>PENDING</b>. Nothing has opened.</p>
+
+<h3>4.2 — Your verifiers are asked one question</h3>
+<p class="who">Your verifiers · the decision screen</p>
+
+<div class="why"><b>Why a question and not a notification.</b> A notification that fires
+automatically is a system that can be gamed by waiting. A person who knows you, answering "is this
+real?", cannot be.</div>
+
+<p>Each verified verifier is contacted. What they receive depends on how they are set up, and only
+one case involves anything secret:</p>
+
+<table>
+  <thead><tr><th style="width:150pt">If they…</th><th>They receive</th></tr></thead>
+  <tbody>
+    <tr><td>have a passkey or an authenticator</td><td>A message telling them to sign in.
+      <b>No code, nothing to intercept.</b></td></tr>
+    <tr><td>are verified but have no way to sign in</td><td>A single-use code that expires in 72
+      hours. They need it; nobody else does.</td></tr>
+    <tr><td>were named but never verified</td><td>A message saying plainly that their answer would
+      not count yet. Better than letting someone believe they helped.</td></tr>
+  </tbody>
+</table>
+
+<p>They are shown <b>how much</b> is at stake and <b>what kind</b> of thing it is, so they can judge
+whether the request is proportionate. They are never shown a title and never shown contents. They
+can answer three ways — <b>yes</b>, <b>no</b>, or <b>I don't know</b> — and "no" is offered with
+exactly the same prominence as "yes".</p>
+
+<figure class="phone"><img src="screens/uc10-verify-code-phone.png" alt="The verifier code screen">
+<figcaption>Code entry — the way in for a verified verifier who holds no passkey.</figcaption></figure>
+
+<h3>4.3 — The grace window</h3>
+<p>Once enough verifiers agree, the trigger enters <b>GRACE</b>. You are told, on every channel
+Relay has for you. If you are fine, checking in now stops everything. This window exists because the
+most likely emergency is a misunderstanding.</p>
+
+<h3>4.4 — Access opens</h3>
+<p class="who">Your recipients · their screen</p>
+<p>Only now does anything open, and only what your rules assigned. Someone who accepted a standby
+account signs in as themselves; someone who never accepted receives a single-use code that lasts 24
+hours. In both cases, decryption happens in their browser — Relay itself still cannot read the
+items.</p>
+
+<figure class="phone"><img src="screens/uc11-access-code-phone.png" alt="Recipient code entry">
+<figcaption>The recipient's way in when they never accepted a standby account. <b>My code has
+expired</b> re-sends to the address already on file — never to one typed here.</figcaption></figure>
+
+<h3>4.5 — It closes again</h3>
+<p>You check in. Every reversible grant closes, tokens stop working, and the whole episode becomes
+a paragraph on your audit screen. Nothing needs to be undone by hand.</p>
+
+</div>
+
+<!-- ================= PART 5 ================= -->
+<div class="part">
+<p class="part-label">Part 5</p>
+<h2>When something goes wrong</h2>
+<p class="sub">The paths that matter most are the ones nobody rehearses.</p>
+
+<h3>5.1 — It was a false alarm</h3>
+<p class="who">You · the Triggers screen</p>
+<p><b>Stand down — re-arm</b> stops a release in progress or closes one that has already opened, and
+puts the trigger back to armed and ready. This is the control you want almost every time.</p>
+<p><b>Cancel permanently</b> retires the trigger for good. It is deliberately separated and asks for
+confirmation, because someone stopping a false alarm at speed must not retire their whole plan by
+reaching for the innocuous-looking word on the screen.</p>
+
+<h3>5.2 — Someone lost their phone</h3>
+<p class="who">Your person · the Emergency code screen</p>
+
+<div class="why"><b>Why this exists.</b> Not everyone owns a smartphone, and everyone eventually
+loses one. Without this, the seventy-year-old you most want to include is excluded by their own
+technology, and anyone whose authenticator is at the bottom of a river has to reach you — when you
+may be exactly the person who cannot be reached.</div>
+
+<p>You can issue anyone an emergency code, in calm, to keep somewhere safe. It works once. When it
+is used, you are told, and you are asked to check it was really them.</p>
+
+<div class="note"><b>Issue these in advance, not during the emergency.</b> A code you would have to
+issue while unconscious is not a fallback. The banner will tell you when your plan depends on
+somebody who has no way back in.</div>
+
+<figure class="phone"><img src="screens/uc09-break-glass-phone.png" alt="Emergency code entry">
+<figcaption>The way back in when the usual sign-in is gone.</figcaption></figure>
+
+<h3>5.3 — Somebody cannot use an account at all</h3>
+<p class="who">You · the People screen</p>
+<p>Some people will never accept — no smartphone, no interest, no email they check. Marking them
+<b>emergency code only</b> tells Relay that this is deliberate, so it stops asking you to chase
+them. It is honest rather than quiet: it also says clearly that they will never count towards your
+plan working, and the banner arithmetic gets <i>louder</i>, not softer.</p>
+
+<h3>5.4 — Somebody wants out</h3>
+<p class="who">Your person · their Standby screen</p>
+<p><b>Step down from this</b> removes them, tells you, and recalculates your plan. Someone who no
+longer wants the responsibility is not a safe person to depend on, so making this easy is a safety
+feature rather than a courtesy.</p>
+
+<h3>5.5 — You want out</h3>
+<p class="who">You · the Account screen</p>
+<p>Export everything first — it is a readable file, decrypted in your browser. Then close the
+account. Everyone relying on it loses access immediately. The tamper-evident event log is kept, as
+the privacy page says: it holds no secrets, only the record of what happened and when.</p>
+
+</div>
+
+<!-- ================= PART 6 ================= -->
+<div class="part">
+<p class="part-label">Part 6</p>
+<h2>What Relay will not do</h2>
+<p class="sub">Stated plainly, because a product that overstates itself in this category is
+dangerous rather than merely disappointing.</p>
+
+<ul>
+  <li><b>It will not open on its own.</b> Silence never resolves towards open. If nobody confirms,
+    nothing happens — which is the correct failure, and it means a plan whose people cannot be
+    reached is a plan that does nothing.</li>
+  <li><b>It will not decide anything for your family.</b> It carries a decision your people make. It
+    does not make one.</li>
+  <li><b>It cannot read your items, and cannot recover them for you.</b> The encryption that keeps
+    them from us keeps them from us in every circumstance.</li>
+  <li><b>It will not make an unverified person count.</b> Naming someone is not verifying them. The
+    phone call is not optional, and no amount of setup substitutes for it.</li>
+  <li><b>It is not a will.</b> An estate handover moves things to people you chose; it does not
+    settle an estate, and it does not replace advice from someone qualified to give it.</li>
+  <li><b>It cannot help someone who has neither accepted nor been given a code.</b> That person is
+    excluded by design, the product says so plainly rather than showing a hopeful amber light, and
+    the fix is always the same: issue them a code while everything is calm.</li>
+</ul>
+
+<h3>The public pages</h3>
+<p>The landing page explains the product to someone who has never heard of it. The Terms and the
+Privacy page are written to be read — including the section addressed to people who did not sign up
+and were merely named by someone else, which is the population least served by ordinary legal
+boilerplate.</p>
+
+<figure><img src="screens/uc12-landing.png" alt="The landing page"><figcaption>relaystandby.com</figcaption></figure>
+
+</div>
+
+</body>
+</html>

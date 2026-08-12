@@ -834,3 +834,113 @@ at decision time**, which holds for every class of verifier because none of them
 enrol in order to answer. Principle 1's conditionality is why Phase 0's number is a **security**
 measurement rather than only a retention one. §3.1's correction is reflected in the verifier
 decision surface and in both legal pages.
+
+---
+
+## 14. User-manual audit — 2026-08-12
+
+Writing `docs/user-manual.html` as a **family-facing** guide, from the production screenshots
+already captured, turned out to be a better defect-finder than either the UI review or the security
+review. Both of those asked *is this screen correct*. Explaining a journey end to end to somebody
+who did not build it asks a different question — *can a person actually complete this* — and three
+journeys turned out to have no way in at all.
+
+Method: describe every screen's purpose and steps in plain language, then trace each described path
+in the code. A sentence that could not be written truthfully is a defect.
+
+### 🔴 A1 — The verifier decision page never says whose vault it is
+
+`src/app/(verify)/verify/VerifyClient.tsx:182` reads *"Someone has asked for {trigger} access to a
+vault you agreed to help protect."* — and `VerifierContext` (`lib/release/verifier-context.ts:19`)
+carries no owner name or address at all. It loads `owner_id` and never resolves it.
+
+**J7-R3 requires the decision page to state WHO IS ASKING**, first in its list, before what and why
+now. It does not. This is the single highest-stakes screen in the product: a doctor is being asked
+to attest that a named human's emergency is genuine, and the screen will not name the human. The
+answer is also unanswerable in the multi-hat case §3.7 explicitly designs for — somebody standing by
+for two people cannot tell which one this is about.
+
+`getOwnerLabel()` already exists and is already used in the message that brought them here, so the
+email names the owner and the decision page does not.
+
+### 🔴 A2 — A verifier who never got their code, or whose code expired, has no path
+
+`/access` has *"My code has expired"* and `POST /api/access/resend`, added because — in the words of
+the comment above it — *"the owner being, by the nature of this product, the person in hospital"*.
+`/verify` has **neither**, and a verifier code lasts 72 hours.
+
+The reasoning that justified the recipient path applies at least as strongly here: a stalled
+verifier does not merely inconvenience themselves, they block the release for everyone. Combined
+with the deliverability finding of 2026-08-11 (Outlook files us at SCL 5) this is not a rare branch.
+Post-adaptive-minting it is also narrower and easier: the only people who receive a verifier code
+are confirmed verifiers with no other way in, which is exactly the population that cannot self-serve.
+
+### 🔴 A3 — The access-request journey (J6) has no entry point in the product
+
+`POST /api/access-requests` authenticates with a **recipient token**. Recipient tokens are only
+issued by `/api/access/code`, redeeming a recipient code, and recipient codes are only minted by
+`notifyRecipientsOfRelease` — i.e. **after a release is already open**. So the only person who can
+ask for access is a person who already has it.
+
+Everything downstream is built and unreachable: the owner's `/challenge` screen, the
+challenge-window escalation in `lib/release/escalation.ts`, `notifyOwnerOfAccessRequest`,
+`notifyCircleOfRequest`, and J6-R9's covert-access deterrent (*every* contact is told a request was
+made). Eleven requirements, an owner-facing page, and a notification set, behind a door with no
+handle. No `.tsx` in the product POSTs to it.
+
+The claimed standby dashboard is the obvious home for it — the person is authenticated as
+themselves, `resolveStandbyFor` already knows every owner they stand by for, and "ask them to open
+it" is the natural sentence next to "nothing is open".
+
+### 🟠 A4 — Everyone who accepted sees an email address where a name should be
+
+`lib/access/standby-resolve.ts:156` sets `ownerLabel: row.owner_email`; the query never selects
+`display_name`. So the standby dashboard — the one screen a contact returns to for years — always
+shows `someone@gmail.com`, even when the owner has set a name.
+
+The Account screen's own copy states the cost precisely: *"This is how you appear to the people you
+trust… the worst possible moment for it to say an email address they do not recognise."*
+`formatOwnerLabel()` exists, is tested, and is used by every email. One field in one SELECT.
+
+### 🟠 A5 — The standing sentence can read sage while the box beneath says the vault would not open
+
+`preparednessSentence` renders sage when `assessPreparedness().ready` is true, and `ready` requires
+`verifierCount >= 1` where `verifierCount` is `SELECT count(*) FROM verifiers` — **roster rows, any
+state**. An owner with full coverage and one named-but-unverified verifier therefore gets a sage
+"could reach all N of the things that matter" stacked directly above a clay "This vault would not
+open in an emergency."
+
+Not a silent false green — the fatal blocker does render, which is why this is amber and not red.
+But the sage box is the standing statement at the top of *every* owner screen and reads as the
+verdict. The fix is either to count `ableVerifiers` in `ready`, or to refuse sage whenever a fatal
+blocker exists. (Also: *"all 2 of the things"* should be *"both"*.)
+
+### 🟡 A6 — Smaller things the manual could not describe cleanly
+
+- **The Triggers screen speaks engineering**, alone among owner surfaces: *"Release state, check-in
+  cadence, and (for demo accounts) the simulate control"*, `RELEASE STATES`, *"Required
+  confirmations (N)"*, and the most consequential control in the product labelled **Initiate**.
+  Demo vocabulary is on a real owner's screen.
+- **The claim screen assumes email** — *"Type the code from the email they sent you"* — while §3.3
+  makes delivery owner-brokered on purpose (read aloud, texted, handed over), and Phase 0 is
+  measuring exactly that split. The copy contradicts both the design and the instrument.
+- **Break-glass dead-ends on the owner**: *"No code? Ask the person who named you"*, who may be the
+  reason for the emergency. The truthful alternative — another verifier can still answer — is not
+  offered.
+- **The audit table names nobody.** The summary above it says "Dr. Alex Chen confirmed it was real";
+  the table says `recipient:fc3ee2d3-eb86-40d1-b099-37fde0270656`. The proof is unreadable in
+  exactly the way the summary was written to fix.
+- **Delegation (J3) has no create UI either** — `/approvals` reads `/api/delegations` and nothing
+  writes one. Lower weight than A3 because nothing else in the product references it, but the
+  caregiver wedge is the buyer persona.
+
+### Use-case coverage — what the manual added
+
+The 2026-08-12 use-case document had 14. Writing the manual as journeys rather than screens found
+that the *reversal* half of several was undocumented, and the manual now covers them: standing down
+a false alarm vs cancelling a trigger permanently, marking somebody emergency-code-only, stepping
+down from a place, exporting before closing, and cancelling a subscription without losing the vault.
+All were built; none were written down.
+
+**Materially missing and NOT merely undocumented: A2 and A3.** Everything else in this section is a
+defect in something that exists.
