@@ -122,6 +122,68 @@ export async function confirmPerson(params: {
 }
 
 /**
+ * The phrase did NOT match — reject the claim (sprint plan N14).
+ *
+ * This is the response the whole control exists to enable, and it was missing.
+ * `unconfirmPerson` below is guarded on `standby_state = 'confirmed'`, so it
+ * cannot touch the case that actually matters: a mismatch is discovered during
+ * the setup call, when the person is `claimed` and has never been confirmed.
+ * Until 2026-08-12 an owner who found a mismatch had nothing to press — a
+ * control that detects an interception and offers no response is decoration.
+ *
+ * TREAT AS A SECURITY EVENT, NOT A TYPO. A mismatch means the slot is held by
+ * somebody other than the person the owner named, so the binding is severed
+ * (`claimed_user_id` to NULL, back to `invited`) and every outstanding ticket
+ * for that person is killed — the ticket channel is what was compromised, and
+ * leaving a live one lets the same interceptor walk back in.
+ *
+ * Reissuing is deliberately NOT automatic. The owner should choose the channel
+ * after an interception, and the invitation UI is one press away.
+ */
+export async function rejectClaim(params: {
+  ownerId: string;
+  personId: string;
+  personType: PersonType;
+}): Promise<void> {
+  const table = params.personType === 'verifier' ? 'verifiers' : 'recipients';
+
+  const res = await query<{ id: string }>(
+    `UPDATE ${table}
+        SET claimed_user_id = NULL,
+            standby_state = 'invited',
+            fingerprint_confirmed_at = NULL
+      WHERE id = $1 AND owner_id = $2
+        AND coalesce(standby_state, 'invited') IN ('claimed', 'confirmed')
+      RETURNING id`,
+    [params.personId, params.ownerId],
+  );
+
+  if (res.rows.length === 0) {
+    throw new ValidationError(
+      'Nobody currently holds that place, so there is nothing to reject.',
+      'personId',
+    );
+  }
+
+  // Kill any live ticket. Marking `claimed_at` is how this schema retires an
+  // invitation (see `invitations.ts`), and it is the same mechanism redemption
+  // already checks — so this cannot drift from what "spent" means.
+  await query(
+    `UPDATE invitations SET claimed_at = now()
+      WHERE owner_id = $1 AND person_id = $2 AND claimed_at IS NULL`,
+    [params.ownerId, params.personId],
+  );
+
+  await writeAuditEntry(params.ownerId, {
+    actor: `owner:${params.ownerId}`,
+    action: 'standby_claim_rejected',
+    entity: params.personType,
+    entityId: params.personId,
+    detail: { personType: params.personType, reason: 'fingerprint_mismatch' },
+  });
+}
+
+/**
  * Withdraw a confirmation — back to `claimed`, not to `invited`.
  *
  * They still hold the slot; what the owner is retracting is the assertion that

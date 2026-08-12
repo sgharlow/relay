@@ -32,6 +32,7 @@ import {
   FINGERPRINT_WORDS,
   FINGERPRINT_LENGTH,
   confirmPerson,
+  rejectClaim,
 } from './fingerprint';
 import { ValidationError } from '../validation';
 
@@ -128,5 +129,72 @@ describe('confirmPerson', () => {
       'owner-1',
       expect.objectContaining({ action: 'standby_confirmed' }),
     );
+  });
+});
+
+describe('rejectClaim — the mismatch response (N14)', () => {
+  beforeEach(() => {
+    mockQuery.mockReset();
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+  });
+
+  it('SEVERS the binding rather than merely un-confirming', async () => {
+    // The case that matters is a mismatch found during the setup call, when the
+    // person is `claimed` and never was confirmed — which `unconfirmPerson`
+    // cannot touch, because it is guarded on `standby_state = 'confirmed'`.
+    // Until this existed an owner who found a mismatch had nothing to press.
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: 'rec-1' }], rowCount: 1 } as never);
+
+    await rejectClaim({ ownerId: 'owner-1', personId: 'rec-1', personType: 'recipient' });
+
+    const [sql] = mockQuery.mock.calls[0] as [string];
+    expect(sql).toContain('claimed_user_id = NULL');
+    expect(sql).toContain("standby_state = 'invited'");
+    expect(sql).toContain('fingerprint_confirmed_at = NULL');
+  });
+
+  it('works on a CLAIMED person — the state a mismatch is actually found in', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: 'rec-1' }], rowCount: 1 } as never);
+
+    await rejectClaim({ ownerId: 'owner-1', personId: 'rec-1', personType: 'recipient' });
+
+    const [sql] = mockQuery.mock.calls[0] as [string];
+    expect(sql).toContain("IN ('claimed', 'confirmed')");
+  });
+
+  it('kills every live ticket — the ticket channel is what was compromised', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: 'rec-1' }], rowCount: 1 } as never);
+
+    await rejectClaim({ ownerId: 'owner-1', personId: 'rec-1', personType: 'recipient' });
+
+    const invalidate = String(mockQuery.mock.calls[1][0]);
+    expect(invalidate).toContain('UPDATE invitations');
+    expect(invalidate).toContain('claimed_at = now()');
+    expect(invalidate).toContain('claimed_at IS NULL');
+  });
+
+  it('records it as a security event, not a tidy-up', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: 'rec-1' }], rowCount: 1 } as never);
+
+    await rejectClaim({ ownerId: 'owner-1', personId: 'rec-1', personType: 'recipient' });
+
+    expect(vi.mocked(writeAuditEntry)).toHaveBeenCalledWith(
+      'owner-1',
+      expect.objectContaining({
+        action: 'standby_claim_rejected',
+        detail: expect.objectContaining({ reason: 'fingerprint_mismatch' }),
+      }),
+    );
+  });
+
+  it('refuses when nobody holds the place, and does not touch invitations', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
+
+    await expect(
+      rejectClaim({ ownerId: 'owner-1', personId: 'rec-1', personType: 'recipient' }),
+    ).rejects.toBeInstanceOf(ValidationError);
+
+    const sql = mockQuery.mock.calls.map((c) => String(c[0])).join(' | ');
+    expect(sql).not.toContain('UPDATE invitations');
   });
 });

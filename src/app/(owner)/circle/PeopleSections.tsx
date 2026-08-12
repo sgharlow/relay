@@ -25,6 +25,7 @@ import { VALID_ROLES, type RecipientRole } from '../../../../lib/domain/enums';
 import { readStandbyState, circleLight } from '../../../../lib/people/standby-state';
 import InviteControl from './InviteControl';
 import BreakGlassControl from './BreakGlassControl';
+import FingerprintControl from './FingerprintControl';
 
 /**
  * Someone who has not bound an account yet still needs a way in. `revoked` is
@@ -64,6 +65,8 @@ export interface Recipient {
   relationship?: string | null;
   role: string;
   standby_state?: string;
+  /** Derived per request from the binding; null until somebody has claimed. */
+  fingerprint?: string | null;
 }
 
 export interface Verifier {
@@ -73,6 +76,8 @@ export interface Verifier {
   /** @deprecated dead column — see StandbyLight below. */
   verification_status?: string;
   standby_state?: string;
+  /** Derived per request from the binding; null until somebody has claimed. */
+  fingerprint?: string | null;
 }
 
 /**
@@ -264,6 +269,17 @@ export function RecipientSection({
               {needsClaimCode(r.standby_state) ? (
                 <InviteControl personId={r.id} personType="recipient" name={r.name} />
               ) : null}
+              {/* Assurance sits directly under the light it turns green. */}
+              {r.fingerprint && hasClaimed(r.standby_state) ? (
+                <FingerprintControl
+                  personId={r.id}
+                  personType="recipient"
+                  name={r.name}
+                  fingerprint={r.fingerprint}
+                  state={readStandbyState(r.standby_state) === 'confirmed' ? 'confirmed' : 'claimed'}
+                  onChanged={onChange}
+                />
+              ) : null}
               {canHoldBreakGlass(r.standby_state) ? (
                 <BreakGlassControl
                   personId={r.id}
@@ -367,6 +383,16 @@ export function VerifierSection({
               <div style={{ fontSize: 'var(--t1)', color: 'var(--ink-muted)' }}>{v.email}</div>
               {needsClaimCode(v.standby_state) ? (
                 <InviteControl personId={v.id} personType="verifier" name={v.name} />
+              ) : null}
+              {v.fingerprint && hasClaimed(v.standby_state) ? (
+                <FingerprintControl
+                  personId={v.id}
+                  personType="verifier"
+                  name={v.name}
+                  fingerprint={v.fingerprint}
+                  state={readStandbyState(v.standby_state) === 'confirmed' ? 'confirmed' : 'claimed'}
+                  onChanged={onChange}
+                />
               ) : null}
               {canHoldBreakGlass(v.standby_state) ? (
                 <BreakGlassControl
