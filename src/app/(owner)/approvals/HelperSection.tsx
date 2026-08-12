@@ -1,0 +1,315 @@
+'use client';
+
+/**
+ * Making somebody a helper — J3's missing front door.
+ *
+ * THE GAP THIS CLOSES. `POST /api/delegations` takes a `delegateUserId`, a raw
+ * UUID no owner could possibly know, so nothing in the product could call it.
+ * The approvals queue above has been reading `/api/delegations` since it
+ * shipped, showing a warning about delegates that could not exist. Found by
+ * writing the user manual 2026-08-12.
+ *
+ * ⚠️ THIS GRANTS SETUP RIGHTS OVER A VAULT, which is why the copy here works
+ * harder than anywhere else in the product. What it grants and — more
+ * importantly — what it does NOT grant is stated before the button, because the
+ * failure mode is an owner clicking through a word they did not read.
+ *
+ * CONSENT IS EVIDENCE, NOT A CHECKBOX (J3-R2). A delegation is created PENDING
+ * and does nothing at all until the owner records how consent was obtained. The
+ * three methods are peers, deliberately: the parent being delegated for is the
+ * person least likely to own a smartphone (J3-R3), so "in person" and "on paper"
+ * are offered at the same weight as a link rather than hidden behind it.
+ *
+ * Feature: relay-caregiver
+ * Requirements: J3-R1, J3-R2, J3-R3, J3-R8
+ */
+
+import { useState } from 'react';
+
+export interface Delegation {
+  id: string;
+  delegate_user_id: string;
+  status: string;
+  granted_at: string | null;
+}
+
+export interface Candidate {
+  user_id: string;
+  name: string;
+  email: string;
+  person_type: string;
+  standby_state: string | null;
+}
+
+const METHODS = [
+  {
+    value: 'in_person',
+    label: 'We did it together, in person',
+    hint: 'You sat with them, showed them this screen, and they said yes.',
+  },
+  {
+    value: 'paper_upload',
+    label: 'They signed something on paper',
+    hint: 'A signed note or form. Say where it is kept, so it can be found later.',
+  },
+  {
+    value: 'link',
+    label: 'They confirmed it themselves, on a device',
+    hint: 'Only if they genuinely used it. If you clicked for them, say so above instead.',
+  },
+] as const;
+
+export default function HelperSection({
+  delegations,
+  candidates,
+  onChange,
+}: {
+  delegations: Delegation[];
+  candidates: Candidate[];
+  onChange: () => Promise<void>;
+}) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [consenting, setConsenting] = useState<string | null>(null);
+  const nameFor = new Map(candidates.map((c) => [c.user_id, c.name]));
+
+  async function send(url: string, method: string, body?: unknown) {
+    setErr(null);
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { 'content-type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      if (!res.ok) {
+        const b = (await res.json().catch(() => ({}))) as { message?: string };
+        setErr(b.message ?? 'That did not work. Please try again.');
+        return false;
+      }
+      await onChange();
+      return true;
+    } catch {
+      setErr('We could not reach the server. Please try again.');
+      return false;
+    }
+  }
+
+  return (
+    <section className="space-y-3">
+      <h2 className="text-t5 font-semibold text-ink">Someone who helps you set this up</h2>
+      <p className="text-ink">
+        A helper can add and tidy your information so you do not have to do it all yourself.
+      </p>
+
+      {/*
+        The scopes, in plain words. DELEGATE_SCOPES is propose-level for people
+        and policies and contains nothing about decrypting, triggers or release —
+        that is the substance of the whole feature, and an owner deciding whether
+        to hand somebody this deserves to read it before the button, not after.
+      */}
+      <div className="rounded-lg border border-rule bg-paper-sunken p-4">
+        <p className="font-medium text-ink">A helper can:</p>
+        <ul className="mt-1 list-disc pl-5 text-ink">
+          <li>add and edit items in your vault</li>
+          <li>import a list from elsewhere</li>
+          <li><strong>suggest</strong> people and access rules — which then wait for you</li>
+        </ul>
+        <p className="mt-3 font-medium text-ink">A helper can never:</p>
+        <ul className="mt-1 list-disc pl-5 text-ink">
+          <li>open or read anything in your vault</li>
+          <li>decide who gets access — every one of those comes to you first</li>
+          <li>start, stop or change a release</li>
+          <li>add themselves to anything</li>
+        </ul>
+      </div>
+
+      {err ? <p className="text-clay">{err}</p> : null}
+
+      {delegations.length > 0 ? (
+        <ul className="space-y-3">
+          {delegations.map((d) => (
+            <li key={d.id} className="rounded-lg border border-rule bg-paper-raised p-4">
+              <p className="font-medium text-ink">
+                {nameFor.get(d.delegate_user_id) ?? 'Your helper'}
+                {d.status === 'active' ? (
+                  <span className="ml-2 text-t2 text-sage-text">· helping you now</span>
+                ) : (
+                  <span className="ml-2 text-t2 text-ochre-text">· not active yet</span>
+                )}
+              </p>
+
+              {d.status !== 'active' ? (
+                consenting === d.id ? (
+                  <ConsentForm
+                    busy={busy === d.id}
+                    onCancel={() => setConsenting(null)}
+                    onSubmit={async (method, evidenceRef) => {
+                      setBusy(d.id);
+                      const ok = await send(`/api/delegations/${d.id}/consent`, 'POST', {
+                        method,
+                        evidenceRef,
+                      });
+                      setBusy(null);
+                      if (ok) setConsenting(null);
+                    }}
+                  />
+                ) : (
+                  <>
+                    <p className="mt-1 text-ink">
+                      They cannot do anything yet. Record how you agreed to this and it starts.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setConsenting(d.id)}
+                      className="mt-2 min-h-[44px] rounded border border-rule-strong px-4 text-[17px] font-medium text-ink"
+                    >
+                      Record how we agreed
+                    </button>
+                  </>
+                )
+              ) : null}
+
+              <button
+                type="button"
+                disabled={busy === d.id}
+                onClick={async () => {
+                  setBusy(d.id);
+                  await send('/api/delegations', 'DELETE', { delegationId: d.id });
+                  setBusy(null);
+                }}
+                className="mt-3 block min-h-[44px] text-[17px] text-clay underline underline-offset-4 disabled:opacity-50"
+              >
+                Stop them helping
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {candidates.length > 0 ? (
+        <div className="rounded-lg border border-rule bg-paper-raised p-4">
+          <p className="font-medium text-ink">People you could ask</p>
+          {/*
+            Only people already in the circle who have accepted. Delegation is an
+            ELEVATION of somebody known, not an introduction — so there is no
+            invite-by-email path here, which also means no way to discover
+            whether an address has a Relay account.
+          */}
+          <p className="mt-1 text-t2 text-muted">
+            Only people you have already named, who have accepted. If someone is missing, add them
+            to your circle first.
+          </p>
+          <ul className="mt-3 space-y-2">
+            {candidates.map((c) => (
+              <li key={c.user_id} className="flex items-center justify-between gap-3">
+                <span className="text-ink">
+                  {c.name} <span className="text-t2 text-muted">· {c.email}</span>
+                </span>
+                <button
+                  type="button"
+                  disabled={busy === c.user_id}
+                  onClick={async () => {
+                    setBusy(c.user_id);
+                    await send('/api/delegations', 'POST', { delegateUserId: c.user_id });
+                    setBusy(null);
+                  }}
+                  className="min-h-[44px] shrink-0 rounded bg-ink px-4 text-[17px] font-medium text-paper disabled:opacity-50"
+                >
+                  {busy === c.user_id ? 'Adding…' : 'Ask them to help'}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        delegations.length === 0 && (
+          <p className="text-muted">
+            Nobody to ask yet — people appear here once you have named them and they have accepted.
+          </p>
+        )
+      )}
+    </section>
+  );
+}
+
+/**
+ * How consent was obtained (J3-R2), with the no-smartphone routes as peers of
+ * the link rather than beneath it (J3-R3).
+ *
+ * The link option is worded to discourage the lie it invites: an owner who
+ * clicked through on the other person's behalf and picked "they confirmed it
+ * themselves" has recorded a false artifact, and the artifact is the only thing
+ * making the delegation legitimate.
+ */
+function ConsentForm({
+  busy,
+  onSubmit,
+  onCancel,
+}: {
+  busy: boolean;
+  onSubmit: (method: string, evidenceRef: string | null) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [method, setMethod] = useState<string>('in_person');
+  const [ref, setRef] = useState('');
+
+  return (
+    <form
+      className="mt-3 rounded-lg bg-paper-sunken p-4"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (busy) return;
+        await onSubmit(method, ref.trim() || null);
+      }}
+    >
+      <p className="font-medium text-ink">How did you agree to this?</p>
+      <p className="mt-1 text-t2 text-muted">
+        This is kept as a record. It is what makes handing someone this help legitimate rather than
+        simply convenient.
+      </p>
+
+      <div className="mt-3 space-y-3">
+        {METHODS.map((m) => (
+          <label key={m.value} className="flex gap-3">
+            <input
+              type="radio"
+              name="consent-method"
+              value={m.value}
+              checked={method === m.value}
+              onChange={() => setMethod(m.value)}
+              className="mt-1.5 h-5 w-5 shrink-0"
+            />
+            <span>
+              <span className="block text-ink">{m.label}</span>
+              <span className="block text-t2 text-muted">{m.hint}</span>
+            </span>
+          </label>
+        ))}
+      </div>
+
+      <label htmlFor="evidence" className="mt-4 block text-ink">
+        Where is the record kept? <span className="text-muted">(optional)</span>
+      </label>
+      <input
+        id="evidence"
+        value={ref}
+        onChange={(e) => setRef(e.target.value)}
+        placeholder="e.g. signed form in the blue folder"
+        className="mt-1 min-h-[48px] w-full rounded border border-rule-strong px-3 text-[17px] text-ink"
+      />
+
+      <div className="mt-4 flex gap-3">
+        <button
+          type="submit"
+          disabled={busy}
+          className="min-h-[48px] rounded bg-ink px-5 text-[17px] font-semibold text-paper disabled:opacity-50"
+        >
+          {busy ? 'Saving…' : 'Record it and start'}
+        </button>
+        <button type="button" onClick={onCancel} className="min-h-[48px] px-4 text-[17px] text-muted">
+          Not now
+        </button>
+      </div>
+    </form>
+  );
+}

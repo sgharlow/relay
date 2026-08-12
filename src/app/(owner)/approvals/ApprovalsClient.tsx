@@ -14,6 +14,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+import HelperSection, { type Delegation, type Candidate } from './HelperSection';
+
 interface Approval {
   id: string;
   kind: 'recipient' | 'policy' | 'self_designation';
@@ -37,12 +39,23 @@ const PLAIN: Record<Approval['kind'], (p: Record<string, unknown>) => string> = 
 export default function ApprovalsClient() {
   const [approvals, setApprovals] = useState<Approval[] | null>(null);
   const [warning, setWarning] = useState<Warning | null>(null);
+  const [delegations, setDelegations] = useState<Delegation[]>([]);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const [a, d] = await Promise.all([fetch('/api/approvals'), fetch('/api/delegations')]);
     if (a.ok) setApprovals((await a.json()).approvals as Approval[]);
-    if (d.ok) setWarning(((await d.json()).concentrationWarning ?? null) as Warning | null);
+    if (d.ok) {
+      const body = (await d.json()) as {
+        concentrationWarning?: Warning | null;
+        delegations?: Delegation[];
+        candidates?: Candidate[];
+      };
+      setWarning(body.concentrationWarning ?? null);
+      setDelegations(body.delegations ?? []);
+      setCandidates(body.candidates ?? []);
+    }
   }, []);
 
   useEffect(() => {
@@ -121,6 +134,13 @@ export default function ApprovalsClient() {
           </p>
         </div>
       ))}
+
+      {/*
+        Below the queue on purpose. The approvals above are things asked of the
+        owner RIGHT NOW; choosing a helper is setup, and setup must not compete
+        with a decision somebody is waiting on.
+      */}
+      <HelperSection delegations={delegations} candidates={candidates} onChange={load} />
     </div>
   );
 }

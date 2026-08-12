@@ -46,9 +46,52 @@ export async function GET(): Promise<NextResponse> {
     isVerifier: p.roles.verifier,
   }));
 
+  /**
+   * WHO CAN BE MADE A HELPER — and the reason there was no UI for this until
+   * 2026-08-12. `POST` takes a `delegateUserId`, a raw UUID an owner has no way
+   * to know, so the create path was unbuildable without first answering "which
+   * users are even eligible".
+   *
+   * ⚠️ ONLY PEOPLE ALREADY IN THE CIRCLE WHO HAVE ACCEPTED. Delegation grants
+   * setup rights over somebody's vault, so the candidate list is deliberately
+   * the smallest one that serves the caregiver case: the adult child is already
+   * a recipient on their parent's vault, and making them a helper ELEVATES a
+   * known person rather than introducing a stranger. That means no invitation
+   * path, no account minted as a side effect, and no email lookup that could be
+   * used to discover whether an address has a Relay account.
+   *
+   * Revoked people are excluded in SQL. Someone the owner withdrew must not
+   * reappear as a suggestion.
+   */
+  const candidates = await query<{
+    user_id: string;
+    name: string;
+    email: string;
+    person_type: string;
+    standby_state: string | null;
+  }>(
+    `SELECT r.claimed_user_id AS user_id, r.name, r.email, 'recipient' AS person_type, r.standby_state
+       FROM recipients r
+      WHERE r.owner_id = $1 AND r.claimed_user_id IS NOT NULL
+        AND coalesce(r.standby_state, 'invited') <> 'revoked'
+      UNION
+     SELECT v.claimed_user_id AS user_id, v.name, v.email, 'verifier' AS person_type, v.standby_state
+       FROM verifiers v
+      WHERE v.owner_id = $1 AND v.claimed_user_id IS NOT NULL
+        AND coalesce(v.standby_state, 'invited') <> 'revoked'`,
+    [auth.ownerId],
+  );
+
+  const alreadyDelegate = new Set(delegations.rows.map((d) => d.delegate_user_id));
+
   return NextResponse.json({
     delegations: delegations.rows,
     concentrationWarning: detectRoleConcentration(circle),
+    candidates: candidates.rows
+      .filter((c) => !alreadyDelegate.has(c.user_id))
+      // The owner themselves can never be their own delegate (`createDelegation`
+      // refuses it); filtered here too so it is never even offered.
+      .filter((c) => c.user_id !== auth.ownerId),
   });
 }
 
