@@ -23,6 +23,17 @@ import { useState } from 'react';
 import { apiSend } from '../_lib/api';
 import { VALID_ROLES, type RecipientRole } from '../../../../lib/domain/enums';
 import { readStandbyState, circleLight } from '../../../../lib/people/standby-state';
+import InviteControl from './InviteControl';
+
+/**
+ * Someone who has not bound an account yet still needs a way in. `revoked` is
+ * excluded: reissuing to a person the owner deliberately removed would undo the
+ * removal by accident.
+ */
+function needsClaimCode(state?: string): boolean {
+  const s = readStandbyState(state);
+  return s === 'invited';
+}
 
 /*
   Display shapes, deliberately wider than the form's. /api/circle returns role
@@ -234,6 +245,9 @@ export function RecipientSection({
                 {r.email}
                 {r.relationship ? ` · ${r.relationship}` : ''}
               </div>
+              {needsClaimCode(r.standby_state) ? (
+                <InviteControl personId={r.id} personType="recipient" name={r.name} />
+              ) : null}
             </div>
             <RemoveButton onClick={() => remove(r.id)} label={`Remove ${r.name}`} />
           </li>
@@ -327,6 +341,9 @@ export function VerifierSection({
               <span style={{ fontSize: 'var(--t3)', fontWeight: 500 }}>{v.name}</span>
               <StandbyLight state={v.standby_state} />
               <div style={{ fontSize: 'var(--t1)', color: 'var(--ink-muted)' }}>{v.email}</div>
+              {needsClaimCode(v.standby_state) ? (
+                <InviteControl personId={v.id} personType="verifier" name={v.name} />
+              ) : null}
             </div>
             <RemoveButton onClick={() => remove(v.id)} label={`Remove ${v.name}`} />
           </li>

@@ -43,6 +43,18 @@ export interface InviteResult {
   claimUrl: string;
   expiresAt: string;
   emailDelivered: boolean;
+  /**
+   * The readable code, returned so the OWNER can deliver it themselves.
+   *
+   * Only a hash is persisted, so the caller's response is the one and only time
+   * this exists in readable form — but it was previously computed here, put in
+   * an email, and dropped. That left the owner dependent on the single channel
+   * this architecture was reorganised around NOT trusting: delivery was measured
+   * broken on 2026-08-11 (Outlook filing at SCL 5, Resend suppression returning
+   * 200 on a muted recipient). Handing it back lets them read it down the phone,
+   * which is both the reliable channel and the one that proves identity.
+   */
+  claimCode: string;
 }
 
 /**
@@ -79,7 +91,7 @@ export async function inviteAndNotify(
       })
     : false;
 
-  return { claimUrl, expiresAt, emailDelivered };
+  return { claimUrl, expiresAt, emailDelivered, claimCode };
 }
 
 /**
