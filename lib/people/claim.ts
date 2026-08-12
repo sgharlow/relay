@@ -130,9 +130,14 @@ export async function claimStandbyRole(params: {
     linkedExisting = false;
   }
 
+  // `fingerprint_confirmed_at = NULL` is load-bearing, not tidiness. A re-claim
+  // binds a different `claimed_user_id`, which changes the derived phrase — so an
+  // earlier confirmation was an assertion about a DIFFERENT human holding this
+  // slot and must not silently stand. The owner's light drops to amber and they
+  // are asked again (Risk 8).
   await query(
     `UPDATE ${table}
-        SET claimed_user_id = $1, standby_state = 'claimed'
+        SET claimed_user_id = $1, standby_state = 'claimed', fingerprint_confirmed_at = NULL
       WHERE id = $2 AND owner_id = $3`,
     [userId, invite.person_id, invite.owner_id],
   );

@@ -142,3 +142,18 @@ describe('claimStandbyRole — binding an identity to a roster row', () => {
     expect(sql).toContain('failed_attempts = failed_attempts + 1');
   });
 });
+
+describe('re-claiming invalidates a confirmation made about someone else', () => {
+  it('clears fingerprint_confirmed_at, so the owner is asked again', async () => {
+    // Risk 8. A re-claim binds a different claimed_user_id, which changes the
+    // derived phrase — an earlier confirmation was an assertion about a
+    // DIFFERENT human holding this slot and must not silently stand.
+    rows([INVITE], [], [{ email: 'sister@example.com' }], []);
+
+    await claimStandbyRole({ token: 'ABCDE-FGHIJ' });
+
+    const bind = String(mockQuery.mock.calls.at(-1)?.[0]);
+    expect(bind).toContain('fingerprint_confirmed_at = NULL');
+    expect(bind).toContain("standby_state = 'claimed'");
+  });
+});
