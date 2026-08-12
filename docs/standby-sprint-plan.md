@@ -647,6 +647,44 @@ around an assurance flow that already works.
 
 ---
 
+## 13. Security review — 2026-08-12
+
+Systematic rather than sampled: every API route checked for an auth guard, every owner-scoped
+`[id]` route checked for ownership enforcement, plus the crypto boundary, credential storage, audit
+contents, XSS surface, bundle exposure, token verification, revocation, rate limiting and
+cross-owner isolation.
+
+### 🔴 One finding, fixed
+
+**Cross-owner delegation consent.** `recordConsent` took no owner argument at all and activated
+`WHERE id = $1 AND status = 'pending'`, while `/api/delegations/[id]/consent` authenticated a user
+and passed the path id straight through with no `assertOwns`. **Any signed-in user could activate
+any pending delegation** — granting a stranger setup rights over somebody else's vault, and
+defeating the consent step that is the entire control making delegation legitimate (J3).
+
+Unguessable UUIDs made it hard to exploit rather than safe. It was the one owner-scoped route in the
+codebase that neither called `assertOwns` nor scoped its own SQL — in a data layer with no foreign
+keys, where a cross-owner reference is refused in the application or not at all. Fixed with the
+owner in the `WHERE` clause, plus a regression test for the stranger case.
+
+### Verified sound
+
+| Area | Finding |
+|---|---|
+| Auth coverage | Every route guarded. The eleven unauthenticated ones are legitimately public — auth, code redemption (rate-limited), the marketing form (rate-limited), WebAuthn options, and a health probe returning only a timestamp. `cron/heartbeat` validates `CRON_SECRET` |
+| Ownership | Every other `[id]` route either calls `assertOwns` or scopes its own SQL by `owner_id` |
+| Crypto boundary | No server path touches item plaintext; no API route imports the crypto service; the AI accessor excludes `ciphertext` / `wrapped_data_key` / `kms_key_id` by construction |
+| Credentials | Invitations, emergency codes, recipient/verifier codes and recovery codes are all stored as hashes; passkeys store only the public half |
+| Audit | No secret material in any `detail` payload |
+| XSS | One `dangerouslySetInnerHTML`, safe by construction — a QR SVG built from integer coordinates, with no user input reaching the markup |
+| Bundle | Only `NEXT_PUBLIC_SITE_URL` and `NEXT_PUBLIC_PRICE_YEARLY_USD` reach the browser |
+| Tokens | Signature-verified via `jose`; version/epoch checked server-side per request |
+| Revocation | Session epoch enforced in the shared guard, so it applies to every owner route at once |
+| Abuse limits | Attempt budgets on every redeemable credential; rate limits on all three public endpoints |
+| Estate gate | Refused at four trust boundaries, not merely hidden in a dropdown |
+
+---
+
 ## 12. Full beta preparedness — audited 2026-08-12 (UI + functionality + use cases)
 
 Derived live, not quoted: `master` @ `995f797`, **1376 passed / 1 skipped across 139 files**, build
