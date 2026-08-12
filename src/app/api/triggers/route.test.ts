@@ -13,10 +13,15 @@ vi.mock('../../../../lib/release/release-list', () => ({
   getVerifierCount: vi.fn(),
 }));
 vi.mock('../../../../lib/release/provisioning', () => ({ setRequiredConfirmations: vi.fn() }));
+// M is no longer a COUNT(*): the route reads the roster and asks
+// countEligibleVerifiers who can ACTUALLY answer, so an unsatisfiable quorum is
+// refused at configuration time rather than stalling a release later.
+vi.mock('../../../../lib/db/connection', () => ({ query: vi.fn() }));
 
 import { getOwnerSession } from '../../../../lib/auth/session';
 import { listReleaseStates, getCheckinInterval, getVerifierCount } from '../../../../lib/release/release-list';
 import { setRequiredConfirmations } from '../../../../lib/release/provisioning';
+import { query as dbQuery } from '../../../../lib/db/connection';
 import { ValidationError } from '../../../../lib/validation';
 import { GET } from './route';
 import { PUT } from './[id]/config/route';
@@ -26,6 +31,17 @@ const mockList = vi.mocked(listReleaseStates);
 const mockInterval = vi.mocked(getCheckinInterval);
 const mockVerifierCount = vi.mocked(getVerifierCount);
 const mockSetN = vi.mocked(setRequiredConfirmations);
+const mockQuery = vi.mocked(dbQuery);
+
+/** verifiers roster, then the recipients who would receive this release. */
+function rosterReturns(verifiers: unknown[], conflictedRecipients: unknown[] = []) {
+  mockQuery.mockResolvedValueOnce({ rows: verifiers, rowCount: verifiers.length } as never);
+  mockQuery.mockResolvedValueOnce({
+    rows: conflictedRecipients,
+    rowCount: conflictedRecipients.length,
+  } as never);
+}
+const eligible = (id: string) => ({ id, claimed_user_id: null, standby_state: null });
 
 function makeReq(body: unknown) {
   return { json: async () => body } as never;
@@ -60,8 +76,8 @@ it('config PUT 400 on unknown trigger type', async () => {
   expect(mockSetN).not.toHaveBeenCalled();
 });
 
-it('config PUT sets N against the verifier count (M)', async () => {
-  mockVerifierCount.mockResolvedValueOnce(3);
+it('config PUT sets N against the count of verifiers who can actually answer (M)', async () => {
+  rosterReturns([eligible('v-1'), eligible('v-2'), eligible('v-3')]);
   mockSetN.mockResolvedValueOnce({ required_confirmations: 2 } as never);
   const res = await PUT(makeReq({ required_confirmations: 2 }), { params: Promise.resolve({ id: 'emergency' }) });
   expect(res.status).toBe(200);
@@ -69,9 +85,23 @@ it('config PUT sets N against the verifier count (M)', async () => {
   expect((await res.json()).verifier_count).toBe(3);
 });
 
-it('config PUT maps an invalid N-of-M to 400', async () => {
-  mockVerifierCount.mockResolvedValueOnce(1);
-  mockSetN.mockRejectedValueOnce(new ValidationError('Invalid N-of-M', 'required_confirmations'));
+it('config PUT refuses an N nobody could ever reach, and never writes it', async () => {
+  // The unsatisfiable quorum, caught at configuration time. Previously this
+  // would have been written and then discovered as a release that silently
+  // never completed.
+  rosterReturns([eligible('v-1')]);
   const res = await PUT(makeReq({ required_confirmations: 5 }), { params: Promise.resolve({ id: 'emergency' }) });
   expect(res.status).toBe(400);
+  expect(mockSetN).not.toHaveBeenCalled();
+});
+
+it('does not count a verifier who is also a recipient on this release', async () => {
+  // Separation of duties: nobody helps authorize their own access.
+  rosterReturns(
+    [{ id: 'v-1', claimed_user_id: 'user-1', standby_state: 'confirmed' }, eligible('v-2')],
+    [{ claimed_user_id: 'user-1' }],
+  );
+  const res = await PUT(makeReq({ required_confirmations: 2 }), { params: Promise.resolve({ id: 'emergency' }) });
+  expect(res.status).toBe(400);
+  expect(mockSetN).not.toHaveBeenCalled();
 });

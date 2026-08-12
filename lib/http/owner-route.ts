@@ -11,6 +11,7 @@
  */
 
 import { NextResponse, type NextRequest } from 'next/server';
+import { recordDeliberateActivity } from '../release/liveness';
 import { getOwnerSession } from '../auth/session';
 import { ValidationError } from '../validation';
 import { IntegrityError } from '../db/integrity';
@@ -20,9 +21,28 @@ export function isResponse(v: unknown): v is NextResponse {
 }
 
 /** Returns `{ ownerId }` or a 401 NextResponse the caller should return. */
-export async function requireOwner(): Promise<{ ownerId: string } | NextResponse> {
+/**
+ * Authenticates a USER. (The name is inherited from when every session was an
+ * owner; whether they own a vault is a separate question.)
+ *
+ * Pass `req` to also record passive liveness ([A4]) — writes count, reads do not.
+ * ⚠️ COVERAGE IS OPT-IN AND THAT IS A KNOWN LIMIT: a route that does not pass
+ * `req` records nothing. The structural answer is Node-runtime middleware over
+ * /api/*, which was deliberately not added here — it changes the path of EVERY
+ * request, and this data layer needs `pg`, so it cannot run on the Edge default.
+ * Partial coverage is safe in the meantime: a missed stamp only ever errs toward
+ * escalating, which is the safe direction.
+ */
+export async function requireOwner(
+  req?: { method?: string },
+): Promise<{ ownerId: string } | NextResponse> {
   try {
     const { ownerId } = await getOwnerSession();
+    if (req?.method) {
+      // Deliberately not awaited into the critical path beyond its own guard;
+      // recordDeliberateActivity swallows its own failures.
+      await recordDeliberateActivity({ userId: ownerId, method: req.method });
+    }
     return { ownerId };
   } catch (res) {
     // getOwnerSession throws a 401 NextResponse by design. Anything else — a
