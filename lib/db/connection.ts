@@ -21,11 +21,47 @@ import { DsqlSigner } from '@aws-sdk/dsql-signer';
 // Pool configuration
 // ---------------------------------------------------------------------------
 
-const POOL_CONFIG: Omit<pg.PoolConfig, 'host'> = {
+/**
+ * Whether the DB connection verifies the server's certificate.
+ *
+ * 🔴 THIS WAS HARDCODED `false` UNTIL 2026-08-13, found by the pre-release
+ * audit. Every ciphertext, wrapped data key, IAM auth token and audit-chain
+ * hash crosses the public internet from Vercel to AWS on this connection, and
+ * it would have accepted any certificate presented to it. The product's promise
+ * is that plaintext never leaves the browser — that promise holds, but the
+ * envelope around it is only as good as the channel carrying it.
+ *
+ * THE ASYMMETRY IS WHAT GAVE IT AWAY. `db/migrations/migrate.ts` — the one-off
+ * admin tool in this same repo — already defaults to `true` and documents
+ * `false` as local-only. The tool somebody runs by hand was hardened; the path
+ * that runs on every request was not.
+ *
+ * DEFAULTS ON, and the default is proven rather than assumed: both endpoints
+ * were probed with verification enabled before this changed, and both reported
+ * `authorized=true` against a `*.dsql.<region>.on.aws` certificate issued by
+ * "Amazon RSA 2048 M04" — a publicly-trusted chain already in Node's bundled
+ * root store. No CA bundle is needed, and none is configured; adding one would
+ * be a second thing to keep current for no gain.
+ *
+ * The escape hatch exists so that rollback is an environment variable rather
+ * than a redeploy. Setting it to `false` restores the old behaviour in under a
+ * minute — which is the only reason it was safe to change a working system's
+ * database connection at all. Name and semantics match migrate.ts deliberately:
+ * one variable, one meaning, both sides of the repo.
+ *
+ * READ AT POOL CONSTRUCTION, not at import. Pools initialise lazily here for
+ * exactly this class of reason, and `getPool()` already reads
+ * DSQL_USE_SECONDARY per call — an env read frozen at module load would be the
+ * odd one out, and would make the setting untestable without module surgery.
+ */
+export function sslRejectUnauthorized(): boolean {
+  return process.env.DSQL_SSL_REJECT_UNAUTHORIZED !== 'false';
+}
+
+const POOL_CONFIG: Omit<pg.PoolConfig, 'host' | 'ssl'> = {
   port: 5432,
   database: 'postgres',
   user: 'admin',
-  ssl: { rejectUnauthorized: false },
   connectionTimeoutMillis: 5000,   // 5-second connection timeout (Req 14.2)
   idleTimeoutMillis: 30_000,
   max: 10,
@@ -47,6 +83,7 @@ function makeDsqlPool(host: string): pg.Pool {
   return new pg.Pool({
     ...POOL_CONFIG,
     host,
+    ssl: { rejectUnauthorized: sslRejectUnauthorized() },
     password: async () => signer.getDbConnectAdminAuthToken(),
   });
 }
