@@ -117,6 +117,32 @@ export async function inviteAndNotify(
 }
 
 /**
+ * Which arm a newly-created person is invited through, during beta.
+ *
+ * 🔴 'owner' RATHER THAN 'email', ratified by Steve 2026-08-13. The email arm is
+ * the product's front door and it rides a channel this project has MEASURED as
+ * unreliable: Outlook SCL 5, and Resend suppression that returns 200 while the
+ * recipient never sees anything. An invitation that silently does not arrive is
+ * indistinguishable, from the owner's side, from one that was ignored.
+ *
+ * The owner arm sends nothing at all and hands the owner a code to read out.
+ * That is worse for measurement and better for the thing being measured: with
+ * founding families the owner is standing next to the person, and
+ * docs/first-invitations.md already says the number that matters first is
+ * "does anyone claim at all", not the channel split.
+ *
+ * ⚠️ THIS MAKES CREATING A PERSON SILENT. Nothing is sent, so the owner must
+ * deliver the code themselves — the circle screen marks them "Has not accepted
+ * yet — give them their code" and the readiness banner refuses to go green
+ * until somebody is confirmed. Both were already there; this makes them
+ * load-bearing rather than advisory.
+ *
+ * FLIP BACK TO 'email' when deliverability is proven, which is Phase B of the
+ * 2026-08-13 plan. A test pins this to the guidance so it cannot drift silently.
+ */
+export const BETA_INVITE_CHANNEL: 'email' | 'owner' = 'owner';
+
+/**
  * Fire-and-forget invitation for the moment a person is created.
  *
  * Swallows everything. Adding someone to a circle of trust is a database fact
@@ -129,7 +155,7 @@ export async function inviteOnCreateBestEffort(
   personType: PersonType,
 ): Promise<void> {
   try {
-    await inviteAndNotify(ownerId, personId, personType);
+    await inviteAndNotify(ownerId, personId, personType, BETA_INVITE_CHANNEL);
   } catch (err) {
     process.stderr.write(`[people] invitation on create failed for ${personId}: ${String(err)}\n`);
   }

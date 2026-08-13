@@ -12,6 +12,8 @@
  */
 
 import { useRouter } from 'next/navigation';
+import { useMemo } from 'react';
+import { otpauthQrSvg } from '../../../../lib/auth/totp-qr';
 import Link from 'next/link';
 import { useState } from 'react';
 
@@ -26,6 +28,19 @@ export default function RecoverForm() {
   const [email, setEmail] = useState('');
   const [recoveryCode, setRecoveryCode] = useState('');
   const [enrolmentToken, setEnrolmentToken] = useState('');
+  /*
+    🔴 RECOVERY MADE YOU TYPE A 32-CHARACTER KEY BY HAND until 2026-08-13, while
+    SIGNUP offered a QR. The otpauth URL was already arriving here — the line
+    below used to parse it, take the secret, and throw the rest away — and
+    otpauthQrSvg already existed and was already used at signup.
+
+    Who reaches this screen is the argument: somebody whose phone is gone,
+    setting up a new one, at a bad moment, and the manual makes the case twice
+    that they skew older. Transcribing base32 from one screen to another device
+    is the wrong thing to ask of that person when the easy path was two imports
+    away.
+  */
+  const [otpauthUrl, setOtpauthUrl] = useState('');
   const [secret, setSecret] = useState('');
   const [code, setCode] = useState('');
   const [fresh, setFresh] = useState<string[]>([]);
@@ -52,9 +67,15 @@ export default function RecoverForm() {
       return;
     }
     setEnrolmentToken(data.enrolmentToken as string);
-    setSecret(new URL(data.otpauthUrl as string).searchParams.get('secret') ?? '');
+    const url = data.otpauthUrl as string;
+    setOtpauthUrl(url);
+    setSecret(new URL(url).searchParams.get('secret') ?? '');
     setPhase('enrol');
   }
+
+  // Same construction as signup: the SVG is numeric <rect> coordinates only, so
+  // no part of the secret reaches the DOM as text.
+  const qrSvg = useMemo(() => (otpauthUrl ? otpauthQrSvg(otpauthUrl) : ''), [otpauthUrl]);
 
   async function onEnrol(e: React.FormEvent) {
     e.preventDefault();
@@ -99,9 +120,20 @@ export default function RecoverForm() {
       <form onSubmit={onEnrol}>
         <h1 className="text-t7 font-semibold text-ink">Set up your new authenticator</h1>
         <p className="mt-3 text-[15px] leading-relaxed text-ink">
-          In your authenticator app, choose &ldquo;enter a setup key&rdquo; and paste this:
+          Scan this with your authenticator app.
         </p>
-        <p className="mt-3 break-all rounded bg-paper-sunken px-3 py-2 font-mono text-[15px] text-ink">
+
+        {qrSvg ? (
+          <div
+            className="mx-auto mt-3 w-44 max-w-full rounded bg-paper-raised p-2"
+            dangerouslySetInnerHTML={{ __html: qrSvg }}
+          />
+        ) : null}
+
+        <p className="mt-4 text-[15px] leading-relaxed text-ink">
+          Cannot scan? Choose &ldquo;enter a setup key&rdquo; instead and type this:
+        </p>
+        <p className="mt-2 break-all rounded bg-paper-sunken px-3 py-2 font-mono text-[15px] text-ink">
           {secret.replace(/(.{4})/g, '$1 ').trim()}
         </p>
 

@@ -26,6 +26,7 @@ import { createHash, randomInt } from 'crypto';
 
 import { query } from '../db/connection';
 import { CASE_ID_ALPHABET } from '../release/case-id';
+import { notifyOwnerRecoveryCodesLow } from '../notify/notifications';
 
 /**
  * Enough that losing a few to a house move does not matter, few enough that a
@@ -125,8 +126,41 @@ export async function redeemRecoveryCode(email: string, code: string): Promise<s
   if (!row) throw new RecoveryCodeError(generic);
 
   await query(`UPDATE recovery_codes SET used_at = now() WHERE id = $1`, [row.id]);
+
+  /*
+    Warn while there is still time to act, ratified 2026-08-13. Spending a code
+    is the only moment the count changes, and the Account screen — which shows
+    it — is seen only by somebody who already went looking. Running the sheet
+    down to zero with no authenticator is terminal: nobody can restore that
+    account, us included.
+
+    THRESHOLD, not every time: at two or fewer. Mail on every recovery would
+    train the owner to ignore it, and an ignored warning is the same as none.
+
+    Best-effort and AFTER the code is spent. Getting back in is the operation;
+    the warning is a courtesy, and a courtesy must never be able to fail the
+    thing it is attached to.
+  */
+  try {
+    const left = await remainingRecoveryCodes(row.user_id);
+    if (left <= LOW_RECOVERY_CODE_THRESHOLD) {
+      const u = await query<{ email: string | null }>(
+        `SELECT email FROM users WHERE id = $1 LIMIT 1`,
+        [row.user_id],
+      );
+      const email = u.rows[0]?.email;
+      if (email) await notifyOwnerRecoveryCodesLow({ ownerEmail: email, remaining: left });
+    }
+  } catch (err) {
+    process.stderr.write(`[recovery] low-code notice failed for ${row.user_id}: ${String(err)}
+`);
+  }
+
   return row.user_id;
 }
+
+/** At or below this many unused codes, the owner is told. */
+export const LOW_RECOVERY_CODE_THRESHOLD = 2;
 
 /** How many codes remain, so the owner can be warned before running out. */
 export async function remainingRecoveryCodes(userId: string): Promise<number> {

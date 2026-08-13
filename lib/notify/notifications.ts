@@ -778,6 +778,66 @@ export async function notifyOwnerOfResignation(params: {
 }
 
 /**
+ * Tells the owner their recovery codes are nearly gone.
+ *
+ * Ratified by Steve 2026-08-13, over my objection, and the objection is worth
+ * recording because it shapes what this message is allowed to contain. Relay's
+ * central promise is that it NEVER sends a link that signs you in, and a
+ * security prompt arriving by email is the exact shape a phishing message
+ * imitates. Sending one at all spends a little of that.
+ *
+ * So this message is built to be worthless to an attacker who intercepts it. It
+ * carries no code, no token, no link that authenticates, and asks for nothing —
+ * it states a fact the owner can verify by signing in the way they always do.
+ * Forwarding it accomplishes nothing; imitating it gains nothing, because there
+ * is nothing in it to act on but "go and look".
+ *
+ * The counterweight is real: running out is terminal. No codes and no
+ * authenticator means nobody can let that owner back in, including us, and the
+ * Account screen only says so to somebody who has already opened it — which is
+ * precisely the person who does not need telling.
+ */
+export async function notifyOwnerRecoveryCodesLow(params: {
+  ownerEmail: string;
+  remaining: number;
+}): Promise<boolean> {
+  const { remaining } = params;
+  const count = remaining === 1 ? 'one recovery code' : `${remaining} recovery codes`;
+
+  return sendEmailBestEffort({
+    to: params.ownerEmail,
+    subject:
+      remaining === 1
+        ? 'You have one Relay recovery code left'
+        : `You have ${remaining} Relay recovery codes left`,
+    text:
+      `You just used a recovery code to get back into Relay, and you now have ${count} left.
+
+` +
+      (remaining === 1
+        ? `That is the last one. If you use it and then lose your authenticator again, nobody ` +
+          `can let you back in — not us either. That is the same encryption promise that keeps ` +
+          `your vault private, working in the direction that hurts.
+
+`
+        : `Worth topping up before it becomes urgent.
+
+`) +
+      `Sign in the way you normally do, open Account, and issue a fresh list. The new list ` +
+      `replaces the old one, so keep only the newest.
+
+` +
+      `    ${appUrl()}/account
+
+` +
+      `There is nothing in this message to act on except that sentence — no code, and no link ` +
+      `that signs you in. Relay never sends one. A message claiming to be us that asks you to ` +
+      `click and log in is not from us.
+`,
+  });
+}
+
+/**
  * Tells every scoped recipient that a released trigger has closed.
  *
  * Counts what each of them actually opened, so the message is specific rather
