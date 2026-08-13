@@ -34,8 +34,27 @@ export const DELEGATE_SCOPES = [
   'items:update',
   'import:run',
   'people:propose',
-  'policies:propose',
 ] as const;
+
+/**
+ * 🔴 `policies:propose` REMOVED 2026-08-12. It was granted to every delegate,
+ * offered by no surface, and `decideApproval` claimed a `policy` approval
+ * without applying one — so an owner could have "approved" a proposal and had
+ * nothing happen. A granted capability that silently does nothing is worse than
+ * an absent one, because it reads as working.
+ *
+ * DROPPED RATHER THAN BUILT, because it does not fit the read boundary it would
+ * have to live inside. A policy says "this person may reach that item", and a
+ * helper can see neither side of it: J3-R4 limits them to the items they
+ * personally entered, and nothing lists the owner's recipients to them. Building
+ * it honestly would mean showing a helper the owner's circle — widening the
+ * boundary to serve a feature nobody asked for, in the one place the product is
+ * most careful.
+ *
+ * The `policy` approval KIND is deliberately kept (below): zero exist, but a row
+ * that appears from an older deployment must still render and still be
+ * rejectable. It simply cannot be created or approved any more.
+ */
 
 export type DelegateScope = (typeof DELEGATE_SCOPES)[number];
 
@@ -96,11 +115,19 @@ export async function createDelegation(
     );
   }
 
+  /**
+   * Scopes are STATED, not inherited. Migration 009 defaults this column to a
+   * five-scope list that still contains `policies:propose`; leaving the default
+   * to speak would mean the database granting a capability the application has
+   * removed, which is the two-definitions drift that put an email address on the
+   * standby dashboard. `DELEGATE_SCOPES` is the one authoritative answer to what
+   * a helper may do, so it is what gets written.
+   */
   const res = await query<{ id: string }>(
-    `INSERT INTO delegations (owner_id, delegate_user_id, status)
-     VALUES ($1, $2, 'pending')
+    `INSERT INTO delegations (owner_id, delegate_user_id, status, scopes)
+     VALUES ($1, $2, 'pending', $3::jsonb)
      RETURNING id`,
-    [ownerId, delegateUserId],
+    [ownerId, delegateUserId, JSON.stringify(DELEGATE_SCOPES)],
   );
 
   return { id: res.rows[0].id, status: 'pending' };

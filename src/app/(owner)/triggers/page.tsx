@@ -248,6 +248,23 @@ function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promi
   const [n, setN] = useState(String(rs.required_confirmations));
   const [msg, setMsg] = useState<string | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
+  /**
+   * 🔴 FIRING A RELEASE WAS ONE UNGUARDED CLICK, on a button labelled
+   * "Initiate" that did not say what it does. Added 2026-08-12.
+   *
+   * ⏸️ THIS IS A PRECONDITION ON `g2-counsel-opinion`, NOT AN IMPROVEMENT.
+   * Today every user-selectable trigger is reversible and Stand down exists, so
+   * a misclick costs a false alarm to the whole circle — bad, because verifiers
+   * who get spurious asks stop answering the real one, but survivable. The day
+   * `estate` becomes selectable, that same click becomes PERMANENT with no undo,
+   * and the confirmation has to already be here rather than be remembered then.
+   *
+   * The irreversible branch asks the trigger type to be TYPED, matching what
+   * closing an account already demands. One click after a warning is not a
+   * decision; finding the keyboard is.
+   */
+  const [confirmingInitiate, setConfirmingInitiate] = useState(false);
+  const [typedConfirm, setTypedConfirm] = useState('');
 
   const act = async (fn: () => Promise<unknown>) => {
     setMsg(null);
@@ -273,12 +290,14 @@ function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promi
           </span>
         </div>
         <div className="flex gap-2">
-          {rs.state === 'armed' ? (
+          {/* Firing a release is the most consequential control on this screen
+              and was one unguarded click. See the note on `confirmingInitiate`. */}
+          {rs.state === 'armed' && !confirmingInitiate ? (
             <button
-              onClick={() => act(() => apiSend(`/api/triggers/${encodeURIComponent(rs.trigger_type)}/initiate`, 'POST'))}
+              onClick={() => setConfirmingInitiate(true)}
               className="rounded border border-rule-strong px-2.5 py-1 text-t1 font-medium hover:bg-paper-sunken"
             >
-              Initiate
+              Start this now
             </button>
           ) : null}
           {/* The false-alarm control, and the DEFAULT one.
@@ -333,6 +352,77 @@ function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promi
           This retires the trigger for good. To stop a false alarm and keep the rule, use{' '}
           <span className="font-semibold">Stand down — re-arm</span> instead.
         </p>
+      ) : null}
+
+      {/*
+        The confirmation, stating the CONSEQUENCE rather than asking "are you
+        sure" — which is a question nobody reads. Reversible and irreversible
+        triggers get different sentences and different weights, because they are
+        different acts that happen to share a button.
+      */}
+      {confirmingInitiate && rs.state === 'armed' ? (
+        <div
+          className={`mt-3 rounded border p-3 ${
+            reversible ? 'border-ochre bg-ochre-soft' : 'border-clay bg-clay-soft'
+          }`}
+        >
+          {reversible ? (
+            <p className="text-t2 leading-relaxed text-ink">
+              Everyone you named to confirm a <span className="font-semibold">{rs.trigger_type}</span>{' '}
+              will be asked whether this is real. If enough of them agree, the access you arranged
+              opens. <span className="font-semibold">You can stop it at any point by checking in.</span>
+            </p>
+          ) : (
+            <>
+              <p className="text-t2 font-semibold leading-relaxed text-clay">
+                A {rs.trigger_type} handover cannot be undone.
+              </p>
+              <p className="mt-1 text-t2 leading-relaxed text-clay">
+                If the people you named agree, what you set aside passes to them permanently.
+                Checking in will not reverse it and neither can we.
+              </p>
+              <label htmlFor={`confirm-${rs.id}`} className="mt-3 block text-t2 font-medium text-clay">
+                Type <span className="font-semibold">{rs.trigger_type}</span> to confirm
+              </label>
+              <input
+                id={`confirm-${rs.id}`}
+                value={typedConfirm}
+                onChange={(e) => setTypedConfirm(e.target.value)}
+                autoComplete="off"
+                className="mt-1 w-full rounded border border-clay px-3 py-2 text-t2"
+              />
+            </>
+          )}
+
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              disabled={!reversible && typedConfirm.trim().toLowerCase() !== rs.trigger_type}
+              onClick={() => {
+                setConfirmingInitiate(false);
+                setTypedConfirm('');
+                void act(() =>
+                  apiSend(`/api/triggers/${encodeURIComponent(rs.trigger_type)}/initiate`, 'POST'),
+                );
+              }}
+              className={`min-h-[32px] rounded px-3 py-1.5 text-t2 font-semibold text-paper disabled:opacity-50 ${
+                reversible ? 'bg-ink' : 'bg-clay'
+              }`}
+            >
+              {reversible ? 'Yes — ask them now' : `Hand over permanently`}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setConfirmingInitiate(false);
+                setTypedConfirm('');
+              }}
+              className="min-h-[32px] rounded border border-rule-strong bg-paper-raised px-3 py-1.5 text-t2 text-ink"
+            >
+              Not yet
+            </button>
+          </div>
+        </div>
       ) : null}
 
       <div className="mt-3 flex items-center gap-2">

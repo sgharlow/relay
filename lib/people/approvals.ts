@@ -22,6 +22,23 @@ import { createRecipient, validateRecipientInput } from './recipients';
 export const APPROVAL_KINDS = ['recipient', 'policy', 'self_designation'] as const;
 export type ApprovalKind = (typeof APPROVAL_KINDS)[number];
 
+/**
+ * The kinds approving actually APPLIES.
+ *
+ * 🔴 `policy` was approvable and did nothing. `decideApproval` claimed the row,
+ * marked it approved, wrote an audit entry saying so, and left `applied` false —
+ * so an owner could answer a question about who reaches their vault, be told it
+ * was granted, and have nothing change. A silent no-op wearing the costume of a
+ * control, on the queue whose entire job is to be the place a decision really
+ * happens.
+ *
+ * `policies:propose` was removed from `DELEGATE_SCOPES` the same day, so nothing
+ * can create one of these any more. This list exists so that a row surviving
+ * from an older deployment cannot be approved into silence — it can still be
+ * REJECTED, which is honest, because rejecting applies nothing by definition.
+ */
+export const APPLIABLE_KINDS: readonly ApprovalKind[] = ['recipient', 'self_designation'];
+
 export interface ApprovalRow {
   id: string;
   owner_id: string;
@@ -87,6 +104,25 @@ export async function decideApproval(
 ): Promise<{ applied: boolean }> {
   if (decision !== 'approve' && decision !== 'reject') {
     throw new ValidationError('decision must be approve or reject', 'decision');
+  }
+
+  /**
+   * Checked BEFORE the claiming UPDATE, deliberately. Throwing afterwards would
+   * leave the row marked `approved` with nothing applied — the exact state this
+   * guard exists to make impossible, reached by the guard itself.
+   */
+  if (decision === 'approve') {
+    const kindRow = await query<{ kind: ApprovalKind }>(
+      `SELECT kind FROM approvals WHERE id = $1 AND owner_id = $2 AND status = 'pending' LIMIT 1`,
+      [approvalId, ownerId],
+    );
+    const kind = kindRow.rows[0]?.kind;
+    if (kind && !APPLIABLE_KINDS.includes(kind)) {
+      throw new ValidationError(
+        `A "${kind}" suggestion can no longer be applied. You can reject it.`,
+        'kind',
+      );
+    }
   }
 
   const claimed = await withOccRetry(() =>

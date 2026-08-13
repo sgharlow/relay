@@ -68,19 +68,36 @@ describe('enqueueApproval', () => {
 });
 
 describe('decideApproval', () => {
-  function pending(kind: string) {
-    mockQuery.mockResolvedValueOnce({
-      rows: [
-        {
-          id: 'ap-1',
-          owner_id: 'o-1',
-          kind,
-          payload: { name: 'Me', email: 'me@x.com', role: 'recipient' },
-          proposed_by_delegation_id: 'd-1',
-          status: kind,
-        },
-      ],
-    } as never);
+  /**
+   * Routes on SQL rather than call order.
+   *
+   * These were positional and broke the FIFTH time a query was added ahead of
+   * them — the appliable-kind guard, 2026-08-12. A positional mock encodes how
+   * many queries the implementation happens to make, which is not what any of
+   * these tests are about.
+   */
+  function pending(kind: string, found = true) {
+    mockQuery.mockImplementation(async (sql: string) => {
+      if (/SELECT kind FROM approvals/i.test(sql)) {
+        return { rows: found ? [{ kind }] : [], rowCount: found ? 1 : 0 } as never;
+      }
+      if (/UPDATE approvals/i.test(sql)) {
+        return {
+          rows: found
+            ? [{
+                id: 'ap-1',
+                owner_id: 'o-1',
+                kind,
+                payload: { name: 'Me', email: 'me@x.com', role: 'recipient' },
+                proposed_by_delegation_id: 'd-1',
+                status: kind,
+              }]
+            : [],
+          rowCount: found ? 1 : 0,
+        } as never;
+      }
+      return { rows: [], rowCount: 0 } as never;
+    });
   }
 
   it('APPROVING a self-designation creates the recipient via the validated path', async () => {
@@ -101,14 +118,13 @@ describe('decideApproval', () => {
     pending('recipient');
     await decideApproval('o-1', 'ap-1', 'approve');
 
-    const [sql, params] = mockQuery.mock.calls[0];
-    expect(sql).toMatch(/UPDATE approvals/i);
-    expect(sql).toMatch(/status\s*=\s*'pending'/i);
-    expect(params).toEqual(['ap-1', 'o-1', 'approved']);
+    const claim = mockQuery.mock.calls.find((c) => /UPDATE approvals/i.test(String(c[0])));
+    expect(String(claim?.[0])).toMatch(/status\s*=\s*'pending'/i);
+    expect(claim?.[1]).toEqual(['ap-1', 'o-1', 'approved']);
   });
 
   it('rejects when nothing pending matches — no double-apply', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [] } as never);
+    pending('recipient', false);
 
     await expect(decideApproval('o-1', 'ap-1', 'approve')).rejects.toThrow(ValidationError);
     expect(createRecipient).not.toHaveBeenCalled();
@@ -140,5 +156,43 @@ describe('delegateActivityDigest', () => {
     expect(sql).toMatch(/FROM audit_log/i);
     expect(sql).toMatch(/actor LIKE 'delegate:%'/i);
     expect(params).toEqual(['o-1', '2026-08-01T00:00:00Z']);
+  });
+});
+
+describe('🔴 an approval that cannot be applied cannot be approved — 2026-08-12', () => {
+  it('refuses to approve a policy suggestion instead of silently doing nothing', async () => {
+    // `decideApproval` claimed the row, marked it approved, wrote an audit entry
+    // saying so, and left `applied` false. An owner could answer a question
+    // about who reaches their vault, be told it was granted, and have nothing
+    // change — a silent no-op wearing the costume of a control, on the queue
+    // whose whole job is to be where a decision really happens.
+    mockQuery.mockReset();
+    mockQuery.mockResolvedValueOnce({ rows: [{ kind: 'policy' }], rowCount: 1 } as never);
+
+    await expect(decideApproval('o-1', 'ap-1', 'approve')).rejects.toThrow(ValidationError);
+
+    // And critically: the row was never claimed, so it is not left marked
+    // approved with nothing applied — the exact state the guard prevents.
+    const claimed = mockQuery.mock.calls.some((c) => String(c[0]).includes('UPDATE approvals'));
+    expect(claimed).toBe(false);
+  });
+
+  it('still allows REJECTING one, because rejecting applies nothing by definition', async () => {
+    mockQuery.mockReset();
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ id: 'ap-1', owner_id: 'o-1', kind: 'policy', payload: {}, status: 'rejected' }],
+      rowCount: 1,
+    } as never);
+
+    await expect(decideApproval('o-1', 'ap-1', 'reject')).resolves.toEqual({ applied: false });
+  });
+
+  it('leaves the kinds it can apply untouched', async () => {
+    mockQuery.mockReset();
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ kind: 'recipient' }], rowCount: 1 } as never)
+      .mockResolvedValue({ rows: [{ id: 'ap-1', owner_id: 'o-1', kind: 'recipient', payload: { name: 'Sam', email: 's@example.com', role: 'recipient' }, status: 'approved' }], rowCount: 1 } as never);
+
+    await expect(decideApproval('o-1', 'ap-1', 'approve')).resolves.toEqual({ applied: true });
   });
 });

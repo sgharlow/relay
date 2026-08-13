@@ -38,13 +38,14 @@ const mockQuery = vi.mocked(query);
 beforeEach(() => vi.clearAllMocks());
 
 describe('DELEGATE_SCOPES', () => {
-  it('is exactly the five setup scopes', () => {
+  it('is exactly the four setup scopes', () => {
+    // Four since 2026-08-12: `policies:propose` was granted to every delegate,
+    // offered by no surface, and could not be applied on approval.
     expect([...DELEGATE_SCOPES]).toEqual([
       'items:create',
       'items:update',
       'import:run',
       'people:propose',
-      'policies:propose',
     ]);
   });
 
@@ -273,5 +274,40 @@ describe('🔴 a helper must already be in the circle — 2026-08-12 security re
     const lookup = String(mockQuery.mock.calls[0][0]);
     expect(lookup).toMatch(/claimed_user_id = \$2/);
     expect(lookup).toMatch(/<>\s*'revoked'/);
+  });
+});
+
+describe('🔴 policies:propose removed — 2026-08-12', () => {
+  it('is no longer a delegate scope', () => {
+    // Granted to every delegate, offered by no surface, and `decideApproval`
+    // claimed a `policy` approval without applying one. Dropped rather than
+    // built because it does not fit the read boundary it would live inside: a
+    // helper can see neither the items nor the recipients a policy joins.
+    expect([...DELEGATE_SCOPES]).not.toContain('policies:propose');
+  });
+
+  it('still grants exactly the four scopes a helper can use', () => {
+    expect([...DELEGATE_SCOPES]).toEqual([
+      'items:create',
+      'items:update',
+      'import:run',
+      'people:propose',
+    ]);
+  });
+
+  it('WRITES the scopes rather than inheriting the database default', async () => {
+    // Migration 009 defaults this column to a five-scope list that still
+    // contains `policies:propose`. Letting the default speak would have the
+    // database granting a capability the application has removed.
+    mockQuery.mockReset();
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ id: 'r-1' }], rowCount: 1 } as never)
+      .mockResolvedValueOnce({ rows: [{ id: 'd-1' }] } as never);
+
+    await createDelegation('o-1', 'u-2');
+
+    const insert = mockQuery.mock.calls.find((c) => String(c[0]).includes('INSERT INTO delegations'));
+    expect(String(insert?.[0])).toMatch(/scopes/);
+    expect(String((insert?.[1] as unknown[])[2])).not.toContain('policies:propose');
   });
 });
