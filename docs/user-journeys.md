@@ -34,10 +34,9 @@
 > moved**, not a current statement — read them with the hybrid+6 note above, which says which
 > mechanisms are superseded.
 >
-> **Two items were already open at the time of the sweep and remain open:** J4's invitation *email*
-> path has never been walked, and J5's check-in button has never been clicked in a browser. Both
-> are named in their rows. Nothing here has been re-verified since; a fresh sweep is the honest way
-> to close them, not an edit to these verdicts.
+> **The two items that were open at the time of the sweep are now CLOSED — walked 2026-08-13, on
+> production, and recorded below.** Everything else here still describes `2a9eb88`; a fresh sweep is
+> the honest way to re-verify the rest, not an edit to these verdicts.
 
 ## ✅ Live journey sweep — 2026-08-08
 
@@ -58,6 +57,39 @@ two disagree on.
 | J8 | Hands on the account · **PRIMARY DEMAND** | **PASS** | recipient opened a prioritised access plan and **Reveal returned the exact plaintext the owner had typed** — full KMS unwrap + client decrypt round-trip |
 | J9 | Standing down · **DIFFERENTIATOR** | **PASS after three fixes** | GRACE → stand down → ARMED → re-initiate; RELEASED → close → ARMED with confirmations reset 1/1 → 0/1; the recipient's live token then leaked no plaintext, and now renders the **graceful close** instead of an expiry error |
 | J10 | The permanent handoff | **GATED IN THE PRODUCT (changed 2026-08-10)** | ~~estate rule creates and initiates~~ — that was true when swept on 8-08 and is deliberately false now. `estate` is no longer user-selectable: the `/rules` dropdown offers only `USER_SELECTABLE_TRIGGER_TYPES`, and `/api/rules`, `/api/policies`, `/api/triggers/[id]/initiate` and `/api/triggers/[id]/config` all refuse it. The domain still supports estate (Property 7, heartbeat blocking, grace windows) — only user selection is closed. Reason: `src/app/terms/page.tsx` states estate "is not offered" while the product offered it, on a surface taking live payments, with `g2-counsel-opinion` unmet. Re-enable by moving `'estate'` into that one list once counsel clears |
+
+### ✅ J4 and J5 closed — walked on production 2026-08-13
+
+**J5 — the check-in button, finally clicked.** It had been shipped since `afff84b` and never
+pressed in a browser; the row below said so. Clicked on `/triggers`: `PUT /api/checkin` returned
+200, the page rendered *"Checked in. Nothing needed reversing."*, and `users.last_active_at`
+advanced from 15:00:05Z to 16:28:44Z. J5's remaining gap was never the control — it was retention,
+and passive liveness now covers the main write paths.
+
+**J4 — the invitation email path, finally walked.** This is the half the 2026-08-08 sweep skipped,
+and it is the half that carries the product's anti-phishing promise. A recipient was created
+through `POST /api/recipients` on **production**, which fires the invitation.
+
+| What was checked | Result |
+|---|---|
+| Did it leave the ESP? | `emailDelivered: true` |
+| Did it reach a real inbox? | **Yes — INBOX, not spam**, read back from the recipient mailbox. `Delivered` from an ESP has never been proof of this, which is why it was checked at the mailbox |
+| Sender | `relay@relaystandby.com` |
+| Link host | `https://relaystandby.com/claim` — the 2026-08-08 defect #3 (every link pointing at `relay-three-henna.vercel.app`) stays fixed on production |
+| Credential in the URL? | **No.** Bare link, code typed separately: `X36FP-ALC6Z` |
+| The promise, in the message | *"Relay will never send you a link that signs you in."* |
+| Does the code work? | Typed at `/claim` → signed in → `/standby`, "You are on standby" for Margaret Chen |
+| Assurance model, both sides | Contact's screen and owner's `/api/circle` both read **`nickel pilot amber forest`**; person flipped to `claimed` |
+
+The fixture used a `+subaddressed` real inbox. `@relay.invalid` and `@example.com` cannot receive
+mail, and mailing them is what generated hard bounces on a Resend account shared with another
+project. All fixture rows — recipient, invitation and the standby user — were deleted afterwards;
+the demo estate is back to 25 items, 2 recipients, both triggers ARMED.
+
+⚠️ **One thing this exposed, and it is local-only.** The same invitation sent from a developer
+machine carried `https://relay-three-henna.vercel.app/claim`, because `.env.local` still holds the
+pre-domain `NEXTAUTH_URL`. Production is correct. Worth knowing before anyone tests mail locally
+and concludes the old defect is back.
 
 ### Defects the sweep found — all fixed and re-proven live
 
