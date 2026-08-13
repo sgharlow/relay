@@ -28,7 +28,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const auth = await requireOwner(req);
   if (isResponse(auth)) return auth;
 
-  const body = await readJson(req);
+  /*
+    The one route that legitimately sends more than the 128 KB default: a whole
+    password-manager export. MAX_BATCH is 1000 items and a measured item with a
+    2 KB plaintext serialises to ~3.2 KB, so a full batch is ~3.1 MB. 8 MB leaves
+    room for longer notes without leaving the door open — the batch-count check
+    below is what actually caps how much work this does.
+  */
+  const body = await readJson(req, 8 * 1024 * 1024);
   if (isResponse(body)) return body;
 
   const items = (body as { items?: unknown }).items;

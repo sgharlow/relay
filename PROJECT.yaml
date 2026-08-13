@@ -191,63 +191,25 @@ ratified:
 # measured, understood, and deliberately not fixed yet. An item leaves this list by
 # being fixed or by being re-argued — not by being forgotten, which is what an
 # unwritten "we should probably..." always becomes.
-deferred:
-  - id: unbounded-request-body
-    found: 2026-08-13
-    what: "The application imposes no size limit on a JSON request body. `readJson`
-      (lib/http/owner-route.ts) calls `req.json()` with no check and is shared by 30 route
-      handlers, so the only ceiling anywhere is Vercel's platform limit. Parse cost and
-      memory scale with whatever a caller chooses to send."
-    found_how: "Fallout from the ReDoS fix in 32027b5. That commit made sanitiseRequestReason
-      linear, so the COST of processing a hostile body is now bounded — but the SIZE of the
-      body arriving never was, and the sanitiser was only the one consumer that happened to
-      be quadratic. Fixing the symptom exposed that the general case is untreated."
-    worst_case: "POST /api/access-requests is the sharp instance: its `reason` is free text
-      from any standby contact, and lib/release/access-request.ts already names that actor as
-      the threat — 'a named contact who accepted, then turned hostile'. Authenticated, so it
-      is not an open-internet risk; it is an insider-availability one."
-    severity: "moderate. Availability only — no data exposure, no state change, no crypto
-      boundary involved. Reachable only by somebody who has already accepted an invitation."
-    why_deferred: "The fix belongs in the shared reader, which means changing the request path
-      of 30 live authenticated endpoints at once. That is a change to working production
-      plumbing with no observed incident behind it, and the beta population is currently the
-      founding families — people who are not the threat actor. Steve's call, 2026-08-13."
-    fix: "Bound it in `readJson` itself rather than per route: reject on Content-Length over
-      the cap with 413, and cap the read for a chunked body that declares nothing. ONE
-      definition, per the cross-boundary-contract rule — a per-route convention is exactly
-      how the 30th caller ends up without it. Needs a per-route override for /api/import,
-      which legitimately posts a whole password-manager export."
-    owner: steve
-    revisit: "before the beta widens past the founding families — the accepted risk rests on
-      every contact being somebody Steve personally invited, and that stops being true the
-      moment invitations go out to people he does not know"
-
-  - id: muted-text-contrast
-    found: 2026-08-13
-    what: "Muted text fails WCAG AA on every signed-in screen. Measured with axe-core
-      (scripts/a11y-audit.mjs): `--ink-faint` #8a8073 reads 4.41:1 on the dark sidebar and
-      3.81:1 on paper, and the ACTIVE nav item — white on clay #b4703a — reads 3.59:1.
-      All three need 4.5:1. 46 failing elements on /vault, 9 on each other owner screen.
-      The public pages (/ and /caregivers) are clean."
-    found_how: "First real accessibility pass. It also found two CRITICAL defects — an
-      unnamed <select> on /circle and two unlabelled quorum inputs on /triggers — both fixed
-      the same day. Only contrast remains."
-    worst_case: "Not compliance theatre for this product in particular. The manual argues
-      its own case twice — 'the seventy-year-old you most want to include', 'an owner in
-      their seventies, over the horizon this product is sold on' — and reduced contrast
-      sensitivity is ordinary in that group. The failing text includes the line under every
-      vault item explaining WHY it is ranked where it is, which is the reasoning the product
-      sells."
-    severity: "moderate. Two of the three are marginal (4.41 and 3.81 against 4.5); the
-      active nav item at 3.59 is the real one. Nothing is unreadable; it is harder to read
-      than it should be for the people most likely to need it."
-    why_deferred: "The fix is a design-token change — `--ink-faint` and the clay active
-      state — and those tokens are used on every screen in both route groups. Darkening them
-      is a visual-identity decision, not an engineering one, and this product's restraint
-      with colour is deliberate and load-bearing (clay is reserved for irreversible
-      actions). Steve's call, and it wants a look at the result rather than a patch."
-    owner: steve
-    fix: "Raise `--ink-faint` until both grounds clear 4.5:1, and darken the clay active
-      state or switch its text to ink. Re-run scripts/a11y-audit.mjs to confirm, and look at
-      /vault and /circle afterwards — the numbers are necessary, not sufficient."
-    revisit: "before the beta widens past the founding families, alongside unbounded-request-body"
+#
+# BOTH ENTRIES CLOSED 2026-08-13, the day after they were opened, when Steve called
+# for them to be fixed rather than carried into beta:
+#
+#   unbounded-request-body — `readJson` now caps at 128 KB and answers 413, checking
+#     BOTH the declared Content-Length and the stream as it arrives, because the
+#     first is a claim by the sender and a chunked request declares nothing.
+#     /api/import carries an 8 MB override for a password-manager export. Proven
+#     against a running server on the sharp case: a 500 KB `reason` on
+#     /api/access-requests is refused. lib/http/read-json-limit.test.ts.
+#
+#   muted-text-contrast — `--ink-faint` darkened to #71675a, a new `--paper-faint`
+#     added for the ink sidebar (no single value can clear 4.5:1 against both
+#     grounds — the arithmetic is in the test), and `--ochre-deep` added for the
+#     active nav fill. axe now reports ZERO serious/critical violations across all
+#     ten audited pages, where every signed-in screen failed before.
+#     lib/ops/contrast.test.ts pins the ratios in CI; scripts/a11y-audit.mjs checks
+#     what is actually rendered.
+#
+# The section stays, empty, because the next honest entry belongs here and not in a
+# new file.
+deferred: []

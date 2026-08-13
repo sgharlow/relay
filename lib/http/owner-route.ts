@@ -57,10 +57,87 @@ export async function requireOwner(
   }
 }
 
-/** Parses JSON, returning the body or a 400 NextResponse. */
-export async function readJson(req: NextRequest): Promise<unknown | NextResponse> {
+/**
+ * The default ceiling on a request body.
+ *
+ * 🔴 THERE WAS NO CEILING AT ALL until 2026-08-13. This helper called
+ * `req.json()` with no size check and is shared by twenty-six route handlers, so
+ * the only bound anywhere was Vercel's platform limit. A standby contact — the
+ * actor `lib/release/access-request.ts` already names as the threat, "a named
+ * contact who accepted, then turned hostile" — could post megabytes and make the
+ * server parse all of it. The ReDoS fix in 32027b5 bounded the COST of handling
+ * a hostile body; this bounds the body.
+ *
+ * 128 KB is roughly forty times the largest ordinary request. Measured: one
+ * encrypted vault item with a 2 KB plaintext serialises to ~3.2 KB, and every
+ * route here except /api/import sends one object.
+ */
+export const MAX_JSON_BYTES = 128 * 1024;
+
+/**
+ * Parses JSON, returning the body or a NextResponse (400 malformed, 413 too big).
+ *
+ * BOUNDED BY READING, not by trusting the header. A declared Content-Length is
+ * checked first because it is free and lets an oversized request be refused
+ * before a byte of body is read — but it is a claim by the sender, and a chunked
+ * request declares nothing at all. So the stream is also counted as it arrives
+ * and abandoned the moment it crosses the cap. Either check alone is a hole.
+ *
+ * @param maxBytes override for a route that legitimately sends more; see
+ *   /api/import, which posts a whole password-manager export.
+ */
+export async function readJson(
+  req: NextRequest,
+  maxBytes: number = MAX_JSON_BYTES,
+): Promise<unknown | NextResponse> {
+  const tooLarge = () =>
+    NextResponse.json(
+      {
+        error: 'PayloadTooLarge',
+        message: `That request is too large. The limit is ${Math.floor(maxBytes / 1024)} KB.`,
+      },
+      { status: 413 },
+    );
+
+  /*
+    Optional chaining on both because this is called with request DOUBLES in
+    route tests — `{ json: async () => body }` and nothing else. Under the real
+    runtime `headers` is always present and a body-bearing request always has a
+    stream, so the guard always engages where it matters; the fallback below
+    exists so a unit test does not have to construct a whole Request to exercise
+    a handler. A test asserts that shape keeps working.
+  */
+  const declared = Number(req.headers?.get?.('content-length') ?? NaN);
+  if (Number.isFinite(declared) && declared > maxBytes) return tooLarge();
+
   try {
-    return await req.json();
+    const body = req.body;
+    // Nothing to meter — an empty body, a test double, or a runtime that does
+    // not expose a stream. The declared-length check above is then the only
+    // guard, which is correct: there is no stream to read.
+    if (!body) return await req.json();
+
+    const reader = body.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel().catch(() => {});
+        return tooLarge();
+      }
+      chunks.push(value);
+    }
+
+    const joined = new Uint8Array(total);
+    let at = 0;
+    for (const c of chunks) {
+      joined.set(c, at);
+      at += c.byteLength;
+    }
+    return JSON.parse(new TextDecoder().decode(joined));
   } catch {
     return NextResponse.json({ error: 'BadRequest', message: 'Invalid JSON body' }, { status: 400 });
   }

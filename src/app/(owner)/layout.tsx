@@ -36,7 +36,8 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
       >
         <div>
           <div style={{ fontSize: 'var(--t5)', fontWeight: 600, letterSpacing: '-0.01em' }}>Relay</div>
-          <div style={{ fontSize: 'var(--t1)', color: 'var(--ink-faint)' }}>Living-continuity vault</div>
+          {/* On the ink sidebar, so --paper-faint rather than --ink-faint. */}
+          <div style={{ fontSize: 'var(--t1)', color: 'var(--paper-faint)' }}>Living-continuity vault</div>
         </div>
         <SidebarNav />
         {session.isDemo ? (

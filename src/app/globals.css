@@ -26,7 +26,22 @@
   --paper-sunken: #efeae0; /* wells, table headers */
   --ink: #1f1b16;          /* all text, all primary buttons. 14:1 on paper. */
   --ink-muted: #6b6257;    /* secondary text. 5.2:1 on paper. */
-  --ink-faint: #8a8073;    /* meta only, never body */
+  /* Darkened from #8a8073 on 2026-08-13. axe measured the old value at 3.82:1 on
+     paper-raised and 3.53:1 on paper — under AA on every ground it was used on,
+     across 46 elements on /vault alone. Not a compliance detail for this product
+     in particular: the manual argues its own case twice about "the seventy-year-
+     old you most want to include", and this is the colour of the line under each
+     vault item explaining WHY it is ranked where it is.
+     Now 5.45 raised · 5.05 paper · 4.62 sunken. It sits closer to --ink-muted
+     than it used to, which compresses the three-step hierarchy slightly — that
+     is the price, and it is worth paying to have the text be readable. */
+  --ink-faint: #71675a;    /* meta only, never body */
+  /* The same idea inverted, for the one place faint text sits on --ink: the
+     owner sidebar. No single value can clear 4.5:1 against both #fffdf9 and
+     #1f1b16 — the first needs luminance <= 0.183, the second >= 0.226 — so this
+     is arithmetic, not preference. 5.05:1 on ink. */
+  --paper-faint: #948a7d;
+
   --rule: #e3dccf;         /* hairline borders */
   --rule-strong: #cfc7b8;
 
@@ -40,6 +55,11 @@
   --sage-soft: #e6ede9;
   --ochre: #b4703a;        /* in motion and REVERSIBLE: pending, grace, released */
   --ochre-text: #8a5a2b;   /* ochre measures 3.9:1 as text, so wording uses this */
+  /* And this is ochre as a FILL behind light text — the active sidebar item,
+     which axe measured at 3.60:1. Same reasoning as --ochre-text, other
+     direction: darkening the fill is the only lever, because even --ink on plain
+     ochre reaches just 4.34:1. Paper text on this is 4.65:1. */
+  --ochre-deep: #a15d27;
   --ochre-soft: #f6ead9;
   --clay: #b2402c;         /* PERMANENT ONLY. Estate handoff, account closure. Never anything else. */
   --clay-soft: #f8e5e0;

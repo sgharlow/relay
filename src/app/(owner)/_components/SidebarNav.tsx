@@ -120,8 +120,11 @@ export default function SidebarNav() {
               fontSize: 'var(--t2)',
               /* Ochre marks where you are — the one thing in motion on this
                  rail. Blue was the last of the pre-system accents here. */
-              background: active ? 'var(--ochre)' : 'transparent',
-              color: active ? 'var(--paper)' : 'var(--ink-faint)',
+              // --ochre-deep, not --ochre: paper text on plain ochre measures
+              // 3.60:1. --ink-faint is tuned for light grounds and reads 4.42:1
+              // here, so the dark ground gets its own token. Both 2026-08-13.
+              background: active ? 'var(--ochre-deep)' : 'transparent',
+              color: active ? 'var(--paper)' : 'var(--paper-faint)',
               fontWeight: active ? 600 : 400,
             }}
           >
