@@ -69,6 +69,29 @@ export default function DemoTour() {
           Demo environment with fictional sample data — nothing here is a real secret, and nothing
           you do on this page writes anywhere.
         </p>
+        {/*
+          🔴 THE TOUR ADVERTISED SOMETHING THE TERMS DISCLAIM. Four of the eight
+          sample items route to an `estate` trigger, and `estate` is excluded
+          from USER_SELECTABLE_TRIGGER_TYPES pending `g2-counsel-opinion` while
+          /terms says in as many words that "Estate and inheritance functionality
+          is not offered."
+
+          This is the SAME contradiction that was closed in /rules — which used
+          to render its dropdown from the unfiltered list and so offered a
+          permanent capability the product disclaimed. The dropdown was fixed and
+          the tour was not, so the funnel page kept selling it.
+
+          Said plainly rather than by removing the estate items: the sequence is
+          real, it is what the product will do once counsel clears it, and a
+          prospect is better served by an honest "not yet" than by a demo quietly
+          edited to match a temporary limit. ⏸️ Retargeting those items instead
+          is the alternative, and it is a commercial call rather than a technical
+          one.
+        */}
+        <p className="mt-2 text-t1 text-muted">
+          The estate handover shown below is <strong>not yet available to customers</strong> — it is
+          held behind a written legal opinion, and today Relay offers the reversible triggers only.
+        </p>
       </section>
 
       {/* 1 — Vault */}
