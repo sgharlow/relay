@@ -42,8 +42,8 @@
 <b>production</b> (relaystandby.com) during the walkthrough, not from a local build or a mock.</p>
 
 <div class="meta">
-  <div><b>Build</b> <code>master</code> @ <code>a4c5a4f</code></div>
-  <div><b>Suite</b> 1475 passed / 1 skipped across 146 files · typecheck, lint and build clean</div>
+  <div><b>Build</b> <code>master</code> @ <code>e4d9396</code></div>
+  <div><b>Suite</b> 1543 passed / 1 skipped across 152 files · typecheck, lint and build clean</div>
   <div><b>Environment</b> Production — Vercel, Aurora DSQL (us-east-1 / us-west-2), AWS KMS</div>
   <div><b>Method</b> One purpose-built circle, walked <b>end to end in sequence</b> rather than
     screen by screen: an owner with a name set, a verified partner who can sign in, an aunt marked
@@ -88,6 +88,10 @@
     <tr><td>UC-28</td><td>Bring a password manager export in</td><td>Owner</td><td class="pass">Pass</td></tr>
     <tr><td>UC-29</td><td>Be shown where to start</td><td>New owner</td><td class="pass">Pass</td></tr>
     <tr><td>UC-30</td><td>Be stopped before firing a release by mistake</td><td>Owner</td><td class="pass">Pass</td></tr>
+    <tr><td>UC-31</td><td><b>Check it is really them</b> &mdash; the verification call</td><td>Both</td><td class="pass">Pass</td></tr>
+    <tr><td>UC-32</td><td>Review what a helper has done on your behalf</td><td>Owner</td><td class="pass">Pass</td></tr>
+    <tr><td>UC-33</td><td>Know how many ways back in you have left</td><td>Owner</td><td class="pass">Pass</td></tr>
+    <tr><td>UC-34</td><td>Meet a page that is missing, or one that broke</td><td>Anyone</td><td class="pass">Pass</td></tr>
   </tbody>
 </table>
 
@@ -454,9 +458,69 @@
   <div class="row"><span class="k">Actor</span><span>Owner</span></div>
   <div class="row"><span class="k">Goal</span><span>Not start an emergency with one stray click on a button labelled with a word that does not say what it does.</span></div>
   <div class="row"><span class="k">Expected</span><span>The <b>consequence</b> stated, not &ldquo;are you sure&rdquo;. Reversible and irreversible triggers get different sentences and different weights; the irreversible one asks the trigger type to be <b>typed</b>, matching what closing an account already demands.</span></div>
-  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> &ldquo;Everyone you named to confirm an emergency will be asked whether this is real… You can stop it at any point by checking in.&rdquo; Backing out left the trigger ARMED and changed nothing. ⏸️ <b>This is a precondition on <code>g2-counsel-opinion</code>, not an improvement</b> — today every selectable trigger is reversible, and the day <code>estate</code> becomes selectable that click is permanent.</span></div>
+  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> &ldquo;Everyone you named to confirm an emergency will be asked whether this is real… You can stop it at any point by checking in.&rdquo; Backing out left the trigger ARMED and changed nothing. ⏸️ <b>This is a precondition on <code>g2-counsel-opinion</code>, not an improvement</b> — today every selectable trigger is reversible, and the day <code>estate</code> becomes selectable that click is permanent. Since the grace ruling of the same day the estate branch also states the <b>three-day window</b> that follows: with no way to reverse a completed handover, that window is the only chance anyone gets to stop it.</span></div>
 </div>
 <figure><img src="screens/uc35-owner-initiate-confirm.png" alt="Initiate confirmation"><figcaption>UC-30 — the confirmation.</figcaption></figure>
+</section>
+
+<!-- UC-31 -->
+<section class="uc">
+<h2>UC-31 &mdash; Check it is really them</h2>
+<div class="card">
+  <div class="row"><span class="k">Actor</span><span>Owner and contact, together, on the phone</span></div>
+  <div class="row"><span class="k">Goal</span><span>Establish that the person who accepted the invitation is the person who was meant to.</span></div>
+  <div class="row"><span class="k">Expected</span><span>Four words derived from the binding, shown to <b>both</b> sides. The owner reads theirs aloud; the contact confirms theirs match. A mismatch means somebody else opened the invitation, and both screens say what to do about it.</span></div>
+  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Both screens read <code>granite forest mitten granite</code>. The owner pressed &ldquo;The words matched&rdquo;, the person flipped to verified, and readiness moved from <i>&ldquo;your plan cannot run yet&rdquo;</i> to executable.</span></div>
+</div>
+
+<div class="note">
+  <b>This is the most consequential use case in the product, and until 2026-08-12 it could not be
+  performed at all.</b> The owner&rsquo;s screen has always said &ldquo;They see the same four words
+  on their own screen&rdquo; &mdash; and nothing showed them to the contact. The owner was being
+  asked to make a <i>comparison the other side could not take part in</i>, and a person asked
+  &ldquo;do these match?&rdquo; while holding nothing says yes. Everything downstream rests on it:
+  since &sect;4.3, only a <b>confirmed</b> person&rsquo;s answer counts towards opening anything.
+</div>
+
+<figure><img src="screens/verify-call-owner.png" alt="The owner side"><figcaption>UC-31 &mdash; the owner&rsquo;s side: call them and read this out.</figcaption></figure>
+<figure class="phone"><img src="screens/verify-call-contact.png" alt="The contact side"><figcaption>UC-31 &mdash; the contact&rsquo;s side, which did not exist before, including what to do when the words do <b>not</b> match.</figcaption></figure>
+</section>
+
+<!-- UC-32 -->
+<section class="uc">
+<h2>UC-32 &mdash; Review what a helper has done on your behalf</h2>
+<div class="card">
+  <div class="row"><span class="k">Actor</span><span>Owner</span></div>
+  <div class="row"><span class="k">Goal</span><span>Know what somebody with setup rights actually did, without reading a raw log.</span></div>
+  <div class="row"><span class="k">Expected</span><span>J3-R8. Plain language, derived from the audit chain rather than a second log that could drift from it, and placed beside the control that removes them &mdash; the evidence belongs next to the decision it informs.</span></div>
+  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> A helper added an item and suggested a person; the owner saw &ldquo;Added something to your vault&rdquo; and &ldquo;Suggested somebody who would step in&rdquo;. In the record itself the actor now reads <b>&ldquo;Jordan Rivera (helping you)&rdquo;</b> with the raw id beneath and the chain still intact &mdash; delegates were the one actor type without a name until this pass.</span></div>
+</div>
+<figure><img src="screens/helper-activity.png" alt="Helper activity"><figcaption>UC-32 &mdash; what they did, beside &ldquo;Stop them helping&rdquo;.</figcaption></figure>
+<figure><img src="screens/audit-delegate-named.png" alt="Delegate named in the record"><figcaption>UC-32 &mdash; and in the tamper-evident record, named rather than a UUID.</figcaption></figure>
+</section>
+
+<!-- UC-33 -->
+<section class="uc">
+<h2>UC-33 &mdash; Know how many ways back in you have left</h2>
+<div class="card">
+  <div class="row"><span class="k">Actor</span><span>Owner</span></div>
+  <div class="row"><span class="k">Goal</span><span>Not discover you are out of recovery codes at the moment you need one.</span></div>
+  <div class="row"><span class="k">Expected</span><span>A count, never a code &mdash; they are stored as hashes and readable exactly once, at issue. Coloured by how much room is left, because &ldquo;1 left&rdquo; in the same grey as everything else is a fact nobody acts on.</span></div>
+  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Four issued with one spent read <b>&ldquo;You have 3 left.&rdquo;</b> A <b>silent cliff</b> until this pass: codes are consumed one per use and are the only way back when the authenticator is gone, and the product said nothing as the sheet ran down.</span></div>
+</div>
+<figure><img src="screens/recovery-count.png" alt="Recovery codes"><figcaption>UC-33 &mdash; the account screen.</figcaption></figure>
+</section>
+
+<!-- UC-34 -->
+<section class="uc">
+<h2>UC-34 &mdash; Meet a page that is missing, or one that broke</h2>
+<div class="card">
+  <div class="row"><span class="k">Actor</span><span>Anyone &mdash; most likely a contact who mistyped an address read to them over the phone</span></div>
+  <div class="row"><span class="k">Goal</span><span>Not be told, in a stack-shaped default page, that something is wrong with them.</span></div>
+  <div class="row"><span class="k">Expected</span><span>Written for the <b>contact</b>, not the owner: one of the two readers may be in a hospital corridor. Leads with the fear &mdash; nothing lost, nothing opened &mdash; and names the three places somebody was probably trying to reach rather than offering a dashboard they do not have.</span></div>
+  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> The 404 serves the product&rsquo;s voice; Next&rsquo;s bare default is gone. A failure also <b>reports itself</b>: the digest, the path and the mode reach the operator, and the error message never does &mdash; it could carry vault content. Live-proved on production, including that a query string is stripped before it can copy a live ticket into an email.</span></div>
+</div>
+<figure><img src="screens/not-found.png" alt="Not found"><figcaption>UC-34 &mdash; an address that does not exist.</figcaption></figure>
 </section>
 
 <!-- Not evidenced -->
