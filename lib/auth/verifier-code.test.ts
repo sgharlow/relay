@@ -114,7 +114,11 @@ describe('issuing', () => {
 
 describe('redemption', () => {
   it('returns the identity behind a valid code', async () => {
-    mockQuery.mockResolvedValueOnce(qResult([liveRow()])).mockResolvedValueOnce(qResult([]));
+    // rowCount 1 = one row AFFECTED. Redemption is a compare-and-swap on
+    // `redeemed_at IS NULL`; 0 would mean another caller won the race.
+    mockQuery
+      .mockResolvedValueOnce(qResult([liveRow()]))
+      .mockResolvedValueOnce({ rows: [], rowCount: 1 } as never);
     await expect(redeemVerifierCode('7K4M-P2XW')).resolves.toEqual({
       verifierId: 'v-1',
       releaseStateId: 'rs-1',
@@ -123,7 +127,9 @@ describe('redemption', () => {
   });
 
   it('marks the code redeemed so it cannot be replayed', async () => {
-    mockQuery.mockResolvedValueOnce(qResult([liveRow()])).mockResolvedValueOnce(qResult([]));
+    mockQuery
+      .mockResolvedValueOnce(qResult([liveRow()]))
+      .mockResolvedValueOnce({ rows: [], rowCount: 1 } as never);
     await redeemVerifierCode('7K4M-P2XW');
     expect(String(mockQuery.mock.calls[1][0])).toContain('redeemed_at = now()');
   });

@@ -148,7 +148,28 @@ export async function redeemRecipientCode(
     throw new RecipientCodeError('Access has been closed.', 'closed');
   }
 
-  await query(`UPDATE recipient_codes SET redeemed_at = now() WHERE id = $1`, [row.id]);
+  /*
+    🔴 THIS WAS `WHERE id = $1` ALONE UNTIL 2026-08-13, and so were the other
+    four redemption paths. The checks above run against a snapshot; under DSQL's
+    snapshot isolation two requests can each read the same unredeemed row, both
+    pass every guard, and both stamp it — so a single-use code was redeemable
+    more than once, and "single use" was a claim the database was not making.
+
+    The compare-and-swap makes the DATABASE decide who won: exactly one UPDATE
+    can match `redeemed_at IS NULL`, and the loser sees rowCount 0. This is the
+    same form lib/people/fingerprint.ts already used and fingerprint.test.ts
+    already asserted — the pattern was in the repo, just not on the paths that
+    hand out access.
+  */
+  const claimed = await query(
+    `UPDATE recipient_codes SET redeemed_at = now()
+      WHERE id = $1 AND redeemed_at IS NULL`,
+    [row.id],
+  );
+  if (claimed.rowCount === 0) {
+    // Somebody else redeemed it between the SELECT above and this write.
+    throw new RecipientCodeError('This code has already been used.', 'used');
+  }
 
   return {
     recipientId: row.recipient_id,

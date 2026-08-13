@@ -125,7 +125,19 @@ export async function redeemRecoveryCode(email: string, code: string): Promise<s
   const row = r.rows[0];
   if (!row) throw new RecoveryCodeError(generic);
 
-  await query(`UPDATE recovery_codes SET used_at = now() WHERE id = $1`, [row.id]);
+  /*
+    Compare-and-swap — see lib/auth/recipient-code.ts. The SELECT above already
+    filters on `used_at IS NULL`, but that is a snapshot read: two concurrent
+    redemptions of one recovery code could both pass it. This code is the last
+    way into an account whose authenticator is gone, so "spent exactly once" has
+    to be the database's answer rather than the reader's.
+  */
+  const spent = await query(
+    `UPDATE recovery_codes SET used_at = now()
+      WHERE id = $1 AND used_at IS NULL`,
+    [row.id],
+  );
+  if (spent.rowCount === 0) throw new RecoveryCodeError(generic);
 
   /*
     Warn while there is still time to act, ratified 2026-08-13. Spending a code

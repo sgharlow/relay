@@ -97,7 +97,10 @@ describe('redemption', () => {
   it('returns the user id and consumes the code', async () => {
     mockQuery
       .mockResolvedValueOnce(qResult([{ id: 'rc-1', user_id: 'u-1' }]))
-      .mockResolvedValueOnce(qResult([]));
+      // rowCount 1 = one row AFFECTED. The spend is a compare-and-swap on
+      // `used_at IS NULL`, so 0 here would mean another caller won the race —
+      // see lib/auth/single-use-atomicity.test.ts.
+      .mockResolvedValueOnce({ rows: [], rowCount: 1 } as never);
 
     await expect(redeemRecoveryCode('a@b.com', '4KMPQ-7XR2W')).resolves.toBe('u-1');
     expect(String(mockQuery.mock.calls[1][0])).toContain('used_at = now()');

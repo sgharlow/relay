@@ -43,8 +43,26 @@ const INVITE = {
   failed_attempts: 0,
 };
 
-function rows(...batches: unknown[][]) {
-  for (const b of batches) mockQuery.mockResolvedValueOnce({ rows: b, rowCount: b.length } as never);
+/**
+ * Queue query() results in order.
+ *
+ * An array is a SELECT: those rows, and rowCount is how many came back. A
+ * NUMBER is a write: no rows, and rowCount is how many were AFFECTED.
+ *
+ * ⚠️ THE DISTINCTION IS NEW AND IT MATTERS. This helper used to derive rowCount
+ * from the array length, so an UPDATE was written as `[]` — which reads as
+ * "zero rows affected". That was harmless while the stamp was unconditional and
+ * nothing looked at the result. Now that `claimed_at IS NULL` makes the write a
+ * compare-and-swap, rowCount 0 is exactly how the code learns it LOST a race, so
+ * a mock that says `[]` for a successful claim is asserting the opposite of what
+ * it means.
+ */
+function rows(...batches: (unknown[] | number)[]) {
+  for (const b of batches) {
+    mockQuery.mockResolvedValueOnce(
+      (typeof b === 'number' ? { rows: [], rowCount: b } : { rows: b, rowCount: b.length }) as never,
+    );
+  }
 }
 
 beforeEach(() => {
@@ -56,7 +74,7 @@ describe('claimStandbyRole — binding an identity to a roster row', () => {
   it('creates a user for a first-time claimer and links it to the roster row', async () => {
     rows(
       [INVITE], // find invitation
-      [], // mark claimed
+      1, // mark claimed — one row AFFECTED, i.e. this caller won the CAS
       [{ email: 'sister@example.com' }], // roster row email
       [], // link claimed_user_id + standby_state
     );
@@ -80,7 +98,7 @@ describe('claimStandbyRole — binding an identity to a roster row', () => {
   it('LINKS an already-signed-in user instead of minting a second account', async () => {
     rows(
       [INVITE],
-      [],
+      1, // mark claimed — won the CAS
       [], // link — no user lookup or upsert should happen at all
     );
 
@@ -96,7 +114,7 @@ describe('claimStandbyRole — binding an identity to a roster row', () => {
   it('writes the roster row for a verifier too, not only a recipient', async () => {
     rows(
       [{ ...INVITE, person_type: 'verifier', person_id: 'ver-1' }],
-      [],
+      1, // mark claimed — won the CAS
       [{ email: 'uncle@example.com' }],
       [],
     );
@@ -107,7 +125,7 @@ describe('claimStandbyRole — binding an identity to a roster row', () => {
   });
 
   it('records the claim in the audit log against the OWNER, whose circle changed', async () => {
-    rows([INVITE], [], [{ email: 'sister@example.com' }], []);
+    rows([INVITE], 1, [{ email: 'sister@example.com' }], []);
 
     await claimStandbyRole({ token: 'ABCDE-FGHIJ' });
 
@@ -148,7 +166,7 @@ describe('re-claiming invalidates a confirmation made about someone else', () =>
     // Risk 8. A re-claim binds a different claimed_user_id, which changes the
     // derived phrase — an earlier confirmation was an assertion about a
     // DIFFERENT human holding this slot and must not silently stand.
-    rows([INVITE], [], [{ email: 'sister@example.com' }], []);
+    rows([INVITE], 1, [{ email: 'sister@example.com' }], []);
 
     await claimStandbyRole({ token: 'ABCDE-FGHIJ' });
 

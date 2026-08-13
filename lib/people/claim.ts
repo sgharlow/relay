@@ -92,7 +92,29 @@ export async function claimStandbyRole(params: {
   // the code is still spent. Deliberate — a code that survives a partial claim
   // is a code that can be replayed, and a stuck claim is recoverable by the
   // owner reissuing, which is a conversation rather than a vulnerability.
-  await query(`UPDATE invitations SET claimed_at = now() WHERE id = $1`, [invite.id]);
+  //
+  /*
+    🔴 AND UNTIL 2026-08-13 IT WAS NOT ACTUALLY SINGLE USE. The stamp was
+    `WHERE id = $1` with no predicate, so the `claimed_at IS NULL` filter in the
+    SELECT above was doing all the work — against a snapshot. Two people typing
+    the same code at once both passed it, both stamped, and both ran the binding
+    below; the slot ended up bound to whichever wrote last while the other held
+    a minted session.
+
+    This is the sharpest instance of the five, because claiming is the moment a
+    roster row stops being a name the owner typed and becomes a human identity.
+    Exactly one caller may win that, and the database is what decides.
+  */
+  const claimed = await query(
+    `UPDATE invitations SET claimed_at = now()
+      WHERE id = $1 AND claimed_at IS NULL`,
+    [invite.id],
+  );
+  if (claimed.rowCount === 0) {
+    // Lost the race. Same refusal as an unknown or expired code — which one it
+    // was is not the caller's business.
+    throw new ValidationError(REFUSAL, 'token');
+  }
 
   const table = invite.person_type === 'verifier' ? 'verifiers' : 'recipients';
 

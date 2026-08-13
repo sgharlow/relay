@@ -159,7 +159,19 @@ export async function redeemVerifierCode(input: string, now: Date = new Date()):
     throw new VerifierCodeError('This code has expired. Ask for a new one.', 'expired');
   }
 
-  await query(`UPDATE verifier_codes SET redeemed_at = now() WHERE id = $1`, [row.id]);
+  /*
+    Compare-and-swap, not a bare stamp — see lib/auth/recipient-code.ts for the
+    reasoning. The checks above read a snapshot; only this predicate makes the
+    database pick a single winner, and the loser sees rowCount 0.
+  */
+  const claimed = await query(
+    `UPDATE verifier_codes SET redeemed_at = now()
+      WHERE id = $1 AND redeemed_at IS NULL`,
+    [row.id],
+  );
+  if (claimed.rowCount === 0) {
+    throw new VerifierCodeError('This code has already been used.', 'used');
+  }
 
   return {
     verifierId: row.verifier_id,

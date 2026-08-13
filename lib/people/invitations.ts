@@ -134,7 +134,19 @@ export async function redeemInvitation(token: string): Promise<{
     throw new ValidationError('That invitation link is not valid or has already been used.', 'token');
   }
 
-  await query(`UPDATE invitations SET claimed_at = now() WHERE id = $1`, [row.id]);
+  /*
+    Compare-and-swap — see lib/people/claim.ts, which carries the full reasoning.
+    The `claimed_at IS NULL` filter in the SELECT above is a snapshot read; only
+    this predicate makes the database pick one winner.
+  */
+  const claimed = await query(
+    `UPDATE invitations SET claimed_at = now()
+      WHERE id = $1 AND claimed_at IS NULL`,
+    [row.id],
+  );
+  if (claimed.rowCount === 0) {
+    throw new ValidationError('That invitation link is not valid or has already been used.', 'token');
+  }
 
   return { ownerId: row.owner_id, personId: row.person_id, personType: row.person_type };
 }
