@@ -221,6 +221,9 @@ confirmed by them on a device. That record is not a formality: it is what makes 
 this help legitimate rather than merely convenient, and it is why &ldquo;in person&rdquo; and
 &ldquo;on paper&rdquo; are offered as equals rather than buried under a link.</p>
 
+<figure><img src="screens/uc15-owner-helper.png" alt="Choosing a helper"><figcaption>What a helper
+can do, and what they can never do, stated before the button rather than after.</figcaption></figure>
+
 </div>
 
 <!-- ================= PART 2 ================= -->
@@ -271,6 +274,10 @@ a vague unease into something you can actually check.</div>
 <p>The top of the screen is the story in sentences: what was raised, who confirmed it, what was
 opened, when it closed, and why. Beneath it is every entry in order, hash-chained so that changing
 any one of them breaks the chain visibly. <b>Verify chain</b> re-computes it in front of you.</p>
+
+<p>It distinguishes two things that are easy to conflate: somebody <i>seeing</i> what was set aside
+for them, and somebody <i>opening</i> it. If your partner signed in and looked at the list without
+revealing anything, the record says exactly that rather than telling you nothing happened.</p>
 
 <figure><img src="screens/uc05-owner-audit.png" alt="The Audit screen"><figcaption>The summary
 answers the questions a person actually has. The table beneath is the proof that the summary is
@@ -361,6 +368,9 @@ that a request was made</b>, whatever the outcome. That is deliberate rather tha
 asked instead &mdash; so it does not depend on you being reachable, which is the entire point. Nobody
 can wear you down with it either: three requests in twenty-four hours is the limit.</p>
 
+<figure class="phone"><img src="screens/uc17-standby-ask.png" alt="Asking"><figcaption>Asking. What
+it costs is said before the form, not discovered afterwards.</figcaption></figure>
+
 <h3>3.4 — The phone call</h3>
 <p class="who">Both of you · two minutes, once</p>
 <p>After you accept, the person who named you calls and asks you to read out a short phrase from
@@ -407,13 +417,20 @@ whether the request is proportionate. They are never shown a title and never sho
 can answer three ways — <b>yes</b>, <b>no</b>, or <b>I don't know</b> — and "no" is offered with
 exactly the same prominence as "yes".</p>
 
-<figure class="phone"><img src="screens/uc10-verify-code-phone.png" alt="The verifier code screen">
-<figcaption>Code entry — the way in for a verified verifier who holds no passkey.</figcaption></figure>
+<figure class="phone"><img src="screens/uc10-verifier-decision.png" alt="The verifier decision screen">
+<figcaption>The question itself. It names whose vault it is, says why it is being asked now, shows
+how much is at stake and never what — and offers all three answers at the same weight, because a
+page that leans on &ldquo;yes&rdquo; produces more of them.</figcaption></figure>
 
-<h3>4.3 — The grace window</h3>
-<p>Once enough verifiers agree, the trigger enters <b>GRACE</b>. You are told, on every channel
-Relay has for you. If you are fine, checking in now stops everything. This window exists because the
-most likely emergency is a misunderstanding.</p>
+<h3>4.3 — You are told, immediately</h3>
+<p>The moment enough people agree, you are told on every channel Relay has for you — and the access
+you arranged opens. <b>There is no waiting period, and the product no longer implies one.</b></p>
+
+<div class="note"><b>What protects you is not a delay — it is that you can undo it.</b> An earlier
+version of this message said release would complete &ldquo;when the grace window elapses&rdquo; and
+invited you to &ldquo;check in now to cancel&rdquo;, which was a race you would lose: the window is
+zero. Checking in at any point afterwards closes everything reversible immediately. That is the real
+guarantee, and it does not depend on you being awake at the right moment.</div>
 
 <h3>4.4 — Access opens</h3>
 <p class="who">Your recipients · their screen</p>
@@ -445,6 +462,10 @@ puts the trigger back to armed and ready. This is the control you want almost ev
 <p><b>Cancel permanently</b> retires the trigger for good. It is deliberately separated and asks for
 confirmation, because someone stopping a false alarm at speed must not retire their whole plan by
 reaching for the innocuous-looking word on the screen.</p>
+
+<figure><img src="screens/uc19-owner-trigger-pending.png" alt="A release in flight"><figcaption>A
+release in flight. Both ways to stop it are here, and they are deliberately not equal in
+weight.</figcaption></figure>
 
 <h3>5.2 — Someone lost their phone</h3>
 <p class="who">Your person · the Emergency code screen</p>
