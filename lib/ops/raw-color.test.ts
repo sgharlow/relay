@@ -44,7 +44,11 @@ const CEILING: Record<string, number> = {
   'src/app/(access)/standby/AskControl.tsx': 14,
   'src/app/(access)/break-glass/BreakGlassClient.tsx': 10,
   'src/app/(access)/standby/StandbyPasskeyCard.tsx': 10,
-  'src/app/error.tsx': 9,
+  // 9 → 6 on 2026-08-13. Adding the /help link would have made it 11; the
+  // literals are now named once in a local palette instead. The inline styles
+  // stay — this boundary renders because something already failed and must not
+  // depend on the token pipeline — but each value is spelled out exactly once.
+  'src/app/error.tsx': 6,
   'src/app/(access)/standby/LeaveControl.tsx': 7,
   'src/app/global-error.tsx': 5,
   'src/app/not-found.tsx': 5,

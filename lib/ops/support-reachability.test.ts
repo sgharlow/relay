@@ -155,4 +155,43 @@ describe('support is reachable from every contact-facing mode', () => {
         'fine and does not match this.',
     ).toEqual([]);
   });
+
+  /*
+    🔴 THE ERROR BOUNDARY POINTED AT A CHANNEL SOME READERS DO NOT HAVE. It was
+    written 2026-08-12 and told everyone to "reply to any message Relay has sent
+    you". /help and the public address shipped the next day and it was never
+    updated — so an owner who broke something part-way through setting up, having
+    received no message, was handed the one route they could not take.
+
+    This screen matters more than most: it renders precisely when the reader has
+    lost the navigation they would otherwise use, so whatever it names IS their
+    only option. The layout footer cannot cover it — an error boundary replaces
+    the tree the layout was rendering.
+  */
+  it('the error boundary names a support path a reader can actually take', () => {
+    const src = readFileSync('src/app/error.tsx', 'utf8');
+    expect(
+      /href="\/help"/.test(src),
+      'src/app/error.tsx must link to /help. It renders when the reader has lost ' +
+        'their normal navigation, so it cannot assume they hold an email to reply to.',
+    ).toBe(true);
+    expect(
+      src,
+      'and it must name the address too, for a reader whose browser cannot reach /help',
+    ).toContain('CONTACT_EMAIL');
+  });
+
+  /*
+    One definition of the address, not two. lib/contact.ts is it — an address
+    spelled out on a screen is one that keeps the old value after a move.
+  */
+  it('does not hardcode the support address on the screens that show it', () => {
+    for (const f of ['src/app/error.tsx', 'src/app/global-error.tsx']) {
+      const src = readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ');
+      expect(
+        /[\w.+-]+@relaystandby\.com/.test(src),
+        `${f} spells out a support address instead of importing CONTACT_EMAIL`,
+      ).toBe(false);
+    }
+  });
 });

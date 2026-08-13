@@ -25,6 +25,29 @@
  */
 
 import { useEffect } from 'react';
+import { CONTACT_EMAIL } from '../../lib/contact';
+
+/**
+ * The palette, named once.
+ *
+ * INLINE LITERALS ARE DELIBERATE ON THIS SCREEN — it renders because something
+ * already failed, so it must not depend on the stylesheet or the token pipeline
+ * that may be part of what broke. What was NOT deliberate was spelling the same
+ * hex out nine times: lib/ops/raw-color.test.ts ratchets these down precisely so
+ * they cannot quietly multiply, and adding a support link would have pushed the
+ * count up. Naming them keeps the independence and drops the count instead.
+ *
+ * Values match the light-mode tokens in globals.css. They are duplicated here on
+ * purpose and that duplication is the price of a boundary that cannot fail.
+ */
+const C = {
+  paper: '#f6f3ee',
+  paperRaised: '#fffdf9',
+  ink: '#211d18',
+  muted: '#6b6257',
+  rule: '#cfc7ba',
+  faint: '#8a8177',
+} as const;
 
 export default function ErrorBoundary({
   error,
@@ -59,8 +82,8 @@ export default function ErrorBoundary({
     <main
       style={{
         minHeight: '100vh',
-        background: '#f6f3ee',
-        color: '#211d18',
+        background: C.paper,
+        color: C.ink,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -77,7 +100,7 @@ export default function ErrorBoundary({
           failing to load, not anything changing.
         </p>
 
-        <p style={{ fontSize: 17, lineHeight: 1.6, marginTop: 12, color: '#6b6257' }}>
+        <p style={{ fontSize: 17, lineHeight: 1.6, marginTop: 12, color: C.muted }}>
           If you were part-way through something, it either finished or it did not happen at all —
           it cannot have half-happened.
         </p>
@@ -91,8 +114,8 @@ export default function ErrorBoundary({
               padding: '0 22px',
               fontSize: 17,
               fontWeight: 600,
-              color: '#fffdf9',
-              background: '#211d18',
+              color: C.paperRaised,
+              background: C.ink,
               border: 'none',
               borderRadius: 8,
               cursor: 'pointer',
@@ -108,8 +131,8 @@ export default function ErrorBoundary({
               alignItems: 'center',
               padding: '0 22px',
               fontSize: 17,
-              color: '#211d18',
-              border: '1px solid #cfc7ba',
+              color: C.ink,
+              border: `1px solid ${C.rule}`,
               borderRadius: 8,
               textDecoration: 'none',
             }}
@@ -118,13 +141,33 @@ export default function ErrorBoundary({
           </a>
         </div>
 
-        <p style={{ fontSize: 15, lineHeight: 1.6, marginTop: 20, color: '#6b6257' }}>
-          We have been told this happened. If it keeps happening and somebody is waiting on you,
-          reply to any message Relay has sent you — a person reads that.
+        {/*
+          🔴 THIS USED TO SAY "reply to any message Relay has sent you" AND
+          NOTHING ELSE. Written 2026-08-12; /help and the public address shipped
+          on the 13th and this was never updated. An owner who breaks something
+          part-way through setting up has received no message to reply to, so
+          the only route to a human was one they did not have.
+
+          The reply-to line stays, second, because it genuinely is the fastest
+          path for a contact mid-emergency who has a notice open in front of
+          them. A plain <a> rather than a router link: this boundary renders
+          because something already failed, and it must not depend on the thing
+          that broke.
+        */}
+        <p style={{ fontSize: 15, lineHeight: 1.6, marginTop: 20, color: C.muted }}>
+          We have been told this happened. If it keeps happening and somebody is waiting on you,{' '}
+          <a href="/help" style={{ color: C.ink }}>
+            ask us for help
+          </a>{' '}
+          or write to{' '}
+          <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: C.ink }}>
+            {CONTACT_EMAIL}
+          </a>
+          . If Relay has sent you a message, replying to it reaches the same people.
         </p>
 
         {error.digest ? (
-          <p style={{ fontSize: 14, marginTop: 12, color: '#8a8177', fontFamily: 'ui-monospace, monospace' }}>
+          <p style={{ fontSize: 14, marginTop: 12, color: C.faint, fontFamily: 'ui-monospace, monospace' }}>
             Reference {error.digest}
           </p>
         ) : null}

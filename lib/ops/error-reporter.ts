@@ -105,11 +105,30 @@ export async function reportServerError(err: unknown, context: ErrorContext = {}
       /* a broken stderr must not escalate */
     }
 
-    // Falls back to the reply-to inbox, exactly as lead notification does. A
-    // monitor that needs a new environment variable before it works is a
-    // monitor that is silently off until somebody remembers to set it — and
-    // this one is meant to be the thing that notices silence.
-    const to = (process.env.OPS_ALERT_ADDRESS ?? process.env.RESEND_REPLY_TO_ADDRESS)?.trim();
+    /*
+      Falls back to the reply-to inbox, exactly as lead notification does. A
+      monitor that needs a new environment variable before it works is a monitor
+      that is silently off until somebody remembers to set it — and this one is
+      meant to be the thing that notices silence.
+
+      🔴 OPS_ALERT_EMAIL IS READ TOO, added 2026-08-13. Production had a variable
+      called OPS_ALERT_EMAIL, set deliberately, doing absolutely nothing —
+      because the code has only ever read OPS_ALERT_ADDRESS. The fallback above
+      is what hid it: alerts still arrived, at the reply-to inbox, so nothing
+      looked broken and the setting somebody made was simply ignored.
+
+      That is the fallback's own failure mode, and it is worth stating plainly:
+      a default that always works is a default that makes a misconfiguration
+      invisible. Both names are accepted rather than renaming the variable in
+      Vercel, because accepting a name costs nothing and cannot break, whereas
+      renaming a live variable can — and the .env.example test now pins both so
+      the next person meets one documented answer.
+    */
+    const to = (
+      process.env.OPS_ALERT_ADDRESS ??
+      process.env.OPS_ALERT_EMAIL ??
+      process.env.RESEND_REPLY_TO_ADDRESS
+    )?.trim();
     // Local and preview environments must not try to mail anyone.
     if (!to) return;
 
