@@ -47,7 +47,7 @@ jobs:
           # 50 rather than 0: the step asks for fifty, and fetching the whole
           # history to satisfy a fifty-commit question is a cost with no answer
           # attached to it.
-          fetch-depth: 50
+          fetch-depth: 1
 
       - uses: actions/setup-node@v4
         with:
