@@ -23,19 +23,32 @@ import {
   ValidationError,
 } from '../../../../../../lib/vault/vault-items';
 import { writeAuditEntry } from '../../../../../../lib/audit/audit-service';
+import { recordDeliberateActivity } from '../../../../../../lib/release/liveness';
 
 const FORBIDDEN = { error: 'Forbidden', message: 'Not authorized for this item' };
 
 type Ctx = { params: Promise<{ id: string }> };
 
-/** Resolve owner session + assert ownership. Returns ownerId or a response to send. */
-async function authorize(id: string): Promise<{ ownerId: string } | NextResponse> {
+/**
+ * Resolve owner session + assert ownership. Returns ownerId or a response to send.
+ *
+ * `method` records passive liveness ([A4]) on the write verbs. Editing a rotated
+ * password or deleting a closed account is a person, present, keeping their plan
+ * current — and it counted for nothing until 2026-08-13. Reads are excluded by
+ * `recordDeliberateActivity` itself: a phone left logged in in a hospital drawer
+ * polls for days, and letting that suppress the switch is the failure mode.
+ */
+async function authorize(
+  id: string,
+  method?: string,
+): Promise<{ ownerId: string } | NextResponse> {
   let ownerId: string;
   try {
     ({ ownerId } = await getOwnerSession());
   } catch (res) {
     return res as NextResponse;
   }
+  if (method) await recordDeliberateActivity({ userId: ownerId, method });
   try {
     await assertOwns(ownerId, 'vault_items', id);
   } catch (err) {
@@ -58,7 +71,7 @@ export async function GET(_req: NextRequest, { params }: Ctx): Promise<NextRespo
 }
 
 export async function PUT(req: NextRequest, { params }: Ctx): Promise<NextResponse> {
-  const auth = await authorize((await params).id);
+  const auth = await authorize((await params).id, req.method);
   if (auth instanceof NextResponse) return auth;
 
   let body: unknown;
@@ -94,8 +107,8 @@ export async function PUT(req: NextRequest, { params }: Ctx): Promise<NextRespon
   return NextResponse.json(updated);
 }
 
-export async function DELETE(_req: NextRequest, { params }: Ctx): Promise<NextResponse> {
-  const auth = await authorize((await params).id);
+export async function DELETE(req: NextRequest, { params }: Ctx): Promise<NextResponse> {
+  const auth = await authorize((await params).id, req.method);
   if (auth instanceof NextResponse) return auth;
 
   await deleteItem(auth.ownerId, (await params).id);

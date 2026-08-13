@@ -23,7 +23,9 @@ import { assertBatchWithinItemCap, EntitlementError } from '../../../../lib/bill
 const MAX_BATCH = 1000;
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const auth = await requireOwner();
+  // `req` so this counts as a check-in ([A4]). Filling a vault is the most
+  // deliberate act in the product and it recorded nothing until 2026-08-13.
+  const auth = await requireOwner(req);
   if (isResponse(auth)) return auth;
 
   const body = await readJson(req);

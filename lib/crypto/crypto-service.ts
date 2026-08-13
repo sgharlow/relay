@@ -261,4 +261,36 @@ export class CryptoService {
     }
     return (await saveRes.json()) as { id: string };
   }
+
+  /**
+   * Replace an existing item's secret — the rotated password, the corrected typo.
+   *
+   * 🔴 THERE WAS NO WAY TO DO THIS, added 2026-08-13. `PUT /api/vault/items/[id]`
+   * existed, was validated, audited and unit-tested, and no code in the product
+   * called it: the vault list rendered items as plain rows with no controls, and
+   * nothing anywhere reached the update route. A vault that can only be added to
+   * is a vault that drifts out of true, silently, over exactly the multi-year
+   * horizon this product is sold on — and the manual warns in §2.1 that the worst
+   * outcome is not failing but "appearing to work for four years".
+   *
+   * A FRESH DATA KEY, not the old one re-used. `encryptForUpload` mints a new
+   * wrapped key per call, so an update rotates the item's key as a side effect of
+   * how it already works. Reusing the old key to save a KMS round-trip would mean
+   * a leaked key stayed valid across every future edit.
+   */
+  async updateItemSecret(
+    itemId: string,
+    plaintext: string,
+    metadata: VaultItemMetadata,
+  ): Promise<void> {
+    const payload = await this.encryptForUpload(plaintext, metadata);
+    const res = await this.fetchImpl(`/api/vault/items/${encodeURIComponent(itemId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      throw new CryptoError(`Vault update failed (${res.status})`);
+    }
+  }
 }

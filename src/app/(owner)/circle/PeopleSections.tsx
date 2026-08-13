@@ -208,33 +208,143 @@ function SectionHeading({ children, hint }: { children: React.ReactNode; hint: s
   );
 }
 
-/** Removal is the one irreversible action here, so it is the one thing in clay. */
-function RemoveButton({ onClick, label }: { onClick: () => void; label: string }) {
+/**
+ * Removal is the one irreversible action here, so it is the one thing in clay —
+ * and, until 2026-08-13, the one thing that did it in a single unguarded click.
+ *
+ * 🔴 WHY THIS NOW ASKS. Removing a person is not "take them off the list": it
+ * cascades to their access POLICIES and RULES (`deleteRecipient`), so one click
+ * could silently delete several grants and change what the plan does on the day
+ * it runs. The product already treats far less consequential things with more
+ * care — "Cancel permanently" is separated and confirmed precisely so that
+ * somebody stopping a false alarm at speed cannot retire their whole plan by
+ * reaching for the innocuous word.
+ *
+ * The adjacency is what makes it urgent rather than merely untidy. The user
+ * manual sends an owner to THIS row during the verification call: "if the words
+ * do not match... the same panel removes them". The mismatch control is
+ * recoverable — the person goes back to not-yet-invited and can be re-invited.
+ * `Remove` beside it is permanent and takes their rules. Two similar-looking
+ * controls, one recoverable and one not, on a screen where the owner is already
+ * primed to click the one that gets rid of somebody.
+ *
+ * The confirmation names the CONSEQUENCE rather than asking "are you sure?",
+ * which is a question nobody reads. `reachCount` comes from the coverage matrix
+ * the page already loads, so this costs no extra request.
+ */
+function RemoveButton({
+  onConfirm,
+  name,
+  reachCount,
+}: {
+  onConfirm: () => void;
+  name: string;
+  reachCount?: number;
+}) {
+  const [armed, setArmed] = useState(false);
+
+  if (!armed) {
+    return (
+      <button
+        onClick={() => setArmed(true)}
+        aria-label={`Remove ${name}`}
+        style={{
+          fontFamily: 'var(--font-ui)',
+          fontSize: 'var(--t1)',
+          color: 'var(--clay)',
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          padding: 'var(--s1) var(--s2)',
+        }}
+      >
+        Remove
+      </button>
+    );
+  }
+
   return (
-    <button
-      onClick={onClick}
-      aria-label={label}
-      style={{
-        fontFamily: 'var(--font-ui)',
-        fontSize: 'var(--t1)',
-        color: 'var(--clay)',
-        background: 'none',
-        border: 'none',
-        cursor: 'pointer',
-        padding: 'var(--s1) var(--s2)',
-      }}
-    >
-      Remove
-    </button>
+    <div style={{ textAlign: 'right', maxWidth: 260 }}>
+      <p style={{ fontSize: 'var(--t1)', color: 'var(--ink)', marginBottom: 'var(--s1)' }}>
+        Remove {name}?{' '}
+        {reachCount
+          ? `The ${reachCount} thing${reachCount === 1 ? '' : 's'} you set aside for them ` +
+            `${reachCount === 1 ? 'goes' : 'go'} too.`
+          : 'Any access you had written for them goes too.'}{' '}
+        This cannot be undone.
+      </p>
+      <div style={{ display: 'flex', gap: 'var(--s2)', justifyContent: 'flex-end' }}>
+        <button
+          onClick={() => {
+            setArmed(false);
+            onConfirm();
+          }}
+          style={{
+            fontFamily: 'var(--font-ui)',
+            fontSize: 'var(--t1)',
+            color: 'var(--clay)',
+            background: 'none',
+            border: '1px solid var(--clay)',
+            borderRadius: 4,
+            cursor: 'pointer',
+            padding: 'var(--s1) var(--s2)',
+          }}
+        >
+          Yes, remove them
+        </button>
+        <button
+          onClick={() => setArmed(false)}
+          style={{
+            fontFamily: 'var(--font-ui)',
+            fontSize: 'var(--t1)',
+            color: 'var(--ink)',
+            background: 'none',
+            border: '1px solid var(--rule-strong)',
+            borderRadius: 4,
+            cursor: 'pointer',
+            padding: 'var(--s1) var(--s2)',
+          }}
+        >
+          Keep them
+        </button>
+      </div>
+    </div>
   );
+}
+
+/**
+ * The other half of the same defect: both removals swallowed their error with
+ * `.catch(() => {})`. A failed DELETE left the person on screen with no
+ * explanation, which reads as "the button does nothing" — and on the one screen
+ * where an owner most needs to believe what they are looking at.
+ */
+function useRemove(path: 'recipients' | 'verifiers', onChange: () => Promise<void>) {
+  const [removeError, setRemoveError] = useState<string | null>(null);
+
+  async function remove(id: string) {
+    setRemoveError(null);
+    try {
+      await apiSend(`/api/${path}/${id}`, 'DELETE');
+    } catch (err) {
+      setRemoveError(
+        `That did not work, and nothing was removed: ${String((err as Error).message)}`,
+      );
+    }
+    await onChange();
+  }
+
+  return { remove, removeError };
 }
 
 export function RecipientSection({
   items,
   onChange,
+  reachByRecipient,
 }: {
   items: Recipient[];
   onChange: () => Promise<void>;
+  /** id → how many items they can reach, from the coverage matrix. */
+  reachByRecipient?: Record<string, number>;
 }) {
   const [form, setForm] = useState({
     name: '',
@@ -261,16 +371,19 @@ export function RecipientSection({
     }
   }
 
-  async function remove(id: string) {
-    await apiSend(`/api/recipients/${id}`, 'DELETE').catch(() => {});
-    await onChange();
-  }
+  const { remove, removeError } = useRemove('recipients', onChange);
 
   return (
     <section>
       <SectionHeading hint="The people who would receive access. Nothing opens for them until a trigger fires and the people you named confirm it is real — and a person you have not verified cannot receive anything.">
         Who would step in
       </SectionHeading>
+
+      {removeError ? (
+        <p role="alert" style={{ fontSize: 'var(--t2)', color: 'var(--clay)', marginBottom: 'var(--s2)' }}>
+          {removeError}
+        </p>
+      ) : null}
 
       <ul style={{ ...card, listStyle: 'none', padding: 0, margin: `0 0 var(--s4)` }}>
         {items.length === 0 ? (
@@ -348,7 +461,11 @@ export function RecipientSection({
                 />
               ) : null}
             </div>
-            <RemoveButton onClick={() => remove(r.id)} label={`Remove ${r.name}`} />
+            <RemoveButton
+              onConfirm={() => remove(r.id)}
+              name={r.name}
+              reachCount={reachByRecipient?.[r.id]}
+            />
           </li>
         ))}
       </ul>
@@ -407,10 +524,7 @@ export function VerifierSection({
     }
   }
 
-  async function remove(id: string) {
-    await apiSend(`/api/verifiers/${id}`, 'DELETE').catch(() => {});
-    await onChange();
-  }
+  const { remove, removeError } = useRemove('verifiers', onChange);
 
   return (
     <section>
@@ -425,6 +539,12 @@ export function VerifierSection({
       <SectionHeading hint="They are asked whether an emergency is real. Their answer only counts once you have checked it is really them. They never see what is inside your vault — only how much, and only when they are asked.">
         Who confirms it is real
       </SectionHeading>
+
+      {removeError ? (
+        <p role="alert" style={{ fontSize: 'var(--t2)', color: 'var(--clay)', marginBottom: 'var(--s2)' }}>
+          {removeError}
+        </p>
+      ) : null}
 
       <ul style={{ ...card, listStyle: 'none', padding: 0, margin: `0 0 var(--s4)` }}>
         {items.length === 0 ? (
@@ -486,7 +606,10 @@ export function VerifierSection({
                 />
               ) : null}
             </div>
-            <RemoveButton onClick={() => remove(v.id)} label={`Remove ${v.name}`} />
+            {/* A verifier holds no items, so there is no count to name — the
+                consequence is to the quorum, which the readiness banner states
+                far better than a sentence beside a button could. */}
+            <RemoveButton onConfirm={() => remove(v.id)} name={v.name} />
           </li>
         ))}
       </ul>

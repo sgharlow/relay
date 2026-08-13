@@ -14,7 +14,8 @@ import { ValidationError } from '../../../../../lib/validation';
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function POST(req: NextRequest, { params }: Ctx): Promise<NextResponse> {
-  const auth = await requireOwner();
+  // Answering a helper's proposal is the owner deciding something — a check-in.
+  const auth = await requireOwner(req);
   if (isResponse(auth)) return auth;
 
   const body = await readJson(req);

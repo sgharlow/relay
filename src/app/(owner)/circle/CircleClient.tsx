@@ -293,7 +293,7 @@ export default function CircleClient() {
         without having to know that "recipients" and "circle" were once
         different pages.
       */}
-      <RecipientSection items={recipients} onChange={load} />
+      <RecipientSection items={recipients} onChange={load} reachByRecipient={coverage.byRecipient} />
       <VerifierSection items={verifiers} onChange={load} />
     </div>
   );

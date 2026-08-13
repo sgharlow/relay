@@ -46,6 +46,7 @@ export default function RulesPage() {
   const [rules, setRules] = useState<Rule[]>([]);
   const [items, setItems] = useState<Named[]>([]);
   const [recipients, setRecipients] = useState<Named[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const [r, i, rec] = await Promise.all([
@@ -59,7 +60,7 @@ export default function RulesPage() {
   }, []);
 
   useEffect(() => {
-    load().catch(() => {});
+    load().catch((err) => setError(`Could not load your rules: ${String((err as Error).message)}`));
   }, [load]);
 
   const itemName = (id: string) => items.find((x) => x.id === id)?.title ?? id.slice(0, 8);
@@ -70,6 +71,11 @@ export default function RulesPage() {
       <header>
         <h1 className="text-t7 font-semibold tracking-tight">Access Rules</h1>
         <p className="text-t2 text-muted">Grant a recipient scoped access to an item under a trigger.</p>
+        {error ? (
+          <p role="alert" className="mt-2 text-t2 text-clay">
+            {error}
+          </p>
+        ) : null}
       </header>
 
       <ul className="divide-y divide-rule rounded border border-rule bg-paper-raised">
@@ -84,7 +90,25 @@ export default function RulesPage() {
                 {rule.trigger_type} · {rule.scope} · {rule.reversible ? 'reversible' : 'irreversible'}
               </div>
             </div>
-            <button onClick={() => apiSend(`/api/rules/${rule.id}`, 'DELETE').then(load).catch(() => {})} className="text-t1 text-clay hover:underline">
+            {/*
+              The error was swallowed with `.catch(() => {})` until 2026-08-13:
+              a failed DELETE left the rule on screen with no explanation, which
+              reads as "the button does nothing". No confirmation here, unlike a
+              PERSON or an ITEM — removing one rule cascades to nothing and the
+              builder below re-adds it in a few seconds.
+            */}
+            <button
+              onClick={async () => {
+                setError(null);
+                try {
+                  await apiSend(`/api/rules/${rule.id}`, 'DELETE');
+                } catch (err) {
+                  setError(`That rule was not removed: ${String((err as Error).message)}`);
+                }
+                await load();
+              }}
+              className="text-t1 text-clay hover:underline"
+            >
               Remove
             </button>
           </li>

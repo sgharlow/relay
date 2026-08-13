@@ -207,8 +207,10 @@ from what it already knows about your items — most people accept the draft and
   <li><b>View</b> means read it. <b>Act</b> means use it — sign in, pay the bill, call the bank.</li>
   <li><b>Reversible</b> means access closes again when you check back in. This is the default and it
     is the whole reason an emergency release is not frightening.</li>
-  <li><b>Release after N days</b> holds a rule back — useful when you want the urgent things open
-    immediately and the rest only if you are still unreachable a week later.</li>
+  <li><b>Release after N days</b> holds a rule back. The urgent things open the moment a release
+    happens; the rest wait, and only open if you are <i>still</i> unreachable that many days later.
+    The person it is for sees the item on their list from the start, marked with the date it opens,
+    so they know something is coming rather than concluding the plan is broken.</li>
 </ul>
 
 <div class="warn"><b>Every rule you can write today is reversible.</b> The four situations you can
@@ -335,14 +337,62 @@ again on a channel you trust.</p>
 of the call. It is two minutes, it is not optional, and it is the only thing that can tell the
 person you meant from somebody who intercepted the invitation.</figcaption></figure>
 
-<h3>2.3 — Checking in</h3>
-<p class="who">You · anywhere</p>
-<p>Signing in and doing something deliberate is a check-in. There is also an explicit <b>I'm fine —
-check in</b> button on the Triggers screen for when you want to be certain. A check-in does three
-things at once: it resets the clock, it reverses a release that is in progress, and it closes access
-that has already opened. One action, all of it.</p>
+<h3>2.3 &mdash; Keeping it current</h3>
+<p class="who">You &middot; the Vault, Rules and People screens</p>
 
-<h3>2.4 — Somebody asks, and you are fine</h3>
+<div class="why"><b>Why this is the part that actually decides whether it works.</b> Setting this up
+takes an hour once. Keeping it true takes a few minutes a year, and it is the difference between a
+plan and a museum: a password rotated in 2027 and never updated here is an item your family will
+open, read, and find does not work &mdash; at the worst possible moment, with no way to tell that
+from a plan that was never any good.</div>
+
+<p><b>Update a value.</b> <b>Update</b> beside an item replaces its secret &mdash; the rotated
+password, the corrected account number &mdash; encrypted in your browser exactly as the first one
+was. Relay cannot show you the old value, because it cannot read it, so this replaces rather than
+edits. Rules can be removed and rewritten. None of it needs anybody&rsquo;s permission and none of it
+is a support request.</p>
+
+<p><b>What removal takes with it.</b> This is the part worth knowing before you click rather than
+after, because it is not obvious:</p>
+
+<ul>
+  <li>Removing an <b>item</b> also deletes every rule pointing at it. Nobody is left with a grant to
+    something that no longer exists.</li>
+  <li>Removing a <b>person</b> also deletes every rule and every draft policy written for them. If
+    they were the only one who could reach your bank, nobody can now &mdash; the banner will say so
+    immediately.</li>
+  <li>Removing somebody is <b>permanent</b>, so the screen asks first and tells you how many things
+    go with them. Re-adding the same person later creates a new place that has to be accepted and
+    verified again from scratch.</li>
+</ul>
+
+<div class="warn"><b>One thing you cannot do yet: rename.</b> An item&rsquo;s title and a
+person&rsquo;s name are fixed once saved. To correct either, remove and re-add &mdash; and for a
+person that means a fresh code, a fresh acceptance and a fresh phone call, so it is worth getting
+names right the first time.</div>
+
+<div class="note"><b>Removing is not the same as somebody stepping down.</b> When <i>you</i> remove
+them, they are gone and their rules go too. When <i>they</i> step down, their place survives, empty
+and red, waiting for you to decide &mdash; see 5.7. The difference exists so that nobody can quietly
+shrink your circle, including you in a hurry.</div>
+
+<h3>2.4 &mdash; Checking in</h3>
+<p class="who">You &middot; anywhere</p>
+<p>Signing in and <i>changing</i> something is a check-in. Adding an item, editing one, writing a
+rule, naming somebody, answering a helper&rsquo;s suggestion, setting your name &mdash; all of it
+resets the clock, so ordinary use keeps things quiet and you are not being asked to remember a
+chore.</p>
+
+<p><b>Reading is not a check-in, and that is deliberate.</b> A phone left signed in on a hospital
+bedside table will load pages for days without anybody touching it. If that counted, the one
+situation this product exists for would be the situation in which it quietly did nothing.</p>
+
+<p>There is also an explicit <b>I&rsquo;m fine &mdash; check in</b> button on the Triggers screen for
+when you want to be certain rather than incidental. A check-in does three things at once: it resets
+the clock, it reverses a release that is in progress, and it closes access that has already opened.
+One action, all of it.</p>
+
+<h3>2.5 &mdash; Somebody asks, and you are fine</h3>
 <p class="who">You · the Challenge screen</p>
 
 <div class="why"><b>Why you are asked first.</b> If a person you named needs something before any
@@ -359,7 +409,7 @@ it is what makes a quiet attempt on your accounts impossible.</p>
 <figure><img src="screens/uc18-owner-challenge.png" alt="Somebody is asking"><figcaption>The
 question, with a countdown and both answers.</figcaption></figure>
 
-<h3>2.5 — Reading what happened</h3>
+<h3>2.6 &mdash; Reading what happened</h3>
 <p class="who">You · the Audit screen</p>
 
 <div class="why"><b>Why this exists.</b> Coming home and finding that people could see your accounts
@@ -378,7 +428,7 @@ revealing anything, the record says exactly that rather than telling you nothing
 answers the questions a person actually has. The table beneath is the proof that the summary is
 not just a nice sentence.</figcaption></figure>
 
-<h3>2.6 — Your account</h3>
+<h3>2.7 &mdash; Your account</h3>
 <p class="who">You · the Account screen</p>
 <p>Five things worth doing once, and one you may never need.</p>
 <ul>
@@ -445,6 +495,18 @@ as counts and categories. Never titles. Never contents.</p>
 
 <p>It also offers to set up a passkey. Worth doing: it is what lets you get back in on a new phone
 without anyone having to reissue anything, and it means there is no code to keep track of.</p>
+
+<p><b>You can stand by for more than one person.</b> Both parents, a parent and a neighbour, a spouse
+who named you and a friend who did too &mdash; each appears as its own card with its own four words,
+its own way to ask, and its own way to step down. They are genuinely separate: stepping down from one
+does not touch the others, and nothing you are told about one person is visible on another&rsquo;s
+card. You can also have a vault of your own on the same account &mdash; being the person somebody
+relies on and having your own plan are not alternatives.</p>
+
+<p><b>If something is set to open later.</b> The person who named you may have staged part of it
+deliberately &mdash; the urgent things immediately, the rest only if they are still unreachable a
+week on. Those appear on your list from the start with the date they open, so a gap on the day is a
+plan working as written rather than something broken.</p>
 
 <figure class="phone"><img src="screens/uc07-standby-dashboard.png" alt="The standby dashboard">
 <figcaption>Standing by. <b>Step down from this</b> is always available — being named is not a trap,

@@ -38,6 +38,19 @@ import { POST as regenerate } from './recovery-codes/route';
 
 const mockSession = vi.mocked(getOwnerSession);
 const mockQuery = vi.mocked(query);
+
+/**
+ * The calls this route makes ON PURPOSE, ignoring the liveness stamp.
+ *
+ * `requireOwner(req)` records passive liveness ([A4]) before the handler runs, so
+ * `mock.calls[0]` is now `UPDATE users SET last_active_at` rather than the
+ * display-name write. Asserting by POSITION made these tests depend on how many
+ * unrelated queries happen to precede the interesting one — they broke the day
+ * PATCH started counting as a check-in, and would break again on the next such
+ * change. Filter by what the call IS instead.
+ */
+const displayNameCalls = () =>
+  mockQuery.mock.calls.filter(([sql]) => /display_name/i.test(String(sql)));
 const mockIssue = vi.mocked(issueRecoveryCodes);
 const mockAudit = vi.mocked(writeAuditEntry);
 
@@ -71,7 +84,7 @@ describe('PATCH /api/account — display name', () => {
     const res = await PATCH(req({ displayName: 'Margaret Chen' }));
 
     expect(res.status).toBe(200);
-    const [sql, params] = mockQuery.mock.calls[0];
+    const [sql, params] = displayNameCalls()[0];
     expect(sql).toMatch(/UPDATE users/i);
     // The owner id comes from the session, never from the body — otherwise
     // renaming somebody else's account is a single crafted request away.
@@ -83,14 +96,16 @@ describe('PATCH /api/account — display name', () => {
     const res = await PATCH(req({ displayName: 'x'.repeat(200) }));
 
     expect(res.status).toBe(400);
-    expect(mockQuery).not.toHaveBeenCalled();
+    // Nothing was WRITTEN. A liveness stamp may precede the validation; the
+    // point of this test is that a too-long name never reaches the users row.
+    expect(displayNameCalls()).toHaveLength(0);
   });
 
   it('lets an owner clear the name back to their email', async () => {
     const res = await PATCH(req({ displayName: '' }));
 
     expect(res.status).toBe(200);
-    const [, params] = mockQuery.mock.calls[0];
+    const [, params] = displayNameCalls()[0];
     expect(params).toContain(null);
   });
 });

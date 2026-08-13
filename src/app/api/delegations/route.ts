@@ -137,7 +137,7 @@ export async function GET(): Promise<NextResponse> {
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const auth = await requireOwner();
+  const auth = await requireOwner(req);
   if (isResponse(auth)) return auth;
 
   const body = await readJson(req);
@@ -156,7 +156,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 }
 
 export async function DELETE(req: NextRequest): Promise<NextResponse> {
-  const auth = await requireOwner();
+  const auth = await requireOwner(req);
   if (isResponse(auth)) return auth;
 
   const body = await readJson(req);

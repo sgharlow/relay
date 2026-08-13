@@ -22,7 +22,7 @@ import { MAX_DISPLAY_NAME_LENGTH } from '../../../../lib/auth/signup';
 import { query } from '../../../../lib/db/connection';
 
 export async function DELETE(req: NextRequest): Promise<NextResponse> {
-  const auth = await requireOwner();
+  const auth = await requireOwner(req);
   if (isResponse(auth)) return auth;
 
   const body = await readJson(req);
@@ -55,7 +55,8 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
  * Requirements: J13-R1
  */
 export async function PATCH(req: NextRequest): Promise<NextResponse> {
-  const auth = await requireOwner();
+  // Setting your name or issuing recovery codes is a person, present, deciding.
+  const auth = await requireOwner(req);
   if (isResponse(auth)) return auth;
 
   const body = await readJson(req);

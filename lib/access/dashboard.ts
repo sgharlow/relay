@@ -25,6 +25,7 @@ import { verifyRecipientToken } from '../auth/recipient-token';
 import { decryptDataKey } from '../kms/kms-client';
 import { resolveReleaseForUser } from './session-access';
 import type { ReleaseStateRow } from '../release/state-machine';
+import { isDelayElapsed, opensAt } from '../rules/release-delay';
 
 export class AccessError extends Error {
   constructor(message: string, public readonly httpStatus: number) {
@@ -45,6 +46,12 @@ export interface AccessItem {
   is_root_credential?: boolean;
   importance_score?: number;
   depends_on_item_id?: string | null;
+  /**
+   * ISO date this staged item opens, when it is not open yet. Absent means
+   * available now. Descriptive only — the gate is `authorizeAndDecryptItem`,
+   * which re-derives this rather than trusting anything sent to a client.
+   */
+  opens_at?: string;
 }
 
 export interface AccessDashboard {
@@ -111,10 +118,12 @@ async function fetchScopedItems(
   recipientId: string,
   triggerType: string,
   ownerId: string,
+  releasedAt: string | null = null,
 ): Promise<AccessItem[]> {
   const r = await query<Record<string, unknown>>(
     `SELECT vi.id, vi.title, vi.service_name, vi.url, vi.category, vi.type,
-            vi.is_root_credential, vi.importance_score, vi.depends_on_item_id, ar.scope
+            vi.is_root_credential, vi.importance_score, vi.depends_on_item_id, ar.scope,
+            ar.release_after_days
        FROM vault_items vi
        JOIN access_rules ar ON ar.vault_item_id = vi.id
       WHERE ar.recipient_id = $1 AND ar.trigger_type = $2 AND vi.owner_id = $3`,
@@ -131,6 +140,19 @@ async function fetchScopedItems(
     is_root_credential: Boolean(row.is_root_credential),
     importance_score: Number(row.importance_score),
     depends_on_item_id: (row.depends_on_item_id as string | null) ?? null,
+    /*
+      A staged item is LISTED but marked, rather than hidden. Hiding it would
+      tell the person nothing is coming and invite them to conclude the plan is
+      broken; the count and the category were always visible to them anyway.
+      What stays hidden is the contents, and that is the gate's job.
+    */
+    ...(isDelayElapsed(row.release_after_days as number | null, releasedAt)
+      ? {}
+      : {
+          opens_at:
+            opensAt(row.release_after_days as number | null, releasedAt)?.toISOString() ??
+            undefined,
+        }),
   }));
 }
 
@@ -181,7 +203,7 @@ async function buildDashboard(
   recipientId: string,
   rs: ReleaseStateRow,
 ): Promise<AccessDashboard> {
-  const scoped = await fetchScopedItems(recipientId, rs.trigger_type, rs.owner_id);
+  const scoped = await fetchScopedItems(recipientId, rs.trigger_type, rs.owner_id, rs.released_at);
   const released = rs.state === 'released';
 
   // Page render is always audited (Req 7.7).
@@ -306,13 +328,31 @@ async function decryptForPrincipal(
   }
   if (rs.state !== 'released') return deny('Release is not active');
 
-  const rule = await query<{ id: string }>(
-    `SELECT id FROM access_rules
+  const rule = await query<{ id: string; release_after_days: number | null }>(
+    `SELECT id, release_after_days FROM access_rules
       WHERE recipient_id = $1 AND vault_item_id = $2 AND trigger_type = $3
       LIMIT 1`,
     [payload.recipientId, itemId, rs.trigger_type],
   );
   if (rule.rowCount === 0 || rule.rows.length === 0) return deny('Item not in scope');
+
+  /*
+    🔴 THE STAGED DELAY WAS NOT ENFORCED HERE EITHER, added 2026-08-13. See
+    lib/rules/release-delay.ts — the control was offered, stored and documented,
+    and no gate consulted it.
+
+    The denial message says WHEN rather than just "no": a recipient who was told
+    something would be there needs to know it is coming, not conclude the plan is
+    broken. It reveals nothing they were not already going to be given.
+  */
+  if (!isDelayElapsed(rule.rows[0].release_after_days, rs.released_at)) {
+    const when = opensAt(rule.rows[0].release_after_days, rs.released_at);
+    return deny(
+      when
+        ? `Not open yet — this one was set to open on ${when.toDateString()}.`
+        : 'Not open yet — this one was set to open later.',
+    );
+  }
 
   const item = await query<{ ciphertext: unknown; wrapped_data_key: unknown; kms_key_id: string }>(
     `SELECT ciphertext, wrapped_data_key, kms_key_id

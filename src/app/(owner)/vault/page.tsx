@@ -10,29 +10,34 @@
  * Feature: relay-h0-mvp
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { gatesCount, type DashboardItem } from '../../../../lib/vault/dashboard-view';
 import { rankItems, reasonFor } from '../../../../lib/vault/reason';
 import { buttonPrimary, buttonQuiet, card, errorText, h1, meta, muted } from '../_lib/ui';
+import { ItemControls } from './ItemControls';
 
 export default function VaultDashboardPage() {
   const [items, setItems] = useState<DashboardItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    fetch('/api/vault/items')
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`Failed to load vault (${res.status})`);
-        const data = (await res.json()) as { items: DashboardItem[] };
-        if (active) setItems(data.items);
-      })
-      .catch((e) => active && setError(String(e.message ?? e)));
-    return () => {
-      active = false;
-    };
+  // Extracted so ItemControls can re-read after an update or a removal — the
+  // ranking is derived from the items, so a changed vault has to re-rank rather
+  // than patch a row in place.
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch('/api/vault/items');
+      if (!res.ok) throw new Error(`Failed to load vault (${res.status})`);
+      const data = (await res.json()) as { items: DashboardItem[] };
+      setItems(data.items);
+    } catch (e) {
+      setError(String((e as Error).message ?? e));
+    }
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const ranked = items ? rankItems(items) : [];
 
@@ -112,6 +117,17 @@ export default function VaultDashboardPage() {
                       {item.url ? ` · ${item.url}` : ''}
                     </div>
                   )}
+                  {/*
+                    🔴 THE ROW HAD NO CONTROLS AT ALL until 2026-08-13, so a
+                    saved item could never be corrected or removed — see
+                    ItemControls. Kept quiet and inline rather than given a
+                    detail page: the common act is replacing one value on a
+                    rotated password, and a whole screen for that invites the
+                    owner to hunt for it.
+                  */}
+                  <div style={{ marginTop: 'var(--s1)' }}>
+                    <ItemControls item={item} onChanged={load} />
+                  </div>
                 </div>
               </li>
             );

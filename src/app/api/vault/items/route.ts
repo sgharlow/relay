@@ -25,6 +25,7 @@ import { coverNewItem } from '../../../../../lib/rules/policy-materialize';
 import { resolveActor, requireScope } from '../../../../../lib/http/delegate-route';
 import { listItemsIEntered } from '../../../../../lib/people/delegate-workspace';
 import { IntegrityError } from '../../../../../lib/db/integrity';
+import { recordDeliberateActivity } from '../../../../../lib/release/liveness';
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   /**
@@ -72,6 +73,26 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (actor instanceof NextResponse) return actor;
 
   const ownerId = actor.ownerId;
+
+  /*
+    Adding to your own vault is a check-in ([A4]) — and it recorded nothing until
+    2026-08-13, while the manual said "any deliberate action in the product
+    counts". An owner who filled their vault every week and never opened the
+    People screen would still be swept into a PENDING release and have their
+    verifiers emailed to ask whether they were dead.
+
+    §3.7 RULE 8 IS THE REASON THIS IS NOT JUST `requireOwner(req)`. A HELPER
+    tidying somebody's vault must not mark that somebody as alive: the scenario
+    the dead-man's-switch exists for is the owner in hospital while a relative
+    keeps things running, and counting the relative's typing would suppress it at
+    exactly the moment it should fire. `actingForOwnerId` makes that structural
+    rather than remembered — the write is discarded when the two differ.
+  */
+  await recordDeliberateActivity({
+    userId: actor.actingUserId,
+    method: req.method,
+    actingForOwnerId: ownerId,
+  });
 
   try {
     requireScope(actor, 'items:create');
