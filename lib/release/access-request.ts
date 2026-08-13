@@ -74,11 +74,37 @@ export const VELOCITY_WINDOW_SECONDS = 86400;
  */
 export const MAX_REASON_CHARS = 500;
 
-const URLISH = /(?:[a-z][a-z0-9+.-]*:\/\/|www\.)\S+/gi;
+/**
+ * 🔴 THIS PATTERN WAS QUADRATIC ON ATTACKER-CONTROLLED TEXT until 2026-08-13.
+ *
+ * The scheme part was `[a-z][a-z0-9+.-]*`, unbounded. On a run of letters with
+ * no `://` after it, the engine consumed the whole run at every start position
+ * and backtracked — O(n²). Measured: 2,000 chars 3ms, 40,000 chars 1,199ms, and
+ * `POST /api/access-requests` puts no size limit on the body. A standby contact
+ * — the exact actor this file already names as the threat — could post a
+ * megabyte of letters and hold a serverless function's CPU until it timed out.
+ *
+ * Bounding the quantifier makes it linear and changes nothing real: the longest
+ * IANA-registered scheme is well under 32 characters, and anything longer was
+ * never a URL this was meant to strip.
+ *
+ * Found by CI, which timed out where a faster laptop did not — the machine that
+ * is slower than yours being the one that tells the truth.
+ */
+const URLISH = /(?:[a-z][a-z0-9+.-]{0,31}:\/\/|www\.)\S+/gi;
+
+/**
+ * Beyond this, no input can affect the 500-character result: whitespace
+ * collapsing only ever shortens, so the surviving prefix is drawn from far less
+ * than this. Belt to the regex's braces — a bound that holds even if some future
+ * pattern here is pathological again.
+ */
+const MAX_SCAN_CHARS = MAX_REASON_CHARS * 16;
 
 export function sanitiseRequestReason(raw: unknown): string | null {
   if (typeof raw !== 'string') return null;
-  const flat = raw.replace(URLISH, '[link removed]').replace(/\s+/g, ' ').trim();
+  const bounded = raw.length > MAX_SCAN_CHARS ? raw.slice(0, MAX_SCAN_CHARS) : raw;
+  const flat = bounded.replace(URLISH, '[link removed]').replace(/\s+/g, ' ').trim();
   return flat ? flat.slice(0, MAX_REASON_CHARS) : null;
 }
 

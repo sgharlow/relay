@@ -133,6 +133,37 @@ describe('sanitiseRequestReason', () => {
     expect(out).toHaveLength(MAX_REASON_CHARS);
   });
 
+  /*
+    🔴 THE COST OF SANITISING WAS QUADRATIC, and this is the test that found it —
+    by TIMING OUT ON CI while passing on a faster laptop. The URL pattern's
+    scheme part was unbounded, so a run of letters with no "://" after it made
+    the engine consume the whole run at every start position: 2,000 chars 3ms,
+    40,000 chars 1,199ms. `POST /api/access-requests` caps no body size, so a
+    standby contact — the actor this sanitiser exists to defend against — could
+    post a megabyte and hold a function's CPU until it timed out.
+
+    The assertion is a WALL-CLOCK BUDGET rather than an exact figure, because the
+    thing that must never come back is the SHAPE. Quadratic blows through a
+    second here; linear finishes in single-digit milliseconds with room to spare
+    on the slowest runner we use.
+  */
+  it('costs the same per character however long the input is', () => {
+    const started = Date.now();
+    sanitiseRequestReason('x'.repeat(1_000_000));
+    const elapsed = Date.now() - started;
+    expect(
+      elapsed,
+      `Sanitising 1,000,000 characters took ${elapsed}ms. That is the quadratic ` +
+        'backtracking in URLISH coming back — check the scheme quantifier is bounded.',
+    ).toBeLessThan(1_000);
+  });
+
+  it('still strips the schemes anybody actually uses', () => {
+    expect(sanitiseRequestReason('see http://evil.com/x now')).toBe('see [link removed] now');
+    expect(sanitiseRequestReason('at https://evil.com now')).toBe('at [link removed] now');
+    expect(sanitiseRequestReason('go to www.evil.com please')).toBe('go to [link removed] please');
+  });
+
   it('treats blank and non-string input as no reason', () => {
     expect(sanitiseRequestReason('   \n\t ')).toBeNull();
     expect(sanitiseRequestReason(undefined)).toBeNull();
