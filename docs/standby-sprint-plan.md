@@ -1506,3 +1506,36 @@ uncalled function, `bumpSessionEpoch`, is a missing convenience rather than a ga
 that matters is enforced at the data layer.
 
 **Nothing is now built and unreachable.**
+
+### The demo shows only what is buyable — 2026-08-12
+
+Retargeted rather than annotated, on Steve's call. `estate` is excluded from
+`USER_SELECTABLE_TRIGGER_TYPES` pending `g2-counsel-opinion` and `/terms` says it is not offered, so
+a tour advertising it was selling a capability the product disclaims.
+
+Now a **caregiver arc**: `Alex (executor)` → `Alex (daughter)`, the letter of instruction is care
+wishes rather than instructions to an executor, and the photo archive moves to her. That is the wedge
+the product is actually sold on, and a trigger a visitor can choose today. The table still shows
+**two recipients under two triggers**, which was the real point of the estate arc — scoped access
+differs by person *and* by condition.
+
+| Item | Goes to | Trigger |
+|---|---|---|
+| Primary email · Password manager · Checking account · Utilities | Sam (spouse) | `emergency` |
+| Health & home insurance · Letter of instruction (care wishes) · Mortgage & deed · Photo archive | Alex (daughter) | `caregiver` |
+
+**The same false offer appeared twice on `/caregivers`** and is fixed there too. `/how-it-works`
+already excluded estate deliberately and says Relay is not a will — which is what made the other two
+stand out.
+
+⚠️ **The first retarget missed one.** Probing the live page afterwards found *"Estate releases, by
+contrast, are permanent by design"* still in the release-timeline **prose** — same offer, different
+shape, surviving because grepping the items did not reach the copy.
+
+**Three guards, because this contradiction has now shipped twice.** `/rules` used to render its
+dropdown from the unfiltered list and offered the same thing; that was fixed and nothing connected
+the fix to the tour. Now: every demo item must use a selectable trigger, the prose must mention no
+unbuyable trigger, and the tour must keep more than one recipient and more than one trigger so a
+future fix cannot quietly flatten what the table exists to demonstrate.
+
+Verified live: no `estate` and no `executor` anywhere on `/demo` or `/caregivers`.
