@@ -64,6 +64,12 @@ export default function NotFound() {
           <a href="/auth/signin" style={link}>
             I have my own vault and want to sign in
           </a>
+          {/* Added 2026-08-13. Somebody who mistyped an address read out over a
+              phone is exactly the person who needs a way to ask, and until the
+              help page existed this list ended in a dead end. */}
+          <a href="/help" style={link}>
+            None of these — I need help
+          </a>
         </div>
 
         <p style={{ fontSize: 15, lineHeight: 1.6, marginTop: 20, color: '#6b6257' }}>

@@ -28,6 +28,10 @@ const LINKS = [
   // page promises deletion; a promise reachable only by emailing us is not
   // really kept.
   { href: '/account', label: 'Account' },
+  // Last, and deliberately quiet — but present on every owner screen. Until
+  // 2026-08-13 a stuck owner had nowhere in the product to go, on a product
+  // that cannot reset their authenticator or decrypt their vault for them.
+  { href: '/help', label: 'Help' },
 ];
 
 export default function SidebarNav() {

@@ -128,6 +128,12 @@ export default function Home() {
             <Link href="/how-it-works" className="inline-flex min-h-[44px] items-center hover:text-muted">
               How it works
             </Link>
+            {/* Help sits FIRST among the utility links, before the legal ones:
+                somebody scanning a footer in difficulty is looking for a way to
+                ask, not for Terms. */}
+            <Link href="/help" className="inline-flex min-h-[44px] items-center hover:text-muted">
+              Help
+            </Link>
             <Link href="/security" className="inline-flex min-h-[44px] items-center hover:text-muted">
               Security
             </Link>

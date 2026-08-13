@@ -25,6 +25,8 @@ import { join } from 'path';
 
 const OWNER_DIR = join(process.cwd(), 'src/app/(owner)');
 const ACCESS_DIR = join(process.cwd(), 'src/app/(access)');
+/** The app root, for pages outside both route groups — /help, /security, /terms. */
+const ROOT_DIR = join(process.cwd(), 'src', 'app');
 
 /**
  * Pages deliberately absent from the sidebar. Each needs a reason, and the
@@ -64,7 +66,16 @@ function ownerPages(): string[] {
  * The guard keeps its teeth: the destination still has to EXIST somewhere.
  */
 function linkablePages(): string[] {
-  return [...pagesIn(OWNER_DIR), ...pagesIn(ACCESS_DIR)];
+  /*
+    Route groups AND the app root. The sidebar may point anywhere a person can
+    actually land, and on 2026-08-13 it gained /help — which lives at the root
+    on purpose, because a standby contact and a lost visitor need it as much as
+    an owner does, and a page inside `(owner)/` is behind an owner session.
+
+    This test failed on that link, which was the guard being narrow rather than
+    the link being wrong: it only knew about the two route groups.
+  */
+  return [...pagesIn(OWNER_DIR), ...pagesIn(ACCESS_DIR), ...pagesIn(ROOT_DIR)];
 }
 
 describe('owner navigation covers the owner app', () => {
