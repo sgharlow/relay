@@ -1310,12 +1310,14 @@ digest, and ignores every field it does not know.
 A probe carrying a password in three plausible field names (`message`, `stack`, `error`) arrived with
 none of them. All three requests returned an identical 204.
 
-⏸️ **`OPS_ALERT_EMAIL` is NOT set in production**, so incidents are recorded and nobody is woken up —
-the documented degrade path, not a fault. One command turns the push signal on:
+✅ **`OPS_ALERT_EMAIL` set to `sgharlow@gmail.com` in production, 2026-08-12.** Incidents are now
+recorded *and* pushed.
 
-```
-vercel env add OPS_ALERT_EMAIL production
-```
+⚠️ **Setting it was not enough on its own.** Vercel injects environment variables at build time, so
+the deployment already serving had been built without it and would have gone on silently taking the
+no-address branch. The variable only took effect on the next build — which is the ordinary shape of
+"configured but not live", and worth remembering the next time a variable is added to fix something
+urgent.
 
 ⚠️ **Honest limit of this proof.** The endpoint is live-proven and the boundary is unit-tested; that
 the boundary *calls* the endpoint on a real crash is verified by reading, not by crashing production
