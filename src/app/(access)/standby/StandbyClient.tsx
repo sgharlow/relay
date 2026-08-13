@@ -36,6 +36,8 @@ interface Grant {
 interface Relationship {
   ownerId: string;
   ownerLabel: string;
+  /** The four words the owner reads out on the verification call (§3.3). */
+  fingerprint: string;
   /** The roster row this person fills — what leaving unbinds. */
   personId: string;
   personType: 'recipient' | 'verifier';
@@ -203,6 +205,51 @@ export default function StandbyClient() {
               ? 'If an emergency is claimed, you will be asked one question: is this real? You will never see anything inside their vault — not now, and not after you answer.'
               : 'If an emergency is confirmed by the people they trust, what they set aside for you opens. Until then it stays sealed, and it closes again when they check back in.'}
           </p>
+
+          {/*
+            🔴 THE OTHER HALF OF THE VERIFICATION CALL, added 2026-08-12. The
+            owner's screen has always said "They see the same four words on
+            their own screen" — and nothing showed them to the contact, so the
+            owner was reading a phrase at somebody who had nothing to compare it
+            with. "Do these match?" answered by a person holding nothing is a
+            yes, which is precisely the rubber stamp the control exists to stop.
+
+            Shown before the state changes, and only while it still matters: once
+            the owner has confirmed, this is history and the card should not keep
+            asking for a call that already happened.
+          */}
+          {rel.state === 'claimed' ? (
+            <div
+              style={{
+                marginTop: 12,
+                padding: 14,
+                borderRadius: 8,
+                background: '#f6f3ee',
+                border: '1px solid #e4ded4',
+              }}
+            >
+              <p style={{ fontSize: 16, lineHeight: 1.6 }}>
+                <strong>{rel.ownerLabel} will call you and read out four words.</strong> These are
+                yours — they should be the same.
+              </p>
+              <p
+                style={{
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                  fontSize: 22,
+                  fontWeight: 600,
+                  margin: '10px 0',
+                  letterSpacing: '0.02em',
+                }}
+              >
+                {rel.fingerprint}
+              </p>
+              <p style={{ fontSize: 15, lineHeight: 1.6, color: '#6b6257' }}>
+                If they do not match, say so and stop — it means somebody else opened the
+                invitation meant for you. Nothing is lost; they can start again on a channel you
+                both trust.
+              </p>
+            </div>
+          ) : null}
 
           {rel.grant && rel.grant.itemCount > 0 ? (
             <p style={{ fontSize: 16, marginTop: 10, color: '#6b6257' }}>

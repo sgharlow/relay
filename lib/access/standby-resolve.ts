@@ -28,6 +28,7 @@ import { escalateLapsedRequestsForOwners } from '../release/escalation';
 import { ReleaseStateMachine } from '../release/state-machine';
 import { readStandbyState, type StandbyState } from '../people/standby-state';
 import { formatOwnerLabel } from '../people/owner-label';
+import { fingerprintFor } from '../people/fingerprint';
 
 export type StandbyPersonType = 'recipient' | 'verifier';
 
@@ -58,6 +59,26 @@ export interface StandbyRelationship {
   personId: string;
   personType: StandbyPersonType;
   state: StandbyState;
+  /**
+   * The four words the owner reads out on the verification call (§3.3).
+   *
+   * 🔴 THE CONTACT COULD NOT SEE THIS UNTIL 2026-08-12, while the owner's screen
+   * told them "They see the same four words on their own screen." That sentence
+   * was false: `fingerprintFor` was imported by `/api/circle` and nothing else,
+   * so the owner was asked to make a COMPARISON the other side could not take
+   * part in. A contact asked "do these match?" with nothing to match against
+   * says yes — which is the rubber stamp this control exists to prevent, on the
+   * one step the whole quorum model rests on, since `confirmed` is what makes an
+   * answer count.
+   *
+   * Safe to show, by the argument `/api/circle` already makes: an attacker who
+   * intercepted the ticket can see their own phrase too. What they cannot do is
+   * be on the end of the owner's phone call.
+   *
+   * Derived through the same pure function, from the same three values, so the
+   * two sides cannot drift.
+   */
+  fingerprint: string;
   /** Recipients only. Counts and categories — never titles (J4-R10). */
   grant?: StandbyView;
   openRelease: OpenRelease | null;
@@ -169,6 +190,13 @@ export async function resolveStandbyFor(params: {
     const rel: StandbyRelationship = {
       ownerId: row.owner_id,
       ownerLabel: formatOwnerLabel(row.owner_display_name, row.owner_email),
+      fingerprint: fingerprintFor({
+        ownerId: row.owner_id,
+        personId: row.person_id,
+        // The session user IS the bound identity — that is how this row was
+        // found. Using it keeps both sides deriving from the same three values.
+        claimedUserId: params.userId,
+      }),
       personId: row.person_id,
       personType: row.person_type,
       state: readStandbyState(row.standby_state),

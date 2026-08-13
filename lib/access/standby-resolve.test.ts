@@ -36,6 +36,7 @@ vi.mock('../release/escalation', () => ({
 import { query } from '../db/connection';
 import { buildStandbyView } from '../people/invitations';
 import { escalateLapsedRequestsForOwners } from '../release/escalation';
+import { fingerprintFor } from '../people/fingerprint';
 import { resolveStandbyFor } from './standby-resolve';
 
 const mockQuery = vi.mocked(query);
@@ -269,5 +270,47 @@ describe('🔴 owner label — found by writing the user manual 2026-08-12', () 
     mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
     await resolveStandbyFor({ userId: 'u-1' });
     expect(String(mockQuery.mock.calls[0][0])).toMatch(/display_name/);
+  });
+});
+
+describe('🔴 the contact side of the verification call — 2026-08-12', () => {
+  function oneRelationship(state = 'claimed') {
+    mockQuery.mockReset();
+    mockQuery
+      .mockResolvedValueOnce({
+        rows: [{
+          person_id: 'p-1',
+          person_type: 'recipient',
+          owner_id: 'o-1',
+          owner_email: 'm@example.com',
+          owner_display_name: 'Margaret Chen',
+          standby_state: state,
+        }],
+      } as never)
+      .mockResolvedValue({ rows: [], rowCount: 0 } as never);
+  }
+
+  it('gives the contact the same four words the owner is told to read out', async () => {
+    // The owner's screen has always said "They see the same four words on their
+    // own screen." Nothing showed them, so the owner was reading a phrase at
+    // somebody holding nothing — and "do these match?" answered by a person with
+    // nothing to compare is a yes. That is the rubber stamp this control exists
+    // to prevent, on the step the whole quorum model rests on.
+    oneRelationship();
+    const res = await resolveStandbyFor({ userId: 'u-1' });
+
+    const expected = fingerprintFor({ ownerId: 'o-1', personId: 'p-1', claimedUserId: 'u-1' });
+    expect(res.relationships[0].fingerprint).toBe(expected);
+    expect(expected.split(/\s+/).length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('derives it from the same three values as the owner side, so they cannot drift', async () => {
+    oneRelationship();
+    const res = await resolveStandbyFor({ userId: 'u-1' });
+
+    // A different binding must produce a different phrase — that is what makes a
+    // re-claim invalidate an old confirmation (Risk 8).
+    const other = fingerprintFor({ ownerId: 'o-1', personId: 'p-1', claimedUserId: 'someone-else' });
+    expect(res.relationships[0].fingerprint).not.toBe(other);
   });
 });
