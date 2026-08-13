@@ -22,19 +22,37 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
   const session = await getOwnerSession().catch(() => null);
   if (!session) redirect('/auth/signin');
 
+  /*
+    Direction comes from a variable, not a class. Below 720px the rail becomes a
+    full-width strip above the content instead of a 240px column beside it — see
+    the media query in globals.css for why. Tailwind's flex-row/flex-col cannot
+    express that here, because the width beside it is an INLINE style and inline
+    wins over any selector.
+  */
   return (
-    <div className="flex min-h-screen" style={{ background: 'var(--paper)', color: 'var(--ink)' }}>
+    <div
+      className="flex min-h-screen"
+      style={{
+        flexDirection: 'var(--shell-dir)' as React.CSSProperties['flexDirection'],
+        background: 'var(--paper)',
+        color: 'var(--ink)',
+      }}
+    >
       <aside
-        className="flex shrink-0 flex-col"
+        className="flex shrink-0"
         style={{
+          flexDirection: 'var(--rail-dir)' as React.CSSProperties['flexDirection'],
+          alignItems: 'var(--rail-align, stretch)' as React.CSSProperties['alignItems'],
           width: 'var(--rail)',
           gap: 'var(--s6)',
-          padding: 'var(--s6) var(--s4)',
+          padding: 'var(--rail-pad)',
           background: 'var(--ink)',
           color: 'var(--paper)',
         }}
       >
-        <div>
+        {/* shrink-0 so the wordmark keeps its size when the rail is a row and
+            the nav beside it is scrolling. */}
+        <div className="shrink-0">
           <div style={{ fontSize: 'var(--t5)', fontWeight: 600, letterSpacing: '-0.01em' }}>Relay</div>
           {/* On the ink sidebar, so --paper-faint rather than --ink-faint. */}
           <div style={{ fontSize: 'var(--t1)', color: 'var(--paper-faint)' }}>Living-continuity vault</div>

@@ -104,8 +104,23 @@ export default function SidebarNav() {
       : []),
   ];
 
+  /*
+    Row with sideways scroll below 720px, column above — driven by the same
+    variables as the shell (globals.css). `minWidth: 0` matters: without it a
+    flex child refuses to shrink below its content, so the row would never
+    scroll, it would just push the rail wide again and undo the whole fix.
+  */
   return (
-    <nav className="flex flex-col gap-0.5" aria-label="Owner navigation">
+    <nav
+      className="flex gap-0.5"
+      aria-label="Owner navigation"
+      style={{
+        flexDirection: 'var(--nav-dir)' as React.CSSProperties['flexDirection'],
+        overflowX: 'var(--nav-overflow)' as React.CSSProperties['overflowX'],
+        minWidth: 0,
+        flex: 1,
+      }}
+    >
       {links.map((link) => {
         const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
         return (
@@ -115,6 +130,9 @@ export default function SidebarNav() {
             aria-current={active ? 'page' : undefined}
             className="transition-colors"
             style={{
+              // Never squash a destination to fit; the row scrolls instead.
+              flexShrink: 0,
+              whiteSpace: 'nowrap',
               borderRadius: 'var(--radius-owner)',
               padding: 'var(--s2) var(--s3)',
               fontSize: 'var(--t2)',

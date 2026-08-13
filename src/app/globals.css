@@ -81,8 +81,16 @@
   --s1: 0.25rem; --s2: 0.5rem; --s3: 0.75rem; --s4: 1rem;
   --s6: 1.5rem;  --s8: 2rem;   --s12: 3rem;   --s16: 4rem;
 
-  /* --- Geometry. The shell owns the measure; pages get no say. ------------ */
+  /* --- Geometry. The shell owns the measure; pages get no say. ------------
+     Declared as variables rather than classes because the shell sets them as
+     INLINE styles, which no selector can override — so the one responsive rule
+     in this product (below) works by redefining these, not by fighting them. */
   --rail: 240px;
+  --rail-pad: var(--s6) var(--s4);
+  --rail-dir: column;   /* how the rail stacks its own contents */
+  --shell-dir: row;     /* rail beside content */
+  --nav-dir: column;
+  --nav-overflow: visible;
   --gutter: 2rem;
   --measure-owner: 1120px;
   --measure-access: 620px;
@@ -97,6 +105,48 @@
   --background: var(--paper);
   --foreground: var(--ink);
 }
+
+/* ===========================================================================
+   The one responsive rule in the product, added 2026-08-13.
+
+   🔴 OWNER MODE WAS UNUSABLE ON A PHONE. The rail is a fixed 240px, so at 375px
+   it took two thirds of the screen and left 299px for everything else: the
+   readiness banner read "If something tomorrow, t...", the import control was
+   clipped, item titles truncated. An automated check missed it, because
+   scrollWidth still equalled innerWidth — the content COLUMN compressed rather
+   than the document overflowing, so nothing looked wrong to a measurement. Only
+   a screenshot showed it.
+
+   ACCESS MODE WAS ALREADY FINE and is untouched: it has no rail, and 327px of a
+   375px viewport is what it was designed for. This is an owner-mode problem,
+   and owner mode is mostly desk work — but two of its jobs are not. Checking in
+   on /triggers and answering a request on /challenge are both time-limited, and
+   a request escalates to the verifiers when the window lapses. Those happen
+   wherever the person happens to be.
+
+   A STACKED HEADER, NOT A DRAWER. A hamburger needs open/close state, focus
+   trapping, an escape key, an overlay, and a fresh accessibility surface to
+   audit. This needs none of it: the rail becomes a full-width strip, the nav
+   scrolls sideways inside it, and every destination stays visible and
+   reachable. "Someone is asking" is first in that row, so the one item with a
+   clock running on it is the one you see without scrolling.
+
+   720px rather than a device width: it is where 240px of rail stops being a
+   reasonable share of the screen, which is a fact about this layout rather than
+   about anybody's handset.
+   =========================================================================== */
+@media (max-width: 720px) {
+  :root {
+    --rail: 100%;
+    --rail-pad: var(--s3) var(--s4);
+    --rail-dir: row;
+    --shell-dir: column;
+    --nav-dir: row;
+    --nav-overflow: auto;
+    --gutter: var(--s4);
+  }
+}
+
 
 /*
  * Deliberately no dark theme.
