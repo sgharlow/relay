@@ -81,12 +81,13 @@ sequenced last so slipping the schedule never endangers the four demo moments.
 - [x] 6. Implement referential integrity layer (`lib/db/integrity.ts`)
   - [x] 6.1 Create `lib/db/integrity.ts` with: `assertOwns(ownerId, table, id)` — verifies row exists and `owner_id` matches; `cascadeDelete(table, parentId, fkColumn)` — collects and deletes dependent rows; `assertNoCrossOwner(ownerId, ...refs)` — batch version of `assertOwns`; all functions use `withOccRetry` and throw typed `IntegrityError`
     - _Requirements: 16.1, 16.2, 16.3_
-  - [ ] 6.2 Write property test for cross-owner authorization isolation (Property 4)
-        <!-- LEFT UNCHECKED ON PURPOSE, 2026-08-13. The BEHAVIOUR is covered — assertNoCrossOwner
-             has conventional unit tests in lib/db/integrity.test.ts — but the deliverable as
-             written is a fast-check PROPERTY test, and no test carries the `Property 4` tag.
-             Ticking it would claim a form of evidence that does not exist. This is the only box
-             in the file where the code did not match the words. -->
+  - [x] 6.2 Write property test for cross-owner authorization isolation (Property 4)
+        <!-- CLOSED 2026-08-13: lib/db/cross-owner-isolation.test.ts, tagged `Property 4`, 2000
+             generated cases. Writing it corrected two assumptions I held about the code — it
+             does NOT scope by owner in the WHERE clause (it fetches by id and compares after),
+             and it DOES distinguish NOT_FOUND from UNAUTHORIZED (the route collapses them into
+             one 403). Both are right as built; the first draft of the test was wrong, which is
+             the argument for having written it. -->
     - **Property 4: Cross-owner authorization isolation — for any two distinct owner IDs A and B, owner A reading/updating/deleting a vault item owned by B must receive an authorization error, never a data row**
     - Use `fc.tuple(fc.uuid(), fc.uuid()).filter(([a,b]) => a !== b)` for owner pairs
     - Run 200 iterations; tag `// Feature: relay-h0-mvp, Property 4`

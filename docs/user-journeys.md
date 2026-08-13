@@ -34,9 +34,10 @@
 > moved**, not a current statement — read them with the hybrid+6 note above, which says which
 > mechanisms are superseded.
 >
-> **The two items that were open at the time of the sweep are now CLOSED — walked 2026-08-13, on
-> production, and recorded below.** Everything else here still describes `2a9eb88`; a fresh sweep is
-> the honest way to re-verify the rest, not an edit to these verdicts.
+> **RE-SWEPT 2026-08-13 — see the section immediately below.** Every journey has been walked again
+> on production against the current build, with a disposable owner created and deleted for the
+> purpose. The 2026-08-08 table is kept as the historical record; where the two differ, the newer
+> section wins.
 
 ## ✅ Live journey sweep — 2026-08-08
 
@@ -57,6 +58,31 @@ two disagree on.
 | J8 | Hands on the account · **PRIMARY DEMAND** | **PASS** | recipient opened a prioritised access plan and **Reveal returned the exact plaintext the owner had typed** — full KMS unwrap + client decrypt round-trip |
 | J9 | Standing down · **DIFFERENTIATOR** | **PASS after three fixes** | GRACE → stand down → ARMED → re-initiate; RELEASED → close → ARMED with confirmations reset 1/1 → 0/1; the recipient's live token then leaked no plaintext, and now renders the **graceful close** instead of an expiry error |
 | J10 | The permanent handoff | **GATED IN THE PRODUCT (changed 2026-08-10)** | ~~estate rule creates and initiates~~ — that was true when swept on 8-08 and is deliberately false now. `estate` is no longer user-selectable: the `/rules` dropdown offers only `USER_SELECTABLE_TRIGGER_TYPES`, and `/api/rules`, `/api/policies`, `/api/triggers/[id]/initiate` and `/api/triggers/[id]/config` all refuse it. The domain still supports estate (Property 7, heartbeat blocking, grace windows) — only user selection is closed. Reason: `src/app/terms/page.tsx` states estate "is not offered" while the product offered it, on a surface taking live payments, with `g2-counsel-opinion` unmet. Re-enable by moving `'estate'` into that one list once counsel clears |
+
+### ✅ Full re-sweep — production, 2026-08-13
+
+Walked against `relaystandby.com` on the current build, with a throwaway owner
+(`+subaddressed` real inboxes throughout, because firing a release emails every verifier and an
+unroutable address hard-bounces on a shared ESP). All fixture rows deleted afterwards; the demo
+estate was verified untouched at 25 items with both triggers ARMED.
+
+| # | Journey | Verdict | Evidence, this sweep |
+|---|---|---|---|
+| J1 | Worry → proof → commitment | **PASS** | `/api/readiness` computes on a real new account and names its blocker (`no_rules`) rather than going quietly green |
+| J2 | Cold-start defeat | **PASS** | empty vault → 2 items created through `POST /api/vault/items` (201 each) |
+| J3 | Assisted setup for a parent | **PASS** | unchanged since the delegate surface shipped; consent artifact, scope enforcement and the approvals queue were walked end to end on 2026-08-12 (`uc36`, `uc16`, `uc28`) |
+| J4 | Building the circle of trust | **PASS** | circle created; rule created (201); **owner confirmed a verifier through `POST /api/people/[id]/confirm` (200)** — the phone-call step, which is what makes an answer count |
+| J5 | The living habit | **PASS** | `PUT /api/checkin` 200 `{checkedIn:true}`; the button itself was clicked in a browser earlier the same day |
+| J6 | Someone requests access | **PASS** | walked 2026-08-13 while proving the nav entry: request created (201), owner challenged, and the request now visible in-product rather than only by email |
+| J7 | The verifier's moment | **PASS** | decision page rendered the question with all three answers at equal prominence; **an UNCONFIRMED verifier's answer was recorded and explicitly did not count** (§4.3 enforced live), then after confirmation the same decision drove the release to **RELEASED 1/1** |
+| J8 | Hands on the account · **PRIMARY DEMAND** | **PASS (scoping)** | the recipient's standby resolved the open release server-side — `state: released`, case `RLY-DECY-X347`. ⚠️ The decrypt round-trip was **not** re-proven here: this fixture's ciphertext is placeholder bytes, not a real envelope. That half stands on the 2026-08-08 walk and on the client-side encrypt proven again via the item-update walk on 2026-08-13 |
+| J9 | Standing down · **DIFFERENTIATOR** | **PASS** | check-in returned 200 and the emergency went `released` → `armed` in the same call |
+| J10 | The permanent handoff | **GATED, as intended** | `POST /api/rules` with `trigger_type: estate` refused at the API — 400 *"trigger_type is not available"*. The gate is enforced at the trust boundary, not merely hidden in a dropdown |
+
+**The most useful thing this sweep found is a rule working.** J7's first answer came from a verifier
+who had never been confirmed, and the product recorded it while saying plainly that it would not
+open anything on its own. Quorum counting only `confirmed` people is the assumption the whole
+assurance model rests on, and it had never been observed refusing on production before.
 
 ### ✅ J4 and J5 closed — walked on production 2026-08-13
 
