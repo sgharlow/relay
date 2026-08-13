@@ -26,12 +26,18 @@
   .row .k { min-width: 74pt; color: #6b6257; flex-shrink: 0; }
   ol, ul { margin: 4pt 0 4pt 16pt; padding: 0; }
   li { margin-bottom: 2pt; }
-  figure { margin: 8pt 0 0; page-break-inside: avoid; }
-  figure img { width: 100%; border: 1px solid #cfc7ba; border-radius: 4px; }
-  figcaption { font-size: 8.5pt; color: #6b6257; margin-top: 4pt; }
+  figure { margin: 8pt 0 0; page-break-inside: avoid; text-align: center; }
+  /* max-height, not width:100%. A screenshot taller than the printable area is
+     CLIPPED by Chromium's paged layout, not scaled — the bottom is simply not
+     painted and nothing says so. Eleven figures here were losing their lower
+     half that way. Constraining both axes lets whichever binds first do so, so a
+     tall capture goes narrow instead of going missing. */
+  figure img { max-width: 100%; max-height: 238mm; width: auto; height: auto;
+    border: 1px solid #cfc7ba; border-radius: 4px; }
+  figcaption { font-size: 8.5pt; color: #6b6257; margin-top: 4pt; text-align: left; }
   .pass { color: #2e7d32; font-weight: 600; }
   .note { background: #fdf6ea; border: 1px solid #e8d9b8; border-radius: 6px; padding: 8pt 10pt; font-size: 9.5pt; margin: 8pt 0; }
-  .phone img { width: 58%; }
+  .phone img { max-width: 58%; }
   code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 9pt; background: #f6f3ee; padding: 1pt 3pt; border-radius: 3px; }
 </style>
 </head>
@@ -209,7 +215,7 @@
   <div class="row"><span class="k">Expected</span><span>The owner is asked first. Everyone else named is told a request was made, whatever the outcome (J6-R9) — and that is stated <i>before</i> the form, not discovered after. Capped at three in twenty-four hours.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Request created against production and reached the owner. Free text is capped, flattened to one line, and any link is removed before it is emailed.</span></div>
 </div>
-<figure class="phone"><img src="screens/uc17-standby-ask.png" alt="Ask"><figcaption>UC-09 — the deterrent is stated up front, not afterwards.</figcaption></figure>
+<figure><img src="screens/uc17-standby-ask-2col.png" alt="Ask"><figcaption>UC-09 — one tall screen as two columns, left then right. The deterrent is stated up front, not afterwards.</figcaption></figure>
 </section>
 
 <!-- UC-10 -->
@@ -401,7 +407,7 @@
   <div class="row"><span class="k">Expected</span><span>Encrypted in the helper&rsquo;s browser exactly as an owner&rsquo;s is. <b>Sealed on save</b> — a helper cannot read back even their own entry (J3-R4). The boundary is stated above the tools, not discovered by trying.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Item saved to another person&rsquo;s vault with delegate provenance recorded and the audit entry attributed to <code>delegate:&lt;id&gt;</code>. Probed from the helper&rsquo;s own session: their list returns <b>only their entry</b> — the owner&rsquo;s private item is absent — carries no ciphertext, and a vault with no delegation returns <b>403</b>.</span></div>
 </div>
-<figure class="phone"><img src="screens/uc29-helper-added.png" alt="Helper workspace"><figcaption>UC-25 — the workspace, after an entry was saved and sealed.</figcaption></figure>
+<figure><img src="screens/uc29-helper-added-2col.png" alt="Helper workspace"><figcaption>UC-25 — the workspace, after an entry was saved and sealed.</figcaption></figure>
 </section>
 
 <!-- UC-26 -->
@@ -413,7 +419,7 @@
   <div class="row"><span class="k">Expected</span><span>Everything that decides who can reach what stops and waits for the owner (J3-R6). A helper proposing <b>themselves</b> is offered plainly and labelled on the way past, because hiding it would only mean somebody typing their own name in the field above and nobody noticing.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Proposal queued against the helped vault, shown back as &ldquo;waiting for Margaret Chen&rdquo;, and nothing changed in the circle until she answered.</span></div>
 </div>
-<figure class="phone"><img src="screens/uc30-helper-proposed.png" alt="Proposal"><figcaption>UC-26 — a suggestion, not a change.</figcaption></figure>
+<figure><img src="screens/uc30-helper-proposed-2col.png" alt="Proposal"><figcaption>UC-26 — a suggestion, not a change.</figcaption></figure>
 </section>
 
 <!-- UC-27 -->

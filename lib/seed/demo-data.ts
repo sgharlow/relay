@@ -17,6 +17,8 @@
  * Requirements: 11.1, 7.4
  */
 
+import type { UserSelectableTriggerType } from '../domain/enums';
+
 export type VaultCategory =
   | 'finance'
   | 'communication'
@@ -69,8 +71,8 @@ export interface SeedVerifier {
   /**
    * Issue them an emergency code as part of the seed.
    *
-   * Not decoration: with both verifiers confirmed and the estate trigger needing
-   * both, the quorum has no slack, so [A3] correctly raised `fragile_quorum` —
+   * Not decoration: with both verifiers confirmed and the second trigger
+   * needing both, the quorum has no slack, so [A3] correctly raised `fragile_quorum` —
    * the plan rested on two people who had no way back in if they lost a phone.
    * A demo should show a plan that is actually resilient, and giving verifiers a
    * code is exactly what the product asks a diligent owner to do.
@@ -81,13 +83,15 @@ export interface SeedVerifier {
 export interface SeedRule {
   vaultItemKey: string;
   recipientKey: string;
-  trigger_type: 'emergency' | 'travel' | 'caregiver' | 'business' | 'estate';
+  /** Selectable triggers only — see the retarget note beside `attorney` below. */
+  trigger_type: UserSelectableTriggerType;
   scope: 'view' | 'act';
   reversible: boolean;
 }
 
 export interface SeedReleaseState {
-  trigger_type: 'emergency' | 'travel' | 'caregiver' | 'business' | 'estate';
+  /** Selectable triggers only — see the retarget note beside `attorney` below. */
+  trigger_type: UserSelectableTriggerType;
   required_confirmations: number;
 }
 
@@ -179,7 +183,7 @@ export function buildDemoData(): DemoData {
     fatal readiness banner, on the account used to show people the product.
 
     The mix is chosen, not uniform. Both verifiers are confirmed because the
-    estate trigger needs two, and one recipient is left CLAIMED so the circle
+    second trigger needs two, and one recipient is left CLAIMED so the circle
     shows an amber light next to the green ones: the demo then displays both the
     working end state and the control that gets you there, which an all-green
     circle would hide.
@@ -189,7 +193,20 @@ export function buildDemoData(): DemoData {
     // set DEMO_RECIPIENT_EMAIL to your real inbox before reseeding to capture the
     // on-camera access-link delivery (see demo-out/RECORDING-PLAN.md).
     { key: 'spouse', name: 'Jordan Rivera', relationship: 'Spouse', email: process.env.DEMO_RECIPIENT_EMAIL ?? 'jordan@example.com', phone: '+15551112222', role: 'partner', standby: 'confirmed' },
-    { key: 'attorney', name: 'Pat Morgan', relationship: 'Estate attorney', email: 'pat@example.com', phone: '+15553334444', role: 'executor', standby: 'claimed' },
+    /*
+      🔴 RETARGETED OFF ESTATE 2026-08-12, for the same reason the public tour
+      was: `estate` is excluded from USER_SELECTABLE_TRIGGER_TYPES pending
+      `g2-counsel-opinion`, and /terms says "Estate and inheritance
+      functionality is not offered."
+
+      This seed is not only the demo account — it is the account every
+      screenshot in docs/user-manual.html and docs/use-cases.html is taken
+      from. Leaving an Estate trigger here put a figure captioned with a
+      capability the surrounding text says is unavailable, which is a worse
+      contradiction than the one already fixed in /rules and /demo because a
+      screenshot looks like evidence.
+    */
+    { key: 'attorney', name: 'Pat Morgan', relationship: 'Sister', email: 'pat@example.com', phone: '+15553334444', role: 'caregiver', standby: 'claimed' },
   ];
 
   const verifiers: SeedVerifier[] = [
@@ -211,13 +228,15 @@ export function buildDemoData(): DemoData {
     { vaultItemKey: 'onepassword', recipientKey: 'spouse', trigger_type: 'emergency', scope: 'view', reversible: true },
     { vaultItemKey: 'chase', recipientKey: 'spouse', trigger_type: 'emergency', scope: 'view', reversible: true },
     { vaultItemKey: 'coinbase', recipientKey: 'spouse', trigger_type: 'emergency', scope: 'view', reversible: true },
-    // Permanent estate handoff to the executor (irreversible).
-    { vaultItemKey: 'passport', recipientKey: 'attorney', trigger_type: 'estate', scope: 'view', reversible: false },
+    // A second, differently-scoped condition: the person handling day-to-day
+    // care reaches the identity document, and only under that trigger. Still
+    // reversible, because everything the product currently offers is.
+    { vaultItemKey: 'passport', recipientKey: 'attorney', trigger_type: 'caregiver', scope: 'view', reversible: true },
   ];
 
   const releaseStates: SeedReleaseState[] = [
     { trigger_type: 'emergency', required_confirmations: 1 },
-    { trigger_type: 'estate', required_confirmations: 2 },
+    { trigger_type: 'caregiver', required_confirmations: 2 },
   ];
 
   return {

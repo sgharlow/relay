@@ -26,10 +26,17 @@
   th { background: #f6f3ee; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.04em; color: #6b6257; }
   ol, ul { margin: 5pt 0 5pt 17pt; padding: 0; }
   li { margin-bottom: 3pt; }
-  figure { margin: 10pt 0 0; page-break-inside: avoid; }
-  figure img { width: 100%; border: 1px solid #cfc7ba; border-radius: 4px; }
-  figcaption { font-size: 8.5pt; color: #6b6257; margin-top: 4pt; }
-  .phone img { width: 58%; }
+  figure { margin: 10pt 0 0; page-break-inside: avoid; text-align: center; }
+  /* max-height, not width:100%. A screenshot taller than the printable area is
+     CLIPPED by Chromium's paged layout, not scaled — the bottom simply is not
+     painted and nothing says so. Seven figures were losing their lower half that
+     way, including the standby dashboard and the verifier decision. Constraining
+     both axes lets whichever binds first do so, so a tall capture goes narrow
+     instead of going missing. */
+  figure img { max-width: 100%; max-height: 238mm; width: auto; height: auto;
+    border: 1px solid #cfc7ba; border-radius: 4px; }
+  figcaption { font-size: 8.5pt; color: #6b6257; margin-top: 4pt; text-align: left; }
+  .phone img { max-width: 58%; }
   .note { background: #fdf6ea; border: 1px solid #e8d9b8; border-radius: 6px; padding: 9pt 11pt; font-size: 9.5pt; margin: 10pt 0; }
   .warn { background: #fbeceb; border: 1px solid #e8c4c0; border-radius: 6px; padding: 9pt 11pt; font-size: 9.5pt; margin: 10pt 0; }
   .never { background: #f2f4f2; border: 1px solid #cfd8cf; border-radius: 6px; padding: 9pt 11pt; font-size: 9.5pt; margin: 10pt 0; }
@@ -78,7 +85,7 @@ email.</p>
 
 <h3>What is in this guide</h3>
 <table class="toc">
-  <tr><td><b>Part 1</b></td><td>Setting it up — the four things you do once</td></tr>
+  <tr><td><b>Part 1</b></td><td>Setting it up — the things you do once</td></tr>
   <tr><td><b>Part 2</b></td><td>Living with it — the part that lasts for years</td></tr>
   <tr><td><b>Part 3</b></td><td>For the people you name — what they see and what is asked of them</td></tr>
   <tr><td><b>Part 4</b></td><td>The day it matters — how a release actually runs</td></tr>
@@ -90,8 +97,26 @@ email.</p>
 <div class="part">
 <p class="part-label">Part 1</p>
 <h2>Setting it up</h2>
-<p class="sub">Four things, done once. Most people finish in under an hour, and the order matters
-more than the speed.</p>
+<p class="sub">Done once, in this order. Most people finish in under an hour, and the order matters
+more than the speed — each step assumes the one before it.</p>
+
+<h3>1.0 — Getting in, and the one thing to keep</h3>
+<p class="who">You · once, at the start</p>
+
+<div class="why"><b>Why there is no password.</b> A password is a thing you can be persuaded to
+type into a convincing page. Relay uses an authenticator app instead, so there is nothing an
+imitation of us could ask you for that would work.</div>
+
+<p>Two steps and no password. Set <b>your name</b> while you are there &mdash; it is how you appear
+to everybody you name, and the signup page shows you what they would otherwise see.</p>
+
+<p><b>Keep the recovery codes.</b> They are shown once, they are the only way back if you lose the
+phone with your authenticator on it, and nobody &mdash; including us &mdash; can reissue them for
+you afterwards.</p>
+
+<figure><img src="screens/uc25-signup.png" alt="Creating a vault"><figcaption>Creating a vault. The
+name field shows the consequence of leaving it blank, at the one moment it can still be
+avoided.</figcaption></figure>
 
 <h3>1.1 — Put in what actually matters</h3>
 <p class="who">You · the Vault screen</p>
@@ -108,8 +133,14 @@ because losing the recovery path means losing everything downstream.</p>
 <ul>
   <li>Items are ordered by what would be hardest to live without, not by when you added them.</li>
   <li>The line under each item tells you <i>why</i> it is ranked where it is.</li>
-  <li><b>Import CSV</b> takes an export from a password manager if you would rather start from one.</li>
+  <li><b>Import CSV</b> takes an export from a password manager, which is how most people should
+    start &mdash; it is parsed and encrypted in your browser, and you see exactly what is about to
+    be added before anything is written.</li>
 </ul>
+
+<figure><img src="screens/uc33-owner-import.png" alt="Importing"><figcaption>The preview shows the
+service, the address and the username &mdash; and <b>no passwords</b>. It is the one screen where
+somebody looking over your shoulder would otherwise see the whole file at once.</figcaption></figure>
 
 <p>The banner across the top is the single most useful thing on the screen. It answers one question
 — <i>if something happened tomorrow, would this work?</i> — and it is honest about the answer.</p>
@@ -172,9 +203,11 @@ from what it already knows about your items — most people accept the draft and
     immediately and the rest only if you are still unreachable a week later.</li>
 </ul>
 
-<div class="warn"><b>Estate rules are permanent and Relay will not let you pretend otherwise.</b>
-The reversible option is disabled for them, because a handover that can be taken back is not a
-handover. Everything else can be undone by checking in.</div>
+<div class="warn"><b>Every rule you can write today is reversible.</b> The four situations you can
+choose between &mdash; an emergency, a trip, a caregiving arrangement, something at work &mdash; all
+close again when you check back in. The permanent handover is built, and it is deliberately not
+offered while it waits on a written legal opinion; when it does arrive it will not let you mark it
+reversible, because a handover that can be taken back is not a handover.</div>
 
 <figure><img src="screens/uc03-owner-rules.png" alt="The Rules screen"><figcaption>Existing rules
 read as sentences. The trigger a rule is written for is created the moment you write the rule —
@@ -192,12 +225,18 @@ which is why an unused trigger never appears and can never fire.</figcaption></f
   <li><b>Check-in interval.</b> How long Relay waits before it starts asking whether you are all
     right. Thirty days suits most people. Any deliberate action in the product counts as checking
     in, so ordinary use keeps it quiet — you are not being asked to remember a chore.</li>
-  <li><b>Required confirmations.</b> How many of your verifiers must agree before anything opens.
-    One is enough for a small circle. Two is meaningfully harder to fake and is worth it if you have
-    three or more verified people.</li>
-  <li><b>Initiate</b> fires that trigger yourself, now — the "I know I am about to be unreachable"
-    button. It still requires your verifiers to confirm. It does not skip anyone.</li>
+  <li><b>People who must agree first.</b> How many of your verifiers have to say yes before
+    anything opens. One is enough for a small circle. Two is meaningfully harder to fake and is
+    worth it once you have three or more verified people.</li>
+  <li><b>Start this now</b> fires that trigger yourself &mdash; the &ldquo;I know I am about to be
+    unreachable&rdquo; button. It still needs your verifiers to confirm; it does not skip anyone.
+    It asks you to confirm first, and tells you exactly what is about to happen rather than asking
+    whether you are sure.</li>
 </ul>
+
+<figure><img src="screens/uc35-owner-initiate-confirm.png" alt="Starting a release"><figcaption>
+Starting one deliberately. It names the consequence, and says plainly that checking in stops
+it &mdash; because &ldquo;are you sure?&rdquo; is a question nobody reads.</figcaption></figure>
 
 <figure><img src="screens/uc04-owner-triggers.png" alt="The Triggers screen"><figcaption>A trigger
 sits <b>ARMED</b> and does nothing until either you initiate it or you stop checking in. Armed is
@@ -225,6 +264,13 @@ this help legitimate rather than merely convenient, and it is why &ldquo;in pers
 <i>people</i> arrives in your <b>Approvals</b> queue as a question, including &mdash; especially
 &mdash; if they suggest themselves. Approving runs it through exactly the checks it would face if
 you had typed it yourself.</p>
+
+<p>You can also see <b>what they have actually done</b> &mdash; each thing they added, each person
+they suggested &mdash; on the same screen as the button that stops them helping. Everything they do
+is also in your record, under their name.</p>
+
+<figure><img src="screens/helper-activity.png" alt="What a helper has done"><figcaption>The evidence
+sits beside the decision it informs.</figcaption></figure>
 
 <figure><img src="screens/uc15-owner-helper.png" alt="Choosing a helper"><figcaption>What a helper
 can do, and what they can never do, stated before the button rather than after.</figcaption></figure>
@@ -262,14 +308,46 @@ everything imperfect about your setup.</p>
   </tbody>
 </table>
 
-<h3>2.2 — Checking in</h3>
+<h3>2.2 — Making the call that makes it work</h3>
+<p class="who">You · two minutes per person, once</p>
+
+<p>Naming somebody is half of it. When they accept, four words appear on your screen and the same
+four on theirs. Ring them, <b>read yours out</b>, and ask whether theirs match. If they do, mark
+them verified &mdash; and only from that moment does their answer count towards opening anything.</p>
+
+<p>If the words do <b>not</b> match, stop. It means somebody else opened the invitation you sent.
+The same panel removes them, cancels the code, and puts them back to not-yet-invited so you can try
+again on a channel you trust.</p>
+
+<figure><img src="screens/verify-call-owner.png" alt="The verification call"><figcaption>Your side
+of the call. It is two minutes, it is not optional, and it is the only thing that can tell the
+person you meant from somebody who intercepted the invitation.</figcaption></figure>
+
+<h3>2.3 — Checking in</h3>
 <p class="who">You · anywhere</p>
 <p>Signing in and doing something deliberate is a check-in. There is also an explicit <b>I'm fine —
 check in</b> button on the Triggers screen for when you want to be certain. A check-in does three
 things at once: it resets the clock, it reverses a release that is in progress, and it closes access
 that has already opened. One action, all of it.</p>
 
-<h3>2.3 — Reading what happened</h3>
+<h3>2.4 — Somebody asks, and you are fine</h3>
+<p class="who">You · the Challenge screen</p>
+
+<div class="why"><b>Why you are asked first.</b> If a person you named needs something before any
+trigger has fired, the polite version of that is a question to you &mdash; not a mechanism that
+routes around you.</div>
+
+<p>You see who asked, in their own words, and how long you have to answer. Say you are fine and
+nothing opens. If you cannot answer in time, the people you chose to confirm an emergency are asked
+instead &mdash; which is the point: it does not depend on you being reachable.</p>
+
+<p>Everyone else you named is told a request was made, whatever you decide. That is deliberate, and
+it is what makes a quiet attempt on your accounts impossible.</p>
+
+<figure><img src="screens/uc18-owner-challenge.png" alt="Somebody is asking"><figcaption>The
+question, with a countdown and both answers.</figcaption></figure>
+
+<h3>2.5 — Reading what happened</h3>
 <p class="who">You · the Audit screen</p>
 
 <div class="why"><b>Why this exists.</b> Coming home and finding that people could see your accounts
@@ -288,7 +366,7 @@ revealing anything, the record says exactly that rather than telling you nothing
 answers the questions a person actually has. The table beneath is the proof that the summary is
 not just a nice sentence.</figcaption></figure>
 
-<h3>2.4 — Your account</h3>
+<h3>2.6 — Your account</h3>
 <p class="who">You · the Account screen</p>
 <p>Five things worth doing once, and one you may never need.</p>
 <ul>
@@ -297,8 +375,10 @@ not just a nice sentence.</figcaption></figure>
     your family to wonder whether the message is real.</li>
   <li><b>Passkey.</b> Your face, fingerprint or device PIN. Nothing to remember and nothing anyone
     can email you that a stranger could imitate.</li>
-  <li><b>Recovery codes.</b> Relay has no password. If you lose the phone with your authenticator on
-    it, these are the only way back. Get them now, while you still can.</li>
+  <li><b>Recovery codes.</b> Relay has no password. If you lose the phone with your authenticator
+    on it, these are the only way back. The page tells you <b>how many you have left</b> &mdash;
+    they are used up one per use, and running out quietly is the failure worth avoiding. Issue a
+    fresh list any time; doing so stops the old one working.</li>
   <li><b>Export everything.</b> A readable file of every item, decrypted in your browser. Your data
     is yours and leaving is not punished.</li>
   <li><b>Subscription.</b> Cancel any time. Nothing in your vault is deleted when a subscription
@@ -307,8 +387,10 @@ not just a nice sentence.</figcaption></figure>
     loses access immediately, and this cannot be undone.</li>
 </ul>
 
-<figure><img src="screens/uc06-owner-account.png" alt="The Account screen"><figcaption>Leaving is a
-first-class path, not a support ticket. Export first, then close.</figcaption></figure>
+<figure><img src="screens/recovery-count.png" alt="The Account screen"><figcaption>Leaving is a
+first-class path, not a support ticket &mdash; export first, then close. The recovery line changes
+colour as the sheet runs down, because &ldquo;1 left&rdquo; in the same grey as everything else is a
+fact nobody acts on.</figcaption></figure>
 
 </div>
 
@@ -373,8 +455,8 @@ that a request was made</b>, whatever the outcome. That is deliberate rather tha
 asked instead &mdash; so it does not depend on you being reachable, which is the entire point. Nobody
 can wear you down with it either: three requests in twenty-four hours is the limit.</p>
 
-<figure class="phone"><img src="screens/uc17-standby-ask.png" alt="Asking"><figcaption>Asking. What
-it costs is said before the form, not discovered afterwards.</figcaption></figure>
+<figure><img src="screens/uc17-standby-ask-2col.png" alt="Asking"><figcaption>One tall screen, laid out as two columns &mdash; read the left side, then the right. Asking. What it costs is said before the form, not discovered
+afterwards.</figcaption></figure>
 
 <h3>3.4 — If they asked you to help set it up</h3>
 <p class="who">Your person &middot; their Helping screen</p>
@@ -394,9 +476,8 @@ to them as a question. You cannot touch their triggers, and you cannot add yours
 If you think you <i>should</i> be on their plan, you can suggest exactly that, and they will be told
 plainly that the person suggesting it is the person it is about.</p>
 
-<figure class="phone"><img src="screens/uc28-helper-workspace.png" alt="Helping"><figcaption>The
-helper&rsquo;s screen. What you can do and what you can never do sit above the tools, so you never
-have to find the edge by hitting it.</figcaption></figure>
+<figure><img src="screens/uc28-helper-workspace-2col.png" alt="Helping"><figcaption>One tall screen, laid out as two columns &mdash; read the left side, then the right. The helper&rsquo;s screen. What you can do and what you can never do sit above the
+tools, so you never have to find the edge by hitting it.</figcaption></figure>
 
 <h3>3.5 — The phone call</h3>
 <p class="who">Both of you · two minutes, once</p>
@@ -467,11 +548,15 @@ page that leans on &ldquo;yes&rdquo; produces more of them.</figcaption></figure
 <p>The moment enough people agree, you are told on every channel Relay has for you — and the access
 you arranged opens. <b>There is no waiting period, and the product no longer implies one.</b></p>
 
-<div class="note"><b>What protects you is not a delay — it is that you can undo it.</b> An earlier
-version of this message said release would complete &ldquo;when the grace window elapses&rdquo; and
-invited you to &ldquo;check in now to cancel&rdquo;, which was a race you would lose: the window is
-zero. Checking in at any point afterwards closes everything reversible immediately. That is the real
-guarantee, and it does not depend on you being awake at the right moment.</div>
+<div class="note"><b>What protects you is not a delay &mdash; it is that you can undo it.</b> An
+earlier version of this message said release would complete &ldquo;when the grace window
+elapses&rdquo; and invited you to &ldquo;check in now to cancel&rdquo;, which was a race you would
+lose: for everything Relay offers today there is no waiting period at all. Checking in afterwards
+closes it immediately. That is the real guarantee, and unlike a countdown it does not depend on you
+being awake at the right moment.
+<br><br>
+The one exception is the permanent handover, which waits three days precisely <i>because</i> it
+cannot be undone &mdash; and that is not available to customers yet. See Part 6.</div>
 
 <h3>4.4 — Access opens</h3>
 <p class="who">Your recipients · their screen</p>
@@ -542,13 +627,25 @@ up everybody else. If they still cannot get in, the others who were asked can st
 them. It is honest rather than quiet: it also says clearly that they will never count towards your
 plan working, and the banner arithmetic gets <i>louder</i>, not softer.</p>
 
-<h3>5.5 — Somebody wants out</h3>
+<h3>5.5 — A page will not load, or the address is wrong</h3>
+<p class="who">Anyone</p>
+<p>If you land somewhere that does not exist &mdash; a letter off in an address read out over the
+phone &mdash; you get a page that says so and points at the four places you were probably trying to
+reach. If something breaks instead, the page tells you the one thing that matters: <b>nothing has
+been lost and nothing has been opened.</b> A page failing to load is not something changing.</p>
+<p>Either way we are told automatically, so it does not depend on anybody reporting it. What reaches
+us is a reference number and the address &mdash; never anything you typed.</p>
+
+<figure><img src="screens/not-found.png" alt="Nothing at this address"><figcaption>Written for
+somebody who mistyped an address in a hurry, not for an engineer.</figcaption></figure>
+
+<h3>5.6 — Somebody wants out</h3>
 <p class="who">Your person · their Standby screen</p>
 <p><b>Step down from this</b> removes them, tells you, and recalculates your plan. Someone who no
 longer wants the responsibility is not a safe person to depend on, so making this easy is a safety
 feature rather than a courtesy.</p>
 
-<h3>5.6 — You want out</h3>
+<h3>5.7 — You want out</h3>
 <p class="who">You · the Account screen</p>
 <p>Export everything first — it is a readable file, decrypted in your browser. Then close the
 account. Everyone relying on it loses access immediately. The tamper-evident event log is kept, as
@@ -573,8 +670,11 @@ dangerous rather than merely disappointing.</p>
     them from us keeps them from us in every circumstance.</li>
   <li><b>It will not make an unverified person count.</b> Naming someone is not verifying them. The
     phone call is not optional, and no amount of setup substitutes for it.</li>
-  <li><b>It is not a will.</b> An estate handover moves things to people you chose; it does not
-    settle an estate, and it does not replace advice from someone qualified to give it.</li>
+  <li><b>It does not do estates, and today it does not offer them at all.</b> A permanent
+    handover is designed and built, and it is deliberately not available to customers: it is held
+    behind a written legal opinion. Everything you can choose today is reversible. Even when it
+    does arrive it will not settle an estate or replace advice from somebody qualified to give
+    it.</li>
   <li><b>It cannot help someone who has neither accepted nor been given a code.</b> That person is
     excluded by design, the product says so plainly rather than showing a hopeful amber light, and
     the fix is always the same: issue them a code while everything is calm.</li>

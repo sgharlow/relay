@@ -6,6 +6,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { buildDemoData } from './demo-data';
+import { USER_SELECTABLE_TRIGGER_TYPES } from '../domain/enums';
 
 const data = buildDemoData();
 const byKey = new Map(data.vaultItems.map((i) => [i.key, i]));
@@ -52,9 +53,33 @@ describe('demo dataset', () => {
     for (const rule of data.rules) {
       expect(byKey.has(rule.vaultItemKey)).toBe(true);
       expect(recipientKeys.has(rule.recipientKey)).toBe(true);
-      // estate rules must be irreversible (matches the DB CHECK + Property 7)
-      if (rule.trigger_type === 'estate') expect(rule.reversible).toBe(false);
     }
+  });
+
+  /*
+    🔴 THE SEED IS ALSO THE SCREENSHOT SOURCE. Every figure in
+    docs/user-manual.html and docs/use-cases.html is captured from this account,
+    so a trigger seeded here becomes a picture in the documentation. Until
+    2026-08-12 the seed carried an Estate trigger and an irreversible estate
+    rule — a capability excluded from USER_SELECTABLE_TRIGGER_TYPES pending
+    `g2-counsel-opinion` and disclaimed in as many words by /terms.
+
+    The same contradiction was closed in /rules and then again in the public
+    tour; this was the third copy. Asserting it here means the fourth cannot
+    appear silently, and the narrowed types on SeedRule/SeedReleaseState mean it
+    cannot compile either.
+  */
+  it('seeds only triggers an owner is actually allowed to choose', () => {
+    for (const rule of data.rules) {
+      expect(USER_SELECTABLE_TRIGGER_TYPES).toContain(rule.trigger_type);
+    }
+    for (const rs of data.releaseStates) {
+      expect(USER_SELECTABLE_TRIGGER_TYPES).toContain(rs.trigger_type);
+    }
+  });
+
+  it('leaves every seeded rule reversible, as everything on offer is', () => {
+    for (const rule of data.rules) expect(rule.reversible).toBe(true);
   });
 
   it('provisions an ARMED emergency release_state', () => {
