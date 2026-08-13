@@ -289,6 +289,30 @@ cross_cutting:
 #     against a running server on the sharp case: a 500 KB `reason` on
 #     /api/access-requests is refused. lib/http/read-json-limit.test.ts.
 #
+#     🔴 THAT ENTRY WAS WRONG THE DAY IT WAS WRITTEN, corrected 2026-08-13. The
+#     cap was closed for the twenty-six handlers that CALL `readJson` and open
+#     for sixteen that called `req.json()` directly — including
+#     POST /api/vault/items and PUT /api/vault/items/[id], the two largest
+#     payloads in the product, and POST /api/kms/unwrap, which parses a body
+#     before it authenticates because the recipient token may arrive inside it.
+#     read-json-limit.test.ts proved the helper refuses an oversized body;
+#     nothing asserted that a route USED the helper.
+#
+#     This is the failure this file's own claim-discipline rule exists to catch,
+#     in the file the rule names as the source of truth, and it is recorded
+#     rather than quietly overwritten for the same reason monetization_path was.
+#     A cap that lives in a helper is a cap on the helper.
+#
+#     NOW ACTUALLY CLOSED: all sixteen converted (vault routes take a measured
+#     1 MB override; six tolerant handlers use `readJsonOptional`, which keeps a
+#     missing or malformed body meaning `{}` and adds only the 413). The
+#     deliverable is lib/ops/body-limit.ts — no route may read a body without a
+#     bound, ALLOWED_RAW entries must argue for themselves, and a planted
+#     violation proves the check can fail. Verified on production 2026-08-13:
+#     200 KB refused 413, an ordinary body still 400s from the app, a bodyless
+#     POST still 401s rather than 400, and /api/incident answers 204 to
+#     everything including the refusal.
+#
 #   muted-text-contrast — `--ink-faint` darkened to #71675a, a new `--paper-faint`
 #     added for the ink sidebar (no single value can clear 4.5:1 against both
 #     grounds — the arithmetic is in the test), and `--ochre-deep` added for the
