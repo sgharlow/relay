@@ -53,11 +53,16 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
+/** GET takes a request since 2026-08-12, so a helper can pass ?ownerId=. */
+function getReq(qs = ''): never {
+  return new Request(`https://relaystandby.com/api/vault/items${qs}`) as never;
+}
+
 describe('GET /api/vault/items', () => {
   it('401 when unauthenticated', async () => {
     const { NextResponse } = await import('next/server');
     mockSession.mockRejectedValueOnce(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
-    const res = await GET();
+    const res = await GET(getReq());
     expect(res.status).toBe(401);
     expect(mockList).not.toHaveBeenCalled();
   });
@@ -65,7 +70,7 @@ describe('GET /api/vault/items', () => {
   it('returns the owner items list', async () => {
     mockSession.mockResolvedValueOnce({ ownerId: 'owner-1', isDemo: false });
     mockList.mockResolvedValueOnce([{ id: 'a' } as never]);
-    const res = await GET();
+    const res = await GET(getReq());
     expect(res.status).toBe(200);
     expect((await res.json()).items).toEqual([{ id: 'a' }]);
     expect(mockList).toHaveBeenCalledWith('owner-1');

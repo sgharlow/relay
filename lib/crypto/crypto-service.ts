@@ -231,9 +231,27 @@ export class CryptoService {
    *
    * @throws {CryptoError} on any KMS, crypto, or persistence failure.
    */
-  async saveItem(plaintext: string, metadata: VaultItemMetadata): Promise<{ id: string }> {
+  async saveItem(
+    plaintext: string,
+    metadata: VaultItemMetadata,
+    /**
+     * Whose vault, when a HELPER is entering this on somebody else's behalf.
+     * Omitted for the ordinary case. The server refuses unless an active
+     * delegation covers the pair, so passing an id here grants nothing on its
+     * own — it only says which vault is being targeted (J3-R11).
+     *
+     * ⚠️ The ENCRYPTION does not change. There is one CMK, the data key is
+     * generated per item, and the plaintext still never leaves the browser —
+     * a helper entering a parent's password is subject to exactly the boundary
+     * the owner is.
+     */
+    ownerId?: string,
+  ): Promise<{ id: string }> {
     const payload = await this.encryptForUpload(plaintext, metadata);
-    const saveRes = await this.fetchImpl('/api/vault/items', {
+    const url = ownerId
+      ? `/api/vault/items?ownerId=${encodeURIComponent(ownerId)}`
+      : '/api/vault/items';
+    const saveRes = await this.fetchImpl(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

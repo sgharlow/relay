@@ -12,7 +12,6 @@
  */
 
 import { NextResponse, type NextRequest } from 'next/server';
-import { getOwnerSession } from '../../../../../lib/auth/session';
 import {
   listItems,
   createItem,
@@ -24,17 +23,38 @@ import { query } from '../../../../../lib/db/connection';
 import { assertWithinItemCap, EntitlementError } from '../../../../../lib/billing/entitlements';
 import { coverNewItem } from '../../../../../lib/rules/policy-materialize';
 import { resolveActor, requireScope } from '../../../../../lib/http/delegate-route';
+import { listItemsIEntered } from '../../../../../lib/people/delegate-workspace';
 import { IntegrityError } from '../../../../../lib/db/integrity';
 
-export async function GET(): Promise<NextResponse> {
-  let ownerId: string;
+export async function GET(req: NextRequest): Promise<NextResponse> {
+  /**
+   * 🔴 A HELPER COULD ADD AN ITEM AND NEVER SEE IT AGAIN. POST has accepted
+   * `?ownerId=` since delegation shipped; GET never did, so somebody tidying a
+   * parent's vault watched each entry vanish on save. Added 2026-08-12.
+   *
+   * The two paths return DIFFERENT QUESTIONS rather than one filtered view: an
+   * owner gets their vault, a helper gets the things they personally entered
+   * (J3-R4). Keeping them as separate calls means there is no shared argument
+   * that could be got wrong in a way that widens the narrow one.
+   */
+  let targetOwnerId: string | null = null;
   try {
-    ({ ownerId } = await getOwnerSession());
-  } catch (res) {
-    return res as NextResponse;
+    targetOwnerId = new URL(req.url).searchParams.get('ownerId');
+  } catch {
+    targetOwnerId = null;
   }
 
-  const items = await listItems(ownerId);
+  const actor = await resolveActor(targetOwnerId);
+  if (actor instanceof NextResponse) return actor;
+
+  if (actor.isDelegate) {
+    return NextResponse.json({
+      items: await listItemsIEntered(actor.ownerId, actor.delegationId as string),
+      scopedToDelegate: true,
+    });
+  }
+
+  const items = await listItems(actor.ownerId);
   return NextResponse.json({ items });
 }
 

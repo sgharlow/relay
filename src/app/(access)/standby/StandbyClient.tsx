@@ -23,6 +23,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import StandbyPasskeyCard from './StandbyPasskeyCard';
+import HelpingCard from './HelpingCard';
 import LeaveControl from './LeaveControl';
 import AskControl from './AskControl';
 
@@ -248,6 +249,13 @@ export default function StandbyClient() {
           have not already done it. `=== false` rather than `!`: if the field is
           ever absent the card stays hidden, because the failure mode of a
           deferrable prompt is nagging somebody who already complied. */}
+      {/*
+        Setup work, not an emergency role — so it sits below the standby cards
+        rather than competing with them. Renders itself away when there is
+        nothing to say.
+      */}
+      <HelpingCard />
+
       {data.relationships.length > 0 && data.hasPasskey === false ? <StandbyPasskeyCard /> : null}
 
       {!data.hasOwnVault ? (
