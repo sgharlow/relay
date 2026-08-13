@@ -13,6 +13,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { verifyAuditChain } from '../audit/chain';
+import { USER_SELECTABLE_TRIGGER_TYPES } from '../domain/enums';
 import {
   DEMO_AUDIT_CHAIN,
   DEMO_CHAIN_VERIFICATION,
@@ -72,5 +73,33 @@ describe('demo-tour fixtures', () => {
     expect(DEMO_ITEM_ENVELOPE.storedColumns).toContain('wrapped_data_key');
     expect(DEMO_ITEM_ENVELOPE.storedColumns).not.toContain('plaintext');
     expect(JSON.stringify(DEMO_ITEM_ENVELOPE).toLowerCase()).not.toContain('"plaintext"');
+  });
+});
+
+describe('🔴 the tour may only show what a visitor can actually buy', () => {
+  it('uses no trigger the product does not offer', () => {
+    // Four of the eight items routed to `estate` until 2026-08-12, while
+    // /terms says "Estate and inheritance functionality is not offered" and
+    // USER_SELECTABLE_TRIGGER_TYPES excludes it. The funnel page was selling a
+    // capability the product disclaimed — the SAME contradiction already closed
+    // once in /rules, which used to render its dropdown from the unfiltered
+    // list. That fix did not reach here because nothing connected them.
+    //
+    // This is that connection. If `estate` is ever re-enabled, this passes
+    // again on its own; if another trigger is retired, this fails loudly rather
+    // than leaving the tour advertising it.
+    for (const item of DEMO_VAULT_ITEMS) {
+      expect(USER_SELECTABLE_TRIGGER_TYPES).toContain(item.trigger);
+    }
+  });
+
+  it('still shows more than one trigger, which is the point of the table', () => {
+    // Scoped access differs by person AND by condition. A tour with a single
+    // trigger demonstrates half of that.
+    expect(new Set(DEMO_VAULT_ITEMS.map((i) => i.trigger)).size).toBeGreaterThanOrEqual(2);
+  });
+
+  it('still shows more than one recipient, for the same reason', () => {
+    expect(new Set(DEMO_VAULT_ITEMS.map((i) => i.recipient)).size).toBeGreaterThanOrEqual(2);
   });
 });

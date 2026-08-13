@@ -125,7 +125,7 @@ export const DIFFERENTIATORS = [
   {
     them: 'Static organizers (Everplans, GoodTrust, Trustworthy)',
     problem: 'A binder is permanent: once shared, it cannot be unshared — and it goes stale.',
-    relay: 'Reversible by default. A recovery check-in closes emergency access automatically; only a verified estate handoff is permanent.',
+    relay: 'Reversible by default — a recovery check-in closes access automatically, so nothing you share is shared for good.',
   },
   {
     them: 'Platform legacy features (Apple Legacy Contact, Google Inactive Account)',
@@ -136,6 +136,6 @@ export const DIFFERENTIATORS = [
 
 export const TRUST_POINTS = [
   'Encrypted in your browser before it ever leaves — Relay servers only ever hold ciphertext.',
-  'Releases require the trigger you chose: a missed check-in, a manual emergency, or verified estate event — with trusted verifiers and a grace window.',
+  'Releases require the trigger you chose — a missed check-in, an emergency you raise, or a caregiver situation — and people you named have to confirm it is real.',
   'Every open, grant, and release lands in a hash-chained audit log you can verify yourself.',
 ] as const;

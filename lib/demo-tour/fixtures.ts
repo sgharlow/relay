@@ -32,7 +32,14 @@ export interface DemoVaultItem {
   /** Importance-engine score, always within [0, 1]. */
   importance: number;
   recipient: string;
-  trigger: 'emergency' | 'estate';
+  /**
+   * ⚠️ SELECTABLE TRIGGERS ONLY. `estate` is excluded from
+   * `USER_SELECTABLE_TRIGGER_TYPES` pending `g2-counsel-opinion`, and /terms
+   * says "Estate and inheritance functionality is not offered" — so a tour that
+   * showed it was advertising something a visitor cannot buy. Retargeted
+   * 2026-08-12. Keep this union a subset of what the product actually offers.
+   */
+  trigger: 'emergency' | 'caregiver';
 }
 
 export const DEMO_VAULT_ITEMS: DemoVaultItem[] = [
@@ -62,27 +69,27 @@ export const DEMO_VAULT_ITEMS: DemoVaultItem[] = [
   },
   {
     id: 'insurance-policies',
-    name: 'Life & home insurance policies',
+    name: 'Health & home insurance policies',
     category: 'Insurance',
     importance: 0.81,
-    recipient: 'Alex (executor)',
-    trigger: 'estate',
+    recipient: 'Alex (daughter)',
+    trigger: 'caregiver',
   },
   {
-    id: 'estate-letter',
-    name: 'Letter of instruction to executor',
+    id: 'care-letter',
+    name: 'Letter of instruction — care wishes',
     category: 'Instructions',
     importance: 0.78,
-    recipient: 'Alex (executor)',
-    trigger: 'estate',
+    recipient: 'Alex (daughter)',
+    trigger: 'caregiver',
   },
   {
     id: 'mortgage-docs',
     name: 'Mortgage & deed documents',
     category: 'Documents',
     importance: 0.66,
-    recipient: 'Alex (executor)',
-    trigger: 'estate',
+    recipient: 'Alex (daughter)',
+    trigger: 'caregiver',
   },
   {
     id: 'utilities',
@@ -97,8 +104,8 @@ export const DEMO_VAULT_ITEMS: DemoVaultItem[] = [
     name: 'Family photo archive location + key',
     category: 'Documents',
     importance: 0.35,
-    recipient: 'Sam (spouse)',
-    trigger: 'estate',
+    recipient: 'Alex (daughter)',
+    trigger: 'caregiver',
   },
 ];
 
