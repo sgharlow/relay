@@ -698,6 +698,86 @@ export async function notifyOwnerOfDelegation(params: {
 }
 
 /**
+ * Tells the owner that somebody has left their circle.
+ *
+ * 🔴 THIS DID NOT EXIST until 2026-08-13, and the user manual claimed it did:
+ * "Step down from this removes them, tells you, and recalculates your plan."
+ * The removal and the recalculation were real; the telling was not. The owner
+ * found out only by opening the app and noticing a roster row had gone red.
+ *
+ * That is the wrong shape for this particular event. Every other notification
+ * here fires when something is HAPPENING and the owner is presumed present.
+ * This one fires when the plan quietly stops being able to run — a verifier
+ * resigning can take a circle from "this works" to "nothing can open", and the
+ * owner has no reason to look. A continuity product that lets its own readiness
+ * decay silently has the failure mode it exists to prevent.
+ *
+ * The two reasons are worded differently on purpose. "I am stepping down" is a
+ * decision to respect; "I do not know this person" means an invitation reached
+ * the wrong inbox, which is a security event and needs a different next step.
+ *
+ * Best-effort: leaving must never fail because mail did.
+ */
+export async function notifyOwnerOfResignation(params: {
+  ownerEmail: string;
+  personName: string;
+  personType: 'recipient' | 'verifier';
+  reason: 'resigned' | 'rejected';
+}): Promise<boolean> {
+  const role =
+    params.personType === 'verifier'
+      ? 'one of the people who would confirm an emergency'
+      : 'one of the people you set things aside for';
+
+  if (params.reason === 'rejected') {
+    return sendEmailBestEffort({
+      to: params.ownerEmail,
+      subject: `${params.personName} did not recognise the invitation you sent`,
+      text:
+        `${params.personName} — ${role} — opened the invitation you sent and said they ` +
+        `do not know what it is about.
+
+` +
+        `The likeliest explanation is that it reached the wrong address. Worth checking ` +
+        `the one you used before sending another, because an invitation sitting in a ` +
+        `stranger's inbox is the one thing the phone call afterwards exists to catch.
+
+` +
+        `Their place in your circle is still there and is waiting to be filled:
+
+` +
+        `    ${appUrl()}/circle
+
+` +
+        `Nothing was opened and nothing was lost.
+`,
+    });
+  }
+
+  return sendEmailBestEffort({
+    to: params.ownerEmail,
+    subject: `${params.personName} has stepped down from your Relay circle`,
+    text:
+      `${params.personName} was ${role}, and has stepped down.
+
+` +
+      `That is their right and it is better than a person who quietly stopped agreeing. ` +
+      `But your plan is weaker than it was, and it may no longer be able to run at all — ` +
+      `so this is worth a few minutes rather than a shrug.
+
+` +
+      `Your circle will tell you exactly where you now stand:
+
+` +
+      `    ${appUrl()}/circle
+
+` +
+      `Nothing was opened, and nothing in your vault changed.
+`,
+  });
+}
+
+/**
  * Tells every scoped recipient that a released trigger has closed.
  *
  * Counts what each of them actually opened, so the message is specific rather

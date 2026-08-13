@@ -101,17 +101,49 @@ async function countOwned(
 }
 
 export async function assertWithinItemCap(ownerId: string): Promise<void> {
+  return assertBatchWithinItemCap(ownerId, 1);
+}
+
+/**
+ * The same cap, for a batch.
+ *
+ * 🔴 CSV IMPORT BYPASSED THE ITEM CAP ENTIRELY until 2026-08-13. `POST /api/import`
+ * never called `assertWithinItemCap`, so the free tier's 10-item limit held only
+ * on the one-at-a-time path — and the bulk path is the one the product actively
+ * recommends ("Import CSV takes an export from a password manager, which is how
+ * most people should start"). A free account could import a thousand items in a
+ * single request. Found by reading the manual against the routes.
+ *
+ * A per-item guard would not have caught it either: `assertWithinItemCap` only
+ * asks whether the owner is ALREADY at the limit, so calling it once before a
+ * 500-row batch still admits all 500. The count has to be part of the question,
+ * which is why the single-item helper now delegates here rather than the other
+ * way round — one definition of the rule, and the batch case cannot drift from
+ * the single case because there is only one.
+ *
+ * Refuses the whole batch rather than truncating it. Import is already
+ * all-or-nothing (Req 10.4), and silently keeping the first 10 rows of somebody's
+ * password-manager export would leave them believing a vault is complete when it
+ * is not — the exact failure this product exists to prevent.
+ */
+export async function assertBatchWithinItemCap(ownerId: string, count: number): Promise<void> {
   const { tier } = await getEntitlement(ownerId);
   const limit = TIER_LIMITS[tier].items;
   if (!Number.isFinite(limit)) return;
 
-  if ((await countOwned('vault_items', ownerId)) >= limit) {
-    throw new EntitlementError(
-      `The free plan holds ${limit} items. Upgrade to add the rest of the vault.`,
-      limit,
-      tier,
-    );
-  }
+  const existing = await countOwned('vault_items', ownerId);
+  if (existing + count <= limit) return;
+
+  const room = Math.max(0, limit - existing);
+  throw new EntitlementError(
+    count === 1
+      ? `The free plan holds ${limit} items. Upgrade to add the rest of the vault.`
+      : `The free plan holds ${limit} items and you have ${existing}, so there is room for ` +
+        `${room === 1 ? '1 more' : `${room} more`} — this file has ${count}. ` +
+        `Nothing was imported. Trim the file, or email us: we are onboarding founding families by hand.`,
+    limit,
+    tier,
+  );
 }
 
 export async function assertWithinRecipientCap(ownerId: string): Promise<void> {

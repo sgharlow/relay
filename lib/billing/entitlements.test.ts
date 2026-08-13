@@ -17,6 +17,7 @@ import {
   TIER_LIMITS,
   getEntitlement,
   assertWithinItemCap,
+  assertBatchWithinItemCap,
   assertWithinRecipientCap,
   assertCanRelease,
   EntitlementError,
@@ -113,6 +114,49 @@ describe('assertWithinItemCap', () => {
       .mockResolvedValueOnce({ rows: [] } as never)
       .mockResolvedValueOnce({ rows: [{ count: '10' }] } as never);
     await expect(assertWithinItemCap('o-1')).rejects.toThrow(EntitlementError);
+  });
+
+  /*
+    🔴 REGRESSION GUARD. `POST /api/import` never called this at all, so the free
+    tier's cap held on the one-at-a-time path and not on the bulk one — the path
+    the product recommends as the way to start. A per-item check would not have
+    closed it either: asking only "is the owner ALREADY at the limit" admits a
+    500-row batch to an empty vault. The count has to be part of the question.
+  */
+  it('REJECTS a batch that would cross the cap even from an empty vault', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ is_demo_account: false }] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never)
+      .mockResolvedValueOnce({ rows: [{ count: '0' }] } as never);
+    await expect(assertBatchWithinItemCap('o-1', 500)).rejects.toThrow(EntitlementError);
+  });
+
+  it('names the room left and the file size, and says nothing was imported', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ is_demo_account: false }] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never)
+      .mockResolvedValueOnce({ rows: [{ count: '8' }] } as never);
+    await expect(assertBatchWithinItemCap('o-1', 12)).rejects.toThrow(
+      /room for 2 more.*this file has 12.*Nothing was imported/s,
+    );
+  });
+
+  it('allows a batch that exactly fills the cap', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ is_demo_account: false }] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never)
+      .mockResolvedValueOnce({ rows: [{ count: '4' }] } as never);
+    await expect(assertBatchWithinItemCap('o-1', 6)).resolves.toBeUndefined();
+  });
+
+  // A no-op import (every row a duplicate) must not be refused for a cap it
+  // does not consume — the route checks AFTER dedupe for exactly this reason.
+  it('allows a zero-length batch at the cap', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ is_demo_account: false }] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never)
+      .mockResolvedValueOnce({ rows: [{ count: '10' }] } as never);
+    await expect(assertBatchWithinItemCap('o-1', 0)).resolves.toBeUndefined();
   });
 
   it('never caps a paid owner and does not even count', async () => {

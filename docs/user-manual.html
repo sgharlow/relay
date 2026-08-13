@@ -135,8 +135,16 @@ because losing the recovery path means losing everything downstream.</p>
   <li>The line under each item tells you <i>why</i> it is ranked where it is.</li>
   <li><b>Import CSV</b> takes an export from a password manager, which is how most people should
     start &mdash; it is parsed and encrypted in your browser, and you see exactly what is about to
-    be added before anything is written.</li>
+    be added before anything is written. Rows you already have are skipped rather than duplicated,
+    and the count of skips is reported: a silent skip would have you believe credentials went
+    missing.</li>
 </ul>
+
+<div class="note"><b>The free plan holds ten items and four people.</b> That is deliberately enough
+to reach the point of the product &mdash; the four or five things that unlock the rest, and the
+handful of people who would step in &mdash; rather than a trial that expires. A file larger than the
+remaining room is refused whole rather than trimmed to fit, because a vault that quietly stopped
+halfway through your export is exactly the false sense of completeness this is meant to prevent.</div>
 
 <figure><img src="screens/uc33-owner-import.png" alt="Importing"><figcaption>The preview shows the
 service, the address and the username &mdash; and <b>no passwords</b>. It is the one screen where
@@ -269,11 +277,15 @@ you had typed it yourself.</p>
 they suggested &mdash; on the same screen as the button that stops them helping. Everything they do
 is also in your record, under their name.</p>
 
-<figure><img src="screens/helper-activity.png" alt="What a helper has done"><figcaption>The evidence
-sits beside the decision it informs.</figcaption></figure>
+<figure><img src="screens/uc36-owner-helper-consent.png" alt="Recording consent"><figcaption>The
+record that starts it. Nothing works until this is filled in, and the option that invites a
+convenient lie &mdash; &ldquo;they confirmed it themselves&rdquo; &mdash; is worded to discourage
+one.</figcaption></figure>
 
-<figure><img src="screens/uc15-owner-helper.png" alt="Choosing a helper"><figcaption>What a helper
-can do, and what they can never do, stated before the button rather than after.</figcaption></figure>
+<figure><img src="screens/uc16-owner-helper-active.png" alt="An active helper"><figcaption>Active,
+with a suggestion waiting. What a helper can and can never do is stated before the button rather
+than after it; <b>what they have done</b> sits directly above the control that stops them, so the
+evidence is beside the decision it informs rather than a screen away.</figcaption></figure>
 
 </div>
 
@@ -496,7 +508,7 @@ open anything. <b>If they do not match, say so and stop.</b> It means somebody e
 invitation meant for you. Nothing is lost: they can cancel it and start again on a channel you both
 trust.</p>
 
-<figure class="phone"><img src="screens/verify-call-contact.png" alt="Your four words"><figcaption>
+<figure><img src="screens/verify-call-contact-2col.png" alt="Your four words"><figcaption>
 Your side of the call. The words are not a password — they are a comparison, and they are worth
 nothing to anybody who is not on the phone.</figcaption></figure>
 
@@ -569,9 +581,33 @@ items.</p>
 <figcaption>The recipient's way in when they never accepted a standby account. <b>My code has
 expired</b> re-sends to the address already on file — never to one typed here.</figcaption></figure>
 
-<h3>4.5 — It closes again</h3>
+<h3>4.5 &mdash; It closes again</h3>
 <p>You check in. Every reversible grant closes, tokens stop working, and the whole episode becomes
 a paragraph on your audit screen. Nothing needs to be undone by hand.</p>
+
+<h3>4.6 &mdash; And if you never come back</h3>
+<p class="who">Your family &middot; the question they will actually ask</p>
+
+<div class="why"><b>Why this needs saying out loud.</b> Everything above is written around your
+return, because that is the common case and the one other products handle badly. But the case a
+family actually worries about is the other one, and a continuity product that does not answer it
+plainly is asking to be trusted on the strength of an omission.</div>
+
+<p><b>What was opened stays open.</b> Access closes when you check in &mdash; and only when you check
+in. If you never do, it does not lapse, expire or quietly withdraw. The people you chose keep what
+you gave them for as long as they need it. Nobody else can close it on your behalf: not your other
+contacts, not us.</p>
+
+<p><b>What was not opened stays shut.</b> Only the rules written for the trigger that fired are in
+force. An item nobody was scoped to still has no route to anybody, and no further release happens on
+its own &mdash; if a second situation arises, the people you named have to agree to that one too.</p>
+
+<div class="warn"><b>This is not a will, and it does not become one.</b> What your family gets is
+continued access to accounts and instructions &mdash; enough to keep a household running, pay what
+must be paid, and reach the people who need reaching. It transfers nothing, settles nothing and
+proves nothing to a bank, a registry or a court. The permanent handover that would speak to any of
+that is not offered today (Part 6). Whoever tells you what a will and a power of attorney should say
+is still the person to ask.</div>
 
 </div>
 
@@ -593,7 +629,34 @@ reaching for the innocuous-looking word on the screen.</p>
 release in flight. Both ways to stop it are here, and they are deliberately not equal in
 weight.</figcaption></figure>
 
-<h3>5.2 — Someone lost their phone</h3>
+<h3>5.2 &mdash; You lost your phone</h3>
+<p class="who">You &middot; <b>Get back in</b>, from the sign-in screen</p>
+
+<div class="why"><b>Why this is the case to plan for.</b> Relay has no password, so the authenticator
+on your phone is how you prove who you are. Over the horizon this product is meant to cover &mdash;
+years, not months &mdash; that phone will be replaced, lost or broken at least once. This is not the
+unlikely path; it is the expected one.</div>
+
+<p><b>Lost your authenticator?</b> on the sign-in screen takes you to <b>Get back in</b>. You give
+your email address and <i>one</i> of the recovery codes you saved when you created the vault. Each
+code works once. You then set up an authenticator again &mdash; on the new phone &mdash; and
+everything else is exactly as you left it.</p>
+
+<div class="never"><b>Nothing in your vault is touched by this.</b> Recovery replaces how you sign
+in. It does not decrypt anything, it does not open anything for anybody, and it does not disturb your
+people, your rules or your triggers.</div>
+
+<div class="warn"><b>If you have no codes left, nobody can let you back in &mdash; including us.</b>
+That is the same encryption promise working in the direction that hurts. The Account screen shows how
+many you have left and colours the line as it runs down; issue a fresh list before it does. A new
+list stops the old one working, so keep only the newest.</div>
+
+<p>If you have already lost the phone <i>and</i> the codes, your vault cannot be opened by you. It
+can still be opened by the people you named, in the way it was always going to be: they confirm an
+emergency and what you set aside for them opens. That is worth knowing before it happens rather
+than after.</p>
+
+<h3>5.3 &mdash; Someone else lost their phone</h3>
 <p class="who">Your person · the Emergency code screen</p>
 
 <div class="why"><b>Why this exists.</b> Not everyone owns a smartphone, and everyone eventually
@@ -611,7 +674,7 @@ somebody who has no way back in.</div>
 <figure class="phone"><img src="screens/uc09-break-glass-phone.png" alt="Emergency code entry">
 <figcaption>The way back in when the usual sign-in is gone.</figcaption></figure>
 
-<h3>5.3 — The code never arrived, or ran out</h3>
+<h3>5.4 &mdash; The code never arrived, or ran out</h3>
 <p class="who">Your person &middot; the code screen</p>
 <p>Both the access screen and the confirm screen carry <b>&ldquo;my code has expired, or never
 arrived&rdquo;</b>. It sends again &mdash; to the address already on file, never to one typed in, so
@@ -620,14 +683,14 @@ set up: a reminder to sign in if they have a passkey, a fresh code if they do no
 <p>This matters most for the people confirming an emergency, because one of them being stuck holds
 up everybody else. If they still cannot get in, the others who were asked can still answer.</p>
 
-<h3>5.4 — Somebody cannot use an account at all</h3>
+<h3>5.5 &mdash; Somebody cannot use an account at all</h3>
 <p class="who">You · the People screen</p>
 <p>Some people will never accept — no smartphone, no interest, no email they check. Marking them
 <b>emergency code only</b> tells Relay that this is deliberate, so it stops asking you to chase
 them. It is honest rather than quiet: it also says clearly that they will never count towards your
 plan working, and the banner arithmetic gets <i>louder</i>, not softer.</p>
 
-<h3>5.5 — A page will not load, or the address is wrong</h3>
+<h3>5.6 &mdash; A page will not load, or the address is wrong</h3>
 <p class="who">Anyone</p>
 <p>If you land somewhere that does not exist &mdash; a letter off in an address read out over the
 phone &mdash; you get a page that says so and points at the four places you were probably trying to
@@ -639,13 +702,18 @@ us is a reference number and the address &mdash; never anything you typed.</p>
 <figure><img src="screens/not-found.png" alt="Nothing at this address"><figcaption>Written for
 somebody who mistyped an address in a hurry, not for an engineer.</figcaption></figure>
 
-<h3>5.6 — Somebody wants out</h3>
+<h3>5.7 &mdash; Somebody wants out</h3>
 <p class="who">Your person · their Standby screen</p>
-<p><b>Step down from this</b> removes them, tells you, and recalculates your plan. Someone who no
+<p><b>Step down from this</b> removes them, emails you, and recalculates your plan. Someone who no
 longer wants the responsibility is not a safe person to depend on, so making this easy is a safety
 feature rather than a courtesy.</p>
+<p>The message distinguishes two things that look identical on a roster and are not. <b>&ldquo;I am
+stepping down&rdquo;</b> is a decision to respect. <b>&ldquo;I do not know this person&rdquo;</b>
+usually means your invitation reached the wrong address, and the right next step is to check the
+address before sending another &mdash; an invitation sitting in a stranger&rsquo;s inbox is exactly
+what the phone call afterwards exists to catch.</p>
 
-<h3>5.7 — You want out</h3>
+<h3>5.8 &mdash; You want out</h3>
 <p class="who">You · the Account screen</p>
 <p>Export everything first — it is a readable file, decrypted in your browser. Then close the
 account. Everyone relying on it loses access immediately. The tamper-evident event log is kept, as

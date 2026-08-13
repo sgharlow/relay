@@ -18,6 +18,7 @@ import { writeAuditEntry } from '../../../../lib/audit/audit-service';
 import { query } from '../../../../lib/db/connection';
 import { splitDuplicates } from '../../../../lib/vault/dedupe';
 import { runIntake } from '../../../../lib/ai/intake-agent';
+import { assertBatchWithinItemCap, EntitlementError } from '../../../../lib/billing/entitlements';
 
 const MAX_BATCH = 1000;
 
@@ -62,6 +63,29 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     [auth.ownerId],
   );
   const { fresh, duplicates } = splitDuplicates(validated, existing.rows);
+
+  /*
+    🔴 THE FREE-TIER CAP WAS NOT ENFORCED HERE AT ALL until 2026-08-13. Only
+    `POST /api/vault/items` checked it, so the limit that defines the free tier
+    held on the one-at-a-time path and not on the bulk one — the path the product
+    recommends as the way to start. Found by reading the user manual against the
+    routes it describes.
+
+    Checked AFTER dedupe, on `fresh`, not on the uploaded batch: re-running an
+    export you already imported adds nothing, so it must not be refused for
+    exceeding a cap it does not actually consume.
+  */
+  try {
+    await assertBatchWithinItemCap(auth.ownerId, fresh.length);
+  } catch (err) {
+    if (err instanceof EntitlementError) {
+      return NextResponse.json(
+        { error: 'EntitlementError', message: err.message, limit: err.limit, tier: err.tier },
+        { status: 402 },
+      );
+    }
+    throw err;
+  }
 
   let imported = 0;
   for (const input of fresh) {

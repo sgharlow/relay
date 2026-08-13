@@ -18,6 +18,12 @@
  * their light goes red, the audit chain records it, and re-inviting is a
  * conversation they get to choose to have.
  *
+ * AND THE OWNER IS TOLD (added 2026-08-13). A red light nobody looks at is not a
+ * notification. Every other event in this product that weakens a plan sends
+ * mail; this one — which can take a circle from "this works" to "nothing can
+ * open" — did not, so readiness could decay in silence on a product whose whole
+ * premise is that the owner may not be paying attention.
+ *
  * Feature: relay-standby
  * Requirements: J4-R13
  */
@@ -26,6 +32,7 @@ import { query } from '../db/connection';
 import { writeAuditEntry } from '../audit/audit-service';
 import { ValidationError } from '../validation';
 import type { PersonType } from './invitations';
+import { notifyOwnerOfResignation } from '../notify/notifications';
 
 export type LeaveReason = 'resigned' | 'rejected';
 
@@ -42,13 +49,13 @@ export async function resignFromCircle(params: {
   // The guard IS the authorization: `claimed_user_id = $2` means you can only
   // unbind a row that is currently bound to you. Nothing to check separately,
   // and nothing that can drift away from the check.
-  const res = await query<{ owner_id: string }>(
+  const res = await query<{ owner_id: string; name: string }>(
     `UPDATE ${table}
         SET claimed_user_id = NULL,
             standby_state = 'invited',
             fingerprint_confirmed_at = NULL
       WHERE id = $1 AND claimed_user_id = $2
-      RETURNING owner_id`,
+      RETURNING owner_id, name`,
     [personId, userId],
   );
 
@@ -68,6 +75,28 @@ export async function resignFromCircle(params: {
     entityId: personId,
     detail: { reason },
   });
+
+  // After the audit write, and best-effort. The record is the guarantee; the
+  // mail is the courtesy, and a mail failure must not roll back a person's
+  // decision to leave.
+  try {
+    const owner = await query<{ email: string | null }>(
+      `SELECT email FROM users WHERE id = $1 LIMIT 1`,
+      [row.owner_id],
+    );
+    const email = owner.rows[0]?.email;
+    if (email) {
+      await notifyOwnerOfResignation({
+        ownerEmail: email,
+        personName: row.name,
+        personType,
+        reason,
+      });
+    }
+  } catch (err) {
+    process.stderr.write(`[resign] owner notice failed for ${row.owner_id}: ${String(err)}
+`);
+  }
 
   return { ownerId: row.owner_id };
 }
