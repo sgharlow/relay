@@ -1242,3 +1242,40 @@ sentence in somebody's inbox.
 
 **Remaining from §17: items 1, 2 and 4** — send the first real invitations, rule the grace window,
 and deliverability. None is blocked by anything above.
+
+### Item 2 ruled, and item 1's blocker removed — 2026-08-12
+
+**Item 2: the grace window is per-trigger.** One constant was the mistake — picking a value always
+felt arbitrary because it was being asked two questions with opposite answers. Reversible triggers
+get **0** (the owner is already protected: `processCheckin` reverses PENDING, GRACE and RELEASED, and
+every path here has already given them a chance to say no). Estate gets **72h**, because
+`processCheckin` blocks estate — permanent once released — so the window is not a delay, it is the
+entire protection. Matches `CHALLENGE_WINDOW_SECONDS.estate`, since both answer the same question.
+
+⚠️ Only safe because `resolveElapsedGrace` shipped on 08-08. The invariant test was still asserting
+`=== 0` on the strength of a limitation removed four days earlier.
+
+Two pieces of copy followed, one of them written the same morning: the confirmed-release email said
+"check in and it closes again", **false twice over for estate** — it does not open at once and
+checking in will never close it. That is the same false promise that message was rewritten to
+remove, arriving from the other direction.
+
+### 🔴 Item 1 was blocked by a missing half of the assurance model
+
+Writing the invitation text meant writing the call script, and the script could not be written
+truthfully. The owner's confirm control says, verbatim, *"They see the same four words on their own
+screen."* `fingerprintFor` was imported by `/api/circle` and **nothing else**.
+
+So the owner was instructed to make a **comparison the other side could not take part in**. A contact
+asked "do these match?" while holding nothing says yes — the rubber stamp the control exists to
+prevent, on the one step the whole quorum model rests on, since `confirmed` is what makes an answer
+count. Half the assurance model shipped and the other half was a sentence about it.
+
+Now derived on the contact side through the same pure function from the same three values, shown only
+while they are `claimed`. **Do not send invitations from a deploy older than this.**
+
+### Item 1 is now unblocked
+
+`docs/first-invitations.md` has the recipient text, the verifier text, the call script, the failure
+branches, and what to read afterwards. It is Steve's to send — the only remaining item that is not
+code, and the one the security argument is waiting on.
