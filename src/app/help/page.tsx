@@ -61,6 +61,38 @@ export default function HelpPage() {
         looks. Come to relaystandby.com yourself instead.
       </div>
 
+      {/*
+        The guide, finally reachable. It had been written in full — 42 sections,
+        with screenshots — and shipped nowhere, which the pre-release audit found
+        on 2026-08-13. Placed above the FAQ rather than below it: somebody who
+        wants the whole picture should not have to read forty questions to
+        discover a book exists.
+      */}
+      <div
+        className="mt-6 rounded p-4"
+        style={{ background: 'var(--paper-raised)', border: '1px solid var(--rule)' }}
+      >
+        <h2 style={{ fontSize: 'var(--t3)', fontWeight: 600 }}>The full guide</h2>
+        <p className="mt-1" style={{ fontSize: 'var(--t2)', lineHeight: 1.6, color: 'var(--ink-muted)' }}>
+          Everything Relay does, written for you and the people you name — setting it up, living with
+          it, the day it matters, and what to do when something goes wrong.
+        </p>
+        <p className="mt-2" style={{ fontSize: 'var(--t2)' }}>
+          <a href="/guide" className="underline">
+            Read the guide
+          </a>{' '}
+          ·{' '}
+          {/*
+            A PDF is not a nicety here. CC8 asks for a printable fallback, the
+            wedge is elderly owners, and a guide you can put in the drawer with
+            the recovery codes is the form this one is most likely to be used in.
+          */}
+          <a href="/guide/relay-guide.pdf" className="underline">
+            Download as PDF
+          </a>
+        </p>
+      </div>
+
       {ORDER.map((audience) => (
         <section key={audience} className="mt-10">
           <h2 style={{ fontSize: 'var(--t5)', fontWeight: 600 }}>{AUDIENCE_LABELS[audience]}</h2>

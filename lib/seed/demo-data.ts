@@ -200,7 +200,7 @@ export function buildDemoData(): DemoData {
       functionality is not offered."
 
       This seed is not only the demo account — it is the account every
-      screenshot in docs/user-manual.html and docs/use-cases.html is taken
+      screenshot in public/guide/index.html and docs/use-cases.html is taken
       from. Leaving an Estate trigger here put a figure captioned with a
       capability the surrounding text says is unavailable, which is a worse
       contradiction than the one already fixed in /rules and /demo because a

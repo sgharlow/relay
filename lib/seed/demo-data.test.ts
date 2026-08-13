@@ -58,7 +58,7 @@ describe('demo dataset', () => {
 
   /*
     🔴 THE SEED IS ALSO THE SCREENSHOT SOURCE. Every figure in
-    docs/user-manual.html and docs/use-cases.html is captured from this account,
+    public/guide/index.html and docs/use-cases.html is captured from this account,
     so a trigger seeded here becomes a picture in the documentation. Until
     2026-08-12 the seed carried an Estate trigger and an irreversible estate
     rule — a capability excluded from USER_SELECTABLE_TRIGGER_TYPES pending

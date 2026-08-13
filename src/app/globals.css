@@ -219,3 +219,104 @@ pre {
     text-wrap: balance;
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * PRINT
+ *
+ * 🔴 CC8 REQUIRES "A PRINTABLE FALLBACK FOR EVERY CRITICAL INSTRUCTION", AND
+ * THERE WAS NO PRINT STYLESHEET AT ALL until 2026-08-13. The signup screen
+ * tells an owner to "print them, or put them somewhere you keep important
+ * paper" about their ten recovery codes — and printing it carried the whole
+ * app with it: sidebar, navigation, buttons that do nothing on paper.
+ *
+ * This matters more here than in most products. The wedge is elderly owners.
+ * J3-R3 deliberately supports a paper consent path so that a parent without a
+ * smartphone is not a blocker. And several honest answers in the FAQ are that
+ * nobody, Relay included, can recover what was lost — which makes paper the
+ * only backup that exists for some of this.
+ *
+ * WHAT IT DELIBERATELY DOES NOT DO: it does not try to make every screen
+ * pretty on paper. It removes the furniture, forces legible ink on white, and
+ * keeps the things people actually print from splitting across pages.
+ * ------------------------------------------------------------------------ */
+@media print {
+  /* Ink on white regardless of theme or token. A print token set would be a
+     second palette to keep in step with the first, for one output nobody looks
+     at often enough to notice drift in. */
+  :root {
+    --paper: #ffffff;
+    --paper-raised: #ffffff;
+    --paper-sunken: #ffffff;
+    --ink: #000000;
+    --ink-muted: #333333;
+    --ink-faint: #444444;
+    --rule: #999999;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 12pt;
+  }
+
+  /* The furniture. `aside` is the owner rail; `nav` covers both shells. */
+  aside,
+  nav,
+  button,
+  [role='button'],
+  input[type='submit'],
+  .no-print {
+    display: none !important;
+  }
+
+  /* The rail is a flex sibling of <main> with an inline width, and inline wins
+     over a class — so the measure has to be reset here or the printed column
+     keeps a 240px hole where the navigation used to be. */
+  main {
+    padding: 0 !important;
+  }
+  main > div {
+    max-width: none !important;
+  }
+
+  a {
+    color: #000 !important;
+    text-decoration: underline;
+  }
+
+  /*
+    A recovery code split across a page break is a recovery code somebody
+    mistypes at the worst possible moment. Same for a single FAQ answer and a
+    single item in an access plan.
+  */
+  li,
+  tr,
+  details,
+  code,
+  figure,
+  blockquote {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  h1,
+  h2,
+  h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  /*
+    <details> is collapsed by default, and /help is entirely <details>. Printing
+    it as forty closed summaries would be a table of contents pretending to be
+    a document.
+  */
+  details > *:not(summary) {
+    display: block !important;
+  }
+
+  @page {
+    margin: 18mm;
+  }
+}

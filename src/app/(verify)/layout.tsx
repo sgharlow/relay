@@ -8,10 +8,20 @@
  * Requirements: J7-R1, CC8
  */
 
+import SupportFooter from '../_components/SupportFooter';
+
 export default function VerifyLayout({ children }: { children: React.ReactNode }) {
   return (
     <main className="min-h-screen bg-paper-sunken px-4 py-8 text-[18px] leading-relaxed text-ink">
-      <div className="mx-auto max-w-xl">{children}</div>
+      <div className="mx-auto max-w-xl">
+        {children}
+        {/*
+          A verifier is being asked to answer for somebody else's emergency, on a
+          phone, having volunteered for nothing. Of the three modes this was the
+          one with no way to ask what any of it meant.
+        */}
+        <SupportFooter />
+      </div>
     </main>
   );
 }

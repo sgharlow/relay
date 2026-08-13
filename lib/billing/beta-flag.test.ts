@@ -23,7 +23,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { TIER_LIMITS } from './entitlements';
 
-const MANUAL = 'docs/user-manual.html';
+const MANUAL = 'public/guide/index.html';
 const CLAIM = 'the free limits apply only to adding more';
 
 describe('the beta release flag and what the manual promises', () => {
@@ -43,7 +43,7 @@ describe('the beta release flag and what the manual promises', () => {
     expect(
       claimsFreeCanRelease,
       'canRelease has been flipped to false, so a lapsed subscription now stops ' +
-        'releases entirely. §2.7 of docs/user-manual.html still tells owners that ' +
+        'releases entirely. §2.7 of public/guide/index.html still tells owners that ' +
         'the free limits "apply only to adding more", which is now untrue and is ' +
         'the single most consequential thing the product could be wrong about. ' +
         'Correct the manual (and the /account copy) in the same change as the flag.',

@@ -111,10 +111,27 @@ export default function BreakGlassClient() {
         </button>
       </form>
 
+      {/*
+        🔴 A REJECTED CODE WAS A DEAD END until 2026-08-13. The message named the
+        problem and stopped, on the one screen reached exclusively by people
+        whose ordinary way in is already gone — the most stuck person in the
+        product, told only that the thing in their hand does not work.
+        The paragraph below the form covers "I never had a code", which is a
+        different situation and does not answer this one. A failure has to say
+        what to do next, so this branch names both routes out.
+      */}
       {error ? (
-        <p role="alert" style={{ fontSize: 17, marginTop: 16, color: '#9a3412', lineHeight: 1.6 }}>
-          {error}
-        </p>
+        <div role="alert" style={{ marginTop: 16 }}>
+          <p style={{ fontSize: 17, color: '#9a3412', lineHeight: 1.6 }}>{error}</p>
+          <p style={{ fontSize: 16, marginTop: 8, color: '#6b6257', lineHeight: 1.6 }}>
+            Codes are one-use, so a code that worked before will not work again. Ask the person who
+            named you for a fresh one — or{' '}
+            <a href="/help#code-not-working" style={{ color: '#6b6257' }}>
+              read what to do when a code will not work
+            </a>
+            .
+          </p>
+        </div>
       ) : null}
 
       <p style={{ fontSize: 16, lineHeight: 1.6, marginTop: 28, color: '#6b6257' }}>

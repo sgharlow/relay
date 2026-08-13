@@ -119,7 +119,7 @@
   <div class="row"><span class="k">Expected</span><span>A standing statement on every screen. Green only when the plan can actually run; when not, the single fastest next action, not a list of everything imperfect.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Reads &ldquo;could reach both of the things that matter&rdquo; — counting only items that matter and only verifiers who can actually act. A non-fatal gap (&ldquo;a second person who can confirm&rdquo;) is stated without turning the headline red.</span></div>
 </div>
-<figure><img src="screens/uc01-owner-vault.png" alt="Vault"><figcaption>UC-01 — the vault, most consequential first, under the standing statement.</figcaption></figure>
+<figure><img src="../public/guide/screens/uc01-owner-vault.png" alt="Vault"><figcaption>UC-01 — the vault, most consequential first, under the standing statement.</figcaption></figure>
 </section>
 
 <!-- UC-02 -->
@@ -131,7 +131,7 @@
   <div class="row"><span class="k">Expected</span><span>Naming is stated as the first half of two. Each person&rsquo;s line says what is <i>missing</i>, not merely which state they are in. A contact the owner has marked emergency-code-only is never counted as somebody to chase.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Four person states on one screen: verified, emergency-code-only, never accepted, and a verified verifier with no fallback. The completeness box counts <b>one</b> outstanding person — the aunt marked code-only is correctly excluded — and no longer claims &ldquo;nothing would open&rdquo; while the banner above says the plan works.</span></div>
 </div>
-<figure><img src="screens/uc02-owner-circle.png" alt="People"><figcaption>UC-02 — every person state the product can produce, in one circle.</figcaption></figure>
+<figure><img src="../public/guide/screens/uc02-owner-circle.png" alt="People"><figcaption>UC-02 — every person state the product can produce, in one circle.</figcaption></figure>
 </section>
 
 <!-- UC-03 -->
@@ -143,7 +143,7 @@
   <div class="row"><span class="k">Expected</span><span>Rules read as sentences. Reversible is the default; estate is forced irreversible and the control says so.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> A rule provisions its trigger, which is why an unused trigger never appears and can never fire.</span></div>
 </div>
-<figure><img src="screens/uc03-owner-rules.png" alt="Rules"><figcaption>UC-03 — access rules.</figcaption></figure>
+<figure><img src="../public/guide/screens/uc03-owner-rules.png" alt="Rules"><figcaption>UC-03 — access rules.</figcaption></figure>
 </section>
 
 <!-- UC-04 -->
@@ -155,7 +155,7 @@
   <div class="row"><span class="k">Expected</span><span>Armed is the resting state. Plain language, no schema vocabulary, no demo controls shown to a non-demo owner.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> &ldquo;People who must agree first&rdquo; rather than &ldquo;Required confirmations (N)&rdquo;; the demo simulate control is absent for a real account.</span></div>
 </div>
-<figure><img src="screens/uc04-owner-triggers.png" alt="Triggers"><figcaption>UC-04 — triggers, armed.</figcaption></figure>
+<figure><img src="../public/guide/screens/uc04-owner-triggers.png" alt="Triggers"><figcaption>UC-04 — triggers, armed.</figcaption></figure>
 </section>
 
 <!-- UC-05 -->
@@ -167,7 +167,7 @@
   <div class="row"><span class="k">Expected</span><span>What a helper can and can <b>never</b> do is stated before the button. Candidates are limited to people already named who have accepted.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Both lists render; a helper cannot open anything, decide access, touch a release, or add themselves.</span></div>
 </div>
-<figure><img src="screens/uc36-owner-helper-consent.png" alt="Consent"><figcaption>UC-05 / UC-06 — recording how consent was obtained. Nothing works until this exists.</figcaption></figure>
+<figure><img src="../public/guide/screens/uc36-owner-helper-consent.png" alt="Consent"><figcaption>UC-05 / UC-06 — recording how consent was obtained. Nothing works until this exists.</figcaption></figure>
 </section>
 
 <!-- UC-06 -->
@@ -179,7 +179,7 @@
   <div class="row"><span class="k">Expected</span><span>Nothing activates until consent is recorded (J3-R2). In-person and paper are offered as <i>peers</i> of the link, because the person being delegated for is the least likely to own a smartphone (J3-R3).</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Created pending → recorded in person with an evidence note → active. The link option is worded to discourage an owner recording a consent the other person never gave.</span></div>
 </div>
-<figure><img src="screens/uc16-owner-helper-active.png" alt="Helper active"><figcaption>UC-06 — active only after the record exists.</figcaption></figure>
+<figure><img src="../public/guide/screens/uc16-owner-helper-active.png" alt="Helper active"><figcaption>UC-06 — active only after the record exists.</figcaption></figure>
 </section>
 
 <!-- UC-07 -->
@@ -191,7 +191,7 @@
   <div class="row"><span class="k">Expected</span><span>A typed code, never a link that signs you in. Accepting opens nothing.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Copy no longer assumes the code arrived by email — delivery is owner-brokered by design.</span></div>
 </div>
-<figure class="phone"><img src="screens/uc08-claim-phone.png" alt="Claim"><figcaption>UC-07 — accepting.</figcaption></figure>
+<figure class="phone"><img src="../public/guide/screens/uc08-claim-phone.png" alt="Claim"><figcaption>UC-07 — accepting.</figcaption></figure>
 </section>
 
 <!-- UC-08 -->
@@ -203,7 +203,7 @@
   <div class="row"><span class="k">Expected</span><span>The owner by <b>name</b>. Counts and categories only (J4-R10). Leaving always available.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> &ldquo;Margaret Chen&rdquo;, not an email address; &ldquo;Set aside for you: 3 items&rdquo; with categories and no titles.</span></div>
 </div>
-<figure class="phone"><img src="screens/uc07-standby-dashboard.png" alt="Standby"><figcaption>UC-08 — standing by. Most of the time this screen says nothing is needed.</figcaption></figure>
+<figure class="phone"><img src="../public/guide/screens/uc07-standby-dashboard.png" alt="Standby"><figcaption>UC-08 — standing by. Most of the time this screen says nothing is needed.</figcaption></figure>
 </section>
 
 <!-- UC-09 -->
@@ -215,7 +215,7 @@
   <div class="row"><span class="k">Expected</span><span>The owner is asked first. Everyone else named is told a request was made, whatever the outcome (J6-R9) — and that is stated <i>before</i> the form, not discovered after. Capped at three in twenty-four hours.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Request created against production and reached the owner. Free text is capped, flattened to one line, and any link is removed before it is emailed.</span></div>
 </div>
-<figure><img src="screens/uc17-standby-ask-2col.png" alt="Ask"><figcaption>UC-09 — one tall screen as two columns, left then right. The deterrent is stated up front, not afterwards.</figcaption></figure>
+<figure><img src="../public/guide/screens/uc17-standby-ask-2col.png" alt="Ask"><figcaption>UC-09 — one tall screen as two columns, left then right. The deterrent is stated up front, not afterwards.</figcaption></figure>
 </section>
 
 <!-- UC-10 -->
@@ -227,7 +227,7 @@
   <div class="row"><span class="k">Expected</span><span>Who asked, in their own words, with a countdown, and a plain statement of what happens if the owner does not answer.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> &ldquo;Jordan Rivera is asking for access&rdquo;, the reason quoted, &ldquo;1h 58m left to answer&rdquo;, and both answers offered.</span></div>
 </div>
-<figure><img src="screens/uc18-owner-challenge.png" alt="Challenge"><figcaption>UC-10 — the challenge. Before this walkthrough nothing in the product could produce a request for this screen to show.</figcaption></figure>
+<figure><img src="../public/guide/screens/uc18-owner-challenge.png" alt="Challenge"><figcaption>UC-10 — the challenge. Before this walkthrough nothing in the product could produce a request for this screen to show.</figcaption></figure>
 </section>
 
 <!-- UC-11 -->
@@ -239,7 +239,7 @@
   <div class="row"><span class="k">Expected</span><span>Still requires the named people to confirm. Both reversal controls appear, and they are deliberately not equal in weight.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Advanced to the confirmable window at 0 of 1 confirmations — nothing opened. <b>Stand down — re-arm</b> is prominent; <b>Cancel permanently</b> is separated and confirms first, so somebody stopping a false alarm at speed cannot retire their whole plan by mistake.</span></div>
 </div>
-<figure><img src="screens/uc19-owner-trigger-pending.png" alt="Trigger in flight"><figcaption>UC-11 / UC-16 — a release in flight, with both ways to stop it.</figcaption></figure>
+<figure><img src="../public/guide/screens/uc19-owner-trigger-pending.png" alt="Trigger in flight"><figcaption>UC-11 / UC-16 — a release in flight, with both ways to stop it.</figcaption></figure>
 </section>
 
 <!-- UC-12 -->
@@ -251,7 +251,7 @@
   <div class="row"><span class="k">Expected</span><span>A verifier who can sign in receives no credential at all — the message tells them to sign in, and the dashboard carries the ask.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> &ldquo;They need your answer&rdquo; with a direct action, and no code was minted for this person.</span></div>
 </div>
-<figure class="phone"><img src="screens/uc20-verifier-standby.png" alt="Verifier standby"><figcaption>UC-12 — pull, not push.</figcaption></figure>
+<figure class="phone"><img src="../public/guide/screens/uc20-verifier-standby.png" alt="Verifier standby"><figcaption>UC-12 — pull, not push.</figcaption></figure>
 </section>
 
 <!-- UC-13 -->
@@ -263,7 +263,7 @@
   <div class="row"><span class="k">Expected</span><span>J7-R3 in order: <b>who</b> is asking, <b>why now</b>, what has been tried, what confirming will and will not cause. Three answers at <b>equal prominence</b> (J7-R6). Scale shown; contents never.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> &ldquo;Is this real, for Margaret Chen?&rdquo; — the vault is named, which it was not before 2026-08-12. &ldquo;They started this themselves&rdquo; is derived from how the release began. All three answers now share one visual treatment; until this pass &ldquo;Yes&rdquo; was a filled button and &ldquo;No&rdquo; an outline.</span></div>
 </div>
-<figure class="phone"><img src="screens/uc10-verifier-decision.png" alt="Decision"><figcaption>UC-13 — the decision page. The single highest-stakes screen in the product.</figcaption></figure>
+<figure class="phone"><img src="../public/guide/screens/uc10-verifier-decision.png" alt="Decision"><figcaption>UC-13 — the decision page. The single highest-stakes screen in the product.</figcaption></figure>
 </section>
 
 <!-- UC-14 -->
@@ -275,7 +275,7 @@
   <div class="row"><span class="k">Expected</span><span>Immediate closure naming whether it can be reversed, plus the case reference.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> &ldquo;Recorded. They can reverse this at any time.&rdquo;</span></div>
 </div>
-<figure class="phone"><img src="screens/uc21-verifier-thanks.png" alt="Closure"><figcaption>UC-14 — closure.</figcaption></figure>
+<figure class="phone"><img src="../public/guide/screens/uc21-verifier-thanks.png" alt="Closure"><figcaption>UC-14 — closure.</figcaption></figure>
 </section>
 
 <!-- UC-15 -->
@@ -287,7 +287,7 @@
   <div class="row"><span class="k">Expected</span><span>Ordered by consequence. Decryption happens in the browser. A contact who accepted signs in as themselves — <b>no token in the URL</b>.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Opened from a session with a clean URL; three items in priority order, each revealed only on request.</span></div>
 </div>
-<figure class="phone"><img src="screens/uc22-recipient-access-open.png" alt="Access"><figcaption>UC-15 — access, open. Nothing secret was emailed to reach this screen.</figcaption></figure>
+<figure class="phone"><img src="../public/guide/screens/uc22-recipient-access-open.png" alt="Access"><figcaption>UC-15 — access, open. Nothing secret was emailed to reach this screen.</figcaption></figure>
 </section>
 
 <!-- UC-16 -->
@@ -299,7 +299,7 @@
   <div class="row"><span class="k">Expected</span><span>One action reverses pending, grace and released alike, and names what it closed.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> &ldquo;Checked in — emergency re-armed.&rdquo; The released trigger returned to armed and the recipient&rsquo;s access closed.</span></div>
 </div>
-<figure><img src="screens/uc23-owner-checkin.png" alt="Check in"><figcaption>UC-16 — reversal, in one action.</figcaption></figure>
+<figure><img src="../public/guide/screens/uc23-owner-checkin.png" alt="Check in"><figcaption>UC-16 — reversal, in one action.</figcaption></figure>
 </section>
 
 <!-- UC-17 -->
@@ -311,7 +311,7 @@
   <div class="row"><span class="k">Expected</span><span>The story in sentences, above a hash-chained record that cannot be edited. People named, not UUIDs. It must distinguish &ldquo;somebody looked&rdquo; from &ldquo;nothing happened&rdquo;.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> &ldquo;an emergency was raised and Dr. Alex Chen confirmed it was real&rdquo;; the table names Dr. Alex Chen and Jordan Rivera with the raw ids beneath, and the chain still verifies — names are resolved for display only and never written into the record.</span></div>
 </div>
-<figure><img src="screens/uc05-owner-audit.png" alt="Audit"><figcaption>UC-17 — the record, after a complete incident.</figcaption></figure>
+<figure><img src="../public/guide/screens/uc05-owner-audit.png" alt="Audit"><figcaption>UC-17 — the record, after a complete incident.</figcaption></figure>
 </section>
 
 <!-- UC-18 -->
@@ -323,7 +323,7 @@
   <div class="row"><span class="k">Expected</span><span>Self-service, because the owner may be the person in hospital. Sends to the address on file, never to one typed in.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> &ldquo;My code has expired, or never arrived&rdquo; opens the form. What is sent depends on how the person is set up, so the wording promises what they need rather than &ldquo;a code&rdquo;.</span></div>
 </div>
-<figure class="phone"><img src="screens/uc24-verify-code.png" alt="Verify code"><figcaption>UC-18 — code entry, with recovery.</figcaption></figure>
+<figure class="phone"><img src="../public/guide/screens/uc24-verify-code.png" alt="Verify code"><figcaption>UC-18 — code entry, with recovery.</figcaption></figure>
 </section>
 
 <!-- UC-19 -->
@@ -335,7 +335,7 @@
   <div class="row"><span class="k">Expected</span><span>Works once. The owner is told it was used and asked to check it was really them.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Copy now names the real alternative when the owner cannot be reached: the others they named can still answer.</span></div>
 </div>
-<figure class="phone"><img src="screens/uc09-break-glass-phone.png" alt="Emergency code"><figcaption>UC-19 — the way back in.</figcaption></figure>
+<figure class="phone"><img src="../public/guide/screens/uc09-break-glass-phone.png" alt="Emergency code"><figcaption>UC-19 — the way back in.</figcaption></figure>
 </section>
 
 <!-- UC-20 -->
@@ -347,7 +347,7 @@
   <div class="row"><span class="k">Expected</span><span>Export decrypted in the browser; cancel without losing the vault; close with the consequences stated in the one colour reserved for what cannot be undone.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Name, passkey, recovery codes, subscription, export and closure all present. Leaving is a first-class path, not a support ticket.</span></div>
 </div>
-<figure><img src="screens/uc06-owner-account.png" alt="Account"><figcaption>UC-20 — the account screen.</figcaption></figure>
+<figure><img src="../public/guide/screens/uc06-owner-account.png" alt="Account"><figcaption>UC-20 — the account screen.</figcaption></figure>
 </section>
 
 <!-- UC-21 -->
@@ -359,7 +359,7 @@
   <div class="row"><span class="k">Expected</span><span>Terms and Privacy each address the population that did not sign up and was merely named.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Both live, both carrying those sections. Counsel review under <code>g2-counsel-opinion</code> remains outstanding and this does not substitute for it.</span></div>
 </div>
-<figure><img src="screens/uc12-landing.png" alt="Landing"><figcaption>UC-21 — relaystandby.com</figcaption></figure>
+<figure><img src="../public/guide/screens/uc12-landing.png" alt="Landing"><figcaption>UC-21 — relaystandby.com</figcaption></figure>
 </section>
 
 <!-- UC-22 -->
@@ -371,7 +371,7 @@
   <div class="row"><span class="k">Expected</span><span>Two steps, an authenticator required, and recovery codes issued at the point they can still be saved.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> The name field shows a <b>live preview of the consequence</b> of leaving it blank — &ldquo;they will see <i>your email address</i> when we contact them&rdquo; — which is the same defect that had to be fixed in the standby dashboard, pre-empted at the one moment it can be avoided.</span></div>
 </div>
-<figure><img src="screens/uc25-signup.png" alt="Sign up"><figcaption>UC-22 — creating a vault.</figcaption></figure>
+<figure><img src="../public/guide/screens/uc25-signup.png" alt="Sign up"><figcaption>UC-22 — creating a vault.</figcaption></figure>
 </section>
 
 <!-- UC-23 -->
@@ -383,7 +383,7 @@
   <div class="row"><span class="k">Expected</span><span>A recovery code replaces how you sign in and touches nothing inside the vault — and the page says so, because the fear at that moment is that the data is gone.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> &ldquo;Your vault contents are untouched — this only replaces how you sign in.&rdquo;</span></div>
 </div>
-<figure><img src="screens/uc26-recover.png" alt="Recover"><figcaption>UC-23 — recovery.</figcaption></figure>
+<figure><img src="../public/guide/screens/uc26-recover.png" alt="Recover"><figcaption>UC-23 — recovery.</figcaption></figure>
 </section>
 
 <!-- UC-24 -->
@@ -395,7 +395,7 @@
   <div class="row"><span class="k">Expected</span><span>Told on a screen they already visit, with the boundary summarised before they go any further.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> &ldquo;You are helping Margaret Chen set up&rdquo; on the standby dashboard. Until this pass nothing told them — an owner could appoint somebody and the person on the other end had no screen, no message and no route they could have guessed.</span></div>
 </div>
-<figure class="phone"><img src="screens/uc27-helper-discovery.png" alt="Helper discovery"><figcaption>UC-24 — the only way a helper learns.</figcaption></figure>
+<figure class="phone"><img src="../public/guide/screens/uc27-helper-discovery.png" alt="Helper discovery"><figcaption>UC-24 — the only way a helper learns.</figcaption></figure>
 </section>
 
 <!-- UC-25 -->
@@ -407,7 +407,7 @@
   <div class="row"><span class="k">Expected</span><span>Encrypted in the helper&rsquo;s browser exactly as an owner&rsquo;s is. <b>Sealed on save</b> — a helper cannot read back even their own entry (J3-R4). The boundary is stated above the tools, not discovered by trying.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Item saved to another person&rsquo;s vault with delegate provenance recorded and the audit entry attributed to <code>delegate:&lt;id&gt;</code>. Probed from the helper&rsquo;s own session: their list returns <b>only their entry</b> — the owner&rsquo;s private item is absent — carries no ciphertext, and a vault with no delegation returns <b>403</b>.</span></div>
 </div>
-<figure><img src="screens/uc29-helper-added-2col.png" alt="Helper workspace"><figcaption>UC-25 — the workspace, after an entry was saved and sealed.</figcaption></figure>
+<figure><img src="../public/guide/screens/uc29-helper-added-2col.png" alt="Helper workspace"><figcaption>UC-25 — the workspace, after an entry was saved and sealed.</figcaption></figure>
 </section>
 
 <!-- UC-26 -->
@@ -419,7 +419,7 @@
   <div class="row"><span class="k">Expected</span><span>Everything that decides who can reach what stops and waits for the owner (J3-R6). A helper proposing <b>themselves</b> is offered plainly and labelled on the way past, because hiding it would only mean somebody typing their own name in the field above and nobody noticing.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Proposal queued against the helped vault, shown back as &ldquo;waiting for Margaret Chen&rdquo;, and nothing changed in the circle until she answered.</span></div>
 </div>
-<figure><img src="screens/uc30-helper-proposed-2col.png" alt="Proposal"><figcaption>UC-26 — a suggestion, not a change.</figcaption></figure>
+<figure><img src="../public/guide/screens/uc30-helper-proposed-2col.png" alt="Proposal"><figcaption>UC-26 — a suggestion, not a change.</figcaption></figure>
 </section>
 
 <!-- UC-27 -->
@@ -431,7 +431,7 @@
   <div class="row"><span class="k">Expected</span><span>Approving runs through the same validated path an owner would use — an approved proposal is not a trusted insert.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> The queue showed the suggestion, the owner approved, and Sam Rivera appeared in the circle as a real recipient. <b>This screen had rendered an empty state since it shipped</b>, waiting on a proposal nothing in the product could make.</span></div>
 </div>
-<figure><img src="screens/uc31-owner-approval-queue.png" alt="Approval queue"><figcaption>UC-27 — the queue, filled for the first time.</figcaption></figure>
+<figure><img src="../public/guide/screens/uc31-owner-approval-queue.png" alt="Approval queue"><figcaption>UC-27 — the queue, filled for the first time.</figcaption></figure>
 </section>
 
 <!-- UC-28 -->
@@ -443,7 +443,7 @@
   <div class="row"><span class="k">Expected</span><span>Parsed and encrypted <b>entirely in the browser</b>. A preview before anything is written, and the importance engine re-run afterwards so nothing lands silently uncovered.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> A three-row LastPass export previewed and imported on production; all three appeared in the vault. <b>The preview shows service, URL and username and no passwords</b> — the one screen where a shoulder-surfer would see the whole file at once.</span></div>
 </div>
-<figure><img src="screens/uc33-owner-import.png" alt="Import"><figcaption>UC-28 — import, after the run.</figcaption></figure>
+<figure><img src="../public/guide/screens/uc33-owner-import.png" alt="Import"><figcaption>UC-28 — import, after the run.</figcaption></figure>
 </section>
 
 <!-- UC-29 -->
@@ -455,7 +455,7 @@
   <div class="row"><span class="k">Expected</span><span>The question that produces a useful list — not &ldquo;add an item&rdquo;.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> &ldquo;If they were hospitalised tomorrow, these are the accounts you would need first.&rdquo;</span></div>
 </div>
-<figure><img src="screens/uc34-owner-start.png" alt="Start"><figcaption>UC-29 — the first-run prompt.</figcaption></figure>
+<figure><img src="../public/guide/screens/uc34-owner-start.png" alt="Start"><figcaption>UC-29 — the first-run prompt.</figcaption></figure>
 </section>
 
 <!-- UC-30 -->
@@ -467,7 +467,7 @@
   <div class="row"><span class="k">Expected</span><span>The <b>consequence</b> stated, not &ldquo;are you sure&rdquo;. Reversible and irreversible triggers get different sentences and different weights; the irreversible one asks the trigger type to be <b>typed</b>, matching what closing an account already demands.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> &ldquo;Everyone you named to confirm an emergency will be asked whether this is real… You can stop it at any point by checking in.&rdquo; Backing out left the trigger ARMED and changed nothing. ⏸️ <b>This is a precondition on <code>g2-counsel-opinion</code>, not an improvement</b> — today every selectable trigger is reversible, and the day <code>estate</code> becomes selectable that click is permanent. Since the grace ruling of the same day the estate branch also states the <b>three-day window</b> that follows: with no way to reverse a completed handover, that window is the only chance anyone gets to stop it.</span></div>
 </div>
-<figure><img src="screens/uc35-owner-initiate-confirm.png" alt="Initiate confirmation"><figcaption>UC-30 — the confirmation.</figcaption></figure>
+<figure><img src="../public/guide/screens/uc35-owner-initiate-confirm.png" alt="Initiate confirmation"><figcaption>UC-30 — the confirmation.</figcaption></figure>
 </section>
 
 <!-- UC-31 -->
@@ -489,8 +489,8 @@
   since &sect;4.3, only a <b>confirmed</b> person&rsquo;s answer counts towards opening anything.
 </div>
 
-<figure><img src="screens/verify-call-owner.png" alt="The owner side"><figcaption>UC-31 &mdash; the owner&rsquo;s side: call them and read this out.</figcaption></figure>
-<figure><img src="screens/verify-call-contact-2col.png" alt="The contact side"><figcaption>UC-31 &mdash; the contact&rsquo;s side, which did not exist before, including what to do when the words do <b>not</b> match.</figcaption></figure>
+<figure><img src="../public/guide/screens/verify-call-owner.png" alt="The owner side"><figcaption>UC-31 &mdash; the owner&rsquo;s side: call them and read this out.</figcaption></figure>
+<figure><img src="../public/guide/screens/verify-call-contact-2col.png" alt="The contact side"><figcaption>UC-31 &mdash; the contact&rsquo;s side, which did not exist before, including what to do when the words do <b>not</b> match.</figcaption></figure>
 </section>
 
 <!-- UC-32 -->
@@ -502,8 +502,8 @@
   <div class="row"><span class="k">Expected</span><span>J3-R8. Plain language, derived from the audit chain rather than a second log that could drift from it, and placed beside the control that removes them &mdash; the evidence belongs next to the decision it informs.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> A helper added an item and suggested a person; the owner saw &ldquo;Added something to your vault&rdquo; and &ldquo;Suggested somebody who would step in&rdquo;. In the record itself the actor now reads <b>&ldquo;Jordan Rivera (helping you)&rdquo;</b> with the raw id beneath and the chain still intact &mdash; delegates were the one actor type without a name until this pass.</span></div>
 </div>
-<figure><img src="screens/uc16-owner-helper-active.png" alt="Helper activity"><figcaption>UC-32 &mdash; what they did, beside &ldquo;Stop them helping&rdquo;.</figcaption></figure>
-<figure><img src="screens/audit-delegate-named.png" alt="Delegate named in the record"><figcaption>UC-32 &mdash; and in the tamper-evident record, named rather than a UUID.</figcaption></figure>
+<figure><img src="../public/guide/screens/uc16-owner-helper-active.png" alt="Helper activity"><figcaption>UC-32 &mdash; what they did, beside &ldquo;Stop them helping&rdquo;.</figcaption></figure>
+<figure><img src="../public/guide/screens/audit-delegate-named.png" alt="Delegate named in the record"><figcaption>UC-32 &mdash; and in the tamper-evident record, named rather than a UUID.</figcaption></figure>
 </section>
 
 <!-- UC-33 -->
@@ -515,7 +515,7 @@
   <div class="row"><span class="k">Expected</span><span>A count, never a code &mdash; they are stored as hashes and readable exactly once, at issue. Coloured by how much room is left, because &ldquo;1 left&rdquo; in the same grey as everything else is a fact nobody acts on.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Four issued with one spent read <b>&ldquo;You have 3 left.&rdquo;</b> A <b>silent cliff</b> until this pass: codes are consumed one per use and are the only way back when the authenticator is gone, and the product said nothing as the sheet ran down.</span></div>
 </div>
-<figure><img src="screens/recovery-count.png" alt="Recovery codes"><figcaption>UC-33 &mdash; the account screen.</figcaption></figure>
+<figure><img src="../public/guide/screens/recovery-count.png" alt="Recovery codes"><figcaption>UC-33 &mdash; the account screen.</figcaption></figure>
 </section>
 
 <!-- UC-34 -->
@@ -527,7 +527,7 @@
   <div class="row"><span class="k">Expected</span><span>Written for the <b>contact</b>, not the owner: one of the two readers may be in a hospital corridor. Leads with the fear &mdash; nothing lost, nothing opened &mdash; and names the three places somebody was probably trying to reach rather than offering a dashboard they do not have.</span></div>
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> The 404 serves the product&rsquo;s voice; Next&rsquo;s bare default is gone. A failure also <b>reports itself</b>: the digest, the path and the mode reach the operator, and the error message never does &mdash; it could carry vault content. Live-proved on production, including that a query string is stripped before it can copy a live ticket into an email.</span></div>
 </div>
-<figure><img src="screens/not-found.png" alt="Not found"><figcaption>UC-34 &mdash; an address that does not exist.</figcaption></figure>
+<figure><img src="../public/guide/screens/not-found.png" alt="Not found"><figcaption>UC-34 &mdash; an address that does not exist.</figcaption></figure>
 </section>
 
 <!-- UC-35 -->
@@ -560,7 +560,7 @@
   trigger &mdash; so a future fix cannot quietly flatten the thing the table exists to demonstrate.
 </div>
 
-<figure><img src="screens/public-demo.png" alt="The guided demo"><figcaption>UC-35 &mdash; relaystandby.com/demo, after the retarget. Sam (spouse) on <code>emergency</code>, Alex (daughter) on <code>caregiver</code>, and nothing on offer that is not for sale.</figcaption></figure>
+<figure><img src="../public/guide/screens/public-demo.png" alt="The guided demo"><figcaption>UC-35 &mdash; relaystandby.com/demo, after the retarget. Sam (spouse) on <code>emergency</code>, Alex (daughter) on <code>caregiver</code>, and nothing on offer that is not for sale.</figcaption></figure>
 </section>
 
 <!-- Not evidenced -->

@@ -16,7 +16,6 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { getOwnerSession } from '../../../../../../lib/auth/session';
 import { assertOwns, IntegrityError } from '../../../../../../lib/db/integrity';
 import {
-  getItemForOwner,
   updateItem,
   deleteItem,
   validateUpdateInput,
@@ -61,14 +60,13 @@ async function authorize(
   return { ownerId };
 }
 
-export async function GET(_req: NextRequest, { params }: Ctx): Promise<NextResponse> {
-  const auth = await authorize((await params).id);
-  if (auth instanceof NextResponse) return auth;
-
-  const item = await getItemForOwner(auth.ownerId, (await params).id);
-  if (!item) return NextResponse.json(FORBIDDEN, { status: 403 });
-  return NextResponse.json(item);
-}
+/*
+  GET was here and is gone — RETIRED 2026-08-13. It fetched ONE item, and there
+  was nothing it returned that anything wanted: the list endpoint already carries
+  the metadata every screen needs, and the ciphertext is never served back to an
+  owner — they re-encrypt on update rather than reading the old value, because
+  Relay cannot decrypt it. PUT and DELETE below are both reached from /vault.
+*/
 
 export async function PUT(req: NextRequest, { params }: Ctx): Promise<NextResponse> {
   const auth = await authorize((await params).id, req.method);

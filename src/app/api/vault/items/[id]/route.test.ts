@@ -1,5 +1,5 @@
 /**
- * Tests for /api/vault/items/[id] (GET, PUT, DELETE)
+ * Tests for /api/vault/items/[id] (PUT, DELETE)
  *
  * Validates: Requirements 1.5–1.8
  *  - not-found and cross-owner both return 403 (existence not revealed)
@@ -29,13 +29,12 @@ vi.mock('../../../../../../lib/vault/vault-items', async (importOriginal) => {
 
 import { getOwnerSession } from '../../../../../../lib/auth/session';
 import { assertOwns, IntegrityError } from '../../../../../../lib/db/integrity';
-import { getItemForOwner, updateItem, deleteItem } from '../../../../../../lib/vault/vault-items';
+import { updateItem, deleteItem } from '../../../../../../lib/vault/vault-items';
 import { writeAuditEntry } from '../../../../../../lib/audit/audit-service';
-import { GET, PUT, DELETE } from './route';
+import { PUT, DELETE } from './route';
 
 const mockSession = vi.mocked(getOwnerSession);
 const mockAssertOwns = vi.mocked(assertOwns);
-const mockGet = vi.mocked(getItemForOwner);
 const mockUpdate = vi.mocked(updateItem);
 const mockDelete = vi.mocked(deleteItem);
 const mockAudit = vi.mocked(writeAuditEntry);
@@ -51,37 +50,34 @@ beforeEach(() => {
   mockSession.mockResolvedValue({ ownerId: 'owner-1', isDemo: false });
 });
 
+/*
+  DRIVEN THROUGH DELETE SINCE 2026-08-13, when the GET handler was retired.
+  These test the shared `authorize()` helper, not any one verb — and the
+  behaviour they pin is Requirement 1.8: a row you do not own and a row that
+  does not exist must be indistinguishable, or the 404 itself tells an attacker
+  which item IDs are real. That guarantee still has to hold on the verbs that
+  remain, so the coverage moved rather than going with the handler.
+*/
 describe('authorization (Requirement 1.8)', () => {
-  it('GET returns 403 — not 404 — when the row does not exist', async () => {
+  it('returns 403 — not 404 — when the row does not exist', async () => {
     mockAssertOwns.mockRejectedValueOnce(new IntegrityError('NOT_FOUND', 'nope'));
-    const res = await GET(makeReq(), ctx);
+    const res = await DELETE(makeReq(), ctx);
     expect(res.status).toBe(403);
-    expect(mockGet).not.toHaveBeenCalled();
+    expect(mockDelete).not.toHaveBeenCalled();
   });
 
-  it('GET returns 403 on a cross-owner row (same response as not-found)', async () => {
+  it('returns 403 on a cross-owner row (same response as not-found)', async () => {
     mockAssertOwns.mockRejectedValueOnce(new IntegrityError('UNAUTHORIZED', 'mismatch'));
-    const res = await GET(makeReq(), ctx);
+    const res = await DELETE(makeReq(), ctx);
     expect(res.status).toBe(403);
   });
 
-  it('GET returns 401 when unauthenticated', async () => {
+  it('returns 401 when unauthenticated', async () => {
     const { NextResponse } = await import('next/server');
     mockSession.mockReset();
     mockSession.mockRejectedValueOnce(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
-    const res = await GET(makeReq(), ctx);
+    const res = await DELETE(makeReq(), ctx);
     expect(res.status).toBe(401);
-  });
-});
-
-describe('GET /api/vault/items/[id]', () => {
-  it('returns the full item (with ciphertext) for an owned row', async () => {
-    mockAssertOwns.mockResolvedValueOnce(undefined);
-    mockGet.mockResolvedValueOnce({ id: 'item-1', ciphertext: 'CT', wrapped_data_key: 'WK' } as never);
-    const res = await GET(makeReq(), ctx);
-    expect(res.status).toBe(200);
-    const json = await res.json();
-    expect(json.ciphertext).toBe('CT');
   });
 });
 

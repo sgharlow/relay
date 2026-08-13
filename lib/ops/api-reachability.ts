@@ -68,27 +68,33 @@ export const REACHED_FROM_OUTSIDE: Record<string, string> = {
  * /api/ai/triage on 2026-08-13.
  */
 export const KNOWN_UNREACHABLE: Record<string, string> = {
-  'GET /api/people':
-    'Superseded by /api/circle, which returns the same roster plus the coverage ' +
-    'matrix the screen needs. Unused since the circle page was built. 2026-08-13.',
-  'GET /api/policies':
-    'Superseded by /api/circle, which embeds proposals. POST on the same route ' +
-    'IS used, to accept one. 2026-08-13.',
-  'PUT /api/policies/[id]':
-    'No edit-a-policy surface exists; the flow is accept, then adjust the ' +
-    'resulting rules on /rules. Retire or wire — undecided. 2026-08-13.',
-  'DELETE /api/policies/[id]':
-    'Policies are removed today only as a cascade of deleting the recipient. ' +
-    'Whether an owner should be able to un-accept one directly is a real ' +
-    'product question, so this is debt rather than dead code. 2026-08-13.',
-  'PUT /api/rules/[id]':
-    'A rule is changed by removing it and writing another — the builder sits ' +
-    'directly beneath the list. Editing is redundant. 2026-08-13.',
-  'GET /api/vault/items/[id]':
-    'Fetching ONE item. The list endpoint returns the metadata every screen ' +
-    'needs, and the ciphertext is never served to an owner — they re-encrypt on ' +
-    'update rather than reading the old value back, because Relay cannot decrypt ' +
-    'it. So there is nothing this returns that anything wants. 2026-08-13.',
+  /*
+    EMPTY, AND KEPT EMPTY BY A TEST — 2026-08-13.
+
+    It held six entries. Every one has now been retired rather than carried,
+    with the reason and the replacement in docs/retired-surface.md:
+
+      GET    /api/people          superseded by /api/circle
+      GET    /api/policies        superseded by /api/circle
+      PUT    /api/policies/[id]   was "retire or wire — undecided"
+      DELETE /api/policies/[id]   was "a real product question"
+      PUT    /api/rules/[id]      editing a rule is redundant with rewriting it
+      GET    /api/vault/items/[id] returned nothing any screen wanted
+
+    Two of them were explicitly undecided, and a release is what turns an
+    undecided item into a permanent one. The rest were "superseded", which
+    means replaced — and keeping the replaced thing IS the debt. All six were
+    owner-authenticated handlers with no screen behind them; one of them could
+    revoke every grant a policy had written. A capability that cannot be
+    reached by a user can still be reached by an attacker, and it is never
+    exercised by the people who would notice it misbehaving.
+
+    THIS MAP IS NOT DELETED, because the mechanism is still right: if a handler
+    genuinely must exist before its screen does, saying so here with a date is
+    better than deleting the check. But the empty state is now the asserted
+    default (api-reachability.test.ts), so adding an entry is a deliberate act
+    that shows up in review rather than a quiet place to park something.
+  */
 };
 
 const BACKSLASH = String.fromCharCode(92);

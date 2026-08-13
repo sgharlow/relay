@@ -341,19 +341,12 @@ export default function StandbyClient() {
       ) : null}
 
       {/*
-        The last thing on the page, and the audience that needs it most. A
-        standby contact is somebody who did not sign up for this, holding a code
-        they did not ask for, quite possibly in the middle of an emergency —
-        and until 2026-08-13 there was nowhere in the product for them to ask a
-        question. Quiet, because on a calm day there is nothing to ask.
+        The support line that used to live here has MOVED UP to the access
+        layout (_components/SupportFooter.tsx), where every screen in this mode
+        gets it rather than the two that happened to remember. Deleted rather
+        than left in place: two copies of one sentence is how the wording on
+        /standby and the wording everywhere else start disagreeing.
       */}
-      <p style={{ marginTop: 28, fontSize: 15, color: '#6b6257', textAlign: 'center' }}>
-        Not sure about any of this?{' '}
-        <a href="/help" style={{ color: '#6b6257', textDecoration: 'underline' }}>
-          Read the common questions
-        </a>{' '}
-        or ask us.
-      </p>
     </div>
   );
 }

@@ -42,6 +42,38 @@ access screen actually renders.
 
 ---
 
+## `PUT` and `DELETE /api/policies/[id]` — retired 2026-08-13
+
+**Requirements J4-R14, J4-R15** (policy edit preview; policy deletion cascade).
+
+**Why.** Both sat in `KNOWN_UNREACHABLE` marked *undecided* — "retire or wire" and
+"a real product question" — and the pre-release audit called carrying two
+undecided handlers into a release what it is: how debt becomes permanent. The
+product question has an answer. A policy is a **proposal** that materialises into
+`access_rules`, and `access_rules` is the authoritative grant table. An owner who
+wants different access edits the rules on `/rules`, where the effect is visible
+and per-item. Editing an already-accepted proposal changes nothing a person can
+see, and un-accepting one would have to reconcile the grants it already wrote —
+a materialising layer that silently widens or narrows access is precisely the
+hazard J4-R14/R15 exist to prevent.
+
+**Risk it carried.** `DELETE` removed every `access_rules` row a policy had
+generated, through an owner-authenticated route with no screen behind it. A
+capability that can revoke access and cannot be reached is a capability that can
+only ever be invoked by accident or by an attacker.
+
+**How policies are still removed.** As a cascade of deleting the person — which
+is the path the product has always actually used.
+
+**What survives.** `lib/rules/policy-materialize.ts` and its tests, including
+`previewPolicyChange`, which now has no caller in the product. Kept deliberately:
+the reconciliation logic is the hard part of ever building a real edit surface,
+it is property-tested, and J4-R14 is still on the books. Recorded here so it is a
+known orphan rather than a discovered one — `api-reachability.ts` does not check
+for unused library functions, by design.
+
+---
+
 ## Not retired, but unreached
 
 `lib/ops/api-reachability.ts` carries a second list, `KNOWN_UNREACHABLE`, for

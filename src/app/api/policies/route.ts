@@ -33,19 +33,12 @@ import { USER_SELECTABLE_TRIGGER_TYPES } from '../../../../lib/domain/enums';
 const TRIGGER_TYPES: readonly string[] = USER_SELECTABLE_TRIGGER_TYPES;
 const SCOPES = ['view', 'act'];
 
-export async function GET(): Promise<NextResponse> {
-  const auth = await requireOwner();
-  if (isResponse(auth)) return auth;
-
-  const res = await query(
-    `SELECT id, recipient_id, trigger_type, scope, reversible, predicate, created_at, updated_at
-       FROM access_policies
-      WHERE owner_id = $1`,
-    [auth.ownerId],
-  );
-
-  return NextResponse.json({ policies: res.rows });
-}
+/*
+  GET was here and is gone — RETIRED 2026-08-13, superseded by /api/circle, which
+  returns the same policies embedded in the roster and coverage matrix the screen
+  actually renders. It had had no caller since /circle was built. POST stays: it
+  is how an owner accepts a proposed policy, and it is reached.
+*/
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const auth = await requireOwner(req);

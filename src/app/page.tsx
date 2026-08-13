@@ -134,6 +134,12 @@ export default function Home() {
             <Link href="/help" className="inline-flex min-h-[44px] items-center hover:text-muted">
               Help
             </Link>
+            {/* Beside Help for the same reason. A plain <a>, not <Link>: the
+                guide is a static file under public/, not a route, so Next's
+                client router has nothing to prefetch or push. */}
+            <a href="/guide" className="inline-flex min-h-[44px] items-center hover:text-muted">
+              Guide
+            </a>
             <Link href="/security" className="inline-flex min-h-[44px] items-center hover:text-muted">
               Security
             </Link>

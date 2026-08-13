@@ -1,0 +1,86 @@
+# Accessibility gate.
+#
+# 🔴 CC8 CALLS ACCESSIBILITY A FUNCTIONAL REQUIREMENT, AND NOTHING ENFORCED IT.
+# The audit script existed and was run by hand, which means the result was only
+# ever as current as somebody's memory of running it. Worse, its page list was
+# ten owner-mode and landing routes — while CC8 names ACCESS MODE specifically,
+# as the mode read by elderly recipients under acute stress. Every screen that
+# requirement is about was outside the check, and the contrast test could not
+# see them either: it reads token declarations in globals.css, and those files
+# carry 134 hardcoded hex values.
+#
+# SEPARATE FROM ci.yml ON PURPOSE. This job installs a browser, which costs
+# minutes; folding it into the main pipeline would slow every push for a signal
+# that only changes when a screen changes. ci.yml stays the fast gate.
+#
+# WHAT THIS JOB CANNOT SEE, stated so its green is not read as wider than it is:
+# GitHub Actions holds no database credentials, so an owner session cannot be
+# minted here and owner mode is not audited. The script prints that omission on
+# every run rather than skipping quietly. Owner mode is covered by running
+# `node scripts/a11y-audit.mjs` locally before a release.
+
+name: Accessibility
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch: {}
+
+concurrency:
+  group: a11y-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
+jobs:
+  axe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # --no-save: Playwright is a harness, not a dependency of the product.
+      # Adding ~300MB to every developer's install to serve one CI job is the
+      # trade the old script header declined to make, and declining it is still
+      # right — it just does not have to mean the check never runs.
+      - name: Install Playwright
+        run: |
+          npm i --no-save playwright@1.59.1
+          npx playwright install --with-deps chromium
+
+      - name: Build
+        run: npm run build
+
+      # ONE STEP, not two. A server backgrounded in one `run:` and used from the
+      # next relies on the process surviving a shell exit — which mostly works,
+      # and "mostly" is how a gate becomes flaky and then becomes ignored.
+      # Starting and using it in the same shell removes the question.
+      - name: Start the app and audit it
+        env:
+          A11Y_BASE: http://localhost:3100
+          A11Y_SCOPE: public
+          PLAYWRIGHT_MODULE: playwright
+        run: |
+          set -uo pipefail
+          npx next start -p 3100 &
+          server=$!
+          trap 'kill $server 2>/dev/null || true' EXIT
+
+          # Poll rather than sleep a fixed interval: a fixed wait is either
+          # wasted time or a flake, and on a cold runner it is usually both.
+          up=
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:3100/ >/dev/null; then up=1; echo "up after ${i}s"; break; fi
+            sleep 1
+          done
+          if [ -z "$up" ]; then echo "server never came up"; exit 1; fi
+
+          node scripts/a11y-audit.mjs

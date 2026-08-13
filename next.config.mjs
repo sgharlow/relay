@@ -17,6 +17,27 @@
 const LEGACY_HOST = 'relay-three-henna.vercel.app';
 
 const nextConfig = {
+  /**
+   * 🔴 THE USER'S GUIDE WAS WRITTEN AND NEVER SHIPPED, found by the pre-release
+   * audit on 2026-08-13. Forty-two sections covering setup, the day it matters
+   * and what to do when something goes wrong — sitting in `docs/`, with no
+   * public directory, no route and no link. A test
+   * (lib/billing/beta-flag.test.ts) was already guarding a promise made in §2.7
+   * of a document no user could open.
+   *
+   * The file now lives at `public/guide/index.html` and is the ONLY copy: the
+   * served artifact and the one the test reads are the same bytes, so the guard
+   * cannot start watching a stale duplicate.
+   *
+   * Static assets under `public/` are served at their literal path, so
+   * `/guide` alone would 404 — Next does not resolve a directory to its
+   * index.html. This rewrite makes the short URL work, which matters because
+   * `/guide` is what goes in an invitation email and on the help page.
+   */
+  async rewrites() {
+    return [{ source: '/guide', destination: '/guide/index.html' }];
+  },
+
   async redirects() {
     return [
       {

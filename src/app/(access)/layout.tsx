@@ -22,6 +22,8 @@
  * Requirements: 7.3, CC8
  */
 
+import SupportFooter from '../_components/SupportFooter';
+
 export const metadata = { title: 'Access · Relay' };
 
 export default function AccessLayout({ children }: { children: React.ReactNode }) {
@@ -56,6 +58,15 @@ export default function AccessLayout({ children }: { children: React.ReactNode }
         style={{ maxWidth: 'var(--measure-access)', padding: 'var(--s8) var(--s6) var(--s16)' }}
       >
         {children}
+        {/*
+          The one exception to "chrome: none" above, and it is not a contradiction
+          of it. The masthead note is right that offering a mid-crisis reader
+          somewhere else to GO is asking them to decide something that is not
+          theirs — but a way to ask a question is not a destination, and until
+          2026-08-13 /claim, /access and /break-glass had none. See
+          _components/SupportFooter.tsx for what the audit found.
+        */}
+        <SupportFooter />
       </div>
     </div>
   );

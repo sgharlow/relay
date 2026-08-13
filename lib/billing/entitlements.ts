@@ -45,10 +45,12 @@ export const TIER_LIMITS: Record<
   // the realistic caregiver case (two siblings, a spouse, an executor) without
   // becoming an unlimited free tier.
   //
-  // canRelease stays false and stays UNWIRED. Nothing calls assertCanRelease,
-  // and that dead code is currently load-bearing: connecting it before billing
-  // exists would mean no account could ever release. Wire it in the same change
-  // that ships checkout, not before.
+  // ~~canRelease stays false and stays UNWIRED. Nothing calls
+  // assertCanRelease.~~ STALE IN BOTH HALVES, corrected 2026-08-13 by the
+  // pre-release audit. The flag is `true`, and the call site has existed since
+  // checkout shipped: lib/release/triggers.ts:125. A comment describing a
+  // capability as dead code, sitting directly above the live value that
+  // contradicts it, is worse than no comment — it is the one a reader trusts.
   //
   // canRelease is TRUE on free during beta, and this is a deliberate, dated
   // decision rather than an oversight. Founding families are being onboarded by
@@ -58,7 +60,14 @@ export const TIER_LIMITS: Record<
   // false is the single line that turns enforcement on — and the path is
   // already live and tested rather than dead code discovered later.
   //
-  // FLIP TO false WHEN BETA ENDS.
+  // FLIP TO false WHEN BETA ENDS — reviewed at every /daily-priority from
+  // 2026-10-01, owner Steve, recorded in PROJECT.yaml: ratified.beta-free-release.
+  // A temporary flag with no date and no owner is simply a permanent flag that
+  // nobody has admitted to yet, which is why the review is written down rather
+  // than left to whoever next reads this line. Flipping it also turns
+  // lib/billing/entitlements.test.ts's skipped case back on and makes
+  // lib/billing/beta-flag.test.ts demand the guide be corrected in the same
+  // change — the promise in §2.7 stops being true the moment this moves.
   free: { items: 10, recipients: 4, canRelease: true },
   paid: {
     items: Number.POSITIVE_INFINITY,

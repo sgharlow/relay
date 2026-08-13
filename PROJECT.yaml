@@ -178,12 +178,99 @@ ratified:
       if the list widens by accident. The estate acknowledgement path in /api/policies is left
       dormant rather than deleted."
     revisit: "when g2-counsel-opinion is met -- re-enabling is moving one string into one list"
+  - id: beta-free-release
+    date: 2026-08-13
+    decision: "the free tier CAN release during beta; enforcement stays off until beta ends"
+    detail: "TIER_LIMITS.free.canRelease is true. Founding families are onboarded by
+      hand and will not have paid, so enforcing the paywall now would mean the beta
+      cannot exercise the one capability the product exists for. The machinery is
+      live rather than dead: checkout is wired and assertCanRelease is called on the
+      release path (lib/release/triggers.ts:125), so turning enforcement on is one
+      line rather than a discovery."
+    recorded_because: "The pre-release audit found this deliberate and undated, paired
+      with a skipped test (lib/billing/entitlements.test.ts) carrying no owner either.
+      An undated temporary flag is a permanent flag nobody has admitted to. The flip
+      also falsifies §2.7 of the user guide, which lib/billing/beta-flag.test.ts
+      already enforces — so this is one decision with three artifacts that must move
+      together."
+    owner: steve
+    revisit: "at every /daily-priority from 2026-10-01"
+
+  - id: policy-edit-routes
+    date: 2026-08-13
+    decision: "retire PUT and DELETE /api/policies/[id] rather than wire them"
+    detail: "Both sat in lib/ops/api-reachability.ts KNOWN_UNREACHABLE marked
+      undecided — 'retire or wire' and 'a real product question'. The product
+      question has an answer: a policy is a PROPOSAL that materialises into
+      access_rules, and access_rules is the authoritative grant table. An owner who
+      wants different access edits the rules on /rules, where the effect is visible.
+      Editing the proposal after it has been accepted changes nothing a person can
+      see, and un-accepting one would have to reconcile the rules it already wrote —
+      a materialising layer that silently WIDENS or NARROWS access is exactly the
+      hazard J4-R14/R15 were written about."
+    rationale: "Carrying two undecided handlers through a release is how debt becomes
+      permanent. Retiring is reversible; a half-built un-accept path in front of beta
+      users is not."
+    implemented: "Moved to docs/retired-surface.md with the reason and the
+      replacement, and the handlers deleted. Policies are still removed as a cascade
+      of deleting the person, which is the path that has always been used."
+
   - id: stripe-merchant-name
     date: 2026-08-09
     decision: "leave as-is for the G1 flight"
     detail: "The live billing portal header reads 'Relay/ReportBridge/LearningAI365' — an account-level name on the Stripe account shared with report-bridge, learningai365 and skillcrossroads. Per-portal-configuration branding does not override it."
     rationale: "G1 measures click-to-intent, which happens before checkout, so this cannot bias the gate reading. It is only seen by someone who reaches payment during the beta."
     revisit: "if G1 passes — at which point the options are a neutral shared name or a Relay-only Stripe account"
+
+# Per-journey build state — THE one authoritative record, added 2026-08-13.
+#
+# WHY IT MOVED HERE. docs/user-journeys.md carried per-journey state in three
+# separate places: a live sweep table at the top, a summary table in Part II, and
+# a coverage table in Part VIII. By 2026-08-13 they contradicted each other and
+# the file said so — J1/J3/J6/J7 were tagged `[GAP]` in Part II while the sweep
+# eight hundred lines above recorded all four PASSING on production. The doc had
+# deliberately declined to retag, on the reasonable ground that hand-asserting 74
+# build states invites a wrong one.
+#
+# That reasoning is sound and the fix follows it: state each journey ONCE, here,
+# where the volatile-facts rule already puts test counts and gates — and let the
+# prose reference it instead of restating it. lib/ops/journey-state.test.ts fails
+# if the document contradicts this block, so the two cannot drift apart again.
+#
+# `walked` is the date the journey was last exercised end to end against
+# PRODUCTION, not the date something was merged.
+journeys:
+  evidence: "docs/user-journeys.md — re-sweep table, 2026-08-13"
+  J1:  { name: "Worry to proof to commitment",  status: live, walked: 2026-08-13 }
+  J2:  { name: "Cold-start defeat",             status: live, walked: 2026-08-13 }
+  J3:  { name: "Assisted setup for a parent",   status: live, walked: 2026-08-12 }
+  J4:  { name: "Building the circle of trust",  status: live, walked: 2026-08-13 }
+  J5:  { name: "The living habit",              status: live, walked: 2026-08-13 }
+  J6:  { name: "Someone requests access",       status: live, walked: 2026-08-13 }
+  J7:  { name: "The verifier's moment",         status: live, walked: 2026-08-13 }
+  J8:  { name: "Hands on the account",          status: live, walked: 2026-08-13,
+         caveat: "the decrypt round-trip was NOT re-proven on this walk — that
+           fixture's ciphertext is placeholder bytes. That half stands on the
+           2026-08-08 walk and the 2026-08-13 item-update walk." }
+  J9:  { name: "Standing down",                 status: live, walked: 2026-08-13 }
+  J10: { name: "The permanent handoff",         status: gated, walked: 2026-08-13,
+         gate: g2-counsel-opinion,
+         note: "Refused at the trust boundary, not hidden in a dropdown —
+           POST /api/rules with trigger_type: estate answers 400. Enabling it is
+           moving one string into USER_SELECTABLE_TRIGGER_TYPES." }
+
+# Cross-cutting requirements whose state the document got wrong. Same rule.
+cross_cutting:
+  CC7: { name: "human-readable case ID per release", status: live,
+         evidence: "case RLY-DECY-X347 observed in the 2026-08-13 sweep" }
+  CC9: { name: "dead-man's switch on the scheduler", status: live,
+         evidence: ".github/workflows/scheduler-monitor.yml, both transitions proven 2026-08-08" }
+  CC8: { name: "accessibility as a functional requirement", status: partial,
+         evidence: "axe clean across 21 pages including access mode and a
+           390x844 viewport (2026-08-13); gated in CI for the signed-out half by
+           .github/workflows/a11y.yml. Printable fallbacks shipped for the guide
+           and the screens that carry irrecoverable instructions. STILL UNVERIFIED:
+           behaviour on a genuinely old low-end phone." }
 
 # Known defects accepted for now, with the trigger that ends the acceptance.
 #

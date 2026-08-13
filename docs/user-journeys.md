@@ -353,11 +353,16 @@ the owner renews. Journey 8 is specified in the most detail for this reason.
 
 | Actor | Definition | Auth model |
 |---|---|---|
-| **Owner** | Registered user whose vault it is. Holds all authority. | NextAuth + mandatory TOTP `[BUILT]` |
-| **Delegate** | Helper with scoped setup rights on another person's vault. Cannot read secrets they did not enter. | `[GAP]` |
-| **Recipient** | Designated to receive scoped access when a trigger fires. | Scoped HS256 JWT carrying `release_state_id` + `version` `[BUILT]`; standing claimed account `[GAP]` |
-| **Verifier** | Trusted third party who confirms or denies that a trigger condition is real. Never sees vault contents. | Signed single-use link, no account `[GAP]` |
-| **Executor** | A recipient with `role = 'executor'` on the estate trigger. | As recipient, plus identity verification `[P2]` |
+| **Owner** | Registered user whose vault it is. Holds all authority. | NextAuth + mandatory TOTP, recovery codes, optional passkey |
+| **Delegate** | Helper with scoped setup rights on another person's vault. Cannot read secrets they did not enter. | Claimed account + recorded consent artifact. Walked 2026-08-12 |
+| **Recipient** | Designated to receive scoped access when a trigger fires. | **Standby account** (primary — resolves the open release server-side); scoped HS256 JWT retained for **unclaimed** contacts only |
+| **Verifier** | Trusted third party who confirms or denies that a trigger condition is real. Never sees vault contents. | Standby account, or a signed single-use link. An **unconfirmed** verifier's answer is recorded and does not count toward quorum |
+| **Executor** | A recipient with `role = 'executor'` on the estate trigger. | As recipient. Gated on `g2-counsel-opinion`; identity verification still `[P2]` |
+
+> **Retagged 2026-08-13.** Every row above except Executor read `[GAP]` while the mechanism was
+> live — the delegate model, the claimed standby account and the verifier surface had all shipped.
+> Auth models are described here rather than tagged, because the tag was the part that rotted;
+> current build state is `PROJECT.yaml: journeys`.
 
 ### The ten journeys in lifecycle order
 
@@ -407,18 +412,25 @@ flowchart TD
 
 ### Summary table
 
-| # | Journey | Actor | Trigger | Success condition | State |
-|---|---|---|---|---|---|
-| 1 | Worry → proof → commitment | Owner/buyer | Precipitating life event | Paid subscription + seeded vault | `[GAP]` |
-| 2 | Cold-start defeat | Owner | Paid, vault near-empty | ≥80% of accounts present and ranked | `[BUILT]`+ |
-| 3 | Assisted setup for a parent | Delegate + Owner | Buyer ≠ data owner | Consented delegation, vault populated | `[GAP]` |
-| 4 | Building the circle of trust | Owner → all | Vault continuity-ready | Circle complete, all invitees claimed | `[BUILT]`+ |
-| 5 | The living habit | Owner | Recurring cadence | ≥1 interaction/quarter, renewal | `[BUILT]`+ |
-| 6 | Someone requests access | Recipient → Owner | Real-world emergency | Correct routing in minutes | `[GAP]` |
-| 7 | The verifier's moment | Verifier | `PENDING` entered | Accurate decision in <2 min | `[GAP]` |
-| 8 | Hands on the account | Recipient | `RELEASED` | Top-3 urgent actions completed | `[BUILT]`+ |
-| 9 | Standing down | Owner + Recipient | Owner recovers | Access sealed, receipt issued | `[BUILT]`+ |
-| 10 | The permanent handoff | Executor | Verified death | Provider transitions complete | `[P2]` |
+> **The State column is gone, deliberately (2026-08-13).** It held a third copy of per-journey build
+> state, and it was the copy that went wrong: J1, J3, J6 and J7 read `[GAP]` here while the sweep at
+> the top of this file recorded all four passing on production. Build state now lives in exactly one
+> place — `PROJECT.yaml: journeys` — and `lib/ops/journey-state.test.ts` fails if this document
+> contradicts it. This table keeps what does not drift: who the journey is for and what finishing it
+> means.
+
+| # | Journey | Actor | Trigger | Success condition |
+|---|---|---|---|---|
+| 1 | Worry → proof → commitment | Owner/buyer | Precipitating life event | Paid subscription + seeded vault |
+| 2 | Cold-start defeat | Owner | Paid, vault near-empty | ≥80% of accounts present and ranked |
+| 3 | Assisted setup for a parent | Delegate + Owner | Buyer ≠ data owner | Consented delegation, vault populated |
+| 4 | Building the circle of trust | Owner → all | Vault continuity-ready | Circle complete, all invitees claimed |
+| 5 | The living habit | Owner | Recurring cadence | ≥1 interaction/quarter, renewal |
+| 6 | Someone requests access | Recipient → Owner | Real-world emergency | Correct routing in minutes |
+| 7 | The verifier's moment | Verifier | `PENDING` entered | Accurate decision in <2 min |
+| 8 | Hands on the account | Recipient | `RELEASED` | Top-3 urgent actions completed |
+| 9 | Standing down | Owner + Recipient | Owner recovers | Access sealed, receipt issued |
+| 10 | The permanent handoff | Executor | Verified death | Provider transitions complete |
 
 ---
 
@@ -434,14 +446,18 @@ These bind **every** journey. They are stated once here rather than repeated ten
 | **CC4** | **Safe default.** Any ambiguous outcome or OCC-retry exhaustion leaves the release row in `ARMED`. A release must never be left in a partially-releasing state. | R5.9 | `[BUILT]` |
 | **CC5** | Every authorization decision reads `release_state` with strong consistency. Cached or eventually-consistent reads are never used to authorize. | R15.1 | `[BUILT]` |
 | **CC6** | All triggers except `estate` are reversible. Irreversibility requires explicit, recorded owner consent at configuration time. | R3.5, R5.10 | `[BUILT]` |
-| **CC7** | Every release carries one human-readable **case ID**, referenced in every notification to every actor. Three parties coordinating by phone during a crisis need a shared referent. | new | `[GAP]` |
+| **CC7** | Every release carries one human-readable **case ID**, referenced in every notification to every actor. Three parties coordinating by phone during a crisis need a shared referent. | new | **live** — see `PROJECT.yaml: cross_cutting.CC7` |
 | **CC8** | **Accessibility is a functional requirement, not a polish item.** The wedge means elderly owners and recipients operating under acute stress. Minimum 18px body text in Access mode, WCAG AA contrast, no countdown-pressure patterns on irreversible actions, functional on a five-year-old phone, printable fallback for every critical instruction. | §23, wedge | `[BUILT]`+ — Access mode is already 18–20px bold; WCAG AA audit, printable fallbacks, and low-end-device testing are unverified |
-| **CC9** | **Dead-man's-switch on the scheduler.** The heartbeat cron's success signal is a side effect. Absence of that signal must itself be alarmed — a silently-dead scheduler means no trigger ever fires and the entire product has failed invisibly while every page still renders 200. | portfolio rule | `[GAP]` |
+| **CC9** | **Dead-man's-switch on the scheduler.** The heartbeat cron's success signal is a side effect. Absence of that signal must itself be alarmed — a silently-dead scheduler means no trigger ever fires and the entire product has failed invisibly while every page still renders 200. | portfolio rule | **live** — see `PROJECT.yaml: cross_cutting.CC9` |
 | **CC10** | Least privilege throughout: mandatory MFA on owner accounts, IAM-based DSQL auth with no static passwords, per-owner row predicates on every query, HTTPS enforced at the edge. | R17.1–17.6 | `[BUILT]` |
 
 > **CC9 deserves emphasis.** It is the single most dangerous failure mode in the system. Every UI
 > surface can be green, every test can pass, and the product can be completely non-functional because
-> a Vercel Cron job stopped firing. Nothing currently detects that.
+> a Vercel Cron job stopped firing. ~~Nothing currently detects that.~~ **Something does now**, since
+> 2026-08-08: `.github/workflows/scheduler-monitor.yml` probes `/api/health/scheduler` every 30
+> minutes and is hosted off Vercel on purpose — a Vercel-hosted monitor would share fate with the
+> cron it watches, and silence would read as health. Both transitions were proven, healthy and
+> forced-failure. The paragraph is kept because the reasoning is still the reason the check exists.
 
 ---
 
@@ -454,7 +470,13 @@ These bind **every** journey. They are stated once here rather than repeated ten
 **Actor:** Adult child (buyer, prospective owner or delegate)
 **Trigger:** A precipitating event — a parent's fall, a diagnosis, a hospital discharge with a folder of paperwork, a sibling conversation that went badly.
 **Success:** Paid annual subscription, vault seeded to the free-tier cap, risk-graph reveal viewed. (Designating recipients belongs to J4, not here.)
-**Business stake:** This is the entire revenue path. `PROJECT.yaml` records `monetization_path: none` — there is zero billing code today.
+**Business stake:** This is the entire revenue path. `PROJECT.yaml` records the current
+`monetization_path`; read it there rather than here. **Corrected 2026-08-13** — this line used to
+copy that field's value inline, and claimed there was zero billing code, for four days after
+live-mode Stripe shipped and a real card was charged. It was wrong about the one file this project
+names as its source of truth, which is exactly the drift the claim-discipline rule exists to
+prevent. Recorded rather than quietly deleted, and `lib/ops/journey-state.test.ts` now fails if any
+value from that file is copied back in here.
 
 ### The optimization that defines this journey
 
@@ -1662,22 +1684,35 @@ through `withOccRetry`, and an `owner_id` predicate on every query.
 
 ### Coverage
 
-| Journey | Built | Gap | Phase 2 |
-|---|---|---|---|
-| J1 Acquisition | Landing, qualification, crypto, intake engine | Signup, seed, ZK moment, reveal framing, tier caps | Billing (G4) |
-| J2 Cold-start | CSV import, dedup, encryption, scoring, risk graph, gaps | Review-by-exception, continuity-ready state | Document + email ingestion |
-| J3 Assisted setup | Import mechanics only | **Entire delegation model** | — |
-| J4 Circle of trust | Recipients, verifiers, rules, estate irreversibility, N-of-M | People unification, policies, coverage matrix, claim flow | Identity verification |
-| J5 Living habit | Heartbeat, scheduler, reset, prioritization engine | Passive liveness, escalation ladder, review packaging, scheduler alarm | — |
-| J6 Access request | State transitions, OCC | **Entire request + challenge flow** | — |
-| J7 Verifier moment | Token lib, confirm API, idempotency, CAS | **Entire UI**, deny, abstain, halt, closure | — |
-| J8 Hands on account | Auth, consistency, plan logic, decrypt, audit, failover | Precompute, single-action, ephemeral reveal, progress | Mobile |
-| J9 Standing down | Full state machine, CAS, safe default, token invalidation | Receipt artifact, graceful close, re-arm prompt | — |
-| J10 Estate | Irreversibility, provider guidance, audit chain | Executor packet, long grace, closure | Death signals, RON, **G2** |
+> **SUPERSEDED 2026-08-13 by `PROJECT.yaml: journeys`.** The table that stood here was written on
+> 2026-08-06 and listed the delegation model, the access-request flow and the entire verifier UI as
+> unbuilt. All three shipped in the weeks after, and the sweep at the top of this file walked every
+> one of them on production. It is removed rather than rewritten because a fourth copy of build state
+> is how this went wrong in the first place.
+
+What remains genuinely open is **refinement inside journeys that work**, not missing journeys:
+
+| Journey | Still open |
+|---|---|
+| J2 | Review-by-exception; document and email ingestion lanes (`[P2]`) |
+| J5 | Escalation ladder, quarterly review packaging, renewal receipt |
+| J8 | Precomputed triage plan, single-next-action, ephemeral reveal, shared progress; mobile (`[P2]`) |
+| J9 | Steps 5–7: reversal receipt, re-arm confirmation, thank-the-recipient. Step 4 (graceful close) shipped 2026-08-08 and carries their weight for now |
+| J10 | Everything, correctly — blocked on `g2-counsel-opinion` |
+| CC8 | Behaviour on a genuinely old low-end phone. Everything else in CC8 is now checked |
+| — | Identity verification (KYC) at claim (`[P2]`) |
 
 ### Sequencing against the gates
 
-`PROJECT.yaml` carries a binding rule: **no further building until G1 produces evidence.** These
+> **SUPERSEDED 2026-08-11 by `PROJECT.yaml: ratified.build-standby-before-g1`.** The rule quoted
+> below was overridden by an explicit, recorded decision: the standby architecture was built ahead of
+> G1 evidence, because the 2026-08-11 analysis found the product could not serve its headline case as
+> it stood — the escalation transition was missing and credential delivery rode a channel measured
+> broken. Buying traffic for a funnel whose product cannot serve its headline case spends the G1
+> budget on a known-bad reading. G1's thresholds and gates are untouched; only the *when* moved.
+> The ordering below is kept as the reasoning that produced it.
+
+`PROJECT.yaml` carried a binding rule: **no further building until G1 produces evidence.** These
 journeys do not override it. The correct order:
 
 1. **G1 first.** Ship only what J1 needs to measure willingness-to-pay properly: signup, seed,

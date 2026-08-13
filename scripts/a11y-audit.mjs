@@ -1,14 +1,11 @@
 /**
- * Accessibility audit — axe-core over the signed-in product.
+ * Accessibility audit — axe-core over the rendered product.
  *
  *   npm run build && npx next start -p 3100
  *   node scripts/a11y-audit.mjs
  *
- * NOT A CI GATE, deliberately and for one reason: it needs a browser, and
- * Playwright is not a dependency of this repo. Wiring it into `npm test` would
- * mean either adding ~300MB of browser to every install or a test that silently
- * skips — and a check that skips is worse than one you have to remember, because
- * it reports green. Run it before a release and when a screen changes shape.
+ * Exits non-zero when anything serious or critical is found, so CI can gate on
+ * it (.github/workflows/a11y.yml).
  *
  * 🔴 IT REPLACES A HEURISTIC THAT LIED. An earlier regex sweep reported 24
  * unnamed form controls. Every one was wrong: `[^>]*` stops at the `>` inside
@@ -19,56 +16,185 @@
  * entirely: an unnamed <select> on /circle and two unlabelled quorum inputs on
  * /triggers. Both fixed 2026-08-13.
  *
+ * 🔴 IT USED TO AUDIT THE WRONG HALF OF THE PRODUCT. Until 2026-08-13 the page
+ * list was ten owner-mode and landing routes — and CC8, the requirement this
+ * script exists to enforce, names ACCESS MODE specifically: "elderly owners and
+ * recipients operating under acute stress ... minimum 18px body text in Access
+ * mode". Every screen a recipient, a standby contact or a verifier actually
+ * sees was outside the audit. The pre-release audit found this alongside 134
+ * hardcoded hex colours in those same files, which lib/ops/contrast.test.ts
+ * cannot see either because it reads only the token declarations in
+ * globals.css. Between the two checks, the mode the requirement is about was
+ * covered by neither.
+ *
+ * CONTACT PAGES ARE AUDITED SIGNED OUT, ON A PHONE-SIZED VIEWPORT. That is the
+ * only honest fidelity: a recipient is not the owner and does not hold the
+ * owner's cookie, and J8 specifies this experience as happening on a phone at
+ * 2am. Auditing them inside an owner session would measure a state no contact
+ * is ever in.
+ *
  * Serious and critical only. The point is defects somebody hits, not a score.
  */
-const { chromium } = await import(
-  'file:///C:/Users/sghar/CascadeProjects/__shared-tools/node_modules/playwright/index.mjs'
-);
 import { execFileSync } from 'child_process';
 import { readFileSync } from 'fs';
 
-const AXE = readFileSync('node_modules/axe-core/axe.min.js', 'utf8');
-const BASE = 'http://localhost:3100';
+/*
+  Playwright lives in the shared toolbox rather than this repo — see the note on
+  CI gating below. Resolved from $HOME, never a literal username: a hardcoded
+  C:/Users/<someone> path is unrunnable for anyone else and is banned by the
+  portfolio's own rule.
+*/
+const HOME = (process.env.HOME || process.env.USERPROFILE || '').split('\\').join('/');
+const PLAYWRIGHT =
+  process.env.PLAYWRIGHT_MODULE ||
+  `file:///${HOME}/CascadeProjects/__shared-tools/node_modules/playwright/index.mjs`;
+const { chromium } = await import(PLAYWRIGHT);
 
-const value = execFileSync(
-  'npx',
-  ['tsx', '--env-file=.env.local', 'scripts/mint-owner-session.ts', 'demo@relay.test'],
-  { encoding: 'utf8', shell: true },
-).split('\n').find((l) => l.startsWith('COOKIE ')).slice(7).trim();
+const AXE = readFileSync('node_modules/axe-core/axe.min.js', 'utf8');
+const BASE = process.env.A11Y_BASE || 'http://localhost:3100';
+
+/** Owner mode — dense, 16px floor, behind a session. */
+const OWNER_PAGES = [
+  '/vault',
+  '/circle',
+  '/rules',
+  '/triggers',
+  '/approvals',
+  '/account',
+  '/audit',
+  '/import',
+];
+
+/**
+ * Everything a person who is NOT the owner can reach. The contact screens are
+ * the CC8 audience; the public ones are where somebody frightened by an email
+ * lands before they are anybody at all.
+ */
+const PUBLIC_PAGES = [
+  '/',
+  '/caregivers',
+  '/how-it-works',
+  '/security',
+  '/help',
+  '/terms',
+  '/privacy',
+  '/claim',
+  '/access',
+  '/break-glass',
+  '/verify',
+  '/standby',
+  '/helping',
+];
+
+/**
+ * `public` audits only what a signed-out person can reach; `all` adds owner
+ * mode and needs database credentials to mint a session.
+ *
+ * CI RUNS `public`, AND SAYS SO IN ITS OUTPUT. GitHub Actions holds no DSQL
+ * credentials, so owner mode genuinely cannot be audited there. The honest
+ * handling is to name what was not covered on every run — the alternative, a
+ * silent skip, reports green over pages nobody opened, which is the exact
+ * failure this file's header spends a paragraph arguing against.
+ */
+const SCOPE = process.env.A11Y_SCOPE || 'all';
+
+let ownerCtx = null;
+let ownerSkipReason = SCOPE === 'public' ? 'A11Y_SCOPE=public' : null;
 
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 1280, height: 1000 } });
-await ctx.addCookies([
-  { name: 'next-auth.session-token', value, domain: 'localhost', path: '/', httpOnly: true, sameSite: 'Lax' },
-  { name: '__Secure-next-auth.session-token', value, domain: 'localhost', path: '/', httpOnly: true, sameSite: 'Lax', secure: true },
-]);
 
-const PAGES = ['/', '/caregivers', '/vault', '/circle', '/rules', '/triggers', '/approvals', '/account', '/audit', '/import'];
+if (!ownerSkipReason) {
+  try {
+    const value = execFileSync(
+      'npx',
+      ['tsx', '--env-file=.env.local', 'scripts/mint-owner-session.ts', 'demo@relay.test'],
+      { encoding: 'utf8', shell: true },
+    )
+      .split('\n')
+      .find((l) => l.startsWith('COOKIE '))
+      .slice(7)
+      .trim();
+    ownerCtx = await browser.newContext({ viewport: { width: 1280, height: 1000 } });
+    await ownerCtx.addCookies([
+      { name: 'next-auth.session-token', value, domain: 'localhost', path: '/', httpOnly: true, sameSite: 'Lax' },
+      { name: '__Secure-next-auth.session-token', value, domain: 'localhost', path: '/', httpOnly: true, sameSite: 'Lax', secure: true },
+    ]);
+  } catch (e) {
+    ownerSkipReason = `could not mint an owner session (${e.message.split('\n')[0].slice(0, 60)})`;
+  }
+}
+
+/*
+  390x844 is an iPhone-ish portrait. Access mode's whole claim is that it works
+  for somebody standing in a hospital corridor, and a 1280px desktop viewport
+  cannot test that claim — it hides exactly the overflow and tap-target defects
+  that audience meets first.
+*/
+const publicCtx = await browser.newContext({ viewport: { width: 390, height: 844 } });
 
 let total = 0;
-for (const path of PAGES) {
+let audited = 0;
+
+async function audit(ctx, path, label) {
   const p = await ctx.newPage();
   try {
     await p.goto(BASE + path, { waitUntil: 'domcontentloaded' });
     await p.waitForTimeout(2200);
+    /*
+      A REDIRECT SCORED AS THE PAGE YOU ASKED FOR IS A FALSE GREEN. If /standby
+      bounced a signed-out reader to /auth/signin, axe would audit the sign-in
+      page and this script would print "/standby clean" — a clean result for a
+      screen it never opened. Checked rather than assumed: it happens not to
+      redirect today, and "today" is not a guarantee.
+    */
+    const landed = new URL(p.url()).pathname;
+    if (landed !== path) {
+      total += 1;
+      console.log(`${label.padEnd(9)} ${path.padEnd(16)} REDIRECTED to ${landed} — not audited`);
+      await p.close();
+      return;
+    }
     await p.addStyleTag({ content: 'nextjs-portal{display:none!important}' }).catch(() => {});
     await p.addScriptTag({ content: AXE });
-    const r = await p.evaluate(async () =>
-      // Serious and critical only: the point is defects a person actually hits,
-      // not a score to polish.
-      await window.axe.run(document, { resultTypes: ['violations'] }),
-    );
+    const r = await p.evaluate(async () => await window.axe.run(document, { resultTypes: ['violations'] }));
     const bad = r.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
     total += bad.length;
-    console.log(`${path}  ${bad.length ? bad.length + ' serious/critical' : 'clean'}`);
+    audited += 1;
+    console.log(`${label.padEnd(9)} ${path.padEnd(16)} ${bad.length ? bad.length + ' serious/critical' : 'clean'}`);
     for (const v of bad) {
       console.log(`    ${v.id} (${v.impact}) x${v.nodes.length} — ${v.help}`);
       console.log(`      e.g. ${String(v.nodes[0].html).slice(0, 110)}`);
     }
   } catch (e) {
-    console.log(`${path}  ERROR ${e.message.slice(0, 80)}`);
+    /*
+      An unreachable page is a FAILURE, not a skip. A silent skip is how a
+      check reports green over a page it never opened — the failure mode this
+      whole file exists to argue against.
+    */
+    total += 1;
+    console.log(`${label.padEnd(9)} ${path.padEnd(16)} ERROR ${e.message.slice(0, 80)}`);
   }
   await p.close();
 }
-console.log(`\n${total} serious/critical violation type(s) across ${PAGES.length} pages`);
+
+for (const path of PUBLIC_PAGES) await audit(publicCtx, path, 'signed-out');
+if (ownerCtx) for (const path of OWNER_PAGES) await audit(ownerCtx, path, 'owner');
+
+const expected = PUBLIC_PAGES.length + (ownerCtx ? OWNER_PAGES.length : 0);
+console.log(`\n${total} serious/critical violation type(s) across ${audited} pages`);
+
+if (ownerSkipReason) {
+  console.log(
+    `\nNOT AUDITED: owner mode (${OWNER_PAGES.length} pages) — ${ownerSkipReason}.\n` +
+      'This run says nothing about those screens. Run it locally with database\n' +
+      'credentials before a release; CI covers the signed-out half only.',
+  );
+}
+
 await browser.close();
+
+if (audited !== expected) {
+  console.log(`REACHED ${audited} OF ${expected} PAGES — treat this run as a failure.`);
+  process.exit(1);
+}
+process.exit(total > 0 ? 1 : 0);

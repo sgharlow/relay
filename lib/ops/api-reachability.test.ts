@@ -118,6 +118,29 @@ describe('the repository has no unreachable handler', () => {
     expect(stale, 'These are listed as unreachable but are not. Remove the entries.').toEqual([]);
   });
 
+  /*
+    THE EMPTY STATE IS THE DEFAULT, ASSERTED — 2026-08-13.
+
+    This list held six handlers, two of them explicitly marked undecided, and a
+    release is exactly what turns an undecided item into a permanent one. All
+    six were retired. Making empty the asserted default means the next entry has
+    to argue for itself in review, rather than being added quietly and then
+    inherited by whoever reads the file in six months.
+
+    This is not a ban. If a handler must genuinely land before its screen does,
+    add it with a reason and a date and change this test in the same commit —
+    that is a decision, and it will be visible as one.
+  */
+  it('nothing is parked as permanently unreachable', () => {
+    expect(
+      Object.keys(KNOWN_UNREACHABLE),
+      'A handler has been added to KNOWN_UNREACHABLE. That is allowed, but it is ' +
+        'a product decision and not a parking space: retiring it into ' +
+        'docs/retired-surface.md or wiring it to a screen are both better ' +
+        'endings. If it truly must wait, update this expectation deliberately.',
+    ).toEqual([]);
+  });
+
   it('every external caller is claimed with a reason, not a bare path', () => {
     for (const [route, why] of Object.entries(REACHED_FROM_OUTSIDE)) {
       expect(why.length, `${route} needs a reason saying what calls it`).toBeGreaterThan(20);
