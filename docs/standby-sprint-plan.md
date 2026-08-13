@@ -1393,3 +1393,41 @@ looked broken; reaching it never was.
 production including reversals, the assurance step now genuinely works on both sides, failures are
 visible, and backups are confirmed running. What is left is not engineering: **nobody outside this
 room has used it**, and that is the number the whole security argument rests on.
+
+### The two unreachable capabilities, surfaced and tested — 2026-08-12
+
+Both were found by the third sweep as functions written, tested, and called by nothing.
+
+**J3-R8 — "what was done on your behalf."** `delegateActivityDigest` existed only as a function, so
+the single thing that makes handing somebody setup rights *reviewable* rather than a leap of faith
+was invisible. Now attached per delegation and rendered on `/approvals`, **beside "Stop them
+helping"** — the evidence belongs next to the decision it informs. Derived from the audit chain
+rather than a second log, as the function's own header requires: a separate table could drift, and
+then two sources would disagree about what a helper did.
+
+And the half that was mine: `resolveActorNames` named owners, recipients and verifiers but **not
+delegates**. The helper workspace and the actor resolver were built the same day and left
+unconnected, so the one actor an owner is most likely to be curious about — somebody else working
+inside their vault — rendered as a raw `delegate:<uuid>` while everybody else had a name.
+
+**`remainingRecoveryCodes` — a silent cliff.** Codes are consumed one per use and are the only way
+back when the authenticator is gone, and the product said nothing as the sheet ran down. Somebody
+could be on their last one and learn it at the moment it stops mattering. Now on the account page,
+coloured by how much room is left, because "1 left" in the same grey as everything else is a fact
+nobody acts on. A count, never a code.
+
+**Walked on production**, with a helper who had actually done things:
+
+| Check | Result |
+|---|---|
+| Helper adds an item, suggests a person | Both landed |
+| Owner sees "What they have done" | "Added something to your vault" · "Suggested somebody who would step in" — plain language, no raw action names |
+| Audit actor | **"Jordan Rivera (helping you)"**, raw id beneath as the verifiable record, chain intact |
+| Recovery count | 4 issued, 1 spent → **"You have 3 left."** |
+| The squashed checkbox | now 20×20 |
+
+Incidentally confirmed: readiness noticed the helper's item and reported it uncovered — *"Missing:
+Water rates"* — so a helper-added item enters the owner's coverage arithmetic like any other.
+
+⚠️ **Fixture addresses are now `sgharlow+relayqa-*@gmail.com`**, not `@relay.invalid`, closing the
+bounce problem the third sweep found. Deliverable, no bounce, and the mail is inspectable.
