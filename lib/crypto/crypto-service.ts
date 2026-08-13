@@ -283,6 +283,8 @@ export class CryptoService {
     plaintext: string,
     metadata: VaultItemMetadata,
   ): Promise<void> {
+    // The payload carries the metadata too. Until 2026-08-13 the route discarded
+    // everything but the blob, so a corrected title was posted and dropped.
     const payload = await this.encryptForUpload(plaintext, metadata);
     const res = await this.fetchImpl(`/api/vault/items/${encodeURIComponent(itemId)}`, {
       method: 'PUT',

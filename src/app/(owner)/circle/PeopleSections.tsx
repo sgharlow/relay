@@ -21,6 +21,7 @@
 import { useState } from 'react';
 
 import { apiSend } from '../_lib/api';
+import { RenameControl } from './RenameControl';
 import { VALID_ROLES, type RecipientRole } from '../../../../lib/domain/enums';
 import { readStandbyState, circleLight } from '../../../../lib/people/standby-state';
 import InviteControl from './InviteControl';
@@ -318,13 +319,29 @@ function RemoveButton({
  * explanation, which reads as "the button does nothing" — and on the one screen
  * where an owner most needs to believe what they are looking at.
  */
-function useRemove(path: 'recipients' | 'verifiers', onChange: () => Promise<void>) {
+function useRemove(
+  /**
+   * The full literal path, not a segment to interpolate.
+   *
+   * It was `/api/${path}/${id}` until 2026-08-13, which meant the string
+   * `/api/recipients` appeared NOWHERE in the product even though the endpoint
+   * was called constantly. A URL assembled from variables cannot be found by
+   * grep, by a reachability check, or by a person asking "what calls this?" —
+   * and the reachability check is now a CI gate (lib/ops/api-reachability.ts),
+   * so a call site nothing can see reads as a dead endpoint.
+   */
+  basePath: '/api/recipients' | '/api/verifiers',
+  onChange: () => Promise<void>,
+) {
   const [removeError, setRemoveError] = useState<string | null>(null);
 
   async function remove(id: string) {
     setRemoveError(null);
     try {
-      await apiSend(`/api/${path}/${id}`, 'DELETE');
+      await apiSend(
+        basePath === '/api/recipients' ? `/api/recipients/${id}` : `/api/verifiers/${id}`,
+        'DELETE',
+      );
     } catch (err) {
       setRemoveError(
         `That did not work, and nothing was removed: ${String((err as Error).message)}`,
@@ -371,7 +388,7 @@ export function RecipientSection({
     }
   }
 
-  const { remove, removeError } = useRemove('recipients', onChange);
+  const { remove, removeError } = useRemove('/api/recipients', onChange);
 
   return (
     <section>
@@ -461,11 +478,14 @@ export function RecipientSection({
                 />
               ) : null}
             </div>
-            <RemoveButton
-              onConfirm={() => remove(r.id)}
-              name={r.name}
-              reachCount={reachByRecipient?.[r.id]}
-            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)' }}>
+              <RenameControl personType="recipient" person={r} onRenamed={onChange} />
+              <RemoveButton
+                onConfirm={() => remove(r.id)}
+                name={r.name}
+                reachCount={reachByRecipient?.[r.id]}
+              />
+            </div>
           </li>
         ))}
       </ul>
@@ -524,7 +544,7 @@ export function VerifierSection({
     }
   }
 
-  const { remove, removeError } = useRemove('verifiers', onChange);
+  const { remove, removeError } = useRemove('/api/verifiers', onChange);
 
   return (
     <section>
@@ -609,7 +629,10 @@ export function VerifierSection({
             {/* A verifier holds no items, so there is no count to name — the
                 consequence is to the quorum, which the readiness banner states
                 far better than a sentence beside a button could. */}
-            <RemoveButton onConfirm={() => remove(v.id)} name={v.name} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s3)' }}>
+              <RenameControl personType="verifier" person={v} onRenamed={onChange} />
+              <RemoveButton onConfirm={() => remove(v.id)} name={v.name} />
+            </div>
           </li>
         ))}
       </ul>

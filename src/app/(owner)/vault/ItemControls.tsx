@@ -46,6 +46,7 @@ export function ItemControls({
   onChanged: () => void | Promise<void>;
 }) {
   const [mode, setMode] = useState<Mode>('idle');
+  const [title, setTitle] = useState(item.title);
   const [secret, setSecret] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +67,7 @@ export function ItemControls({
     try {
       await new CryptoService().updateItemSecret(item.id, secret, {
         type: item.type as VaultItemType,
-        title: item.title,
+        title: title.trim() || item.title,
         service_name: item.service_name ?? undefined,
         url: item.url ?? undefined,
         category: item.category ?? undefined,
@@ -103,11 +104,46 @@ export function ItemControls({
   if (mode === 'editing') {
     return (
       <form onSubmit={save} style={{ marginTop: 'var(--s2)', maxWidth: 460 }}>
-        <label style={{ display: 'block', fontSize: 'var(--t1)', color: 'var(--ink-muted)' }}>
+        {/*
+          The title is editable here because it is the ONE field the family
+          reads. It was sent on every update and silently discarded by the route
+          until 2026-08-13, so a typo in the name of an account was permanent.
+        */}
+        {/*
+          htmlFor/id, not a bare <label>. An unassociated label is read by a
+          screen reader as loose text and the field beside it as unnamed — and
+          the ids have to carry the item id because a vault renders many rows.
+        */}
+        <label
+          htmlFor={`title-${item.id}`}
+          style={{ display: 'block', fontSize: 'var(--t1)', color: 'var(--ink-muted)' }}
+        >
+          What it is called
+        </label>
+        <input
+          id={`title-${item.id}`}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          maxLength={200}
+          style={{
+            marginTop: 'var(--s1)',
+            marginBottom: 'var(--s2)',
+            width: '100%',
+            fontSize: 'var(--t2)',
+            padding: 'var(--s2)',
+            border: '1px solid var(--rule-strong)',
+            borderRadius: 4,
+          }}
+        />
+        <label
+          htmlFor={`secret-${item.id}`}
+          style={{ display: 'block', fontSize: 'var(--t1)', color: 'var(--ink-muted)' }}
+        >
           New value for {item.title}. Relay cannot show you the old one — it cannot read it — so
           this replaces it.
         </label>
         <textarea
+          id={`secret-${item.id}`}
           required
           rows={2}
           value={secret}
@@ -137,7 +173,7 @@ export function ItemControls({
           >
             {busy ? 'Encrypting…' : 'Replace it'}
           </button>
-          <button type="button" onClick={() => { setMode('idle'); setSecret(''); }} style={{ ...quiet, color: 'var(--ink-muted)' }}>
+          <button type="button" onClick={() => { setMode('idle'); setSecret(''); setTitle(item.title); }} style={{ ...quiet, color: 'var(--ink-muted)' }}>
             Cancel
           </button>
         </div>

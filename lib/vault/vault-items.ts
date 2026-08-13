@@ -82,6 +82,20 @@ export interface UpdateVaultItemInput {
   ciphertext: string; // base64
   wrapped_data_key: string; // base64
   kms_key_id?: string;
+  /**
+   * Renaming, added 2026-08-13. Optional throughout: a caller that sends only a
+   * re-encrypted blob keeps the previous behaviour exactly, so this widens the
+   * contract without changing it for anyone already using it.
+   *
+   * 🔴 THE TITLE WAS ALREADY BEING SENT AND SILENTLY DROPPED. `encryptForUpload`
+   * builds its payload from the item metadata, so every update posted a title —
+   * and `validateUpdateInput` picked out three fields and discarded the rest. An
+   * owner could not correct a typo in the one field their family reads, and
+   * nothing anywhere said why.
+   */
+  title?: string;
+  service_name?: string | null;
+  url?: string | null;
 }
 
 /** Thrown on validation failure; routes map this to HTTP 400. */
@@ -175,7 +189,7 @@ export function validateCreateInput(body: unknown): CreateVaultItemInput {
   };
 }
 
-/** Validates an update payload (re-encrypted blob). */
+/** Validates an update payload (re-encrypted blob, optionally renamed). */
 export function validateUpdateInput(body: unknown): UpdateVaultItemInput {
   if (typeof body !== 'object' || body === null) {
     throw new ValidationError('Request body must be a JSON object');
@@ -186,10 +200,25 @@ export function validateUpdateInput(body: unknown): UpdateVaultItemInput {
       throw new ValidationError(`${field} must be a non-empty base64 string`, field);
     }
   }
+
+  // Same rule as create. A title that is valid on the way in and rejected on the
+  // way back out would be its own defect.
+  if (b.title != null && (!isNonEmptyString(b.title) || (b.title as string).length > TITLE_MAX)) {
+    throw new ValidationError(`title must be 1–${TITLE_MAX} characters`, 'title');
+  }
+  // Mirrors the create rule exactly, rather than inventing a second one: a value
+  // accepted on the way in and refused on the way back out would be its own bug.
+  if (b.url != null && (typeof b.url !== 'string' || b.url.length > URL_MAX)) {
+    throw new ValidationError(`url must be ≤ ${URL_MAX} characters`, 'url');
+  }
+
   return {
     ciphertext: b.ciphertext as string,
     wrapped_data_key: b.wrapped_data_key as string,
     kms_key_id: isNonEmptyString(b.kms_key_id) ? (b.kms_key_id as string) : undefined,
+    title: isNonEmptyString(b.title) ? (b.title as string) : undefined,
+    service_name: typeof b.service_name === 'string' ? b.service_name : undefined,
+    url: typeof b.url === 'string' ? b.url : undefined,
   };
 }
 
@@ -323,17 +352,25 @@ export async function updateItem(
 ): Promise<VaultItemMetadata | null> {
   const result = await withOccRetry(() =>
     query<Record<string, unknown>>(
+      // COALESCE throughout: an omitted field keeps what is there, so a caller
+      // that sends only a blob behaves exactly as it did before renaming existed.
       `UPDATE vault_items
           SET ciphertext = $1,
               wrapped_data_key = $2,
               kms_key_id = COALESCE($3, kms_key_id),
+              title = COALESCE($4, title),
+              service_name = COALESCE($5, service_name),
+              url = COALESCE($6, url),
               updated_at = now()
-        WHERE id = $4 AND owner_id = $5
+        WHERE id = $7 AND owner_id = $8
        RETURNING ${METADATA_COLUMNS}`,
       [
         Buffer.from(input.ciphertext, 'base64'),
         Buffer.from(input.wrapped_data_key, 'base64'),
         input.kms_key_id ?? null,
+        input.title ?? null,
+        input.service_name ?? null,
+        input.url ?? null,
         id,
         ownerId,
       ],
