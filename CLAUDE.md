@@ -30,9 +30,10 @@ with per-user TOTP, access policies, delegation with consent, verifier deny/abst
 requests, recovery codes, the wired heartbeat scheduler with an off-Vercel dead-man's switch, and
 live-mode Stripe billing.
 
-**All ten user journeys were walked against production as a brand-new self-serve account on
-2026-08-08** — see the sweep table at the top of `docs/user-journeys.md`, which supersedes the
-`[BUILT]`/`[GAP]` tags further down that file. The 2026-06-27 dogfood described below is still
+**All ten user journeys were re-walked against production on 2026-08-13** — see the re-sweep
+table at the top of `docs/user-journeys.md`, which supersedes both the 2026-08-08 sweep below it
+and the `[BUILT]`/`[GAP]` tags further down that file. The 2026-08-08 walk is kept as the
+historical record; where the two differ, the newer wins. The 2026-06-27 dogfood described below is still
 true and is now the *older* of two live proofs.
 
 Authority for build state: `PROJECT.yaml` (gates, volatile facts) and the sweep table in
