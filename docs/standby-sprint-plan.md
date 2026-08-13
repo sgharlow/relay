@@ -1431,3 +1431,78 @@ Water rates"* — so a helper-added item enters the owner's coverage arithmetic 
 
 ⚠️ **Fixture addresses are now `sgharlow+relayqa-*@gmail.com`**, not `@relay.invalid`, closing the
 bounce problem the third sweep found. Deliverable, no bounce, and the mail is inspectable.
+
+---
+
+## 19. Demo, security and UI — fourth pass, 2026-08-12
+
+### The demo: two of them, and only one is public
+
+Checking "the demo" meant first establishing which one.
+
+| | What it is | State |
+|---|---|---|
+| `/demo` | The **public** guided tour a prospect sees. Static fixtures, no auth, no DB, no writes. | ✅ Clean, with one fix below |
+| `demo@relay.test` | A seeded 25-item account with `is_demo_account = true`, which gates `/api/demo/simulate`. | ✅ Data clean — **and nobody can sign into it** |
+
+**The seeded account has no TOTP secret, no passkey, no credential of any kind.** `resolveTotpSecret`
+returns null for it, so email+TOTP refuses. That is almost certainly deliberate and correct: **the
+repo is public**, so a seeded secret would publish a working credential to a production account.
+Recorded so nobody "fixes" it by committing one.
+
+⚠️ A consequence worth knowing: with no way in, `/api/demo/simulate` is unreachable in production
+too, and the readiness/coverage tidying done to that account earlier today improves data that only a
+local developer will ever see through the UI.
+
+### 🔴 The public demo was selling what the Terms disclaim
+
+Four of the eight sample items in the tour route to an **`estate`** trigger. `estate` is excluded
+from `USER_SELECTABLE_TRIGGER_TYPES` pending `g2-counsel-opinion`, and `/terms` says in as many
+words: *"Estate and inheritance functionality is not offered."*
+
+**This is the same contradiction already closed once in `/rules`**, which used to render its dropdown
+from the unfiltered list and so offered a permanent capability the product disclaimed. The dropdown
+was fixed; the tour was not, so the funnel page kept selling it.
+
+Fixed by saying so rather than by deleting the estate items: the sequence is real and is what the
+product does once counsel clears it, and a prospect is better served by an honest "not yet" than by a
+demo quietly edited to match a temporary limit. ⏸️ Retargeting those items instead is a commercial
+call, not a technical one.
+
+### Security review — the surfaces added since §13
+
+| Route | Guard | Note |
+|---|---|---|
+| `POST /api/incident` | rate limit only | Unauthenticated **by necessity** — the caller is a page that just failed. Constant 204, bounded fields, strips query strings, ignores unknown fields |
+| `GET /api/helping` | session | Returns only vaults this user helps with; the owner ids it then reads with come from that scoped query, never from user input |
+| `POST /api/approvals` | session + `resolveActor` + `requireScope` | Refuses an owner queuing to themselves, and a delegate without `people:propose` |
+| `GET /api/account/recovery-codes` | session | A **count**, never a code |
+
+**Every route in the app carries a guard.** Four have none by design and each is right: NextAuth's own
+handler, a health probe returning only a timestamp, the token-authenticated invitation paths (where
+the token *is* the credential, with `failed_attempts` enforcing an attempt budget — verified), and
+pre-auth WebAuthn options.
+
+Also re-checked: the contact-side fingerprint derives from the session user against a query scoped to
+`claimed_user_id`, so nobody can obtain a phrase for a binding that is not theirs; the delegate
+activity digest and the delegate name lookup are both owner-scoped.
+
+### UI review — the surfaces added since §16
+
+Measured at 1280 and 390, using the **effective label hit area** rather than the input box, since
+several controls sit inside their labels.
+
+- **No horizontal overflow** anywhere.
+- **No undersized targets.**
+- **Clay only on the account-closure box** — the one genuinely irreversible thing on those screens.
+- The singular case renders properly: *"You have one left — the next lost phone would lock you out
+  for good."*
+
+### Use-case coverage
+
+34 documented in `docs/Relay-Use-Cases.pdf`, all walked on production. The two capabilities the third
+sweep found built-but-unreachable are now surfaced and tested (UC-32, UC-33). The one remaining
+uncalled function, `bumpSessionEpoch`, is a missing convenience rather than a gap — every revocation
+that matters is enforced at the data layer.
+
+**Nothing is now built and unreachable.**
