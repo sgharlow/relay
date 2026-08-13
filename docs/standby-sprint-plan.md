@@ -1323,3 +1323,73 @@ urgent.
 the boundary *calls* the endpoint on a real crash is verified by reading, not by crashing production
 on purpose. The first genuine error will confirm it — which is the point of shipping it before the
 invitations rather than after.
+
+---
+
+## 18. Beta reassessment — 2026-08-12, third sweep
+
+The first two sweeps audited surfaces that had been stable for days. This one targets what the last
+few hours produced, on the principle that **the newest code is the least-walked** — several pieces
+were live-proven individually and had never been exercised together.
+
+### Verified working, by walking it
+
+| Check | Result |
+|---|---|
+| **The assurance model, both sides** | Contact's screen and owner's screen both read `granite forest mitten granite`. Owner pressed "The words matched" → person flipped to verified → readiness flipped from "plan cannot run" to executable. **This is the first time the verification call has been possible at all.** |
+| `Initiate` confirmation | States the consequence, backing out leaves ARMED, confirming advances |
+| **Grace ruling did not break the core loop** | Reversible emergency reached GRACE 0/1 exactly as before the per-trigger change |
+| [A3] next action | Correctly named "Confirm a recipient who has already claimed" |
+| Layout, 1280 and 390 | No horizontal overflow on `/helping`, `/standby`, the 404 |
+| Colour semantics | No clay on any non-permanent thing on the new surfaces |
+| Console | Clean on `/helping` |
+
+### 🔴 A finding about my own method, not the product
+
+**The QA walks have been generating hard bounces on a SHARED Resend account.** Fixture addresses use
+`@relay.invalid` — a reserved TLD that cannot receive mail — and firing a trigger emails every
+verifier. Resend *accepted* those sends (no `[notify] failed` lines), so the bounce happens
+downstream, invisibly to the app.
+
+Roughly 5–10 bounces across today's walks. Each individually trivial; the concern is sender
+reputation on an account **shared with report-bridge**, where the cost lands on a different project.
+
+**Fix for future walks:** fixture addresses become `sgharlow+relayqa1@gmail.com` and similar —
+deliverable, no bounce, and the mail is inspectable. Script-based proofs already stub the mail
+boundary; it is only UI walks that cannot. ⏸️ Worth a glance at Resend's bounce rate before the real
+invitations go out.
+
+### Built, still not reachable
+
+| Thing | Consequence |
+|---|---|
+| `delegateActivityDigest` | **J3-R8 has no surface.** An owner cannot see what their helper did — and `resolveActorNames` names owners, recipients and verifiers but **not delegates**, so a helper's actions show in the audit table as a raw `delegate:<uuid>`. Both halves were built today and left unconnected. |
+| `remainingRecoveryCodes` | An owner cannot see how many recovery codes are left. They are the only way back if the authenticator is lost, so "down to your last one" is currently a silent cliff. |
+
+### Not a hole, stated precisely
+
+`bumpSessionEpoch` has no caller, so there is **no "sign out everywhere"**. The epoch machinery it
+belongs to *is* wired — `readSessionEpoch` on sign-in, `isSessionCurrent` on every authenticated
+request — and it closes the defect it was built for: a session for a deleted user is denied. Every
+revocation that matters is enforced at the DATA layer instead (a revoked contact resolves to nothing
+regardless of their token), which is §3.7 rule 1 working as designed. A missing convenience, not a
+gap.
+
+### Cosmetic, recorded not fixed
+
+Fingerprint phrases draw with replacement, so ~9% repeat a word — the fixture drew `granite forest
+mitten granite`. Entropy is unaffected and both sides still match, but a repeat works against the
+word list's stated purpose (*"chosen to survive a bad phone line"*). Changing a security-control
+derivation mid-reassessment is the wrong moment; it is a ten-line change whenever it is wanted.
+
+Fixed during the sweep: the "This is me" checkbox rendered 13×20, squashed by its flex row, on the
+most consequential control a helper has. ⚠️ **Not an accessibility failure** — the input sits inside
+its label, so the real target was already 294×122 and clicking the text toggles it. The affordance
+looked broken; reaching it never was.
+
+### Verdict, unchanged in shape
+
+**Beta-ready.** Every journey — owner, contact, verifier, recipient, helper — is walked end to end on
+production including reversals, the assurance step now genuinely works on both sides, failures are
+visible, and backups are confirmed running. What is left is not engineering: **nobody outside this
+room has used it**, and that is the number the whole security argument rests on.

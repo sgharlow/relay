@@ -336,7 +336,19 @@ function ProposePerson({ vault, onProposed }: { vault: Vault; onProposed: () => 
         somebody typing their own name into the field above and nobody noticing.
       */}
       <label style={{ display: 'flex', gap: 10, marginTop: 14, fontSize: 16 }}>
-        <input type="checkbox" checked={self} onChange={(e) => setSelf(e.target.checked)} style={{ marginTop: 3, width: 20, height: 20 }} />
+        {/*
+          `flexShrink: 0` because without it the flex row squashed this to 13x20
+          — a visibly lopsided box on the single most consequential control a
+          helper has. The HIT AREA was never the problem: the input sits inside
+          the label, so the real target is 294x122 and clicking the text toggles
+          it. This is about the affordance looking broken, not about reaching it.
+        */}
+        <input
+          type="checkbox"
+          checked={self}
+          onChange={(e) => setSelf(e.target.checked)}
+          style={{ marginTop: 3, width: 20, height: 20, flexShrink: 0 }}
+        />
         <span>
           This is me.
           <span style={{ display: 'block', color: '#6b6257', fontSize: 15 }}>
