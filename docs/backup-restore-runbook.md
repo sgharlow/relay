@@ -174,9 +174,15 @@ things here, firing it once was the only honest verification.
 
 ## Still open
 
-- The first **scheduled** run has not happened yet (05:00 UTC). Everything above
-  was proven with on-demand jobs. Confirm the schedule fires before trusting it —
-  and note the alarm will not have enough history to evaluate until it does.
+- ~~The first **scheduled** run has not happened yet (05:00 UTC).~~ ✅ **CONFIRMED
+  2026-08-12**, four days after this was written. `backup-status.mjs` reports
+  **4 recovery points in each vault, newest 21.8h / 21.6h old, 610537 bytes** —
+  consistent with a daily 05:00 UTC schedule running since 08-08. The plan
+  schedules, the jobs complete, and both Regions carry the same copy.
+
+  ⚠️ Worth noting how this was confirmed: by running the script, four days late,
+  because somebody thought to ask. "Configured" and "running" were different
+  questions here as they were everywhere else, and nothing would have said so.
 - `backup-status.mjs` still has to be run by hand. The two alerts above cover
   failure and silence; the script remains the way to answer "how stale is it
   right now?" on demand.
