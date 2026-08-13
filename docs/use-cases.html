@@ -85,6 +85,9 @@
     <tr><td>UC-25</td><td>Add things to somebody else's vault</td><td>Helper</td><td class="pass">Pass</td></tr>
     <tr><td>UC-26</td><td>Suggest a person, and be unable to add them</td><td>Helper</td><td class="pass">Pass</td></tr>
     <tr><td>UC-27</td><td>Answer a helper's suggestion</td><td>Owner</td><td class="pass">Pass</td></tr>
+    <tr><td>UC-28</td><td>Bring a password manager export in</td><td>Owner</td><td class="pass">Pass</td></tr>
+    <tr><td>UC-29</td><td>Be shown where to start</td><td>New owner</td><td class="pass">Pass</td></tr>
+    <tr><td>UC-30</td><td>Be stopped before firing a release by mistake</td><td>Owner</td><td class="pass">Pass</td></tr>
   </tbody>
 </table>
 
@@ -420,6 +423,42 @@
 <figure><img src="screens/uc31-owner-approval-queue.png" alt="Approval queue"><figcaption>UC-27 — the queue, filled for the first time.</figcaption></figure>
 </section>
 
+<!-- UC-28 -->
+<section class="uc">
+<h2>UC-28 — Bring a password manager export in</h2>
+<div class="card">
+  <div class="row"><span class="k">Actor</span><span>Owner</span></div>
+  <div class="row"><span class="k">Goal</span><span>Start from what already exists rather than typing it all again.</span></div>
+  <div class="row"><span class="k">Expected</span><span>Parsed and encrypted <b>entirely in the browser</b>. A preview before anything is written, and the importance engine re-run afterwards so nothing lands silently uncovered.</span></div>
+  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> A three-row LastPass export previewed and imported on production; all three appeared in the vault. <b>The preview shows service, URL and username and no passwords</b> — the one screen where a shoulder-surfer would see the whole file at once.</span></div>
+</div>
+<figure><img src="screens/uc33-owner-import.png" alt="Import"><figcaption>UC-28 — import, after the run.</figcaption></figure>
+</section>
+
+<!-- UC-29 -->
+<section class="uc">
+<h2>UC-29 — Be shown where to start</h2>
+<div class="card">
+  <div class="row"><span class="k">Actor</span><span>New owner</span></div>
+  <div class="row"><span class="k">Goal</span><span>Not face an empty vault and a blank mind.</span></div>
+  <div class="row"><span class="k">Expected</span><span>The question that produces a useful list — not &ldquo;add an item&rdquo;.</span></div>
+  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> &ldquo;If they were hospitalised tomorrow, these are the accounts you would need first.&rdquo;</span></div>
+</div>
+<figure><img src="screens/uc34-owner-start.png" alt="Start"><figcaption>UC-29 — the first-run prompt.</figcaption></figure>
+</section>
+
+<!-- UC-30 -->
+<section class="uc">
+<h2>UC-30 — Be stopped before firing a release by mistake</h2>
+<div class="card">
+  <div class="row"><span class="k">Actor</span><span>Owner</span></div>
+  <div class="row"><span class="k">Goal</span><span>Not start an emergency with one stray click on a button labelled with a word that does not say what it does.</span></div>
+  <div class="row"><span class="k">Expected</span><span>The <b>consequence</b> stated, not &ldquo;are you sure&rdquo;. Reversible and irreversible triggers get different sentences and different weights; the irreversible one asks the trigger type to be <b>typed</b>, matching what closing an account already demands.</span></div>
+  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> &ldquo;Everyone you named to confirm an emergency will be asked whether this is real… You can stop it at any point by checking in.&rdquo; Backing out left the trigger ARMED and changed nothing. ⏸️ <b>This is a precondition on <code>g2-counsel-opinion</code>, not an improvement</b> — today every selectable trigger is reversible, and the day <code>estate</code> becomes selectable that click is permanent.</span></div>
+</div>
+<figure><img src="screens/uc35-owner-initiate-confirm.png" alt="Initiate confirmation"><figcaption>UC-30 — the confirmation.</figcaption></figure>
+</section>
+
 <!-- Not evidenced -->
 <section class="uc">
 <h2>Stated coverage limits</h2>
@@ -427,10 +466,10 @@
 <table>
   <thead><tr><th style="width:120pt">Surface</th><th>Status</th></tr></thead>
   <tbody>
-    <tr><td><code>/import</code></td><td>Built and reachable; <b>not re-photographed this pass</b>. CSV import from a password manager is a real owner journey and should carry evidence in the next sweep.</td></tr>
-    <tr><td><code>/start</code></td><td>Guided first-run. Built and reachable; not re-photographed this pass.</td></tr>
+    <tr><td><code>/import</code></td><td>✅ Walked 2026-08-12 — UC-28.</td></tr>
+    <tr><td><code>/start</code></td><td>✅ Photographed 2026-08-12 — UC-29.</td></tr>
     <tr><td>A helper actually helping</td><td>✅ <b>Built and walked 2026-08-12</b> — UC-24 to UC-27. Was the one journey this document could not evidence.</td></tr>
-    <tr><td>Policy proposals</td><td>A helper holds <code>policies:propose</code> but no surface offers it, and <code>decideApproval</code> claims a <code>policy</code> approval without applying one. People proposals are the path that works end to end; policy proposals are deliberately not offered rather than half-offered.</td></tr>
+    <tr><td>Policy proposals</td><td>✅ <b>Resolved by removal 2026-08-12.</b> <code>policies:propose</code> was granted to every helper, offered by nothing, and could not be applied on approval — an owner could be told a suggestion was granted and have nothing change. Dropped rather than built, because a policy joins an item to a recipient and a helper can see neither: building it honestly would mean showing them the owner's circle. An unappliable approval can now no longer be approved at all, only rejected.</td></tr>
     <tr><td>Helper import</td><td><code>import:run</code> is granted and there is no helper-facing import screen. Additive once wanted.</td></tr>
     <tr><td>Estate release</td><td>Deliberately unreachable — <code>estate</code> is excluded from user-selectable triggers pending <code>g2-counsel-opinion</code>.</td></tr>
   </tbody>

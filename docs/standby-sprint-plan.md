@@ -1194,3 +1194,51 @@ this audit keeps finding.
 
 **Deliberately not doing:** §3.8 event transparency, `email_secondary`, [A2]'s guided-call UI, and
 helper import. All additive, none blocking, and each one is cheaper to decide after item 1.
+
+### Items 3, 5 and 6 — done 2026-08-12
+
+**3. `Initiate` is guarded.** The most consequential control in the product was one unguarded click
+on a button labelled with a word that does not say what it does. The confirmation states the
+CONSEQUENCE rather than asking "are you sure" — a question nobody reads — and reversible and
+irreversible triggers get different sentences and different weights, because they are different acts
+that happen to share a button. The irreversible branch asks the trigger type to be **typed**,
+matching what closing an account already demands: one click after a warning is not a decision;
+finding the keyboard is. Walked on production, including backing out, which left the trigger ARMED.
+⏸️ Still a precondition on `g2-counsel-opinion`, not an improvement.
+
+**5. `/import` and `/start` evidenced** — UC-28 and UC-29. Import was *exercised*, not photographed:
+a three-row LastPass export previewed and imported on production, all three items in the vault
+afterwards. Worth recording: the preview shows service, URL and username and **no passwords**, which
+is right — it is the one screen where a shoulder-surfer would see the whole file at once.
+
+**6. `policies:propose` removed rather than built.** It was granted to every helper, offered by
+nothing, and could not be applied — `decideApproval` claimed the row, marked it approved, wrote an
+audit entry saying so, and left `applied` false. An owner could answer a question about who reaches
+their vault, be told it was granted, and have nothing change.
+
+Dropped because it does not fit the read boundary it would live inside: a policy joins an item to a
+recipient and a helper can see neither, so building it honestly meant showing them the owner's
+circle — widening the boundary in the place the product is most careful, to serve a feature nobody
+asked for. An unappliable approval can now no longer be approved at all, only rejected, and the
+guard runs BEFORE the claiming UPDATE. `createDelegation` also writes the scopes instead of
+inheriting migration 009's default, which still lists five.
+
+### 🔴 The same defect, three times, in five days
+
+Found by looking at the confirmation written an hour earlier: *"Everyone you named to confirm **a**
+emergency will be asked whether this is real."*
+
+| When | Where | Fix applied |
+|---|---|---|
+| 08-08 | Email subject line, during a real emergency | private helper in `notifications.ts` |
+| 08-12 | Verifier decision page | **second** private helper, four lines from a comment noting the first |
+| 08-12 | Release confirmation, hours later, same hand | — |
+
+Copying the fix is what made the next occurrence certain. Two of the five trigger types begin with a
+vowel, so every template interpolating one is a site this recurs at. Both copies are gone,
+`lib/text/article.ts` is the only answer, and **a test walks `lib/` and `src/` and fails if anyone
+declares another one** — so the fourth occurrence is a failing suite rather than a phishing-shaped
+sentence in somebody's inbox.
+
+**Remaining from §17: items 1, 2 and 4** — send the first real invitations, rule the grace window,
+and deliverability. None is blocked by anything above.
