@@ -55,6 +55,21 @@ export interface Incident {
   halted: boolean;
   /** Nothing was opened at all — common, and worth saying out loud. */
   nothingOpened: boolean;
+  /**
+   * Somebody LOOKED, even if they revealed nothing.
+   *
+   * 🔴 ADDED 2026-08-12, after walking a full release on production and reading
+   * the summary it produced: "Nothing was opened, and it is closed again." The
+   * recipient had signed in, seen their access plan, and read the TITLES of
+   * three accounts — Gmail, Chase Bank, Blue Cross — and the sentence an owner
+   * gets says nothing happened.
+   *
+   * `recipient_dashboard_viewed` was already in the log. This is §8.2's failure
+   * shape exactly, one level in: the record technically holds the fact while the
+   * experience omits it, which is why the audit summary was built in the first
+   * place.
+   */
+  viewedBy: string[];
 }
 
 /** `verifier:<uuid>` → "Dr. Alex Chen", falling back to something human. */
@@ -91,6 +106,7 @@ export function buildIncidents(
         triggerType: typeof e.detail?.trigger_type === 'string' ? e.detail.trigger_type : null,
         confirmedBy: [],
         opened: [],
+        viewedBy: [],
         closedByOwner: false,
         halted: false,
         nothingOpened: true,
@@ -114,6 +130,12 @@ export function buildIncidents(
         current.opened.push({ title, at: e.ts });
       }
       current.nothingOpened = false;
+      continue;
+    }
+
+    if (e.action === 'recipient_dashboard_viewed') {
+      const who = nameOf(e.actor, lookups.personNames);
+      if (!current.viewedBy.includes(who)) current.viewedBy.push(who);
       continue;
     }
 
@@ -165,6 +187,27 @@ export function describeIncident(i: Incident): string {
         : `${i.confirmedBy.slice(0, -1).join(', ')} and ${i.confirmedBy.at(-1)} confirmed it was real`;
 
   if (i.nothingOpened) {
+    /*
+      🔴 "Nothing was opened" WAS SAID EVEN WHEN SOMEBODY HAD LOOKED, corrected
+      2026-08-12 by reading the sentence a real release produced. Access had been
+      live, the recipient had signed in, and they had seen the TITLES of three
+      accounts — and the owner's summary told them nothing happened.
+
+      Seeing what is set aside and revealing what is inside are genuinely
+      different, and the distinction is worth keeping. Collapsing them to
+      "nothing" is not.
+    */
+    const looked =
+      i.viewedBy.length === 1
+        ? `${i.viewedBy[0]} saw what was set aside for them but did not open any of it`
+        : `${i.viewedBy.join(' and ')} saw what was set aside for them but opened none of it`;
+
+    if (i.viewedBy.length > 0) {
+      return i.endedAt
+        ? `On ${when} an emergency was raised and ${who}. ${looked}, and it is closed again.`
+        : `On ${when} an emergency was raised and ${who}. ${looked}. This is still open.`;
+    }
+
     return i.endedAt
       ? `On ${when} an emergency was raised and ${who}. Nothing was opened, and it is closed again.`
       : `On ${when} an emergency was raised and ${who}. Nothing has been opened so far.`;
