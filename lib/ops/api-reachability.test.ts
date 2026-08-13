@@ -22,6 +22,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   findUnreachable,
+  findUnlinkedPages,
+  stripImports,
+  PAGES_REACHED_WITHOUT_A_LINK,
   callSites,
   methodUsedNear,
   routePathOf,
@@ -119,5 +122,48 @@ describe('the repository has no unreachable handler', () => {
     for (const [route, why] of Object.entries(REACHED_FROM_OUTSIDE)) {
       expect(why.length, `${route} needs a reason saying what calls it`).toBeGreaterThan(20);
     }
+  });
+});
+
+describe('pages a person can actually get to', () => {
+  /*
+    🔴 THE SAME DEFECT ONE LAYER UP. `/challenge` — where an owner answers a
+    request for access — was linked only from a notification email. The API gate
+    could not see it, because the endpoint behind that page WAS called: by the
+    page nobody could reach. The window is two hours and it escalates to the
+    verifiers when it lapses, so a filtered email meant an owner first learned
+    they had been asked when their circle was already being polled.
+  */
+  it('every page is linked, or listed with how it is reached', () => {
+    expect(
+      findUnlinkedPages('.'),
+      'A page with no link, redirect or config pointing at it. Link it, or add it ' +
+        'to PAGES_REACHED_WITHOUT_A_LINK saying how somebody arrives there.',
+    ).toEqual([]);
+  });
+
+  it('every no-link page says how it is reached', () => {
+    for (const [route, why] of Object.entries(PAGES_REACHED_WITHOUT_A_LINK)) {
+      expect(why.length, `${route} needs a reason`).toBeGreaterThan(20);
+    }
+  });
+
+  /*
+    A module path is not a link. `from '../../lib/release/challenge'` ends in
+    `/challenge'`, which is indistinguishable from an href to a textual matcher —
+    and it made the check above pass on the exact defect it was written to catch.
+    Proved by deleting the real link and watching the result stay green.
+  */
+  it('an import specifier does not count as a link', () => {
+    const src = [
+      "import { respondToChallenge } from '../../lib/release/challenge';",
+      'const x = 1;',
+    ].join('\n');
+    expect(stripImports(src)).not.toContain('/challenge');
+  });
+
+  it('a real href survives stripping', () => {
+    const src = ["import x from './y';", "const link = { href: '/challenge' };"].join('\n');
+    expect(stripImports(src)).toContain("'/challenge'");
   });
 });

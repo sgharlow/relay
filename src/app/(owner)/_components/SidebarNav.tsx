@@ -54,10 +54,55 @@ export default function SidebarNav() {
     };
   }, []);
 
-  const links =
-    standingBy > 0
-      ? [...LINKS, { href: '/standby', label: `Standing by (${standingBy})` }]
-      : LINKS;
+  /**
+   * 🔴 A PENDING REQUEST WAS INVISIBLE INSIDE THE PRODUCT until 2026-08-13.
+   *
+   * `/challenge` — where an owner answers "somebody is asking for access" — was
+   * linked from exactly one place in the world: the notification email. Not the
+   * sidebar, not the readiness banner, not anywhere a person could look. The
+   * endpoint that lists pending requests was called only by that page, so the
+   * one screen that could tell you was the screen you could not find.
+   *
+   * The consequence is not cosmetic. The window is two hours for an emergency;
+   * when it lapses the request escalates to the verifiers. So an owner whose
+   * mail was delayed, filtered or silently suppressed — and this project's own
+   * records list Outlook SCL 5 and Resend suppression returning 200 as live,
+   * measured problems — first learns they were asked when their circle is
+   * already being polled about them.
+   *
+   * Same shape as /approvals two commits above: built, permitted, tested, and
+   * reachable only from outside the product.
+   *
+   * Shown only when something is actually waiting, so it never appears for an
+   * owner it does not concern.
+   */
+  const [asking, setAsking] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/access-requests')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (!cancelled && j) setAsking((j.requests ?? []).length);
+      })
+      .catch(() => {
+        // Same reasoning as above: absent beats an error in a nav.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Ordered deliberately: something waiting on an answer goes ABOVE the routine
+  // destinations, because it is the only item here with a clock running on it.
+  const links = [
+    ...(asking > 0
+      ? [{ href: '/challenge', label: `Someone is asking (${asking})` }]
+      : []),
+    ...LINKS,
+    ...(standingBy > 0
+      ? [{ href: '/standby', label: `Standing by (${standingBy})` }]
+      : []),
+  ];
 
   return (
     <nav className="flex flex-col gap-0.5" aria-label="Owner navigation">

@@ -2,8 +2,16 @@
 
 > **STATUS (2026-07-01): BUILD COMPLETE — this file is the historical 12-day plan, NOT current
 > state.** The build is code-complete, deployed, and dogfooded live on real DSQL + KMS (see
-> `CLAUDE.md` "Build state" and `docs/e2e-verification.md`). The checkbox states below were never
-> reconciled during the sprint and must not be read as progress.
+> `CLAUDE.md` "Build state" and `docs/e2e-verification.md`).
+>
+> **BOXES RECONCILED 2026-08-13.** The line that used to sit here said the checkboxes "were never
+> reconciled during the sprint and must not be read as progress" — an honest disclaimer, but one
+> that only protects a reader who starts at the top. Anyone arriving by search, at task 7 or 15,
+> saw `- [ ] Implement vault item CRUD API routes` next to a product that has been serving that
+> route in production for weeks. Each box was checked against the code before ticking; the two
+> paths that moved are annotated in place. Nothing here should be read as current state either
+> way — this is a record of a finished phase, and `PROJECT.yaml` is authoritative for what is
+> true now.
 >
 > **Property-test traceability, reconciled:** 17 tagged `Property N` tests exist (2, 3, 5–16,
 > 18–20). Properties **1 and 4** are covered by conventional unit tests without tags
@@ -28,7 +36,7 @@ sequenced last so slipping the schedule never endangers the four demo moments.
 
 ### Milestone 1 — Days 1–2: Project Scaffold, Aurora DSQL, OCC Foundation
 
-- [ ] 1. Scaffold Next.js 14 App Router project and configure Vercel deployment
+- [x] 1. Scaffold Next.js 14 App Router project and configure Vercel deployment
   - [-] 1.1 Initialise Next.js 14 App Router project with TypeScript, Tailwind CSS, and ESLint; configure `vercel.json` with cron schedule `{"path":"/api/cron/heartbeat","schedule":"0/30 * * * *"}`; set up `src/` directory alias
     - Create the `app/(owner)/`, `app/(access)/`, and `app/api/` route-group directories
     - Add `.env.example` with all required environment-variable keys (no values)
@@ -37,7 +45,7 @@ sequenced last so slipping the schedule never endangers the four demo moments.
     - Add `vitest.config.ts` with `globals: true`, `environment: 'node'`, coverage thresholds
     - _Requirements: 5.7 (OCC retry lib dependency), 17.3 (IAM auth for DSQL)_
 
-- [ ] 2. Provision Aurora DSQL and apply full DDL migration
+- [x] 2. Provision Aurora DSQL and apply full DDL migration
   - [-] 2.1 Provision Aurora DSQL cluster across `us-east-1` and `us-west-2`; record both regional endpoint URLs; create IAM role for backend service with `dsql:DbConnect` permission; output `DSQL_PRIMARY_ENDPOINT`, `DSQL_SECONDARY_ENDPOINT`, `DSQL_CLUSTER_ARN` env vars
     - _Requirements: 14.1, 17.3_
   - [x] 2.2 Write and apply the full DDL migration in `db/migrations/001_initial.sql`: all seven tables (`users`, `recipients`, `verifiers`, `vault_items`, `access_rules`, `release_state`, `verifier_confirmations`, `audit_log`) with exact column types, CHECK constraints, and covering indexes as specified in the design schema; no FK constraints (DSQL does not enforce them)
@@ -70,10 +78,15 @@ sequenced last so slipping the schedule never endangers the four demo moments.
   - [x] 5.2 Implement recipient scoped JWT issuance: `lib/auth/recipient-token.ts` — `issueRecipientToken(recipientId, releaseStateId, version)` → signs HS256 JWT with 24-hour expiry; `verifyRecipientToken(token)` → returns payload or throws; store `release_state_id` and `version` in token claims
     - _Requirements: 15.2, 17.2_
 
-- [ ] 6. Implement referential integrity layer (`lib/db/integrity.ts`)
+- [x] 6. Implement referential integrity layer (`lib/db/integrity.ts`)
   - [x] 6.1 Create `lib/db/integrity.ts` with: `assertOwns(ownerId, table, id)` — verifies row exists and `owner_id` matches; `cascadeDelete(table, parentId, fkColumn)` — collects and deletes dependent rows; `assertNoCrossOwner(ownerId, ...refs)` — batch version of `assertOwns`; all functions use `withOccRetry` and throw typed `IntegrityError`
     - _Requirements: 16.1, 16.2, 16.3_
   - [ ] 6.2 Write property test for cross-owner authorization isolation (Property 4)
+        <!-- LEFT UNCHECKED ON PURPOSE, 2026-08-13. The BEHAVIOUR is covered — assertNoCrossOwner
+             has conventional unit tests in lib/db/integrity.test.ts — but the deliverable as
+             written is a fast-check PROPERTY test, and no test carries the `Property 4` tag.
+             Ticking it would claim a form of evidence that does not exist. This is the only box
+             in the file where the code did not match the words. -->
     - **Property 4: Cross-owner authorization isolation — for any two distinct owner IDs A and B, owner A reading/updating/deleting a vault item owned by B must receive an authorization error, never a data row**
     - Use `fc.tuple(fc.uuid(), fc.uuid()).filter(([a,b]) => a !== b)` for owner pairs
     - Run 200 iterations; tag `// Feature: relay-h0-mvp, Property 4`
@@ -83,7 +96,7 @@ sequenced last so slipping the schedule never endangers the four demo moments.
 
 ### Milestone 3 — Day 4: Vault CRUD, KMS Proxy, Crypto Boundary
 
-- [ ] 7. Implement vault item CRUD API routes
+- [x] 7. Implement vault item CRUD API routes
   - [~] 7.1 Implement `app/api/vault/items/route.ts` (GET list, POST create): `GET` returns metadata-only projection (excludes `ciphertext`, `wrapped_data_key`); `POST` accepts `{ciphertext, wrapped_data_key, kms_key_id, title, service_name, url, category, criticality, type}`, calls `assertOwns` for vault, inserts row, returns `{id, ...metadata}`; enforce title 1–200 chars and url ≤ 2048 chars; reject invalid `type` or `category` values with 400
     - _Requirements: 1.1–1.4_
   - [~] 7.2 Implement `app/api/vault/items/[id]/route.ts` (GET, PUT, DELETE): all three handlers call `assertOwns(ownerId, 'vault_items', id)` first; `DELETE` calls `cascadeDelete('access_rules', id, 'vault_item_id')` before deleting the item; `PUT` updates `ciphertext`, `wrapped_data_key`, and `updated_at`
@@ -99,7 +112,7 @@ sequenced last so slipping the schedule never endangers the four demo moments.
     - Run 200 iterations; tag `// Feature: relay-h0-mvp, Property 2`
     - **Validates: Requirements 1.3**
 
-- [ ] 8. Implement KMS proxy routes
+- [x] 8. Implement KMS proxy routes
   - [~] 8.1 Implement `app/api/kms/wrap/route.ts`: authenticated Owner session required; calls `KMS.GenerateDataKey({KeyId: process.env.KMS_KEY_ID, KeySpec: 'AES_256'})`; returns `{wrapped_data_key: base64, kms_key_id}` and the `plaintext_data_key` (base64) to the browser for in-memory use only; never logs `plaintext_data_key`; writes audit entry `action:"kms_wrap_requested"`
     - _Requirements: 2.2, 17.4_
   - [~] 8.2 Implement `app/api/kms/unwrap/route.ts`: accepts `{wrapped_data_key, vault_item_id}`; verifies owner or recipient session; for recipient: checks `release_state = 'released'` AND `access_rules` row exists; calls `KMS.Decrypt`; returns `{plaintext_data_key}` to browser; writes audit entry; any gate failure → 403, no KMS call
@@ -110,7 +123,7 @@ sequenced last so slipping the schedule never endangers the four demo moments.
     - Run 200 iterations; tag `// Feature: relay-h0-mvp, Property 6`
     - **Validates: Requirements 2.4, 7.5**
 
-- [ ] 9. Implement client-side crypto boundary (`CryptoService`)
+- [x] 9. Implement client-side crypto boundary (`CryptoService`)
   - [~] 9.1 Create `lib/crypto/crypto-service.ts` with `CryptoService` class: `encryptItem(plaintext: string): Promise<{ciphertext: Uint8Array, iv: Uint8Array}>` — calls `window.crypto.subtle.importKey` + `encrypt(AES-GCM-256)`; `decryptItem(ciphertext, iv, plainDataKey): Promise<string>`; full flow `saveItem(plaintext, metadata)` calls `/api/kms/wrap`, encrypts, discards plaintext key, POSTs to `/api/vault/items`; on any crypto failure: abort, surface error message via thrown `CryptoError`, transmit nothing
     - _Requirements: 2.1, 2.2, 2.7_
   - [~] 9.2 Write property test for zero plaintext at rest (Property 5)
@@ -126,7 +139,7 @@ sequenced last so slipping the schedule never endangers the four demo moments.
 
 ### Milestone 4 — Days 5–6: Recipients, Rules, Dashboard UI Screens
 
-- [ ] 11. Implement recipients, verifiers, and access rules API routes
+- [x] 11. Implement recipients, verifiers, and access rules API routes
   - [~] 11.1 Implement `app/api/recipients/route.ts` (GET, POST) and `app/api/recipients/[id]/route.ts` (PUT, DELETE): `POST` validates `role` in `{recipient,executor,caregiver,partner}` and all required fields; `DELETE` calls `cascadeDelete('access_rules', id, 'recipient_id')` before removing row; all handlers call `assertOwns`
     - _Requirements: 3.1, 3.6_
   - [~] 11.2 Implement `app/api/verifiers/route.ts` and `app/api/verifiers/[id]/route.ts`: `DELETE` calls app-level delete of all `verifier_confirmations` rows for that verifier before deleting the verifier row; validate required fields
@@ -144,7 +157,7 @@ sequenced last so slipping the schedule never endangers the four demo moments.
     - Run 200 iterations; tag `// Feature: relay-h0-mvp, Property 8`
     - **Validates: Requirements 3.9**
 
-- [ ] 12. Build Owner UI layout and core navigation
+- [x] 12. Build Owner UI layout and core navigation
   - [~] 12.1 Implement `app/(owner)/layout.tsx` as `OwnerLayout`: blue/neutral palette, sidebar nav with links to `/vault`, `/import`, `/recipients`, `/rules`, `/triggers`, `/audit`; information-dense, 14–16 px body type, low saturation; uses `getOwnerSession()` — redirects to `/auth/signin` if unauthenticated
     - _Requirements: (Owner mode two-emotional-mode design)_
   - [~] 12.2 Implement vault dashboard screen `app/(owner)/vault/page.tsx`: fetches `GET /api/vault/items`; renders items grouped by category and sorted by criticality and `importance_score` descending; shows `is_root_credential` badge; renders `depends_on_item_id` edges as inline risk-graph reveal (tooltip showing "gates N resets"); import and add-item CTAs
@@ -152,7 +165,7 @@ sequenced last so slipping the schedule never endangers the four demo moments.
   - [~] 12.3 Implement recipients, verifiers & rules screen `app/(owner)/recipients/page.tsx` and `app/(owner)/rules/page.tsx`: forms for creating/editing recipients and verifiers; rule builder with trigger-type selector, scope toggle, reversible checkbox (disabled + tooltip for estate); N-of-M configuration fields; inline validation error messages
     - _Requirements: 3.1–3.9_
 
-- [ ] 13. Build add-items and CSV import screen
+- [x] 13. Build add-items and CSV import screen
   - [~] 13.1 Implement `app/(owner)/import/page.tsx`: CSV file-picker with format detection (1Password, Bitwarden, LastPass, Chrome, Firefox); all parsing runs client-side in a Web Worker; preview table showing mapped columns before encrypt; progress bar during batch encrypt-and-upload; completion report (imported count, skipped count, skip reasons); abort entire import if any encryption fails
     - _Requirements: 10.1–10.9_
   - [~] 13.2 Implement client-side CSV parse utility `lib/import/csv-parser.ts`: `parseCSV(file: File, format: CsvFormat): ParseResult` — maps source-specific column names to `{service_name, url, username, password}`; skips rows with missing required fields (records row + reason); deduplicates on case-insensitive `(service_name, url)` — skip + record; validates file ≤ 10 MB and valid CSV structure; returns `{rows, skipped, errors}`
@@ -167,7 +180,7 @@ sequenced last so slipping the schedule never endangers the four demo moments.
 
 ### Milestone 5 — Days 7–8: Release State Machine, Heartbeat, Verification (Demo Spine)
 
-- [ ] 15. Implement release state machine (`lib/release/state-machine.ts`)
+- [x] 15. Implement release state machine (`lib/release/state-machine.ts`)
   - [~] 15.1 Create `lib/release/state-machine.ts` with `ReleaseStateMachine` class: implement `transition(id, expectedState, nextState, expectedVersion, updates)` using the CAS UPDATE pattern (`WHERE id=$2 AND state=$3 AND version=$4`); on `rowCount===0` re-read row and throw `CasMismatchError`; on SQLSTATE 40001 retry via `withOccRetry`; on exhaustion call `safeResetToArmed(id)` then throw `OccExhaustedError`; enforce permitted-transition table — reject any `(from,to)` not in the table at the application layer before any DB write; default ARMED state invariant
     - Permitted transitions: ARMED→PENDING, PENDING→GRACE, PENDING→ARMED (reversible only), GRACE→RELEASED, GRACE→ARMED (reversible only), GRACE→CANCELLED (reversible only), RELEASED→ARMED (reversible non-estate only)
     - _Requirements: 5.1–5.9_
@@ -182,7 +195,7 @@ sequenced last so slipping the schedule never endangers the four demo moments.
     - Run 500 iterations; tag `// Feature: relay-h0-mvp, Property 12`
     - **Validates: Requirements 5.5**
 
-- [ ] 16. Implement heartbeat check-in endpoint and Vercel Cron handler
+- [x] 16. Implement heartbeat check-in endpoint and Vercel Cron handler
   - [~] 16.1 Implement `app/api/checkin/route.ts` (PUT): call `getOwnerSession()`; UPDATE `users.last_active_at = now()`; for each reversible trigger type where current state is `PENDING` or `GRACE`: call `stateMachine.transition(id, current, 'armed', version)`; for `estate` triggers in PENDING/GRACE: return 409 with explicit error message; write audit entry `action:"owner_checkin"`
     - _Requirements: 4.2, 4.5_
   - [~] 16.2 Implement `app/api/cron/heartbeat/route.ts` (POST): validate `CRON_SECRET` header; SELECT all `users` where `now() - last_active_at > checkin_interval_days`; for each overdue owner with `release_state.state = 'armed'`: call `stateMachine.transition` to PENDING; on per-owner error: exponential backoff base 5 s, max 3 retries, then log + continue to next owner; write audit entry per transition
@@ -198,7 +211,7 @@ sequenced last so slipping the schedule never endangers the four demo moments.
     - Run 200 iterations; tag `// Feature: relay-h0-mvp, Property 10`
     - **Validates: Requirements 4.5**
 
-- [ ] 17. Implement N-of-M verifier confirmation
+- [x] 17. Implement N-of-M verifier confirmation
   - [~] 17.1 Implement `app/api/triggers/[id]/confirm/route.ts` (POST): accepts scoped verifier JWT; validates `verifier_id` belongs to this trigger; OCC intent-read pattern: SELECT existing confirmation for `(release_state_id, verifier_id)`; if exists, return 200 silently; otherwise INSERT + CAS increment `received_confirmations`; on 40001 treat as duplicate (silently ignore); after increment: if `received_confirmations >= required_confirmations` AND `grace_ends_at <= now()`: invoke `stateMachine.transition` to RELEASED; if confirmations met but grace not elapsed: notify Owner
     - _Requirements: 6.3, 6.4, 6.5, 6.6, 6.9_
   - [~] 17.2 Implement `app/api/triggers/[type]/initiate/route.ts` (POST): Owner auth; validate trigger type; assert `release_state.state = 'armed'`; transition to PENDING via CAS; send Resend emails to all Verifiers for this trigger type; write audit entry `action:"trigger_initiated"`
@@ -211,11 +224,11 @@ sequenced last so slipping the schedule never endangers the four demo moments.
     - Run 100 iterations; tag `// Feature: relay-h0-mvp, Property 14`
     - **Validates: Requirements 6.4**
 
-- [ ] 18. Implement simulate trigger endpoint (demo spine)
+- [x] 18. Implement simulate trigger endpoint (demo spine)  <!-- shipped at /api/demo/simulate, not the path named below -->
   - [~] 18.1 Implement `app/api/demo/simulate/route.ts` (POST): check Owner auth FIRST; check `users.is_demo_account = true` FIRST — return 403 if not demo before reading any state; validate current state is `ARMED` — return 409 if not; advance ARMED→PENDING (sleep 3 s)→GRACE (auto-satisfy `received_confirmations = required_confirmations`, sleep 3 s)→RELEASED (sleep 4 s) — total ≤ 10 s; each transition uses `ReleaseStateMachine.transition` with real CAS; write audit entries for each transition with `detail.simulated = true` and notification events with `detail.suppressed = true`
     - _Requirements: 9.1–9.7_
 
-- [ ] 19. Build triggers & simulate screen
+- [x] 19. Build triggers & simulate screen
   - [~] 19.1 Implement `app/(owner)/triggers/page.tsx`: shows current release state per trigger type (ARMED/PENDING/GRACE/RELEASED badge); cadence configuration form (check-in interval days); "Initiate Emergency" button; Simulate button (visible only for demo accounts, renders countdown progress bar during 10-second run); Cancel button (visible only in GRACE state for reversible triggers)
     - _Requirements: 9.1, 4.1_
 
@@ -226,7 +239,7 @@ sequenced last so slipping the schedule never endangers the four demo moments.
 
 ### Milestone 6 — Day 9: Recipient Access Dashboard + Multi-Region Failover
 
-- [ ] 21. Implement recipient access dashboard API and session version check
+- [x] 21. Implement recipient access dashboard API and session version check
   - [~] 21.1 Implement `app/api/access/route.ts` (GET): verify recipient JWT; re-read `release_state` with strongly-consistent DSQL read; assert `state = 'released'`; verify JWT `version` matches `release_state.version` — if mismatch return 403; return scoped vault items metadata (title, service_name, url, category, scope) sorted: `is_root_credential = true` first, then `importance_score DESC`, ties broken alphabetically by `title`; write audit entry `action:"recipient_dashboard_viewed", entity:"release_state"`
     - _Requirements: 7.1, 7.2, 7.4, 7.6, 7.7, 15.1–15.3_
   - [~] 21.2 Implement `app/api/access/[itemId]/decrypt/route.ts` (POST): verify recipient JWT + version check; assert `release_state = 'released'`; assert `access_rules` row for `(recipient_id, vault_item_id)`; call `KMS.Decrypt`; return `{plaintext_data_key, ciphertext, kms_key_id}`; write audit entry `action:"vault_item_decrypted"` with `detail.outcome` set to `"authorized"` or `"denied"` (write even on auth failure before decryption); on any failure: 403, no partial plaintext
@@ -237,13 +250,13 @@ sequenced last so slipping the schedule never endangers the four demo moments.
     - Run 200 iterations; tag `// Feature: relay-h0-mvp, Property 15`
     - **Validates: Requirements 7.4**
 
-- [ ] 22. Build recipient access dashboard screen (Access mode)
+- [x] 22. Build recipient access dashboard screen (Access mode)
   - [~] 22.1 Implement `app/(access)/layout.tsx` as `AccessLayout`: warm amber accent, white background, bold 18–20 px body type, generous leading, minimal chrome, full-width step layout; uses `verifyRecipientToken()` — redirects to error page if invalid or expired; if state is not RELEASED renders pending-status page showing only `title, service_name, url, category, type` with "Access not yet active" message
     - _Requirements: 7.3_
   - [~] 22.2 Implement `app/(access)/access/page.tsx`: renders triage plan grouped by time-horizon buckets (Do Today / This Week / Within 30 Days) with step numbers; each item shows `title`, `service_name`, `scope` badge; clicking an item POSTs to `/api/access/[id]/decrypt` then decrypts in browser using `CryptoService.decryptItem`; shows decrypted value in-DOM (cleared on navigate)
     - _Requirements: 7.1, 7.6, 13.3_
 
-- [ ] 23. Implement multi-region failover demo wiring
+- [x] 23. Implement multi-region failover demo wiring
   - [~] 23.1 Wire `DSQL_USE_SECONDARY` toggle into `lib/db/connection.ts`: when the env var is `'true'`, `getPool()` returns `secondaryPool` immediately without checking primary; add `/api/admin/failover` POST route (Vercel env var update trigger via Vercel API) for demo use; write unit test confirming `getPool()` returns secondary pool when env var is set and primary pool `totalCount === 0`
     - _Requirements: 14.2, 14.3, 14.5_
   - [~] 23.2 Write integration test for multi-region failover
@@ -258,7 +271,7 @@ sequenced last so slipping the schedule never endangers the four demo moments.
 
 ### Milestone 7 — Day 9 (continued): AI Agents — Intake and Prioritization
 
-- [ ] 25. Implement ZK metadata query layer and Intake Agent
+- [x] 25. Implement ZK metadata query layer and Intake Agent
   - [~] 25.1 Create `lib/ai/metadata-query.ts`: export `getVaultMetadata(ownerId)` — SELECT `id, title, service_name, url, category, type, criticality, is_root_credential, recurring_billing, irreplaceable, importance_score, depends_on_item_id, backup_note` WHERE `owner_id = ownerId`; explicitly excludes `ciphertext`, `wrapped_data_key`, `kms_key_id`; this function is the only data accessor permitted in AI route handlers
     - _Requirements: 11.5, 12.5, 13.5_
   - [~] 25.2 Implement `app/api/ai/intake/route.ts`: accepts `{items: VaultMetadata[]}` (batch ≤ 300); calls `getVaultMetadata` (never raw vault_items with secrets); constructs OpenAI prompt to classify `is_root_credential`, `recurring_billing`, `irreplaceable`, `depends_on_item_id`, and `importance_score` per item; UPDATE each item's flags and score via `withOccRetry`; on LLM timeout or error: set `importance_score = 0.5`, `is_root_credential = false`, surface warning list; complete ≤ 30 s
@@ -269,7 +282,7 @@ sequenced last so slipping the schedule never endangers the four demo moments.
     - Run 200 iterations; tag `// Feature: relay-h0-mvp, Property 18`
     - **Validates: Requirements 11.7**
 
-- [ ] 26. Implement Prioritization Agent
+- [x] 26. Implement Prioritization Agent  <!-- lib/ai/prioritize-agent.ts shipped; its HTTP route was RETIRED 2026-08-13, unused and superseded by the readiness banner — docs/retired-surface.md -->
   - [~] 26.1 Implement `app/api/ai/prioritize/route.ts`: reads vault metadata via `getVaultMetadata`; detects gaps (missing recovery email annotation, 2FA notes, beneficiary designation, backup_note); ranks gaps: `is_root_credential = true` items first, then by `importance_score DESC`; flags `irreplaceable = true` items with no recipient or empty `backup_note` as `CUSTODY_RISK`; returns ordered gap list with plain-language consequence explanations; writes CUSTODY_RISK flags back to vault item `backup_note` metadata; debounce trigger on item update (500 ms)
     - _Requirements: 12.1–12.7_
 
@@ -277,7 +290,7 @@ sequenced last so slipping the schedule never endangers the four demo moments.
 
 ### Milestone 8 — Day 10: Triage Agent, Audit Log, Hash Chain
 
-- [ ] 27. Implement Triage Agent
+- [x] 27. Implement Triage Agent  <!-- lib/ai/triage-agent.ts shipped; its HTTP route was RETIRED 2026-08-13, unused and superseded by rankAccessItems — docs/retired-surface.md -->
   - [~] 27.1 Implement `app/api/ai/triage/route.ts`: reads vault metadata for recipient's scoped items via `getVaultMetadata`; constructs dependency-ordered handoff plan: Root_Credentials first, then items with no unresolved `depends_on_item_id`, then dependents; groups into time-horizon buckets (`do_today` ≥ 0.7 OR `is_root_credential`; `this_week` 0.4–0.699; `within_30_days` < 0.4); for `estate` trigger: append provider-specific guidance (Apple Legacy Contact, Google IAM, Meta memorialization) per relevant item; 15 s timeout — on timeout fallback to flat `importance_score DESC` sort with warning; returns `{steps: [{step, vault_item_id, bucket, provider_guidance?, owner_annotation?}]}`
     - _Requirements: 13.1–13.8_
   - [~] 27.2 Write property test for triage plan dependency ordering (Property 19)
@@ -291,7 +304,7 @@ sequenced last so slipping the schedule never endangers the four demo moments.
     - Run 200 iterations; tag `// Feature: relay-h0-mvp, Property 20`
     - **Validates: Requirements 13.3**
 
-- [ ] 28. Implement append-only hash-chained audit log
+- [x] 28. Implement append-only hash-chained audit log
   - [~] 28.1 Create `lib/audit/audit-service.ts` with `writeAuditEntry(ownerId, entry)`: SELECT `MAX(seq)` and `entry_hash` of most recent row for `owner_id` within same OCC transaction; compute `seq = max + 1` (or 0 for first); set `prev_hash` to last `entry_hash` or `'0'.repeat(64)` for first entry; compute `entry_hash = SHA-256(prev_hash || canonicalJson(entry))` using `crypto.createHash('sha256')`; INSERT-only — never UPDATE or DELETE; on INSERT failure retry up to 3 times (base 500 ms); after 3 failures emit operator alert (stderr) and return HTTP 503; export `getAuditLog(ownerId)` returning entries ordered by `seq ASC`
     - _Requirements: 8.1–8.7_
   - [~] 28.2 Implement `app/api/audit/route.ts` (GET): Owner auth; return `getAuditLog(ownerId)` — owner-scoped only, ascending `seq`; no cross-owner data
@@ -302,7 +315,7 @@ sequenced last so slipping the schedule never endangers the four demo moments.
     - Run 100 iterations; tag `// Feature: relay-h0-mvp, Property 16`
     - **Validates: Requirements 8.3, 8.4**
 
-- [ ] 29. Build audit log viewer screen
+- [x] 29. Build audit log viewer screen
   - [~] 29.1 Implement `app/(owner)/audit/page.tsx`: paginated table of audit entries in ascending `seq` order; columns: `seq`, `ts`, `actor`, `action`, `entity`, `entity_id`, `detail` (collapsed JSON); renders `entry_hash` truncated with copy button; "Verify chain" button — re-computes all hashes client-side and highlights any broken link
     - _Requirements: 8.6_
 
@@ -313,7 +326,7 @@ sequenced last so slipping the schedule never endangers the four demo moments.
 
 ### Milestone 9 — Day 11: Design Polish, Seed Data, Demo Assets
 
-- [ ] 31. Implement vault uniqueness property test and vault-creation guard
+- [x] 31. Implement vault uniqueness property test and vault-creation guard
   - [~] 31.1 Enforce single-vault-per-owner in `app/api/vault/items/route.ts` POST handler: SELECT COUNT(*) WHERE `owner_id = :ownerId` on `users` table vault flag; if vault already initialized return 409 conflict; add `vault_initialized` boolean column to `users` table via migration `002_vault_flag.sql`
     - _Requirements: 1.1_
   - [~] 31.2 Write property test for vault uniqueness per owner (Property 1)
@@ -322,19 +335,19 @@ sequenced last so slipping the schedule never endangers the four demo moments.
     - Run 200 iterations; tag `// Feature: relay-h0-mvp, Property 1`
     - **Validates: Requirements 1.1**
 
-- [ ] 32. Build design polish — two-mode layout and completeness nudges
+- [x] 32. Build design polish — two-mode layout and completeness nudges
   - [~] 32.1 Finalize `OwnerLayout` (Owner mode): verify blue/neutral palette, sidebar nav, information-dense 14–16 px body, low saturation across all owner screens; add Completeness nudge banner to vault dashboard when `importance_score` average < 0.5 or any `is_root_credential` item has no Access_Rule
     - _Requirements: 11.8, 12.3_
   - [~] 32.2 Finalize `AccessLayout` (Access mode): verify warm amber accent, white background, bold 18–20 px body, minimal chrome; confirm full Next.js layout swap at `/access/*` routes; add risk-graph tooltip on vault dashboard items where `depends_on_item_id` is non-null showing "gates N items"
     - _Requirements: 7.4 (importance moment / risk-graph reveal)_
 
-- [ ] 33. Create demo seed data and end-to-end demo run script
+- [x] 33. Create demo seed data and end-to-end demo run script
   - [~] 33.1 Create `db/seeds/demo-seed.ts`: insert one demo `users` row with `is_demo_account=true`; insert 25 vault items across categories (finance, communication, government, health) with realistic `service_name` and `url` values; set `is_root_credential=true` on Gmail and 1Password items; set `depends_on_item_id` edges from bank accounts → Gmail (for risk-graph reveal); insert 2 recipients, 2 verifiers, and emergency trigger access rules; set `release_state` to ARMED; run `IntakeAgent` against all seed items to populate `importance_score` flags
     - _Requirements: 11.1, 7.4 (demo moment 4)_
   - [~] 33.2 Write `scripts/demo-run.ts` that documents the four demo moments as executable steps: (1) call `/api/demo/simulate` and poll state every 1 s until RELEASED; (2) flip `DSQL_USE_SECONDARY=true` mid-simulate and confirm query succeeds; (3) attempt concurrent simulate — assert second call returns 409; (4) open recipient dashboard and verify Gmail appears first with risk-graph tooltip
     - _Requirements: demo spine validation_
 
-- [ ] 34. Generate architecture diagram SVG
+- [x] 34. Generate architecture diagram SVG  <!-- specs/relay_architecture.svg -->
   - [~] 34.1 Convert the design Mermaid diagram to `relay_architecture.svg` using the existing `specs/relay_architecture.svg` as reference; update any component names or connections that changed during implementation; ensure SVG is self-contained (no external font or image URLs) for Devpost embedding
     - _Requirements: submission asset_
 
@@ -342,7 +355,7 @@ sequenced last so slipping the schedule never endangers the four demo moments.
 
 ### Milestone 10 — Day 12: Submission Assets
 
-- [ ] 35. Produce submission assets
+- [x] 35. Produce submission assets
   - [~] 35.1 Write demo video script (`specs/demo-script.md`): five-minute walkthrough covering the four demo moments in order — (1) owner onboards, adds Gmail + bank items, sets emergency trigger; (2) simulate trigger runs — ARMED→PENDING→GRACE→RELEASED countdown visible; (3) recipient logs in, sees amber Access mode, Gmail at top with risk graph; (4) `DSQL_USE_SECONDARY=true` set live — recipient refreshes, data still loads; (5) owner checks in → state returns to ARMED (reversible emergency story complete)
     - _Requirements: demo spine_
   - [~] 35.2 Produce `specs/aws-screenshot-guide.md`: instructions for capturing the Aurora DSQL console showing two active regional endpoints, the KMS key with Relay's key policy, and the IAM role permissions; these screenshots are taken manually during demo recording

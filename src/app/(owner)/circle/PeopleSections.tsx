@@ -496,7 +496,10 @@ export function RecipientSection({
       >
         <input style={field} placeholder="Name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         <input style={field} type="email" placeholder="Email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-        <select style={field} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as RecipientRole })}>
+        {/* aria-label: axe flagged this select-name (critical) — the other fields
+            in this row carry placeholders, which name them; a <select> has no
+            placeholder, so it reached a screen reader as an unnamed control. */}
+        <select aria-label="Their role" style={field} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as RecipientRole })}>
           {VALID_ROLES.map((role) => (
             <option key={role} value={role}>
               {role}

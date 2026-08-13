@@ -221,3 +221,33 @@ deferred:
     revisit: "before the beta widens past the founding families — the accepted risk rests on
       every contact being somebody Steve personally invited, and that stops being true the
       moment invitations go out to people he does not know"
+
+  - id: muted-text-contrast
+    found: 2026-08-13
+    what: "Muted text fails WCAG AA on every signed-in screen. Measured with axe-core
+      (scripts/a11y-audit.mjs): `--ink-faint` #8a8073 reads 4.41:1 on the dark sidebar and
+      3.81:1 on paper, and the ACTIVE nav item — white on clay #b4703a — reads 3.59:1.
+      All three need 4.5:1. 46 failing elements on /vault, 9 on each other owner screen.
+      The public pages (/ and /caregivers) are clean."
+    found_how: "First real accessibility pass. It also found two CRITICAL defects — an
+      unnamed <select> on /circle and two unlabelled quorum inputs on /triggers — both fixed
+      the same day. Only contrast remains."
+    worst_case: "Not compliance theatre for this product in particular. The manual argues
+      its own case twice — 'the seventy-year-old you most want to include', 'an owner in
+      their seventies, over the horizon this product is sold on' — and reduced contrast
+      sensitivity is ordinary in that group. The failing text includes the line under every
+      vault item explaining WHY it is ranked where it is, which is the reasoning the product
+      sells."
+    severity: "moderate. Two of the three are marginal (4.41 and 3.81 against 4.5); the
+      active nav item at 3.59 is the real one. Nothing is unreadable; it is harder to read
+      than it should be for the people most likely to need it."
+    why_deferred: "The fix is a design-token change — `--ink-faint` and the clay active
+      state — and those tokens are used on every screen in both route groups. Darkening them
+      is a visual-identity decision, not an engineering one, and this product's restraint
+      with colour is deliberate and load-bearing (clay is reserved for irreversible
+      actions). Steve's call, and it wants a look at the result rather than a patch."
+    owner: steve
+    fix: "Raise `--ink-faint` until both grounds clear 4.5:1, and darken the clay active
+      state or switch its text to ink. Re-run scripts/a11y-audit.mjs to confirm, and look at
+      /vault and /circle afterwards — the numbers are necessary, not sufficient."
+    revisit: "before the beta widens past the founding families, alongside unbounded-request-body"

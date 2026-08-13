@@ -435,10 +435,22 @@ function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promi
       ) : null}
 
       <div className="mt-3 flex items-center gap-2">
-        <span className="text-t1 text-muted">People who must agree first:</span>
+        {/*
+          A <span> is not a label. axe flagged this as `label` (critical): the
+          text beside the box named it for somebody looking at it and for nobody
+          using a screen reader. The interval field above gets this right by
+          wrapping its input in a <label>; this one sits in a flex row where that
+          would change the layout, so it carries the name explicitly — and names
+          the TRIGGER too, because the page renders one of these per trigger and
+          two controls both called "people who must agree" are not distinguishable.
+        */}
+        <span className="text-t1 text-muted" aria-hidden="true">
+          People who must agree first:
+        </span>
         <input
           type="number"
           min={1}
+          aria-label={`People who must agree first for the ${rs.trigger_type} trigger`}
           value={n}
           onChange={(e) => setN(e.target.value)}
           className="w-16 rounded border border-rule-strong px-2 py-1 text-t1 focus:border-ink focus:outline-none"

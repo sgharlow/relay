@@ -128,6 +128,27 @@ export function stripComments(src: string): string {
   return src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
 }
 
+/**
+ * Import specifiers out.
+ *
+ * 🔴 A MODULE PATH IS NOT A LINK, and one was vouching for a page.
+ * `import { respondToChallenge } from '../../lib/release/challenge'` ends in
+ * `/challenge'` — indistinguishable, to a textual matcher, from an href to the
+ * `/challenge` route. It made the page check pass on exactly the defect the
+ * check was written to catch, which was proved by deleting the real link and
+ * watching the result stay green.
+ *
+ * A specifier can never be somewhere a person navigates, so removing them costs
+ * nothing and closes the whole class rather than this one instance.
+ */
+export function stripImports(src: string): string {
+  return src
+    .replace(/^\s*import\s[\s\S]*?from\s*['"][^'"]*['"];?/gm, ' ')
+    .replace(/^\s*import\s*['"][^'"]*['"];?/gm, ' ')
+    .replace(/^\s*export\s[\s\S]*?from\s*['"][^'"]*['"];?/gm, ' ')
+    .replace(/\bimport\(\s*['"][^'"]*['"]\s*\)/g, ' ');
+}
+
 function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, (c) => BACKSLASH + c);
 }
@@ -181,6 +202,52 @@ export function methodUsedNear(clientBlob: string, sites: number[], method: Http
   });
 }
 
+/**
+ * Pages nothing in the product links to.
+ *
+ * 🔴 THE SAME DEFECT, ONE LAYER UP. `/challenge` — where an owner answers a
+ * request for access — was linked only from a notification email. Not the
+ * sidebar, not a banner, nowhere a person could look, on a screen with a
+ * two-hour clock that escalates to the verifiers when it lapses. The API gate
+ * could not see it: the endpoint behind that page WAS called, by the page you
+ * could not reach.
+ *
+ * `lib/` is scanned as well as `src/`, because a route can be reached by
+ * configuration rather than a link — NextAuth points at `/auth/error` from
+ * `lib/auth/auth-options.ts`, and an earlier version of this check called that
+ * an orphan.
+ */
+export function findUnlinkedPages(repoRoot = '.'): string[] {
+  const root = repoRoot.split(BACKSLASH).join('/').replace(/\/$/, '');
+  const rel = (p: string) => p.split(BACKSLASH).join('/').replace(root + '/', '');
+  const all = walk(join(repoRoot, 'src')).concat(walk(join(repoRoot, 'lib'))).map(rel);
+
+  const blob = all
+    .filter((f) => /\.tsx?$/.test(f) && !f.includes('.test.') && f !== 'lib/ops/api-reachability.ts')
+    .map((f) => stripImports(stripComments(readFileSync(join(repoRoot, f), 'utf8'))))
+    .join('\n');
+
+  const unlinked: string[] = [];
+  for (const file of all.filter((f) => /^src\/app\/.*\/page\.tsx$/.test(f))) {
+    const route = ('/' + file.replace(/^src\/app\//, '').replace(/\/page\.tsx$/, ''))
+      .replace(/\/\([^)]*\)/g, '');
+    if (route === '/' || route === '') continue;
+    if (PAGES_REACHED_WITHOUT_A_LINK[route]) continue;
+    if (new RegExp(escapeRe(route) + '(?=[\'"`?#])').test(blob)) continue;
+    unlinked.push(route);
+  }
+  return unlinked;
+}
+
+/** Pages a person reaches without any in-product link, and how. */
+export const PAGES_REACHED_WITHOUT_A_LINK: Record<string, string> = {
+  '/claim': 'Typed in from an invitation. The code IS the entry point (J4).',
+  '/break-glass': 'Typed in when the usual sign-in is gone — that is its whole purpose.',
+  '/verify': 'Reached by a verifier from their notice, or by typing the code.',
+  '/access': 'Reached by a recipient holding a single-use code.',
+  '/continue': 'A redirect target, never a destination — it decides where a sign-in lands.',
+};
+
 export function findUnreachable(repoRoot = '.'): Unreachable[] {
   const root = repoRoot.split(BACKSLASH).join('/').replace(/\/$/, '');
   const rel = (p: string) => p.split(BACKSLASH).join('/').replace(root + '/', '');
@@ -203,7 +270,7 @@ export function findUnreachable(repoRoot = '.'): Unreachable[] {
         */
         f !== 'lib/ops/api-reachability.ts',
     )
-    .map((f) => stripComments(readFileSync(join(repoRoot, f), 'utf8')))
+    .map((f) => stripImports(stripComments(readFileSync(join(repoRoot, f), 'utf8'))))
     .join('\n');
 
   const unreachable: Unreachable[] = [];

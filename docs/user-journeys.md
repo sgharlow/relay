@@ -26,6 +26,19 @@
 > and nothing secret is transmitted at release. The verdicts stand; the mechanisms they cite are
 > being superseded. J4-R10 and J4-R11 below are amended in place.
 
+> ⚠️ **THE SWEEP BELOW IS FIVE DAYS AND A GREAT DEAL OF FUNCTION OLD (noted 2026-08-13).** It was
+> walked against `master` @ `2a9eb88`. Since then the standby architecture landed (sprints A–F),
+> along with the helper's own workspace, vault item update and delete, renaming people and items,
+> enforcement of staged access rules, passive liveness on the main write paths, and confirmations
+> on destructive controls. Several verdicts below are therefore **evidence about a product that has
+> moved**, not a current statement — read them with the hybrid+6 note above, which says which
+> mechanisms are superseded.
+>
+> **Two items were already open at the time of the sweep and remain open:** J4's invitation *email*
+> path has never been walked, and J5's check-in button has never been clicked in a browser. Both
+> are named in their rows. Nothing here has been re-verified since; a fresh sweep is the honest way
+> to close them, not an edit to these verdicts.
+
 ## ✅ Live journey sweep — 2026-08-08
 
 **Every journey below was walked against production** (`relaystandby.com`) as a brand-new
