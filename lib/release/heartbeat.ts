@@ -26,7 +26,7 @@ import { query } from '../db/connection';
 import { writeAuditEntry } from '../audit/audit-service';
 import { notifyRecipientsOfClosure, notifyRecipientsOfRelease } from '../notify/notifications';
 import { isReversibleTrigger, type ReleaseStateMachine } from './state-machine';
-import { GRACE_WINDOW_MS } from './triggers';
+import { graceWindowMs } from './triggers';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -213,7 +213,7 @@ async function armOne(
       // reverse a false alarm while it is in GRACE.
       await machine.transition(pending.id, 'pending', 'grace', pending.version, {
         reversible,
-        updates: { grace_ends_at: new Date(at.getTime() + GRACE_WINDOW_MS).toISOString() },
+        updates: { grace_ends_at: new Date(at.getTime() + graceWindowMs(rs.trigger_type)).toISOString() },
       });
       return true;
     } catch {

@@ -22,7 +22,7 @@ import {
   type ReleaseStateMachine,
   type ReleaseStateRow,
 } from './state-machine';
-import { GRACE_WINDOW_MS } from './triggers';
+import { graceWindowMs } from './triggers';
 import { ValidationError } from '../validation';
 
 export interface RespondParams {
@@ -106,7 +106,7 @@ export async function respondToChallenge(params: RespondParams): Promise<Respond
     reversible,
     updates: {
       received_confirmations: pending.required_confirmations,
-      grace_ends_at: new Date(now.getTime() + GRACE_WINDOW_MS).toISOString(),
+      grace_ends_at: new Date(now.getTime() + graceWindowMs(req.trigger_type)).toISOString(),
     },
     auditDetail: { ownerConsented: true, quorumAutoSatisfied: true, caseId: req.case_id },
   });

@@ -29,7 +29,7 @@
 
 import { query } from '../db/connection';
 import { writeAuditEntry } from '../audit/audit-service';
-import { GRACE_WINDOW_MS } from './triggers';
+import { graceWindowMs } from './triggers';
 import { isReversibleTrigger, type ReleaseStateMachine, type ReleaseStateRow } from './state-machine';
 
 type Machine = Pick<ReleaseStateMachine, 'transition'>;
@@ -117,7 +117,7 @@ export async function escalateLapsedRequest(params: {
   // NOTE the absence of `received_confirmations` here. See the header.
   const grace = await machine.transition(pending.id, 'pending', 'grace', pending.version, {
     reversible,
-    updates: { grace_ends_at: new Date(now.getTime() + GRACE_WINDOW_MS).toISOString() },
+    updates: { grace_ends_at: new Date(now.getTime() + graceWindowMs(req.trigger_type)).toISOString() },
     auditDetail: { escalated: true, quorumAutoSatisfied: false, caseId: req.case_id },
   });
 

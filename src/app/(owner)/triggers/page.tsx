@@ -384,6 +384,12 @@ function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promi
                 If the people you named agree, what you set aside passes to them permanently.
                 Checking in will not reverse it and neither can we.
               </p>
+              {/* The window is the whole protection here, so it is named rather
+                  than left as a silent property of the system. */}
+              <p className="mt-1 text-t2 leading-relaxed text-clay">
+                Relay waits <span className="font-semibold">three days</span> after they agree
+                before it completes. That is the only chance anyone gets to stop it.
+              </p>
               <label htmlFor={`confirm-${rs.id}`} className="mt-3 block text-t2 font-medium text-clay">
                 Type <span className="font-semibold">{rs.trigger_type}</span> to confirm
               </label>

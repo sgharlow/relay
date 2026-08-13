@@ -559,3 +559,32 @@ describe('verifier mail names the owner', () => {
     expect(sent[0].text).toContain("Someone named you as one of the people");
   });
 });
+
+describe('🔴 the confirmed notice is trigger-aware — 2026-08-12 grace ruling', () => {
+  it('tells a reversible owner they can close it by checking in', async () => {
+    _setResendClientForTesting(stubResend());
+    await notifyOwnerReleasePendingGrace('owner@example.com', 'emergency');
+    expect(sent[0].text).toMatch(/check in and it closes again/i);
+  });
+
+  it('NEVER tells an estate owner to check in — it cannot reverse one', async () => {
+    // processCheckin puts estate in `blocked`: permanent once released. The
+    // reversible wording would be false twice over -- it does not open at once,
+    // and checking in will never close it. That is the same false promise this
+    // message was rewritten to remove, arriving from the other direction.
+    _setResendClientForTesting(stubResend());
+    await notifyOwnerReleasePendingGrace('owner@example.com', 'estate');
+
+    const all = `${sent[0].subject} ${sent[0].text}`;
+    expect(all).toMatch(/three days/i);
+    expect(all).toMatch(/PERMANENT/);
+    expect(all).toMatch(/stand it down/i);
+    expect(sent[0].text).not.toMatch(/check in and it closes again/i);
+  });
+
+  it('gets the article right on the estate wording', async () => {
+    _setResendClientForTesting(stubResend());
+    await notifyOwnerReleasePendingGrace('owner@example.com', 'estate');
+    expect(sent[0].text).toContain('an estate handover is');
+  });
+});

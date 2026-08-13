@@ -59,31 +59,46 @@ async function readStateByOwnerTrigger(ownerId: string, triggerType: string): Pr
 }
 
 /**
- * Grace window: release as soon as the N-of-M quorum is met, with no artificial
- * delay. Shared with the cron sweep (lib/release/heartbeat.ts) so both the
- * manual and the automatic missed-check-in paths open the same window.
+ * How long after a release starts before anything can open.
  *
- * ⚠️ THIS VALUE IS LOAD-BEARING — IT IS NOT A CONFIG KNOB.
+ * ⚖️ RULED 2026-08-12, and it is NOT one number. A single constant conflated two
+ * situations with opposite requirements, which is why picking a value for it
+ * always felt arbitrary.
  *
- * `submitConfirmation` below is the only driver of GRACE → RELEASED, and it
- * evaluates `canRelease` exactly once, at confirmation time. If the window has
- * not elapsed it returns `pending_grace` and returns — and nothing re-drives it.
- * No scheduled job resolves GRACE rows whose window has since passed
- * (`runHeartbeatSweep` selects `state = 'armed'` only).
+ * REVERSIBLE TRIGGERS: 0. The owner is already protected at every point —
+ * `processCheckin` reverses PENDING, GRACE and RELEASED alike, so checking in
+ * closes access that has already opened, by hand of nobody. A delay adds nothing
+ * they do not already have and costs something real: a spouse waiting on a
+ * hospital's insurance portal while a timer runs. Every path to here has ALSO
+ * already given the owner a chance to say no — an owner-initiated release now
+ * needs an explicit confirmation, the cron fires only after the full check-in
+ * interval plus reminders, and an escalation only after a challenge window the
+ * owner did not answer.
  *
- * ⚠️ THE ABOVE WAS TRUE UNTIL 2026-08-08 and is now FIXED. `resolveElapsedGrace`
- * in lib/release/heartbeat.ts runs on every cron sweep and releases GRACE rows
- * where `grace_ends_at <= now()` AND `received >= required` — exactly the
- * resolver this comment asked for. Raising this value now creates a REAL
- * owner-cancel window rather than stranding the release.
+ * ESTATE: 72 hours, because none of that is true. `processCheckin` puts estate
+ * in its `blocked` list — "cannot reverse / permanent once released" — so once
+ * it completes there is no way back at all, for anyone. This window is the ONLY
+ * moment an owner can intervene, which makes it the opposite of an artificial
+ * delay: it is the entire protection.
  *
- * It stays 0 for the H0 demo, where an instant release is the point. Raising it
- * is now a product decision (how long should an owner get to stop a false
- * alarm?) rather than a thing that would quietly break releases.
+ * The asymmetry decides the length. If the estate event is real, the owner is
+ * dead and three days against probate timescales is nothing. If it is a mistake,
+ * three days may be the only thing that saves them. 72h also matches
+ * `CHALLENGE_WINDOW_SECONDS.estate`, because both answer the same question —
+ * how long before something permanent happens to this person's estate — and two
+ * numbers answering one question is how they drift apart.
+ *
+ * ⚠️ A NON-ZERO WINDOW ONLY WORKS BECAUSE `resolveElapsedGrace` EXISTS. Until
+ * 2026-08-08 nothing re-drove a GRACE row after its window passed, so raising
+ * this would have stranded the release rather than delaying it. That resolver
+ * now runs on the hourly cron and releases only rows whose quorum is already
+ * met, so the effective wait is the window plus at most an hour.
  *
  * Guarded by lib/release/grace-window-invariant.test.ts.
  */
-export const GRACE_WINDOW_MS = 0;
+export function graceWindowMs(triggerType: string): number {
+  return isReversibleTrigger(triggerType) ? 0 : 72 * 60 * 60 * 1000;
+}
 
 /**
  * Owner fires a trigger: ARMED → PENDING → GRACE. Entering GRACE opens the
@@ -122,7 +137,7 @@ export async function initiateTrigger(
   });
 
   // PENDING → GRACE — open the grace window so verifier confirmations can release.
-  const graceEndsAt = new Date(now.getTime() + GRACE_WINDOW_MS).toISOString();
+  const graceEndsAt = new Date(now.getTime() + graceWindowMs(triggerType)).toISOString();
   const grace = await machine.transition(pending.id, 'pending', 'grace', pending.version, {
     reversible,
     updates: { grace_ends_at: graceEndsAt },

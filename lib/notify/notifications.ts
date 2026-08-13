@@ -23,6 +23,7 @@ import { query } from '../db/connection';
 import { getOwnerLabel } from '../people/owner-label';
 import { classifyOrFailOpen, type VerifierNoticeClass } from './verifier-notice-class';
 import { article, Article } from '../text/article';
+import { isReversibleTrigger } from '../release/state-machine';
 
 /**
  * The origin every emailed link is built on.
@@ -337,12 +338,29 @@ export async function notifyOwnerReleasePendingGrace(
 ): Promise<void> {
   await sendEmailBestEffort({
     to: ownerEmail,
-    subject: `Your ${triggerType} release has been confirmed`,
-    text:
-      `Everyone you asked has now confirmed your "${triggerType}" trigger, so the access you ` +
-      `arranged is opening.\n\n` +
-      `If this is a false alarm, check in and it closes again — everything reversible you set up ` +
-      `shuts immediately, and you do not have to undo anything by hand.\n`,
+    subject: isReversibleTrigger(triggerType)
+      ? `Your ${triggerType} release has been confirmed`
+      : `Your ${triggerType} handover starts in three days — read this if you are well`,
+    text: isReversibleTrigger(triggerType)
+      ? `Everyone you asked has now confirmed your "${triggerType}" trigger, so the access you ` +
+        `arranged is opening.\n\n` +
+        `If this is a false alarm, check in and it closes again — everything reversible you set ` +
+        `up shuts immediately, and you do not have to undo anything by hand.\n`
+      : /**
+         * ⚠️ TRIGGER-AWARE SINCE THE 2026-08-12 GRACE RULING. The reversible
+         * wording above would be false twice over for an estate handover: it
+         * does NOT open at once — it waits three days — and checking in will
+         * never close it, because `processCheckin` blocks estate. Telling an
+         * owner to check in would reintroduce, from the other direction, the
+         * same false promise this message was rewritten to remove.
+         */
+        `Everyone you asked has now confirmed your "${triggerType}" trigger.\n\n` +
+        `Nothing has moved yet. Because ${article(triggerType)} ${triggerType} handover is ` +
+        `PERMANENT, Relay waits three days before it completes — and those three days are the ` +
+        `only chance anyone has to stop it. Checking in will not reverse this one, and neither ` +
+        `can we.\n\n` +
+        `If you are reading this and you are well, go to ${appUrl()}/triggers and stand it down ` +
+        `now.\n`,
   });
 }
 
