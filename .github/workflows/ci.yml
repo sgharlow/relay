@@ -37,6 +37,17 @@ jobs:
     # test to fix, not this file.
     steps:
       - uses: actions/checkout@v4
+        with:
+          # 🔴 THE TRAILER CHECK BELOW READS 50 COMMITS AND WAS BEING GIVEN ONE.
+          # actions/checkout clones shallow by default (fetch-depth: 1), so
+          # `git log -n 50` had exactly one commit to look at. The step passed on
+          # every push and its green meant one-fiftieth of what it claimed — a
+          # check scoped to a history the runner had not downloaded.
+          #
+          # 50 rather than 0: the step asks for fifty, and fetching the whole
+          # history to satisfy a fifty-commit question is a cost with no answer
+          # attached to it.
+          fetch-depth: 50
 
       - uses: actions/setup-node@v4
         with:
@@ -64,9 +75,23 @@ jobs:
       # catch on the way in.
       - name: No AI co-authorship trailers
         run: |
+          set -uo pipefail
+
+          # A CHECK THAT CANNOT SAY HOW MUCH IT LOOKED AT IS NOT A CHECK. This
+          # step read fifty commits from a one-commit clone for its whole life
+          # and reported "Clean." every time. Failing loudly on a shallow clone
+          # costs nothing and makes the silent version impossible: if the
+          # checkout config is ever reverted, this goes red instead of quietly
+          # narrowing to HEAD.
+          examined=$(git rev-list --count HEAD)
+          if [ "$examined" -lt 2 ]; then
+            echo "::error::Only $examined commit is available — the clone is shallow, so this check cannot see the history it claims to. Set fetch-depth on actions/checkout."
+            exit 1
+          fi
+
           count=$(git log --format=%B -n 50 | grep -ciE "co-authored-by: claude|noreply@anthropic" || true)
           if [ "$count" != "0" ]; then
             echo "::error::Found $count commit(s) carrying an AI co-authorship trailer."
             exit 1
           fi
-          echo "Clean."
+          echo "Clean across $examined commit(s) of available history."
