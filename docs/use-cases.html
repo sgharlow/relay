@@ -42,8 +42,8 @@
 <b>production</b> (relaystandby.com) during the walkthrough, not from a local build or a mock.</p>
 
 <div class="meta">
-  <div><b>Build</b> <code>master</code> @ <code>e4d9396</code></div>
-  <div><b>Suite</b> 1543 passed / 1 skipped across 152 files · typecheck, lint and build clean</div>
+  <div><b>Build</b> <code>master</code> @ <code>e875347</code></div>
+  <div><b>Suite</b> 1547 passed / 1 skipped across 152 files · typecheck, lint and build clean</div>
   <div><b>Environment</b> Production — Vercel, Aurora DSQL (us-east-1 / us-west-2), AWS KMS</div>
   <div><b>Method</b> One purpose-built circle, walked <b>end to end in sequence</b> rather than
     screen by screen: an owner with a name set, a verified partner who can sign in, an aunt marked
@@ -92,6 +92,7 @@
     <tr><td>UC-32</td><td>Review what a helper has done on your behalf</td><td>Owner</td><td class="pass">Pass</td></tr>
     <tr><td>UC-33</td><td>Know how many ways back in you have left</td><td>Owner</td><td class="pass">Pass</td></tr>
     <tr><td>UC-34</td><td>Meet a page that is missing, or one that broke</td><td>Anyone</td><td class="pass">Pass</td></tr>
+    <tr><td>UC-35</td><td>Judge the product without an account</td><td>Visitor</td><td class="pass">Pass</td></tr>
   </tbody>
 </table>
 
@@ -521,6 +522,39 @@
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> The 404 serves the product&rsquo;s voice; Next&rsquo;s bare default is gone. A failure also <b>reports itself</b>: the digest, the path and the mode reach the operator, and the error message never does &mdash; it could carry vault content. Live-proved on production, including that a query string is stripped before it can copy a live ticket into an email.</span></div>
 </div>
 <figure><img src="screens/not-found.png" alt="Not found"><figcaption>UC-34 &mdash; an address that does not exist.</figcaption></figure>
+</section>
+
+<!-- UC-35 -->
+<section class="uc">
+<h2>UC-35 &mdash; Judge the product without an account</h2>
+<div class="card">
+  <div class="row"><span class="k">Actor</span><span>Visitor, deciding whether this is worth signing up for</span></div>
+  <div class="row"><span class="k">Goal</span><span>See what an owner sees &mdash; and what the server sees &mdash; before handing anything over.</span></div>
+  <div class="row"><span class="k">Expected</span><span>Read-only, no account, no writes. Four stops: the vault ranked by consequence, the complete server-side record for one item, the release state machine, and the hash-chained audit trail. It must show <b>only what a visitor can actually buy</b>.</span></div>
+  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> The chain shown in the fourth stop is computed and verified with the production primitives, so its &ldquo;intact&rdquo; chip is the real verifier result rather than a decoration. Two recipients under two triggers, so scoped access is shown to differ by person <i>and</i> by condition. No horizontal overflow and no undersized targets at 1280 or 390.</span></div>
+</div>
+
+<div class="note">
+  <b>🔴 It was selling something the Terms disclaim, and this is the second time that shipped.</b>
+  Four of the eight sample items routed to an <code>estate</code> trigger &mdash; excluded from
+  <code>USER_SELECTABLE_TRIGGER_TYPES</code> pending <code>g2-counsel-opinion</code>, while
+  <code>/terms</code> says in as many words that &ldquo;Estate and inheritance functionality is not
+  offered.&rdquo; The identical contradiction had already been closed once in <code>/rules</code>,
+  which used to render its dropdown from the unfiltered list; that fix reached the dropdown and
+  nothing connected it to the tour.
+  <br><br>
+  Retargeted to a <b>caregiver arc</b> &mdash; an adult child managing a parent&rsquo;s affairs,
+  which is the wedge the product is sold on and a trigger a visitor can choose today. The same false
+  offer appeared twice more on <code>/caregivers</code> and once in the tour&rsquo;s own prose
+  (&ldquo;Estate releases, by contrast, are permanent by design&rdquo;), which survived the first
+  pass because grepping the ITEMS never reached the COPY.
+  <br><br>
+  <b>Three guards now hold it:</b> every demo item must use a selectable trigger, the prose must
+  mention no unbuyable trigger, and the tour must keep more than one recipient and more than one
+  trigger &mdash; so a future fix cannot quietly flatten the thing the table exists to demonstrate.
+</div>
+
+<figure><img src="screens/public-demo.png" alt="The guided demo"><figcaption>UC-35 &mdash; relaystandby.com/demo, after the retarget. Sam (spouse) on <code>emergency</code>, Alex (daughter) on <code>caregiver</code>, and nothing on offer that is not for sale.</figcaption></figure>
 </section>
 
 <!-- Not evidenced -->
