@@ -24,7 +24,7 @@ import nextConfig from '../../next.config.mjs';
 async function headerMap(): Promise<Record<string, string>> {
   const rules = await nextConfig.headers();
   const catchAll = rules.find((r) => r.source === '/:path*');
-  expect(catchAll, 'headers() must cover every route, not a subset').toBeDefined();
+  if (!catchAll) throw new Error('headers() must cover every route, not a subset');
   return Object.fromEntries(catchAll.headers.map((h) => [h.key, h.value]));
 }
 
@@ -103,7 +103,7 @@ describe('security headers', () => {
     const legacy = redirects.find((r) =>
       r.has?.some((h) => h.type === 'host' && h.value === 'relay-three-henna.vercel.app'),
     );
-    expect(legacy, 'the legacy vercel.app host must still redirect').toBeDefined();
+    if (!legacy) throw new Error('the legacy vercel.app host must still redirect');
     expect(legacy.permanent).toBe(true);
   });
 

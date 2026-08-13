@@ -25,7 +25,7 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 
-import { requireOwner, isResponse } from '../../../../lib/http/owner-route';
+import { requireOwner, isResponse, readJsonOptional } from '../../../../lib/http/owner-route';
 import { resolveVerifierFor } from '../../../../lib/release/verifier-session';
 import { buildVerifierContext } from '../../../../lib/release/verifier-context';
 import { submitConfirmation, TriggerError } from '../../../../lib/release/triggers';
@@ -69,7 +69,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const auth = await requireOwner();
   if (isResponse(auth)) return auth;
 
-  const body = (await req.json().catch(() => ({}))) as {
+  const parsed = await readJsonOptional(req);
+  if (isResponse(parsed)) return parsed;
+  const body = parsed as {
     decision?: string;
     releaseStateId?: string;
   };

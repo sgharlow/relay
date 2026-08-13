@@ -18,6 +18,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 import { reportIncident } from '../../../../lib/ops/incident';
 import { rateLimit, clientKey } from '../../../../lib/http/rate-limit';
+import { readJson, isResponse } from '../../../../lib/http/owner-route';
 
 const LIMIT = 10;
 const WINDOW_MS = 60 * 1000;
@@ -25,6 +26,21 @@ const WINDOW_MS = 60 * 1000;
 /** Bounded so a hostile caller cannot use the alert as a message channel. */
 const MAX_DIGEST = 128;
 const MAX_PATH = 256;
+/**
+ * The outer bound on the body, above the field caps rather than below them.
+ *
+ * ⚠️ SET TO 4 KB FIRST, AND THAT WAS WRONG. The field caps above exist so an
+ * over-long digest is DROPPED — reported as null, with the incident still
+ * recorded — and route.test.ts pins that with a 5 KB digest. A 4 KB parse cap
+ * refused the whole request instead, so a page that genuinely failed stopped
+ * reporting at all. The guard would have quietly cost monitoring signal on
+ * exactly the pages it exists to watch.
+ *
+ * 16 KB keeps the two layers in the right order: anything a real reporter sends
+ * is parsed and then trimmed by the field caps, and only a body far beyond any
+ * plausible report is refused outright.
+ */
+const MAX_INCIDENT_BYTES = 16 * 1024;
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   // Always 204, whatever happens. The reporter is a dying page; there is nothing
@@ -35,12 +51,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const { allowed } = rateLimit(clientKey(req.headers, 'incident'), LIMIT, WINDOW_MS);
   if (!allowed) return ok;
 
-  let body: { digest?: unknown; path?: unknown; mode?: unknown };
-  try {
-    body = (await req.json()) as typeof body;
-  } catch {
-    return ok;
-  }
+  /*
+    Bounded at the parse, not only at the fields. The digest and path caps below
+    trim what is KEPT; they do nothing about what is read, and this endpoint is
+    unauthenticated by necessity. 4 KB is far more than the three short strings
+    it accepts.
+
+    A size refusal still answers 204. The rule at the top of this handler — the
+    response never varies, whatever happens — applies to 413 exactly as it
+    applies to malformed JSON, because a distinguishable answer is what makes an
+    endpoint probeable.
+  */
+  const parsed = await readJson(req, MAX_INCIDENT_BYTES);
+  if (isResponse(parsed)) return ok;
+  const body = parsed as { digest?: unknown; path?: unknown; mode?: unknown };
 
   const digest =
     typeof body.digest === 'string' && body.digest.length <= MAX_DIGEST ? body.digest : null;

@@ -18,6 +18,7 @@ import { runSimulation } from '../../../../../lib/release/simulate';
 import { ReleaseStateMachine } from '../../../../../lib/release/state-machine';
 import { TriggerError } from '../../../../../lib/release/triggers';
 import { VALID_TRIGGER_TYPES } from '../../../../../lib/rules/access-rules';
+import { readJsonOptional, isResponse } from '../../../../../lib/http/owner-route';
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   // 1. Auth + demo gating FIRST — before any state is inspected (Req 9.1).
@@ -36,7 +37,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   // 2. Resolve the trigger type.
-  const body = (await req.json().catch(() => ({}))) as { trigger_type?: string };
+  const parsed = await readJsonOptional(req);
+  if (isResponse(parsed)) return parsed;
+  const body = parsed as { trigger_type?: string };
   const triggerType = body.trigger_type ?? 'emergency';
   if (!VALID_TRIGGER_TYPES.includes(triggerType as never)) {
     return NextResponse.json({ error: 'BadRequest', message: 'Unknown trigger type' }, { status: 400 });

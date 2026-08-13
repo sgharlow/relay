@@ -26,6 +26,7 @@ import { resolveActor, requireScope } from '../../../../../lib/http/delegate-rou
 import { listItemsIEntered } from '../../../../../lib/people/delegate-workspace';
 import { IntegrityError } from '../../../../../lib/db/integrity';
 import { recordDeliberateActivity } from '../../../../../lib/release/liveness';
+import { readJson, isResponse, VAULT_MAX_JSON_BYTES } from '../../../../../lib/http/owner-route';
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   /**
@@ -103,12 +104,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     throw err;
   }
 
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: 'BadRequest', message: 'Invalid JSON body' }, { status: 400 });
-  }
+  const body = await readJson(req, VAULT_MAX_JSON_BYTES);
+  if (isResponse(body)) return body;
 
   let input;
   try {

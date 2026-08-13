@@ -24,6 +24,7 @@ import { evaluateRecipientUnwrap } from '../../../../../lib/kms/unwrap-gate';
 import { writeAuditEntry } from '../../../../../lib/audit/audit-service';
 import { query } from '../../../../../lib/db/connection';
 import { resolveActor, assertDelegateMayRead } from '../../../../../lib/http/delegate-route';
+import { readJson, isResponse } from '../../../../../lib/http/owner-route';
 import { IntegrityError } from '../../../../../lib/db/integrity';
 
 /** Defensive: a handler must not throw on an absent or malformed request URL. */
@@ -42,12 +43,16 @@ interface UnwrapBody {
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  let body: UnwrapBody;
-  try {
-    body = (await req.json()) as UnwrapBody;
-  } catch {
-    return NextResponse.json({ error: 'BadRequest', message: 'Invalid JSON body' }, { status: 400 });
-  }
+  /*
+    BOUNDED BEFORE ANYTHING ELSE. This handler parses a body BEFORE it
+    authenticates — it has to, because the recipient token may arrive in that
+    body rather than a header. That makes it the one route where an unbounded
+    parse was reachable by anyone at all, and it was: it called req.json()
+    directly and never saw the 128 KB cap the other twenty-six routes share.
+  */
+  const parsed = await readJson(req);
+  if (isResponse(parsed)) return parsed;
+  const body = parsed as UnwrapBody;
 
   const { wrapped_data_key, vault_item_id } = body;
   if (!wrapped_data_key || !vault_item_id) {

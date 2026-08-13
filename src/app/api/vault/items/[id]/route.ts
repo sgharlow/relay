@@ -23,6 +23,7 @@ import {
 } from '../../../../../../lib/vault/vault-items';
 import { writeAuditEntry } from '../../../../../../lib/audit/audit-service';
 import { recordDeliberateActivity } from '../../../../../../lib/release/liveness';
+import { readJson, isResponse, VAULT_MAX_JSON_BYTES } from '../../../../../../lib/http/owner-route';
 
 const FORBIDDEN = { error: 'Forbidden', message: 'Not authorized for this item' };
 
@@ -72,12 +73,8 @@ export async function PUT(req: NextRequest, { params }: Ctx): Promise<NextRespon
   const auth = await authorize((await params).id, req.method);
   if (auth instanceof NextResponse) return auth;
 
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: 'BadRequest', message: 'Invalid JSON body' }, { status: 400 });
-  }
+  const body = await readJson(req, VAULT_MAX_JSON_BYTES);
+  if (isResponse(body)) return body;
 
   let input;
   try {

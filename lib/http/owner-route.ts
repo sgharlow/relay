@@ -75,6 +75,26 @@ export async function requireOwner(
 export const MAX_JSON_BYTES = 128 * 1024;
 
 /**
+ * The ceiling for the two routes that carry an encrypted vault item.
+ *
+ * MEASURED, NOT GUESSED. A vault item with a 2 KB plaintext serialises to about
+ * 3.2 KB — but the plaintext is whatever the owner typed, and "the instructions
+ * for closing my father's business" is a legitimate several-thousand-word note.
+ * Ciphertext is base64 over AES-GCM output, so it runs roughly 4/3 of the
+ * plaintext plus a tag; 128 KB would start refusing genuine notes somewhere
+ * around 90 KB of typing, which is a real thing a real person could write and a
+ * terrible way to find that out.
+ *
+ * 1 MB is roughly three hundred times the ordinary item and still bounded,
+ * which is the whole point — the previous state was not "a generous limit", it
+ * was no limit at all.
+ *
+ * /api/import keeps its own larger override: it posts a whole password-manager
+ * export rather than one item.
+ */
+export const VAULT_MAX_JSON_BYTES = 1024 * 1024;
+
+/**
  * Parses JSON, returning the body or a NextResponse (400 malformed, 413 too big).
  *
  * BOUNDED BY READING, not by trusting the header. A declared Content-Length is
@@ -141,6 +161,34 @@ export async function readJson(
   } catch {
     return NextResponse.json({ error: 'BadRequest', message: 'Invalid JSON body' }, { status: 400 });
   }
+}
+
+/**
+ * `readJson` for the handlers that tolerate a missing or malformed body.
+ *
+ * WHY THIS EXISTS RATHER THAN JUST CALLING readJson EVERYWHERE. Six handlers
+ * were written as `await req.json().catch(() => ({}))` — deliberately, because
+ * their body is optional. A verifier confirming a release and a claimed
+ * recipient opening an item both legitimately POST nothing at all. Swapping
+ * those to `readJson` would have started answering 400 to a request that has
+ * always been valid, which is a regression dressed up as a security fix.
+ *
+ * So the tolerant contract is preserved exactly: absent body, empty body,
+ * malformed JSON — all still become `{}`. The ONLY refusal that survives is
+ * 413, because that is the guard being added and the entire reason to touch
+ * these files.
+ *
+ * Feature: relay-h0-mvp
+ */
+export async function readJsonOptional(
+  req: NextRequest,
+  maxBytes: number = MAX_JSON_BYTES,
+): Promise<unknown | NextResponse> {
+  const out = await readJson(req, maxBytes);
+  if (isResponse(out)) return out.status === 413 ? out : {};
+  // A body of literal `null` parses successfully to null; callers expect an
+  // object to read optional fields off.
+  return out ?? {};
 }
 
 /** Maps a thrown validation/integrity error to a response; rethrows anything else. */

@@ -18,6 +18,7 @@ import { buildVerifierContext } from '../../../../../lib/release/verifier-contex
 import { submitConfirmation, TriggerError } from '../../../../../lib/release/triggers';
 import { ReleaseStateMachine } from '../../../../../lib/release/state-machine';
 import { DECISIONS, type Decision } from '../../../../../lib/release/verifier-decision';
+import { readJsonOptional, isResponse } from '../../../../../lib/http/owner-route';
 
 type Ctx = { params: Promise<{ token: string }> };
 
@@ -66,7 +67,9 @@ export async function POST(req: NextRequest, { params }: Ctx): Promise<NextRespo
     return NextResponse.json({ error: 'Forbidden', message: 'This link is no longer valid' }, { status: 403 });
   }
 
-  const body = (await req.json().catch(() => ({}))) as { decision?: string };
+  const parsed = await readJsonOptional(req);
+  if (isResponse(parsed)) return parsed;
+  const body = parsed as { decision?: string };
   if (!DECISIONS.includes(body.decision as Decision)) {
     return NextResponse.json(
       { error: 'BadRequest', message: `decision must be one of: ${DECISIONS.join(', ')}` },

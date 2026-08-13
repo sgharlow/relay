@@ -20,11 +20,14 @@ import { submitConfirmation, TriggerError } from '../../../../../../lib/release/
 import { ReleaseStateMachine } from '../../../../../../lib/release/state-machine';
 import { DECISIONS, type Decision } from '../../../../../../lib/release/verifier-decision';
 import { notifyOwnerReleasePendingGraceById } from '../../../../../../lib/notify/notifications';
+import { readJsonOptional, isResponse } from '../../../../../../lib/http/owner-route';
 
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function POST(req: NextRequest, { params }: Ctx): Promise<NextResponse> {
-  const body = (await req.json().catch(() => ({}))) as {
+  const parsed = await readJsonOptional(req);
+  if (isResponse(parsed)) return parsed;
+  const body = parsed as {
     verifier_token?: string;
     method?: string;
     decision?: string;

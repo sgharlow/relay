@@ -24,6 +24,7 @@ import {
 } from '../../../../../lib/auth/verifier-code';
 import { issueVerifierToken } from '../../../../../lib/auth/verifier-token';
 import { rateLimit, clientKey } from '../../../../../lib/http/rate-limit';
+import { readJson, isResponse } from '../../../../../lib/http/owner-route';
 
 /** Ten tries an hour is generous for typing and far too slow to guess with. */
 const LIMIT = 10;
@@ -38,12 +39,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  let body: { code?: unknown };
-  try {
-    body = (await req.json()) as { code?: unknown };
-  } catch {
-    return NextResponse.json({ error: 'BadRequest', message: 'Invalid request.' }, { status: 400 });
-  }
+  const parsed = await readJson(req);
+  if (isResponse(parsed)) return parsed;
+  const body = parsed as { code?: unknown };
 
   const code = typeof body.code === 'string' ? body.code : '';
   if (!code.trim()) {

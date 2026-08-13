@@ -24,11 +24,14 @@ import {
   AccessError,
 } from '../../../../../../lib/access/dashboard';
 import { getOwnerSession } from '../../../../../../lib/auth/session';
+import { readJsonOptional, isResponse } from '../../../../../../lib/http/owner-route';
 
 type Ctx = { params: Promise<{ itemId: string }> };
 
 export async function POST(req: NextRequest, { params }: Ctx): Promise<NextResponse> {
-  const body = (await req.json().catch(() => ({}))) as { token?: string };
+  const parsed = await readJsonOptional(req);
+  if (isResponse(parsed)) return parsed;
+  const body = parsed as { token?: string };
   const authz = req.headers.get('authorization');
   const token = authz?.startsWith('Bearer ') ? authz.slice(7) : body.token;
 

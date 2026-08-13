@@ -23,6 +23,7 @@ import {
 } from '../../../../../lib/auth/recipient-code';
 import { issueRecipientToken } from '../../../../../lib/auth/recipient-token';
 import { rateLimit, clientKey } from '../../../../../lib/http/rate-limit';
+import { readJson, isResponse } from '../../../../../lib/http/owner-route';
 
 const LIMIT = 10;
 const WINDOW_MS = 60 * 60 * 1000;
@@ -36,12 +37,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  let body: { code?: unknown };
-  try {
-    body = (await req.json()) as { code?: unknown };
-  } catch {
-    return NextResponse.json({ error: 'BadRequest', message: 'Invalid request.' }, { status: 400 });
-  }
+  const parsed = await readJson(req);
+  if (isResponse(parsed)) return parsed;
+  const body = parsed as { code?: unknown };
 
   const code = typeof body.code === 'string' ? body.code : '';
   if (!code.trim()) {

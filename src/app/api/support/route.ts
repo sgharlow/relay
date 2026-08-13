@@ -27,6 +27,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { rateLimit, clientKey } from '../../../../lib/http/rate-limit';
 import { sendEmailBestEffort } from '../../../../lib/notify/email';
 import { CONTACT_EMAIL } from '../../../../lib/contact';
+import { readJson, isResponse } from '../../../../lib/http/owner-route';
 
 /** Generous for a person in difficulty, tight for a script. */
 const LIMIT = 5;
@@ -57,12 +58,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  let body: Record<string, unknown>;
-  try {
-    body = (await req.json()) as Record<string, unknown>;
-  } catch {
-    return NextResponse.json({ error: 'BadRequest', message: 'Invalid request.' }, { status: 400 });
-  }
+  /*
+    THE DECLARED-LENGTH CHECK ABOVE IS HALF A GUARD, and read-json-limit.test.ts
+    says so in as many words: Content-Length is a claim by the sender, and a
+    chunked request declares nothing at all. It is kept because it is free, it
+    refuses before a byte is read, and its wording is better than a generic one
+    for somebody who is already having a bad day. readJson enforces the same
+    ceiling against the stream as it actually arrives, which is the half that
+    was missing.
+  */
+  const parsed = await readJson(req, MAX_BODY_BYTES);
+  if (isResponse(parsed)) return parsed;
+  const body = parsed as Record<string, unknown>;
 
   // Honeypot, as on the interest form: hidden from people, irresistible to naive
   // bots. Answered with an ordinary 200 so there is no signal to adapt to.

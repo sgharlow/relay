@@ -19,6 +19,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { recordLead, LeadValidationError, MAX_NOTE_LENGTH } from '../../../../../lib/g1/leads';
 import { submissionSpeedVerdict } from '../../../../../lib/http/bot-signals';
 import { rateLimit, clientKey } from '../../../../../lib/http/rate-limit';
+import { readJson, isResponse } from '../../../../../lib/http/owner-route';
 
 /** Generous for a human, tight for a script: 5 submissions per 10 minutes. */
 const LIMIT = 5;
@@ -41,12 +42,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'TooLarge', message: 'That is too long.' }, { status: 413 });
   }
 
-  let body: Record<string, unknown>;
-  try {
-    body = (await req.json()) as Record<string, unknown>;
-  } catch {
-    return NextResponse.json({ error: 'BadRequest', message: 'Invalid request.' }, { status: 400 });
-  }
+  /*
+    The declared-length check above refuses before a byte is read, which is
+    worth keeping — but Content-Length is a claim by the sender and a chunked
+    request declares nothing. readJson enforces the same ceiling against the
+    stream as it arrives, which is the half that was missing.
+  */
+  const parsed = await readJson(req, MAX_BODY_BYTES);
+  if (isResponse(parsed)) return parsed;
+  const body = parsed as Record<string, unknown>;
 
   // Honeypot: a field hidden from humans and irresistible to naive bots. A
   // filled value is answered with a normal-looking 200 so the bot has no signal

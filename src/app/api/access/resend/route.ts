@@ -30,6 +30,7 @@ import { getOwnerLabel } from '../../../../../lib/people/owner-label';
 import { formatCaseId } from '../../../../../lib/release/case-id';
 import { writeAuditEntry } from '../../../../../lib/audit/audit-service';
 import { rateLimit, clientKey } from '../../../../../lib/http/rate-limit';
+import { readJson, isResponse } from '../../../../../lib/http/owner-route';
 
 /** Tight: this sends mail to a third party on an unauthenticated request. */
 const LIMIT = 3;
@@ -44,12 +45,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  let body: { email?: unknown };
-  try {
-    body = (await req.json()) as { email?: unknown };
-  } catch {
-    return NextResponse.json({ error: 'BadRequest', message: 'Invalid request.' }, { status: 400 });
-  }
+  const parsed = await readJson(req);
+  if (isResponse(parsed)) return parsed;
+  const body = parsed as { email?: unknown };
 
   const email = typeof body.email === 'string' ? body.email.trim() : '';
   // Deliberately identical whatever happens next — see the module comment.

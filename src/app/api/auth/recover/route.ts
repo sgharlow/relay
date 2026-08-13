@@ -32,6 +32,7 @@ import {
   completeRecoveryEnrolment,
 } from '../../../../../lib/auth/recovery-enrolment';
 import { rateLimit, clientKey } from '../../../../../lib/http/rate-limit';
+import { readJson, isResponse } from '../../../../../lib/http/owner-route';
 import { ValidationError } from '../../../../../lib/validation';
 
 /** Generous for a flustered person, far too slow to grind ~50 bits with. */
@@ -47,12 +48,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  let body: Record<string, unknown>;
-  try {
-    body = (await req.json()) as Record<string, unknown>;
-  } catch {
-    return NextResponse.json({ error: 'BadRequest', message: 'Invalid request.' }, { status: 400 });
-  }
+  const parsed = await readJson(req);
+  if (isResponse(parsed)) return parsed;
+  const body = parsed as Record<string, unknown>;
 
   try {
     // Step two — a new authenticator proves itself and takes over.
