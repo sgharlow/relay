@@ -22,6 +22,7 @@ import { issueRecipientToken } from '../auth/recipient-token';
 import { query } from '../db/connection';
 import { getOwnerLabel } from '../people/owner-label';
 import { classifyOrFailOpen, type VerifierNoticeClass } from './verifier-notice-class';
+import { article, Article } from '../text/article';
 
 /**
  * The origin every emailed link is built on.
@@ -47,20 +48,6 @@ import { classifyOrFailOpen, type VerifierNoticeClass } from './verifier-notice-
  */
 function appUrl(): string {
   return process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
-}
-
-/**
- * Indefinite article for a trigger type.
- *
- * Two of the five trigger types begin with a vowel, so the templates read
- * "A emergency trigger was initiated" and "confirm a emergency trigger" — in
- * the subject line of the message that reaches someone during an actual
- * emergency. Small, but this product is asking a stranger to trust it with a
- * parent's credentials, and mail that cannot manage "an" reads like a phishing
- * kit. Caught by transcribing a full family scenario 2026-08-08.
- */
-function article(word: string): 'a' | 'an' {
-  return /^[aeiou]/i.test(word) ? 'an' : 'a';
 }
 
 /**
@@ -376,9 +363,9 @@ export async function notifyOwnerTriggerPending(
 ): Promise<void> {
   await sendEmailBestEffort({
     to: ownerEmail,
-    subject: `${article(triggerType) === 'an' ? 'An' : 'A'} ${triggerType} trigger was initiated on your account`,
+    subject: `${Article(triggerType)} ${triggerType} trigger was initiated on your account`,
     text:
-      `${article(triggerType) === 'an' ? 'An' : 'A'} "${triggerType}" trigger has entered the pending state. ` +
+      `${Article(triggerType)} "${triggerType}" trigger has entered the pending state. ` +
       `If this wasn't expected, check in now to reset it:\n\n${appUrl()}/triggers\n`,
   });
 }

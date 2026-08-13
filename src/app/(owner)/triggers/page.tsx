@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiGet, apiSend } from '../_lib/api';
+import { article } from '../../../../lib/text/article';
 
 interface ReleaseState {
   id: string;
@@ -368,14 +369,16 @@ function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promi
         >
           {reversible ? (
             <p className="text-t2 leading-relaxed text-ink">
-              Everyone you named to confirm a <span className="font-semibold">{rs.trigger_type}</span>{' '}
-              will be asked whether this is real. If enough of them agree, the access you arranged
+              Everyone you named to confirm {article(rs.trigger_type)}{' '}
+              <span className="font-semibold">{rs.trigger_type}</span> will be asked whether this is
+              real. If enough of them agree, the access you arranged
               opens. <span className="font-semibold">You can stop it at any point by checking in.</span>
             </p>
           ) : (
             <>
               <p className="text-t2 font-semibold leading-relaxed text-clay">
-                A {rs.trigger_type} handover cannot be undone.
+                {article(rs.trigger_type) === 'an' ? 'An' : 'A'} {rs.trigger_type} handover cannot
+                be undone.
               </p>
               <p className="mt-1 text-t2 leading-relaxed text-clay">
                 If the people you named agree, what you set aside passes to them permanently.

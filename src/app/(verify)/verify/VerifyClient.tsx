@@ -17,6 +17,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
+import { Article } from '../../../../lib/text/article';
+
 interface Context {
   caseId: string;
   /** Whose vault. J7-R3's "who is asking" — see the note on `VerifierContext`. */
@@ -52,16 +54,6 @@ const ACTION_LABEL: Record<string, string> = {
   release_transition_pending: 'Relay began asking the people they chose',
   access_requested: 'Someone asked for access',
 };
-
-/**
- * "A emergency release" — the same defect the notification templates carry an
- * `article()` helper for, on the one screen where a doctor decides whether a
- * stranger's request is genuine. Two of the five trigger types begin with a
- * vowel, and mail (or a page) that cannot manage "an" reads like a phishing kit.
- */
-function article(word: string): 'a' | 'an' {
-  return /^[aeiou]/i.test(word) ? 'an' : 'a';
-}
 
 export default function VerifyClient() {
   const urlToken = useSearchParams().get('token');
@@ -225,7 +217,7 @@ export default function VerifyClient() {
         */}
         <h1 className="mt-2 text-t7 font-semibold">Is this real, for {ctx.ownerLabel}?</h1>
         <p className="mt-3 text-ink">
-          {article(ctx.triggerType) === 'an' ? 'An' : 'A'} {ctx.triggerType} release has been
+          {Article(ctx.triggerType)} {ctx.triggerType} release has been
           started on <strong>{ctx.ownerLabel}</strong>&rsquo;s vault, and you are one of the people
           they chose to ask.
         </p>
