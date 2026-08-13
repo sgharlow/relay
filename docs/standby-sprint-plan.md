@@ -1124,3 +1124,73 @@ up a parent's vault — is half-built and now honestly labelled.
 ⏸️ Also open, deliberately: a confirmation step on **Initiate** before `g2-counsel-opinion` opens;
 ESP suppression silently swallowing a resend; `/import` and `/start` reachable but not re-evidenced
 this pass; §3.8 event transparency.
+
+---
+
+## 17. J3 closed, and the plan for what is left — 2026-08-12
+
+### The delegate surface: shipped and walked
+
+The delegate half of J3 was a security layer with nothing above it. `enqueueApproval` was called by
+nothing, `GET /api/vault/items` took no `?ownerId=`, and nothing told a person they had been made a
+helper — so appointing one achieved nothing. All four gaps are closed and the loop was walked on
+production, end to end:
+
+owner appoints → records consent → **helper is told on their standby dashboard** → opens the
+workspace → **adds an encrypted item to somebody else's vault** → **suggests a person** → the
+suggestion lands in **the owner's queue, which had rendered an empty state since it shipped** →
+owner approves → the recipient is created through the same validated path an owner would use.
+
+Verified in the database afterwards: delegate provenance on the item, `delegate:<id>` on both the
+item and the proposal in the audit log, `owner:<id>` on the consent and the approval — which is
+J3-R8's "what was done on your behalf", derived from the chain rather than a second log.
+
+**The boundary was probed from inside the helper's own authenticated session**, not asserted:
+
+| Probe | Result |
+|---|---|
+| Helper's own vault | 0 items — untouched |
+| Helped vault via `?ownerId=` | **only their own entry**; the owner's private item absent |
+| Ciphertext / wrapped key in the response | none |
+| A vault with no delegation | **403** |
+| `/api/circle?ownerId=` | param not honoured — no leak |
+| `/api/triggers?ownerId=` | no delegate path exists at all, by design |
+
+⚠️ **The workspace lives in the `(access)` route group, not `(owner)`.** The owner group carries
+vault, circle, triggers and account in its chrome; a helper's workspace there would mean every one
+of those pages remembering it might be rendering somebody else's data — one forgotten check from a
+privilege leak. Here a helper cannot reach a trigger screen because it is not in the tree.
+
+### Remaining items, in the order they should be taken
+
+**1. Send the first real invitations.** ⏱️ hours · owner: Steve · **the only one that is not code.**
+Phase 0 is still N=0, and the security argument now rests on that number: principle 1 is conditional
+on claim conversion, and adaptive minting's premise is that verifiers actually reach `confirmed`. No
+amount of further building substitutes for one real circle. Everything below is cheaper to decide
+once a real number exists.
+
+**2. Rule the grace window.** ⏱️ one decision · owner: Steve. `GRACE_WINDOW_MS` is 0 and the copy
+now tells the truth about it. The question the constant's own comment defers is still open — *how
+long should an owner get to stop a false alarm?* Nothing is broken either way; it is a product call,
+and the honest wording buys time to make it rather than forcing it.
+
+**3. A confirmation step on `Initiate`.** ⏱️ ~1h · **precondition on `g2-counsel-opinion`, not
+optional.** Harmless today because `estate` is not user-selectable and every other trigger is
+reversible. The day that gate opens, one click becomes irreversible with no confirm step. Wire it
+before, not after.
+
+**4. Deliverability, which no product change can fix.** ⏱️ ~half a day. Outlook files us at SCL 5,
+and a resend to a suppressed address succeeds and delivers nothing. The verifier resend narrowed the
+blast radius; it did not fix the channel. Needs DMARC/alignment work and a suppression check
+surfaced to the owner, and it gates the honesty of every "we told them" claim in the product.
+
+**5. `/import` and `/start` evidence.** ⏱️ ~1h. Both reachable, neither re-photographed this pass.
+CSV import is a real owner journey and should carry evidence before beta.
+
+**6. Policy proposals, or removing the scope.** ⏱️ ~2h. A helper holds `policies:propose`, no
+surface offers it, and `decideApproval` claims a `policy` approval without applying one. Either
+build it or drop the scope — a granted capability that silently does nothing is the shape of thing
+this audit keeps finding.
+
+**Deliberately not doing:** §3.8 event transparency, `email_secondary`, [A2]'s guided-call UI, and
+helper import. All additive, none blocking, and each one is cheaper to decide after item 1.
