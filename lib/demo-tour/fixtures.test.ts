@@ -103,3 +103,19 @@ describe('🔴 the tour may only show what a visitor can actually buy', () => {
     expect(new Set(DEMO_VAULT_ITEMS.map((i) => i.recipient)).size).toBeGreaterThanOrEqual(2);
   });
 });
+
+describe('🔴 and not in the prose either', () => {
+  it('mentions no unbuyable trigger anywhere in the tour copy', () => {
+    // The first retarget fixed the item TABLE and missed a sentence in the
+    // release timeline — "Estate releases, by contrast, are permanent by
+    // design" — because grepping the items did not reach the prose. Same false
+    // offer, different shape, one page apart.
+    const prose = [
+      ...DEMO_RELEASE_TIMELINE.map((s) => `${s.headline} ${s.detail}`),
+      ...DEMO_VAULT_ITEMS.map((i) => `${i.name} ${i.recipient}`),
+    ].join(' ');
+
+    expect(prose).not.toMatch(/\bestate\b/i);
+    expect(prose).not.toMatch(/\bexecutor\b/i);
+  });
+});

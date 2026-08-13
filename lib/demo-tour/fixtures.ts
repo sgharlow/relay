@@ -183,7 +183,12 @@ export const DEMO_RELEASE_TIMELINE: DemoTimelineStep[] = [
     at: '2026-06-27T14:03:12Z',
     headline: 'Scoped access opens — and stays reversible.',
     detail:
-      'Recipients can now decrypt only the items they were granted. When the owner recovers and checks in, the version bump instantly invalidates every recipient token and the vault re-ARMs. Estate releases, by contrast, are permanent by design.',
+      // The last sentence used to read "Estate releases, by contrast, are
+      // permanent by design" — the same unbuyable offer as the item table, in
+      // prose, and it survived the first retarget because grepping the ITEMS
+      // did not reach it. Reversibility is the stronger claim anyway: it is
+      // what the product does today and what the competitor comparison rests on.
+      'Recipients can now decrypt only the items they were granted. When the owner recovers and checks in, the version bump instantly invalidates every recipient token and the vault re-ARMs — everything Relay offers today is reversible in exactly this way.',
     cas: "UPDATE release_state SET state='released', released_at=now() WHERE id=$1 AND state='grace' AND version=$2",
   },
 ];
