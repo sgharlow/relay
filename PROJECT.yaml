@@ -184,3 +184,40 @@ ratified:
     detail: "The live billing portal header reads 'Relay/ReportBridge/LearningAI365' — an account-level name on the Stripe account shared with report-bridge, learningai365 and skillcrossroads. Per-portal-configuration branding does not override it."
     rationale: "G1 measures click-to-intent, which happens before checkout, so this cannot bias the gate reading. It is only seen by someone who reaches payment during the beta."
     revisit: "if G1 passes — at which point the options are a neutral shared name or a Relay-only Stripe account"
+
+# Known defects accepted for now, with the trigger that ends the acceptance.
+#
+# Distinct from `ratified` above, which records DECISIONS. This records DEBT: things
+# measured, understood, and deliberately not fixed yet. An item leaves this list by
+# being fixed or by being re-argued — not by being forgotten, which is what an
+# unwritten "we should probably..." always becomes.
+deferred:
+  - id: unbounded-request-body
+    found: 2026-08-13
+    what: "The application imposes no size limit on a JSON request body. `readJson`
+      (lib/http/owner-route.ts) calls `req.json()` with no check and is shared by 30 route
+      handlers, so the only ceiling anywhere is Vercel's platform limit. Parse cost and
+      memory scale with whatever a caller chooses to send."
+    found_how: "Fallout from the ReDoS fix in 32027b5. That commit made sanitiseRequestReason
+      linear, so the COST of processing a hostile body is now bounded — but the SIZE of the
+      body arriving never was, and the sanitiser was only the one consumer that happened to
+      be quadratic. Fixing the symptom exposed that the general case is untreated."
+    worst_case: "POST /api/access-requests is the sharp instance: its `reason` is free text
+      from any standby contact, and lib/release/access-request.ts already names that actor as
+      the threat — 'a named contact who accepted, then turned hostile'. Authenticated, so it
+      is not an open-internet risk; it is an insider-availability one."
+    severity: "moderate. Availability only — no data exposure, no state change, no crypto
+      boundary involved. Reachable only by somebody who has already accepted an invitation."
+    why_deferred: "The fix belongs in the shared reader, which means changing the request path
+      of 30 live authenticated endpoints at once. That is a change to working production
+      plumbing with no observed incident behind it, and the beta population is currently the
+      founding families — people who are not the threat actor. Steve's call, 2026-08-13."
+    fix: "Bound it in `readJson` itself rather than per route: reject on Content-Length over
+      the cap with 413, and cap the read for a chunked body that declares nothing. ONE
+      definition, per the cross-boundary-contract rule — a per-route convention is exactly
+      how the 30th caller ends up without it. Needs a per-route override for /api/import,
+      which legitimately posts a whole password-manager export."
+    owner: steve
+    revisit: "before the beta widens past the founding families — the accepted risk rests on
+      every contact being somebody Steve personally invited, and that stops being true the
+      moment invitations go out to people he does not know"
