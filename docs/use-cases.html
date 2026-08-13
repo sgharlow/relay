@@ -79,6 +79,8 @@
     <tr><td>UC-19</td><td>Get back in after losing a device</td><td>Contact</td><td class="pass">Pass</td></tr>
     <tr><td>UC-20</td><td>Leave, export, or close the account</td><td>Owner</td><td class="pass">Pass</td></tr>
     <tr><td>UC-21</td><td>Public surfaces and the legal pages</td><td>Visitor</td><td class="pass">Pass</td></tr>
+    <tr><td>UC-22</td><td>Create a vault</td><td>New owner</td><td class="pass">Pass</td></tr>
+    <tr><td>UC-23</td><td>Get back in after losing the authenticator</td><td>Owner</td><td class="pass">Pass</td></tr>
   </tbody>
 </table>
 
@@ -340,6 +342,45 @@
   <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Both live, both carrying those sections. Counsel review under <code>g2-counsel-opinion</code> remains outstanding and this does not substitute for it.</span></div>
 </div>
 <figure><img src="screens/uc12-landing.png" alt="Landing"><figcaption>UC-21 — relaystandby.com</figcaption></figure>
+</section>
+
+<!-- UC-22 -->
+<section class="uc">
+<h2>UC-22 — Create a vault</h2>
+<div class="card">
+  <div class="row"><span class="k">Actor</span><span>New owner</span></div>
+  <div class="row"><span class="k">Goal</span><span>Start, without inventing a password.</span></div>
+  <div class="row"><span class="k">Expected</span><span>Two steps, an authenticator required, and recovery codes issued at the point they can still be saved.</span></div>
+  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> The name field shows a <b>live preview of the consequence</b> of leaving it blank — &ldquo;they will see <i>your email address</i> when we contact them&rdquo; — which is the same defect that had to be fixed in the standby dashboard, pre-empted at the one moment it can be avoided.</span></div>
+</div>
+<figure><img src="screens/uc25-signup.png" alt="Sign up"><figcaption>UC-22 — creating a vault.</figcaption></figure>
+</section>
+
+<!-- UC-23 -->
+<section class="uc">
+<h2>UC-23 — Get back in after losing the authenticator</h2>
+<div class="card">
+  <div class="row"><span class="k">Actor</span><span>Owner</span></div>
+  <div class="row"><span class="k">Goal</span><span>Recover a vault when the phone with the authenticator is gone.</span></div>
+  <div class="row"><span class="k">Expected</span><span>A recovery code replaces how you sign in and touches nothing inside the vault — and the page says so, because the fear at that moment is that the data is gone.</span></div>
+  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> &ldquo;Your vault contents are untouched — this only replaces how you sign in.&rdquo;</span></div>
+</div>
+<figure><img src="screens/uc26-recover.png" alt="Recover"><figcaption>UC-23 — recovery.</figcaption></figure>
+</section>
+
+<!-- Not evidenced -->
+<section class="uc">
+<h2>Stated coverage limits</h2>
+<p class="sub">What this document does <b>not</b> evidence, said plainly rather than left to be assumed.</p>
+<table>
+  <thead><tr><th style="width:120pt">Surface</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td><code>/import</code></td><td>Built and reachable; <b>not re-photographed this pass</b>. CSV import from a password manager is a real owner journey and should carry evidence in the next sweep.</td></tr>
+    <tr><td><code>/start</code></td><td>Guided first-run. Built and reachable; not re-photographed this pass.</td></tr>
+    <tr><td><b>A helper actually helping</b></td><td>🔴 <b>Not built.</b> An owner can appoint a helper and record consent (UC-05, UC-06) — and the helper has <b>no surface to act on</b>. <code>proposeApproval</code> is called by nothing and no screen lets a delegate work on somebody else's vault, so the owner's approvals queue can never fill. J3 is half a journey, and appointing a helper currently achieves nothing.</td></tr>
+    <tr><td>Estate release</td><td>Deliberately unreachable — <code>estate</code> is excluded from user-selectable triggers pending <code>g2-counsel-opinion</code>.</td></tr>
+  </tbody>
+</table>
 </section>
 
 </body>

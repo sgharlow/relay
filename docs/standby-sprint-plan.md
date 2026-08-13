@@ -1064,3 +1064,63 @@ grants a standby row a `totp_secret`, so email+TOTP is refused for them. The fix
 ⏸️ **Still open, and deliberately:** a confirmation step on **Initiate** before `g2-counsel-opinion`
 opens (harmless today because `estate` is not user-selectable and every other trigger is
 reversible); ESP suppression silently swallowing a resend; and §3.8 event transparency.
+
+---
+
+## 16. Beta readiness — reassessed 2026-08-12 (evening)
+
+Derived from a walk, not from the diff. One circle on production was taken end to end in sequence:
+appointed a helper → recorded consent → the contact asked for access → the owner was challenged →
+the owner started a release → a verifier signed in and confirmed → the recipient opened their plan
+with no token in the URL → the owner checked in and it all closed → the record described it. Every
+screenshot in `docs/Relay-Use-Cases.pdf` is the state the previous action produced, which is why
+they agree with each other.
+
+### Nine defects found, all fixed
+
+Seven were found by **looking at or walking** the product, not by testing it. That ratio is the
+finding underneath the findings.
+
+| # | Defect | How it surfaced |
+|---|---|---|
+| 1 | Access-request `reason` stored and mailed **verbatim** — attacker-controlled text sent from Relay's own domain to the owner's inbox, newlines able to forge the quoted block | Security review of what giving J6 a door had activated |
+| 2 | `createDelegation` accepted **any** user id, letting an owner record a consent artifact about somebody never named | Same review |
+| 3 | `owner_id` unvalidated → a Postgres cast error surfaced as a 500 | Same review |
+| 4 | The demo was **not clean**: `coinbase` is critical and had no rule, so its standing statement sat amber at "3 of the 4 things that matter" while the seed's own comment claimed the critical items were covered — and the demo owner had **no display name**, so every contact saw `demo@relay.test` | Reading the demo's own readiness output |
+| 5 | `/circle` **argued with itself**: "nothing would open" beneath a sage banner saying the plan works, and it counted an emergency-code-only contact as somebody to chase — the exact thing §8.1 forbids | Looking at a circle that contained one |
+| 6 | The fallback nudge painted in **clay**, the colour reserved for what cannot be undone, at 12px | Measuring computed styles |
+| 7 | "**A** emergency release" on the decision page — the defect the notification templates carry an `article()` helper for | Walking to the decision page |
+| 8 | The decision page's timeline said "No response, so we started asking" directly under "They started this themselves" | Same walk |
+| 9 | **J7-R6 violated**: "Yes" was a filled button and "No" an outline — equal effort, unequal prominence, on the screen whose stated failure mode is rubber-stamping | Looking at the rendered page; every measurable property was already equal, which is why measurement never caught it |
+
+### Two claims corrected, because the product could not keep them
+
+- **The grace window does not exist.** The owner's confirmation email promised "release will complete
+  when the grace window elapses… check in now to cancel", while `GRACE_WINDOW_MS` is **0**,
+  deliberately and invariant-tested. That invited the owner into a race they lose. What is true is
+  stronger and is now what it says: they are protected by *reversibility*, not by a delay.
+  ⏸️ Whether the window should be non-zero stays the product decision the constant's comment defers.
+- **"Nothing was opened" was said when somebody had looked.** `recipient_dashboard_viewed` was in the
+  log; the summary ignored it. §8.2's failure shape one level in — the record holds the fact, the
+  experience omits it. ⚠️ `incident-record.ts` had **no test file at all** until this pass.
+
+### 🔴 The one gap that is not a defect: J3 is half a journey
+
+Wave 4 made **appointing** a helper reachable. The helper still has nowhere to act:
+`proposeApproval` is called by **nothing**, and no screen passes `?ownerId=`, so a delegate cannot
+work on somebody else's vault and the owner's approvals queue can never fill.
+
+**So appointing a helper currently achieves nothing.** That is a decision, not a bug fix: either
+build the delegate's acting surface, or stop offering the appointment until it exists. Recorded in
+the use-case PDF under stated coverage limits rather than left to be discovered.
+
+### Verdict
+
+**Beta-ready for the owner and contact journeys; not for the caregiver wedge.** Everything a person
+does for themselves or for somebody who named them was walked end to end on production and works,
+including every reversal. The wedge that the commercial argument rests on — an adult child setting
+up a parent's vault — is half-built and now honestly labelled.
+
+⏸️ Also open, deliberately: a confirmation step on **Initiate** before `g2-counsel-opinion` opens;
+ESP suppression silently swallowing a resend; `/import` and `/start` reachable but not re-evidenced
+this pass; §3.8 event transparency.
