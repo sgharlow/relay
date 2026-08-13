@@ -1279,3 +1279,45 @@ while they are `claimed`. **Do not send invitations from a deploy older than thi
 `docs/first-invitations.md` has the recipient text, the verifier text, the call script, the failure
 branches, and what to read afterwards. It is Steve's to send — the only remaining item that is not
 code, and the one the security argument is waiting on.
+
+### Step 1 — a customer failure now produces a signal (2026-08-12)
+
+The scheduler had a dead-man's switch (J5-R7); the **customer path had nothing**. 27 `console.error`
+calls writing to logs nobody watches, no error boundary anywhere, and a mistyped URL returning
+Next's bare default. A real person hitting a real failure produced silence, and the only way to
+learn of it was to go looking.
+
+| Piece | What it does |
+|---|---|
+| `src/app/error.tsx` | Written for the CONTACT, not the owner — one of the two readers is in a hospital corridor. Leads with the fear: nothing lost, nothing opened. Reports itself. |
+| `src/app/global-error.tsx` | When the root layout itself fails. Every value inline, because a fallback that depends on the broken thing is not a fallback. |
+| `src/app/not-found.tsx` | Does not assume an owner. Names the three places somebody who mistyped an address was probably trying to reach. |
+| `lib/ops/incident.ts` + `POST /api/incident` | Records, then alerts — deduped 15 min, capped at 5 per window. |
+
+**⚠️ The digest travels; the message never does.** React produces a production digest for exactly
+this, and an exception thrown near the crypto path could carry anything. The endpoint strips query
+strings (`/claim?token=…` would otherwise copy a live ticket into an email), refuses an over-long
+digest, and ignores every field it does not know.
+
+**Live-proven on production**, not asserted:
+
+```
+[incident] mode=access path=/claim   digest=live-probe-2   ← ?token=SHOULD-NOT-APPEAR stripped
+[incident] mode=public path=unknown  digest=none           ← junk defaulted safely
+[incident] mode=access path=/standby digest=live-probe-1
+```
+
+A probe carrying a password in three plausible field names (`message`, `stack`, `error`) arrived with
+none of them. All three requests returned an identical 204.
+
+⏸️ **`OPS_ALERT_EMAIL` is NOT set in production**, so incidents are recorded and nobody is woken up —
+the documented degrade path, not a fault. One command turns the push signal on:
+
+```
+vercel env add OPS_ALERT_EMAIL production
+```
+
+⚠️ **Honest limit of this proof.** The endpoint is live-proven and the boundary is unit-tested; that
+the boundary *calls* the endpoint on a real crash is verified by reading, not by crashing production
+on purpose. The first genuine error will confirm it — which is the point of shipping it before the
+invitations rather than after.
