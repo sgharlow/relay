@@ -39,6 +39,8 @@ export interface Delegation {
    */
   name: string | null;
   email: string | null;
+  /** What they have actually done, from the audit chain (J3-R8). */
+  activity?: { action: string; ts: string }[];
 }
 
 export interface Candidate {
@@ -48,6 +50,20 @@ export interface Candidate {
   person_type: string;
   standby_state: string | null;
 }
+
+/**
+ * A helper's actions in plain words.
+ *
+ * Only two exist: a delegate can create an item and can propose a person. There
+ * is no delegate path to update, to trigger, or to anything else — so this map
+ * is short because the capability is, not because it is unfinished. An
+ * unrecognised action falls through to the raw name rather than being hidden,
+ * because the point of this list is that nothing a helper does is invisible.
+ */
+const DELEGATE_ACTION: Record<string, string> = {
+  vault_item_created: 'Added something to your vault',
+  approval_requested: 'Suggested somebody who would step in',
+};
 
 const METHODS = [
   {
@@ -174,6 +190,39 @@ export default function HelperSection({
                     </button>
                   </>
                 )
+              ) : null}
+
+              {/*
+                🔴 J3-R8, surfaced 2026-08-12. Placed HERE rather than on the
+                audit page on purpose: this is the screen where an owner decides
+                whether to keep somebody, and the evidence belongs next to the
+                decision. The audit page still holds everything in order; this
+                answers the narrower question an owner actually asks about a
+                helper — what have they been doing.
+              */}
+              {d.status === 'active' ? (
+                <div className="mt-3">
+                  <p className="text-t2 font-medium text-ink">What they have done</p>
+                  {(d.activity?.length ?? 0) === 0 ? (
+                    <p className="mt-1 text-t2 text-muted">Nothing yet.</p>
+                  ) : (
+                    <ul className="mt-1 space-y-1">
+                      {d.activity!.slice(0, 8).map((a, i) => (
+                        <li key={`${a.ts}-${i}`} className="text-t2 text-ink">
+                          {DELEGATE_ACTION[a.action] ?? a.action}
+                          <span className="text-muted"> — {new Date(a.ts).toLocaleString()}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {(d.activity?.length ?? 0) > 8 ? (
+                    <p className="mt-1 text-t2 text-muted">
+                      Showing the last 8 of {d.activity!.length}. Your{' '}
+                      <a href="/audit" className="underline underline-offset-2">record</a> has all of
+                      them, in order.
+                    </p>
+                  ) : null}
+                </div>
               ) : null}
 
               <button

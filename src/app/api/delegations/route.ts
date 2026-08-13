@@ -13,6 +13,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { requireOwner, readJson, isResponse, mapError } from '../../../../lib/http/owner-route';
 import { query } from '../../../../lib/db/connection';
 import { createDelegation, revokeDelegation } from '../../../../lib/people/delegation';
+import { delegateActivityDigest } from '../../../../lib/people/approvals';
 import { detectRoleConcentration, type CirclePerson } from '../../../../lib/people/role-concentration';
 import { listPeople } from '../../../../lib/people/people';
 import { ValidationError } from '../../../../lib/validation';
@@ -94,11 +95,37 @@ export async function GET(): Promise<NextResponse> {
    */
   const byUser = new Map(candidates.rows.map((c) => [c.user_id, c]));
 
+  /**
+   * 🔴 J3-R8 HAD NO SURFACE. `delegateActivityDigest` was written, tested and
+   * called by nothing, so "what was done on your behalf" — the single thing that
+   * makes handing somebody setup rights reviewable rather than a leap of faith —
+   * existed only as a function.
+   *
+   * Derived from the audit chain rather than a second log, exactly as the
+   * function's own header requires: a separate activity table could drift from
+   * the record, and then two sources would disagree about what a helper did.
+   *
+   * 90 days: long enough to cover the setup period a helper is actually for,
+   * short enough that the list stays readable on the screen where an owner
+   * decides whether to keep them.
+   */
+  const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+  const digest = await delegateActivityDigest(auth.ownerId, since);
+
+  const activityByDelegation = new Map<string, { action: string; ts: string }[]>();
+  for (const row of digest) {
+    const id = row.actor.slice('delegate:'.length);
+    const list = activityByDelegation.get(id) ?? [];
+    list.push({ action: row.action, ts: row.ts });
+    activityByDelegation.set(id, list);
+  }
+
   return NextResponse.json({
     delegations: delegations.rows.map((d) => ({
       ...d,
       name: byUser.get(d.delegate_user_id)?.name ?? null,
       email: byUser.get(d.delegate_user_id)?.email ?? null,
+      activity: activityByDelegation.get(d.id) ?? [],
     })),
     concentrationWarning: detectRoleConcentration(circle),
     candidates: candidates.rows

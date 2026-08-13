@@ -17,11 +17,35 @@
 import { NextResponse } from 'next/server';
 
 import { requireOwner, isResponse } from '../../../../../lib/http/owner-route';
-import { issueRecoveryCodes, formatRecoveryCode } from '../../../../../lib/auth/recovery-code';
+import {
+  issueRecoveryCodes,
+  formatRecoveryCode,
+  remainingRecoveryCodes,
+} from '../../../../../lib/auth/recovery-code';
 import { writeAuditEntry } from '../../../../../lib/audit/audit-service';
 
 /** Reads a session, so it must never be prerendered at build time. */
 export const dynamic = 'force-dynamic';
+
+/**
+ * GET — how many are left.
+ *
+ * 🔴 `remainingRecoveryCodes` was written, tested, and called by nothing, so an
+ * owner could not find out. That is a SILENT CLIFF: recovery codes are the only
+ * way back when the authenticator is gone, they are consumed one per use, and
+ * the product said nothing as the sheet ran down. Somebody could be on their
+ * last code and learn it at the exact moment it stops mattering — after they
+ * have spent it and lost the phone.
+ *
+ * The count only, never a code. Codes are stored as hashes and are readable
+ * exactly once, at issue.
+ */
+export async function GET(): Promise<NextResponse> {
+  const auth = await requireOwner();
+  if (isResponse(auth)) return auth;
+
+  return NextResponse.json({ remaining: await remainingRecoveryCodes(auth.ownerId) });
+}
 
 export async function POST(): Promise<NextResponse> {
   const auth = await requireOwner();

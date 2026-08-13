@@ -19,7 +19,7 @@
 
 import { useRouter } from 'next/navigation';
 import PasskeySection from './PasskeySection';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { CryptoService, base64ToBytes, unpackIvCiphertext } from '../../../../lib/crypto/crypto-service';
 
@@ -51,6 +51,22 @@ export default function AccountClient() {
   const [confirmEmail, setConfirmEmail] = useState('');
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  /** How many recovery codes are left. `null` until the first read answers. */
+  const [remaining, setRemaining] = useState<number | null>(null);
+
+  const loadRemaining = useCallback(async () => {
+    try {
+      const res = await fetch('/api/account/recovery-codes');
+      if (res.ok) setRemaining(((await res.json()) as { remaining: number }).remaining);
+    } catch {
+      // A count that cannot be read is simply not shown — it must never be the
+      // reason this page fails to render.
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadRemaining();
+  }, [loadRemaining]);
   const [name, setName] = useState('');
   const [nameSaved, setNameSaved] = useState<string | null>(null);
   const [newCodes, setNewCodes] = useState<string[] | null>(null);
@@ -201,6 +217,9 @@ export default function AccountClient() {
       return;
     }
     setNewCodes(data.recoveryCodes ?? []);
+    // A fresh sheet resets the count; showing the old one under a list of new
+    // codes would be the screen contradicting itself.
+    await loadRemaining();
   }
 
   return (
@@ -241,6 +260,30 @@ export default function AccountClient() {
         <p className="mt-2 text-t2 leading-relaxed text-muted">
           Issuing a new list immediately stops the old one working.
         </p>
+
+        {/*
+          🔴 THE COUNT WAS UNKNOWABLE. `remainingRecoveryCodes` existed and was
+          called by nothing, so an owner watched a sheet run down with no idea
+          how far. Codes are consumed one per use and are the ONLY way back when
+          the authenticator is gone — so somebody could be on their last one and
+          find out at the exact moment it stops mattering.
+
+          Coloured by how much room is left rather than stated flatly: "1 left"
+          in the same grey as everything else is a fact nobody acts on.
+        */}
+        {remaining !== null ? (
+          <p
+            className={`mt-3 text-t2 font-medium ${
+              remaining === 0 ? 'text-clay' : remaining <= 2 ? 'text-ochre-text' : 'text-ink'
+            }`}
+          >
+            {remaining === 0
+              ? 'You have none left. If you lose your authenticator now, nobody can let you back in.'
+              : remaining === 1
+                ? 'You have one left — the next lost phone would lock you out for good.'
+                : `You have ${remaining} left.`}
+          </p>
+        ) : null}
         <button
           onClick={onRegenerate}
           disabled={regenerating}

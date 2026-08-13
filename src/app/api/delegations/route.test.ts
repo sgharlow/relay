@@ -18,9 +18,13 @@ vi.mock('../../../../lib/http/owner-route', async () => {
   return { ...actual, requireOwner: vi.fn(async () => ({ ownerId: 'o-1' })) };
 });
 vi.mock('../../../../lib/people/people', () => ({ listPeople: vi.fn(async () => []) }));
+vi.mock('../../../../lib/people/approvals', () => ({ delegateActivityDigest: vi.fn(async () => []) }));
 
 import { query } from '../../../../lib/db/connection';
+import { delegateActivityDigest } from '../../../../lib/people/approvals';
 import { GET } from './route';
+
+const mockDigest = vi.mocked(delegateActivityDigest);
 
 const mockQuery = vi.mocked(query);
 
@@ -93,5 +97,46 @@ describe('candidates', () => {
     for (const call of mockQuery.mock.calls) {
       expect(String(call[0])).not.toMatch(/WHERE\s+.*email\s*=/i);
     }
+  });
+});
+
+describe('🔴 J3-R8 — what was done on your behalf (2026-08-12)', () => {
+  it('attaches each helper own activity, grouped by delegation', async () => {
+    // `delegateActivityDigest` was written, tested and called by nothing, so the
+    // single thing that makes handing somebody setup rights REVIEWABLE rather
+    // than a leap of faith existed only as a function.
+    mockDigest.mockResolvedValueOnce([
+      { actor: 'delegate:d-1', action: 'vault_item_created', entity: 'vault_item', ts: '2026-08-12T10:00:00Z' },
+      { actor: 'delegate:d-2', action: 'approval_requested', entity: 'approval', ts: '2026-08-12T11:00:00Z' },
+      { actor: 'delegate:d-1', action: 'approval_requested', entity: 'approval', ts: '2026-08-12T12:00:00Z' },
+    ]);
+    seed({
+      delegations: [
+        { id: 'd-1', delegate_user_id: 'u-2', status: 'active', granted_at: null },
+        { id: 'd-2', delegate_user_id: 'u-3', status: 'active', granted_at: null },
+      ],
+    });
+
+    const body = (await (await GET()).json()) as { delegations: { id: string; activity: unknown[] }[] };
+    const byId = new Map(body.delegations.map((d) => [d.id, d.activity]));
+    expect(byId.get('d-1')).toHaveLength(2);
+    expect(byId.get('d-2')).toHaveLength(1);
+  });
+
+  it('gives a helper who has done nothing an empty list, not undefined', async () => {
+    mockDigest.mockResolvedValueOnce([]);
+    seed({ delegations: [{ id: 'd-1', delegate_user_id: 'u-2', status: 'active', granted_at: null }] });
+
+    const body = (await (await GET()).json()) as { delegations: { activity: unknown[] }[] };
+    expect(body.delegations[0].activity).toEqual([]);
+  });
+
+  it('derives from the audit chain rather than a second log', async () => {
+    // A separate activity table could drift from the record, and then two
+    // sources would disagree about what a helper did.
+    mockDigest.mockResolvedValueOnce([]);
+    seed({});
+    await GET();
+    expect(mockDigest).toHaveBeenCalledWith('o-1', expect.any(String));
   });
 });

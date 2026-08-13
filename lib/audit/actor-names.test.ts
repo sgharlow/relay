@@ -71,3 +71,50 @@ describe('resolveActorNames', () => {
     expect((mockQuery.mock.calls[0][1] as unknown[])[1]).toEqual([R]);
   });
 });
+
+describe('🔴 delegates were the one actor type without a name — 2026-08-12', () => {
+  const D = 'a56479e4-6705-4466-aa02-b1443e7ffd58';
+
+  it('names a helper, and says they were helping', async () => {
+    // The helper workspace and this resolver were built the same day and left
+    // unconnected, so the actor an owner is most likely to be curious about —
+    // somebody else working inside their vault — rendered as a raw UUID while
+    // everybody else had a name.
+    // Routed on SQL: the empty-array branches never call `query` at all, so a
+    // positional mock counts calls the implementation does not make.
+    mockQuery.mockImplementation(async (sql: string) =>
+      (/FROM delegations/.test(sql)
+        ? { rows: [{ id: D, display_name: 'Jordan Rivera', email: 'j@example.com' }] }
+        : { rows: [] }) as never,
+    );
+
+    await expect(resolveActorNames('o-1', [`delegate:${D}`])).resolves.toEqual({
+      [`delegate:${D}`]: 'Jordan Rivera (helping you)',
+    });
+  });
+
+  it('hops delegation → user, because the id is not a user id', async () => {
+    await resolveActorNames('o-1', [`delegate:${D}`]);
+    const sql = String(mockQuery.mock.calls.map((c) => String(c[0])).find((q) => q.includes('delegations')));
+    expect(sql).toMatch(/JOIN users u ON u\.id = d\.delegate_user_id/);
+  });
+
+  it('scopes the lookup to this owner, like every other one here', async () => {
+    await resolveActorNames('o-1', [`delegate:${D}`]);
+    const call = mockQuery.mock.calls.find((c) => String(c[0]).includes('delegations'));
+    expect(String(call?.[0])).toMatch(/d\.owner_id = \$1/);
+    expect((call?.[1] as unknown[])[0]).toBe('o-1');
+  });
+
+  it('falls back to the address when the helper set no name', async () => {
+    mockQuery.mockImplementation(async (sql: string) =>
+      (/FROM delegations/.test(sql)
+        ? { rows: [{ id: D, display_name: null, email: 'j@example.com' }] }
+        : { rows: [] }) as never,
+    );
+
+    await expect(resolveActorNames('o-1', [`delegate:${D}`])).resolves.toEqual({
+      [`delegate:${D}`]: 'j@example.com (helping you)',
+    });
+  });
+});

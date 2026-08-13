@@ -36,10 +36,16 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  * `system`, `cron`, `simulate`, an unrecognised prefix, an id that is not a UUID
  * — is deliberately dropped rather than guessed at.
  */
-function parseActors(actors: string[]): { recipients: string[]; verifiers: string[]; owners: string[] } {
+function parseActors(actors: string[]): {
+  recipients: string[];
+  verifiers: string[];
+  owners: string[];
+  delegations: string[];
+} {
   const recipients: string[] = [];
   const verifiers: string[] = [];
   const owners: string[] = [];
+  const delegations: string[] = [];
 
   for (const raw of new Set(actors)) {
     const idx = raw.indexOf(':');
@@ -50,9 +56,20 @@ function parseActors(actors: string[]): { recipients: string[]; verifiers: strin
     if (kind === 'recipient') recipients.push(id);
     else if (kind === 'verifier') verifiers.push(id);
     else if (kind === 'owner') owners.push(id);
+    /**
+     * 🔴 DELEGATES WERE MISSING, added 2026-08-12. The helper's workspace and
+     * this resolver were built the same day and left unconnected, so the one
+     * actor type an owner is most likely to be curious about — somebody else
+     * working inside their vault — rendered as a raw `delegate:<uuid>` while
+     * everybody else had a name.
+     *
+     * The id here is a DELEGATION id, not a user id, so it needs one more hop
+     * than the others: delegation → delegate_user_id → user.
+     */
+    else if (kind === 'delegate') delegations.push(id);
   }
 
-  return { recipients, verifiers, owners };
+  return { recipients, verifiers, owners, delegations };
 }
 
 /**
@@ -64,10 +81,10 @@ function parseActors(actors: string[]): { recipients: string[]; verifiers: strin
  * thing that becomes a leak the moment a caller changes. Refuse by construction.
  */
 export async function resolveActorNames(ownerId: string, actors: string[]): Promise<ActorNames> {
-  const { recipients, verifiers, owners } = parseActors(actors);
+  const { recipients, verifiers, owners, delegations } = parseActors(actors);
   const names: ActorNames = {};
 
-  const [r, v, o] = await Promise.all([
+  const [r, v, o, d] = await Promise.all([
     recipients.length
       ? query<{ id: string; name: string }>(
           `SELECT id, name FROM recipients WHERE owner_id = $1 AND id = ANY($2)`,
@@ -86,6 +103,15 @@ export async function resolveActorNames(ownerId: string, actors: string[]): Prom
           [ownerId, owners],
         )
       : Promise.resolve({ rows: [] as { id: string; display_name: string | null; email: string | null }[] }),
+    delegations.length
+      ? query<{ id: string; display_name: string | null; email: string | null }>(
+          `SELECT d.id, u.display_name, u.email
+             FROM delegations d
+             JOIN users u ON u.id = d.delegate_user_id
+            WHERE d.owner_id = $1 AND d.id = ANY($2)`,
+          [ownerId, delegations],
+        )
+      : Promise.resolve({ rows: [] as { id: string; display_name: string | null; email: string | null }[] }),
   ]);
 
   for (const row of r.rows) names[`recipient:${row.id}`] = row.name;
@@ -94,6 +120,12 @@ export async function resolveActorNames(ownerId: string, actors: string[]): Prom
   // display name reads oddly next to "Dr. Alex Chen confirmed"; "You" is what
   // they would say out loud reading the row.
   for (const row of o.rows) names[`owner:${row.id}`] = `You (${formatOwnerLabel(row.display_name, row.email)})`;
+  // Named AS a helper, because "Jordan Rivera" alone would read as Jordan acting
+  // for themselves. What the owner needs to see is that somebody was working on
+  // their behalf, and who.
+  for (const row of d.rows) {
+    names[`delegate:${row.id}`] = `${formatOwnerLabel(row.display_name, row.email)} (helping you)`;
+  }
 
   return names;
 }
