@@ -23,9 +23,58 @@ import { decryptDataKey } from '../../../../../lib/kms/kms-client';
 import { evaluateRecipientUnwrap } from '../../../../../lib/kms/unwrap-gate';
 import { writeAuditEntry } from '../../../../../lib/audit/audit-service';
 import { query } from '../../../../../lib/db/connection';
+import { byteaToBase64 } from '../../../../../lib/db/bytea';
 import { resolveActor, assertDelegateMayRead } from '../../../../../lib/http/delegate-route';
 import { readJson, isResponse } from '../../../../../lib/http/owner-route';
 import { IntegrityError } from '../../../../../lib/db/integrity';
+
+/**
+ * 🔴 THE SERVER, NOT THE CALLER, DECIDES WHICH BLOB IS UNWRAPPED.
+ *
+ * Until 2026-08-13 both paths of this route authorised on `vault_item_id` and
+ * then decrypted `body.wrapped_data_key` — an arbitrary blob from the request.
+ * The CMK is one key shared across every tenant and the KMS Decrypt call names
+ * no key and carries no EncryptionContext, so KMS will unwrap ANY ciphertext
+ * under that CMK. An owner of a single item they created could therefore submit
+ * `{ vault_item_id: <their item>, wrapped_data_key: <another tenant's leaked
+ * blob> }` and receive that tenant's plaintext data key — with the audit log
+ * dutifully attesting the decrypt against the caller's OWN item, so the chain
+ * stayed intact while recording the wrong thing.
+ *
+ * That collapses the product's core promise: CLAUDE.md says the server stores
+ * only ciphertext + wrapped_data_key, the point being that a DSQL
+ * leak/backup/snapshot stays sealed. With a body-trusting oracle, leaked rows
+ * plus a free account equal plaintext data keys for every tenant.
+ *
+ * The recipient dashboard path (lib/access/dashboard.ts) never had this hole —
+ * it loads the wrapped key from the row by id. This makes the KMS proxy do the
+ * same: the authorised `vault_item_id` is the ONLY input to the decrypt, and the
+ * body's `wrapped_data_key` is now ignored. The client still sends it; it is
+ * simply no longer trusted.
+ *
+ * Returns the row's wrapped key, or null when the item does not exist — a
+ * caller-supplied id that names no row is a 403, never a decrypt of something
+ * they handed us. Scoped by owner_id so the lookup cannot read across owners.
+ */
+async function storedWrappedKey(itemId: string, ownerId: string): Promise<string | null> {
+  const row = await query<{ wrapped_data_key: unknown }>(
+    `SELECT wrapped_data_key FROM vault_items WHERE id = $1 AND owner_id = $2 LIMIT 1`,
+    [itemId, ownerId],
+  );
+  if (row.rowCount === 0 || row.rows.length === 0) return null;
+  return byteaToBase64(row.rows[0].wrapped_data_key);
+}
+
+/**
+ * The item's STORED blob and provenance — the only bytes this route decrypts.
+ *
+ * 🔴 THE ROUTE USED TO DECRYPT WHATEVER THE CALLER SENT. Both paths gated
+ * carefully on `vault_item_id` and then passed `body.wrapped_data_key` —
+ * caller-supplied bytes — to KMS Decrypt. Nothing bound the blob to the item
+ * the gate had just authorized, the CMK is shared across every tenant, and a
+ * KMS Decrypt without an EncryptionContext unwraps any blob generated under
+ * that key. So any self-serve signup with one vault item of their own was a
+ * decrypt oracle for every tenant's wrapped keys: authorize against
 
 /** Defensive: a handler must not throw on an absent or malformed request URL. */
 function ownerIdParam(req: NextRequest): string | null {
@@ -54,10 +103,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (isResponse(parsed)) return parsed;
   const body = parsed as UnwrapBody;
 
-  const { wrapped_data_key, vault_item_id } = body;
-  if (!wrapped_data_key || !vault_item_id) {
+  const { vault_item_id } = body;
+  // wrapped_data_key is still accepted in the body for backward compatibility
+  // with the client, but it is NEVER decrypted — the server loads the blob it
+  // will actually unwrap from the authorised row. Only the item id is required.
+  if (!vault_item_id) {
     return NextResponse.json(
-      { error: 'BadRequest', message: 'wrapped_data_key and vault_item_id are required' },
+      { error: 'BadRequest', message: 'vault_item_id is required' },
       { status: 400 },
     );
   }
@@ -80,7 +132,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       releaseStateId: payload.releaseStateId,
     });
 
-    if (!allowed) {
+    if (!allowed || !ownerId) {
       if (ownerId) {
         await writeAuditEntry(ownerId, {
           actor: `recipient:${payload.recipientId}`,
@@ -93,7 +145,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Forbidden', message: 'Access not permitted' }, { status: 403 });
     }
 
-    const plaintextDataKey = await decryptDataKey(wrapped_data_key);
+    // Server-authoritative blob: the gate proved this recipient may read this
+    // item under this owner, so the key we unwrap is the one stored on that row.
+    const stored = await storedWrappedKey(vault_item_id, ownerId);
+    if (stored === null) {
+      return NextResponse.json({ error: 'Forbidden', message: 'Access not permitted' }, { status: 403 });
+    }
+    const plaintextDataKey = await decryptDataKey(stored);
     if (ownerId) {
       await writeAuditEntry(ownerId, {
         actor: `recipient:${payload.recipientId}`,
@@ -149,7 +207,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
   }
 
-  const plaintextDataKey = await decryptDataKey(wrapped_data_key);
+  // Same rule as the recipient path: assertOwns proved ownership, so the blob
+  // to unwrap is the one on that row — never the caller's body.
+  const stored = await storedWrappedKey(vault_item_id, ownerId);
+  if (stored === null) {
+    return NextResponse.json({ error: 'Forbidden', message: 'Not the item owner' }, { status: 403 });
+  }
+  const plaintextDataKey = await decryptDataKey(stored);
   await writeAuditEntry(ownerId, {
     actor: actor.isDelegate ? `delegate:${actor.delegationId}` : `owner:${ownerId}`,
     action: 'kms_unwrap',

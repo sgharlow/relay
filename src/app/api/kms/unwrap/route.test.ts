@@ -53,22 +53,47 @@ beforeEach(() => {
 });
 
 describe('POST /api/kms/unwrap — validation', () => {
-  it('400 when wrapped_data_key or vault_item_id is missing', async () => {
-    const res = await POST(makeReq({ vault_item_id: 'v1' }));
+  it('400 when vault_item_id is missing', async () => {
+    const res = await POST(makeReq({ wrapped_data_key: 'W' }));
     expect(res.status).toBe(400);
     expect(mockDecrypt).not.toHaveBeenCalled();
+  });
+
+  it('does NOT require wrapped_data_key in the body — the server loads it', async () => {
+    // The blob is no longer trusted from the caller; a body that omits it must
+    // not 400, because the route reads the real blob from the row.
+    mockSession.mockResolvedValueOnce({ ownerId: 'owner-1', isDemo: false });
+    mockAssertOwns.mockResolvedValueOnce(undefined);
+    mockQuery.mockResolvedValueOnce(qResult([{ wrapped_data_key: Buffer.from('STORED') }]));
+
+    const res = await POST(makeReq({ vault_item_id: 'v1' }));
+    expect(res.status).toBe(200);
   });
 });
 
 describe('POST /api/kms/unwrap — owner path', () => {
-  it('decrypts when the owner owns the item', async () => {
+  it('decrypts the STORED blob when the owner owns the item — never the body blob', async () => {
     mockSession.mockResolvedValueOnce({ ownerId: 'owner-1', isDemo: false });
     mockAssertOwns.mockResolvedValueOnce(undefined);
+    mockQuery.mockResolvedValueOnce(qResult([{ wrapped_data_key: Buffer.from('STORED-BLOB') }]));
 
-    const res = await POST(makeReq({ wrapped_data_key: 'W', vault_item_id: 'v1' }));
+    const res = await POST(makeReq({ wrapped_data_key: 'ATTACKER-SUPPLIED', vault_item_id: 'v1' }));
     expect(res.status).toBe(200);
     expect((await res.json()).plaintext_data_key).toBe('UNWRAPPED_PLAINTEXT_B64');
     expect(mockDecrypt).toHaveBeenCalledOnce();
+    // 🔴 THE ORACLE, REFUTED. The decrypted input is the row's stored blob,
+    // NOT the attacker-supplied body value.
+    expect(mockDecrypt).toHaveBeenCalledWith(Buffer.from('STORED-BLOB').toString('base64'));
+  });
+
+  it('403 when the owner owns nothing at that id (row missing) — no decrypt', async () => {
+    mockSession.mockResolvedValueOnce({ ownerId: 'owner-1', isDemo: false });
+    mockAssertOwns.mockResolvedValueOnce(undefined);
+    mockQuery.mockResolvedValueOnce(qResult([])); // no vault_items row
+
+    const res = await POST(makeReq({ wrapped_data_key: 'ATTACKER-SUPPLIED', vault_item_id: 'v1' }));
+    expect(res.status).toBe(403);
+    expect(mockDecrypt).not.toHaveBeenCalled();
   });
 
   it('403 and no KMS call when the owner does not own the item', async () => {
@@ -123,10 +148,14 @@ describe('Property 6: KMS unwrap scoped to access rules', () => {
           // First query → release_state row; second → access_rules lookup.
           mockQuery.mockImplementation(async (sql: string) => {
             if (sql.includes('FROM release_state')) {
-              return stateRowPresent ? qResult([{ state, owner_id: 'owner-1' }]) : qResult([]);
+              return stateRowPresent ? qResult([{ state, owner_id: 'owner-1', released_at: '2026-01-01' }]) : qResult([]);
             }
             if (sql.includes('FROM access_rules')) {
-              return rulePresent ? qResult([{ id: 'rule-1' }]) : qResult([]);
+              return rulePresent ? qResult([{ id: 'rule-1', release_after_days: null }]) : qResult([]);
+            }
+            // The server-authoritative blob lookup, present whenever the gate passes.
+            if (sql.includes('FROM vault_items')) {
+              return qResult([{ wrapped_data_key: Buffer.from('STORED') }]);
             }
             return qResult([]);
           });
@@ -151,12 +180,35 @@ describe('Property 6: KMS unwrap scoped to access rules', () => {
 
   it('evaluateRecipientUnwrap returns the exact gate predicate', async () => {
     mockQuery.mockImplementation(async (sql: string) => {
-      if (sql.includes('FROM release_state')) return qResult([{ state: 'released', owner_id: 'o1' }]);
-      if (sql.includes('FROM access_rules')) return qResult([{ id: 'rule-1' }]);
+      if (sql.includes('FROM release_state'))
+        return qResult([{ state: 'released', owner_id: 'o1', released_at: '2026-01-01', trigger_type: 'emergency' }]);
+      if (sql.includes('FROM access_rules')) return qResult([{ id: 'rule-1', release_after_days: null }]);
       return qResult([]);
     });
     const r = await evaluateRecipientUnwrap({ recipientId: 'r1', vaultItemId: 'v1', releaseStateId: 'rs1' });
     expect(r).toEqual({ allowed: true, ownerId: 'o1' });
+  });
+
+  it('scopes the rule lookup to the RELEASED trigger_type — a cross-trigger grant is refused', async () => {
+    // 🔴 A recipient granted this item only under trigger B must not decrypt it
+    // during trigger A's release. The gate binds the access_rules lookup to the
+    // release row's trigger_type; the SQL must carry that filter.
+    let ruleSql = '';
+    let ruleParams: unknown[] = [];
+    mockQuery.mockImplementation(async (sql: string, params?: unknown[]) => {
+      if (sql.includes('FROM release_state'))
+        return qResult([{ state: 'released', owner_id: 'o1', released_at: '2026-01-01', trigger_type: 'caregiver' }]);
+      if (sql.includes('FROM access_rules')) {
+        ruleSql = sql;
+        ruleParams = params ?? [];
+        return qResult([]); // no rule for THIS trigger
+      }
+      return qResult([]);
+    });
+    const r = await evaluateRecipientUnwrap({ recipientId: 'r1', vaultItemId: 'v1', releaseStateId: 'rs1' });
+    expect(r).toEqual({ allowed: false, ownerId: 'o1' });
+    expect(ruleSql).toContain('trigger_type = $3');
+    expect(ruleParams[2]).toBe('caregiver');
   });
 });
 
@@ -197,14 +249,17 @@ describe('POST /api/kms/unwrap — delegate path', () => {
     expect(mockDecrypt).not.toHaveBeenCalled();
   });
 
-  it('ALLOWS a delegate opening an item they entered themselves', async () => {
-    mockQuery.mockResolvedValueOnce(qResult([{ created_by_delegate_id: 'd-1' }]));
+  it('ALLOWS a delegate opening an item they entered themselves — and unwraps the STORED blob', async () => {
+    mockQuery
+      .mockResolvedValueOnce(qResult([{ created_by_delegate_id: 'd-1' }])) // provenance
+      .mockResolvedValueOnce(qResult([{ wrapped_data_key: Buffer.from('STORED-BLOB') }])); // blob lookup
     mockDecrypt.mockResolvedValueOnce('PLAINTEXT_KEY' as never);
 
-    const res = await POST(delegateReq({ wrapped_data_key: 'W', vault_item_id: 'v1' }));
+    const res = await POST(delegateReq({ wrapped_data_key: 'ATTACKER-SUPPLIED', vault_item_id: 'v1' }));
 
     expect(res.status).toBe(200);
     expect(mockDecrypt).toHaveBeenCalledOnce();
+    expect(mockDecrypt).toHaveBeenCalledWith(Buffer.from('STORED-BLOB').toString('base64'));
   });
 
   it('refuses entirely when no active delegation exists', async () => {

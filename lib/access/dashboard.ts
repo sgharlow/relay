@@ -20,6 +20,7 @@
  */
 
 import { query } from '../db/connection';
+import { byteaToBase64 } from '../db/bytea';
 import { writeAuditEntry } from '../audit/audit-service';
 import { verifyRecipientToken } from '../auth/recipient-token';
 import { decryptDataKey } from '../kms/kms-client';
@@ -253,12 +254,7 @@ export interface DecryptResult {
   kms_key_id: string;
 }
 
-function byteaToBase64(v: unknown): string {
-  if (v == null) return '';
-  if (Buffer.isBuffer(v)) return v.toString('base64');
-  if (v instanceof Uint8Array) return Buffer.from(v).toString('base64');
-  return String(v);
-}
+// byteaToBase64 moved to lib/db/bytea.ts — one definition, three callers.
 
 /**
  * Who is asking, and by which route.
