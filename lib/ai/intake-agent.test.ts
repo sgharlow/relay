@@ -96,16 +96,67 @@ describe('runIntake', () => {
     expect(out.results.find((r) => r.id === 'gmail')!.is_root_credential).toBe(true);
   });
 
-  it('defaults to 0.5 / not-root and warns when classification fails (Req 11.9)', async () => {
+  it('defaults to 0.5 and warns when classification fails (Req 11.9)', async () => {
     mockMeta.mockResolvedValue([meta({ id: 'i1', title: 'X' }), meta({ id: 'i2', title: 'Y' })]);
     const classify = vi.fn(async (): Promise<RawClassification[]> => {
       throw new Error('LLM down');
     });
     const out = await runIntake('owner-1', { classify });
     expect(out.warnings).toEqual(['i1', 'i2']);
-    expect(out.results.every((r) => r.importance_score === 0.5 && !r.is_root_credential && r.defaulted)).toBe(true);
+    expect(out.results.every((r) => r.importance_score === 0.5 && r.defaulted)).toBe(true);
     // still persisted (does not block)
     expect(mockQuery).toHaveBeenCalledTimes(2);
+  });
+
+  /*
+    🔴 THE TEST ABOVE USED TO ASSERT `!r.is_root_credential`, AND IT WAS
+    ASSERTING THE BUG. Every item in its fixture already had
+    is_root_credential: false, so the assertion passed whether the code
+    preserved the flag or wiped it — it never exercised a root credential at
+    all. Meanwhile runIntake hard-coded `is_root_credential: false` on the
+    default path AND wrote the row, so one LLM timeout downgraded every root
+    credential in the vault.
+
+    The flag decides what a grieving person is told to do FIRST: bucketFor puts
+    root credentials in "Do today" whatever their score, and the handoff order
+    puts them ahead of everything else. Losing it silently reorders the plan,
+    and the reordered plan looks perfectly normal.
+
+    Req 11.9 requires only a default SCORE on failure. Req 11.8 requires that a
+    classification "SHALL NOT be overwritten on subsequent re-analyses".
+  */
+  it('does NOT wipe an existing root credential when classification fails (Req 11.8)', async () => {
+    mockMeta.mockResolvedValue([
+      meta({ id: 'gmail', title: 'Gmail', is_root_credential: true }),
+      meta({ id: 'chase', title: 'Chase', is_root_credential: false }),
+    ]);
+    const classify = vi.fn(async (): Promise<RawClassification[]> => {
+      throw new Error('LLM down');
+    });
+
+    const out = await runIntake('owner-1', { classify });
+
+    expect(out.results.find((r) => r.id === 'gmail')!.is_root_credential).toBe(true);
+    expect(out.results.find((r) => r.id === 'chase')!.is_root_credential).toBe(false);
+    // And the preserved value is what gets written, not just what is returned.
+    const gmailWrite = mockQuery.mock.calls.find((c) => (c[1] as unknown[])[5] === 'gmail');
+    expect((gmailWrite![1] as unknown[])[0]).toBe(true);
+  });
+
+  it('preserves a root credential when the model simply omits that item', async () => {
+    // The partial-failure path is separate from allFailed and was equally wrong.
+    mockMeta.mockResolvedValue([
+      meta({ id: 'gmail', title: 'Gmail', is_root_credential: true }),
+      meta({ id: 'chase', title: 'Chase' }),
+    ]);
+    const classify = vi.fn(async (): Promise<RawClassification[]> => [
+      { id: 'chase', is_root_credential: false, recurring_billing: true, irreplaceable: false, importance_score: 0.9, depends_on_title: null },
+    ]);
+
+    const out = await runIntake('owner-1', { classify });
+
+    expect(out.warnings).toEqual(['gmail']);
+    expect(out.results.find((r) => r.id === 'gmail')!.is_root_credential).toBe(true);
   });
 
   it('defaults only the items the model omitted', async () => {

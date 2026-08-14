@@ -104,11 +104,31 @@ export async function runIntake(ownerId: string, opts: IntakeOptions = {}): Prom
     let result: IntakeItemResult;
 
     if (!c) {
-      // Default — keep existing recurring/irreplaceable/depends, reset score+root.
+      /*
+        🔴 THIS USED TO RESET is_root_credential TO false, AND ONE LLM TIMEOUT
+        WIPED IT ACROSS THE WHOLE VAULT. `allFailed` defaults EVERY item, and
+        the row was then written — so a single timeout silently downgraded every
+        root credential the owner had, with nothing but a per-item warning to
+        show for it.
+
+        That flag is not cosmetic. bucketFor forces root credentials into "Do
+        today" regardless of score, and the handoff order puts them first, so
+        losing it silently reorders what a grieving person is told to do first
+        — and the reordering looks completely normal.
+
+        Req 11.9 requires exactly one thing on failure: assign a default
+        importance_score of 0.5, warn, and do not block. It says nothing about
+        the flags, and Req 11.8 says the opposite — that a classification the
+        owner set "SHALL NOT be overwritten on subsequent re-analyses". The
+        other three fields were already preserved here; root was the outlier.
+
+        Preserving it is also correct for a NEW item: the column is NOT NULL
+        DEFAULT false, so an unclassified item keeps false either way.
+      */
       result = {
         id: item.id,
         importance_score: DEFAULT_SCORE,
-        is_root_credential: false,
+        is_root_credential: item.is_root_credential,
         recurring_billing: item.recurring_billing,
         irreplaceable: item.irreplaceable,
         depends_on_item_id: item.depends_on_item_id,

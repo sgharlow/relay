@@ -33,6 +33,14 @@ export interface SchedulerHealth {
   ageSeconds: number | null;
   healthy: boolean;
   thresholdSeconds: number;
+  /**
+   * From the most recent sweep. Reported even when healthy, because a partial
+   * failure is worth seeing before it becomes a total one — and because a
+   * number nobody can read is how `failures` came to be written and never
+   * consulted in the first place.
+   */
+  failures: number | null;
+  transitioned: number | null;
 }
 
 export async function recordSchedulerRun(summary: SweepSummary): Promise<void> {
@@ -44,8 +52,35 @@ export async function recordSchedulerRun(summary: SweepSummary): Promise<void> {
 }
 
 export async function getSchedulerHealth(now: Date = new Date()): Promise<SchedulerHealth> {
-  const res = await query<{ ran_at: string }>(
-    `SELECT ran_at FROM scheduler_runs
+  /*
+    🔴 THIS MEASURED THAT THE CRON RAN, NEVER THAT IT WORKED. The sweep records
+    `failures` on every run and nothing has ever read the column: health was
+    `ran_at` and a threshold, full stop. So a heartbeat firing punctually every
+    hour while failing EVERY transition — OCC exhaustion, a DB fault, a bad
+    deploy — reported 200 healthy the whole time.
+
+    That is the worst possible shape for this particular probe, because the job
+    it is watching IS the dead-man's switch: the thing that advances an overdue
+    release when an owner has stopped checking in. A silent total failure means
+    nobody's release ever opens, and the monitor built to catch exactly that says
+    everything is fine.
+
+    The portfolio rule this violates is the one about unattended jobs: a green
+    runner is not proof of work. Running is a necessary signal, not a sufficient
+    one.
+
+    THE RULE. Unhealthy when the last sweep attempted work and NONE of it
+    landed (`transitioned === 0` with `failures > 0`). A partial failure stays
+    healthy but is reported — one row losing a CAS race is ordinary and the next
+    sweep retries it, so alarming on it would train people to ignore the alarm.
+    An idle sweep (nothing overdue) is healthy: zero of zero is not a failure.
+  */
+  const res = await query<{
+    ran_at: string;
+    transitioned: number | null;
+    failures: number | null;
+  }>(
+    `SELECT ran_at, transitioned, failures FROM scheduler_runs
       WHERE job = 'heartbeat'
       ORDER BY ran_at DESC
       LIMIT 1`,
@@ -58,15 +93,24 @@ export async function getSchedulerHealth(now: Date = new Date()): Promise<Schedu
       ageSeconds: null,
       healthy: false,
       thresholdSeconds: STALE_AFTER_SECONDS,
+      failures: null,
+      transitioned: null,
     };
   }
 
   const ageSeconds = Math.round((now.getTime() - new Date(row.ran_at).getTime()) / 1000);
+  const failures = Number(row.failures ?? 0);
+  const transitioned = Number(row.transitioned ?? 0);
+
+  const fresh = ageSeconds <= STALE_AFTER_SECONDS;
+  const didWork = !(failures > 0 && transitioned === 0);
 
   return {
     lastRunAt: row.ran_at,
     ageSeconds,
-    healthy: ageSeconds <= STALE_AFTER_SECONDS,
+    healthy: fresh && didWork,
     thresholdSeconds: STALE_AFTER_SECONDS,
+    failures,
+    transitioned,
   };
 }

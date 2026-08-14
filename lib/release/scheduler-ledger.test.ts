@@ -106,3 +106,69 @@ describe('getSchedulerHealth', () => {
     expect((await getSchedulerHealth(now)).thresholdSeconds).toBe(STALE_AFTER_SECONDS);
   });
 });
+
+/*
+ * 🔴 THE DEAD-MAN'S SWITCH ONLY EVER PROVED THE CRON RAN.
+ *
+ * Every sweep writes `failures`, and until now nothing read the column: health
+ * was `ran_at` plus a threshold. So a heartbeat firing punctually every hour
+ * while failing EVERY transition — OCC exhaustion, a DB fault, a bad deploy —
+ * answered 200 healthy the entire time.
+ *
+ * The job being watched IS the dead-man's switch: the thing that advances an
+ * overdue release when an owner has stopped checking in. A silent total failure
+ * means nobody's release ever opens, and the probe built to catch precisely that
+ * says everything is fine. Running is necessary, not sufficient.
+ */
+describe('the probe notices a sweep that runs and achieves nothing', () => {
+  const now = new Date('2026-08-06T12:00:00Z');
+  const run = (over: Record<string, unknown>) =>
+    ({ rows: [{ ran_at: '2026-08-06T11:30:00Z', transitioned: 0, failures: 0, ...over }] }) as never;
+
+  it('is UNHEALTHY when every attempted transition failed', async () => {
+    mockQuery.mockResolvedValueOnce(run({ transitioned: 0, failures: 5 }));
+
+    const health = await getSchedulerHealth(now);
+
+    expect(health.healthy).toBe(false);
+    expect(health.failures).toBe(5);
+    // Fresh, and still not healthy — which is the whole point.
+    expect(health.ageSeconds).toBe(1800);
+  });
+
+  it('stays healthy on a PARTIAL failure, which the next sweep retries', async () => {
+    // Alarming on one lost CAS race would train people to ignore the alarm.
+    mockQuery.mockResolvedValueOnce(run({ transitioned: 4, failures: 1 }));
+
+    const health = await getSchedulerHealth(now);
+
+    expect(health.healthy).toBe(true);
+    expect(health.failures).toBe(1); // reported anyway
+  });
+
+  it('stays healthy on an idle sweep — zero of zero is not a failure', async () => {
+    mockQuery.mockResolvedValueOnce(run({ transitioned: 0, failures: 0 }));
+    await expect(getSchedulerHealth(now)).resolves.toMatchObject({ healthy: true });
+  });
+
+  it('reports the counts even when healthy, so a number is never unreadable again', async () => {
+    mockQuery.mockResolvedValueOnce(run({ transitioned: 3, failures: 0 }));
+
+    const health = await getSchedulerHealth(now);
+
+    expect(health.transitioned).toBe(3);
+    expect(health.failures).toBe(0);
+  });
+
+  it('treats NULL counts as zero rather than crashing an unauthenticated probe', async () => {
+    // Rows written before these columns were populated.
+    mockQuery.mockResolvedValueOnce(run({ transitioned: null, failures: null }));
+    await expect(getSchedulerHealth(now)).resolves.toMatchObject({ healthy: true, failures: 0 });
+  });
+
+  it('still reads the failure column at all', async () => {
+    mockQuery.mockResolvedValueOnce(run({}));
+    await getSchedulerHealth(now);
+    expect(String(mockQuery.mock.calls[0][0])).toContain('failures');
+  });
+});
