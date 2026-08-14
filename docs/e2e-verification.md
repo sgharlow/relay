@@ -1,5 +1,28 @@
 # Relay — End-to-End Verification Checklist
 
+> ⚠️ **HISTORICAL PROCEDURE — the 2026-06-27 H0 dogfood, preserved as its record
+> (2026-08-13).** Three of its instructions have since become impossible, and
+> following them today produces a sign-in that cannot succeed:
+>
+> - **`TOTP_SECRET` is RETIRED.** The shared env secret was removed on
+>   2026-08-13 (`lib/auth/resolve-totp-secret.ts` — it was a master key over
+>   every contact account). No environment variable is read; every account
+>   carries its own secret, minted at signup.
+> - **`generateTotpCode()` no longer exists.** Only `generateTotpCodeFor(secret)`
+>   does, and `demo@relay.test` deliberately has no credential at all — the repo
+>   is public, so a seeded secret would publish a working login. Audit tooling
+>   forges a session instead: `scripts/mint-owner-session.ts`.
+> - **`estate` is permanently withdrawn** (PROJECT.yaml →
+>   g2-counsel-opinion.declined). The seed makes emergency + caregiver release
+>   states; POST /api/rules with `trigger_type: estate` answers 400. Steps below
+>   that exercise an estate rule verify a capability the product no longer
+>   offers.
+>
+> To verify the CURRENT product end to end: sign up self-serve on production,
+> follow docs/user-journeys.md (the re-sweep table is the authority), and use
+> the demo walkthrough at /demo. This file stays because the H0 record has
+> historical value — not because it is runnable.
+
 What's proven:
 
 - ✅ **Unit/property tests** (`npx vitest --run`, 405 at submission) cover all pure logic, every API handler (mocked
@@ -37,8 +60,8 @@ Copy `.env.example` and fill ALL of:
 - [ ] `OPENAI_API_KEY` (+ optional `OPENAI_MODEL`)
 - [ ] `RESEND_API_KEY`, `RESEND_FROM_ADDRESS`
 - [ ] `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` (local dev; use the IAM role in prod)
-- [ ] `TOTP_SECRET` — base32 (e.g. add it to an authenticator app as the account secret). **Required
-  for sign-in.** Without it, `authorize()` throws and no one can log in.
+- [ ] ~~`TOTP_SECRET`~~ — **RETIRED 2026-08-13.** No longer read by anything; per-user secrets
+  are minted at signup. (Historically: the shared base32 secret sign-in required.)
 
 > ✅ **`auth_sub` upsert — already FIXED (commit `c4b0005`, see §10 Risk A).** The sign-in upsert was
 > rewritten to the app-level intent-read pattern in `lib/auth/upsert-user.ts` (SELECT → UPDATE/INSERT

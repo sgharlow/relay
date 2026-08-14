@@ -1,18 +1,22 @@
 # Relay — standby access for the people who'll need it
 
-**Living-continuity for your digital life.** Relay lets you build an encrypted
+**Standby access for your digital life.** Relay lets you build an encrypted
 vault of accounts, credentials, documents, and instructions, then assign
 **scoped, reversible access** to the right people under rules you set. When a
-trigger fires — a missed check-in, a manual emergency request, or a verified
-estate event — Relay runs a controlled release (notify the owner, require N-of-M
-trusted verifiers, observe a grace window) and only then opens a guided,
-prioritized access dashboard to the recipient. **Emergencies are reversible:**
-when you recover and check in, access closes automatically. Estate handoffs are
-permanent. The default-safe state is always `ARMED`.
+trigger fires — a missed check-in or a manual emergency request — Relay runs a
+controlled release (notify the owner, require N-of-M trusted verifiers) and
+only then opens a guided, prioritized access dashboard to the recipient.
+**Releases are reversible:** when you recover and check in, access closes
+again. The default-safe state is always `ARMED`.
+
+Relay does not offer estate or inheritance services and confers no legal
+authority on anyone. (The domain model retains an `estate` trigger type for
+compatibility, but it is permanently excluded from what a user can select —
+see `lib/domain/enums.ts` and the Terms.)
 
 > 🏆 **Winner — "Most Impactful"** in **H0: Hack the Zero Stack with Vercel and AWS Databases** (announced 2026-08-05, ~9,800 participants). Track: **Monetizable B2C** · AWS Database: **Amazon Aurora DSQL** · [Devpost submission](https://devpost.com/software/relay-n5c9re)
 
-**▶ Live:** <https://relay-three-henna.vercel.app> · **🧭 Guided demo (no account needed):** <https://relay-three-henna.vercel.app/demo> · **🎬 Demo video:** <https://youtu.be/FU3azKJOesY>
+**▶ Live:** <https://relaystandby.com> · **🧭 Guided demo (no account needed):** <https://relaystandby.com/demo> · **🎬 Demo video:** <https://youtu.be/FU3azKJOesY>
 
 The live deployment runs on Aurora DSQL, multi-region active-active. The guided demo is a read-only
 walkthrough of the vault, the zero-knowledge envelope, the release state machine, and the

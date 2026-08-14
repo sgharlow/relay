@@ -84,9 +84,16 @@ describe('the promises it must not soften', () => {
     Estate is gated pending counsel and /terms disclaims it. The FAQ is a public
     page and would be the fourth surface to sell it by accident.
   */
-  it('does not offer estate as something available today', () => {
+  it('says estate is not offered as a settled decision, not a pending feature', () => {
+    // "Not today ... held behind a written legal opinion" was the old answer,
+    // and it became false on 2026-08-14 when g2-counsel-opinion was DECLINED:
+    // no opinion is being sought, so estate is withdrawn permanently, not held.
+    // A FAQ promising a pending feature that will never arrive is drift with a
+    // waiting audience.
     const e = FAQ.find((x) => x.id === 'estate');
-    expect(e?.answer.join(' ')).toMatch(/not today/i);
+    const text = e?.answer.join(' ') ?? '';
+    expect(text).toMatch(/does not offer estate/i);
+    expect(text).not.toMatch(/held behind|legal opinion|not today/i);
   });
 
   it('never tells anybody to send us a code or a password', () => {

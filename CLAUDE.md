@@ -38,7 +38,7 @@ true and is now the *older* of two live proofs.
 
 Authority for build state: `PROJECT.yaml` (gates, volatile facts) and the sweep table in
 `docs/user-journeys.md`. Per-task detail lives in the specs (`.kiro/specs/relay-h0-mvp/`,
-`specs/Relay_H0_Build_Spec_v2.md`); `docs/e2e-verification.md` is the live-dogfood checklist.
+`specs/Relay_H0_Build_Spec_v2.md`); `docs/e2e-verification.md` is the HISTORICAL H0 dogfood record (its sign-in procedure died with TOTP_SECRET on 2026-08-13 — the banner at its top says what replaced it).
 
 The 2026-06-27 dogfood on live Aurora DSQL + AWS KMS proved: owner TOTP sign-in, vault + importance
 engine, the release state machine (ARMED→PENDING→GRACE→RELEASED), active-active multi-region (a
@@ -46,14 +46,14 @@ release written in us-east-1 read strongly-consistent from us-west-2), the full 
 (create item → in-browser AES-GCM + KMS wrap → DSQL → recipient token → KMS unwrap → plaintext),
 and the hash-chained audit log (server + client verification both intact).
 
-Conventions to preserve: `tsconfig.json` targets `ES2020` (required for the `bigint` OCC version type — if `tsc` reports stale errors after a config change, delete `tsconfig.tsbuildinfo`); `.eslintrc.json` ignores `^_`-prefixed unused vars. Reset the demo to a clean 25-item/ARMED state with `npx tsx --env-file=.env.local scripts/reset-demo.ts`. To visually verify UI, `npm run dev` then drive with Playwright.
+Conventions to preserve: `tsconfig.json` targets `ES2020` (required for the `bigint` OCC version type — if `tsc` reports stale errors after a config change, delete `tsconfig.tsbuildinfo`); `eslint.config.mjs` (flat config — `.eslintrc.json` is gone) ignores `^_`-prefixed unused vars. Reset the demo to a clean 25-item/ARMED state with `npx tsx --env-file=.env.local scripts/reset-demo.ts`. To visually verify UI, `npm run dev` then drive with Playwright.
 
 ## Commands
 
 ```bash
 npm run dev            # next dev (http://localhost:3000)
 npm run build          # next build — production build
-npm run lint           # next lint (eslint-config-next)
+npm run lint           # eslint . --max-warnings=0 (flat config: eslint.config.mjs)
 npm test               # vitest --run (one-shot, the default)
 npm run test:watch     # vitest watch mode
 npm run test:coverage  # vitest --coverage (v8; thresholds 80/80/70/80 lines/fn/branches/stmts)

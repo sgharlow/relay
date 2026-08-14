@@ -196,8 +196,8 @@ export const FAQ: FaqEntry[] = [
     irreversible: true,
     question: 'Can I use this to hand things over permanently, after death?',
     answer: [
-      'Not today. A permanent handover is built and is deliberately not offered — it is held behind a written legal opinion.',
-      'Everything you can choose today is reversible: it closes again when you check in. If a permanent handover is what you need, a solicitor is the right answer for now, and we would rather say so than sell you something adjacent.',
+      'No. Relay does not offer estate or inheritance services, and that is a settled decision rather than a pending feature — no death-verified handover exists, and none is planned.',
+      'Everything you can choose today is reversible: it closes again when you check in. If a permanent handover is what you need, a solicitor is the right answer, and we would rather say so than sell you something adjacent.',
     ],
   },
 ];
