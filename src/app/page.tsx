@@ -169,8 +169,8 @@ export default function Home() {
           <Link href="/claim" className="text-ochre-text underline underline-offset-4">
             relaystandby.com/claim
           </Link>
-          . Relay never sends a link that signs you in — if a message claiming to be from us asks
-          you to click one, it is not from us.
+          . A real message from Relay never asks you to click a link and then enter anything — if a
+          message claiming to be from us does, it is not from us.
         </p>
       </section>
 

@@ -56,9 +56,26 @@ export default function HelpPage() {
         className="mt-6 rounded p-4"
         style={{ background: 'var(--paper-sunken)', fontSize: 'var(--t2)', lineHeight: 1.6 }}
       >
-        <strong>Relay never sends you a link that signs you in.</strong> Not one, ever. So a message
-        claiming to be us that asks you to click and log in is an imitation — however convincing it
-        looks. Come to relaystandby.com yourself instead.
+        {/*
+          🔴 THIS PROMISE USED TO BE ABSOLUTE, AND ABSOLUTELY FALSE. "Relay
+          never sends you a link that signs you in. Not one, ever" — while the
+          recorded, deliberate last-resort email for an unclaimed recipient
+          whose code could not be minted carries exactly such a link, because a
+          stateless token is the one thing that still works when the database
+          write that mints codes has just failed. A family member who took the
+          absolute promise seriously would discard the genuine emergency email
+          as phishing.
+
+          The rule below is the one that IS true in every branch, and it is the
+          one that actually defeats phishing: harvesting needs the victim to
+          ENTER something after clicking, and no Relay message ever asks that.
+        */}
+        <strong>A real message from Relay never asks you to click a link and then sign in or enter
+        anything.</strong> When something needs you, we send a short code and you type it at
+        relaystandby.com — an address you come to yourself. In the one rare failure case where we
+        send a personal access link, even that link asks you for nothing after you follow it. So a
+        message that asks you to click and then log in, or click and then enter a code, is an
+        imitation — however convincing it looks.
       </div>
 
       {/*

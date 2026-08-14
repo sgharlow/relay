@@ -55,7 +55,7 @@ const PLAIN_ANSWERS = [
   },
   {
     q: 'Can someone trick you into opening my vault?',
-    a: 'Releasing requires the trigger you configured AND confirmation from the people you named. Relay never sends a link that signs anyone in — every message asks for a code typed at our address — so a convincing email cannot, by itself, open anything.',
+    a: 'Releasing requires the trigger you configured AND confirmation from the people you named. A real Relay message never asks you to click a link and then enter anything — codes are typed at our address, which you come to yourself — so a convincing email cannot, by itself, open anything.',
   },
   {
     q: 'What if I lose my phone?',

@@ -387,7 +387,7 @@ function CodeEntry({ onToken }: { onToken: (t: string) => void }) {
 
       <p className="mt-6 text-[15px] leading-relaxed text-muted">
         You will never be shown anyone&rsquo;s private information — not now, and not after you
-        answer. Relay will never send you a link that signs you in.
+        answer. A real message from Relay never asks you to click a link and then enter anything.
       </p>
     </div>
   );

@@ -122,7 +122,70 @@ describe('notifyRecipientsOfRelease', () => {
 
     expect(sent[0].text).not.toContain('?token=');
     expect(sent[0].text).toMatch(/[23456789A-Z]{4}-[23456789A-Z]{4}/);
-    expect(sent[0].text).toContain('never send you a link that signs you in');
+    // The promise was re-worded 2026-08-13 to the rule that is true in every
+    // branch: click-then-enter is the imitation tell.
+    expect(sent[0].text).toContain('never asks you to click a link and then enter anything');
+  });
+
+  /*
+    🔴 THE BUG THESE THREE PIN. A claimed recipient's "skip the code" was
+    signalled by THROWING; the shared catch swallowed it like a real failure,
+    and the fallback treated every failure as "send the legacy token link" — so
+    the one person the architecture promises never to email a credential
+    received a live signed JWT at release. hybrid+6 principle 1, violated by an
+    exception-as-control-flow. Fixed 2026-08-13 by making claimed an ordinary
+    branch.
+  */
+  it('a CLAIMED recipient gets a pure notification — no token, no code, no credential', async () => {
+    _setResendClientForTesting(stubResend());
+    routeQueries([
+      { id: 'r1', name: 'Jordan', email: 'jordan@example.com', claimed_user_id: 'user-9' },
+    ]);
+
+    await notifyRecipientsOfRelease({ releaseStateId: 'rs-1', ownerId: 'o', triggerType: 'emergency', version: 3 });
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0].text).not.toContain('?token=');
+    // Not the code-format regex used elsewhere: the case id (RLY-XXXX-XXXX)
+    // legitimately matches it. "enter this code" is the phrase only the
+    // credential-bearing branch prints.
+    expect(sent[0].text).not.toContain('enter this code');
+    expect(sent[0].text).toContain('/standby');
+    expect(sent[0].text).toContain('Sign in the way you normally do');
+    expect(sent[0].text).toContain('no link that signs you in');
+  });
+
+  it('a claimed recipient never even ATTEMPTS a code mint — no credential row is written', async () => {
+    // The old shape minted nothing for claimed too, but by throwing mid-mint.
+    // Assert structurally: no INSERT into recipient code storage happens at all.
+    _setResendClientForTesting(stubResend());
+    routeQueries([
+      { id: 'r1', name: 'Jordan', email: 'jordan@example.com', claimed_user_id: 'user-9' },
+    ]);
+
+    await notifyRecipientsOfRelease({ releaseStateId: 'rs-1', ownerId: 'o', triggerType: 'emergency', version: 3 });
+
+    const inserts = mockQuery.mock.calls.map((c) => c[0] as string).filter((q) => /INSERT/i.test(q));
+    expect(inserts).toEqual([]);
+  });
+
+  it('the token-link fallback still exists, but ONLY for an unclaimed recipient whose code failed', async () => {
+    // The deliberate last resort: an unclaimed recipient has no account to
+    // sign into, so a locked-out recipient mid-emergency is the worse outcome.
+    _setResendClientForTesting(stubResend());
+    mockQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes('FROM recipients'))
+        return qResult([{ id: 'r1', name: 'Jordan', email: 'jordan@example.com', claimed_user_id: null }]) as never;
+      if (sql.includes('FROM users'))
+        return qResult([{ display_name: 'Margaret Chen', email: 'margaret@example.com' }]) as never;
+      if (/INSERT/i.test(sql)) throw new Error('DSQL unavailable'); // the code mint fails
+      return qResult([]) as never;
+    });
+
+    await notifyRecipientsOfRelease({ releaseStateId: 'rs-1', ownerId: 'o', triggerType: 'emergency', version: 3 });
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0].text).toContain('/access?token=');
   });
 
   it('names the owner rather than printing a raw email address', async () => {

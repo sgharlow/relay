@@ -59,8 +59,14 @@ function appUrl(): string {
  *
  * Requirements: 7.1, 15.2
  */
-/** Not an error — a claimed recipient deliberately gets no code. */
-class SkipCodeForClaimedRecipient extends Error {}
+/*
+  SkipCodeForClaimedRecipient is deliberately GONE. It signalled "no code" by
+  throwing, the shared catch treated it like a real failure, and the fallback
+  treated every failure as "send the legacy token link" — so the sentinel that
+  meant "never send this person a credential" caused exactly that. The claimed
+  case is now an ordinary branch, not an exception; see the note at the send
+  site.
+*/
 
 export async function notifyRecipientsOfRelease(params: {
   releaseStateId: string;
@@ -86,46 +92,80 @@ export async function notifyRecipientsOfRelease(params: {
 
   const results = await Promise.all(
     recipients.rows.map(async (r) => {
-      // A typed code, not a token in the URL — and this is the higher-value
-      // credential of the two, because it opens the vault rather than asking one
-      // question. Forwarding this email to a sibling used to hand over access to
-      // a parent's accounts.
-      // A CLAIMED recipient needs no code: they sign into an account they
-      // already have and the release resolves server-side. Minting one anyway
-      // would put a working credential into an email for somebody who does not
-      // need it — which is the exact thing this architecture exists to stop.
-      // The notification still goes out; it is now purely a notification, and
-      // it is allowed to fail.
+      /*
+        🔴 A CLAIMED RECIPIENT WAS EMAILED A LIVE SIGN-IN TOKEN, until
+        2026-08-13 — the exact artifact this architecture exists never to send,
+        delivered to the exact person it exists never to send it to.
+
+        The intent was already written here: a claimed recipient signs into an
+        account they already have, the release resolves server-side, and their
+        message is purely a notification. The mechanism betrayed it. The skip
+        was signalled by THROWING SkipCodeForClaimedRecipient, the shared catch
+        below swallowed it exactly like a real code-issue failure, and the
+        two-way fallback then treated "no code" as "send the legacy token
+        link". So the sentinel that meant "this person must receive no
+        credential" produced a clickable signed JWT in their inbox — while the
+        code-branch email beside it promised "Relay will never send you a link
+        that signs you in", and the product had trained that same person to
+        treat such a link as phishing.
+
+        Three cases, now told apart rather than collapsed into two:
+          claimed             notification only — sign in as you normally do.
+                              Mirrors the verifier sign_in notice: nothing in
+                              the message is worth intercepting.
+          unclaimed, code ok  the typed single-use code. Unchanged.
+          unclaimed, FAILED   the legacy token link — the recorded, deliberate
+                              last resort, because an unclaimed recipient has
+                              no other way in and a locked-out recipient
+                              mid-emergency is the worse outcome. This is the
+                              one message that may carry a link, it goes only
+                              to somebody with no account to sign into, and
+                              lib/ops/gates.test.ts pins the claimed branch so
+                              this ordering cannot silently regress.
+      */
       let code: string | null = null;
-      try {
-        if (r.claimed_user_id) throw new SkipCodeForClaimedRecipient();
-        code = formatCode(
-          await issueRecipientCode({
-            recipientId: r.id,
-            releaseStateId: params.releaseStateId,
-            ownerId: params.ownerId,
-            version: params.version,
-          }),
-        );
-      } catch (err) {
-        process.stderr.write(`[notify] recipient code issue failed: ${String(err)}\n`);
+      if (!r.claimed_user_id) {
+        try {
+          code = formatCode(
+            await issueRecipientCode({
+              recipientId: r.id,
+              releaseStateId: params.releaseStateId,
+              ownerId: params.ownerId,
+              version: params.version,
+            }),
+          );
+        } catch (err) {
+          process.stderr.write(`[notify] recipient code issue failed: ${String(err)}\n`);
+        }
       }
 
-      // Falls back to the legacy token link. A recipient who cannot get in
-      // during an emergency is a worse outcome than a link in an email.
-      const body = code
+      const body = r.claimed_user_id
         ? `Hi ${r.name},\n\n` +
           `${ownerLabel} arranged for you to be able to reach some of their accounts, and that ` +
           `access is now open.\n\n` +
-          `Go to ${appUrl()}/access and enter this code:\n\n` +
-          `    ${code}\n\n` +
-          `Case ${caseId} · the code expires in 24 hours and can be used once.\n\n` +
-          `Relay will never send you a link that signs you in. If a message claiming to be from ` +
-          `us asks you to click one, it is not from us.\n`
-        : `Hi ${r.name},\n\n` +
-          `Access you were granted has been released. Open your secure access plan here:\n\n` +
-          `${appUrl()}/access?token=${encodeURIComponent(await issueRecipientToken(r.id, params.releaseStateId, BigInt(params.version)))}\n\n` +
-          `This link is personal to you and expires in 24 hours.\n`;
+          `Sign in the way you normally do and it will be waiting for you:\n\n` +
+          `    ${appUrl()}/standby\n\n` +
+          `Case ${caseId}.\n\n` +
+          `There is no code in this message, and no link that signs you in — deliberately. ` +
+          `A real message from Relay never asks you to click a link and then enter anything. ` +
+          `If a message claiming to be from us does, it is not from us.\n`
+        : code
+          ? `Hi ${r.name},\n\n` +
+            `${ownerLabel} arranged for you to be able to reach some of their accounts, and that ` +
+            `access is now open.\n\n` +
+            `Go to ${appUrl()}/access and enter this code:\n\n` +
+            `    ${code}\n\n` +
+            `Case ${caseId} · the code expires in 24 hours and can be used once.\n\n` +
+            `A real message from Relay never asks you to click a link and then enter anything. If a ` +
+            `message claiming to be from us does, it is not from us.\n`
+          : `Hi ${r.name},\n\n` +
+            `Access you were granted has been released. Open your secure access plan here:\n\n` +
+            `${appUrl()}/access?token=${encodeURIComponent(await issueRecipientToken(r.id, params.releaseStateId, BigInt(params.version)))}\n\n` +
+            `This link is personal to you and expires in 24 hours.\n\n` +
+            // The one message in the product that may carry a link, and it says the
+            // truth about itself: even THIS link never asks for anything.
+            `This link asks you for nothing after you follow it — no code and no password. ` +
+            `A link that asks you to enter anything is not from us.\n`;
 
       return sendEmailBestEffort({
         to: r.email,
@@ -254,8 +294,8 @@ export async function notifyOneVerifier(
         `    ${appUrl()}/standby\n\n` +
         `Case ${caseId}.\n\n` +
         `There is no code in this message, and no link that signs you in — deliberately. ` +
-        `Relay never sends one. If a message claiming to be from us asks you to click one, ` +
-        `it is not from us.\n\n` +
+        `A real message from Relay never asks you to click a link and then enter anything. ` +
+        `If a message claiming to be from us does, it is not from us.\n\n` +
         `You will not be given access to any private data — you are only confirming ` +
         `whether the situation is genuine.\n`,
     });
@@ -296,14 +336,16 @@ export async function notifyOneVerifier(
       `Case ${caseId} · the code expires in 72 hours.\n\n` +
       `You will not be given access to any private data — you are only confirming ` +
       `whether the situation is genuine.\n\n` +
-      `Relay will never send you a link that signs you in. If a message claiming to ` +
-      `be from us asks you to click one, it is not from us.\n`
+      `A real message from Relay never asks you to click a link and then enter ` +
+      `anything. If a message claiming to be from us does, it is not from us.\n`
     : `Hi ${v.name},\n\n` +
       `${ownerLabel} named you as one of the people who would be asked whether an emergency is real, ` +
       `and ${article(triggerType)} "${triggerType}" release has now been started on their ` +
       `account. If you recognise this request, confirm here:\n\n` +
       `${appUrl()}/verify?token=${encodeURIComponent(await issueVerifierToken(v.id, releaseStateId))}\n\n` +
-      `You will not be given access to any private data — you are only confirming the trigger.\n`;
+      `You will not be given access to any private data — you are only confirming the trigger.\n\n` +
+      `This link asks you for nothing after you follow it — no code and no password. ` +
+      `A link that asks you to enter anything is not from us.\n`;
 
   return sendEmailBestEffort({
     to: v.email,
@@ -444,8 +486,8 @@ export async function notifyInvitation(params: {
           `It works once and expires in 30 days.
 
 ` +
-          `Relay will never send you a link that signs you in. If a message claiming to be from ` +
-          `us asks you to click one, it is not from us.
+          `A real message from Relay never asks you to click a link and then enter anything. If a ` +
+          `message claiming to be from us does, it is not from us.
 `
         : `Accept here:
 
@@ -831,7 +873,7 @@ export async function notifyOwnerRecoveryCodesLow(params: {
 
 ` +
       `There is nothing in this message to act on except that sentence — no code, and no link ` +
-      `that signs you in. Relay never sends one. A message claiming to be us that asks you to ` +
+      `that signs you in. A message that asks you to ` +
       `click and log in is not from us.
 `,
   });

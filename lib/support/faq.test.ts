@@ -45,10 +45,17 @@ describe('the promises it must not soften', () => {
 
   /*
     The anti-phishing promise is the one a support page is most tempted to
-    hedge. It must appear, and it must be absolute.
+    hedge — and the one it must never overstate. The old pin demanded "never
+    sends a link that signs you in", which the product's own recorded
+    last-resort email (an unclaimed recipient whose code could not be minted)
+    falsifies; an absolute promise the genuine emergency email breaks trains
+    the family to discard the genuine emergency email. The rule that IS true in
+    every branch, and that actually defeats credential phishing: no real Relay
+    message asks you to click and then ENTER anything.
   */
-  it('states that Relay never sends a sign-in link', () => {
-    expect(all).toMatch(/never sends? (you )?a link that signs you in/);
+  it('states the click-then-enter rule, and does not overstate it', () => {
+    expect(all).toMatch(/never asks you to click a link and then sign in or enter anything/);
+    expect(all).not.toMatch(/never sends? (you )?a link that signs you in/);
   });
 
   it('says plainly that we cannot read a vault', () => {

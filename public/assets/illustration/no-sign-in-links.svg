@@ -1,14 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 160" width="260" height="160"
      role="img" aria-labelledby="nl-t nl-d">
-  <title id="nl-t">Relay never emails anything that signs you in</title>
+  <title id="nl-t">A Relay email carries a short code you type yourself</title>
   <desc id="nl-d">An envelope holding a short typed code. No key and no link travel with it.</desc>
 
   <!--
     THE ANTI-PHISHING PROMISE, DRAWN AS WHAT IS *NOT* IN THE ENVELOPE.
 
-    A message from Relay never carries a credential and never carries a link
-    that grants anything: it carries a short code the person types in
-    themselves, on a page they navigated to. That is what makes "if it asks you
+    A message from Relay carries a short code the person types in themselves,
+    on a page they navigated to. (One recorded last-resort message may carry a
+    personal link; even it asks for nothing after the click.) That is what makes "if it asks you
     to click, it is not us" a rule a family can actually follow.
 
     So the envelope is open and its contents are visible and dull — four

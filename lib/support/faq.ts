@@ -167,9 +167,9 @@ export const FAQ: FaqEntry[] = [
     audience: 'safety',
     question: 'I got an email that says it is from Relay and asks me to click and sign in.',
     answer: [
-      'That is not from us, and you can be certain of it.',
-      'Relay never sends a link that signs you in. Not one, ever — which is why you are asked to type short codes instead. It is slightly less convenient and it means any message asking you to click and log in is, categorically, an imitation.',
-      'Our messages do contain plain links to relaystandby.com, but following one never logs you in by itself. If you are unsure, ignore the message and go to the site yourself.',
+      'That is not from us — and here is how you can always tell.',
+      'A real message from Relay never asks you to click a link and then sign in or enter anything. When something needs you, it gives you a short code, and you type it in at relaystandby.com — an address you come to yourself. So a message that asks you to click and then log in, or click and then enter a code, is an imitation.',
+      'In one rare failure case Relay may send a personal access link — and even that link asks you for nothing after you follow it. A link that asks for your code, your password, or anything else is not ours. If you are unsure, ignore the message and go to the site yourself.',
     ],
   },
   {

@@ -73,7 +73,7 @@ export default function NotFound() {
         </div>
 
         <p style={{ fontSize: 15, lineHeight: 1.6, marginTop: 20, color: '#6b6257' }}>
-          Relay never sends a link that signs you in, so if you arrived from a message promising
+          A real Relay message never asks you to click and then enter anything, so if you arrived from a message promising
           that, it was not from us.
         </p>
       </div>
