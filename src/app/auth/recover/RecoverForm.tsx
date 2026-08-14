@@ -196,7 +196,7 @@ export default function RecoverForm() {
       </button>
 
       <p className="mt-4 text-center text-t2 text-muted">
-        <Link href="/auth/signin" className="text-ink hover:underline">
+        <Link href="/auth/signin" className="text-ink underline underline-offset-2">
           Back to sign in
         </Link>
       </p>

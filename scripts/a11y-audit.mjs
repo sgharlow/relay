@@ -84,6 +84,13 @@ const PUBLIC_PAGES = [
   '/verify',
   '/standby',
   '/helping',
+  // Drifted-in additions (2026-08-13): the guided demo, the sign-in surfaces —
+  // the elderly wedge's very first screens — and the G1 interest form.
+  '/demo',
+  '/auth/signin',
+  '/auth/signup',
+  '/auth/recover',
+  '/caregivers/interest',
 ];
 
 /**

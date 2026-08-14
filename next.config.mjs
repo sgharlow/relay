@@ -165,7 +165,45 @@ const SECURITY_HEADERS = [
 
 const nextConfig = {
   async headers() {
-    return [{ source: '/:path*', headers: SECURITY_HEADERS }];
+    return [
+      { source: '/:path*', headers: SECURITY_HEADERS },
+      /*
+        Static art and the guide's screenshots. Without this they are served
+        with no freshness at all, so every open of /guide revalidates 26 PNGs
+        and a 3 MB PDF — mostly by the audience on the oldest phones.
+
+        A DAY, NOT `immutable`. These files are edited in place (the guide was
+        reshot twice this week; the SVGs four times); a year-long immutable
+        cache would pin returning visitors to whichever version they saw first.
+        One day of quiet plus a week of stale-while-revalidate keeps repeat
+        opens instant and lets an edit propagate within a day, which matches how
+        often these actually change.
+      */
+      {
+        source: '/assets/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=604800' },
+        ],
+      },
+      /*
+        Screens and the PDF only — deliberately NOT /guide/:path*. That pattern
+        would catch index.html, and the guide's WORDS must be able to correct
+        themselves same-day (they carry the product's promises; one was
+        corrected this very week). Pictures can lag a day; sentences cannot.
+      */
+      {
+        source: '/guide/screens/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=604800' },
+        ],
+      },
+      {
+        source: '/guide/relay-guide.pdf',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=604800' },
+        ],
+      },
+    ];
   },
 
   /**

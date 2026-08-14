@@ -23,8 +23,35 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: '*',
-      allow: ['/', '/caregivers', '/how-it-works', '/security', '/privacy', '/terms'],
-      disallow: ['/api/', '/auth/', '/vault', '/start', '/access', '/verify', '/caregivers/interest'],
+      allow: ['/', '/caregivers', '/how-it-works', '/security', '/privacy', '/terms', '/help', '/guide', '/demo'],
+      /*
+        The disallow list had drifted 13 routes behind the app (2026-08-13):
+        every route shipped after it was written — the standby dashboard, the
+        helper workspace, claim, break-glass, the owner screens — was crawlable.
+        Auth keeps strangers out; it does not keep URLs out of an index.
+      */
+      disallow: [
+        '/api/',
+        '/auth/',
+        '/vault',
+        '/start',
+        '/access',
+        '/verify',
+        '/caregivers/interest',
+        '/standby',
+        '/helping',
+        '/claim',
+        '/break-glass',
+        '/challenge',
+        '/circle',
+        '/rules',
+        '/triggers',
+        '/approvals',
+        '/audit',
+        '/account',
+        '/import',
+        '/continue',
+      ],
     },
     sitemap: 'https://relaystandby.com/sitemap.xml',
   };

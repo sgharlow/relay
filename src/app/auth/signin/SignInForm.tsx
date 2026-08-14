@@ -94,7 +94,7 @@ export default function SignInForm() {
           likely to go hunting for it. */}
       <p className="text-center text-t2 text-muted">
         Lost your authenticator?{' '}
-        <a href="/auth/recover" className="text-ink hover:underline">
+        <a href="/auth/recover" className="text-ink underline underline-offset-2">
           Use a recovery code
         </a>
       </p>

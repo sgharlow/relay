@@ -100,7 +100,15 @@ export default function DemoTour() {
           top of the list is almost always the primary email: the key that unlocks most password
           resets.
         </p>
-        <div className="mt-6 overflow-x-auto rounded-xl border border-rule">
+        {/* tabIndex + a name: a horizontally scrollable table must be reachable
+            and scrollable from the keyboard, not only by trackpad (axe:
+            scrollable-region-focusable — found by the widened 2026-08-13 sweep). */}
+        <div
+          className="mt-6 overflow-x-auto rounded-xl border border-rule"
+          tabIndex={0}
+          role="region"
+          aria-label="The demo vault, item by item"
+        >
           <table className="w-full min-w-[640px] text-left text-t2">
             <thead className="bg-paper-sunken text-t1 uppercase tracking-wider text-muted">
               <tr>

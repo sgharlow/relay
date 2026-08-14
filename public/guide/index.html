@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<!-- Without this, a phone renders the page at desktop width and the guide
+     written for elderly readers arrives as micro-text. Found 2026-08-13. -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Relay — A Guide for You and Your Family</title>
 <style>
   @page { size: A4; margin: 16mm 14mm; }
@@ -117,7 +120,7 @@ to everybody you name, and the signup page shows you what they would otherwise s
 phone with your authenticator on it, and nobody &mdash; including us &mdash; can reissue them for
 you afterwards.</p>
 
-<figure><img src="/guide/screens/uc25-signup.png" alt="Creating a vault"><figcaption>Creating a vault. The
+<figure><img loading="lazy" decoding="async" src="/guide/screens/uc25-signup.png" alt="Creating a vault"><figcaption>Creating a vault. The
 name field shows the consequence of leaving it blank, at the one moment it can still be
 avoided.</figcaption></figure>
 
@@ -149,14 +152,14 @@ handful of people who would step in &mdash; rather than a trial that expires. A 
 remaining room is refused whole rather than trimmed to fit, because a vault that quietly stopped
 halfway through your export is exactly the false sense of completeness this is meant to prevent.</div>
 
-<figure><img src="/guide/screens/uc33-owner-import.png" alt="Importing"><figcaption>The preview shows the
+<figure><img loading="lazy" decoding="async" src="/guide/screens/uc33-owner-import.png" alt="Importing"><figcaption>The preview shows the
 service, the address and the username &mdash; and <b>no passwords</b>. It is the one screen where
 somebody looking over your shoulder would otherwise see the whole file at once.</figcaption></figure>
 
 <p>The banner across the top is the single most useful thing on the screen. It answers one question
 — <i>if something happened tomorrow, would this work?</i> — and it is honest about the answer.</p>
 
-<figure><img src="/guide/screens/uc01-owner-vault.png" alt="The vault screen"><figcaption>The vault, most
+<figure><img loading="lazy" decoding="async" src="/guide/screens/uc01-owner-vault.png" alt="The vault screen"><figcaption>The vault, most
 consequential first. The prompt at the bottom points at the next thing that would actually help —
 a vault nobody can open is a vault that does nothing.</figcaption></figure>
 
@@ -190,7 +193,7 @@ purely-digital way of proving identity here reduces to trusting an email inbox, 
 thing most likely to be compromised in exactly the scenario this product exists for. Two minutes on
 the phone is stronger than anything we could build, and it costs you one call per person, once.</div>
 
-<figure><img src="/guide/screens/uc02-owner-circle.png" alt="The People screen"><figcaption>The People
+<figure><img loading="lazy" decoding="async" src="/guide/screens/uc02-owner-circle.png" alt="The People screen"><figcaption>The People
 screen: the coverage table, then the two rosters. Each person's line says what is still missing
 rather than merely what state they are in.</figcaption></figure>
 
@@ -222,7 +225,7 @@ close again when you check back in. The permanent handover is built, and it is d
 offered while it waits on a written legal opinion; when it does arrive it will not let you mark it
 reversible, because a handover that can be taken back is not a handover.</div>
 
-<figure><img src="/guide/screens/uc03-owner-rules.png" alt="The Rules screen"><figcaption>Existing rules
+<figure><img loading="lazy" decoding="async" src="/guide/screens/uc03-owner-rules.png" alt="The Rules screen"><figcaption>Existing rules
 read as sentences. The trigger a rule is written for is created the moment you write the rule —
 which is why an unused trigger never appears and can never fire.</figcaption></figure>
 
@@ -247,11 +250,11 @@ which is why an unused trigger never appears and can never fire.</figcaption></f
     whether you are sure.</li>
 </ul>
 
-<figure><img src="/guide/screens/uc35-owner-initiate-confirm.png" alt="Starting a release"><figcaption>
+<figure><img loading="lazy" decoding="async" src="/guide/screens/uc35-owner-initiate-confirm.png" alt="Starting a release"><figcaption>
 Starting one deliberately. It names the consequence, and says plainly that checking in stops
 it &mdash; because &ldquo;are you sure?&rdquo; is a question nobody reads.</figcaption></figure>
 
-<figure><img src="/guide/screens/uc04-owner-triggers.png" alt="The Triggers screen"><figcaption>A trigger
+<figure><img loading="lazy" decoding="async" src="/guide/screens/uc04-owner-triggers.png" alt="The Triggers screen"><figcaption>A trigger
 sits <b>ARMED</b> and does nothing until either you initiate it or you stop checking in. Armed is
 the safe state, and every failure inside Relay resolves back to it.</figcaption></figure>
 
@@ -282,12 +285,12 @@ you had typed it yourself.</p>
 they suggested &mdash; on the same screen as the button that stops them helping. Everything they do
 is also in your record, under their name.</p>
 
-<figure><img src="/guide/screens/uc36-owner-helper-consent.png" alt="Recording consent"><figcaption>The
+<figure><img loading="lazy" decoding="async" src="/guide/screens/uc36-owner-helper-consent.png" alt="Recording consent"><figcaption>The
 record that starts it. Nothing works until this is filled in, and the option that invites a
 convenient lie &mdash; &ldquo;they confirmed it themselves&rdquo; &mdash; is worded to discourage
 one.</figcaption></figure>
 
-<figure><img src="/guide/screens/uc16-owner-helper-active.png" alt="An active helper"><figcaption>Active,
+<figure><img loading="lazy" decoding="async" src="/guide/screens/uc16-owner-helper-active.png" alt="An active helper"><figcaption>Active,
 with a suggestion waiting. What a helper can and can never do is stated before the button rather
 than after it; <b>what they have done</b> sits directly above the control that stops them, so the
 evidence is beside the decision it informs rather than a screen away.</figcaption></figure>
@@ -336,7 +339,7 @@ them verified &mdash; and only from that moment does their answer count towards 
 The same panel removes them, cancels the code, and puts them back to not-yet-invited so you can try
 again on a channel you trust.</p>
 
-<figure><img src="/guide/screens/verify-call-owner.png" alt="The verification call"><figcaption>Your side
+<figure><img loading="lazy" decoding="async" src="/guide/screens/verify-call-owner.png" alt="The verification call"><figcaption>Your side
 of the call. It is two minutes, it is not optional, and it is the only thing that can tell the
 person you meant from somebody who intercepted the invitation.</figcaption></figure>
 
@@ -415,7 +418,7 @@ instead &mdash; which is the point: it does not depend on you being reachable.</
 <p>Everyone else you named is told a request was made, whatever you decide. That is deliberate, and
 it is what makes a quiet attempt on your accounts impossible.</p>
 
-<figure><img src="/guide/screens/uc18-owner-challenge.png" alt="Somebody is asking"><figcaption>The
+<figure><img loading="lazy" decoding="async" src="/guide/screens/uc18-owner-challenge.png" alt="Somebody is asking"><figcaption>The
 question, with a countdown and both answers.</figcaption></figure>
 
 <h3>2.6 &mdash; Reading what happened</h3>
@@ -433,7 +436,7 @@ any one of them breaks the chain visibly. <b>Verify chain</b> re-computes it in 
 for them, and somebody <i>opening</i> it. If your partner signed in and looked at the list without
 revealing anything, the record says exactly that rather than telling you nothing happened.</p>
 
-<figure><img src="/guide/screens/uc05-owner-audit.png" alt="The Audit screen"><figcaption>The summary
+<figure><img loading="lazy" decoding="async" src="/guide/screens/uc05-owner-audit.png" alt="The Audit screen"><figcaption>The summary
 answers the questions a person actually has. The table beneath is the proof that the summary is
 not just a nice sentence.</figcaption></figure>
 
@@ -458,7 +461,7 @@ not just a nice sentence.</figcaption></figure>
     loses access immediately, and this cannot be undone.</li>
 </ul>
 
-<figure><img src="/guide/screens/recovery-count.png" alt="The Account screen"><figcaption>Leaving is a
+<figure><img loading="lazy" decoding="async" src="/guide/screens/recovery-count.png" alt="The Account screen"><figcaption>Leaving is a
 first-class path, not a support ticket &mdash; export first, then close. The recovery line changes
 colour as the sheet runs down, because &ldquo;1 left&rdquo; in the same grey as everything else is a
 fact nobody acts on.</figcaption></figure>
@@ -490,7 +493,7 @@ vault, and it does not tell them anything except that you have seen it. If you w
 part of this, the honest thing is to say so — and there is a control for stepping down at any
 time.</div>
 
-<figure class="phone"><img src="/guide/screens/uc08-claim-phone.png" alt="Accepting a place"><figcaption>
+<figure class="phone"><img loading="lazy" decoding="async" src="/guide/screens/uc08-claim-phone.png" alt="Accepting a place"><figcaption>
 Typing a short code rather than clicking a link. That is deliberate: Relay never sends a link that
 signs you in, so a message with one in it is not from us.</figcaption></figure>
 
@@ -517,7 +520,7 @@ deliberately &mdash; the urgent things immediately, the rest only if they are st
 week on. Those appear on your list from the start with the date they open, so a gap on the day is a
 plan working as written rather than something broken.</p>
 
-<figure class="phone"><img src="/guide/screens/uc07-standby-dashboard.png" alt="The standby dashboard">
+<figure class="phone"><img loading="lazy" decoding="async" src="/guide/screens/uc07-standby-dashboard.png" alt="The standby dashboard">
 <figcaption>Standing by. <b>Step down from this</b> is always available — being named is not a trap,
 and someone who quietly stopped agreeing is worse than useless in an emergency.</figcaption></figure>
 
@@ -556,7 +559,7 @@ that a request was made</b>, whatever the outcome. That is deliberate rather tha
 asked instead &mdash; so it does not depend on you being reachable, which is the entire point. Nobody
 can wear you down with it either: three requests in twenty-four hours is the limit.</p>
 
-<figure><img src="/guide/screens/uc17-standby-ask-2col.png" alt="Asking"><figcaption>One tall screen, laid out as two columns &mdash; read the left side, then the right. Asking. What it costs is said before the form, not discovered
+<figure><img loading="lazy" decoding="async" src="/guide/screens/uc17-standby-ask-2col.png" alt="Asking"><figcaption>One tall screen, laid out as two columns &mdash; read the left side, then the right. Asking. What it costs is said before the form, not discovered
 afterwards.</figcaption></figure>
 
 <h3>3.4 — If they asked you to help set it up</h3>
@@ -577,7 +580,7 @@ to them as a question. You cannot touch their triggers, and you cannot add yours
 If you think you <i>should</i> be on their plan, you can suggest exactly that, and they will be told
 plainly that the person suggesting it is the person it is about.</p>
 
-<figure><img src="/guide/screens/uc28-helper-workspace-2col.png" alt="Helping"><figcaption>One tall screen, laid out as two columns &mdash; read the left side, then the right. The helper&rsquo;s screen. What you can do and what you can never do sit above the
+<figure><img loading="lazy" decoding="async" src="/guide/screens/uc28-helper-workspace-2col.png" alt="Helping"><figcaption>One tall screen, laid out as two columns &mdash; read the left side, then the right. The helper&rsquo;s screen. What you can do and what you can never do sit above the
 tools, so you never have to find the edge by hitting it.</figcaption></figure>
 
 <h3>3.5 — The phone call</h3>
@@ -597,7 +600,7 @@ open anything. <b>If they do not match, say so and stop.</b> It means somebody e
 invitation meant for you. Nothing is lost: they can cancel it and start again on a channel you both
 trust.</p>
 
-<figure><img src="/guide/screens/verify-call-contact-2col.png" alt="Your four words"><figcaption>
+<figure><img loading="lazy" decoding="async" src="/guide/screens/verify-call-contact-2col.png" alt="Your four words"><figcaption>
 Your side of the call. The words are not a password — they are a comparison, and they are worth
 nothing to anybody who is not on the phone.</figcaption></figure>
 
@@ -640,7 +643,7 @@ whether the request is proportionate. They are never shown a title and never sho
 can answer three ways — <b>yes</b>, <b>no</b>, or <b>I don't know</b> — and "no" is offered with
 exactly the same prominence as "yes".</p>
 
-<figure class="phone"><img src="/guide/screens/uc10-verifier-decision.png" alt="The verifier decision screen">
+<figure class="phone"><img loading="lazy" decoding="async" src="/guide/screens/uc10-verifier-decision.png" alt="The verifier decision screen">
 <figcaption>The question itself. It names whose vault it is, says why it is being asked now, shows
 how much is at stake and never what — and offers all three answers at the same weight, because a
 page that leans on &ldquo;yes&rdquo; produces more of them.</figcaption></figure>
@@ -666,7 +669,7 @@ account signs in as themselves; someone who never accepted receives a single-use
 hours. In both cases, decryption happens in their browser — Relay itself still cannot read the
 items.</p>
 
-<figure class="phone"><img src="/guide/screens/uc11-access-code-phone.png" alt="Recipient code entry">
+<figure class="phone"><img loading="lazy" decoding="async" src="/guide/screens/uc11-access-code-phone.png" alt="Recipient code entry">
 <figcaption>The recipient's way in when they never accepted a standby account. <b>My code has
 expired</b> re-sends to the address already on file — never to one typed here.</figcaption></figure>
 
@@ -714,7 +717,7 @@ puts the trigger back to armed and ready. This is the control you want almost ev
 confirmation, because someone stopping a false alarm at speed must not retire their whole plan by
 reaching for the innocuous-looking word on the screen.</p>
 
-<figure><img src="/guide/screens/uc19-owner-trigger-pending.png" alt="A release in flight"><figcaption>A
+<figure><img loading="lazy" decoding="async" src="/guide/screens/uc19-owner-trigger-pending.png" alt="A release in flight"><figcaption>A
 release in flight. Both ways to stop it are here, and they are deliberately not equal in
 weight.</figcaption></figure>
 
@@ -760,7 +763,7 @@ is used, you are told, and you are asked to check it was really them.</p>
 issue while unconscious is not a fallback. The banner will tell you when your plan depends on
 somebody who has no way back in.</div>
 
-<figure class="phone"><img src="/guide/screens/uc09-break-glass-phone.png" alt="Emergency code entry">
+<figure class="phone"><img loading="lazy" decoding="async" src="/guide/screens/uc09-break-glass-phone.png" alt="Emergency code entry">
 <figcaption>The way back in when the usual sign-in is gone.</figcaption></figure>
 
 <h3>5.4 &mdash; The code never arrived, or ran out</h3>
@@ -788,7 +791,7 @@ been lost and nothing has been opened.</b> A page failing to load is not somethi
 <p>Either way we are told automatically, so it does not depend on anybody reporting it. What reaches
 us is a reference number and the address &mdash; never anything you typed.</p>
 
-<figure><img src="/guide/screens/not-found.png" alt="Nothing at this address"><figcaption>Written for
+<figure><img loading="lazy" decoding="async" src="/guide/screens/not-found.png" alt="Nothing at this address"><figcaption>Written for
 somebody who mistyped an address in a hurry, not for an engineer.</figcaption></figure>
 
 <h3>5.7 &mdash; Somebody wants out</h3>
@@ -844,7 +847,7 @@ Privacy page are written to be read — including the section addressed to peopl
 and were merely named by someone else, which is the population least served by ordinary legal
 boilerplate.</p>
 
-<figure><img src="/guide/screens/uc12-landing.png" alt="The landing page"><figcaption>relaystandby.com &mdash; the circle standing by around a closed vault, which is the whole product in one picture. Nothing is joined to the vault, because at rest nothing is.</figcaption></figure>
+<figure><img loading="lazy" decoding="async" src="/guide/screens/uc12-landing.png" alt="The landing page"><figcaption>relaystandby.com &mdash; the circle standing by around a closed vault, which is the whole product in one picture. Nothing is joined to the vault, because at rest nothing is.</figcaption></figure>
 
 <p><b>What actually happens</b> is the page to send someone who says they do not understand it. It
 tells the story in the order a family lives it, from the day nothing is wrong through to the day
@@ -852,7 +855,7 @@ somebody checks back in and it all closes again &mdash; and it is the only page 
 handoff the product is named after. The line behind what is being passed is solid; the line ahead of
 it is dotted, because it has not arrived and can still be called back.</p>
 
-<figure><img src="/guide/screens/how-it-works.png" alt="The how it works page, showing the handoff and the timeline"><figcaption>relaystandby.com/how-it-works</figcaption></figure>
+<figure><img loading="lazy" decoding="async" src="/guide/screens/how-it-works.png" alt="The how it works page, showing the handoff and the timeline"><figcaption>relaystandby.com/how-it-works</figcaption></figure>
 
 <p><b>What protects your vault</b> answers the question everybody actually has, which is not about
 cryptography: can these people read my mother&rsquo;s passwords? The two drawings at the top say the
@@ -861,7 +864,7 @@ would sit on our side is empty &mdash; that emptiness is the whole security clai
 envelope carries four characters you type in yourself, and no link and no key travel with it, which
 is why a message from Relay never asks you to click anything.</p>
 
-<figure><img src="/guide/screens/security.png" alt="The security page, showing where the key stays and what an email carries"><figcaption>relaystandby.com/security</figcaption></figure>
+<figure><img loading="lazy" decoding="async" src="/guide/screens/security.png" alt="The security page, showing where the key stays and what an email carries"><figcaption>relaystandby.com/security</figcaption></figure>
 
 </div>
 

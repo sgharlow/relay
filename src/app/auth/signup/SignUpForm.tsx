@@ -241,7 +241,7 @@ export default function SignUpForm() {
 
         <p className="text-center text-t2 text-muted">
           Already have an account?{' '}
-          <Link href="/auth/signin" className="text-ink hover:underline">
+          <Link href="/auth/signin" className="text-ink underline underline-offset-2">
             Sign in
           </Link>
         </p>
