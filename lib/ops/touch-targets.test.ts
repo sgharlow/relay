@@ -25,17 +25,39 @@ import { join } from 'node:path';
 
 const css = readFileSync('src/app/globals.css', 'utf8');
 
+/**
+ * 🔴 EVERY SOURCE-SCANNING ASSERTION IN THIS FILE MUST USE THIS.
+ *
+ * This is the fourth time in one session that a check matched its own
+ * explanatory prose instead of the code: a favicon palette check matched the hex
+ * in its comment, the basis-full test below passed while the class it guards was
+ * deleted, a webhook verifier compared a timestamp against itself, and the
+ * pinch-zoom assertion failed on a codebase that never disabled pinch zoom —
+ * because the comment above it explains why disabling pinch zoom is wrong.
+ *
+ * It is not carelessness, it is structural: defects get documented by QUOTING
+ * them, so the prose surrounding a fix always contains the thing the fix
+ * removed. Any test that reads source therefore has to read the CODE.
+ */
+export function stripComments(src: string): string {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^[ \t]*\/\/.*$/gm, '');
+}
+
+const cssCode = stripComments(css);
+
 /** The touch block: narrow viewports OR any coarse pointer. */
 function touchBlock(): string {
-  const start = css.indexOf('@media (max-width: 720px), (pointer: coarse)');
+  const start = cssCode.indexOf('@media (max-width: 720px), (pointer: coarse)');
   expect(start, 'the touch-target media query is gone from globals.css').toBeGreaterThan(-1);
   // Walk braces so the assertions below cannot accidentally read a later rule.
   let depth = 0;
-  for (let i = css.indexOf('{', start); i < css.length; i++) {
-    if (css[i] === '{') depth++;
-    else if (css[i] === '}') {
+  for (let i = cssCode.indexOf('{', start); i < cssCode.length; i++) {
+    if (cssCode[i] === '{') depth++;
+    else if (cssCode[i] === '}') {
       depth--;
-      if (depth === 0) return css.slice(start, i + 1);
+      if (depth === 0) return cssCode.slice(start, i + 1);
     }
   }
   throw new Error('unbalanced braces in the touch-target block');
@@ -70,7 +92,70 @@ describe('touch targets survive on a phone', () => {
     have. If this assertion ever fails, the floor has leaked into desktop.
   */
   it('does not apply the floor at desktop widths with a mouse', () => {
-    expect(css).not.toMatch(/^\s*button\s*\{[^}]*min-height: 44px/m);
+    expect(cssCode).not.toMatch(/^\s*button\s*\{[^}]*min-height: 44px/m);
+  });
+
+  /*
+    🔴 iOS SAFARI ZOOMS THE WHOLE PAGE WHEN A FOCUSED FIELD IS UNDER 16px, and
+    does not zoom back out. Every owner field measured 14px, starting at the
+    sign-in screen — so on an iPhone the first thing this product did was jump,
+    before anyone had an account.
+
+    The !important is not stylistic. Fields are styled with INLINE
+    `const field = { fontSize: 'var(--t2)' }` objects, and an inline declaration
+    beats every selector; the first version of this rule shipped, matched, and
+    lost silently, leaving the fields at 14px. If someone removes it thinking it
+    is untidy, the defect returns with no other symptom.
+  */
+  it('lifts fields to 16px on touch, and can actually beat the inline styles', () => {
+    expect(block).toMatch(/font-size:\s*var\(--t3\)\s*!important/);
+    expect(block).toContain('textarea');
+  });
+
+  /*
+    Never fix the zoom by disabling zoom. `maximum-scale` / `user-scalable=no`
+    stops the magnification too, by taking pinch-zoom away from everybody — on a
+    product whose audience is disproportionately likely to need it.
+  */
+  it('never disables pinch zoom to solve it', async () => {
+    const { readdirSync, readFileSync, statSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const walk = (dir: string, acc: string[] = []): string[] => {
+      for (const n of readdirSync(dir)) {
+        const p = join(dir, n);
+        if (n === 'node_modules' || n === '.next') continue;
+        if (statSync(p).isDirectory()) walk(p, acc);
+        else if (/\.(tsx?|css|html)$/.test(n)) acc.push(p);
+      }
+      return acc;
+    };
+    const offenders = walk('src').filter((f) => {
+      const s = stripComments(readFileSync(f, 'utf8'));
+      return /maximum-scale|user-scalable\s*[=:]\s*no/.test(s);
+    });
+    expect(offenders, `pinch zoom disabled in:\n${offenders.join('\n')}`).toEqual([]);
+  });
+});
+
+/*
+  On a phone the rail becomes a row, and every pixel it spends is a pixel the
+  nav does not get. Measured at 390px: the wordmark block took 123px and left
+  the nav 196px to present 711px of links — three of ten destinations reachable
+  without a sideways swipe that nothing advertised. Hiding the decorative
+  subtitle returned that space; the wordmark stays, because it is the way back.
+*/
+describe('the phone nav strip spends its width on destinations', () => {
+  it('hides the tagline where the rail is a row', () => {
+    const narrow = cssCode.slice(cssCode.indexOf('@media (max-width: 720px)'));
+    expect(narrow).toContain('.rail-tagline');
+    expect(narrow).toMatch(/\.rail-tagline\s*\{\s*display:\s*none/);
+  });
+
+  it('still renders the tagline element, so desktop is unaffected', async () => {
+    const { readFileSync } = await import('node:fs');
+    const layout = stripComments(readFileSync('src/app/(owner)/layout.tsx', 'utf8'));
+    expect(layout).toContain('rail-tagline');
+    expect(layout).toContain('Living-continuity vault');
   });
 });
 

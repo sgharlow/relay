@@ -54,8 +54,19 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
             the nav beside it is scrolling. */}
         <div className="shrink-0">
           <div style={{ fontSize: 'var(--t5)', fontWeight: 600, letterSpacing: '-0.01em' }}>Relay</div>
-          {/* On the ink sidebar, so --paper-faint rather than --ink-faint. */}
-          <div style={{ fontSize: 'var(--t1)', color: 'var(--paper-faint)' }}>Living-continuity vault</div>
+          {/*
+            On the ink sidebar, so --paper-faint rather than --ink-faint.
+
+            🔴 HIDDEN ON A PHONE, WHERE IT COSTS DESTINATIONS. Measured at 390px:
+            the wordmark block took 123px of the viewport and left the nav 196px
+            to show 711px of links — 3 of 10 destinations, with no affordance
+            saying the row scrolls. A tagline is the one thing in that strip
+            nobody needs; every other item is somewhere they might have to get
+            to. See the rule in globals.css.
+          */}
+          <div className="rail-tagline" style={{ fontSize: 'var(--t1)', color: 'var(--paper-faint)' }}>
+            Living-continuity vault
+          </div>
         </div>
         <SidebarNav />
         {session.isDemo ? (

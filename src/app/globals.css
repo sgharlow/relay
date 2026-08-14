@@ -145,6 +145,22 @@
     --nav-overflow: auto;
     --gutter: var(--s4);
   }
+
+  /*
+     🔴 THE TAGLINE WAS COSTING DESTINATIONS. When the rail becomes a row, every
+     pixel it spends is a pixel the nav does not get. Measured at 390px: the
+     wordmark block took 123px and the nav was left 196px to present 711px of
+     links — three of ten destinations reachable without a sideways swipe that
+     nothing advertises.
+
+     The claim in the rule above is that "every destination stays visible and
+     reachable"; a strip showing three of ten only satisfies the second half. A
+     decorative subtitle is the one item in that row nobody needs to reach, so
+     it is what goes. The wordmark stays: it is the way back to a known place.
+  */
+  .rail-tagline {
+    display: none;
+  }
 }
 
 
@@ -310,6 +326,47 @@ pre {
   label:has(> input[type='checkbox']),
   label:has(> input[type='radio']) {
     min-height: 44px;
+  }
+
+  /*
+   * 🔴 EVERY OWNER FIELD WAS 14px, SO iOS SAFARI ZOOMED THE PAGE ON EVERY TAP.
+   * Measured 2026-08-14: all eight fields on /circle computed to 14px, and the
+   * viewport is `width=device-width, initial-scale=1` with no maximum-scale —
+   * which is exactly the condition under which mobile Safari magnifies the page
+   * when a field takes focus. It does not zoom back out afterwards.
+   *
+   * It starts at the SIGN-IN screen, so the first thing this product does on an
+   * iPhone is jump and stay jumped, before anyone has an account. For the
+   * audience this is built for — people who may not know a page can be pinched
+   * back — that reads as the app breaking.
+   *
+   * 16px is the threshold Safari uses, and --t3 is the design system's 16px:
+   * the owner body floor. So this raises fields TO the scale rather than
+   * inventing a tenth step, and only where a coarse pointer is present; the
+   * desk-dense 14px is untouched.
+   *
+   * The alternative fix — `maximum-scale=1` on the viewport — disables pinch
+   * zoom for everybody and is an accessibility failure on a product whose users
+   * are disproportionately likely to need it. Not that.
+   *
+   * 🔴 !important IS LOAD-BEARING HERE AND THE FIRST ATTEMPT WITHOUT IT DID
+   * NOTHING. Field styling in this app is INLINE — per-file
+   * `const field = { fontSize: 'var(--t2)', … }` objects — and an inline
+   * declaration beats every selector in every stylesheet. The rule shipped,
+   * matched, and lost silently; the fields measured 14px exactly as before.
+   * globals.css already records this hazard about the shell ("INLINE styles,
+   * which no selector can override"), and the print block already uses
+   * !important for the same reason.
+   *
+   * A `--field-size` variable would be the tidier answer, but it only works if
+   * every one of the ten-odd field objects remembers to use it, and any that
+   * does not zooms the page with nothing to show for it. This is a floor, not a
+   * preference: better made impossible than remembered.
+   */
+  input:not([type='checkbox']):not([type='radio']):not([type='hidden']),
+  select,
+  textarea {
+    font-size: var(--t3) !important;
   }
 }
 
