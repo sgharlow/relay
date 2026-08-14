@@ -1,7 +1,24 @@
 <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="32" height="32" rx="7" fill="#0f172a"/>
-  <!-- the relay: owner (blue) hands scoped access along an arc to the recipient (amber) -->
-  <path d="M9.5 21.5 C 15 21.5, 17 10.5, 22.5 10.5" stroke="#94a3b8" stroke-width="2.2" stroke-linecap="round" fill="none"/>
-  <circle cx="9.5" cy="21.5" r="4.3" fill="#3b82f6"/>
-  <circle cx="22.5" cy="10.5" r="4.3" fill="#fbbf24"/>
+  <!--
+    THE TAB ICON. Brought into the Warm Archive palette on 2026-08-13.
+
+    🔴 IT WAS OFF-PALETTE, and had been since before the design system existed:
+    #0f172a with #3b82f6 and #fbbf24 — Tailwind slate, blue and amber. Every
+    browser tab advertised a product that looked nothing like the one behind it.
+
+    The shape is unchanged in meaning and simplified in form: a filled node (the
+    person who holds everything), an open node (the person standing by, holding
+    nothing). The connecting arc from the full mark is deliberately ABSENT here
+    — below about 32px it renders as two grey pixels sitting in the gap that
+    carries the whole idea, which is worse than leaving it out.
+
+    Literal hex rather than tokens because a favicon is fetched as a standalone
+    document; no CSS variable from the app is in scope. These are the current
+    values of --paper, --ink and --ochre.
+
+    Full mark and rationale: public/assets/brand/
+  -->
+  <rect width="32" height="32" rx="7" fill="#f7f4ee"/>
+  <circle cx="11" cy="21" r="6" fill="#1f1b16"/>
+  <circle cx="22" cy="10.5" r="4.75" fill="none" stroke="#b4703a" stroke-width="3.5"/>
 </svg>
