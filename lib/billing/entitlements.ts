@@ -86,6 +86,29 @@ export const TIER_LIMITS: Record<
   },
 };
 
+/**
+ * The marker that says "this plan was given, not bought".
+ *
+ * 🔴 A COMP MUST NEVER LOOK LIKE REVENUE. This portfolio's central
+ * discipline is arms-length revenue evidence — PROJECT.yaml records
+ * wtp_evidence as `none` and treats one self-purchased subscription as
+ * advancing nothing. A founding family granted the paid tier by hand writes a
+ * row that is, structurally, indistinguishable from a customer: same table,
+ * same tier, same active status. Counting it once would corrupt the single
+ * number the G1 gate rests on, and it would do so silently, months later, in a
+ * report nobody re-derives.
+ *
+ * So a comp is marked twice and unmistakably: `cohort = COMP_COHORT`, and
+ * `price_cents = 0`. Any revenue read excludes both. One definition, here,
+ * because two spellings of this marker is how the corruption happens anyway.
+ */
+export const COMP_COHORT = 'founding-comp';
+
+/** True when this subscription row was granted by hand rather than paid for. */
+export function isComped(row: { cohort?: string | null; price_cents?: number | null }): boolean {
+  return row.cohort === COMP_COHORT || row.price_cents === 0;
+}
+
 export async function getEntitlement(ownerId: string): Promise<{ tier: Tier }> {
   // Demo accounts are not free-tier customers. The H0 demo vault holds 25
   // items; capping it at 10 would break the very flow the demo exists to show.
