@@ -1,8 +1,28 @@
 # G2 counsel brief — questions for digital-assets/estate counsel (DRAFT 2026-07-03)
 
-> Purpose: walk into the first counsel conversation with a tight, answerable question set instead
-> of an open-ended product pitch. Gate `g2-counsel-opinion` (due **2026-09-30**) requires a
-> WRITTEN opinion before any paying customer. This brief poses the questions; it does not answer
+> ## 🅿️ PARKED 2026-08-14 — NO ENGAGEMENT IS PLANNED
+>
+> Gate `g2-counsel-opinion` was **declined**, not met: see `PROJECT.yaml → gates →
+> g2-counsel-opinion.declined`. No counsel is being engaged, and estate is narrowed out of the
+> product permanently rather than held pending an opinion. The gate closed by removing the
+> capability it guarded.
+>
+> **This file is kept, not deleted**, because it is the artifact to reuse the day one of the
+> declined block's `revisit:` triggers fires — a B2B2C diligence conversation, an arms-length
+> estate inbound, or G1 passing. Re-deriving these twelve questions later would cost more than
+> keeping the page.
+>
+> **Read §B (Q4, Q5) and §C (Q7) as OPEN RISK, not as future work.** Those questions are about the
+> product as shipped — credential release to a recipient who then logs into a third party — and
+> they apply whether or not the `estate` trigger type exists. The declined block names them as
+> accepted residual risk and explains why the estate gate never contained them: a deceased owner's
+> `emergency` trigger still releases, and nothing closes it.
+>
+> ---
+>
+> Purpose (as authored): walk into the first counsel conversation with a tight, answerable question
+> set instead of an open-ended product pitch. Gate `g2-counsel-opinion` (due **2026-09-30**) requires
+> a WRITTEN opinion before any paying customer. This brief poses the questions; it does not answer
 > them — nothing here is legal analysis, and none of it should be treated as such.
 
 ## One-paragraph product description (for counsel)

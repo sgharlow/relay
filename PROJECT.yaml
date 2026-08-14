@@ -86,6 +86,72 @@ gates:
     kill: "adverse opinion -> B2B2C-through-regulated-partners only, or park  # ratified 2026-07-01"
     owner: steve
     due: 2026-09-30
+    declined:
+      date: 2026-08-14
+      by: steve
+      decision: "no counsel will be engaged. Estate is narrowed OUT of the product
+        PERMANENTLY rather than held pending an opinion. This gate is closed by
+        removing the capability it guarded, not by satisfying it."
+      rationale: "Sequencing, on this project's own rule: demand before spend.
+        wtp_evidence is none, G1 has measured zero traffic, and no arms-length
+        revenue exists anywhere in the portfolio — a $5-15k written opinion before
+        one customer is the exact pattern the 2026-07-05 retrospective flagged. The
+        2026-08-10 estate-gated-until-counsel rationale also still holds and now
+        points further: with no estate customer to win, the cheapest correct move
+        is not to offer estate at all. An opinion spanning 12 questions, 50 states
+        and the CA divergence would also come back heavily qualified rather than
+        as the crisp go/no-go the gate assumed."
+      # 🔴 THE FINDING THAT MADE THIS A REAL DECISION RATHER THAN A FORMALITY.
+      # The pre-release audit (2026-08-14) established that the estate gate was
+      # holding a LABEL, not a mechanism:
+      #
+      #   - runHeartbeatSweep selects overdue owners and arms EVERY armed
+      #     release_state for them (lib/release/heartbeat.ts) — there is no
+      #     trigger_type filter.
+      #   - Nothing auto-closes a `released` state. It closes only on owner
+      #     check-in or stand-down.
+      #
+      # So an owner who dies stops checking in, goes overdue, their `emergency` or
+      # `caregiver` trigger arms, verifiers confirm, access RELEASES — and stays
+      # released, because the person who would reverse it is dead. That is an
+      # estate handoff. It is "reversible" only in the sense that a dead man could
+      # reverse it. Meanwhile src/app/terms/page.tsx states estate functionality
+      # "is not offered".
+      #
+      # The exposure the opinion was meant to price is therefore ALREADY in the
+      # shipping product, and refusing the `estate` trigger type never contained
+      # it. Declining counsel is defensible; believing the gate was protecting
+      # anything was not.
+      supersedes: "ratified.estate-gated-until-counsel (2026-08-10), whose 'until'
+        is now 'never'. That entry stays as the reasoning that got here."
+      instead_of_an_opinion: "the question is made not to arise, which is cheaper
+        and entirely in our control:
+        (1) estate stays out of USER_SELECTABLE_TRIGGER_TYPES permanently, now
+            enforced as a closed door rather than a pending one (lib/ops/gates.test.ts);
+        (2) the Terms describe the mechanism actually operated, including that a
+            release does not end on its own;
+        (3) a recipient-side statement that Relay conveys the access an owner
+            chose to share and confers no legal authority — the single highest-value
+            mitigation available, and it costs an afternoon."
+      residual_risk: "REAL, NAMED, AND ACCEPTED. Questions 4, 5, 7 and 11 of
+        docs/g2-counsel-brief.md apply to the product as shipped, not to the gated
+        feature, and go unanswered: Relay's exposure for facilitating a recipient's
+        login to a third party whose ToS forbids credential sharing (CFAA and state
+        analogs behind it); whether that analysis differs once the owner is dead —
+        which the heartbeat finding above makes a live question rather than a
+        hypothetical; whether N-of-M verifiers take on liability by attesting; and
+        the B2B2C regulatory surface. There is also no analysed standard for a
+        wrongful release or a wrongful failure to release, in either direction.
+        Consequence accepted knowingly: the gate's own kill condition routed an
+        adverse opinion to 'B2B2C through regulated partners', and that fallback
+        closes too — a bank's diligence asks these same questions, and 'we did not
+        look' is a worse answer than an adverse opinion."
+      revisit: "ANY of: (a) the first B2B2C conversation with a bank, wealth
+        manager or benefits provider — their diligence asks Q1/Q3/Q11 and counsel
+        gets funded out of that opportunity; (b) the first arms-length inbound
+        asking for estate/inheritance specifically; (c) G1 passing, at which point
+        there is revenue to fund the opinion and a reason to want it. Until one of
+        those, this stays closed and does not reappear at /daily-priority."
 
 market:
   competitors_doc: docs/COMPETITORS.md   # authored 2026-07-01 (Everplans $99/yr = the price anchor; GoodTrust/Trustworthy; free platform features = the awareness rival) — stale at 60 days

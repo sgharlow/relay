@@ -21,17 +21,34 @@ export type TriggerType = (typeof VALID_TRIGGER_TYPES)[number];
  * all still handle `estate`, and any existing row keeps working. This list is
  * narrower: what a signed-in owner is permitted to choose.
  *
- * `estate` is excluded pending gate `g2-counsel-opinion` (PROJECT.yaml), which
- * requires a WRITTEN counsel opinion before any paying estate customer.
- * src/app/terms/page.tsx states "Estate and inheritance functionality is not
- * offered" — but /rules rendered its dropdown from VALID_TRIGGER_TYPES
- * unfiltered, so the product offered a permanent, irreversible capability its
- * own Terms disclaimed, on a surface that takes live payments.
+ * `estate` is excluded, and as of 2026-08-14 that exclusion is PERMANENT.
  *
- * TO RE-ENABLE once counsel clears: move 'estate' into this list. The test in
- * enums.test.ts fails until it is deliberately updated, so this cannot widen by
- * accident — and the acknowledgement path in /api/policies is dormant, not
- * deleted, waiting for exactly that.
+ * ⚠️ THIS EXCLUSION USED TO BE TEMPORARY AND IS NOT ANY MORE. Gate
+ * `g2-counsel-opinion` was DECLINED rather than met (PROJECT.yaml → gates →
+ * g2-counsel-opinion.declined): no written opinion is being sought, so the
+ * condition that would have re-opened this can never be satisfied. This is not
+ * "not yet". There is no door.
+ *
+ * The original reason still stands and is worth keeping: src/app/terms/page.tsx
+ * states "Estate and inheritance functionality is not offered", while /rules
+ * once rendered its dropdown from VALID_TRIGGER_TYPES unfiltered — so the
+ * product offered a permanent, irreversible capability its own Terms disclaimed,
+ * on a surface that takes live payments.
+ *
+ * TO RE-OPEN, if it ever comes to that: reversing the declined decision in
+ * PROJECT.yaml comes FIRST, in its own change, with its own argument — and only
+ * then does moving 'estate' into this list mean anything. lib/ops/gates.test.ts
+ * enforces that order; enums.test.ts stops the list widening by accident. The
+ * acknowledgement path in /api/policies stays dormant rather than deleted,
+ * because deleting it would make the reversal harder to review, not safer.
+ *
+ * ⚠️ AND THE HARD PART THIS DOES NOT SOLVE, so nobody mistakes it for cover:
+ * closing the `estate` TRIGGER TYPE does not stop the product releasing after an
+ * owner dies. runHeartbeatSweep arms every armed release for an overdue owner
+ * with no trigger_type filter, and nothing auto-closes a released state — so a
+ * deceased owner's `emergency` trigger releases and stays released. The
+ * mitigations for that are disclosure and copy, not this list. See the
+ * `declined:` block in PROJECT.yaml.
  */
 export const USER_SELECTABLE_TRIGGER_TYPES = [
   'emergency',

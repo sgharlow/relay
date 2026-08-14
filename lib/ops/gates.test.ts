@@ -27,10 +27,31 @@ import { TIER_LIMITS } from '../billing/entitlements';
 
 const PROJECT = readFileSync('PROJECT.yaml', 'utf8');
 
+/**
+ * What has been recorded about a gate's outcome.
+ *
+ * 🔴 THIS WAS A BOOLEAN AND THE BOOLEAN WAS BACKWARDS, corrected 2026-08-14.
+ * `decided` collapsed two opposite outcomes into one value, and the estate check
+ * below returned early on it — so recording the decision NOT to seek counsel
+ * would have RELEASED the lock that decision exists to make permanent. The
+ * safest possible answer would have unlocked the riskiest possible capability.
+ *
+ *   open     — nothing recorded yet. Estate stays shut, and the clock runs.
+ *   met      — the gate's own condition was satisfied. For g2 that is a written
+ *              counsel opinion, after which enabling estate is a legitimate
+ *              deliberate act and this file stops having an opinion about it.
+ *   declined — we will not pursue the condition, ever. The gated capability is
+ *              therefore closed PERMANENTLY, not pending. This is the strongest
+ *              lock in the file, not the absence of one.
+ */
+type Disposition = 'open' | 'met' | 'declined';
+
 interface Gate {
   id: string;
   due: string | null;
-  decided: boolean;
+  disposition: Disposition;
+  /** The recorded block body, so a declined gate can be held to its own terms. */
+  block: string;
 }
 
 /**
@@ -51,10 +72,21 @@ function gates(): Gate[] {
     .map((block) => {
       const id = block.split('\n')[0].trim();
       const due = /^\s{4}due:\s*(\d{4}-\d{2}-\d{2})/m.exec(block)?.[1] ?? null;
-      // `met:` records an outcome. `moved:` records a deliberate, reasoned
-      // change of date — both are decisions; neither is a slide.
-      const decided = /^\s{4}met:/m.test(block);
-      return { id, due, decided };
+
+      /*
+        `met:` and `declined:` are both outcomes and both stop the clock — one
+        says the condition was satisfied, the other says it will never be
+        pursued. `moved:` is deliberately NOT an outcome: moving a date with a
+        recorded reason is a legitimate act, but the gate is still open and
+        still owes an answer.
+      */
+      const disposition: Disposition = /^\s{4}met:/m.test(block)
+        ? 'met'
+        : /^\s{4}declined:/m.test(block)
+          ? 'declined'
+          : 'open';
+
+      return { id, due, disposition, block };
     });
 }
 
@@ -72,7 +104,7 @@ describe('gates', () => {
   */
   it('no gate is past due without a recorded decision', () => {
     const today = new Date().toISOString().slice(0, 10);
-    const overdue = gates().filter((g) => !g.decided && g.due && g.due < today);
+    const overdue = gates().filter((g) => g.disposition === 'open' && g.due && g.due < today);
 
     expect(
       overdue.map((g) => `${g.id} (due ${g.due})`),
@@ -83,30 +115,113 @@ describe('gates', () => {
           'already demonstrated in PROJECT.yaml:\n' +
           '  1. Record the outcome under `met:` — what happened, and what follows.\n' +
           '  2. Move `due:` and add a `moved:` block with who moved it and the ' +
-          'derivation, as g1-caregiver-wtp did on 2026-08-11.\n\n' +
-          'What this exists to prevent is the third option, which is nothing at all.'
+          'derivation, as g1-caregiver-wtp did on 2026-08-11.\n' +
+          '  3. Record a `declined:` block — the condition will never be pursued, ' +
+          'and the capability it gated closes permanently.\n\n' +
+          'What this exists to prevent is the fourth option, which is nothing at all.'
         : 'ok',
     ).toEqual([]);
   });
 
-  /*
-    An unmet gate the product could WALK PAST is worse than a late one. J10 is
-    gated on g2-counsel-opinion, and the enforcement is a single list — so this
-    asserts the two agree while counsel is outstanding.
-  */
-  it('estate stays closed while g2-counsel-opinion is undecided', () => {
-    const g2 = gates().find((g) => g.id === 'g2-counsel-opinion');
-    if (!g2 || g2.decided) return; // counsel came back; enabling it is a decision.
+  /**
+   * 🔴 THE INVERSION. This check used to return early the moment g2 was
+   * "decided", on the reasoning that counsel coming back makes enabling estate a
+   * legitimate act. That is true of exactly ONE outcome.
+   *
+   * The other outcome is declining counsel — and under that outcome estate is
+   * closed FOREVER, because the condition that would ever have opened it is
+   * never going to be met. Treating the two the same meant the decision to be
+   * maximally cautious would have unlocked the capability it was cautious about.
+   *
+   * So: `met` lifts the lock, `declined` welds it shut, `open` holds it.
+   */
+  describe('estate stays out of the product', () => {
+    const enums = () =>
+      readFileSync('lib/domain/enums.ts', 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ');
+    const selectable = () =>
+      /USER_SELECTABLE_TRIGGER_TYPES[^=]*=\s*\[([^\]]*)\]/.exec(enums())?.[1] ?? '';
 
-    const enums = readFileSync('lib/domain/enums.ts', 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ');
-    const selectable = /USER_SELECTABLE_TRIGGER_TYPES[^=]*=\s*\[([^\]]*)\]/.exec(enums)?.[1] ?? '';
-    expect(
-      selectable.includes('estate'),
-      'estate is user-selectable while g2-counsel-opinion is still open. That gate ' +
-        'says counsel is REQUIRED before any paying estate customer, and Stripe is ' +
-        'live — so the first person to use it is exactly the case the gate exists ' +
-        'for. Re-enable it in the same change that records the counsel opinion.',
-    ).toBe(false);
+    it('while g2-counsel-opinion is open, or permanently if it was declined', () => {
+      const g2 = gates().find((g) => g.id === 'g2-counsel-opinion');
+      expect(g2, 'g2-counsel-opinion has vanished from PROJECT.yaml').toBeDefined();
+      if (g2!.disposition === 'met') return; // A written opinion exists; enabling is now a decision.
+
+      const permanent = g2!.disposition === 'declined';
+      expect(
+        selectable().includes('estate'),
+        permanent
+          ? 'estate is user-selectable, but g2-counsel-opinion was DECLINED — no ' +
+            'counsel opinion is coming, so the condition that would have opened ' +
+            'this can never be met. This is not "not yet"; it is closed. ' +
+            'Re-opening it means reversing the declined decision in PROJECT.yaml ' +
+            'first, in its own change, with its own argument.'
+          : 'estate is user-selectable while g2-counsel-opinion is still open. That ' +
+            'gate says counsel is REQUIRED before any paying estate customer, and ' +
+            'Stripe is live — so the first person to use it is exactly the case ' +
+            'the gate exists for.',
+      ).toBe(false);
+    });
+
+    /*
+      A declined gate has to stay an ACCEPTED risk rather than a forgotten one.
+      Same discipline PROJECT.yaml already applies to beta-free-release: a
+      decision with no named risk and no re-trigger is a decision nobody will
+      revisit, which is how "we decided not to" becomes "nobody remembers why".
+    */
+    it('a declined gate names its residual risk and what would reopen it', () => {
+      for (const g of gates().filter((x) => x.disposition === 'declined')) {
+        expect(g.block, `${g.id} declines without naming the risk it accepts`).toMatch(
+          /residual_risk:/,
+        );
+        expect(g.block, `${g.id} declines without saying what would reopen it`).toMatch(
+          /revisit:/,
+        );
+      }
+    });
+
+    /*
+      🔴 AND THE CODE MUST NOT PROMISE A DOOR THAT NO LONGER EXISTS. enums.ts
+      carried "TO RE-ENABLE once counsel clears" — accurate while the gate was
+      open, and actively misleading once counsel is declined. A future reader
+      following that instruction would be enabling a permanently-closed
+      capability believing they were completing a plan.
+    */
+    /*
+      ⚠️ THE FIRST VERSION OF THIS CHECK WAS A NEGATIVE REGEX OVER PROSE, and it
+      failed on the very comment that fixed the problem — the sentence explaining
+      that enums.ts USED TO say "pending counsel" contains the words "pending
+      counsel". Third time this class has bitten in one working session
+      (api-reachability's module specifiers, code-entropy's failed_attempts, this),
+      so it is worth stating as a rule: a guard that greps prose will match prose
+      ABOUT itself, and the fix is to assert what must be PRESENT rather than
+      hunting for what must be absent.
+
+      So the positive assertion carries the weight: enums.ts must name the gate
+      and its disposition, which is only true if somebody updated it deliberately.
+      The negative is kept but narrowed to the imperative form — an instruction
+      telling a future reader to go and re-enable, which is the actual hazard.
+    */
+    it('the code records the disposition instead of promising a door', () => {
+      const g2 = gates().find((g) => g.id === 'g2-counsel-opinion');
+      if (g2?.disposition !== 'declined') return;
+
+      const raw = readFileSync('lib/domain/enums.ts', 'utf8');
+
+      expect(
+        /declined/i.test(raw) && /g2-counsel-opinion/.test(raw),
+        'lib/domain/enums.ts does not mention that g2-counsel-opinion was DECLINED. ' +
+          'A reader deciding whether this list may widen needs to know the gate is ' +
+          'closed permanently, not merely unmet — say so where they will be standing.',
+      ).toBe(true);
+
+      expect(
+        /TO RE-ENABLE[\s\S]{0,80}counsel/i.test(raw),
+        'lib/domain/enums.ts still instructs the reader to re-enable estate once ' +
+          'counsel clears. Counsel was declined — that never happens, so following ' +
+          'the instruction would enable a permanently-closed capability while ' +
+          'believing it completed a plan.',
+      ).toBe(false);
+    });
   });
 });
 
