@@ -19,6 +19,7 @@
 import { query } from '../db/connection';
 import { getVaultMetadata, type VaultMetadata } from './metadata-query';
 import { bucketFor, type Bucket } from './buckets';
+import { orderByDependency } from './dependency-order';
 
 export { bucketFor, type Bucket } from './buckets';
 
@@ -64,36 +65,15 @@ function providerGuidance(item: VaultMetadata): string | undefined {
  * importance order (defensive — valid DAGs never hit this).
  */
 export function buildTriagePlan(items: VaultMetadata[], triggerType: string): TriageStep[] {
-  const ids = new Set(items.map((i) => i.id));
-  const byId = new Map(items.map((i) => [i.id, i]));
-  const inDegree = new Map<string, number>();
-  const dependents = new Map<string, string[]>(); // dep id → ids that depend on it
-
-  for (const it of items) {
-    const dep = it.depends_on_item_id && ids.has(it.depends_on_item_id) ? it.depends_on_item_id : null;
-    inDegree.set(it.id, dep ? 1 : 0);
-    if (dep) dependents.set(dep, [...(dependents.get(dep) ?? []), it.id]);
-  }
-
-  const order: VaultMetadata[] = [];
-  const placed = new Set<string>();
-  const available = items.filter((i) => (inDegree.get(i.id) ?? 0) === 0);
-
-  while (available.length > 0) {
-    available.sort(rankCompare);
-    const next = available.shift()!;
-    order.push(next);
-    placed.add(next.id);
-    for (const depId of dependents.get(next.id) ?? []) {
-      inDegree.set(depId, (inDegree.get(depId) ?? 0) - 1);
-      if (inDegree.get(depId) === 0) available.push(byId.get(depId)!);
-    }
-  }
-
-  if (order.length < items.length) {
-    const remaining = items.filter((i) => !placed.has(i.id)).sort((a, b) => b.importance_score - a.importance_score);
-    order.push(...remaining);
-  }
+  // The topological pass moved to lib/ai/dependency-order.ts so the access
+  // dashboard can apply the SAME rule. It was implemented here and called by
+  // nothing, while the screen recipients actually read sorted by importance
+  // alone — one requirement, two behaviours, and the wrong one shipped.
+  const order = orderByDependency(items, {
+    id: (i) => i.id,
+    dependsOn: (i) => i.depends_on_item_id,
+    compare: rankCompare,
+  });
 
   const isEstate = triggerType === 'estate';
   return order.map((it, idx) => ({

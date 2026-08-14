@@ -29,6 +29,7 @@ import type { ReleaseStateRow } from '../release/state-machine';
 import { isDelayElapsed, opensAt } from '../rules/release-delay';
 import { getOwnerLabel } from '../people/owner-label';
 import { hasAcknowledgedLimits } from './acknowledgement';
+import { orderByDependency } from '../ai/dependency-order';
 
 /**
  * `explainable` marks a denial whose MESSAGE is safe and useful to show the
@@ -108,14 +109,43 @@ function compareTitle(a: string, b: string): number {
  * broken alphabetically by title (Property 15, Req 7.4). Pure + stable.
  */
 export function rankAccessItems(items: AccessItem[]): AccessItem[] {
-  return items.slice().sort((a, b) => {
-    const aRoot = a.is_root_credential ? 1 : 0;
-    const bRoot = b.is_root_credential ? 1 : 0;
-    if (aRoot !== bRoot) return bRoot - aRoot; // roots (1) before non-roots (0)
-    const aScore = a.importance_score ?? 0;
-    const bScore = b.importance_score ?? 0;
-    if (aScore !== bScore) return bScore - aScore; // importance desc
-    return compareTitle(a.title, b.title); // ties: title asc
+  return items.slice().sort(rankCompare);
+}
+
+function rankCompare(a: AccessItem, b: AccessItem): number {
+  const aRoot = a.is_root_credential ? 1 : 0;
+  const bRoot = b.is_root_credential ? 1 : 0;
+  if (aRoot !== bRoot) return bRoot - aRoot; // roots (1) before non-roots (0)
+  const aScore = a.importance_score ?? 0;
+  const bScore = b.importance_score ?? 0;
+  if (aScore !== bScore) return bScore - aScore; // importance desc
+  return compareTitle(a.title, b.title); // ties: title asc
+}
+
+/**
+ * The order a recipient is actually given the plan in (Req 13.2).
+ *
+ * 🔴 REQUIREMENT 13 WAS BUILT AND NEVER CALLED. lib/ai/triage-agent.ts computes
+ * a dependency-ordered handoff plan, is fully tested, and had zero production
+ * callers. This dashboard — the screen recipients read at release — selected
+ * `depends_on_item_id` in its query and then sorted by importance alone, so the
+ * product permanently shipped what the spec defines as the FALLBACK (13.8).
+ *
+ * The user-visible cost is specific: an importance-first list puts the bank
+ * account before the email account it needs a reset code from, so the first
+ * thing a grieving person tries is the thing that cannot work yet.
+ *
+ * RANKING IS NOT REDEFINED — IT IS CONSTRAINED. Req 7.4 and Property 15 govern
+ * `rankAccessItems`, which is untouched and still decides every free choice;
+ * this only refuses to place an item before something it depends on. Changing
+ * the ranking rule itself would have been a contract change between two ratified
+ * requirements, which is not a call to make silently.
+ */
+export function orderForHandoff(items: AccessItem[]): AccessItem[] {
+  return orderByDependency(items, {
+    id: (i) => i.id,
+    dependsOn: (i) => i.depends_on_item_id,
+    compare: rankCompare,
   });
 }
 
@@ -258,7 +288,7 @@ async function buildDashboard(
   return {
     state: rs.state,
     released,
-    items: released ? rankAccessItems(scoped) : scoped.map(toLimited),
+    items: released ? orderForHandoff(scoped) : scoped.map(toLimited),
     ownerLabel,
     acknowledgedLimits,
   };

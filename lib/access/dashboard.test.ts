@@ -104,6 +104,35 @@ describe('getAccessDashboard', () => {
     expect(mockAudit.mock.calls[0][1].action).toBe('recipient_dashboard_viewed');
   });
 
+  /*
+    🔴 REQUIREMENT 13.2 SHIPPED UNIMPLEMENTED, AND NOTHING NOTICED FOR A REASON:
+    the dependency-ordered plan was built and tested in lib/ai/triage-agent.ts,
+    which had ZERO production callers, while this dashboard selected
+    `depends_on_item_id` and then sorted by importance alone. Both halves looked
+    healthy in isolation. Only a test that asserts THIS function orders that way
+    can catch the wiring being absent, which is why it lives here rather than
+    only on the primitive.
+
+    The cost is concrete: importance-first puts the bank account (0.9) ahead of
+    the email account (0.5) it needs a password-reset code from, so the first
+    thing a grieving person tries is the one thing that cannot work yet.
+  */
+  it('orders the plan so a dependency comes before what needs it (Req 13.2)', async () => {
+    mockQuery
+      .mockResolvedValueOnce(qResult([rsRow()]))
+      .mockResolvedValueOnce(
+        qResult([
+          { id: 'bank', title: 'Bank', service_name: 'B', url: null, category: 'finance', type: 'login', is_root_credential: false, importance_score: '0.9', depends_on_item_id: 'email', scope: 'view' },
+          { id: 'email', title: 'Gmail', service_name: 'G', url: null, category: 'communication', type: 'login', is_root_credential: false, importance_score: '0.5', depends_on_item_id: null, scope: 'view' },
+        ]),
+      );
+
+    const out = await getAccessDashboard('tok');
+
+    // Importance alone would have put the bank first.
+    expect(out.items.map((i) => i.id)).toEqual(['email', 'bank']);
+  });
+
   it('returns only limited fields (no scope) when NOT released (Req 7.3)', async () => {
     mockQuery
       .mockResolvedValueOnce(qResult([rsRow({ state: 'grace' })]))
