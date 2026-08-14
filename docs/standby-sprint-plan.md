@@ -1722,3 +1722,95 @@ was gone, each comparing an expression with itself.
 
 ⏸️ **Not yet on production.** Every fix above is in the repository; F4 in
 particular only stops being a defect for readers once it deploys.
+
+---
+
+## 21. The production-bar pass — 2026-08-14, ten iterations
+
+Scope set by Steve: take the product from pre-beta to a production bar across
+functionality, security, UX polish, documentation, journeys, and spec
+conformance, in at most ten iterations, committing each, breaking nothing the
+architecture ratifies. Method: a six-lens multi-agent audit (UI consistency,
+journey gaps, security residuals, documentation truth, spec conformance,
+release engineering) with adversarial verification of the high findings, plus a
+live walk of the signed-in owner screens the agents could not drive. 39
+findings; 7 highs confirmed by verifiers, 2 more highs adjudicated by hand, and
+the mediums triaged into the iterations below or the reopened debt register.
+
+### What the ten iterations shipped, in one line each
+
+1. **Sign-out exists** (neither mode had one — a grep for signOut returned
+   nothing), six owner tabs get titles, a 401 stops impersonating an outage on
+   /standby and /helping.
+2. **A claimed recipient no longer receives a sign-in token at release** — the
+   skip-sentinel threw into the same catch as real failures and the fallback
+   mailed a live JWT to exactly the person hybrid+6 promises gets nothing
+   secret. And the absolute "never sends a link that signs you in" promise,
+   falsified by the product's own recorded last resort, becomes the rule that
+   is true in every branch: *a real Relay message never asks you to click and
+   then enter anything*.
+3. **The KMS unwrap oracle is closed** — both paths decrypted whatever blob the
+   body carried under the shared CMK; the server now loads the blob from the
+   authorized row, and the token gate gains the trigger_type scope the session
+   gate always had.
+4. **The two stress screens fail out loud** — challenge and approvals swallowed
+   failures, wedged their buttons, and a failed load impersonated the
+   all-clear; and the challenge screen's filled "Yes" contradicted its own
+   J6-R3 header, the same defect J7-R6 fixed on the verifier screen.
+5. **The documents stop describing a product that no longer exists** — README
+   sold estate on the public repo face, the FAQ promised a legal opinion that
+   will never be sought, e2e-verification.md instructed a sign-in that cannot
+   succeed, CLAUDE.md described the retired lint setup.
+6. **The dead-man's switch rings its bell** — the sweep armed releases in total
+   silence (the Req 4.4 notifier had zero callers; a comment claimed
+   otherwise), the deny-halt threshold was arithmetically unreachable for
+   ordinary rosters (M counted the roster, answers only come from the
+   eligible), and resolveElapsedGrace guessed the version its tokens carry.
+7. **The operational surface** — the guide gets a viewport (it rendered
+   desktop-width on the phones of the audience it exists for) and lazy images;
+   robots.txt catches the 13 routes it had drifted behind; the sitemap lists
+   /demo, /help, /guide; assets get honest caching (a day, not immutable — the
+   files are edited in place); the a11y sweep widens to the auth pages and
+   finds real violations (hover-only underlines, an unfocusable table); **0
+   serious/critical across 26 pages**.
+8. **Recovery is treated as the takeover it is** — completing one now revokes
+   every session (bumpSessionEpoch finally has its caller), writes the chain
+   before issuing codes, and tells the owner; and a requester's unanswered ask
+   survives a reload instead of inviting them to triple the family's email.
+9. **Family words everywhere** — the green success colour the palette forbids,
+   "demo/seed data" shown to a recipient mid-crisis, "provision" on an owner
+   screen, and an outage message for a signed-in visitor with nothing wrong;
+   plus the debt register reopens with four deliberate deferrals, each with the
+   trigger that ends its acceptance.
+10. **Shipped and proven live** — 17/17 pages 200, every iteration's change
+    probed on production, the one failing probe re-checked in a real DOM and
+    found to be the probe.
+
+### The through-line
+
+Five prior audit passes were thorough about what they could see. This pass
+found its worst defects in the places a self-audit structurally cannot look:
+the scheduler path (walking it takes thirty days of not checking in), the
+failure branches of stress screens (walking them requires the network to fail
+on cue), the gap between a comment and its callers, and the difference between
+a promise as written and a promise as kept by the worst branch. The recurring
+shape, again: **a green signal was wrong** — a header note claiming a caller
+exists, a calming empty state drawn over a 500, an absolute promise the
+genuine emergency email breaks.
+
+### Verification
+
+Every iteration ended green (build, tsc, lint, full suite) before its commit.
+Suite grew from 1,780 to 1,842 passing along the way — derive the current
+count with `PROJECT.yaml derived.test_count`. Deployed in two batches
+(iterations 1–3, then 4–9), each verified against production afterwards; the
+final sweep checked twelve properties live, including headers, robots/sitemap,
+the unwrap contract, and the scheduler's freshness.
+
+### Still open, and where it is written
+
+The four deliberate deferrals live in PROJECT.yaml `deferred:` (step-up
+re-auth, WebAuthn nonce store, the multi-owner LIMIT 1, the type-scale
+ratchet). The demand-side facts are unchanged by any of this: wtp_evidence
+none, invitations sent zero. The engineering bar this pass raised was never
+the thing between the product and its first user.
