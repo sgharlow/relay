@@ -62,7 +62,7 @@ describe('deleteVerifier', () => {
       return qResult([]);
     });
     await deleteVerifier('owner-1', 'v1');
-    expect(mockCascade).toHaveBeenCalledWith('verifier_confirmations', 'v1', 'verifier_id');
+    expect(mockCascade).toHaveBeenCalledWith('verifier_confirmations', 'v1', 'verifier_id', 'owner-1');
     expect(order).toEqual(['withdraw', 'cascade-confirmations', 'delete-verifier']);
   });
 

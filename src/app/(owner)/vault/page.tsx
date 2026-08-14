@@ -10,12 +10,36 @@
  *
  * Same shape as /circle and /account, which always had it: server page.tsx that
  * renders the client component. No logic moved.
+ *
+ * IT ALSO RUNS REQUIREMENT 12 NOW. The prioritisation agent was written, tested
+ * and called by nothing, so the "Custody Risk" label the spec names had never
+ * been shown. The requirement says the scan happens "on vault load", and this
+ * is vault load — running it here costs no client bundle and needs no endpoint.
+ * It is deliberately non-fatal: a gap scan that fails must never stop an owner
+ * reaching their own vault.
  */
 
+import { getOwnerSession } from '../../../../lib/auth/session';
+import { runPrioritize, type Gap } from '../../../../lib/ai/prioritize-agent';
 import VaultDashboardClient from './VaultDashboardClient';
+import { GapList } from './GapList';
 
 export const metadata = { title: 'Vault · Relay' };
 
-export default function Page() {
-  return <VaultDashboardClient />;
+export default async function Page() {
+  let gaps: Gap[] = [];
+  try {
+    const session = await getOwnerSession();
+    gaps = (await runPrioritize(session.ownerId)).gaps;
+  } catch {
+    // Advisory only (Req 12.7). An unreachable agent, a slow query or a session
+    // edge must not turn "show me my vault" into an error page.
+  }
+
+  return (
+    <>
+      <VaultDashboardClient />
+      <GapList gaps={gaps} />
+    </>
+  );
 }

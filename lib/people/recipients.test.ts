@@ -74,8 +74,9 @@ describe('deleteRecipient', () => {
 
     await deleteRecipient('owner-1', 'r1');
 
-    expect(mockCascade).toHaveBeenCalledWith('access_policies', 'r1', 'recipient_id');
-    expect(mockCascade).toHaveBeenCalledWith('access_rules', 'r1', 'recipient_id');
+    // The owner is passed so the cascade lands in THEIR audit chain (Req 16.5).
+    expect(mockCascade).toHaveBeenCalledWith('access_policies', 'r1', 'recipient_id', 'owner-1');
+    expect(mockCascade).toHaveBeenCalledWith('access_rules', 'r1', 'recipient_id', 'owner-1');
 
     // Policies must go FIRST: dropping only the rules would leave the
     // generating policy behind to recreate them on the next materialisation.

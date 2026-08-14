@@ -80,3 +80,48 @@ describe('runPrioritize', () => {
     expect(out.gaps[0].vault_item_id).toBe('passport');
   });
 });
+
+/*
+ * 🔴 REQUIREMENT 12 WAS BUILT AND CALLED BY NOTHING. detectGaps, rankGaps and
+ * runPrioritize were all implemented and tested, and `runPrioritize` had zero
+ * production callers — so the "Custody Risk" label the requirement names had
+ * never once been shown to an owner.
+ *
+ * A CUSTODY_RISK is an irreplaceable item — a deed, a will, an ID — with nobody
+ * scoped to it or no note saying what it is for. Those cannot be regenerated
+ * from a login, so an owner who never learns they are unreachable keeps a vault
+ * that looks complete and loses exactly the things that cannot be replaced.
+ *
+ * This asserts the WIRING, because both halves passed their own tests while the
+ * requirement shipped switched off — the same shape as Requirement 13.
+ */
+describe('Requirement 12 is actually reachable', () => {
+  it('runs on vault load and renders the gaps', async () => {
+    const { readFileSync } = await import('node:fs');
+    const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
+
+    const page = strip(readFileSync('src/app/(owner)/vault/page.tsx', 'utf8'));
+    /*
+      The CALL, not the identifier. The first version of this assertion read
+      `toContain('runPrioritize')` and passed while the call had been deleted,
+      because the import line still mentions the name — the same
+      matching-something-adjacent fault that bit four other checks in this
+      session. Caught by breaking it on purpose.
+    */
+    expect(page).toMatch(/runPrioritize\(\s*session\.ownerId\s*\)/);
+    expect(page).toMatch(/<GapList\s+gaps=/);
+
+    // The label the requirement names, on the surface an owner actually opens.
+    const list = strip(readFileSync('src/app/(owner)/vault/GapList.tsx', 'utf8'));
+    expect(list).toContain('Custody Risk');
+    // Req 12.4: the consequence travels with the gap, not just its name.
+    expect(list).toContain('consequence');
+  });
+
+  it('never blocks the owner — the scan is advisory (Req 12.7)', async () => {
+    const { readFileSync } = await import('node:fs');
+    const page = readFileSync('src/app/(owner)/vault/page.tsx', 'utf8');
+    // A failed scan must not stop somebody reaching their own vault.
+    expect(page).toMatch(/try\s*\{[\s\S]*runPrioritize[\s\S]*\}\s*catch/);
+  });
+});

@@ -125,7 +125,7 @@ export async function updateVerifier(
  */
 export async function deleteVerifier(ownerId: string, id: string): Promise<void> {
   await withdrawVerifierAttestations(ownerId, id);
-  await cascadeDelete('verifier_confirmations', id, 'verifier_id');
+  await cascadeDelete('verifier_confirmations', id, 'verifier_id', ownerId);
   await withOccRetry(() =>
     query(`DELETE FROM verifiers WHERE id = $1 AND owner_id = $2`, [id, ownerId]),
   );

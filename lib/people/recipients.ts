@@ -137,8 +137,8 @@ export async function deleteRecipient(ownerId: string, id: string): Promise<void
   // Policies FIRST. Deleting only the rules would leave the generating policy
   // behind, and the next materialisation would recreate the grants for a
   // recipient who no longer exists (J4-R15).
-  await cascadeDelete('access_policies', id, 'recipient_id');
-  await cascadeDelete('access_rules', id, 'recipient_id');
+  await cascadeDelete('access_policies', id, 'recipient_id', ownerId);
+  await cascadeDelete('access_rules', id, 'recipient_id', ownerId);
   await withOccRetry(() =>
     query(`DELETE FROM recipients WHERE id = $1 AND owner_id = $2`, [id, ownerId]),
   );

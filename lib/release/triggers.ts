@@ -17,6 +17,7 @@
  * Requirements: 6.3, 6.4, 6.5, 6.6, 6.9
  */
 
+import { recordIntegrityAction } from '../db/integrity';
 import { query } from '../db/connection';
 import { assertCanRelease } from '../billing/entitlements';
 import { isSqlState40001, withOccRetry } from '../db/occ';
@@ -495,6 +496,22 @@ export async function submitConfirmation(params: SubmitConfirmationParams): Prom
 
   const head = await readState(releaseStateId);
   if (existing.rowCount && existing.rows.length) {
+    /*
+      Requirement 16.5 names this as one of four integrity actions the audit log
+      must carry (`ref_integrity_uniqueness_enforced`), and it had never been
+      written. A silently-ignored duplicate is the correct BEHAVIOUR — a
+      verifier who taps twice, or whose confirmation email is opened on two
+      devices, must not count twice — but the owner's record showed nothing at
+      all, so a second answer that changed no tally left no trace of having
+      arrived.
+    */
+    await recordIntegrityAction(
+      head.owner_id,
+      'ref_integrity_uniqueness_enforced',
+      'verifier_confirmations',
+      releaseStateId,
+      { verifierId },
+    );
     return outcome('duplicate', head);
   }
   if (head.state !== 'pending' && head.state !== 'grace') {

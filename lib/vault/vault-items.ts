@@ -430,7 +430,7 @@ export async function setOwnerRootOverride(
 export async function deleteItem(ownerId: string, id: string): Promise<void> {
   // Access rules first so none is ever orphaned mid-delete. Ownership of the
   // item is asserted by the route before this runs.
-  await cascadeDelete('access_rules', id, 'vault_item_id');
+  await cascadeDelete('access_rules', id, 'vault_item_id', ownerId);
   await withOccRetry(() =>
     query(`DELETE FROM vault_items WHERE id = $1 AND owner_id = $2`, [id, ownerId]),
   );

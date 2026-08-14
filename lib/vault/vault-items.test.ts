@@ -254,7 +254,7 @@ describe('deleteItem', () => {
     });
 
     await deleteItem('owner-1', 'item-1');
-    expect(mockCascade).toHaveBeenCalledWith('access_rules', 'item-1', 'vault_item_id');
+    expect(mockCascade).toHaveBeenCalledWith('access_rules', 'item-1', 'vault_item_id', 'owner-1');
     expect(order).toEqual(['cascade', 'delete-item']);
   });
 });

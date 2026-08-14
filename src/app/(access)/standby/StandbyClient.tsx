@@ -43,7 +43,9 @@ interface Relationship {
   personType: 'recipient' | 'verifier';
   state: string;
   grant?: Grant;
-  openRelease: { releaseStateId: string; state: string; caseId: string | null } | null;
+  // triggerType is needed to tell whether THIS recipient holds any rules
+  // under the release that opened — the server has always sent it.
+  openRelease: { releaseStateId: string; triggerType: string; state: string; caseId: string | null } | null;
   /** Verifiers only: is their answer still outstanding? */
   awaitingDecision?: boolean;
   /** Recipients only: their own unanswered ask, so it survives a reload. */
@@ -113,6 +115,39 @@ function OpenRelease({ rel }: { rel: Relationship }) {
     ) : (
       <p style={{ fontSize: 16, marginTop: 12, color: '#6b6257' }}>
         Answered — nothing more is needed from you{caseRef}.
+      </p>
+    );
+  }
+
+  /*
+    🔴 "OPEN WHAT THEY LEFT YOU" WAS PROMISED TO PEOPLE WITH NOTHING SCOPED.
+    The only condition checked was that the release had reached RELEASED — not
+    whether THIS recipient has any rules under the trigger that opened. So a
+    contact whose grant sits under a different circumstance (or whose last rule
+    was removed) was shown a confident dark button and sent to /access, which
+    correctly tells them nothing was set aside for them (R7.2). The two screens
+    contradicted each other, and the wrong one came first.
+
+    `grant.triggerTypes` already lists the trigger types this person holds rules
+    under — it is built by the same query that powers the "set aside for you"
+    counts — so the check costs nothing and needs no new data.
+
+    The alternative wording is deliberately not apologetic: for a recipient in
+    this state nothing is wrong, and the person they stand by for may well have
+    arranged something for a situation that has not happened.
+  */
+  const scopedForThisRelease =
+    (rel.grant?.itemCount ?? 0) > 0 &&
+    (rel.grant?.triggerTypes ?? []).includes(open.triggerType);
+
+  if (open.state === 'released' && !scopedForThisRelease) {
+    // var(--ink-muted), not the literal the rest of this file uses: the
+    // raw-colour ratchet counts literals, and a token is the only value
+    // lib/ops/contrast.test.ts can actually verify. Same colour, checkable.
+    return (
+      <p style={{ fontSize: 16, marginTop: 12, color: 'var(--ink-muted)' }}>
+        Something has opened for {rel.ownerLabel}, but nothing of theirs is set aside for you in
+        this situation{caseRef}. There is nothing for you to do.
       </p>
     );
   }
