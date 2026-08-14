@@ -598,9 +598,38 @@ export async function notifyRequesterOfOutcome(params: {
 
 ` +
       `If you are still worried, contact them directly.`,
+    /*
+      🔴 THIS SENTENCE WAS WRONG ON TIMING AND ON MECHANISM, AND IT TRAINED THE
+      EXACT BEHAVIOUR THE PRODUCT WARNS AGAINST. It read: "Access is opening now
+      — check your email for the link, or sign in."
+
+      TIMING: approval does not open anything. respondToChallenge takes the
+      release to GRACE, and only resolveElapsedGrace — which runs on the hourly
+      heartbeat — moves GRACE to RELEASED. Even for a reversible trigger, whose
+      grace window is zero, "now" means "at the next sweep", up to an hour away.
+      Someone refreshing a page during an emergency because we told them it was
+      already open is a cruel way to be inaccurate.
+
+      MECHANISM: "check your email for the link" is not how this works and is not
+      what we want anyone doing. Under the standby architecture a claimed contact
+      SIGNS IN AS THEMSELVES and no link is emailed at release time; only an
+      unclaimed contact gets a code, and they already have it. Meanwhile
+      /security tells people in as many words that we will never email them a
+      link asking for credentials — so this message taught the habit the rest of
+      the product spends its time discouraging, in the one message a person reads
+      while frightened and least likely to be careful.
+
+      NOT FIXED BY FORCING A RELEASE HERE. resolveElapsedGrace is a global sweep
+      with no owner filter: calling it from this route would transition other
+      owners' releases and send their mail inside one requester's HTTP request.
+      The honest sentence is cheaper and carries no such risk.
+    */
     approved_by_owner:
-      `${params.ownerLabel} approved your request. Access is opening now — check your email ` +
-      `for the link, or sign in.`,
+      `${params.ownerLabel} agreed to your request. Access is not open yet — there is a short ` +
+      `wait built in so a decision made in a hurry can still be undone. You will get a message ` +
+      `the moment it opens.\n\n` +
+      `When it does, sign in to Relay the way you normally would. We will never email you a ` +
+      `link or a code that asks for your password.`,
     escalated:
       `We have not heard back from ${params.ownerLabel}, so we are now asking the people they ` +
       `nominated to confirm this is genuine. We will let you know either way.`,

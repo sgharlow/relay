@@ -14,6 +14,7 @@ import {
   notifyRecipientsOfRelease,
   notifyRecipientAccessClosed,
   notifyOwnerOfDelegation,
+  notifyRequesterOfOutcome,
 } from './notifications';
 import { query } from '../db/connection';
 
@@ -695,5 +696,71 @@ describe('🔴 the confirmed notice is trigger-aware — 2026-08-12 grace ruling
     _setResendClientForTesting(stubResend());
     await notifyOwnerReleasePendingGrace('owner@example.com', 'estate');
     expect(sent[0].text).toContain('an estate handover is');
+  });
+});
+
+/*
+ * The message a frightened person reads while waiting for an answer.
+ *
+ * 🔴 THE APPROVAL BRANCH USED TO SAY: "Access is opening now — check your email
+ * for the link, or sign in." Both halves were false and the second was harmful.
+ *
+ * Approval does not open anything: respondToChallenge moves the release to
+ * GRACE, and only the hourly heartbeat sweep moves GRACE to RELEASED. And no
+ * link is emailed at release time — a claimed contact signs in as themselves —
+ * while /security promises in as many words that Relay will never send a link
+ * asking for credentials. So the one message a person reads in distress, when
+ * they are least likely to be careful, taught exactly the habit the rest of the
+ * product spends its time discouraging.
+ */
+describe('the outcome message to whoever asked', () => {
+  it('does not tell an approved requester to go looking for a link in their email', async () => {
+    _setResendClientForTesting(stubResend());
+    await notifyRequesterOfOutcome({
+      to: 'sarah@example.com', name: 'Sarah', outcome: 'approved_by_owner',
+      ownerLabel: 'Margaret', caseId: 'RLY-AAAA-BBBB',
+    });
+
+    expect(sent[0].text).not.toMatch(/check your email for the link/i);
+    // The anti-phishing promise, stated where it is most needed.
+    expect(sent[0].text).toMatch(/never email you a link/i);
+  });
+
+  it('does not claim access is already open when it is still in grace', async () => {
+    _setResendClientForTesting(stubResend());
+    await notifyRequesterOfOutcome({
+      to: 'sarah@example.com', name: 'Sarah', outcome: 'approved_by_owner',
+      ownerLabel: 'Margaret', caseId: 'RLY-AAAA-BBBB',
+    });
+
+    expect(sent[0].text).not.toMatch(/opening now/i);
+    expect(sent[0].text).toMatch(/not open yet/i);
+    // And it says a message is coming, so nobody sits refreshing a page.
+    expect(sent[0].text).toMatch(/the moment it opens/i);
+  });
+
+  it('never addresses the owner by a raw email address', async () => {
+    // The defect lib/people/owner-label.ts exists to eliminate; the respond
+    // route was its last caller passing a bare address.
+    _setResendClientForTesting(stubResend());
+    await notifyRequesterOfOutcome({
+      to: 'sarah@example.com', name: 'Sarah', outcome: 'denied_by_owner',
+      ownerLabel: 'Margaret Chen', caseId: 'RLY-AAAA-BBBB',
+    });
+
+    expect(sent[0].text).toContain('Margaret Chen');
+    expect(sent[0].text).not.toMatch(/@/);
+  });
+
+  it('still carries the case reference on every outcome', async () => {
+    for (const outcome of ['denied_by_owner', 'approved_by_owner', 'escalated'] as const) {
+      sent.length = 0;
+      _setResendClientForTesting(stubResend());
+      await notifyRequesterOfOutcome({
+        to: 'sarah@example.com', name: 'Sarah', outcome,
+        ownerLabel: 'Margaret', caseId: 'RLY-AAAA-BBBB',
+      });
+      expect(sent[0].text).toContain('RLY-AAAA-BBBB');
+    }
   });
 });

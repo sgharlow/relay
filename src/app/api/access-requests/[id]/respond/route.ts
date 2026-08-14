@@ -17,6 +17,7 @@ import { ReleaseStateMachine } from '../../../../../../lib/release/state-machine
 import { ValidationError } from '../../../../../../lib/validation';
 import { query } from '../../../../../../lib/db/connection';
 import { notifyRequesterOfOutcome } from '../../../../../../lib/notify/notifications';
+import { getOwnerLabel } from '../../../../../../lib/people/owner-label';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -51,17 +52,20 @@ export async function POST(req: NextRequest, { params }: Ctx): Promise<NextRespo
         LIMIT 1`,
       [(await params).id, auth.ownerId],
     );
-    const owner = await query<{ email: string }>(
-      `SELECT email FROM users WHERE id = $1 LIMIT 1`,
-      [auth.ownerId],
-    );
-
     if (ctx.rows[0]) {
       await notifyRequesterOfOutcome({
         to: ctx.rows[0].email,
         name: ctx.rows[0].name,
         outcome: result.status,
-        ownerLabel: owner.rows[0]?.email ?? 'They',
+        // 🔴 THIS READ THE RAW EMAIL ADDRESS — the exact defect
+        // lib/people/owner-label.ts was created to eliminate. It had one
+        // remaining caller. A family member who asked for access got
+        // "margaret.chen1948@gmail.com has declined", which is the strongest
+        // phishing signal left in outbound mail, on the message most likely to
+        // be read in distress. getOwnerLabel carries the
+        // display_name → email → "Someone you know" precedence, so a family
+        // cannot get a name in one message and a raw address in the next.
+        ownerLabel: await getOwnerLabel(auth.ownerId),
         caseId: ctx.rows[0].case_id,
       });
     }
