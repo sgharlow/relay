@@ -527,6 +527,50 @@ cross_cutting:
 #     lib/ops/contrast.test.ts pins the ratios in CI; scripts/a11y-audit.mjs checks
 #     what is actually rendered.
 #
-# The section stays, empty, because the next honest entry belongs here and not in a
-# new file.
-deferred: []
+# The section stays because the next honest entry belongs here and not in a new
+# file. REOPENED 2026-08-14 by the production-bar pass (the six-lens audit +
+# fixes, iterations 1-9): four items measured, understood, and deliberately not
+# fixed in that pass. Everything else the audit confirmed WAS fixed — these are
+# the survivors, each with the trigger that ends its acceptance.
+deferred:
+  - id: step-up-reauth-on-sensitive-actions
+    found: 2026-08-14 (six-lens audit, security lens)
+    what: "Issuing new recovery codes and exporting the vault run on the ordinary
+      24h session with no re-authentication, so a walked-away-from machine can be
+      converted into permanent control (fresh codes) or a full plaintext export."
+    why_deferred: "A re-auth step is a UX flow (TOTP/passkey re-prompt), not a
+      guard clause — designing it mid-pass would be invented UX on the two most
+      sensitive screens. Sign-out now exists on every surface (iteration 1),
+      which shrinks the walked-away window it exploits."
+    ends_when: "before the paywall flips on (ratified.beta-free-release review,
+      2026-10-01) — paying customers get step-up on codes + export + account close"
+  - id: webauthn-challenge-single-use
+    found: 2026-08-14 (six-lens audit, security lens)
+    what: "Passkey challenges are stateless signed tokens valid ~5 minutes and
+      not burned on use, so a captured assertion could replay within the window."
+    why_deferred: "Requires a server-side nonce store (new table or cache) — an
+      infra-shaped change. The window is short, the token is origin-bound, and
+      the assertion itself is TLS-protected; the risk is real but narrow."
+    ends_when: "the first session-hardening pass after beta, alongside the
+      re-auth work above — the same nonce store serves both"
+  - id: session-access-multi-owner-limit1
+    found: 2026-08-14 (six-lens audit)
+    what: "lib/access/session-access.ts resolves a signed-in recipient's open
+      release with LIMIT 1, so a contact standing by for TWO owners with
+      simultaneous open releases sees an arbitrary one on /access."
+    why_deferred: "Requires an owner-picker UI on the access screen. /standby
+      already lists every relationship separately and is the linked path, so the
+      collapsed case has a correct door today."
+    ends_when: "the first real multi-owner contact exists (Phase 0 data will
+      show it) — or immediately if a beta family reports it"
+  - id: type-scale-ratchet
+    found: 2026-08-14 (six-lens audit, UI lens)
+    what: "~9 arbitrary font sizes (text-[17px], fontSize: 15, …) exist outside
+      the nine-step scale, mostly in (access) mode — 'no page may invent a tenth
+      step' is a rule with no test."
+    why_deferred: "Same reasoning as the raw-colour ratchet it mirrors: every
+      value in use was audited readable, and a bulk re-size of the least-tested
+      mode days before beta is the exact sweeping-visual-change that rule exists
+      to prevent. Stop the growth, ship, migrate after."
+    ends_when: "post-beta, by extending lib/ops/raw-color.test.ts's ratchet
+      pattern to font sizes — ceilings per file, lowered as files migrate"

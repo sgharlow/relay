@@ -94,7 +94,7 @@ export default function TriggersPage() {
           <section className="space-y-3">
             <h2 className="text-t5 font-semibold uppercase tracking-wide text-muted">Your triggers</h2>
             {data.releaseStates.length === 0 ? (
-              <p className="text-t2 text-muted">No triggers yet — create an access rule to provision one.</p>
+              <p className="text-t2 text-muted">Nothing is set to open yet. Decide who could reach what on the Rules page, and the conditions appear here.</p>
             ) : null}
             {data.releaseStates.map((rs) => (
               <TriggerCard key={rs.id} rs={rs} onChange={load} />

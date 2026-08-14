@@ -280,7 +280,7 @@ function AddItem({ vault, onSaved }: { vault: Vault; onSaved: () => Promise<void
       />
 
       {err ? <p role="alert" style={{ fontSize: 16, color: '#9a3412', marginTop: 10 }}>{err}</p> : null}
-      {msg ? <p role="status" style={{ fontSize: 16, color: '#3f6212', marginTop: 10 }}>{msg}</p> : null}
+      {msg ? <p role="status" style={{ fontSize: 16, color: '#365547', marginTop: 10 }}>{msg}</p> : null}
 
       <button type="submit" disabled={busy || !title.trim() || !secret.trim()} style={primaryStyle(busy || !title.trim() || !secret.trim())}>
         {busy ? 'Saving…' : 'Save to their vault'}
@@ -339,7 +339,7 @@ function ProposePerson({ vault, onProposed }: { vault: Vault; onProposed: () => 
       </p>
 
       {sent ? (
-        <p role="status" style={{ fontSize: 16, color: '#3f6212', marginTop: 10 }}>
+        <p role="status" style={{ fontSize: 16, color: '#365547', marginTop: 10 }}>
           Sent. It is waiting for {vault.ownerLabel} to answer.
         </p>
       ) : null}

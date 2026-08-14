@@ -98,6 +98,14 @@ export default function AccessClient() {
           }
           throw new Error('This access link is invalid or has expired.');
         }
+        if (res.status === 401 && signedIn) {
+          // Signed in, but nothing here is theirs — an owner who wandered in, a
+          // verifier, a recipient whose owner has no release. Nothing is wrong,
+          // and an outage-shaped sentence would say something is.
+          throw new Error(
+            'Nothing here is waiting for this account. If someone gave you a code, enter it below; if you were checking on someone you stand by for, that lives at /standby.',
+          );
+        }
         if (!res.ok) throw new Error('Unable to load your access right now.');
         setData((await res.json()) as Dashboard);
       })
@@ -121,7 +129,10 @@ export default function AccessClient() {
         const value = await new CryptoService().decryptItem(ct, iv, plaintext_data_key);
         setRevealed((r) => ({ ...r, [item.id]: value }));
       } catch {
-        setRevealed((r) => ({ ...r, [item.id]: '⚠️ Could not decrypt (the item may be demo/seed data).' }));
+        // Family words, not developer words — and never a guess that blames the
+        // data. If a real item fails here, being told it "may be demo data" is
+        // worse than no message at all.
+        setRevealed((r) => ({ ...r, [item.id]: 'This one could not be opened just now. Try again — if it keeps happening, tell us at hello@relaystandby.com so a person can look.' }));
       }
     },
     [token],
