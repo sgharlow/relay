@@ -2002,9 +2002,11 @@ the live domain, and the scheduler probe returning its new counts.
 - **Req 11.8's owner-override mechanism does not exist** — no column, no UI, so
   an owner cannot record "other accounts reset through this one". Preserving the
   flag stops the corruption; letting an owner assert it is a feature.
-- **The `/access` session branches are unit-proven, not live-proven.** Exercising
-  them needs a claimed recipient of an owner with a release, which means the
-  dogfood walk and three people — the same gap §22 ends on.
+- ~~**The `/access` session branches are unit-proven, not live-proven.**~~
+  **SUPERSEDED by §24 (same day):** both branches were walked on production —
+  the calm state and the graceful close, on one account within an hour. Left
+  struck through rather than deleted so a reader who remembers this limitation
+  can see it was closed rather than forgotten.
 - Thirteen further findings from the audit's unverified set remain triaged and
   unaddressed, including three owner tables that clip rather than scroll on a
   phone and R7.2's missing "nothing is scoped to you" page.
@@ -2136,3 +2138,58 @@ proven, though it uses the same role-agnostic endpoints and resolves the user
 from the discoverable credential. "They can get back in without you" is
 therefore demonstrated for owners and highly likely for contacts, rather than
 the "unproven and looks false" this section previously claimed.
+
+---
+
+## 26. The three named gaps, closed on production — 2026-08-14
+
+Each item below was verified by a method that would have FAILED had the claim
+been false. That qualifier matters more than usual here: five checks in this
+session measured something adjacent to what they claimed — four reported false
+success, one reported a false FAILURE and nearly produced a speculative patch to
+the authentication path. The evidence is therefore stated as what was observed,
+not as what was concluded.
+
+### Contact passkey sign-in — PROVEN
+
+A claimed contact enrolled a passkey (`webauthn_credentials` row confirmed in
+the database), signed out, and signed back in with the passkey alone — landing
+on `/standby` with no owner involvement, no emailed code and no authenticator.
+
+**"They can get back in without you" is now demonstrated rather than inferred**,
+for contacts specifically, which was the open claim. It had never been performed
+before today.
+
+### Requirement 11.8 — PROVEN in production, both directions
+
+Clicking the new control wrote `owner_set_root=true` AND `is_root_credential=true`.
+Clicking again cleared it to `owner_set_root=null` while leaving the current
+classification standing — the decision handed back to the agent rather than the
+flag wiped, which is what an owner who ticked it by accident needs. Verified
+against the database, not the button's appearance.
+
+### Requirement 7.2 — PROVEN on a real released trigger
+
+Set up so the condition was genuine rather than simulated: two recipients, an
+access rule for ONE of them, a real verifier confirmation driving the release to
+RELEASED. The recipient holding no rules then signed in (with their passkey) and
+opened `/access`:
+
+> Nothing was set aside for you here — Final Owner named you, and access is
+> open — but none of their items are scoped to you for this situation.
+
+Previously that person saw "Your access plan… Work top to bottom, the most
+consequential items come first" above an empty list.
+
+### Also confirmed in a real inbox
+
+The corrected anti-phishing wording is live: the verifier email now reads
+"Relay will never ask you for a password, and never sends a link that signs you
+in", instead of claiming we never ask you to follow a link and enter something
+three lines under an instruction to do exactly that.
+
+### Cleanup
+
+All walk accounts removed through the product's own `deleteAccount`; production
+is one real account, with the paying subscription asserted present before and
+after every deletion.
