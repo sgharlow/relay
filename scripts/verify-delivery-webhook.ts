@@ -39,7 +39,19 @@ async function main(): Promise<void> {
   );
   console.log(`events already recorded for ${to}: ${before.rows[0].n}`);
 
-  const stamp = new Date().toISOString();
+  // 🔴 THIS COMPARISON WAS DONE IN JAVASCRIPT, AND IT COULD NEVER BE TRUE.
+  // The old version held a JS ISO string ("2026-08-14T16:01:29.000Z") and
+  // compared it against occurred_at::text from Postgres
+  // ("2026-08-14 16:01:31.077+00"). Those formats differ at character 11 — a
+  // space against a "T" — and a space sorts BEFORE "T", so the database value
+  // was always "less than" the stamp no matter what time it was. The tool
+  // reported failure on a webhook that had worked perfectly, which is the
+  // worst outcome available to a verification tool: it sends you hunting a
+  // defect that is not there.
+  //
+  // The comparison now happens in the DATABASE, against a real timestamp, so
+  // there is no text format to get wrong.
+  const stamp = new Date();
   console.log('sending one test message…');
   await sendEmail({
     to,
@@ -48,7 +60,7 @@ async function main(): Promise<void> {
       `This message exists only to prove that Relay hears back from its email ` +
       `provider.\n\nIf the webhook is wired, a "delivered" event is now recorded ` +
       `against this address, and Relay can tell an owner when a message did NOT ` +
-      `reach one of their people.\n\nNothing to do. Sent ${stamp}.\n`,
+      `reach one of their people.\n\nNothing to do. Sent ${stamp.toISOString()}.\n`,
   });
   console.log('accepted by Resend. Now waiting for the event to come back…\n');
 
@@ -56,13 +68,13 @@ async function main(): Promise<void> {
   for (;;) {
     const now = await query<{ event: string; occurred_at: string }>(
       `SELECT event, occurred_at::text FROM email_delivery_events
-        WHERE email = $1 ORDER BY occurred_at DESC LIMIT 1`,
-      [to.toLowerCase()],
+        WHERE email = $1 AND occurred_at > $2
+        ORDER BY occurred_at DESC LIMIT 1`,
+      [to.toLowerCase(), stamp.toISOString()],
     );
     const latest = now.rows[0];
-    const fresh = latest && latest.occurred_at > stamp;
 
-    if (fresh) {
+    if (latest) {
       console.log(`EVENT RECEIVED: ${latest.event} at ${latest.occurred_at}`);
       console.log('\nThe webhook is wired. Relay can now tell an owner, in calm,');
       console.log('when a message to one of their people did not arrive.');
