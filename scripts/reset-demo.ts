@@ -51,7 +51,6 @@ async function main(): Promise<void> {
   }
 
   const r = await seedDemo();
-  // eslint-disable-next-line no-console
   console.log(
     `Reset demo: wiped ${existing.rows.length} prior owner row(s); reseeded ` +
       `${r.items} items, ${r.recipients} recipients, ${r.verifiers} verifiers, ` +
@@ -63,7 +62,6 @@ main()
   .then(() => closeAllPools())
   .then(() => process.exit(0))
   .catch(async (err) => {
-    // eslint-disable-next-line no-console
     console.error('reset-demo failed:', err);
     await closeAllPools().catch(() => {});
     process.exit(1);

@@ -55,12 +55,10 @@ async function main(): Promise<void> {
 }
 
 function log(msg: string): void {
-  // eslint-disable-next-line no-console
   console.log(msg);
 }
 
 main().catch((err) => {
-  // eslint-disable-next-line no-console
   console.error(err);
   process.exit(1);
 });

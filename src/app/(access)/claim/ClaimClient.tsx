@@ -60,6 +60,10 @@ export default function ClaimClient() {
         }
         // Rung 0 — where they can see what they now stand for, and come back to
         // later without being told anything.
+        // A FULL PAGE LOAD IS THE POINT. Claiming mints a new session; a
+        // client-side router push would navigate with the pre-claim one still in
+        // memory and /standby would resolve nothing.
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
         window.location.href = '/standby';
       })
       .catch(() => setState({ kind: 'error', message: 'Something went wrong. Try again.' }));

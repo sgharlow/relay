@@ -22,7 +22,9 @@
 import { credentialsFromProfile, backup, dsql } from './aws-sig.mjs';
 
 const PROFILE = process.argv[2] || 'autospecai';
-const ACCOUNT = '461293170793';
+// Kept for reference — the account these vaults live in. Underscored
+// because nothing reads it; the lint config allows `^_` unused vars.
+const _ACCOUNT = '461293170793';
 const PRIMARY = { region: 'us-east-1', id: 'frt34buqso4inluojgnj6horuy', vault: 'relay-vault' };
 const SECONDARY = { region: 'us-west-2', id: 'fjt34b2el5yoh7pvcm4knbkyvi', vault: 'relay-vault-dr' };
 

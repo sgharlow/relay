@@ -39,6 +39,10 @@ export default function InterestForm() {
   // When this component first rendered, used server-side to reject submissions
   // completed faster than a person could type. A ref, not state, so it is fixed
   // at first render and never triggers one. See lib/http/bot-signals.ts.
+  // Measuring elapsed time IS the purpose here: lib/http/bot-signals.ts compares
+  // this against submission time to spot a form completed faster than a person
+  // could type. A ref, so it is fixed at first render and never causes one.
+  // eslint-disable-next-line react-hooks/purity
   const renderedAt = useRef(Date.now());
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {

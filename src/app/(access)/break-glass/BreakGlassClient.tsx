@@ -40,6 +40,9 @@ export default function BreakGlassClient() {
         setError('That code is not valid, or it has already been used.');
         return;
       }
+      // A FULL PAGE LOAD IS THE POINT — the session that has just been
+        // established must be the one the next screen reads.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.href = '/standby';
     } catch {
       setError('We could not check that just now. Try again in a moment.');

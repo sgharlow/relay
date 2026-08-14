@@ -27,7 +27,6 @@ async function main(): Promise<void> {
     token: { sub: u.id, email: u.email, ownerId: u.id, isDemo: false, sessionEpoch: epoch },
     secret: process.env.NEXTAUTH_SECRET as string,
   });
-  // eslint-disable-next-line no-console
   console.log('COOKIE ' + token);
   await closeAllPools();
 }

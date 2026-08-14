@@ -14,7 +14,6 @@ import { seedDemo } from '../../lib/seed/seed-runner';
 
 seedDemo()
   .then((r) => {
-    // eslint-disable-next-line no-console
     console.log(
       `Seeded demo owner ${r.ownerId}: ${r.items} items, ${r.recipients} recipients, ` +
         `${r.verifiers} verifiers, ${r.rules} rules, ${r.releaseStates} release states.`,
@@ -22,7 +21,6 @@ seedDemo()
     process.exit(0);
   })
   .catch((err) => {
-    // eslint-disable-next-line no-console
     console.error('Demo seed failed:', err);
     process.exit(1);
   });

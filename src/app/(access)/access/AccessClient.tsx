@@ -194,6 +194,11 @@ export default function AccessClient() {
             <h2 className="mb-3 text-t5 font-semibold uppercase tracking-widest text-ochre-text">{BUCKET_LABELS[bucket]}</h2>
             <ol className="space-y-3">
               {grouped[bucket].map((item) => {
+                // A render-local display counter, reset on every render — see its
+                // declaration. The rule is right that it is a mutation during
+                // render; it is bounded to numbering the list a reader sees, and
+                // rewriting the recipient access plan is not a pre-beta change.
+                // eslint-disable-next-line react-hooks/immutability
                 step += 1;
                 const value = revealed[item.id];
                 return (

@@ -123,6 +123,13 @@ export default function ErrorBoundary({
           >
             Try again
           </button>
+          {/*
+            A plain <a>, not next/link: this boundary renders BECAUSE something
+            failed, and a client-side navigation would ask the router that may be
+            what broke to do the one thing the reader needs. A full load always
+            works.
+          */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a
             href="/"
             style={{
