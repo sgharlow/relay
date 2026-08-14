@@ -69,6 +69,46 @@ const SECURITY_HEADERS = [
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
 
   /*
+    CONTENT-SECURITY-POLICY, ENFORCING — but only the directives that cannot
+    blank a page.
+
+    🔴 SHIPPING EVERYTHING REPORT-ONLY WAS COSTING PROTECTION THAT WAS FREE,
+    found by the 2026-08-13 release audit. The argument below for report-only is
+    entirely correct about `script-src`, and entirely irrelevant to the four
+    directives here — none of which has anything to do with Next's inline
+    bootstrap, and none of which can stop a page rendering:
+
+      base-uri       a <base> tag injected into a page can silently repoint
+                     every relative URL on it. Nothing in this product emits
+                     one, so 'self' costs nothing and closes the whole class.
+      object-src     no <object>/<embed> anywhere; 'none' is free.
+      frame-ancestors  already enforced by X-Frame-Options: DENY above, which
+                     has been live and breaking nothing. This is the same
+                     instruction in the form newer browsers read.
+      form-action    every form in the app is an onSubmit handler with no
+                     `action` attribute, verified before enforcing; Stripe
+                     checkout is a redirect, not a cross-origin POST.
+
+    WHAT IS DELIBERATELY ABSENT: default-src, script-src, style-src, img-src,
+    connect-src and font-src. An omitted directive is not enforced at all, so
+    this header restricts scripts and network access exactly as much as no
+    header does — which is the point. Those stay in the report-only policy
+    below until real traffic says what they would break.
+
+    A test pins the split in both directions: this header must exist, and it
+    must never grow a directive that can blank a screen.
+  */
+  {
+    key: 'Content-Security-Policy',
+    value: [
+      "base-uri 'self'",
+      "object-src 'none'",
+      "frame-ancestors 'none'",
+      "form-action 'self'",
+    ].join('; '),
+  },
+
+  /*
     CONTENT-SECURITY-POLICY, IN REPORT-ONLY MODE — the second half of the
     client-side-encryption design, arriving carefully.
 
@@ -146,7 +186,20 @@ const nextConfig = {
    * `/guide` is what goes in an invitation email and on the help page.
    */
   async rewrites() {
-    return [{ source: '/guide', destination: '/guide/index.html' }];
+    return [
+      { source: '/guide', destination: '/guide/index.html' },
+      /*
+        Browsers probe /favicon.ico by convention even when the document links an
+        icon, and Next's app-router convention file is `icon.svg` — so every page
+        load was producing a 404. Harmless in itself; the cost is that a log full
+        of routine 404s is a log in which a real one is invisible, and this is the
+        product whose incident path was built because failures were going unseen.
+
+        A rewrite rather than a committed .ico: one icon, one source of truth. If
+        it is ever redrawn, there is no second file to forget.
+      */
+      { source: '/favicon.ico', destination: '/icon.svg' },
+    ];
   },
 
   async redirects() {

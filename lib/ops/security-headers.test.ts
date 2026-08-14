@@ -94,21 +94,68 @@ describe('security headers', () => {
   });
 
   /*
-    CSP ships REPORT-ONLY first, and the distinction is the whole safety
-    argument: report-only cannot blank a screen. Enforcing it needs nonces,
-    which needs middleware on every request — a decision to take on evidence
-    from real traffic, not in the same change that introduces the policy.
+    CSP SHIPS AS A SPLIT, and the split is the whole safety argument.
+
+    The directives that could blank a screen — anything constraining scripts,
+    styles, images or network calls — stay REPORT-ONLY until real traffic says
+    what they would break, because enforcing `script-src` needs nonces and
+    nonces need middleware on every request.
+
+    The directives that cannot blank a screen are ENFORCED, because leaving them
+    in report-only was buying nothing. That was the 2026-08-13 finding: the
+    argument for report-only is an argument about `script-src`, and it had been
+    applied to four directives it does not describe.
   */
   describe('Content-Security-Policy', () => {
-    it('is report-only, not enforcing', async () => {
-      const h = await headerMap();
-      expect(h['Content-Security-Policy-Report-Only']).toBeDefined();
-      expect(
-        h['Content-Security-Policy'],
-        'An ENFORCING policy has appeared. That is the goal eventually, but not ' +
-          'while script-src still carries unsafe-inline — read the note in ' +
-          'next.config.mjs before shipping this.',
-      ).toBeUndefined();
+    /** Directives that can stop a page rendering. None may be enforced yet. */
+    const CAN_BLANK_A_PAGE = [
+      'default-src',
+      'script-src',
+      'style-src',
+      'img-src',
+      'connect-src',
+      'font-src',
+      'media-src',
+      'worker-src',
+    ];
+
+    it('enforces the directives that cannot break a page', async () => {
+      const v = (await headerMap())['Content-Security-Policy'];
+      expect(v, 'the enforcing half of the split is missing').toBeDefined();
+      for (const directive of [
+        "base-uri 'self'",
+        "object-src 'none'",
+        "frame-ancestors 'none'",
+        "form-action 'self'",
+      ]) {
+        expect(v).toContain(directive);
+      }
+    });
+
+    /*
+      🔴 THE GUARD THAT MATTERS MORE THAN THE ONE ABOVE. Adding a directive to
+      the enforcing header is a one-word change that can white-screen the whole
+      product for everyone, including somebody mid-emergency. The nonce decision
+      has to be taken deliberately, with middleware, on evidence — not by
+      someone tidying two headers into one.
+    */
+    it('never enforces a directive that could blank a screen', async () => {
+      const v = (await headerMap())['Content-Security-Policy'] ?? '';
+      for (const directive of CAN_BLANK_A_PAGE) {
+        expect(
+          v,
+          `${directive} is ENFORCING. Next emits inline scripts, so this needs ` +
+            'per-request nonces from Node-runtime middleware first — read the ' +
+            'note in next.config.mjs before shipping this.',
+        ).not.toContain(directive);
+      }
+    });
+
+    it('keeps the script directives under observation rather than enforcement', async () => {
+      const ro = (await headerMap())['Content-Security-Policy-Report-Only'];
+      expect(ro).toBeDefined();
+      expect(ro).toContain('script-src');
+      expect(ro).toContain('default-src');
     });
 
     it('names a report destination that exists', async () => {
