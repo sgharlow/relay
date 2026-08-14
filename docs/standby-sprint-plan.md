@@ -2008,3 +2008,70 @@ the live domain, and the scheduler probe returning its new counts.
 - Thirteen further findings from the audit's unverified set remain triaged and
   unaddressed, including three owner tables that clip rather than scroll on a
   phone and R7.2's missing "nothing is scoped to you" page.
+
+---
+
+## 24. The dogfood walk — 2026-08-14, live on production
+
+**Nobody had ever completed a journey.** Every claim about J1–J9 rested on unit
+tests and inference. This is the record of walking the whole product on
+production as three people — a fresh owner, a recipient and a verifier — from
+signup to graceful close.
+
+It was run on a throwaway owner account rather than the paying one, and all
+three accounts were removed afterwards through the product's own
+`deleteAccount`, with the paying account asserted present before and after.
+
+### What is now live-proven, not inferred
+
+| Step | Evidence |
+| --- | --- |
+| Signup + TOTP enrolment (J1) | Account created; recovery codes issued; TOTP sign-in repeated four times |
+| Vault item (J2) | Encrypted in-browser with SubtleCrypto, wrapped by KMS, stored in DSQL |
+| Naming the circle (J3) | Recipient and verifier created; codes issued owner-delivered, no mail sent |
+| **Claiming a standby account (J8)** | **Performed for the first time.** Both contacts claimed and landed on `/standby` |
+| Fingerprint verification (J4) | Owner's four words — "mitten lobster evening jungle" — matched the recipient's screen exactly |
+| Release (J5–J7) | ARMED → PENDING → GRACE → RELEASED on a real verifier confirmation, quorum 1/1 |
+| Verifier notification | `email.delivered` recorded by the Resend webhook; owner UI showed "Email reached Walk Verifier" |
+| **Crypto round trip (J9)** | The exact plaintext typed into the owner's browser came back out in the RECIPIENT's browser, via KMS unwrap on the session path |
+| Check-in and close | "Checked in — emergency re-armed"; closure email delivered |
+
+### Both branches of the /access fix, on one account, within an hour
+
+The most damaging finding of the second audit was that a calm family member was
+told their access had been granted and withdrawn. The fix separates the two
+cases by EVIDENCE in the audit chain rather than by state — and both states are
+`armed`, so the only way to prove it is to walk it:
+
+- **Before any release**, recipient visits `/access` → "Nothing here is waiting
+  for this account."
+- **After a real release closed**, same person, same URL → "Everything is back to
+  normal… You were trusted with 1 item for under an hour. You opened 1 of them:
+  Streaming account."
+
+The closure email read **"You were trusted with 1 item. You opened it."** — the
+exact granted=1/opened=1 case that produced "The other 0 are on the record as
+never opened" before that morning.
+
+### What the walk found that no audit had
+
+1. **The signup screen promised ten recovery codes; the product issues eight.**
+2. **The anti-phishing rule was contradicted by the emails carrying it** — "never
+   asks you to click a link and then enter anything", three lines under "Go to
+   …/verify and enter this code".
+3. A `use client` boundary violation, caught only because fixing (1) naively
+   broke the build.
+
+### A security control the walk hit, and it is correct
+
+Using an emergency (break-glass) code resets `standby_state` from `confirmed` to
+`claimed`, so the holder's answer stops counting until the owner re-verifies
+them. It cost a lap of the walk and it is exactly right: the owner has not
+confirmed whoever is now holding that code.
+
+### The one thing still unproven
+
+**Zero passkeys exist.** A contact who signs out cannot get back in without an
+owner-issued emergency code, and each use de-verifies them. The walk therefore
+proves the recovery path but not the passkey path — the claim "they can get back
+in without you" remains the least-tested sentence in the product.
