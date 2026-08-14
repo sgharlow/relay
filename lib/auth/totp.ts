@@ -73,16 +73,6 @@ function decodeSecret(secret: string): Uint8Array {
 }
 
 /**
- * The legacy shared secret. Retained ONLY so the pre-signup dogfood account
- * keeps authenticating; new accounts carry their own `users.totp_secret`.
- */
-function getTotpSecretBytes(): Uint8Array {
-  const secret = process.env.TOTP_SECRET;
-  if (!secret) throw new Error('TOTP_SECRET environment variable is not set');
-  return decodeSecret(secret);
-}
-
-/**
  * Generates a fresh, cryptographically random per-user secret, base32-encoded
  * for `otpauth://` URLs and authenticator apps.
  *
@@ -160,44 +150,3 @@ export function validateTotpCodeFor(secret: string, code: string, atMs = Date.no
   }
 }
 
-/**
- * Generates a code from the legacy shared env secret.
- *
- * @deprecated Prefer `generateTotpCodeFor` with the owner's own secret.
- */
-export function generateTotpCode(atMs = Date.now()): string {
-  return generateSync({
-    secret: getTotpSecretBytes(),
-    algorithm: 'sha1',
-    digits: TOTP_DIGITS,
-    period: TOTP_STEP_SECONDS,
-    epoch: Math.floor(atMs / 1000),
-  });
-}
-
-/**
- * Validates against the legacy shared env secret.
- *
- * @deprecated Prefer `validateTotpCodeFor`. This path authenticates every
- * caller against ONE secret and must never be used for an account that has its
- * own `users.totp_secret`.
- */
-export function validateTotpCode(code: string, atMs = Date.now()): boolean {
-  if (!/^\d{6}$/.test(code)) return false;
-
-  // Resolve the secret before verifying so a missing TOTP_SECRET still
-  // throws (not returns false) — same contract as the previous implementation.
-  const secret = getTotpSecretBytes();
-
-  const result = verifySync({
-    secret,
-    token: code,
-    algorithm: 'sha1',
-    digits: TOTP_DIGITS,
-    period: TOTP_STEP_SECONDS,
-    epoch: Math.floor(atMs / 1000),
-    epochTolerance: TOTP_WINDOW * TOTP_STEP_SECONDS,
-  });
-
-  return result.valid;
-}

@@ -11,28 +11,31 @@
  * Requirements: 17.1
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
 import {
-  generateTotpCode,
-  validateTotpCode,
   generateTotpSecret,
   generateTotpCodeFor,
   validateTotpCodeFor,
 } from './totp';
+import * as totp from './totp';
 
 // ---------------------------------------------------------------------------
-// Setup — inject a known TOTP_SECRET for deterministic tests
+// Setup — a known secret, passed explicitly
 // ---------------------------------------------------------------------------
 
 // A well-known test secret used in RFC 4226 test vectors (base32 of "12345678901234567890")
 const TEST_SECRET_BASE32 = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
 
-beforeEach(() => {
-  process.env.TOTP_SECRET = TEST_SECRET_BASE32;
-});
+/*
+  These used to run against the shared `process.env.TOTP_SECRET` through
+  `generateTotpCode`/`validateTotpCode`. That path was retired on 2026-08-13 —
+  it had no production caller and it kept a single environment variable able to
+  authenticate any account without its own secret. The assertions are unchanged;
+  only where the secret comes from has moved, from ambient state to an argument.
+*/
 
 afterEach(() => {
-  delete process.env.TOTP_SECRET;
   vi.restoreAllMocks();
 });
 
@@ -42,22 +45,22 @@ afterEach(() => {
 
 describe('generateTotpCode', () => {
   it('returns a 6-digit string', () => {
-    const code = generateTotpCode();
+    const code = generateTotpCodeFor(TEST_SECRET_BASE32);
     expect(code).toMatch(/^\d{6}$/);
   });
 
   it('is deterministic for the same time window', () => {
     const t = 1_700_000_015_000; // ms — mid-step
-    const a = generateTotpCode(t);
-    const b = generateTotpCode(t);
+    const a = generateTotpCodeFor(TEST_SECRET_BASE32, t);
+    const b = generateTotpCodeFor(TEST_SECRET_BASE32, t);
     expect(a).toBe(b);
   });
 
   it('produces different codes for different time steps', () => {
     const step1 = 1_700_000_000_000; // step boundary
     const step2 = step1 + 30_000;    // next step
-    const c1 = generateTotpCode(step1);
-    const c2 = generateTotpCode(step2);
+    const c1 = generateTotpCodeFor(TEST_SECRET_BASE32, step1);
+    const c2 = generateTotpCodeFor(TEST_SECRET_BASE32, step2);
     // Different steps should (almost always) produce different codes.
     // In the astronomically rare collision case this test would flake —
     // acceptable for a unit test.
@@ -68,35 +71,35 @@ describe('generateTotpCode', () => {
 describe('validateTotpCode', () => {
   it('accepts the code generated for the current step', () => {
     const now = Date.now();
-    const code = generateTotpCode(now);
-    expect(validateTotpCode(code, now)).toBe(true);
+    const code = generateTotpCodeFor(TEST_SECRET_BASE32, now);
+    expect(validateTotpCodeFor(TEST_SECRET_BASE32, code, now)).toBe(true);
   });
 
   it('accepts a code from one step in the past (clock skew tolerance)', () => {
     const now = Date.now();
     const oneStepAgo = now - 30_000;
-    const oldCode = generateTotpCode(oneStepAgo);
-    expect(validateTotpCode(oldCode, now)).toBe(true);
+    const oldCode = generateTotpCodeFor(TEST_SECRET_BASE32, oneStepAgo);
+    expect(validateTotpCodeFor(TEST_SECRET_BASE32, oldCode, now)).toBe(true);
   });
 
   it('accepts a code from one step in the future (clock skew tolerance)', () => {
     const now = Date.now();
     const oneStepAhead = now + 30_000;
-    const futureCode = generateTotpCode(oneStepAhead);
-    expect(validateTotpCode(futureCode, now)).toBe(true);
+    const futureCode = generateTotpCodeFor(TEST_SECRET_BASE32, oneStepAhead);
+    expect(validateTotpCodeFor(TEST_SECRET_BASE32, futureCode, now)).toBe(true);
   });
 
   it('rejects a code from two steps in the past', () => {
     const now = Date.now();
     const twoStepsAgo = now - 60_000;
-    const staleCode = generateTotpCode(twoStepsAgo);
+    const staleCode = generateTotpCodeFor(TEST_SECRET_BASE32, twoStepsAgo);
     // The current step window is ±1, so 2 steps ago should be rejected.
-    expect(validateTotpCode(staleCode, now)).toBe(false);
+    expect(validateTotpCodeFor(TEST_SECRET_BASE32, staleCode, now)).toBe(false);
   });
 
   it('rejects a wrong 6-digit code', () => {
     const now = Date.now();
-    const validCode = generateTotpCode(now);
+    const validCode = generateTotpCodeFor(TEST_SECRET_BASE32, now);
     // Increment the last digit by 1 (mod 10) to get an invalid code
     const wrongCode = validCode
       .split('')
@@ -106,26 +109,36 @@ describe('validateTotpCode', () => {
       .join('');
     // Only test if the manipulation actually produced a different code
     if (wrongCode !== validCode) {
-      expect(validateTotpCode(wrongCode, now)).toBe(false);
+      expect(validateTotpCodeFor(TEST_SECRET_BASE32, wrongCode, now)).toBe(false);
     }
   });
 
   it('rejects codes with non-digit characters', () => {
-    expect(validateTotpCode('12345a', Date.now())).toBe(false);
-    expect(validateTotpCode('      ', Date.now())).toBe(false);
-    expect(validateTotpCode('', Date.now())).toBe(false);
+    expect(validateTotpCodeFor(TEST_SECRET_BASE32, '12345a', Date.now())).toBe(false);
+    expect(validateTotpCodeFor(TEST_SECRET_BASE32, '      ', Date.now())).toBe(false);
+    expect(validateTotpCodeFor(TEST_SECRET_BASE32, '', Date.now())).toBe(false);
   });
 
   it('rejects codes that are not exactly 6 digits', () => {
-    expect(validateTotpCode('12345', Date.now())).toBe(false);
-    expect(validateTotpCode('1234567', Date.now())).toBe(false);
+    expect(validateTotpCodeFor(TEST_SECRET_BASE32, '12345', Date.now())).toBe(false);
+    expect(validateTotpCodeFor(TEST_SECRET_BASE32, '1234567', Date.now())).toBe(false);
   });
 
-  it('rejects when TOTP_SECRET is missing', () => {
-    delete process.env.TOTP_SECRET;
-    expect(() => validateTotpCode('123456', Date.now())).toThrow(
-      'TOTP_SECRET environment variable is not set',
-    );
+  /*
+    WAS 'rejects when TOTP_SECRET is missing'. There is no longer an environment
+    variable to be missing: the shared-secret entry points were removed on
+    2026-08-13. What replaces it is the assertion below that they are gone —
+    a test naming a retired mechanism is how a retired mechanism comes back.
+  */
+  it('has no entry point that authenticates without a caller-supplied secret', () => {
+    for (const retired of ['generateTotpCode', 'validateTotpCode']) {
+      expect(
+        Object.keys(totp),
+        `${retired} is exported again. It read a single process.env.TOTP_SECRET, ` +
+          'which authenticated every account that had no secret of its own — ' +
+          'i.e. every standby contact. See lib/auth/resolve-totp-secret.ts.',
+      ).not.toContain(retired);
+    }
   });
 });
 
@@ -179,11 +192,12 @@ describe('per-user TOTP isolation', () => {
     }
   });
 
-  it('SECURITY: the env secret does not validate a per-user code', () => {
+  it('SECURITY: the formerly-shared secret does not validate a per-user code', () => {
+    // TEST_SECRET_BASE32 is the value that used to live in TOTP_SECRET. It is
+    // now just another secret, and must have no special power over any account.
     const userSecret = generateTotpSecret();
     const userCode = generateTotpCodeFor(userSecret, at);
-    // TOTP_SECRET is set to TEST_SECRET_BASE32 by the beforeEach above.
-    expect(validateTotpCode(userCode, at)).toBe(false);
+    expect(validateTotpCodeFor(TEST_SECRET_BASE32, userCode, at)).toBe(false);
   });
 
   it('still applies the ±1 step clock-skew tolerance per user', () => {
@@ -207,20 +221,22 @@ describe('per-user TOTP isolation', () => {
   });
 });
 
-describe('backward compatibility with the env secret', () => {
-  const at = 1_760_000_000_000;
-
-  it('generateTotpCode still delegates to TOTP_SECRET', () => {
-    expect(generateTotpCode(at)).toBe(generateTotpCodeFor(TEST_SECRET_BASE32, at));
-  });
-
-  it('validateTotpCode still validates against TOTP_SECRET', () => {
-    expect(validateTotpCode(generateTotpCode(at), at)).toBe(true);
-  });
-
-  it('generateTotpCode still throws when TOTP_SECRET is unset', () => {
-    delete process.env.TOTP_SECRET;
-    expect(() => generateTotpCode(at)).toThrow(/TOTP_SECRET/);
+/*
+  WAS 'backward compatibility with the env secret' — three tests pinning that
+  `generateTotpCode`/`validateTotpCode` still delegated to process.env.
+  Compatibility with a retired credential path is not a property worth keeping;
+  after the conversion the three assertions had also become tautologies, each
+  comparing an expression with itself. Replaced by the one property that
+  matters now.
+*/
+describe('the shared secret is gone from the module, not merely unused', () => {
+  it('reads no environment variable at all', () => {
+    const src = readFileSync('lib/auth/totp.ts', 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ');
+    expect(
+      src,
+      'lib/auth/totp.ts reads process.env. The only secret this module should ' +
+        'ever see is one its caller passed in.',
+    ).not.toContain('process.env');
   });
 });
 
