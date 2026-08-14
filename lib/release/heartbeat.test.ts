@@ -256,3 +256,55 @@ describe('resolveElapsedGrace', () => {
     await expect(resolveElapsedGrace(machine as never, new Date())).resolves.toBe(1);
   });
 });
+
+/**
+ * 🔴 A SEEDED ACCOUNT WOULD HAVE PERFORMED A REAL RELEASE, unattended.
+ *
+ * Measured on production 2026-08-13: `demo@relay.test` is active, holds two
+ * ARMED release_states and a 30-day interval, and was last active that day — so
+ * around 2026-09-12 the hourly sweep would have armed both triggers and mailed
+ * its verifiers. Nobody could have stopped it: a demo account has no credential,
+ * so no owner exists to check in and reverse the false alarm.
+ *
+ * The exclusion is structural, not a data cleanup, because the seed can be run
+ * again at any time and a fixture must never be able to drive the release path
+ * on a schedule. `/api/demo/simulate` remains the way a demo advances, which is
+ * explicit and driven by a person who meant it.
+ */
+describe('the sweep never fires a seeded account', () => {
+  it('asks the database to exclude demo accounts rather than filtering afterwards', async () => {
+    let usersSql = '';
+    mockQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes('FROM users')) {
+        usersSql = sql;
+        return qResult([]);
+      }
+      return qResult([]);
+    });
+
+    await runHeartbeatSweep({ transition: vi.fn() } as never, { sleep: async () => {} });
+
+    /*
+      Asserted on the QUERY, not on the result. A post-hoc filter in JS would
+      still have loaded every demo owner and would drift the moment somebody
+      adds a second caller; the column is in the WHERE clause so there is one
+      place the rule lives and the database enforces it.
+    */
+    expect(usersSql).toContain('is_demo_account = false');
+  });
+
+  it('still sweeps ordinary owners', async () => {
+    mockQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes('FROM users')) return qResult([{ id: 'owner-1' }]);
+      if (sql.includes("state = 'armed'")) return qResult([{ id: 'rs-1', trigger_type: 'emergency', version: '0' }]);
+      return qResult([]);
+    });
+    const transition = vi
+      .fn()
+      .mockResolvedValueOnce({ id: 'rs-1', version: 1 } as never)
+      .mockResolvedValueOnce({ id: 'rs-1', version: 2 } as never);
+
+    const res = await runHeartbeatSweep({ transition } as never, { sleep: async () => {} });
+    expect(res).toEqual({ evaluated: 1, transitioned: 1, failures: 0 });
+  });
+});

@@ -132,6 +132,37 @@ function item(
   };
 }
 
+/**
+ * A seeded contact's address — deliverable, and inspectable.
+ *
+ * 🔴 THE SEEDED CONTACTS WERE ALL @example.com UNTIL 2026-08-13, and the seeded
+ * account lives in PRODUCTION. `example.com` is reserved by RFC 2606 precisely
+ * so it can never receive mail, so every message the product sent one of these
+ * people was a guaranteed HARD BOUNCE — on the Resend account SHARED with
+ * report-bridge, where the sender-reputation cost lands on a different project.
+ *
+ * This is the same defect the third QA sweep found on 2026-08-12 and fixed for
+ * the walk fixtures (`@relay.invalid` → `sgharlow+relayqa-*@gmail.com`). The
+ * SEED was never changed, and the seed is the copy that ships.
+ *
+ * Sub-addressing keeps them one real, monitorable inbox while remaining
+ * distinguishable per person, so a demo send can actually be read afterwards
+ * rather than merely not bouncing. `DEMO_CONTACT_INBOX` overrides the base for
+ * anyone running the seed against their own mailbox.
+ *
+ * ⚠️ THE OWNER'S OWN ADDRESS STAYS `demo@relay.test`, deliberately. That string
+ * is the account's IDENTITY — `auth_sub` is derived from it — so changing it
+ * would not rename the production account, it would seed a second one beside the
+ * first. `.test` is reserved too, but it is an identifier here rather than a
+ * channel: with seeded accounts excluded from the heartbeat sweep and no
+ * credential able to sign in, nothing addresses mail to the demo owner.
+ */
+export function demoAddress(person: string): string {
+  const base = process.env.DEMO_CONTACT_INBOX ?? 'sgharlow@gmail.com';
+  const [local, domain] = base.split('@');
+  return `${local}+relaydemo-${person}@${domain}`;
+}
+
 /** Builds the deterministic demo dataset (25 vault items + people + rules). */
 export function buildDemoData(): DemoData {
   const vaultItems: SeedVaultItem[] = [
@@ -189,10 +220,11 @@ export function buildDemoData(): DemoData {
     circle would hide.
   */
   const recipients: SeedRecipient[] = [
-    // Recipient inbox for the demo. Defaults to a placeholder for the public repo;
-    // set DEMO_RECIPIENT_EMAIL to your real inbox before reseeding to capture the
-    // on-camera access-link delivery (see demo-out/RECORDING-PLAN.md).
-    { key: 'spouse', name: 'Jordan Rivera', relationship: 'Spouse', email: process.env.DEMO_RECIPIENT_EMAIL ?? 'jordan@example.com', phone: '+15551112222', role: 'partner', standby: 'confirmed' },
+    // Recipient inbox for the demo. Defaults to a deliverable sub-addressed inbox
+    // (see demoAddress); set DEMO_RECIPIENT_EMAIL to a different one before
+    // reseeding to capture the on-camera access-link delivery (see
+    // demo-out/RECORDING-PLAN.md).
+    { key: 'spouse', name: 'Jordan Rivera', relationship: 'Spouse', email: process.env.DEMO_RECIPIENT_EMAIL ?? demoAddress('jordan'), phone: '+15551112222', role: 'partner', standby: 'confirmed' },
     /*
       🔴 RETARGETED OFF ESTATE 2026-08-12, for the same reason the public tour
       was: `estate` is excluded from USER_SELECTABLE_TRIGGER_TYPES, and as of
@@ -206,12 +238,12 @@ export function buildDemoData(): DemoData {
       contradiction than the one already fixed in /rules and /demo because a
       screenshot looks like evidence.
     */
-    { key: 'attorney', name: 'Pat Morgan', relationship: 'Sister', email: 'pat@example.com', phone: '+15553334444', role: 'caregiver', standby: 'claimed' },
+    { key: 'attorney', name: 'Pat Morgan', relationship: 'Sister', email: demoAddress('pat'), phone: '+15553334444', role: 'caregiver', standby: 'claimed' },
   ];
 
   const verifiers: SeedVerifier[] = [
-    { key: 'doctor', name: 'Dr. Alex Chen', email: 'achen@example.com', phone: '+15555556666', standby: 'confirmed', breakGlass: true },
-    { key: 'brother', name: 'Sam Rivera', email: 'sam@example.com', phone: '+15557778888', standby: 'confirmed', breakGlass: true },
+    { key: 'doctor', name: 'Dr. Alex Chen', email: demoAddress('achen'), phone: '+15555556666', standby: 'confirmed', breakGlass: true },
+    { key: 'brother', name: 'Sam Rivera', email: demoAddress('sam'), phone: '+15557778888', standby: 'confirmed', breakGlass: true },
   ];
 
   // Emergency access (reversible) to the spouse for the critical items.

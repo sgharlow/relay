@@ -166,9 +166,34 @@ export async function runHeartbeatSweep(machine: Machine, deps: SweepDeps = {}):
   const sleep = deps.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
   const now = deps.now ?? (() => new Date());
 
+  /*
+    🔴 SEEDED ACCOUNTS ARE EXCLUDED, added 2026-08-13 by the release audit after
+    measuring what this query would actually do on production.
+
+    `demo@relay.test` is live, holds two ARMED release_states, has a 30-day
+    check-in interval and was last active on 2026-08-13 — so on roughly
+    2026-09-12 this sweep would have found it overdue and armed both triggers,
+    unattended and at night. That fires the owner-alert mail to `demo@relay.test`
+    and the verifier notices to `achen@example.com` and `sam@example.com`: three
+    addresses in reserved domains that cannot receive mail, so three HARD BOUNCES
+    on the Resend account SHARED with report-bridge, where the reputation cost
+    lands on a different project. The QA walks hit exactly this on 2026-08-12 and
+    the fix was applied to the fixtures; the SEED was never changed, and the
+    seeded account is the one that lives in production.
+
+    Nobody could have stopped it either: a demo account has no credential, so
+    there is no owner to check in and reverse the false alarm.
+
+    STRUCTURAL RATHER THAN A DATA FIX. Making the seeded addresses deliverable
+    (done, in lib/seed/demo-data.ts) stops the bounces; it does not stop a
+    fixture account performing a real release nobody asked for. This does. A
+    demo advances only through /api/demo/simulate, which is explicit, gated on
+    this same flag, and driven by a person who meant it.
+  */
   const overdue = await query<{ id: string }>(
     `SELECT id FROM users
        WHERE status = 'active'
+         AND is_demo_account = false
          AND now() - last_active_at > (checkin_interval_days * INTERVAL '1 day')`,
   );
 

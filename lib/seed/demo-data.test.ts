@@ -126,3 +126,47 @@ describe('the demo is a WORKING example, not a broken one', () => {
     expect(people.some((p) => p.standby === 'claimed')).toBe(true);
   });
 });
+
+/**
+ * 🔴 EVERY SEEDED CONTACT WAS UNDELIVERABLE, and the seed ships to production.
+ *
+ * Found 2026-08-13 by asking what the hourly cron would do to `demo@relay.test`
+ * on its 30-day interval: arm both triggers, then mail the owner and both
+ * verifiers — at `@example.com` and `@relay.test`, domains reserved by RFC 2606
+ * and RFC 6761 so that they can never receive mail. Three hard bounces, on the
+ * Resend account shared with report-bridge, with nobody watching.
+ *
+ * The sweep exclusion in lib/release/heartbeat.ts stops the unattended send; this
+ * stops the addresses being undeliverable in the first place. Two layers, because
+ * the seed is also run by hand.
+ */
+describe('a seeded contact can actually receive mail', () => {
+  const RESERVED = /@(?:example\.(?:com|org|net)|(?:.*\.)?(?:test|invalid|localhost|example))$/i;
+
+  const data = buildDemoData();
+  const contacts = [
+    ...data.recipients.map((r) => ({ who: `recipient ${r.key}`, email: r.email })),
+    ...data.verifiers.map((v) => ({ who: `verifier ${v.key}`, email: v.email })),
+  ];
+
+  it('names contacts at all, so this guard has something to check', () => {
+    expect(contacts.length).toBeGreaterThan(2);
+  });
+
+  it('never seeds a contact in a domain that cannot receive mail', () => {
+    const undeliverable = contacts.filter((c) => RESERVED.test(c.email));
+    expect(
+      undeliverable.map((c) => `${c.who}: ${c.email}`),
+      'a seeded address in a reserved domain hard-bounces on a SHARED sender',
+    ).toEqual([]);
+  });
+
+  /*
+    The owner's address is exempt and stays `demo@relay.test`: it is the account
+    identity `auth_sub` is derived from, not a channel. Asserted rather than
+    merely skipped, so the exemption is a decision somebody can find.
+  */
+  it('keeps the demo owner as an identifier, not a mailbox', () => {
+    expect(data.user.email).toBe('demo@relay.test');
+  });
+});
