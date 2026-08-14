@@ -34,30 +34,63 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const session = await getOwnerSession().catch(() => null);
     if (session) {
       const resolved = await resolveReleaseForUser(session.ownerId, { audit: true });
-      if (resolved) {
-        if (!resolved.released) {
-          // Same graceful close the token path gives (J9-R4): the owner checked
-          // back in, which is the product working rather than a fault.
-          //
-          // The SUMMARY is what makes that true rather than merely intended. The
-          // client only renders the close when one is present, so omitting it —
-          // as this branch did until 2026-08-12 — fell through to "This access
-          // link is invalid or has expired": no link exists on this path, and it
-          // is the precise sentence the graceful close was written to replace.
-          const summary = await getClosureSummaryForUser(session.ownerId);
-          return NextResponse.json(
-            {
-              error: 'AccessClosed',
-              closed: true,
-              message: 'That access has closed because they checked back in.',
-              state: resolved.state,
-              summary,
-            },
-            { status: 403 },
-          );
-        }
+
+      if (resolved?.released) {
         return NextResponse.json(
           await getAccessDashboardForRecipient(resolved.recipientId, resolved.releaseStateId),
+        );
+      }
+
+      /*
+        🔴 IN PROGRESS IS NOT CLOSED. A pending or grace release means the
+        opposite of closed: the owner has been asked and has not answered, and
+        this may be about to open. Until now every non-released resolve took the
+        branch below and told the recipient "That access has closed because they
+        checked back in" — describing a check-in that had not happened, on the
+        one screen a family member would be watching during the wait. It is the
+        same sentence as the true close, so nothing distinguished them.
+
+        No summary and no `closed` flag: this is not an ending, and the client
+        must not render the farewell screen for it.
+      */
+      if (resolved) {
+        return NextResponse.json(
+          {
+            error: 'AccessNotOpenYet',
+            pending: true,
+            state: resolved.state,
+            message:
+              'Nothing is open yet. They have been asked to confirm they are all right, and ' +
+              'if they do not answer, this page will open on its own. You do not need to do anything.',
+          },
+          { status: 403 },
+        );
+      }
+
+      /*
+        Nothing is open. That is either the graceful close (J9-R4) or the calm
+        steady state, and after a close the row is re-armed — so the two are
+        identical by state and are separated by EVIDENCE instead: a summary
+        comes back only for someone whose footprint is in the owner's audit
+        chain. Absent that, this person never had access, and the 401 below
+        carries the right words for them.
+
+        The SUMMARY is what makes the close true rather than merely intended.
+        The client only renders it when one is present, so omitting it — as this
+        branch did until 2026-08-12 — fell through to "This access link is
+        invalid or has expired": no link exists on this path, and it is the
+        precise sentence the graceful close was written to replace.
+      */
+      const summary = await getClosureSummaryForUser(session.ownerId);
+      if (summary) {
+        return NextResponse.json(
+          {
+            error: 'AccessClosed',
+            closed: true,
+            message: 'That access has closed because they checked back in.',
+            summary,
+          },
+          { status: 403 },
         );
       }
     }

@@ -62,15 +62,45 @@ describe('resolveReleaseForUser', () => {
     expect(out).toMatchObject({ recipientId: 'rec-1', releaseStateId: 'rs-1', released: true });
   });
 
-  it('reports NOT released when the owner has re-armed — read fresh, every call', async () => {
+  /*
+    🔴 THIS TEST USED TO ASSERT THE BUG. It fed an `armed` row to a mocked query
+    and asserted `released === false`, which reads as a version-freshness
+    property but actually documented the resolver matching a release that was
+    never open. The caller treats a non-released resolve as CLOSED, so that row
+    produced "Everything is back to normal. The vault has been re-armed" for a
+    family member of an owner in perfect health.
+
+    Because the query is mocked, no assertion about the returned row could have
+    caught it — the mock supplies whatever the test asks for. The only honest
+    check is on the SQL itself, which is what this now does.
+  */
+  it('never asks the database for a release that is not open', async () => {
+    rows([]);
+    await resolveReleaseForUser('user-1');
+
+    const sql = String(mockQuery.mock.calls[0][0]);
+    expect(sql).toContain("state IN ('pending', 'grace', 'released')");
+    // An armed row is the steady state of every owner who ever wrote a rule.
+    expect(sql).not.toMatch(/state\s*=\s*'armed'/);
+  });
+
+  it('still reads the row fresh on every call, so a re-arm closes the dashboard', async () => {
     // The whole point of dropping the token: there is no cached version to go
-    // stale, because the row is the only source and it is read each time.
-    rows([{ ...CLAIM_ROW, state: 'armed' }]);
+    // stale. A re-armed release now simply stops matching, so the next call
+    // resolves nothing at all rather than resolving as "not released".
+    rows([]);
+    await expect(resolveReleaseForUser('user-1')).resolves.toBeNull();
+  });
+
+  it('resolves a release still in progress, and does not call it released', async () => {
+    // pending/grace must resolve — the caller has to tell the difference
+    // between "nothing is happening" and "you are waiting".
+    rows([{ ...CLAIM_ROW, state: 'grace' }]);
 
     const out = await resolveReleaseForUser('user-1');
 
+    expect(out?.state).toBe('grace');
     expect(out?.released).toBe(false);
-    expect(out?.state).toBe('armed');
   });
 
   it('returns null for a user with no claimed recipient row at all', async () => {

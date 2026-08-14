@@ -18,7 +18,7 @@ vi.mock('../auth/recipient-token', () => ({ verifyRecipientToken: vi.fn() }));
 
 import { query } from '../db/connection';
 import { verifyRecipientToken } from '../auth/recipient-token';
-import { getClosureSummary } from './closure';
+import { getClosureSummary, getClosureSummaryForUser } from './closure';
 
 const mockQuery = vi.mocked(query);
 const mockVerify = vi.mocked(verifyRecipientToken);
@@ -175,5 +175,51 @@ describe('summary content', () => {
     const s = await getClosureSummary('t');
     expect(s?.firstSeenAt).toBe('2026-08-08T10:00:00.000Z');
     expect(s?.lastSeenAt).toBe('2026-08-08T16:00:00.000Z');
+  });
+});
+
+/*
+ * 🔴 THE SIGNED-IN PATH'S BOUNDARY IS EVIDENCE, NOT A ROW.
+ *
+ * This function used to delegate to resolveReleaseForUser, which matched ANY
+ * release_state belonging to the owner — so a claimed recipient of a perfectly
+ * healthy owner received a full closure summary: an item count, a duration, and
+ * "Everything is back to normal. The vault has been re-armed." Nothing had ever
+ * opened for them.
+ *
+ * It cannot be fixed by asking for a released row either: after a genuine close
+ * the row is re-armed, so the true J9-R4 case looks identical by state. The only
+ * thing that separates "your access ended" from "nothing ever happened" is
+ * whether this person actually did anything, which is what the audit chain is
+ * for. Hence: no footprint, no summary.
+ */
+describe('the signed-in closure path', () => {
+  it('says nothing to a recipient who never had access', async () => {
+    mockQuery.mockResolvedValueOnce(qResult([])); // no audit footprint
+    await expect(getClosureSummaryForUser('user-1')).resolves.toBeNull();
+    // It must not go on to compute a summary for somebody with no history.
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+  });
+
+  it('looks for the recipient OWN footprint, and only for real access events', async () => {
+    mockQuery.mockResolvedValueOnce(qResult([]));
+    await getClosureSummaryForUser('user-1');
+
+    const sql = String(mockQuery.mock.calls[0][0]);
+    expect(sql).toContain('claimed_user_id = $1');
+    expect(sql).toContain("'recipient:' || r.id");
+    expect(sql).toContain('recipient_dashboard_viewed');
+    expect(sql).toContain('vault_item_decrypted');
+    // A withdrawn recipient is not owed a farewell.
+    expect(sql).toContain("<> 'revoked'");
+  });
+
+  it('returns the summary for someone whose footprint is really there', async () => {
+    mockQuery.mockResolvedValueOnce(qResult([{ recipient_id: 'r-1', release_state_id: 'rs-1' }]));
+    installQueries({ granted: '3' });
+
+    const s = await getClosureSummaryForUser('user-1');
+
+    expect(s?.grantedCount).toBe(3);
   });
 });

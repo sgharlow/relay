@@ -78,8 +78,22 @@ export default function AccessClient() {
           // product working, and this person just helped during someone's worst
           // week; an expiry error is the wrong last word.
           const body = (await res.json().catch(() => null)) as
-            | { closed?: boolean; summary?: ClosureSummary | null }
+            | { closed?: boolean; pending?: boolean; message?: string; summary?: ClosureSummary | null }
             | null;
+          /*
+            A release that is PENDING or in GRACE is not an expired link and not
+            a closed one — it is the wait. This branch used to fall through to
+            "This access link is invalid or has expired", telling a family member
+            that the product was broken at the exact moment it was working: the
+            owner had been asked and had not yet answered. The server's sentence
+            is the true one, so it is shown rather than replaced.
+          */
+          if (body?.pending) {
+            throw new Error(
+              body.message ??
+                'Nothing is open yet. You do not need to do anything.',
+            );
+          }
           if (body?.closed) {
             // `closed` alone is enough. Requiring a summary too meant a missing
             // one fell through to "invalid or has expired" — the sentence this

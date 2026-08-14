@@ -27,7 +27,6 @@
 
 import { query } from '../db/connection';
 import { verifyRecipientToken } from '../auth/recipient-token';
-import { resolveReleaseForUser } from './session-access';
 
 export interface ClosureItem {
   /** Item label — the recipient already saw this while access was open. */
@@ -80,13 +79,47 @@ export async function getClosureSummary(token: string): Promise<ClosureSummary |
  * during an emergency. J9 is the differentiator; getting its last screen wrong
  * on the primary path undoes the journey it was built for.
  *
- * Returns null for a user who is not a claimed recipient, which reads as "say
- * nothing" exactly as an unverifiable token does.
+ * 🔴 IT MUST ANSWER "DID THIS PERSON ACTUALLY HAVE ACCESS?", NOT "IS THERE A ROW?"
+ * This used to delegate to resolveReleaseForUser, which matched any release_state
+ * for the owner regardless of state — so a recipient for whom nothing had ever
+ * opened got a full closure summary, complete with an item count and a duration.
+ * Now that resolveReleaseForUser correctly ignores non-open rows, delegating to
+ * it would fail the opposite way: after a genuine close the row is re-armed, so
+ * the real J9 case would resolve nothing and fall back to the flat error.
+ *
+ * State cannot answer this question in either direction. Evidence can: the
+ * audit log records what this recipient actually did, it is append-only and
+ * hash-chained, and a person who never had access has nothing in it. So the
+ * closure screen is now gated on an audit entry showing this recipient viewed a
+ * dashboard or opened an item — which is precisely the claim the screen makes.
+ *
+ * Returns null for a user who is not a claimed recipient, and for one who never
+ * had access — both of which read as "say nothing", exactly as an unverifiable
+ * token does.
  */
 export async function getClosureSummaryForUser(userId: string): Promise<ClosureSummary | null> {
-  const resolved = await resolveReleaseForUser(userId);
-  if (!resolved) return null;
-  return summaryFor(resolved.recipientId, resolved.releaseStateId);
+  // The most recent release this person demonstrably had open, by their own
+  // footprint in the owner's chain. `recipient_dashboard_viewed` is written only
+  // when a release actually resolved; `vault_item_decrypted` requires a released
+  // state and a matching access rule (Property 6). Neither can exist for someone
+  // who was never given anything.
+  const evidence = await query<{ recipient_id: string; release_state_id: string }>(
+    `SELECT r.id AS recipient_id, rs.id AS release_state_id
+       FROM recipients r
+       JOIN release_state rs ON rs.owner_id = r.owner_id
+       JOIN audit_log a ON a.owner_id = r.owner_id
+                       AND a.actor = 'recipient:' || r.id
+                       AND a.action IN ('recipient_dashboard_viewed', 'vault_item_decrypted')
+      WHERE r.claimed_user_id = $1
+        AND coalesce(r.standby_state, 'invited') <> 'revoked'
+      ORDER BY a.ts DESC
+      LIMIT 1`,
+    [userId],
+  );
+
+  const row = evidence.rows[0];
+  if (!row) return null;
+  return summaryFor(row.recipient_id, row.release_state_id);
 }
 
 async function summaryFor(

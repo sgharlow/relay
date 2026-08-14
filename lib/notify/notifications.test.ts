@@ -377,6 +377,52 @@ describe('closure notice to the recipient', () => {
     });
     expect(sent[0].text).not.toMatch(/https?:\/\//);
   });
+
+  /*
+    🔴 THE DILIGENT RECIPIENT GOT THE WORST SENTENCE. Somebody who opened
+    everything they were given — the case the product most wants — was told
+    "You opened 3 of them. The other 0 are on the record as never opened."
+    The zero clause was unguarded, and because `granted` and `opened` are
+    counted over different sets it could also go negative: "The other -1 are on
+    the record as never opened." The web version of this same summary has always
+    guarded it, so the two surfaces disagreed.
+  */
+  it('says nothing about unopened items when there are none', async () => {
+    _setResendClientForTesting(stubResend());
+    await notifyRecipientAccessClosed({
+      to: 'a@b.com', name: 'Sarah', ownerLabel: 'Margaret', itemsGranted: 3, itemsOpened: 3,
+    });
+    expect(sent[0].text).not.toContain('other 0');
+    expect(sent[0].text).not.toMatch(/never opened/);
+    expect(sent[0].text).toContain('You opened all of them.');
+  });
+
+  it('never renders a negative count, however the two totals disagree', async () => {
+    _setResendClientForTesting(stubResend());
+    // Reachable for real: access_rules shrink (item deleted, policy
+    // rematerialised) while the append-only audit log never does.
+    await notifyRecipientAccessClosed({
+      to: 'a@b.com', name: 'Sarah', ownerLabel: 'Margaret', itemsGranted: 2, itemsOpened: 3,
+    });
+    expect(sent[0].text).not.toMatch(/-\d/);
+    expect(sent[0].text).not.toMatch(/never opened/);
+  });
+
+  it('still names the remainder when some really were left unopened', async () => {
+    _setResendClientForTesting(stubResend());
+    await notifyRecipientAccessClosed({
+      to: 'a@b.com', name: 'Sarah', ownerLabel: 'Margaret', itemsGranted: 4, itemsOpened: 1,
+    });
+    expect(sent[0].text).toContain('other 3 are on the record as never opened');
+  });
+
+  it('uses the singular for exactly one left unopened', async () => {
+    _setResendClientForTesting(stubResend());
+    await notifyRecipientAccessClosed({
+      to: 'a@b.com', name: 'Sarah', ownerLabel: 'Margaret', itemsGranted: 2, itemsOpened: 1,
+    });
+    expect(sent[0].text).toContain('other one is on the record as never opened');
+  });
 });
 
 describe('delegation confirmation to the owner', () => {

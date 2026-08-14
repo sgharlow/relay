@@ -684,10 +684,32 @@ export async function notifyRecipientAccessClosed(params: {
 }): Promise<boolean> {
   const { name, ownerLabel, itemsGranted, itemsOpened } = params;
 
+  /*
+    🔴 THE UNOPENED CLAUSE WAS UNGUARDED AT ZERO, AND COULD GO NEGATIVE.
+    A recipient who opened everything they were given — the diligent case —
+    was told "You opened 3 of them. The other 0 are on the record as never
+    opened." And the two numbers do not describe the same set: itemsGranted is
+    counted from access_rules as they stand NOW, while itemsOpened comes from
+    the append-only audit log across all of this recipient's history. Delete an
+    item after a release, or run a second narrower one, and the subtraction
+    yields "The other -1 are on the record as never opened."
+
+    The web version of this same summary has always guarded it
+    (AccessClient.tsx: `grantedCount > opened.length ? … : null`), so the two
+    surfaces disagreed — and email is the one that arrives unbidden, at the end
+    of somebody's worst week.
+
+    Math.max floors the count, and the clause is dropped entirely when there is
+    nothing unopened to report. A sentence about zero items is not information.
+  */
+  const unopened = Math.max(0, itemsGranted - itemsOpened);
+
   const whatYouSaw =
     itemsOpened === 0
       ? `You did not need to open any of them, and that is recorded too.`
-      : `You opened ${itemsOpened} of them. The ${itemsGranted - itemsOpened === 1 ? 'other one is' : `other ${itemsGranted - itemsOpened} are`} on the record as never opened.`;
+      : unopened === 0
+        ? `You opened ${itemsOpened === 1 ? 'it' : 'all of them'}.`
+        : `You opened ${itemsOpened} of them. The ${unopened === 1 ? 'other one is' : `other ${unopened} are`} on the record as never opened.`;
 
   return sendEmailBestEffort({
     to: params.to,
@@ -940,13 +962,30 @@ export async function notifyRecipientsOfClosure(params: {
 
   const results = await Promise.all(
     recipients.rows.map(async (r) => {
+      /*
+        Counted over the SAME set the grant was counted over. This used to scope
+        only by owner and actor, so it swept in every item this recipient had
+        ever opened under any trigger type, across every past release — while
+        `granted` above counts the rules that exist right now for THIS trigger.
+        Two different sets subtracted from one another is how "the other -1"
+        became reachable: audit_log is append-only per the audit invariant, so
+        opened never shrinks, while access_rules is deleted by both
+        deleteItem's cascade and policy rematerialisation.
+
+        The join makes the subtraction meaningful — every counted open is an
+        item that is still granted under this trigger.
+      */
       const opened = await query<{ n: string }>(
-        `SELECT count(DISTINCT entity_id)::text AS n
-           FROM audit_log
-          WHERE owner_id = $1 AND actor = $2
-            AND action = 'vault_item_decrypted'
-            AND detail->>'outcome' = 'authorized'`,
-        [params.ownerId, `recipient:${r.id}`],
+        `SELECT count(DISTINCT a.entity_id)::text AS n
+           FROM audit_log a
+           JOIN access_rules ar ON ar.vault_item_id = a.entity_id
+                               AND ar.recipient_id = $3
+                               AND ar.owner_id = $1
+                               AND ar.trigger_type = $4
+          WHERE a.owner_id = $1 AND a.actor = $2
+            AND a.action = 'vault_item_decrypted'
+            AND a.detail->>'outcome' = 'authorized'`,
+        [params.ownerId, `recipient:${r.id}`, r.id, params.triggerType],
       );
       return notifyRecipientAccessClosed({
         to: r.email,

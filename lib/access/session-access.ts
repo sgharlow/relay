@@ -38,14 +38,37 @@ export interface ResolvedRelease {
 }
 
 /**
- * Resolves the release a signed-in recipient can currently open, if any.
+ * Resolves the OPEN release a signed-in recipient has, if any.
  *
  * Returns `null` when this user is not a claimed recipient for anyone — which is
- * the normal case for an owner or a verifier, and must not be an error.
+ * the normal case for an owner or a verifier, and must not be an error — and
+ * also when nothing is happening, which is the normal case for everybody else.
+ *
+ * 🔴 THIS QUERY USED TO MATCH AN `armed` ROW, AND IT TOLD A CALM FAMILY MEMBER
+ * THAT THEIR EMERGENCY ACCESS HAD BEEN WITHDRAWN. There was no state predicate:
+ * the ORDER BY merely PREFERRED a released row, so an owner in perfect health
+ * with every trigger armed still resolved here with `released: false`. The
+ * caller reads that as "closed" and renders the graceful-close screen —
+ * "Everything is back to normal. The vault has been re-armed" plus "You were
+ * trusted with N items for under an hour" — to somebody for whom nothing had
+ * ever opened. An `armed` row exists for every owner who has ever written an
+ * access rule, and /access is linked from not-found for exactly this person, so
+ * the steady state was the broken state.
+ *
+ * `IN ('pending','grace','released')` is not a new idea in this codebase:
+ * standby-resolve.ts:165 already scopes to those three. This resolver was the
+ * outlier.
+ *
+ * A CLOSED release is deliberately NOT resolvable here. After a genuine close
+ * the row is re-armed, so state alone cannot separate "your access ended" from
+ * "nothing ever happened" — that distinction needs evidence the person actually
+ * had access, and it lives in closure.ts where the evidence is.
  *
  * `audit` is opt-in because resolving is not viewing. The dashboard render is the
  * auditable event (Req 7.7); a page that merely asks "is there anything?" should
- * not fill an owner's audit chain with noise.
+ * not fill an owner's audit chain with noise. With the predicate above, a calm
+ * visit now resolves nothing and so writes nothing — previously every such visit
+ * appended a `recipient_dashboard_viewed` entry for a release that never opened.
  */
 export async function resolveReleaseForUser(
   userId: string,
@@ -65,6 +88,7 @@ export async function resolveReleaseForUser(
        JOIN release_state rs ON rs.owner_id = r.owner_id
       WHERE r.claimed_user_id = $1
         AND coalesce(r.standby_state, 'invited') <> 'revoked'
+        AND rs.state IN ('pending', 'grace', 'released')
       ORDER BY CASE rs.state WHEN 'released' THEN 0 ELSE 1 END
       LIMIT 1`,
     [userId],
