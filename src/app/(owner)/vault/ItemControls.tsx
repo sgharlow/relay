@@ -209,8 +209,61 @@ export function ItemControls({
     );
   }
 
+  /*
+    🔴 REQUIREMENT 11.8 HAD NO CONTROL ANYWHERE. The spec says the owner may
+    override any classification and that the override "SHALL NOT be overwritten
+    on subsequent re-analyses" — but nothing could be overridden, so the intake
+    agent re-decided this from the item's title on every run.
+
+    It is worded as the question an owner can actually answer. "is_root_credential"
+    is a schema word; "other accounts reset through this one" is the thing they
+    know about their own life, and it is the fact that decides what their family
+    is told to do FIRST — a root credential is forced into "Do today" whatever
+    the model scored it.
+
+    Tri-state, not a checkbox: setting it back to "let Relay decide" must be
+    possible, or an owner who ticks it by accident has permanently overruled the
+    agent with no way back.
+  */
+  async function setRoot(value: boolean | null) {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/vault/items/${item.id}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ owner_set_root: value }),
+      });
+      if (!res.ok) throw new Error('Could not save that.');
+      await onChanged();
+    } catch (e) {
+      setError(String((e as Error).message));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const ownerSaid = item.owner_set_root;
+
   return (
-    <div style={{ display: 'flex', gap: 'var(--s1)' }}>
+    <div style={{ display: 'flex', gap: 'var(--s1)', alignItems: 'center', flexWrap: 'wrap' }}>
+      <button
+        onClick={() => setRoot(ownerSaid === true ? null : true)}
+        disabled={busy}
+        title={
+          ownerSaid === true
+            ? 'You marked this as the one others reset through. Click to let Relay decide again.'
+            : 'Mark this as the account others reset through — it will be first in what your family sees.'
+        }
+        style={{
+          ...quiet,
+          color: ownerSaid === true ? 'var(--ochre-text)' : 'var(--ink-muted)',
+          border: ownerSaid === true ? '1px solid var(--ochre)' : '1px solid transparent',
+          borderRadius: 4,
+        }}
+      >
+        {ownerSaid === true ? '★ Others reset through this' : 'Others reset through this'}
+      </button>
       <button onClick={() => setMode('editing')} style={{ ...quiet, color: 'var(--ink-muted)' }}>
         Update
       </button>

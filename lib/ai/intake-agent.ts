@@ -139,7 +139,22 @@ export async function runIntake(ownerId: string, opts: IntakeOptions = {}): Prom
       result = {
         id: item.id,
         importance_score: clampScore(c.importance_score),
-        is_root_credential: Boolean(c.is_root_credential),
+        /*
+          🔴 REQ 11.8: "Owner overrides SHALL persist and SHALL NOT be
+          overwritten on subsequent re-analyses of the same item." Until now
+          there was no way to override anything, so every run re-decided this
+          from the title — and an owner who knew that three other accounts reset
+          through their email had no way to say so.
+
+          `owner_set_root` is NULL for every item nobody has ruled on, which is
+          every item that existed before this, so the model still decides those.
+          Once the owner has answered, their answer wins and keeps winning.
+        */
+        is_root_credential:
+          // `== null` on purpose: an absent field and an explicit NULL both mean
+          // "the owner has never ruled on this", and callers built from partial
+          // fixtures omit it entirely.
+          item.owner_set_root == null ? Boolean(c.is_root_credential) : item.owner_set_root,
         recurring_billing: Boolean(c.recurring_billing),
         irreplaceable: Boolean(c.irreplaceable),
         depends_on_item_id: resolveDepends(c.depends_on_title, titleToId, item.id),

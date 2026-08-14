@@ -1,0 +1,25 @@
+-- Requirement 11.8: an owner's classification must survive re-analysis.
+--
+-- 🔴 THE SPEC SAYS "Owner overrides SHALL persist and SHALL NOT be overwritten
+-- on subsequent re-analyses of the same item", AND THERE WAS NO WAY TO OVERRIDE
+-- ANYTHING. No column, no API field, no control. So the sentence an owner most
+-- wants to be able to assert — "other accounts reset through this one" — could
+-- not be recorded at all, and every run of the intake agent re-decided it from
+-- the title alone.
+--
+-- WHY A NULLABLE BOOLEAN RATHER THAN A "locked" FLAG. Three states are needed
+-- and only three: the owner has said yes, the owner has said no, or the owner
+-- has never said. NULL is the last of those and is what every existing row
+-- gets, so this migration cannot change the meaning of any item already stored.
+-- A separate lock column would have allowed a fourth, incoherent state (locked
+-- with no opinion recorded).
+--
+-- is_root_credential stays the single column everything READS — bucketFor, the
+-- handoff order and the coverage matrix are untouched. This records what the
+-- owner SAID, and the intake agent stops overruling it.
+--
+-- Aurora DSQL: ADD COLUMN is supported; no default is set, so no table rewrite
+-- and existing rows read NULL. No index — it is only ever read alongside the
+-- row it belongs to.
+
+ALTER TABLE vault_items ADD COLUMN IF NOT EXISTS owner_set_root BOOLEAN;

@@ -182,3 +182,73 @@ describe('runIntake', () => {
     expect(out).toEqual({ scored: 0, warnings: [], results: [] });
   });
 });
+
+/*
+ * 🔴 REQUIREMENT 11.8 WAS UNIMPLEMENTED IN BOTH HALVES. The spec says the owner
+ * may override a classification and that the override "SHALL NOT be overwritten
+ * on subsequent re-analyses of the same item" — but there was no column, no
+ * endpoint and no control, so the agent re-decided is_root_credential from the
+ * title on every run and the owner could not disagree.
+ *
+ * The fact this protects is one only the owner knows: which account the others
+ * reset THROUGH. Getting it wrong reorders what a grieving person is told to do
+ * first, because a root credential is forced into "Do today" whatever the model
+ * scored it.
+ */
+describe('an owner override survives re-analysis (Req 11.8)', () => {
+  it('keeps the owner YES even when the model says no', async () => {
+    mockMeta.mockResolvedValue([
+      meta({ id: 'gmail', title: 'Gmail', is_root_credential: true, owner_set_root: true }),
+    ]);
+    const classify = vi.fn(async (): Promise<RawClassification[]> => [
+      { id: 'gmail', is_root_credential: false, recurring_billing: false, irreplaceable: false, importance_score: 0.4, depends_on_title: null },
+    ]);
+
+    const out = await runIntake('owner-1', { classify });
+
+    expect(out.results[0].is_root_credential).toBe(true);
+    // And the preserved value is what is written, not merely returned.
+    expect((mockQuery.mock.calls[0][1] as unknown[])[0]).toBe(true);
+  });
+
+  it('keeps the owner NO even when the model says yes', async () => {
+    // The direction that matters for trust: an owner who says "no, this is not
+    // the one" must not be overruled every time the agent runs.
+    mockMeta.mockResolvedValue([
+      meta({ id: 'bank', title: 'Bank', is_root_credential: false, owner_set_root: false }),
+    ]);
+    const classify = vi.fn(async (): Promise<RawClassification[]> => [
+      { id: 'bank', is_root_credential: true, recurring_billing: true, irreplaceable: false, importance_score: 0.95, depends_on_title: null },
+    ]);
+
+    const out = await runIntake('owner-1', { classify });
+
+    expect(out.results[0].is_root_credential).toBe(false);
+  });
+
+  it('still lets the model decide when the owner has never said', async () => {
+    // Every item that existed before this feature reads NULL, so the agent must
+    // keep working exactly as before for them.
+    mockMeta.mockResolvedValue([meta({ id: 'x', title: 'X', owner_set_root: null })]);
+    const classify = vi.fn(async (): Promise<RawClassification[]> => [
+      { id: 'x', is_root_credential: true, recurring_billing: false, irreplaceable: false, importance_score: 0.9, depends_on_title: null },
+    ]);
+
+    const out = await runIntake('owner-1', { classify });
+
+    expect(out.results[0].is_root_credential).toBe(true);
+  });
+
+  it('treats an ABSENT field as "never said", not as "no"', async () => {
+    // Callers built from partial fixtures omit it entirely; reading that as a
+    // false override would silently freeze every item as non-root.
+    mockMeta.mockResolvedValue([meta({ id: 'y', title: 'Y' })]);
+    const classify = vi.fn(async (): Promise<RawClassification[]> => [
+      { id: 'y', is_root_credential: true, recurring_billing: false, irreplaceable: false, importance_score: 0.9, depends_on_title: null },
+    ]);
+
+    const out = await runIntake('owner-1', { classify });
+
+    expect(out.results[0].is_root_credential).toBe(true);
+  });
+});

@@ -62,6 +62,8 @@ export interface VaultItemMetadata {
   category: string | null;
   criticality: string | null;
   is_root_credential: boolean;
+  /** The owner's own answer, or null if they have never given one (Req 11.8). */
+  owner_set_root?: boolean | null;
   recurring_billing: boolean;
   irreplaceable: boolean;
   importance_score: number;
@@ -229,7 +231,7 @@ export function validateUpdateInput(body: unknown): UpdateVaultItemInput {
 
 const METADATA_COLUMNS =
   'id, type, title, service_name, url, category, criticality, ' +
-  'is_root_credential, recurring_billing, irreplaceable, importance_score, ' +
+  'is_root_credential, owner_set_root, recurring_billing, irreplaceable, importance_score, ' +
   'depends_on_item_id, backup_note, created_at, updated_at';
 
 function toMetadata(row: Record<string, unknown>): VaultItemMetadata {
@@ -242,6 +244,10 @@ function toMetadata(row: Record<string, unknown>): VaultItemMetadata {
     category: (row.category as string | null) ?? null,
     criticality: (row.criticality as string | null) ?? null,
     is_root_credential: Boolean(row.is_root_credential),
+    owner_set_root:
+      row.owner_set_root === null || row.owner_set_root === undefined
+        ? null
+        : Boolean(row.owner_set_root),
     recurring_billing: Boolean(row.recurring_billing),
     irreplaceable: Boolean(row.irreplaceable),
     importance_score: Number(row.importance_score),
@@ -369,6 +375,48 @@ export async function updateItem(
         id,
         ownerId,
       ],
+    ),
+  );
+  if (result.rowCount === 0 || result.rows.length === 0) return null;
+  return toMetadata(result.rows[0]);
+}
+
+/**
+ * Records the OWNER's own answer to "do other accounts reset through this one?"
+ * (Requirement 11.8).
+ *
+ * 🔴 THE SPEC PROMISED THIS AND NOTHING IMPLEMENTED IT. "Owner overrides SHALL
+ * persist and SHALL NOT be overwritten on subsequent re-analyses of the same
+ * item" — but there was no column, no endpoint and no control, so the intake
+ * agent re-decided `is_root_credential` from the title on every run and the
+ * owner had no way to disagree.
+ *
+ * It writes BOTH columns deliberately: `owner_set_root` is the record of what
+ * they said, and `is_root_credential` is what the rest of the product reads.
+ * Writing only the first would leave the override true and inert until the next
+ * agent run; writing only the second would let the next run undo it. The two
+ * together mean the change takes effect now AND survives.
+ *
+ * `null` clears the override and hands the decision back to the agent, which is
+ * why the parameter is nullable rather than a pair of set/unset calls.
+ *
+ * No re-encryption: this is metadata, and requiring a ciphertext round trip to
+ * tick a box would mean the browser had to hold the plaintext to change it.
+ */
+export async function setOwnerRootOverride(
+  ownerId: string,
+  id: string,
+  value: boolean | null,
+): Promise<VaultItemMetadata | null> {
+  const result = await withOccRetry(() =>
+    query<Record<string, unknown>>(
+      `UPDATE vault_items
+          SET owner_set_root = $1,
+              is_root_credential = COALESCE($1, is_root_credential),
+              updated_at = now()
+        WHERE id = $2 AND owner_id = $3
+       RETURNING ${METADATA_COLUMNS}`,
+      [value, id, ownerId],
     ),
   );
   if (result.rowCount === 0 || result.rows.length === 0) return null;

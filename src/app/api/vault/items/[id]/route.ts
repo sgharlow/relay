@@ -17,6 +17,7 @@ import { getOwnerSession } from '../../../../../../lib/auth/session';
 import { assertOwns, IntegrityError } from '../../../../../../lib/db/integrity';
 import {
   updateItem,
+  setOwnerRootOverride,
   deleteItem,
   validateUpdateInput,
   ValidationError,
@@ -116,4 +117,58 @@ export async function DELETE(req: NextRequest, { params }: Ctx): Promise<NextRes
   });
 
   return NextResponse.json({ deleted: true });
+}
+
+/**
+ * PATCH — the owner's own answer to "do other accounts reset through this one?"
+ * (Requirement 11.8).
+ *
+ * 🔴 SEPARATE FROM PUT BECAUSE PUT DEMANDS A CIPHERTEXT. Replacing the blob is
+ * the right contract for editing a secret and the wrong one for ticking a box:
+ * it would mean the browser had to hold the plaintext, decrypt it and re-encrypt
+ * it just to record a classification that is not secret at all. That is both a
+ * worse security posture and impossible on a screen that never decrypted the
+ * item in the first place.
+ *
+ * `{ owner_set_root: null }` clears the override and hands the decision back to
+ * the intake agent, which is why null is accepted rather than treated as absent.
+ */
+export async function PATCH(req: NextRequest, { params }: Ctx): Promise<NextResponse> {
+  const auth = await authorize((await params).id, req.method);
+  if (auth instanceof NextResponse) return auth;
+
+  const raw = await readJson(req);
+  if (isResponse(raw)) return raw;
+  const body = (raw ?? {}) as { owner_set_root?: boolean | null };
+
+  if (!('owner_set_root' in body)) {
+    return NextResponse.json(
+      { error: 'ValidationError', message: 'owner_set_root is required' },
+      { status: 400 },
+    );
+  }
+  const value = body.owner_set_root;
+  if (value !== null && typeof value !== 'boolean') {
+    return NextResponse.json(
+      { error: 'ValidationError', message: 'owner_set_root must be true, false or null' },
+      { status: 400 },
+    );
+  }
+
+  const updated = await setOwnerRootOverride(auth.ownerId, (await params).id, value);
+  if (!updated) {
+    return NextResponse.json({ error: 'NotFound', message: 'No such item' }, { status: 404 });
+  }
+
+  // Audited like every other owner decision: this one changes what a grieving
+  // person is told to do first.
+  await writeAuditEntry(auth.ownerId, {
+    actor: `owner:${auth.ownerId}`,
+    action: 'vault_item_classification_overridden',
+    entity: 'vault_item',
+    entityId: (await params).id,
+    detail: { owner_set_root: value },
+  });
+
+  return NextResponse.json(updated);
 }

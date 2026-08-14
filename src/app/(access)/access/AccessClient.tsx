@@ -247,6 +247,44 @@ export default function AccessClient() {
     );
   }
 
+  /*
+    🔴 R7.2's PAGE DID NOT EXIST. The requirement is explicit: "IF the Recipient
+    has no Access_Rules for the RELEASED trigger_type, THEN THE Access_Dashboard
+    SHALL display a pending-status page with a message indicating no items are
+    scoped to this Recipient." What actually rendered was the normal plan
+    heading — "Your access plan… Work top to bottom, the most consequential
+    items come first" — above nothing at all.
+
+    That lands on somebody who has just been told an emergency is real and that
+    something was left for them. An empty list under a confident heading reads
+    as "it broke" or "someone took it", at the moment they are least able to
+    absorb either. It is reachable without anything being wrong: the owner
+    scoped their rules to a different trigger type, or removed the last rule
+    after naming the person.
+
+    The words avoid blame in both directions — nothing is broken, and nobody
+    did anything wrong — and point at the only useful next step, which is a
+    conversation with the family rather than with us.
+  */
+  if (data.items.length === 0) {
+    return (
+      <div>
+        <h1 className="text-t7 font-semibold">Nothing was set aside for you here</h1>
+        <p className="mt-4 text-t4 leading-relaxed">
+          {data.ownerLabel} named you, and access is open — but none of their items are scoped to
+          you for this situation. That is not a fault, and nothing has been taken away: it usually
+          means what they arranged for you sits under a different circumstance than the one that
+          opened.
+        </p>
+        <p className="mt-4 text-t4 leading-relaxed">
+          There is nothing for you to do here. If you were expecting something, the people around{' '}
+          {data.ownerLabel} are the right place to ask — we cannot see what is inside their vault,
+          only that none of it is pointed at you.
+        </p>
+      </div>
+    );
+  }
+
   // RELEASED — group into time-horizon buckets, number steps across the plan.
   const grouped: Record<Bucket, AccessItem[]> = { do_today: [], this_week: [], within_30_days: [] };
   for (const item of data.items) {

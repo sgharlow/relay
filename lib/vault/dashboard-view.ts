@@ -19,6 +19,8 @@ export interface DashboardItem {
   category: string | null;
   criticality: string | null;
   is_root_credential: boolean;
+  /** The owner's own answer, or null if they have never given one (Req 11.8). */
+  owner_set_root?: boolean | null;
   importance_score: number;
   depends_on_item_id: string | null;
 }
