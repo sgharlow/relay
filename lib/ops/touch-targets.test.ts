@@ -209,3 +209,44 @@ describe('basis-full is only used where a container can wrap', () => {
       .toEqual([]);
   });
 });
+
+/*
+  🔴 THREE CONTROLS TURNED INVISIBLE UNDER THE CURSOR. `hover:text-paper` paints
+  --paper text, which is correct on the ink-backed owner rail and is the
+  background everywhere else. On the landing page the "Sign in" link and the
+  "Show me what actually happens" link both vanished on hover, and so did the
+  secondary button on the caregiver interest form — the lead-capture path the G1
+  demand gate depends on.
+
+  Almost certainly copied from a dark-rail context. It is invisible in review
+  precisely because it only manifests under a pointer, which no screenshot and
+  no static read of the page will show.
+*/
+describe('nothing paints paper text on a paper background', () => {
+  it('has no hover:text-paper outside an ink-backed element', () => {
+    const walk = (dir: string, acc: string[] = []): string[] => {
+      for (const n of readdirSync(dir)) {
+        const p = join(dir, n);
+        if (n === 'node_modules' || n === '.next') continue;
+        if (statSync(p).isDirectory()) walk(p, acc);
+        else if (n.endsWith('.tsx')) acc.push(p);
+      }
+      return acc;
+    };
+
+    const offenders: string[] = [];
+    for (const file of walk('src')) {
+      const code = stripComments(readFileSync(file, 'utf8'));
+      // Each className string that asks for the paper hover must also paint an
+      // ink background on the SAME element, or it is invisible.
+      for (const m of code.matchAll(/className=(?:"([^"]*)"|\{`([^`]*)`\})/g)) {
+        const cls = m[1] ?? m[2] ?? '';
+        if (cls.includes('hover:text-paper') && !cls.includes('bg-ink')) {
+          offenders.push(`${file}: ${cls.slice(0, 70)}`);
+        }
+      }
+    }
+
+    expect(offenders, `paper-on-paper hover:\n${offenders.join('\n')}`).toEqual([]);
+  });
+});

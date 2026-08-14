@@ -190,7 +190,7 @@ export default function InterestForm() {
         // buttons made the waitlist compete with the sale, which is exactly
         // backwards now that checkout is live: someone ready to pay should not
         // have to pick their action out of a pair.
-        className="mt-6 min-h-[48px] w-full rounded-md border border-rule-strong bg-transparent px-6 text-t3 font-medium text-muted transition-colors hover:border-rule-strong hover:text-paper disabled:opacity-60"
+        className="mt-6 min-h-[48px] w-full rounded-md border border-rule-strong bg-transparent px-6 text-t3 font-medium text-muted transition-colors hover:border-rule-strong hover:text-ink disabled:opacity-60"
       >
         {status === 'sending' ? 'Sending…' : 'Request an invite'}
       </button>

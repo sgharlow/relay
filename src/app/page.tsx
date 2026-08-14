@@ -40,7 +40,27 @@ export default function Home() {
     <main className="min-h-screen bg-paper text-ink">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
         <span className="text-t5 font-semibold tracking-tight">Relay</span>
-        <Link href="/auth/signin" className="text-t2 text-muted hover:text-paper">
+        {/*
+          🔴 TWO DEFECTS IN ONE LINE, BOTH FOUND ON PRODUCTION AT 390px.
+
+          It had no padding, so its tap target was the height of the text — 22px
+          — on the landing page's only control, which is the first thing a
+          returning owner reaches for on a phone. `data-target="control"` is the
+          hook globals.css already carries for exactly this: a link that behaves
+          as a control rather than as prose, so it takes the 44px touch floor
+          while inline links in sentences correctly do not.
+
+          And `hover:text-paper` painted it --paper on a --paper background —
+          the link VANISHED under the cursor. Almost certainly meant to pair
+          with the dark rail, where paper-on-ink is right; here it is
+          invisible-on-invisible. --ink is the hover this palette wants: muted
+          text darkening to full ink on approach.
+        */}
+        <Link
+          href="/auth/signin"
+          data-target="control"
+          className="-mr-2 px-2 text-t2 text-muted hover:text-ink"
+        >
           Sign in
         </Link>
       </header>
@@ -64,7 +84,7 @@ export default function Home() {
           </Link>
           <Link
             href="/how-it-works"
-            className="inline-flex min-h-[44px] items-center text-t2 font-medium text-muted underline decoration-rule-strong underline-offset-4 hover:text-paper"
+            className="inline-flex min-h-[44px] items-center text-t2 font-medium text-muted underline decoration-rule-strong underline-offset-4 hover:text-ink"
           >
             Show me what actually happens
           </Link>
