@@ -30,8 +30,28 @@ import { isDelayElapsed, opensAt } from '../rules/release-delay';
 import { getOwnerLabel } from '../people/owner-label';
 import { hasAcknowledgedLimits } from './acknowledgement';
 
+/**
+ * `explainable` marks a denial whose MESSAGE is safe and useful to show the
+ * person who hit it.
+ *
+ * 🔴 THE DISTINCTION EXISTS BECAUSE MOST OF THESE MESSAGES ARE NOT FOR FAMILIES.
+ * "Session is stale (release version changed)", "Item not in scope", "Release is
+ * not active" are engineering sentences; showing them to a recipient mid-
+ * emergency would be worse than the generic line. But one denial is a deliberate
+ * product behaviour with a date attached — the staged delay — and the client used
+ * to discard it, telling somebody to retry forever and report a bug for a plan
+ * that was working exactly as the owner set it up.
+ *
+ * A flag rather than string-matching the message: sniffing "Not open yet" from
+ * the client would break the moment anybody rewords it, and it would break
+ * silently, back into the failure it fixed.
+ */
 export class AccessError extends Error {
-  constructor(message: string, public readonly httpStatus: number) {
+  constructor(
+    message: string,
+    public readonly httpStatus: number,
+    public readonly explainable: boolean = false,
+  ) {
     super(message);
     this.name = 'AccessError';
     Object.setPrototypeOf(this, AccessError.prototype);
@@ -334,9 +354,9 @@ async function decryptForPrincipal(
       detail: { outcome },
     });
 
-  const deny = async (message: string): Promise<never> => {
+  const deny = async (message: string, explainable = false): Promise<never> => {
     await auditOutcome('denied');
-    throw new AccessError(message, 403);
+    throw new AccessError(message, 403, explainable);
   };
 
   // Token path only. A session has no snapshot to reconcile — see DecryptPrincipal.
@@ -368,6 +388,9 @@ async function decryptForPrincipal(
       when
         ? `Not open yet — this one was set to open on ${when.toDateString()}.`
         : 'Not open yet — this one was set to open later.',
+      // The one denial a recipient should read verbatim: it is not a fault, it
+      // is the owner's plan, and the date is the whole point of saying it.
+      true,
     );
   }
 

@@ -137,7 +137,30 @@ export default function AccessClient() {
           // path while the plan above it rendered perfectly well.
           body: JSON.stringify(token ? { token } : {}),
         });
-        if (!res.ok) throw new Error('denied');
+        if (!res.ok) {
+          /*
+            🔴 THE SERVER'S ANSWER WAS THROWN AWAY, AND IT WAS THE ONLY USEFUL
+            ONE. dashboard.ts computes "Not open yet — this one was set to open
+            on Tue Sep 02 2026." with a comment saying why it matters: a
+            recipient who was promised something needs to know it is COMING, not
+            conclude the plan is broken. The client discarded it and rendered
+            "could not be opened just now. Try again — if it keeps happening,
+            tell us" — instructing somebody to retry forever and report a bug
+            against a staged delay working exactly as the owner configured it.
+
+            Only `explainable` messages are surfaced. The other denials say
+            "Session is stale (release version changed)" and "Item not in scope",
+            which are for us, not for a family in an emergency.
+          */
+          const body = (await res.json().catch(() => null)) as
+            | { message?: string; explainable?: boolean }
+            | null;
+          if (body?.explainable && body.message) {
+            setRevealed((r) => ({ ...r, [item.id]: body.message as string }));
+            return;
+          }
+          throw new Error('denied');
+        }
         const { plaintext_data_key, ciphertext } = (await res.json()) as { plaintext_data_key: string; ciphertext: string };
         const { iv, ciphertext: ct } = unpackIvCiphertext(base64ToBytes(ciphertext));
         const value = await new CryptoService().decryptItem(ct, iv, plaintext_data_key);

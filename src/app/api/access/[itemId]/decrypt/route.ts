@@ -52,7 +52,13 @@ export async function POST(req: NextRequest, { params }: Ctx): Promise<NextRespo
     );
   } catch (err) {
     if (err instanceof AccessError) {
-      return NextResponse.json({ error: 'AccessError', message: err.message }, { status: err.httpStatus });
+      // `explainable` tells the client whether this message is meant for the
+      // person reading it. Only the staged-delay denial is — the rest are
+      // engineering sentences the recipient must never be shown.
+      return NextResponse.json(
+        { error: 'AccessError', message: err.message, explainable: err.explainable },
+        { status: err.httpStatus },
+      );
     }
     throw err;
   }
