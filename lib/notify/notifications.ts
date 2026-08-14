@@ -156,8 +156,29 @@ export async function notifyRecipientsOfRelease(params: {
             `Go to ${appUrl()}/access and enter this code:\n\n` +
             `    ${code}\n\n` +
             `Case ${caseId} · the code expires in 24 hours and can be used once.\n\n` +
-            `A real message from Relay never asks you to click a link and then enter anything. If a ` +
-            `message claiming to be from us does, it is not from us.\n`
+            /*
+              🔴 THE OLD SENTENCE HERE WAS CONTRADICTED BY THE EMAIL CONTAINING IT.
+              It read "A real message from Relay never asks you to click a link and
+              then enter anything" — three lines under "Go to …/access and enter
+              this code". Found by walking the product on 2026-08-14 and reading
+              the mail as the recipient.
+
+              That is worse than clumsy. It is the rule we give people for
+              telling us from an impostor, and a recipient who learned it would
+              correctly classify our genuine message as fake — while a phishing
+              mail that simply omits the sentence looks cleaner than the real
+              thing. The claimed-contact branch above states it truthfully
+              because that message really does carry no code and no link.
+
+              The honest version names the tell that actually distinguishes us:
+              we never sign you in from a link and never ask for a password.
+              Typing a one-time code on a page you navigated to yourself is a
+              different act, and telling people to reach the page themselves is
+              the safer habit anyway.
+            */
+            `Relay will never ask you for a password, and never sends a link that signs you in. ` +
+            `If you would rather not use the address above, type relaystandby.com yourself and ` +
+            `enter the code there.\n`
           : `Hi ${r.name},\n\n` +
             `Access you were granted has been released. Open your secure access plan here:\n\n` +
             `${appUrl()}/access?token=${encodeURIComponent(await issueRecipientToken(r.id, params.releaseStateId, BigInt(params.version)))}\n\n` +
@@ -336,8 +357,12 @@ export async function notifyOneVerifier(
       `Case ${caseId} · the code expires in 72 hours.\n\n` +
       `You will not be given access to any private data — you are only confirming ` +
       `whether the situation is genuine.\n\n` +
-      `A real message from Relay never asks you to click a link and then enter ` +
-      `anything. If a message claiming to be from us does, it is not from us.\n`
+      // Same correction as the recipient code branch above: this message DOES
+      // ask you to go to a page and type something, so it cannot also claim we
+      // never do that. See the note there.
+      `Relay will never ask you for a password, and never sends a link that signs you in. ` +
+      `If you would rather not use the address above, type relaystandby.com yourself and ` +
+      `enter the code there.\n`
     : `Hi ${v.name},\n\n` +
       `${ownerLabel} named you as one of the people who would be asked whether an emergency is real, ` +
       `and ${article(triggerType)} "${triggerType}" release has now been started on their ` +

@@ -33,7 +33,11 @@ import { recordCodeMiss } from '../ops/guess-watch';
  * Enough that losing a few to a house move does not matter, few enough that a
  * person will actually keep the list.
  */
-export const RECOVERY_CODE_COUNT = 8;
+// Defined in its own import-free module so the signup screen (a client
+// component) can state the same number without dragging the database pool into
+// the browser bundle. See lib/auth/recovery-code-count.ts.
+import { RECOVERY_CODE_COUNT } from './recovery-code-count';
+export { RECOVERY_CODE_COUNT };
 
 /** ~50 bits each. Long enough that guessing is hopeless, short enough to copy. */
 export const RECOVERY_CODE_LENGTH = 10;

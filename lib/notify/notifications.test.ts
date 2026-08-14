@@ -124,8 +124,39 @@ describe('notifyRecipientsOfRelease', () => {
 
     expect(sent[0].text).not.toContain('?token=');
     expect(sent[0].text).toMatch(/[23456789A-Z]{4}-[23456789A-Z]{4}/);
-    // The promise was re-worded 2026-08-13 to the rule that is true in every
-    // branch: click-then-enter is the imitation tell.
+
+    /*
+      🔴 THIS ASSERTION USED TO PIN A SENTENCE THE EMAIL ITSELF CONTRADICTED.
+      The 2026-08-13 wording — "never asks you to click a link and then enter
+      anything" — was asserted here, three lines below "Go to …/access and enter
+      this code". Reading the real mail during the 2026-08-14 walk made it
+      obvious: a recipient who learned that rule would correctly conclude our
+      genuine message was a fake, while a phishing mail omitting the sentence
+      would look cleaner than the real thing.
+
+      The test is inverted deliberately. A code-bearing message must NOT make
+      the click-then-enter promise, because it is asking for exactly that.
+    */
+    expect(sent[0].text).not.toContain('never asks you to click a link and then enter anything');
+    // The tell that is actually true of us, in every branch.
+    expect(sent[0].text).toContain('never sends a link that signs you in');
+    expect(sent[0].text).toContain('never ask you for a password');
+  });
+
+  /*
+    The claimed-contact branch carries no code and no link, so there the
+    click-then-enter promise IS true and must stay — the two branches genuinely
+    differ, and that is the whole point.
+  */
+  it('keeps the click-then-enter promise where it is true — the credential-free message', async () => {
+    _setResendClientForTesting(stubResend());
+    routeQueries([
+      { id: 'r1', name: 'Jordan', email: 'jordan@example.com', claimed_user_id: 'user-9' },
+    ]);
+
+    await notifyRecipientsOfRelease({ releaseStateId: 'rs-1', ownerId: 'o', triggerType: 'emergency', version: 3 });
+
+    expect(sent[0].text).toContain('no link that signs you in');
     expect(sent[0].text).toContain('never asks you to click a link and then enter anything');
   });
 

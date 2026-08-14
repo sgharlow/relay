@@ -10,6 +10,7 @@
  * Requirements: J1-R3, 17.1
  */
 
+import { RECOVERY_CODE_COUNT } from '../../../../lib/auth/recovery-code-count';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { signIn } from 'next-auth/react';
@@ -317,10 +318,25 @@ export default function SignUpForm() {
         that hides its own failure mode has not earned the trust it is asking
         for. Better to say it now than at 2am.
       */}
+      {/*
+        🔴 THIS SAID "ten recovery codes" AND THE PRODUCT ISSUES EIGHT.
+        RECOVERY_CODE_COUNT has been 8; the promise was never updated. Found by
+        signing up on production on 2026-08-14 and counting what arrived.
+
+        A two-off miscount would be trivial anywhere else. Here it is on the
+        screen explaining the ONLY way back into a vault nobody — us included —
+        can otherwise open, being read by someone deciding whether to trust us
+        with their family's accounts. Getting a smaller number than promised, at
+        exactly that moment, is the kind of small wrongness that makes a careful
+        person wonder what else is approximate.
+
+        Now derived from the constant, so the sentence cannot drift from the
+        code again.
+      */}
       <p style={{ fontSize: 'var(--t2)', lineHeight: 1.6, color: 'var(--ink-muted)' }}>
         <span style={{ fontWeight: 600, color: 'var(--ink)' }}>If you lose your phone:</span> we
-        give you ten recovery codes on the next screen. Print them, or put them somewhere you keep
-        important paper. They are the only way back in.
+        give you {RECOVERY_CODE_COUNT} recovery codes on the next screen. Print them, or put them
+        somewhere you keep important paper. They are the only way back in.
       </p>
 
       <div>
