@@ -164,8 +164,23 @@ function CadenceForm({ current, onSaved }: { current: number; onSaved: () => Pro
     }
   }
 
+  /*
+    🔴 flex-wrap WAS MISSING, AND IT CLIPPED THE CHECK-IN BUTTON OFF A PHONE.
+    The `basis-full` on the paragraph below only forces its own line inside a
+    WRAPPING container. In a nowrap row it just asks for 100% and then shrinks
+    to whatever is left — measured 2026-08-14 at 390px as a 35px-wide column
+    setting that sentence one word per line for twenty lines, with "I'm fine —
+    check in" pushed past the right edge reading "I'm fine — che".
+
+    The most time-critical control in the product was partially off-screen on
+    the device it is most likely to be used from, and every automated check
+    passed: the card clipped its overflowing child, so scrollWidth still
+    equalled innerWidth. This is the exact failure globals.css already records
+    at the 720px rule — the content column compresses rather than the document
+    overflowing — a second instance of it, found the same way, by looking.
+  */
   return (
-    <form onSubmit={save} className="flex items-end gap-3 rounded border border-rule bg-paper-raised p-4">
+    <form onSubmit={save} className="flex flex-wrap items-end gap-3 rounded border border-rule bg-paper-raised p-4">
       <label className="text-t2">
         <span className="mb-1 block text-muted">Check-in interval (days)</span>
         <input

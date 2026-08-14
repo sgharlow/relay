@@ -221,6 +221,99 @@ pre {
 }
 
 /* ---------------------------------------------------------------------------
+ * TOUCH TARGETS
+ *
+ * 🔴 THE CONTROL THAT RESETS THE DEAD-MAN'S SWITCH WAS 145x35 ON A PHONE.
+ * Measured 2026-08-14 at 390px: "I'm fine — check in" 35px tall, every text
+ * field 39px, every <select> 36px, "Save" 34px, "Sign out" 38px. Apple's floor
+ * is 44pt and WCAG 2.5.5 (AAA) is 44px; nothing in this product met it, because
+ * there are no base control styles at all — 40 files each write their own
+ * `px-3 py-2`, so the heights scattered between 34 and 39 and no single place
+ * existed to be wrong.
+ *
+ * WHY THIS ONE IS NOT COSMETIC. The wedge is elderly owners, and the two
+ * owner-mode jobs that happen away from a desk are both time-limited: checking
+ * in on /triggers, and answering on /challenge. A missed tap on check-in does
+ * not fail politely — the window lapses, the release advances, and the person's
+ * whole circle is told something has happened to them. That is the most
+ * expensive false alarm this product can generate, and it was gated behind a
+ * 35px target held by someone who may have a tremor.
+ *
+ * SCOPED TO TOUCH AND NARROW, DELIBERATELY. Owner mode's density is a ratified
+ * design property (dense, 16px floor, desk work) and every visual approval to
+ * date happened at desktop width. A mouse is precise — 24px clears WCAG 2.5.8
+ * AA — so inflating desktop controls would change approved screens to fix a
+ * problem they do not have. `max-width: 720px` is the breakpoint the layout
+ * already uses; `pointer: coarse` catches a touch tablet wider than that. Both,
+ * because either one alone has a real gap.
+ *
+ * WHAT IS EXEMPT, AND WHY THAT IS NOT A LOOPHOLE. Inline links inside a
+ * sentence are excluded by WCAG 2.5.8 itself, and stretching one to 44px pushes
+ * the lines of its own paragraph apart. ReadinessBanner's "Go" links are the
+ * live case: 26x26, inline in prose, already fixed once to clear the AA
+ * minimum. Checkboxes and radios keep their intrinsic box and are given the
+ * area instead by their labels, which are what people actually tap.
+ *
+ * min-height rather than height: a control with two lines of text must still be
+ * allowed to grow. This can only ever make a target bigger.
+ * ------------------------------------------------------------------------- */
+@media (max-width: 720px), (pointer: coarse) {
+  button,
+  [role='button'],
+  select,
+  textarea,
+  input:not([type='checkbox']):not([type='radio']):not([type='hidden']),
+  a[data-target='control'] {
+    min-height: 44px;
+  }
+
+  /* A button's text must sit in the middle of the box the rule just gave it,
+     or the extra height reads as a misaligned label rather than a target. */
+  button,
+  [role='button'],
+  a[data-target='control'] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Full-width controls are already centred by the rule above; a button that
+     sits in a row must not be stretched to its neighbour's height. */
+  select,
+  input:not([type='checkbox']):not([type='radio']):not([type='hidden']) {
+    align-self: auto;
+  }
+
+  /*
+   * 🔴 THE REVERSIBLE/PERMANENT TOGGLE WAS A 13px BOX IN A 22px LABEL.
+   * A min-height on the input itself would only make the box a tall thin
+   * rectangle, so the box is squared up to 24px (WCAG 2.5.8 AA exactly) and the
+   * LABEL — which is what a finger actually lands on, since it wraps the input
+   * — carries the 44px.
+   *
+   * This is not a generic checkbox: on /rules it is the difference between a
+   * release that closes again when the owner recovers and one that is
+   * PERMANENT. The whole palette is built to keep those apart — clay is
+   * reserved for irreversible actions and used nowhere else — and the control
+   * choosing between them was the smallest target on the page.
+   *
+   * `:has()` is the only way to size a label by its content; where it is
+   * unsupported the squared-up box still clears the AA minimum on its own, so
+   * this degrades to "smaller but conformant" rather than to nothing.
+   */
+  input[type='checkbox'],
+  input[type='radio'] {
+    width: 24px;
+    height: 24px;
+  }
+
+  label:has(> input[type='checkbox']),
+  label:has(> input[type='radio']) {
+    min-height: 44px;
+  }
+}
+
+/* ---------------------------------------------------------------------------
  * PRINT
  *
  * 🔴 CC8 REQUIRES "A PRINTABLE FALLBACK FOR EVERY CRITICAL INSTRUCTION", AND
