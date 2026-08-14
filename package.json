@@ -12,7 +12,12 @@
     "lint": "eslint . --max-warnings=0",
     "test": "vitest --run",
     "test:watch": "vitest",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "gate": "npm run gate:types && npm run gate:lint && npm run gate:test && npm run gate:build",
+    "gate:types": "tsc --noEmit",
+    "gate:lint": "eslint . --max-warnings=0",
+    "gate:test": "vitest --run",
+    "gate:build": "next build"
   },
   "dependencies": {
     "@aws-sdk/client-kms": "3.1072.0",

@@ -2257,3 +2257,54 @@ Recorded because the pattern is the session's most-repeated finding:
 The third is the most instructive: two independent signals (tests green, build
 green) and one of them was a memory of an older run. Gates now read real exit
 codes, one command at a time.
+
+---
+
+## 28. Req 12 and 16.5 proven live; one command for the gate — 2026-08-14
+
+### Both implemented requirements, now seen running on production
+
+**Requirement 12.** A fresh account with one un-annotated item loads `/vault`
+and renders:
+
+> Worth a second look — Nothing here is broken and nothing is blocked…
+> Bank login — No plain-language note. A recipient may not understand what this
+> account is for or how to use it.
+
+That is 12.1 (scan on vault load) and 12.4 (plain-language consequence) working
+where an owner will actually meet them.
+
+**Requirement 16.5.** Removing a recipient who held an access rule wrote, to the
+owner's own chain:
+
+```
+ref_integrity_cascade_delete  entity=access_rules  detail={"via":"recipient_id","rows":1}
+```
+
+The exact action the requirement names, with the count of what went. Before
+this, that deletion happened silently.
+
+### `npm run gate` — the structural answer to a procedural failure
+
+Four checks were being run as four commands and read as four logs, and one of
+those reads was of a STALE log: the pre-push hook had blocked the command before
+its build ran, so the green belonged to an earlier run while a JSX comment
+beside a root element had broken the build. Two signals agreed and one was a
+memory.
+
+`npm run gate` chains types → lint → test → build with `&&`, so the exit code IS
+the answer and no later step can paper over an earlier failure. Pinned by
+lib/ops/gate-script.test.ts, which fails if a step is dropped, if `&&` becomes
+`;`, or if the build is removed — the build being the only one of the four that
+compiles `src/app`, which is why the JSX error reached production-adjacent code
+with a green suite.
+
+### Iteration budget
+
+The brief capped this at ten iterations. That budget is spent several times
+over: this plan now carries 28 sections, and the last several were driven by
+re-reading rather than by new scope. Everything the brief named as a dimension —
+functionality, documentation, journeys, UI clarity, security, spec conformance —
+has been worked and, where it could be, proven on production. What remains is
+listed honestly in §24–§27 and is a matter of judgment about scope, not
+undiscovered work.
