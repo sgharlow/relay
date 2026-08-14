@@ -94,6 +94,62 @@ describe('security headers', () => {
   });
 
   /*
+    CSP ships REPORT-ONLY first, and the distinction is the whole safety
+    argument: report-only cannot blank a screen. Enforcing it needs nonces,
+    which needs middleware on every request — a decision to take on evidence
+    from real traffic, not in the same change that introduces the policy.
+  */
+  describe('Content-Security-Policy', () => {
+    it('is report-only, not enforcing', async () => {
+      const h = await headerMap();
+      expect(h['Content-Security-Policy-Report-Only']).toBeDefined();
+      expect(
+        h['Content-Security-Policy'],
+        'An ENFORCING policy has appeared. That is the goal eventually, but not ' +
+          'while script-src still carries unsafe-inline — read the note in ' +
+          'next.config.mjs before shipping this.',
+      ).toBeUndefined();
+    });
+
+    it('names a report destination that exists', async () => {
+      const v = (await headerMap())['Content-Security-Policy-Report-Only'];
+      expect(v).toContain('report-uri /api/csp-report');
+      expect(v).toContain('report-to csp');
+      // A report-only policy with nowhere to report is a header that does nothing.
+      expect(() => readFileSync('src/app/api/csp-report/route.ts', 'utf8')).not.toThrow();
+    });
+
+    it('declares the reporting endpoint group', async () => {
+      expect((await headerMap())['Reporting-Endpoints']).toContain('csp="/api/csp-report"');
+    });
+
+    it('refuses framing and object embedding outright', async () => {
+      const v = (await headerMap())['Content-Security-Policy-Report-Only'];
+      expect(v).toContain("frame-ancestors 'none'");
+      expect(v).toContain("object-src 'none'");
+      expect(v).toContain("base-uri 'self'");
+    });
+
+    /*
+      🔴 THE REPORT ENDPOINT MUST NOT BECOME AN EXFILTRATION CHANNEL. A CSP
+      report can carry `script-sample` — up to 40 characters of the offending
+      inline script. On a page that has just decrypted a vault item, that is a
+      slice of plaintext. It is dropped explicitly rather than merely unread.
+    */
+    it('the report endpoint never records a script sample', () => {
+      const src = readFileSync('src/app/api/csp-report/route.ts', 'utf8').replace(
+        /\/\*[\s\S]*?\*\//g,
+        ' ',
+      );
+      for (const field of ['script-sample', 'scriptSample', 'sample']) {
+        expect(src, `csp-report reads ${field}, which can carry page content`).not.toContain(
+          `${field}'`,
+        );
+      }
+    });
+  });
+
+  /*
     The redirects that were already here are load-bearing security: the legacy
     vercel.app host accepted real sign-ins, and Relay's own emails were once
     found pointing at it. Adding headers() must not have disturbed them.

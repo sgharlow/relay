@@ -67,6 +67,60 @@ const SECURITY_HEADERS = [
     broken by a header nobody suspects. Omission is the safer instruction.
   */
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+
+  /*
+    CONTENT-SECURITY-POLICY, IN REPORT-ONLY MODE — the second half of the
+    client-side-encryption design, arriving carefully.
+
+    This product decrypts vault plaintext IN THE BROWSER. CSP is the control
+    that decides what an injected script may do with what is sitting in that
+    page's memory, so it matters here more than on almost any other site. It is
+    also the header most able to blank a screen for somebody mid-emergency,
+    which is why this ships REPORT-ONLY: the browser evaluates the policy,
+    reports what it would have blocked to /api/csp-report, and renders the page
+    regardless. Report-only cannot break a page by construction.
+
+    'unsafe-inline' and 'unsafe-eval' in script-src are what make this
+    report-only rather than enforcing. Next's bootstrap emits inline scripts, so
+    an enforcing policy needs per-request nonces, which needs Node-runtime
+    middleware on the path of every request — the change owner-route.ts already
+    declined to make for passive liveness. Enforcing with those two directives
+    still present would buy very little; enforcing without them, today, would
+    break the app. So the honest sequence is: observe real traffic, remove what
+    nothing needs, then take the middleware decision on evidence.
+
+    frame-ancestors IS meaningful even here — it duplicates X-Frame-Options
+    above, which is deliberate: the header is what older browsers honour, and
+    this is what newer ones do.
+  */
+  {
+    key: 'Content-Security-Policy-Report-Only',
+    value: [
+      "default-src 'self'",
+      "base-uri 'self'",
+      "object-src 'none'",
+      "frame-ancestors 'none'",
+      "form-action 'self'",
+      // Stripe checkout is a REDIRECT, not an embed, so no frame-src for it.
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "style-src 'self' 'unsafe-inline'",
+      // data: covers the locally-generated TOTP enrolment QR, which is encoded
+      // in-process precisely so the secret never reaches a third party.
+      "img-src 'self' data: blob:",
+      "font-src 'self' data:",
+      "connect-src 'self' https://vitals.vercel-insights.com",
+      'report-uri /api/csp-report',
+      'report-to csp',
+    ].join('; '),
+  },
+
+  /*
+    The modern half of reporting. `report-uri` is deprecated but still the only
+    thing several browsers implement; `report-to` needs this companion header to
+    name the group. Both ship, because collecting from only some browsers looks
+    identical to a clean policy.
+  */
+  { key: 'Reporting-Endpoints', value: 'csp="/api/csp-report"' },
 ];
 
 const nextConfig = {

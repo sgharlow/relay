@@ -53,6 +53,11 @@ export const REACHED_FROM_OUTSIDE: Record<string, string> = {
     'Probed by .github/workflows/scheduler-monitor.yml — the dead-man’s switch.',
   '/api/stripe/webhook': 'Stripe, signature-verified.',
   '/api/incident': 'Posted to by the error boundary, from a page that has already failed.',
+  '/api/csp-report':
+    'Posted to by the BROWSER, not by any code here — it is named in the ' +
+    'Content-Security-Policy-Report-Only and Reporting-Endpoints headers in ' +
+    'next.config.mjs. lib/ops/security-headers.test.ts asserts both directions: ' +
+    'the header names this path, and this route exists to receive it.',
 };
 
 /**
