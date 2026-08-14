@@ -305,6 +305,115 @@ ratified:
       replacement, and the handlers deleted. Policies are still removed as a cascade
       of deleting the person, which is the path that has always been used."
 
+  - id: outbound-mail-bounds
+    date: 2026-08-13
+    owner: steve
+    decision: "cap free-tier verifiers at 4, meter invitation email per owner, and
+      clean every name that reaches a message"
+    detail: "The 2026-08-13 release audit (docs/standby-sprint-plan.md §20) found
+      the product was an open mail relay for anyone who signed up. Three gaps
+      compounded: POST /api/verifiers had no entitlement cap (TIER_LIMITS had no
+      `verifiers` key at all, while its sibling /api/recipients had been capped
+      since the tier was written); POST /api/invitations had no rate limit and no
+      daily ceiling and sends a real message per call; and a contact's `name` was
+      validated only by isNonEmptyString while the owner's `display_name` was
+      merely trimmed — the first lands in the message body, the second in the
+      SUBJECT LINE. Signup is self-serve, so register → name N people → invite
+      each → repeat was open to anybody, emitting SPF/DKIM-valid mail with
+      attacker-chosen recipients and attacker-chosen text."
+    rationale: "Steve's call on the number: 4, matching recipients, because a real
+      N-of-M quorum runs at one or two and a circle is a spouse, a sibling, a
+      doctor and a friend. The sender is a Resend account SHARED with
+      report-bridge, so the reputation cost of abuse lands on a different
+      project — which is what moved this from tidy-up to the audit's top finding.
+      ⚠️ BETA_INVITE_CHANNEL='owner' did NOT cover it: that flag governs
+      create-time only, and the invitations route defaults its own
+      deliveryChannel to `email`."
+    implemented: "TIER_LIMITS.verifiers + assertWithinVerifierCap (402, checked
+      before the row is written); lib/notify/invite-budget.ts — 20 per owner per
+      rolling 24h counted from audit_log, in the same shape as the AI meter,
+      reserved inside inviteAndNotify because THREE callers reach the send;
+      a per-owner burst limit on the route; cleanPersonName in lib/validation.ts
+      as the single definition, applied to both people modules and to both doors
+      onto display_name. lib/ops/outbound-mail-bounds.test.ts is the
+      cross-cutting guard — it fails when a route that sends mail has no bound."
+    revisit: "if a paying owner with a large circle hits the daily ceiling
+      legitimately, which the message routes to a human by design"
+
+  - id: retire-shared-totp-secret
+    date: 2026-08-13
+    owner: steve
+    decision: "remove the shared TOTP_SECRET fallback entirely rather than scoping it"
+    detail: "resolveTotpSecret fell back to one environment variable for ANY row
+      with a NULL totp_secret. Its comment said the fallback covered accounts
+      predating self-serve signup; in fact nothing writes a totp_secret except
+      signup.ts, so every contact account — created by upsertUser via claim,
+      break-glass and the seed — was NULL forever and covered by it. Sign-in is
+      email+TOTP with no password, so that variable plus an address was a
+      complete credential over a population that GREW with the beta. Measured on
+      production: 5 of 6 accounts resolved through it, including demo@relay.test
+      (25 items, and the is_demo_account flag that gates /api/demo/simulate)."
+    rationale: "Three separate written claims asserted the opposite was true —
+      the module header, sprint-plan §14's recorded non-finding, and §19's
+      'nobody can sign into' the demo account, which was the whole argument for
+      why seeding no credential was safe in a PUBLIC repo. Removing the fallback
+      makes all three true rather than correcting them into a weaker product.
+      Costs nothing that worked: only NULL-secret rows are affected and every one
+      is a fixture; contacts sign in by claim code, emergency code or passkey."
+    implemented: "lib/auth/resolve-totp-secret.ts reads no environment variable
+      at all (asserted on the source). generateTotpCode/validateTotpCode — the
+      two exports that read the shared secret, with no production caller — are
+      deleted, and their RFC 6238 known-answer vectors moved onto the per-user
+      functions sign-in actually calls. TOTP_SECRET is named in .env.example as
+      RETIRED rather than dropped, so anyone finding it still set knows it is
+      inert."
+
+  - id: demo-accounts-never-sweep
+    date: 2026-08-13
+    owner: steve
+    decision: "exclude seeded accounts from the heartbeat sweep AND make seeded
+      contact addresses deliverable"
+    detail: "demo@relay.test is live with two ARMED release_states and a 30-day
+      interval, so around 2026-09-12 the hourly cron would have armed both
+      triggers unattended and mailed its verifiers at @example.com — reserved
+      domains that hard-bounce, on the sender shared with report-bridge. Nobody
+      could have stopped it: a demo account has no credential, so no owner exists
+      to check in and reverse the false alarm. §18 found this harm in the QA
+      fixtures on 2026-08-12 and fixed it there; the SEED was never changed, and
+      the seed is the copy that ships."
+    rationale: "Both layers, because they close different things. The address
+      change stops the bounces; only the sweep exclusion stops a fixture
+      performing a real release nobody asked for. Structural rather than a data
+      cleanup — the seed can be re-run at any time. A demo still advances through
+      /api/demo/simulate, which is explicit and driven by a person."
+    implemented: "is_demo_account = false in runHeartbeatSweep's WHERE clause
+      (asserted on the query, not on the result); demoAddress() in
+      lib/seed/demo-data.ts with a test that fails on any seeded contact in a
+      reserved domain. The demo OWNER stays demo@relay.test — that string is the
+      identity auth_sub derives from, not a channel."
+
+  - id: csp-enforce-the-safe-four
+    date: 2026-08-13
+    owner: steve
+    decision: "enforce base-uri, object-src, frame-ancestors and form-action;
+      keep everything else report-only"
+    detail: "CSP shipped wholly report-only. That reasoning is right about
+      script-src — enforcing it needs nonces, which needs Node-runtime middleware
+      on every request — and irrelevant to four directives that have nothing to do
+      with Next's inline bootstrap and cannot blank a page. frame-ancestors was
+      already being enforced in its older spelling by X-Frame-Options: DENY."
+    rationale: "Real protection against base-tag injection and form hijack at zero
+      page-break risk. Verified before enforcing that every form in the app is an
+      onSubmit handler with no `action` attribute and that Stripe checkout is a
+      redirect rather than a cross-origin POST."
+    implemented: "next.config.mjs sends both headers. The load-bearing guard in
+      lib/ops/security-headers.test.ts is the negative one: it fails if the
+      ENFORCING header ever grows a directive that could white-screen the product,
+      because merging the two headers is a one-word change."
+    note: "⚠️ /api/csp-report still only writes to stderr, so the 'observe then
+      enforce' plan for script-src has no observer. Deliberate for now — routing
+      it through lib/ops/incident.ts was offered and declined."
+
   - id: stripe-merchant-name
     date: 2026-08-09
     decision: "leave as-is for the G1 flight"

@@ -1539,3 +1539,186 @@ unbuyable trigger, and the tour must keep more than one recipient and more than 
 future fix cannot quietly flatten what the table exists to demonstrate.
 
 Verified live: no `estate` and no `executor` anywhere on `/demo` or `/caregivers`.
+
+---
+
+## 20. Release audit — 2026-08-13, fifth pass
+
+Scope set by Steve: completeness, correctness, security, the documented journeys,
+the user's guide, the wiring, the UI, and the spec. Method deliberately **not** a
+re-read of §§13–19 — those passes were thorough and their findings are closed.
+This one went at the places a self-audit structurally cannot reach: the repo's
+**public git history**, the **production database**, the **served artifacts** as a
+browser actually loads them, and the code written in the last few hours, on §18's
+own principle that the newest code is the least-walked.
+
+Baseline before touching anything: build, `tsc --noEmit`, lint and the full suite
+all green. Five findings, all evidenced against production rather than inferred.
+
+### 🔴 F1 — Relay was an open mail relay for anyone who signed up
+
+The single worst finding, and it was assembled entirely from parts that were each
+individually fine.
+
+- `POST /api/verifiers` had **no entitlement cap**. `TIER_LIMITS` had no
+  `verifiers` key at all — not a decision, an omission — while its sibling
+  `/api/recipients` had been capped since the tier was written.
+- `POST /api/invitations` had **no rate limit and no daily ceiling**, and sends a
+  real message per call.
+- `BETA_INVITE_CHANNEL='owner'` does **not** cover it. That flag governs
+  create-time; the invitations route takes its own `deliveryChannel` and defaults
+  it to `email`.
+- A contact's `name` was validated by `isNonEmptyString` alone — no length, no
+  newline handling — and lands in the message body. The owner's `display_name`
+  was length-capped but only `.trim()`-ed, and lands in the **subject line**.
+
+Signup is self-serve and free, so the whole sequence was available to anybody:
+register → name N people → invite each → repeat. The product would emit mail with
+valid SPF and DKIM, to addresses of the sender's choosing, with the sender's text
+in the subject and the opening line. On the Resend account **shared with
+report-bridge**, where the reputation cost lands on a different project.
+
+The same class was closed once already, on the access-request `reason` (§16
+finding 1). It was closed for the field somebody thought of as attacker-controlled
+and left open on the two fields nobody did, because a *name* does not read like
+hostile input.
+
+**Fixed:** `verifiers: 4` on the free tier (Steve's call — same number as
+recipients, and a real N-of-M quorum runs at one or two); `lib/notify/invite-budget.ts`,
+a 20-per-owner-per-24h ceiling counted from `audit_log` in the same shape as the
+AI meter, reserved inside `inviteAndNotify` because **three** callers reach the
+send and a guard in the route would have bounded one; a per-owner burst limit on
+the route; and `cleanPersonName` as the one definition of what a name may be,
+applied to both people modules and to both doors onto `display_name`.
+
+### 🔴 F2 — One environment variable was a master key over every contact account
+
+`resolveTotpSecret` fell back to `process.env.TOTP_SECRET` for **any** row with a
+NULL secret. Its header said the fallback existed "ONLY for accounts that predate
+self-serve signup". Nothing in the product writes a `totp_secret` except
+`signup.ts` — every contact account is created by `upsertUser` (claim,
+break-glass, the seed) and stays NULL **forever**. So the covered population was
+not one frozen legacy account; it was every person who has ever claimed a standby
+role, growing with the beta. Sign-in is email + TOTP with no password, so that
+variable plus an address was a complete credential.
+
+Measured on production: **five of six accounts** resolved through the fallback,
+including `demo@relay.test` — 25 items, two people, and the `is_demo_account` flag
+that gates `/api/demo/simulate`. Zero passkeys are registered.
+
+**Three written claims depended on the opposite being true**, and all three were
+false: this file's own header; §14's recorded non-finding (*"nothing grants a
+standby row a totp_secret, so email+TOTP is refused for them"* — the reverse:
+because nothing grants them one, it was **accepted**); and §19's *"nobody can sign
+into"* the demo account, which was the entire argument for why seeding no
+credential was safe in a public repo.
+
+**Fixed by removing the fallback**, not by correcting the prose — the claims are
+now true rather than softened. `generateTotpCode`/`validateTotpCode`, the two
+exports that read the shared secret, had **no production caller** and are gone
+too; their RFC 6238 known-answer vectors moved onto the per-user functions
+sign-in actually calls, which is where that coverage belonged. `TOTP_SECRET` is
+named in `.env.example` as retired rather than deleted, so anyone who finds it
+still set knows it is inert.
+
+### 🟠 F3 — The demo account was scheduled to perform a real release
+
+`demo@relay.test` is live, `status='active'`, holds **two ARMED release_states**,
+runs a 30-day check-in interval and was last active 2026-08-13. So around
+**2026-09-12** the hourly sweep would have found it overdue and driven both
+triggers ARMED → PENDING → GRACE, unattended. That mails the owner alert to
+`demo@relay.test` and the verifier notices to `achen@example.com` and
+`sam@example.com` — reserved domains that cannot receive mail, so hard bounces on
+the shared sender. Nobody could have stopped it: a demo account has no credential,
+so no owner exists to check in.
+
+§18 found this exact harm in the QA walks and fixed it for the **fixtures**. The
+**seed** was never changed, and the seed is the copy that ships.
+
+**Fixed in both layers, per Steve:** `runHeartbeatSweep` excludes
+`is_demo_account` in the WHERE clause, so no fixture can ever drive the release
+path on a schedule; and seeded contacts move to deliverable sub-addressed inboxes
+(`demoAddress()`), with a test that fails on any seeded address in a reserved
+domain. The owner's own address stays `demo@relay.test` deliberately — it is the
+identity `auth_sub` derives from, not a channel.
+
+### 🟠 F4 — Every screenshot in the shipped user's guide was broken
+
+24 × 404 on `/guide`, found by opening it and reading the console. The rewrite
+that makes the short URL work (`/guide` → `/guide/index.html`) does not change
+the browser's address, so the document's base stays `/guide` and a relative
+`src="screens/x.png"` resolves to `/screens/x.png`. The files were at
+`/guide/screens/x.png` returning 200 the entire time.
+
+Nothing failed loudly. Build green, page renders, text intact, suite green —
+because every check on the guide reads its **words** (`beta-flag.test.ts` reads
+§2.7) and none asked whether it could **draw**. This is the one document written
+for the non-technical half of the audience, and `/guide` is the URL that goes in
+an invitation.
+
+**Fixed:** all 24 references made absolute, plus `lib/ops/guide-assets.test.ts`,
+which asserts both halves — every reference resolves from the site root, and every
+referenced file exists on disk. Proven by planting a relative reference and
+watching it fail.
+
+### 🟡 F5 — Report-only was costing protection that was free
+
+CSP shipped entirely report-only, and the reasoning for that is correct — an
+enforcing `script-src` needs nonces, which needs Node-runtime middleware on every
+request. But that is an argument about `script-src`, and it had been applied to
+four directives it does not describe. `base-uri`, `object-src`, `frame-ancestors`
+and `form-action` have nothing to do with Next's inline bootstrap and cannot blank
+a page; `frame-ancestors` was already being enforced in its older spelling by
+`X-Frame-Options: DENY`, which has been live and breaking nothing.
+
+**Fixed as a split, per Steve:** an enforcing header carrying exactly those four
+(every form in the app verified as an `onSubmit` handler with no `action`
+attribute first), and the full policy still report-only for the script directives.
+The guard that matters is the second one: a test fails if the enforcing header
+ever grows a directive that could white-screen the product, because that is a
+one-word change somebody could make while tidying two headers into one.
+
+### Recorded, not fixed
+
+- **`/api/csp-report` writes to stderr and nothing else.** The "observe real
+  traffic, then enforce" plan therefore has no observer, which is the
+  log-nobody-watches pattern this codebase has fixed everywhere else. Steve chose
+  not to route it through the incident alerter for now; the enforcement decision
+  needs somebody to read Vercel logs deliberately.
+- **Four TOTP secrets sit in the public git history** (`scripts/scratch-*-secret.txt`,
+  `_code.ts`) from the walks of 08-07 and 08-12. **Not a live exposure** — checked
+  against production, none of those secrets belongs to any existing row, and the
+  accounts were cleaned up. The `.gitignore` entries that now block `_*.ts` and
+  `scripts/scratch-*.ts` were added after each incident. Worth knowing that the
+  history is not clean; not worth a rewrite for spent credentials.
+- **PROJECT.yaml carries 2026-08-14 dates written on 2026-08-13** — UTC where the
+  rest of the repo uses local. Cosmetic, but it is the file the claim-discipline
+  rule names as the source of truth, so dates there should agree with git.
+- `/favicon.ico` 404s. `/icon.svg` exists and is what the HTML links, so browsers
+  get an icon; only the default fallback probe misses.
+
+### What was checked and found sound
+
+Route-by-route auth matrix across all 70 handlers — every route carries a guard,
+and the six with none are correct (NextAuth's own handler, a timestamp-only health
+probe, the token-authenticated invitation paths, pre-auth WebAuthn options, and
+the two unauthenticated-by-necessity reporters, both rate-limited and both
+constant-response). `npm audit` clean on production dependencies. `.gitignore`
+correctly excludes `.env*.local`. Every public surface returns 200 on production
+and the scheduler ledger was 29 minutes fresh. The AI seam is metered. The
+estate-withdrawal commits from earlier today are consistent across enums, routes,
+demo fixtures, Terms, Privacy and the guide.
+
+### Verification
+
+`npm run build`, `npx tsc --noEmit`, `npm run lint` and the full suite all green
+after the changes — derive the count with `PROJECT.yaml derived.test_count`
+rather than trusting a number quoted here, which is the rule this section was
+nearly the next violation of.
+
+Tests were added for every finding, and none removed except the three that pinned
+the retired shared-secret delegation — which had become tautologies once the path
+was gone, each comparing an expression with itself.
+
+⏸️ **Not yet on production.** Every fix above is in the repository; F4 in
+particular only stops being a defect for readers once it deploys.
