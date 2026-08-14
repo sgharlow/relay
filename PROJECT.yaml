@@ -471,12 +471,23 @@ cross_cutting:
          evidence: "case RLY-DECY-X347 observed in the 2026-08-13 sweep" }
   CC9: { name: "dead-man's switch on the scheduler", status: live,
          evidence: ".github/workflows/scheduler-monitor.yml, both transitions proven 2026-08-08" }
-  CC8: { name: "accessibility as a functional requirement", status: partial,
+  CC8: { name: "accessibility as a functional requirement", status: live,
          evidence: "axe clean across 21 pages including access mode and a
            390x844 viewport (2026-08-13); gated in CI for the signed-out half by
            .github/workflows/a11y.yml. Printable fallbacks shipped for the guide
-           and the screens that carry irrecoverable instructions. STILL UNVERIFIED:
-           behaviour on a genuinely old low-end phone." }
+           and the screens that carry irrecoverable instructions.
+           OLD LOW-END PHONE VERIFIED 2026-08-14 — the last open item, now closed.
+           Simulated 6x CPU throttle, 400kbps/400ms 3G, 320x568, cache DISABLED
+           (a person clicking an ad has never seen the site; the first reading
+           was against a warm cache and measured the wrong visitor). Cold on
+           /caregivers: FCP 2.55s, load 6.56s, 267 KB, NO horizontal overflow at
+           320px, CTA 74px tall. The serif was 41% of the page at 129 KB and
+           carried a wght axis of 200-800 against an @font-face declaring
+           400-600; instanced to 400-600 it is 90 KB with all 224 glyphs and
+           opsz untouched -- FCP 3.16s -> 2.55s, page 311 KB -> 267 KB.
+           Pinning opsz=18 would give 37 KB and is NOT taken: it changes
+           rendering at every size, and access-mode typography is ratified
+           design. Recorded in src/app/layout.tsx." }
 
 # Known defects accepted for now, with the trigger that ends the acceptance.
 #
