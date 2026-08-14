@@ -22,7 +22,7 @@ import { assertCanRelease } from '../billing/entitlements';
 import { isSqlState40001, withOccRetry } from '../db/occ';
 import { writeAuditEntry } from '../audit/audit-service';
 import { DECISIONS, evaluateOutcome, type Decision } from './verifier-decision';
-import { isEligibleVerifier } from './quorum';
+import { isEligibleVerifier, countEligibleVerifiers } from './quorum';
 import { notifyRecipientsOfRelease, notifyRecipientsOfClosure } from '../notify/notifications';
 import {
   canRelease,
@@ -379,14 +379,37 @@ async function denyConfirmation(args: {
 
   const row = bumped.rows[0] ?? head;
 
-  // M = the verifier pool this owner designated.
-  const pool = await query<{ n: string }>(
-    `SELECT COUNT(*)::text AS n FROM verifiers WHERE owner_id = $1`,
-    [row.owner_id],
-  );
+  /*
+    🔴 M IS THE ELIGIBLE POOL, NOT THE ROSTER — corrected 2026-08-13. This used
+    to count every named verifier, while confirmations and denials only ever
+    come from ELIGIBLE ones (confirmed, unconflicted — the gate below refuses
+    the rest). With the ordinary beta roster — some named people never verified
+    — the raw count inflated M, so the halt threshold (denials that make quorum
+    arithmetically unreachable) could NEVER be crossed: both eligible verifiers
+    deny, quorum is factually dead, and the release waited forever instead of
+    standing down. The deny-halt safety of J7-R7 was unreachable for exactly
+    the rosters the beta has. One predicate, shared with the answering gate and
+    the readiness banner, so the three cannot drift.
+  */
+  const [poolRows, conflictedRecipients] = await Promise.all([
+    query<{ id: string; claimed_user_id: string | null; standby_state: string | null }>(
+      `SELECT id, claimed_user_id, standby_state FROM verifiers WHERE owner_id = $1`,
+      [row.owner_id],
+    ),
+    query<{ claimed_user_id: string | null }>(
+      `SELECT DISTINCT r.claimed_user_id
+         FROM recipients r
+         JOIN access_rules ar ON ar.recipient_id = r.id
+        WHERE ar.owner_id = $1 AND ar.trigger_type = $2 AND r.claimed_user_id IS NOT NULL`,
+      [row.owner_id, row.trigger_type],
+    ),
+  ]);
 
   const outcomeKind = evaluateOutcome({
-    m: Number(pool.rows[0]?.n ?? '0'),
+    m: countEligibleVerifiers(poolRows.rows, {
+      recipientUserIds: conflictedRecipients.rows.map((r) => r.claimed_user_id as string),
+      ownerUserId: row.owner_id,
+    }),
     n: row.required_confirmations,
     confirmations: row.received_confirmations,
     denials: Number(row.received_denials ?? 0),

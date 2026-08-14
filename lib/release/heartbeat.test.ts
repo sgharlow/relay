@@ -11,9 +11,22 @@ import fc from 'fast-check';
 
 vi.mock('../db/connection', () => ({ query: vi.fn() }));
 vi.mock('../audit/audit-service', () => ({ writeAuditEntry: vi.fn(async () => ({})) }));
+vi.mock('../notify/notifications', () => ({
+  notifyRecipientsOfClosure: vi.fn(async () => 0),
+  notifyRecipientsOfRelease: vi.fn(async () => 0),
+  notifyOwnerTriggerPending: vi.fn(async () => undefined),
+  notifyVerifiersForTrigger: vi.fn(async () => 0),
+}));
+vi.mock('../people/verifiers', () => ({
+  listVerifiers: vi.fn(async () => [{ id: 'v1', name: 'Dr. Chen', email: 'chen@example.com' }]),
+}));
 
 import { query } from '../db/connection';
 import { writeAuditEntry } from '../audit/audit-service';
+import {
+  notifyOwnerTriggerPending,
+  notifyVerifiersForTrigger,
+} from '../notify/notifications';
 import { isOverdue, processCheckin, runHeartbeatSweep , resolveElapsedGrace } from './heartbeat';
 
 const mockQuery = vi.mocked(query);
@@ -306,5 +319,66 @@ describe('the sweep never fires a seeded account', () => {
 
     const res = await runHeartbeatSweep({ transition } as never, { sleep: async () => {} });
     expect(res).toEqual({ evaluated: 1, transitioned: 1, failures: 0 });
+  });
+});
+
+
+/**
+ * 🔴 THE DEAD-MAN'S SWITCH USED TO ARM IN TOTAL SILENCE. A header comment
+ * claimed the Req 4.4 owner alert was "wired in the notification layer"; it had
+ * ZERO production callers, and the Req 6.2 verifier notice fired only on the
+ * MANUAL initiate path. So the product's flagship scenario — the owner stops
+ * checking in — armed the release and told nobody: no nudge to an owner who
+ * might just be on holiday, no notice to the verifiers whose confirmations now
+ * gate everything. Quorum sat at 0/N with nobody knowing a question existed.
+ */
+describe('the sweep rings the bell after it arms', () => {
+  function sweepFixture(transitionOk: boolean) {
+    mockQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes('FROM users'))
+        return qResult([{ id: 'owner-1', email: 'owner@example.com' }]);
+      if (sql.includes("state = 'armed'"))
+        return qResult([{ id: 'rs-1', trigger_type: 'emergency', version: '0' }]);
+      return qResult([]);
+    });
+    const transition = transitionOk
+      ? vi
+          .fn()
+          .mockResolvedValueOnce({ id: 'rs-1', version: 1 } as never)
+          .mockResolvedValueOnce({ id: 'rs-1', version: 2 } as never)
+      : vi.fn().mockRejectedValue(new Error('conflict'));
+    return transition;
+  }
+
+  it('notifies the owner AND the verifiers after a successful arm', async () => {
+    const transition = sweepFixture(true);
+    await runHeartbeatSweep({ transition } as never, { sleep: async () => {} });
+
+    expect(notifyOwnerTriggerPending).toHaveBeenCalledWith('owner@example.com', 'emergency');
+    expect(notifyVerifiersForTrigger).toHaveBeenCalledWith(
+      [{ id: 'v1', name: 'Dr. Chen', email: 'chen@example.com' }],
+      'emergency',
+      'rs-1',
+      'owner-1',
+    );
+  });
+
+  it('sends NOTHING when the arm failed — no mail about a transition that did not happen', async () => {
+    const transition = sweepFixture(false);
+    await runHeartbeatSweep({ transition } as never, { sleep: async () => {} });
+
+    expect(notifyOwnerTriggerPending).not.toHaveBeenCalled();
+    expect(notifyVerifiersForTrigger).not.toHaveBeenCalled();
+  });
+
+  it('a mail failure does not fail the sweep — the next owner is still processed', async () => {
+    vi.mocked(notifyOwnerTriggerPending).mockRejectedValueOnce(new Error('resend down'));
+    const transition = sweepFixture(true);
+
+    const res = await runHeartbeatSweep({ transition } as never, { sleep: async () => {} });
+
+    // The transition still counts; the failure went to stderr, not the caller.
+    expect(res.transitioned).toBe(1);
+    expect(res.failures).toBe(0);
   });
 });

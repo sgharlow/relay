@@ -15,16 +15,32 @@
  *
  * `isOverdue` is the pure overdue predicate (Property 9).
  *
- * NOTE: the owner-alert email on a PENDING transition (Req 4.4) is sent by the
- * notification layer (Resend, task 17) — wired there, not here.
+ * 🔴 THE NOTE THAT USED TO SIT HERE WAS FALSE, and it hid the product's worst
+ * silence. It read: "the owner-alert email on a PENDING transition (Req 4.4) is
+ * sent by the notification layer — wired there, not here." Nothing was wired
+ * anywhere: notifyOwnerTriggerPending had ZERO production callers, and
+ * notifyVerifiersForTrigger was called only by the MANUAL initiate route. So
+ * the flagship scenario — the owner stops checking in and the dead-man's
+ * switch arms — proceeded in total silence: no nudge to the owner who might
+ * simply be on holiday, and no notice to the verifiers whose confirmations now
+ * gate the release. Quorum sat at 0/N with nobody knowing a question existed;
+ * the dead-man's switch was a switch that never rang its bell. Both notices
+ * now go out from the sweep, best-effort, after the transition commits — a
+ * comment claiming a caller exists is not a caller.
  *
  * Feature: relay-h0-mvp
- * Requirements: 4.2, 4.3, 4.5, 4.7
+ * Requirements: 4.2, 4.3, 4.4, 4.5, 4.7, 6.2
  */
 
 import { query } from '../db/connection';
 import { writeAuditEntry } from '../audit/audit-service';
-import { notifyRecipientsOfClosure, notifyRecipientsOfRelease } from '../notify/notifications';
+import {
+  notifyRecipientsOfClosure,
+  notifyRecipientsOfRelease,
+  notifyOwnerTriggerPending,
+  notifyVerifiersForTrigger,
+} from '../notify/notifications';
+import { listVerifiers } from '../people/verifiers';
 import { isReversibleTrigger, type ReleaseStateMachine } from './state-machine';
 import { graceWindowMs } from './triggers';
 
@@ -190,8 +206,8 @@ export async function runHeartbeatSweep(machine: Machine, deps: SweepDeps = {}):
     demo advances only through /api/demo/simulate, which is explicit, gated on
     this same flag, and driven by a person who meant it.
   */
-  const overdue = await query<{ id: string }>(
-    `SELECT id FROM users
+  const overdue = await query<{ id: string; email: string }>(
+    `SELECT id, email FROM users
        WHERE status = 'active'
          AND is_demo_account = false
          AND now() - last_active_at > (checkin_interval_days * INTERVAL '1 day')`,
@@ -211,6 +227,33 @@ export async function runHeartbeatSweep(machine: Machine, deps: SweepDeps = {}):
       const ok = await armOne(machine, rs, owner.id, now, sleep);
       if (ok) transitioned++;
       else failures++;
+
+      /*
+        THE BELL, FINALLY RUNG (Req 4.4 + 6.2 on the scheduler path). Sent only
+        after the transition COMMITTED — never from inside armOne's retry loop,
+        where a transient failure would mean duplicate mail — and best-effort,
+        because a mail outage must not fail the sweep or block the next owner.
+        The verifier call is the SAME function the manual initiate route uses,
+        so the two paths cannot drift on who is told what.
+      */
+      if (ok) {
+        try {
+          await notifyOwnerTriggerPending(owner.email, rs.trigger_type);
+        } catch (err) {
+          process.stderr.write(`[heartbeat] owner pending notice failed: ${String(err)}\n`);
+        }
+        try {
+          const verifiers = await listVerifiers(owner.id);
+          await notifyVerifiersForTrigger(
+            verifiers.map((v) => ({ id: v.id, name: v.name, email: v.email })),
+            rs.trigger_type,
+            rs.id,
+            owner.id,
+          );
+        } catch (err) {
+          process.stderr.write(`[heartbeat] verifier notices failed: ${String(err)}\n`);
+        }
+      }
     }
   }
 
@@ -297,18 +340,22 @@ export async function resolveElapsedGrace(machine: Machine, now: Date = new Date
   let released = 0;
   for (const row of due.rows) {
     try {
-      await machine.transition(row.id, 'grace', 'released', row.version, {
+      const committed = await machine.transition(row.id, 'grace', 'released', row.version, {
         reversible: isReversibleTrigger(row.trigger_type),
         updates: { released_at: now.toISOString() },
       });
 
       // Same notification the confirmation path sends, so a recipient's
       // experience does not depend on which code path completed the release.
+      // The version is the COMMITTED row's, not a guess of old+1: the unclaimed
+      // fallback mints a token carrying this number, a token whose version
+      // disagrees with the row is rejected at redemption, and a guessed version
+      // would brick the one credential sent to the person with no other way in.
       await notifyRecipientsOfRelease({
         releaseStateId: row.id,
         ownerId: row.owner_id,
         triggerType: row.trigger_type,
-        version: String(Number(row.version) + 1),
+        version: String(committed.version),
       }).catch(() => undefined);
 
       released++;

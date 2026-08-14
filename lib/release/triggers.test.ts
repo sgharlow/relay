@@ -81,17 +81,23 @@ function installSim(initial: ReleaseStateRow, verifierPool = 3, verifierState = 
       row.version += 1;
       return qResult([{ ...row }]);
     }
-    // The eligibility row must be matched BEFORE the bare count below: both
-    // mention `FROM verifiers`, and the count shape would read as a person with
-    // no standby_state — i.e. never eligible.
-    if (sql.includes('claimed_user_id, standby_state FROM verifiers')) {
+    // The single-row eligibility read (the ANSWERING verifier) and the pool
+    // read (deny-halt M, since 2026-08-13 the ELIGIBLE pool, not a bare count)
+    // both mention the same columns — told apart by their WHERE clause.
+    if (sql.includes('claimed_user_id, standby_state FROM verifiers WHERE id = $1')) {
       return qResult([{ id: p[0], claimed_user_id: null, standby_state: verifierState }]);
+    }
+    if (sql.includes('claimed_user_id, standby_state FROM verifiers WHERE owner_id = $1')) {
+      return qResult(
+        Array.from({ length: verifierPool }, (_, i) => ({
+          id: `v-${i + 1}`,
+          claimed_user_id: null,
+          standby_state: verifierState,
+        })),
+      );
     }
     if (sql.includes('FROM recipients r')) {
       return qResult([]); // no dual-role conflicts in these fixtures
-    }
-    if (sql.includes('FROM verifiers')) {
-      return qResult([{ n: String(verifierPool) }]);
     }
     if (sql.startsWith('UPDATE release_state')) {
       if (Number(p[1]) === row.version) {
@@ -453,6 +459,54 @@ describe('submitConfirmation — deny and abstain', () => {
       now,
     });
 
+    expect(out.status).toBe('halted');
+    expect(machine.safeResetToArmed).toHaveBeenCalledWith('rs-1');
+  });
+
+  it('the unverified do NOT inflate M — both eligible verifiers denying halts, whatever the roster says', async () => {
+    // 🔴 THE REGRESSION THIS PINS. M used to be COUNT(*) of the roster, while
+    // answers only ever come from ELIGIBLE verifiers. Roster of five with two
+    // confirmed, need 2: the old arithmetic demanded denials > 5-2 = 3 — from a
+    // population of two. Both eligible people deny, quorum is factually dead,
+    // and the release waited forever. The beta's ordinary roster IS this shape.
+    const row = makeRow({ required_confirmations: 2, received_confirmations: 0, received_denials: 1 });
+    const mutable = { ...row, version: Number(row.version) } as typeof row & { version: number };
+    mockQuery.mockImplementation(async (sql: string, params?: unknown[]) => {
+      const p = params ?? [];
+      if (sql.includes('FROM verifier_confirmations')) return qResult([]);
+      if (sql.startsWith('SELECT * FROM release_state')) return qResult([{ ...mutable }]);
+      if (sql.includes('received_denials')) {
+        mutable.received_denials = Number(mutable.received_denials ?? 0) + 1;
+        return qResult([{ ...mutable }]);
+      }
+      if (sql.includes('claimed_user_id, standby_state FROM verifiers WHERE id = $1')) {
+        return qResult([{ id: p[0], claimed_user_id: null, standby_state: 'confirmed' }]);
+      }
+      if (sql.includes('claimed_user_id, standby_state FROM verifiers WHERE owner_id = $1')) {
+        // Five named; TWO eligible. The three invited must count for nothing.
+        return qResult([
+          { id: 'v-1', claimed_user_id: null, standby_state: 'confirmed' },
+          { id: 'v-2', claimed_user_id: null, standby_state: 'confirmed' },
+          { id: 'v-3', claimed_user_id: null, standby_state: 'invited' },
+          { id: 'v-4', claimed_user_id: null, standby_state: 'invited' },
+          { id: 'v-5', claimed_user_id: null, standby_state: 'invited' },
+        ]);
+      }
+      if (sql.includes('FROM recipients r')) return qResult([]);
+      if (sql.startsWith('INSERT INTO verifier_confirmations')) return qResult([]);
+      return qResult([]);
+    });
+    const machine = machineStub();
+
+    const out = await submitConfirmation({
+      releaseStateId: 'rs-1',
+      verifierId: 'v-2',
+      decision: 'deny',
+      machine,
+      now,
+    });
+
+    // m=2, n=2, confirmations=0, denials=2 -> 0 + (2-2) < 2 -> halt.
     expect(out.status).toBe('halted');
     expect(machine.safeResetToArmed).toHaveBeenCalledWith('rs-1');
   });
