@@ -12,7 +12,7 @@
 import { query } from '../db/connection';
 import { withOccRetry } from '../db/occ';
 import { cascadeDelete } from '../db/integrity';
-import { ValidationError, isNonEmptyString } from '../validation';
+import { ValidationError, isNonEmptyString, cleanPersonName } from '../validation';
 import { readStandbyState, type StandbyState } from './standby-state';
 
 export interface VerifierInput {
@@ -45,10 +45,12 @@ export function validateVerifierInput(body: unknown): VerifierInput {
     throw new ValidationError('Request body must be a JSON object');
   }
   const b = body as Record<string, unknown>;
-  if (!isNonEmptyString(b.name)) throw new ValidationError('name is required', 'name');
+  // Bounded and single-lined: this value is interpolated into mail Relay sends
+  // from its own domain. See cleanPersonName.
+  const name = cleanPersonName(b.name);
   if (!isEmail(b.email)) throw new ValidationError('a valid email is required', 'email');
   return {
-    name: b.name,
+    name,
     email: b.email,
     phone: isNonEmptyString(b.phone) ? b.phone : null,
   };

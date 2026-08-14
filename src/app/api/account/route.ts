@@ -70,7 +70,18 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  const trimmed = raw.trim();
+  /*
+    🔴 WHITESPACE COLLAPSES, NOT JUST TRIMS, added 2026-08-13. `.trim()` removes
+    line breaks from the ENDS and keeps every one in the middle — and this value
+    becomes the SUBJECT LINE of the invitation Relay sends ("<name> asked you to
+    be a trusted contact"), as well as the name shown to every contact. A subject
+    is the one field in a message where an embedded newline has ever meant
+    anything to a mail system, and the length cap below let one through easily.
+
+    Same treatment as a contact's name (lib/validation.ts cleanPersonName), for
+    the same reason and by the same rule: collapse whitespace, refuse on length.
+  */
+  const trimmed = raw.replace(/\s+/g, ' ').trim();
   if (trimmed.length > MAX_DISPLAY_NAME_LENGTH) {
     // Rejected rather than truncated: silently shortening the name someone will
     // be recognised by is worse than telling them it did not fit.

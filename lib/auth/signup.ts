@@ -125,7 +125,11 @@ export function validateSignupInput(body: unknown): { email: string; displayName
   if (!EMAIL_RE.test(email)) throw new ValidationError('email is not a valid address', 'email');
 
   const rawName = (body as { displayName?: unknown })?.displayName;
-  const displayName = typeof rawName === 'string' ? rawName.trim() : undefined;
+  // Collapse, not trim — the SECOND door onto the same field. `/api/account`
+  // PATCH sets this name later and had the identical gap; a name set at signup
+  // reaches the same email subject line, so both doors must clean it the same
+  // way or the fix holds only for whichever one the tester happened to use.
+  const displayName = typeof rawName === 'string' ? rawName.replace(/\s+/g, ' ').trim() : undefined;
   if (displayName && displayName.length > MAX_DISPLAY_NAME_LENGTH) {
     throw new ValidationError(
       `name must be ${MAX_DISPLAY_NAME_LENGTH} characters or fewer`,

@@ -11,7 +11,7 @@
 import { query } from '../db/connection';
 import { withOccRetry } from '../db/occ';
 import { cascadeDelete } from '../db/integrity';
-import { ValidationError, isNonEmptyString } from '../validation';
+import { ValidationError, isNonEmptyString, cleanPersonName } from '../validation';
 import { readStandbyState, type StandbyState } from './standby-state';
 import { VALID_ROLES, type RecipientRole } from '../domain/enums';
 
@@ -43,14 +43,15 @@ export function validateRecipientInput(body: unknown): RecipientInput {
   }
   const b = body as Record<string, unknown>;
 
-  if (!isNonEmptyString(b.name)) throw new ValidationError('name is required', 'name');
+  // Bounded and single-lined — see cleanPersonName; the value reaches an email.
+  const name = cleanPersonName(b.name);
   if (!isEmail(b.email)) throw new ValidationError('a valid email is required', 'email');
   if (!isNonEmptyString(b.role) || !VALID_ROLES.includes(b.role as RecipientRole)) {
     throw new ValidationError(`role must be one of: ${VALID_ROLES.join(', ')}`, 'role');
   }
 
   return {
-    name: b.name,
+    name,
     relationship: isNonEmptyString(b.relationship) ? b.relationship : null,
     email: b.email,
     phone: isNonEmptyString(b.phone) ? b.phone : null,

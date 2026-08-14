@@ -43,19 +43,22 @@ describe('EntitlementError', () => {
 });
 
 describe('TIER_LIMITS', () => {
-  it('free is 10 items, 4 recipients, and CAN release during beta', () => {
+  it('free is 10 items, 4 recipients, 4 verifiers, and CAN release during beta', () => {
     // Recipients raised from 1: a family with two adult children could not name
     // them both. canRelease is true by dated decision — founding families are
     // onboarded by hand and will not have paid, so enforcing the paywall now
     // would stop the beta exercising the one feature the product exists for.
     // Flipping it to false is what turns enforcement on; the call site is live.
-    expect(TIER_LIMITS.free).toEqual({ items: 10, recipients: 4, canRelease: true });
+    // Verifiers added 2026-08-13: the key did not exist, so the route that names
+    // them — and mails them — had no cap at all while its sibling had one.
+    expect(TIER_LIMITS.free).toEqual({ items: 10, recipients: 4, verifiers: 4, canRelease: true });
   });
 
   it('paid is unbounded and can release', () => {
     expect(TIER_LIMITS.paid.canRelease).toBe(true);
     expect(TIER_LIMITS.paid.items).toBe(Number.POSITIVE_INFINITY);
     expect(TIER_LIMITS.paid.recipients).toBe(Number.POSITIVE_INFINITY);
+    expect(TIER_LIMITS.paid.verifiers).toBe(Number.POSITIVE_INFINITY);
   });
 
   it('the free item cap leaves headroom over the 8-item seed', () => {

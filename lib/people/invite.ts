@@ -26,6 +26,7 @@ import { createInvitation, formatInviteCode, type PersonType } from './invitatio
 import { notifyInvitation } from '../notify/notifications';
 import { query } from '../db/connection';
 import { getOwnerLabel } from './owner-label';
+import { reserveInviteEmail } from '../notify/invite-budget';
 
 /**
  * The origin claim links are built on.
@@ -96,6 +97,23 @@ export async function inviteAndNotify(
     `SELECT name, email FROM ${table} WHERE id = $1 AND owner_id = $2 LIMIT 1`,
     [personId, ownerId],
   );
+  /*
+    THE BUDGET IS RESERVED HERE, not in the route, because this is the one
+    function every invitation email passes through — `POST /api/invitations`,
+    and `inviteOnCreateBestEffort` from both people routes. A check in the route
+    would have bounded one of the three callers and read as though it bounded
+    all of them, which is the shape of gap this codebase keeps finding.
+
+    Only the email arm reserves: the owner-delivered arm transmits nothing.
+    Throwing propagates to the route as a 429; `inviteOnCreateBestEffort`
+    swallows it, so hitting the ceiling while adding somebody still adds them and
+    simply sends no mail — being named stays a database fact that a mail limit
+    cannot undo.
+  */
+  if (deliveryChannel === 'email' && person.rows[0]) {
+    await reserveInviteEmail(ownerId);
+  }
+
   // Not sent at all on the owner-delivered arm. Sending it "as a backup" would
   // put the code into both channels at once, which destroys the split — every
   // invitation would be in both arms and neither number would mean anything —

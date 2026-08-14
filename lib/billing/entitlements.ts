@@ -37,7 +37,7 @@ export type Tier = 'free' | 'paid';
 
 export const TIER_LIMITS: Record<
   Tier,
-  { items: number; recipients: number; canRelease: boolean }
+  { items: number; recipients: number; verifiers: number; canRelease: boolean }
 > = {
   // RECIPIENTS RAISED 1 → 4 for beta (2026-08-08). At one recipient a family
   // with two adult children could not name them both — and there is no checkout
@@ -68,10 +68,20 @@ export const TIER_LIMITS: Record<
   // lib/billing/entitlements.test.ts's skipped case back on and makes
   // lib/billing/beta-flag.test.ts demand the guide be corrected in the same
   // change — the promise in §2.7 stops being true the moment this moves.
-  free: { items: 10, recipients: 4, canRelease: true },
+  //
+  // VERIFIERS WERE UNCAPPED UNTIL 2026-08-13, and unlike the other two that was
+  // never a decision — the key simply did not exist. Recipients were capped the
+  // day the tier was written; verifiers, created through a route that sends mail
+  // on their behalf, were not. Four for the same reason recipients are four: a
+  // realistic circle is a spouse, a sibling, a doctor and a friend, and N-of-M
+  // quorums in this product run at one or two. It also bounds how many addresses
+  // one free account can introduce into the outbound path — see
+  // lib/notify/invite-budget.ts, which bounds how often.
+  free: { items: 10, recipients: 4, verifiers: 4, canRelease: true },
   paid: {
     items: Number.POSITIVE_INFINITY,
     recipients: Number.POSITIVE_INFINITY,
+    verifiers: Number.POSITIVE_INFINITY,
     canRelease: true,
   },
 };
@@ -97,7 +107,7 @@ export async function getEntitlement(ownerId: string): Promise<{ tier: Tier }> {
 }
 
 async function countOwned(
-  table: 'vault_items' | 'recipients',
+  table: 'vault_items' | 'recipients' | 'verifiers',
   ownerId: string,
 ): Promise<number> {
   // `table` is a closed union chosen by this module, never caller-supplied.
@@ -166,6 +176,37 @@ export async function assertWithinRecipientCap(ownerId: string): Promise<void> {
       // upgrade to. Say what is true and give them a way to reach a person.
       `The free plan allows ${limit} recipient${limit === 1 ? '' : 's'}. ` +
         `Email us if you need more — we are onboarding founding families by hand.`,
+      limit,
+      tier,
+    );
+  }
+}
+
+/**
+ * The same ceiling, for verifiers.
+ *
+ * 🔴 THERE WAS NO CEILING AT ALL until 2026-08-13. `TIER_LIMITS` had no
+ * `verifiers` key, so `POST /api/verifiers` — which is rate-limited by nothing
+ * and calls `inviteOnCreateBestEffort` on success — would accept an unbounded
+ * number of named people on a free, self-serve account. Recipients had been
+ * capped since the tier was written; verifiers were simply never added, which is
+ * how an omission outlives every decision made around it.
+ *
+ * The cap is about two things at once and both matter: a free plan that is a
+ * plan, and a bound on how many addresses one account can introduce into the
+ * outbound mail path on a sender shared with another project.
+ */
+export async function assertWithinVerifierCap(ownerId: string): Promise<void> {
+  const { tier } = await getEntitlement(ownerId);
+  const limit = TIER_LIMITS[tier].verifiers;
+  if (!Number.isFinite(limit)) return;
+
+  if ((await countOwned('verifiers', ownerId)) >= limit) {
+    throw new EntitlementError(
+      // Worded like the recipient cap deliberately: same shape of limit, same
+      // route to a human, so an owner who hits both is not told two stories.
+      `The free plan allows ${limit} trusted contact${limit === 1 ? '' : 's'} to confirm an ` +
+        'emergency. Email us if you need more — we are onboarding founding families by hand.',
       limit,
       tier,
     );
