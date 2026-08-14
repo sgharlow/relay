@@ -11,7 +11,10 @@
  * Required for Meta and Reddit ad accounts, and for anyone deciding whether to
  * trust this with a parent's credentials.
  *
- * NOT legal advice. Counsel review is pending under gate g2-counsel-opinion.
+ * NOT legal advice, and NOT counsel-reviewed. Gate g2-counsel-opinion was
+ * declined on 2026-08-14 — no legal review of this page is planned. Written to
+ * be accurate about what the product does rather than to survive scrutiny it
+ * has not had.
  *
  * Feature: relay-g1-wtp
  */

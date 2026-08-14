@@ -22,10 +22,23 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { TIER_LIMITS } from '../billing/entitlements';
 
 const PROJECT = readFileSync('PROJECT.yaml', 'utf8');
+
+/** Every source file a developer would read to decide what to build. */
+function walkSource(dirs = ['src', 'lib'], out: string[] = []): string[] {
+  for (const dir of dirs) {
+    for (const entry of readdirSync(dir)) {
+      const p = join(dir, entry).split(String.fromCharCode(92)).join('/');
+      if (statSync(p).isDirectory()) walkSource([p], out);
+      else if (/\.(ts|tsx)$/.test(p)) out.push(p);
+    }
+  }
+  return out;
+}
 
 /**
  * What has been recorded about a gate's outcome.
@@ -201,6 +214,57 @@ describe('gates', () => {
       The negative is kept but narrowed to the imperative form — an instruction
       telling a future reader to go and re-enable, which is the actual hazard.
     */
+    /*
+      🔴 THE DRIFT THIS SESSION ACTUALLY FOUND. Declining the gate left ELEVEN
+      files across routes, pages, fixtures and tests still describing estate as
+      "pending", "gated on counsel", or re-enabled "once counsel clears" — each
+      of them an instruction to a future reader to finish a plan that has been
+      cancelled. Fixing them by hand once does not stop the twelfth being written
+      next month by somebody reading the eleventh.
+
+      Scoped to src/ and lib/ deliberately: those are what a developer reads to
+      decide what to build. The record files — PROJECT.yaml's superseded ratified
+      entry, the parked counsel brief, the journeys document — legitimately
+      QUOTE the old language under their own supersession banners, and rewriting
+      history to satisfy a grep would be worse than the drift.
+    */
+    it('no code or copy still describes estate as pending', () => {
+      const g2 = gates().find((g) => g.id === 'g2-counsel-opinion');
+      if (g2?.disposition !== 'declined') return;
+
+      const FORWARD_LOOKING = [
+        /pending\s+`?g2-counsel-opinion/i,
+        /gated\s+on\s+`?g2-counsel-opinion/i,
+        /gated\s+on\s+counsel/i,
+        /once\s+counsel\s+clears/i,
+        /when\s+counsel\s+clears/i,
+        /counsel\s+review\s+is\s+pending/i,
+      ];
+
+      const offenders: string[] = [];
+      for (const file of walkSource()) {
+        // This file names the phrases as data; it must not accuse itself.
+        if (file.endsWith('lib/ops/gates.test.ts')) continue;
+        const src = readFileSync(file, 'utf8');
+        for (const re of FORWARD_LOOKING) {
+          const m = re.exec(src);
+          if (m) offenders.push(`${file}: “${m[0]}”`);
+        }
+      }
+
+      expect(
+        offenders,
+        offenders.length
+          ? 'These describe estate as waiting on a counsel opinion that was ' +
+            'DECLINED and is not coming:\n' +
+            offenders.map((o) => `  ${o}`).join('\n') +
+            '\n\nSay withdrawn/permanent instead. A comment that tells the next ' +
+            'reader to re-enable something once counsel clears is an instruction ' +
+            'to complete a cancelled plan.'
+          : 'ok',
+      ).toEqual([]);
+    });
+
     it('the code records the disposition instead of promising a door', () => {
       const g2 = gates().find((g) => g.id === 'g2-counsel-opinion');
       if (g2?.disposition !== 'declined') return;

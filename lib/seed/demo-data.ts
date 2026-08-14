@@ -195,9 +195,9 @@ export function buildDemoData(): DemoData {
     { key: 'spouse', name: 'Jordan Rivera', relationship: 'Spouse', email: process.env.DEMO_RECIPIENT_EMAIL ?? 'jordan@example.com', phone: '+15551112222', role: 'partner', standby: 'confirmed' },
     /*
       🔴 RETARGETED OFF ESTATE 2026-08-12, for the same reason the public tour
-      was: `estate` is excluded from USER_SELECTABLE_TRIGGER_TYPES pending
-      `g2-counsel-opinion`, and /terms says "Estate and inheritance
-      functionality is not offered."
+      was: `estate` is excluded from USER_SELECTABLE_TRIGGER_TYPES, and as of
+      2026-08-14 permanently — `g2-counsel-opinion` was declined, not met — while
+      /terms says Relay does not offer estate or inheritance services.
 
       This seed is not only the demo account — it is the account every
       screenshot in public/guide/index.html and docs/use-cases.html is taken

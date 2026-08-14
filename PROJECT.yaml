@@ -41,8 +41,25 @@ derived:
   branch: "git branch --show-current"
 
 # Sequencing rule (from the 2026-07-01 audit): NO further building until G1 produces evidence.
-# Full chain: G1 WTP -> G2 counsel -> G3 B2B2C pilot LOI -> G4 billing MVP -> G5 audited crypto.
-# G3–G5 enter this file as gates only after G1/G2 pass — deliberately not scheduled before evidence.
+#
+# 🔴 THE CHAIN HAD A LINK THAT CAN NEVER CLOSE, corrected 2026-08-14. It read
+# "G1 WTP -> G2 counsel -> G3 B2B2C pilot LOI -> G4 billing MVP -> G5 audited
+# crypto", with G3-G5 entering this file "only after G1/G2 pass". G2 was DECLINED
+# rather than met (see its `declined:` block below) — it is not going to pass, so
+# as written every remaining gate was waiting on a condition with no path to
+# being satisfied. A dead precondition does not stop work; it stops work being
+# SCHEDULED, silently, which is worse.
+#
+# Corrected chain: G1 WTP -> G3 B2B2C pilot LOI -> G4 billing MVP -> G5 audited
+# crypto. G3-G5 enter this file as gates once G1 passes.
+#
+# ⚠️ G2 IS CLOSED, NOT SATISFIED, AND G3 INHERITS THAT. The B2B2C route was also
+# the gate's own kill condition ("adverse opinion -> B2B2C-through-regulated-
+# partners only"), and a regulated partner's diligence asks the questions the
+# opinion would have answered. G3 therefore starts from "no legal opinion
+# exists", which is a real fact about that conversation rather than an oversight
+# — and one of the declined block's `revisit:` triggers is exactly that
+# conversation happening.
 gates:
   - id: h0-verdict-disposition
     metric: post_judging_decision (H0 judging ends 2026-07-24; winners ~2026-07-31; DSQL/KMS teardown auto-fires 7-25)
@@ -222,8 +239,15 @@ ratified:
       g2-counsel-opinion. This changes WHEN building happens, not what the gates measure."
     risk_accepted: "If claim conversion is poor (sprint plan Phase 0), this build is partly wasted.
       Phase 0 exists to find that out and can run in parallel at no engineering cost."
+  # ⚠️ SUPERSEDED 2026-08-14 by gates.g2-counsel-opinion.declined. Its "until" is
+  # now "never": no counsel opinion is being sought, so estate is withdrawn from
+  # the product permanently rather than held pending one. Kept because it is the
+  # reasoning that got here, and because its `revisit:` line below — "when
+  # g2-counsel-opinion is met" — is exactly the sentence a future reader would
+  # otherwise act on.
   - id: estate-gated-until-counsel
     date: 2026-08-10
+    superseded_by: gates.g2-counsel-opinion.declined (2026-08-14)
     decision: "estate stays OUT of the product until g2-counsel-opinion produces a written opinion"
     detail: "Found 2026-08-10: src/app/terms/page.tsx states 'Estate and inheritance functionality
       is not offered', and src/app/how-it-works deliberately excludes it -- while /rules rendered
@@ -319,11 +343,18 @@ journeys:
            fixture's ciphertext is placeholder bytes. That half stands on the
            2026-08-08 walk and the 2026-08-13 item-update walk." }
   J9:  { name: "Standing down",                 status: live, walked: 2026-08-13 }
-  J10: { name: "The permanent handoff",         status: gated, walked: 2026-08-13,
-         gate: g2-counsel-opinion,
+  # WAS `gated` ON g2-counsel-opinion. Changed to `withdrawn` 2026-08-14: that
+  # gate was declined, so this is not a journey waiting on a condition — it is a
+  # journey the product no longer offers. `gated` would keep it reading as
+  # temporary on every future status pass, which is how a withdrawn capability
+  # gets quietly rebuilt.
+  J10: { name: "The permanent handoff",         status: withdrawn, walked: 2026-08-13,
          note: "Refused at the trust boundary, not hidden in a dropdown —
-           POST /api/rules with trigger_type: estate answers 400. Enabling it is
-           moving one string into USER_SELECTABLE_TRIGGER_TYPES." }
+           POST /api/rules with trigger_type: estate answers 400. Re-offering it
+           would mean reversing gates.g2-counsel-opinion.declined FIRST, in its
+           own change; only then does moving one string into
+           USER_SELECTABLE_TRIGGER_TYPES mean anything. lib/ops/gates.test.ts
+           enforces that order." }
 
 # Cross-cutting requirements whose state the document got wrong. Same rule.
 cross_cutting:

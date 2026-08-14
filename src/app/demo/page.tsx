@@ -72,9 +72,9 @@ export default function DemoTour() {
         {/*
           🔴 THE TOUR ADVERTISED SOMETHING THE TERMS DISCLAIM, retargeted
           2026-08-12. Four of the eight sample items routed to an `estate`
-          trigger — excluded from USER_SELECTABLE_TRIGGER_TYPES pending
-          `g2-counsel-opinion`, while /terms says in as many words that "Estate
-          and inheritance functionality is not offered."
+          trigger — excluded from USER_SELECTABLE_TRIGGER_TYPES, permanently as
+          of 2026-08-14 (`g2-counsel-opinion` declined), while /terms says Relay
+          does not offer estate or inheritance services.
 
           The SAME contradiction was closed once already in /rules, which used to
           render its dropdown from the unfiltered list. The dropdown was fixed

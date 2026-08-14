@@ -3,10 +3,13 @@
  *
  * Why this file exists: /rules rendered its dropdown straight from
  * VALID_TRIGGER_TYPES, so the product offered `estate` — a permanent,
- * irreversible handoff — while src/app/terms/page.tsx states "Estate and
- * inheritance functionality is not offered", and gate g2-counsel-opinion
- * (PROJECT.yaml) requires a written counsel opinion before any paying estate
- * customer. One list was answering two different questions.
+ * irreversible handoff — while src/app/terms/page.tsx said it was not offered.
+ * One list was answering two different questions.
+ *
+ * ⚠️ THE EXCLUSION IS NOW PERMANENT. Gate g2-counsel-opinion was DECLINED on
+ * 2026-08-14, not met: no opinion is being sought, so the condition that would
+ * have re-opened estate can never be satisfied. This file no longer guards a
+ * temporary state — it guards a decision.
  *
  * Feature: relay-h0-mvp
  */
@@ -19,8 +22,8 @@ import {
   isUserSelectableTriggerType,
 } from './enums';
 
-describe('user-selectable trigger types (gated on g2-counsel-opinion)', () => {
-  it('does NOT offer estate while the Terms say it is not offered', () => {
+describe('user-selectable trigger types (estate withdrawn permanently)', () => {
+  it('does NOT offer estate, which the Terms and PROJECT.yaml both say is withdrawn', () => {
     expect(USER_SELECTABLE_TRIGGER_TYPES).not.toContain('estate');
     expect(isUserSelectableTriggerType('estate')).toBe(false);
   });

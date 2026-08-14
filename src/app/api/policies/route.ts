@@ -29,7 +29,8 @@ import { USER_SELECTABLE_TRIGGER_TYPES } from '../../../../lib/domain/enums';
 
 // Was a hand-copied literal that duplicated VALID_TRIGGER_TYPES and drifted
 // from the Terms. Now the single shared definition of what a user may choose —
-// estate excluded pending g2-counsel-opinion (see lib/domain/enums.ts).
+// estate excluded PERMANENTLY (gate g2-counsel-opinion declined 2026-08-14;
+// see lib/domain/enums.ts).
 const TRIGGER_TYPES: readonly string[] = USER_SELECTABLE_TRIGGER_TYPES;
 const SCOPES = ['view', 'act'];
 

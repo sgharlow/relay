@@ -103,7 +103,7 @@ describe('claims that were corrected on 2026-08-08', () => {
 });
 
 describe('scope discipline', () => {
-  it('never markets estate — it is gated on counsel and the terms page disclaims it', () => {
+  it('never markets estate — withdrawn permanently, and the terms page says so', () => {
     const all = (JSON.stringify(ROWS) + JSON.stringify(COLUMNS)).toLowerCase();
     expect(all).not.toContain('estate');
     expect(all).not.toContain('inheritance');

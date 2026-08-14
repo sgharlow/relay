@@ -28,9 +28,10 @@ export async function POST(_req: NextRequest, { params }: Ctx): Promise<NextResp
 
   const triggerType = (await params).id; // [id] carries the trigger type for initiate
   // This is the route that FIRES a release, and an estate release is permanent
-  // by design (Property 7) with no correction path. Gated on
-  // g2-counsel-opinion — defence in depth behind the creation gate, so a rule
-  // predating the gate still cannot be fired.
+  // by design (Property 7) with no correction path. estate is withdrawn from the
+  // product permanently (g2-counsel-opinion declined 2026-08-14); this is defence
+  // in depth behind the creation gate, so a rule predating that decision still
+  // cannot be fired.
   if (!isUserSelectableTriggerType(triggerType)) {
     return NextResponse.json({ error: 'BadRequest', message: 'Unknown trigger type' }, { status: 400 });
   }

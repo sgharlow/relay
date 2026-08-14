@@ -34,8 +34,8 @@ export interface DemoVaultItem {
   recipient: string;
   /**
    * ⚠️ SELECTABLE TRIGGERS ONLY. `estate` is excluded from
-   * `USER_SELECTABLE_TRIGGER_TYPES` pending `g2-counsel-opinion`, and /terms
-   * says "Estate and inheritance functionality is not offered" — so a tour that
+   * `USER_SELECTABLE_TRIGGER_TYPES` permanently (`g2-counsel-opinion` declined
+   * 2026-08-14), and /terms says Relay does not offer it — so a tour that
    * showed it was advertising something a visitor cannot buy. Retargeted
    * 2026-08-12. Keep this union a subset of what the product actually offers.
    */

@@ -61,8 +61,9 @@ describe('demo dataset', () => {
     public/guide/index.html and docs/use-cases.html is captured from this account,
     so a trigger seeded here becomes a picture in the documentation. Until
     2026-08-12 the seed carried an Estate trigger and an irreversible estate
-    rule — a capability excluded from USER_SELECTABLE_TRIGGER_TYPES pending
-    `g2-counsel-opinion` and disclaimed in as many words by /terms.
+    rule — a capability excluded from USER_SELECTABLE_TRIGGER_TYPES, and
+    withdrawn permanently on 2026-08-14 when `g2-counsel-opinion` was declined,
+    which /terms also says.
 
     The same contradiction was closed in /rules and then again in the public
     tour; this was the third copy. Asserting it here means the fourth cannot

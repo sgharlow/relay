@@ -25,7 +25,8 @@ export async function PUT(req: NextRequest, { params }: Ctx): Promise<NextRespon
 
   const triggerType = (await params).id;
   // Configuring an estate trigger's N-of-M is part of arming it, so it is
-  // gated with the rest pending g2-counsel-opinion.
+  // refused with the rest. estate is withdrawn permanently — g2-counsel-opinion
+  // was declined, not met.
   if (!isUserSelectableTriggerType(triggerType)) {
     return NextResponse.json({ error: 'BadRequest', message: 'Unknown trigger type' }, { status: 400 });
   }

@@ -56,9 +56,20 @@ describe('journey build state lives in exactly one place', () => {
       day, which is how "DONE" came to mean five different things across this
       portfolio. `live` = walked end to end on production. `gated` = deliberately
       refused at the trust boundary, with the gate named. `open` = not built.
+      `withdrawn` = refused at the trust boundary and NOT coming back.
+
+      🔴 `withdrawn` WAS ADDED 2026-08-14 BECAUSE `gated` WAS LYING. J10 was
+      recorded as `gated`, naming g2-counsel-opinion; that gate was then declined rather
+      than met, so the journey is not waiting on anything — it is withdrawn. Left
+      as `gated` it would have read as temporary on every future status pass,
+      which is exactly how a deliberately-removed capability gets quietly
+      rebuilt by someone completing what looked like an unfinished plan.
+
+      The distinction is worth a word: `gated` still owes an answer, `withdrawn`
+      does not.
     */
     const bad = Object.entries(journeyStates()).filter(
-      ([, s]) => !['live', 'gated', 'open'].includes(s),
+      ([, s]) => !['live', 'gated', 'open', 'withdrawn'].includes(s),
     );
     expect(bad, 'unrecognised journey status').toEqual([]);
   });

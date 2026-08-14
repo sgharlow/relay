@@ -34,8 +34,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // validateAccessRuleInput answers "is this a well-formed rule for the
     // domain" — which still includes estate, because Property 7 and the release
     // machinery depend on it. THIS answers "may a user create it today", and
-    // estate is gated on g2-counsel-opinion. Hiding the dropdown option is not
-    // enough: the route is the trust boundary.
+    // estate is withdrawn from the product permanently (g2-counsel-opinion was
+    // DECLINED, not met). Hiding the dropdown option is not enough: the route is
+    // the trust boundary.
     if (!isUserSelectableTriggerType(input.trigger_type)) {
       throw new ValidationError('trigger_type is not available', 'trigger_type');
     }

@@ -77,7 +77,7 @@ const TIMELINE = [
   },
 ];
 
-/** Deliberately excludes estate: it is gated on counsel and the terms page says it is not offered. */
+/** Deliberately excludes estate: withdrawn permanently 2026-08-14, and the terms page says so. */
 const USE_CASES = [
   {
     title: 'A hospital stay',

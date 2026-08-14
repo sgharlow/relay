@@ -132,6 +132,18 @@ function RuleBuilder({ items, recipients, onCreated }: { items: Named[]; recipie
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  /*
+    ⚠️ ALWAYS FALSE SINCE ESTATE WAS WITHDRAWN, and kept deliberately. The select
+    below renders from USER_SELECTABLE_TRIGGER_TYPES, which has excluded `estate`
+    permanently since g2-counsel-opinion was declined on 2026-08-14 — so this
+    branch and the locked checkbox it drives are unreachable from the UI.
+
+    Not deleted, for two reasons: it costs nothing (a dead boolean in a form, not
+    an endpoint anybody can call), and the rule it encodes — an estate rule must
+    be irreversible, Property 7 — is still true of the DOMAIN, which continues to
+    handle `estate` for rows that predate the withdrawal. The server is what
+    enforces that; this only ever mirrored it for display.
+  */
   const estate = form.trigger_type === 'estate';
 
   function setTrigger(trigger_type: TriggerType) {

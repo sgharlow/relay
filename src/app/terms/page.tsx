@@ -13,7 +13,10 @@
  *
  * Required alongside the privacy policy for Meta and Reddit ad accounts.
  *
- * NOT legal advice. Counsel review is pending under gate g2-counsel-opinion.
+ * NOT legal advice, and NOT counsel-reviewed. Gate g2-counsel-opinion was
+ * declined on 2026-08-14 — no legal review is planned. That raises the bar on
+ * this page rather than lowering it: with nobody checking the wording, it has to
+ * describe the mechanism plainly and claim nothing the code does not do.
  *
  * Feature: relay-g1-wtp
  */

@@ -264,12 +264,19 @@ function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promi
    * 🔴 FIRING A RELEASE WAS ONE UNGUARDED CLICK, on a button labelled
    * "Initiate" that did not say what it does. Added 2026-08-12.
    *
-   * ⏸️ THIS IS A PRECONDITION ON `g2-counsel-opinion`, NOT AN IMPROVEMENT.
-   * Today every user-selectable trigger is reversible and Stand down exists, so
-   * a misclick costs a false alarm to the whole circle — bad, because verifiers
-   * who get spurious asks stop answering the real one, but survivable. The day
-   * `estate` becomes selectable, that same click becomes PERMANENT with no undo,
-   * and the confirmation has to already be here rather than be remembered then.
+   * ⚠️ ITS ORIGINAL JUSTIFICATION IS GONE, AND IT STAYS ANYWAY. This was written
+   * as a precondition on `g2-counsel-opinion` — the argument being that a
+   * misclick is survivable today, but becomes PERMANENT the day `estate` is
+   * selectable, so the confirmation had to exist before then. That day is not
+   * coming: g2 was declined on 2026-08-14 and estate is withdrawn permanently.
+   *
+   * Do not remove this on the strength of that. The confirmation earns its place
+   * on what the product does NOW: firing a release contacts every verifier and
+   * opens the vault to everyone scoped to that trigger. Stand down reverses the
+   * state, but it cannot un-ask the circle — and verifiers who get spurious asks
+   * stop answering the real one, which is the failure the whole assurance model
+   * rests on not happening. A false alarm is cheap in database terms and
+   * expensive in the only currency this product runs on.
    *
    * The irreversible branch asks the trigger type to be TYPED, matching what
    * closing an account already demands. One click after a warning is not a
