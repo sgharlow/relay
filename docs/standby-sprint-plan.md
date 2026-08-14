@@ -1814,3 +1814,94 @@ re-auth, WebAuthn nonce store, the multi-owner LIMIT 1, the type-scale
 ratchet). The demand-side facts are unchanged by any of this: wtp_evidence
 none, invitations sent zero. The engineering bar this pass raised was never
 the thing between the product and its first user.
+
+---
+
+## 22. Beta blockers closed — 2026-08-14
+
+The go-live assessment named three engineering blockers before a first family.
+All three are shipped, and one of them is now proven end to end against
+production rather than asserted.
+
+### The delivery blind spot, and the constraint that shaped the fix
+
+Resend accepts a send to a SUPPRESSED address and answers 200 with a message
+id, so `sendEmailBestEffort` returns true and every caller reports success. A
+previously-bounced address is muted permanently, silently. For this product that
+is the catastrophic shape: a release fires, verifier notices go nowhere, quorum
+is never met, and access never opens on the one day it exists for.
+
+**The obvious fix was closed.** Probing the live API showed the production key
+is `restricted_api_key` — send-only. That is correct least privilege on a key
+SHARED with report-bridge, so the app cannot ask what happened and widening the
+credential to find out was the wrong trade. Resend pushes instead:
+`/api/resend/webhook`, Svix-signed, implemented with `node:crypto` rather than
+adding a dependency days before a beta, answering a constant 204 so it cannot be
+probed for whether a secret is configured.
+
+The rule the surfacing obeys: **absent means unheard, never fine.** Until the
+webhook is configured the line renders nothing rather than "reachable" — a
+screen claiming delivery on no evidence is the false green this repo keeps
+finding.
+
+Migration 027 applied and verified in BOTH regions. Configured in production the
+same day; **proven end to end**, with a real `email.delivered` event recorded
+1.5 seconds after a live send, and the resulting line seen rendered on `/circle`
+against real provider data.
+
+### 🔴 The verifier that could never report success
+
+Worth recording because it cost the most time and taught the most.
+
+The webhook worked on the first attempt. The verification tool said it had
+failed. It compared a JS ISO string (`2026-08-14T16:01:29.000Z`) against
+`occurred_at::text` from Postgres (`2026-08-14 16:01:31.077+00`) — formats that
+differ at character eleven, a space against a `T`. A space sorts before `T`, so
+the database value was always "less than" the stamp whatever the real times
+were. **The success condition could not be true.**
+
+That is the worst failure available to a verification tool: it does not merely
+fail to confirm, it sends you hunting a defect that is not there. Diagnosis took
+an unsigned probe against production (to prove the secret was live, by observing
+that the signature check *rejected* it and logged), a runtime-log query (to
+prove Resend was calling us), and finally a direct read of the table — which had
+the row all along. The comparison now happens in the database against a real
+timestamp.
+
+Third instance in this session of a self-written check measuring something
+adjacent to what it claimed. The pattern is consistent enough to state as a
+rule: **when a check disagrees with the thing it checks, suspect the check.**
+
+### The promise with no mechanism
+
+Both entitlement ceilings tell owners "email us if you need more — we are
+onboarding founding families by hand." There was no by-hand path: the only route
+to `paid` was the Stripe webhook, so the honest answers were "pay $119" or "no",
+and the free vault is ten items against a real one of twenty-five.
+
+`scripts/grant-founding-tier.ts` closes it, and the constraint that shaped it was
+not the grant but the ACCOUNTING. A hand-granted row is structurally identical to
+a customer's, so counting it once corrupts `wtp_evidence` — the single number G1
+rests on — silently, months later. Comps are marked twice, the marker is spelled
+once, and three refusals were exercised against live data without mutating
+anything: a Stripe subscriber, a demo account, an unknown address.
+
+### A clean baseline
+
+Production held six accounts, five of them fixtures — so every "how many signed
+up" was six times wrong, and the first metric anyone reaches for in a beta is
+exactly that. Removed through the product's own `deleteAccount`, audit chains
+retained as the privacy page promises. Checked before deleting that the canary
+probes only public routes and `/demo` renders from static fixtures.
+
+Production is now **one real account, zero fixtures, zero undeliverable
+contacts**, and two genuine delivery-telemetry rows kept as the evidence they are.
+
+### What remains, and it is not code
+
+The dogfood walk. Nobody outside this room has completed a journey, the real
+account holds no items, and **zero passkeys exist** — so "they can get back in
+without you" is the least-proven claim in the product. A complete release walk
+needs three people: the eligibility rule refuses a verifier who is also a
+recipient on that trigger, and refuses the owner as their own verifier.
+`docs/first-invitations.md` now carries the three operator tools for running it.

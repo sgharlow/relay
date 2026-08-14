@@ -115,6 +115,55 @@ treatment: reject and reissue.
 - **Ask them to add a passkey** when they accept. It is what lets them back in on a new phone without
   you reissuing anything, and it is what stops Relay ever needing to email them a code.
 
+## The three operator tools
+
+Added 2026-08-14, because "onboard a founding family by hand" needs hands.
+
+**See where somebody actually is.** Every step of this has a visible half (a
+screen said yes) and a real half (a row exists), and this product's recurring
+defect is the two disagreeing. This reads the database:
+
+```
+npx tsx --env-file=.env.local scripts/beta-status.ts <their-email>
+```
+
+It prints, per person: their state, whether a code was issued and through which
+channel, whether they opened and claimed it, whether they hold a passkey, and
+what the mail provider last said about their address. Never a code or a phrase
+— states and dates only.
+
+**Give a founding family the paid tier.** The free vault is ten items; a real
+one is twenty-five. Both cap messages already say "email us, we are onboarding
+founding families by hand", and this is the hand:
+
+```
+npx tsx --env-file=.env.local scripts/grant-founding-tier.ts <their-email>
+npx tsx --env-file=.env.local scripts/grant-founding-tier.ts <their-email> --revoke
+```
+
+It refuses to touch anybody with a Stripe subscription, and marks the grant so
+it can never be counted as revenue — the number G1 rests on.
+
+**Prove the mail channel still works.** Sends one real message to an address you
+control and waits for the provider's event to come back:
+
+```
+npx tsx --env-file=.env.local scripts/verify-delivery-webhook.ts <your-address>
+```
+
+Worth running before a batch of invitations. If it fails, the mail channel is
+down and no amount of chasing people will help.
+
+## What Relay now tells you about mail
+
+Since 2026-08-14 Resend reports delivery outcomes back to Relay, and `/circle`
+says so per person: *"Email to Alex did not arrive — it bounced or was
+refused."* That is shown in CALM, which is the only time you can act on it.
+
+⚠️ **Silence still is not reassurance.** A person with no line under them means
+nothing has been heard about that address yet — not that it works. The first
+real signal usually arrives when you send them something.
+
 ## What you are actually measuring
 
 | Question | Where to read it |
