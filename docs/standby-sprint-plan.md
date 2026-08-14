@@ -2095,44 +2095,44 @@ verified with zero rows non-NULL. PATCH rather than PUT, because PUT demands a
 ciphertext and no non-secret classification should require the browser to hold
 plaintext to change it.
 
-### 🔴 PASSKEY SIGN-IN FAILS ON PRODUCTION — open, not fixed
+### ✅ PASSKEYS WORK — and my first reading of this was wrong
 
-The first passkey ever created in this product was enrolled today, using a CDP
-virtual authenticator. **Enrolment works**: a `webauthn_credentials` row was
-written. **Sign-in does not.** `/auth/signin` → "Sign in with a passkey" answers
-*"That passkey was not recognised."*
+**Corrected the same day it was written.** The section that stood here declared a
+confirmed server-side defect: that registration stored a credential ID different
+from the one the authenticator created, making passkey sign-in impossible. That
+was wrong, and it is left recorded rather than deleted because the reasoning
+error is the useful part.
 
-The evidence, precisely:
+**What actually happens.** Capturing the request the browser posts to
+`/api/webauthn/register/verify` and comparing it with the stored row:
 
 | | value |
 | --- | --- |
-| credential in the authenticator | `sHxEFAQEpGHX7woRp7o/BSw7hsKTBaxz8ZakBZrm59U=` |
-| credential stored in the database | `sghp02nc2bcPsWJRqEqFoaclsyJD8mzneWpFNkpfJWE` |
+| id the browser sent | `E1m0v2HA22WWjRo_7J5h3uDTFVWTdz0mooeJKhF4yKY` |
+| id the database stored | `E1m0v2HA22WWjRo_7J5h3uDTFVWTdz0mooeJKhF4yKY` |
 
-Both decode to 32 bytes and they are **not the same bytes** — this is not a
-base64-versus-base64url difference. `finishAuthentication` looks up
-`findCredential(args.response.id)` and throws exactly that message when the
-lookup misses, so the failure is at the lookup: the browser presents an ID the
-table does not contain.
+Identical. Registration is faithful. Sign-out followed by "Sign in with a
+passkey" then landed on `/start` fully authenticated — no email, no authenticator
+code, nobody's help.
 
-`WebAuthn.getCredentials` reported ONE credential on the authenticator with
-`signCount: 2` — consistent with one registration plus one assertion. If that
-authenticator performed the registration, its ID should be the stored one.
+**Where the false conclusion came from.** I compared the stored ID against what
+`WebAuthn.getCredentials` reported for a CDP virtual authenticator, found them
+different, and treated that as proof. It was not: the page was not using the
+authenticator I was interrogating, so I was comparing two unrelated credentials
+and reading the difference as a defect. Chrome permits only one internal virtual
+authenticator per environment, which made the setup easy to misread.
 
-**Why it is not fixed here.** Two explanations remain open — the server stores
-an ID other than the one the authenticator created, or the virtual authenticator
-was re-initialised between enrolment and sign-in and the harness lost the
-original credential. Patching the authentication path on a guess is precisely
-the change the Infrastructure Change Policy trap-lists, and a wrong fix here
-locks people out rather than letting them in.
+The lesson is the session's recurring one, pointed the other way. Four checks
+this session reported success while measuring something adjacent; this one
+reported FAILURE while measuring something adjacent, which is the same fault and
+more expensive — it nearly produced a speculative patch to the authentication
+path, on trap-listed code, to fix a bug that did not exist. Not deploying that
+guess was the only thing that went right here.
 
-**Next step, concrete:** delete the credential row, re-enrol against a
-known-stable authenticator, and compare the stored value to
-`WebAuthn.getCredentials` in the same session. That isolates it in one pass. If
-the server is at fault, `finishRegistration`'s `credential.id` is the line.
-
-**What this means for the claim.** "They can get back in without you" is
-**unproven and currently looks false**: a contact who signs out has no passkey
-route back, leaving only an owner-issued emergency code — which by design
-de-verifies them. This is now the single most important open item in the
-product, ahead of anything cosmetic.
+**Status of the claim.** Owner passkey enrolment and sign-in are live-proven end
+to end. Contact passkey ENROLMENT is live-proven (a `webauthn_credentials` row
+was written for a claimed contact). Contact passkey SIGN-IN is not separately
+proven, though it uses the same role-agnostic endpoints and resolves the user
+from the discoverable credential. "They can get back in without you" is
+therefore demonstrated for owners and highly likely for contacts, rather than
+the "unproven and looks false" this section previously claimed.
