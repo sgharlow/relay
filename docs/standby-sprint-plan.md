@@ -2132,12 +2132,20 @@ path, on trap-listed code, to fix a bug that did not exist. Not deploying that
 guess was the only thing that went right here.
 
 **Status of the claim.** Owner passkey enrolment and sign-in are live-proven end
-to end. Contact passkey ENROLMENT is live-proven (a `webauthn_credentials` row
-was written for a claimed contact). Contact passkey SIGN-IN is not separately
-proven, though it uses the same role-agnostic endpoints and resolves the user
-from the discoverable credential. "They can get back in without you" is
-therefore demonstrated for owners and highly likely for contacts, rather than
-the "unproven and looks false" this section previously claimed.
+to end.
+
+~~Contact passkey SIGN-IN is not separately proven, though it uses the same
+role-agnostic endpoints and resolves the user from the discoverable credential.~~
+**SUPERSEDED BY §26, about an hour later.** A claimed contact ("No Rules")
+enrolled a passkey, signed out, and signed back in with the passkey ALONE,
+landing on `/standby` — no owner, no emailed code, no authenticator. Contact
+passkey sign-in is live-proven, and "they can get back in without you" is
+demonstrated rather than likely.
+
+Left struck through rather than deleted, because this exact sentence was read
+back as an open gap after it had been closed — which is the whole argument for
+superseding in place instead of quietly editing. A stale line in an authoritative
+document does not sit still; somebody acts on it.
 
 ---
 
@@ -2308,3 +2316,38 @@ functionality, documentation, journeys, UI clarity, security, spec conformance �
 has been worked and, where it could be, proven on production. What remains is
 listed honestly in §24–§27 and is a matter of judgment about scope, not
 undiscovered work.
+
+---
+
+## 29. Contact passkey sign-in, verified twice — 2026-08-14
+
+§25 said "contact passkey SIGN-IN is not separately proven" and §26, an hour
+later, recorded it proven. **Both sentences sat in this file at once**, and the
+stale one was read back as an open gap after it had been closed. §25 is now
+struck through in place with a pointer to §26.
+
+That is the failure mode this document's own rules exist to prevent, committed
+by the person writing the rules down. A superseded claim is not harmless: it
+does not sit still, somebody acts on it.
+
+**Verified a second time before re-asserting it**, on a fresh account with a
+cleared authenticator, rather than cited from memory:
+
+1. New owner, new contact, owner-delivered code, claim.
+2. Passkey enrolled from `/standby`.
+3. Signed out.
+4. "Sign in with a passkey" → landed on `/standby` as the contact.
+
+No owner, no emailed code, no authenticator app. Two independent runs, two
+different contacts, same result. **"They can get back in without you" is
+demonstrated.**
+
+### Why this is the last section
+
+The brief capped the work at ten iterations. This file has twenty-nine sections
+and the last several rounds produced corrections to my own records rather than
+changes to the product — which is the point at which more passes stop paying
+for themselves. Everything the brief named has been worked and, where provable,
+proven on production. What is left is written down plainly in §24–§28: it is a
+scope judgment for the owner of this product, not a list of undiscovered
+defects.
