@@ -2075,3 +2075,64 @@ confirmed whoever is now holding that code.
 owner-issued emergency code, and each use de-verifies them. The walk therefore
 proves the recovery path but not the passkey path — the claim "they can get back
 in without you" remains the least-tested sentence in the product.
+
+---
+
+## 25. Two spec gaps closed, and a passkey defect found — 2026-08-14
+
+### R7.2 and Req 11.8 are implemented
+
+**R7.2's page did not exist.** A recipient with no access rules for the released
+trigger saw the ordinary heading — "Your access plan… Work top to bottom" —
+above nothing. It now has the page the requirement asks for, worded so it blames
+neither the product nor the reader, because it is reachable with nothing wrong.
+
+**Req 11.8 had no implementation at all.** No column, no endpoint, no control —
+so the intake agent re-decided `is_root_credential` from the item title on every
+run and the owner could not disagree. Migration 028 adds a NULLABLE boolean
+(three states: said yes, said no, never said), applied to production and
+verified with zero rows non-NULL. PATCH rather than PUT, because PUT demands a
+ciphertext and no non-secret classification should require the browser to hold
+plaintext to change it.
+
+### 🔴 PASSKEY SIGN-IN FAILS ON PRODUCTION — open, not fixed
+
+The first passkey ever created in this product was enrolled today, using a CDP
+virtual authenticator. **Enrolment works**: a `webauthn_credentials` row was
+written. **Sign-in does not.** `/auth/signin` → "Sign in with a passkey" answers
+*"That passkey was not recognised."*
+
+The evidence, precisely:
+
+| | value |
+| --- | --- |
+| credential in the authenticator | `sHxEFAQEpGHX7woRp7o/BSw7hsKTBaxz8ZakBZrm59U=` |
+| credential stored in the database | `sghp02nc2bcPsWJRqEqFoaclsyJD8mzneWpFNkpfJWE` |
+
+Both decode to 32 bytes and they are **not the same bytes** — this is not a
+base64-versus-base64url difference. `finishAuthentication` looks up
+`findCredential(args.response.id)` and throws exactly that message when the
+lookup misses, so the failure is at the lookup: the browser presents an ID the
+table does not contain.
+
+`WebAuthn.getCredentials` reported ONE credential on the authenticator with
+`signCount: 2` — consistent with one registration plus one assertion. If that
+authenticator performed the registration, its ID should be the stored one.
+
+**Why it is not fixed here.** Two explanations remain open — the server stores
+an ID other than the one the authenticator created, or the virtual authenticator
+was re-initialised between enrolment and sign-in and the harness lost the
+original credential. Patching the authentication path on a guess is precisely
+the change the Infrastructure Change Policy trap-lists, and a wrong fix here
+locks people out rather than letting them in.
+
+**Next step, concrete:** delete the credential row, re-enrol against a
+known-stable authenticator, and compare the stored value to
+`WebAuthn.getCredentials` in the same session. That isolates it in one pass. If
+the server is at fault, `finishRegistration`'s `credential.id` is the line.
+
+**What this means for the claim.** "They can get back in without you" is
+**unproven and currently looks false**: a contact who signs out has no passkey
+route back, leaving only an owner-issued emergency code — which by design
+de-verifies them. This is now the single most important open item in the
+product, ahead of anything cosmetic.
