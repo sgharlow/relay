@@ -19,6 +19,7 @@ import { computeCoverage } from '../../../../lib/rules/coverage';
 import { proposePolicies } from '../../../../lib/rules/policy-proposals';
 import type { PolicyItem } from '../../../../lib/rules/policy-predicate';
 import { fingerprintFor } from '../../../../lib/people/fingerprint';
+import { latestDeliveryByEmail } from '../../../../lib/notify/delivery-events';
 
 /**
  * Takes no request argument, so Next tries to prerender it at build time —
@@ -116,6 +117,27 @@ export async function GET(): Promise<NextResponse> {
   const withPasskey = new Set(passkeyRows.rows.map((r) => r.user_id));
   const withCode = new Set(codeRows.rows.map((r) => r.person_id));
 
+  /*
+    🔴 "WE TOLD THEM" WAS UNKNOWABLE. Resend answers 200 with a message id for
+    a SUPPRESSED address, so a previously-bounced contact is muted permanently
+    and every caller reports success. On the day a release fires, that is
+    notices going nowhere, nobody answering, and quorum never met.
+
+    Resend now pushes bounce and complaint events to /api/resend/webhook; this
+    reads the latest one per address so the owner can find out in CALM, which is
+    the only time they can act on it.
+
+    ABSENT MEANS UNHEARD, NEVER FINE. Until the webhook is configured every
+    address is absent from this map, so the field is null and the UI says
+    nothing — a screen that reported "reachable" on the basis of no evidence
+    would be the false green this codebase keeps finding. Failure is swallowed
+    for the same reason: a delivery-history outage must not take down the screen
+    that shows who can reach what.
+  */
+  const deliveryByEmail = await latestDeliveryByEmail(
+    [...recipients.rows, ...verifiers.rows].map((p) => p.email as string),
+  ).catch(() => new Map());
+
   const coverage = computeCoverage(items.rows, rules.rows);
 
   /**
@@ -146,6 +168,10 @@ export async function GET(): Promise<NextResponse> {
         // back in EXISTS, and knowing more than that would not help them.
         has_passkey: Boolean(claimed_user_id && withPasskey.has(claimed_user_id)),
         has_break_glass: withCode.has(person.id),
+        // null = we have not heard. Never rendered as reassurance.
+        delivery:
+          deliveryByEmail.get(String((person as { email?: unknown }).email ?? '').toLowerCase()) ??
+          null,
       };
     };
   }

@@ -53,6 +53,12 @@ export const REACHED_FROM_OUTSIDE: Record<string, string> = {
     'Probed by .github/workflows/scheduler-monitor.yml — the dead-man’s switch.',
   '/api/stripe/webhook': 'Stripe, signature-verified.',
   '/api/incident': 'Posted to by the error boundary, from a page that has already failed.',
+  '/api/resend/webhook':
+    'Posted to by RESEND, not by any code here. The production API key is ' +
+    'send-only (restricted_api_key, verified 2026-08-14), so the app cannot ask ' +
+    'what became of a message; Resend pushes bounce and complaint events here ' +
+    'instead. Svix-signed against RESEND_WEBHOOK_SECRET, and silently inert ' +
+    'until that secret is configured.',
   '/api/csp-report':
     'Posted to by the BROWSER, not by any code here — it is named in the ' +
     'Content-Security-Policy-Report-Only and Reporting-Endpoints headers in ' +

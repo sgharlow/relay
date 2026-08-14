@@ -52,6 +52,14 @@ export const ALLOWED_RAW: Record<string, string> = {
     'byte-exact body, so it must not be parsed or re-encoded first. The body is ' +
     'refused outright unless it carries a valid signature from Stripe, and Stripe ' +
     'bounds its own event payloads.',
+  '/api/resend/webhook':
+    'Reads req.text() for the same reason as the Stripe hook: the Svix ' +
+    'signature is computed over the byte-exact body, and parsing then ' +
+    're-serialising JSON changes key order and whitespace so verification ' +
+    'fails for a reason nobody can see. It carries its OWN ceiling ' +
+    '(MAX_BODY_BYTES, 16 KB) checked against both the declared ' +
+    'content-length and the string it read, refuses everything unsigned, ' +
+    'and answers a constant 204.',
 };
 
 function walk(dir: string, out: string[] = []): string[] {

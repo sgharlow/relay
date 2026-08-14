@@ -28,6 +28,7 @@ import InviteControl from './InviteControl';
 import BreakGlassControl from './BreakGlassControl';
 import FingerprintControl from './FingerprintControl';
 import FallbackLine from './FallbackLine';
+import DeliveryLine, { type DeliveryState } from './DeliveryLine';
 import PaperOnlyControl from './PaperOnlyControl';
 
 /**
@@ -73,6 +74,8 @@ export interface Recipient {
   /** Could they get back in on a new device? Only meaningful once claimed. */
   has_passkey?: boolean;
   has_break_glass?: boolean;
+  /** Latest provider event for their address; null = we have not heard. */
+  delivery?: DeliveryState | null;
   /** §8.1: the owner has recorded that this person will never hold an account. */
   break_glass_only?: boolean | null;
 }
@@ -89,6 +92,8 @@ export interface Verifier {
   /** Could they get back in on a new device? Only meaningful once claimed. */
   has_passkey?: boolean;
   has_break_glass?: boolean;
+  /** Latest provider event for their address; null = we have not heard. */
+  delivery?: DeliveryState | null;
   /** §8.1: the owner has recorded that this person will never hold an account. */
   break_glass_only?: boolean | null;
 }
@@ -458,6 +463,8 @@ export function RecipientSection({
                   hasBreakGlass={Boolean(r.has_break_glass)}
                 />
               ) : null}
+              {/* Renders nothing until an event actually says something. */}
+              <DeliveryLine name={r.name} delivery={r.delivery} />
               {/* Assurance sits directly under the light it turns green. */}
               {r.fingerprint && hasClaimed(r.standby_state) ? (
                 <FingerprintControl
@@ -610,6 +617,9 @@ export function VerifierSection({
                   hasBreakGlass={Boolean(v.has_break_glass)}
                 />
               ) : null}
+              {/* Verifiers matter most here: their notice is the one whose
+                  silent loss stalls a release. */}
+              <DeliveryLine name={v.name} delivery={v.delivery} />
               {v.fingerprint && hasClaimed(v.standby_state) ? (
                 <FingerprintControl
                   personId={v.id}
