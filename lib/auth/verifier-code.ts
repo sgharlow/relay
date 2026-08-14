@@ -29,6 +29,7 @@ import { createHash, randomInt } from 'crypto';
 
 import { query } from '../db/connection';
 import { CASE_ID_ALPHABET } from '../release/case-id';
+import { recordCodeMiss } from '../ops/guess-watch';
 
 /** Matches the verifier JWT's lifetime so nothing changes for the verifier. */
 export const CODE_TTL_SECONDS = 72 * 60 * 60;
@@ -144,6 +145,8 @@ export async function redeemVerifierCode(input: string, now: Date = new Date()):
 
   const row = r.rows[0];
   if (!row) {
+    // Matched no row at all — see lib/ops/guess-watch. Never passes the code.
+    await recordCodeMiss('verifier');
     throw new VerifierCodeError('That code was not recognised.', 'invalid');
   }
 

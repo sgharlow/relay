@@ -21,6 +21,7 @@ import { createHash, randomInt } from 'crypto';
 
 import { query } from '../db/connection';
 import { CASE_ID_ALPHABET } from '../release/case-id';
+import { recordCodeMiss } from '../ops/guess-watch';
 
 /** Matches the recipient JWT's 24-hour window. */
 export const RECIPIENT_CODE_TTL_SECONDS = 24 * 60 * 60;
@@ -131,7 +132,13 @@ export async function redeemRecipientCode(
   );
 
   const row = r.rows[0];
-  if (!row) throw new RecipientCodeError('That code was not recognised.', 'invalid');
+  if (!row) {
+    // Matched no row at all — the shape of a keyspace walk rather than a
+    // mistype, and the case `recordFailedAttempt` below can never see because
+    // there is no row to increment. Never passes the code (lib/ops/guess-watch).
+    await recordCodeMiss('recipient');
+    throw new RecipientCodeError('That code was not recognised.', 'invalid');
+  }
 
   if (Number(row.failed_attempts) >= MAX_FAILED_ATTEMPTS) {
     throw new RecipientCodeError('This code has been locked. Ask for a new one.', 'locked');

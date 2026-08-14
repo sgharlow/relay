@@ -30,6 +30,7 @@ import { writeAuditEntry } from '../audit/audit-service';
 import { ValidationError } from '../validation';
 import { hashToken, type PersonType } from './invitations';
 import { upsertUser } from '../auth/upsert-user';
+import { recordCodeMiss } from '../ops/guess-watch';
 
 /**
  * Matches `recipient_codes` (migration 017) and `verifier_codes` (015), which
@@ -77,7 +78,13 @@ export async function claimStandbyRole(params: {
   );
 
   const invite = found.rows[0];
-  if (!invite) throw new ValidationError(REFUSAL, 'token');
+  if (!invite) {
+    // Unknown, expired or already-claimed all arrive here identically, so this
+    // over-counts slightly. Deliberate: the alternative is a second query to
+    // tell them apart, on the unauthenticated path, to make a signal quieter.
+    await recordCodeMiss('invitation');
+    throw new ValidationError(REFUSAL, 'token');
+  }
 
   // NULL reads as 0 — migration 021 could not add NOT NULL to an existing table.
   if (Number(invite.failed_attempts ?? 0) >= MAX_INVITE_FAILED_ATTEMPTS) {

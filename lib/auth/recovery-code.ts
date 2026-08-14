@@ -27,6 +27,7 @@ import { createHash, randomInt } from 'crypto';
 import { query } from '../db/connection';
 import { CASE_ID_ALPHABET } from '../release/case-id';
 import { notifyOwnerRecoveryCodesLow } from '../notify/notifications';
+import { recordCodeMiss } from '../ops/guess-watch';
 
 /**
  * Enough that losing a few to a house move does not matter, few enough that a
@@ -123,7 +124,13 @@ export async function redeemRecoveryCode(email: string, code: string): Promise<s
   );
 
   const row = r.rows[0];
-  if (!row) throw new RecoveryCodeError(generic);
+  if (!row) {
+    // No matching row for this email+code pair. Recovery codes have NO
+    // failed_attempts budget at all — entropy is their whole defence
+    // (code-entropy.test.ts) — so this is the only trace a guess leaves.
+    await recordCodeMiss('recovery');
+    throw new RecoveryCodeError(generic);
+  }
 
   /*
     Compare-and-swap — see lib/auth/recipient-code.ts. The SELECT above already

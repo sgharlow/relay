@@ -74,6 +74,36 @@ async function upsertSubscription(params: {
   );
 }
 
+/**
+ * Statuses that keep the vault open.
+ *
+ * `past_due` is deliberately here: somebody whose card expired mid-emergency
+ * must not lose the vault their family is relying on. Only a genuinely ended
+ * subscription downgrades.
+ */
+const ACTIVE_STATUSES = new Set<Stripe.Subscription.Status>(['active', 'trialing', 'past_due']);
+
+/**
+ * The subscription's status NOW, not the status the event happened to carry.
+ *
+ * This is what makes the handler order-independent — see the case below. Falls
+ * back to the event's own snapshot if Stripe cannot be reached, because acting
+ * on a stale status is better than dropping a cancellation on the floor.
+ */
+async function currentSubscriptionStatus(
+  sub: Stripe.Subscription,
+): Promise<Stripe.Subscription.Status> {
+  try {
+    const fresh = await getStripe().subscriptions.retrieve(sub.id);
+    return fresh.status;
+  } catch (err) {
+    process.stderr.write(
+      `[stripe] could not re-read ${sub.id}, using the event's own status: ${String(err)}\n`,
+    );
+    return sub.status;
+  }
+}
+
 /** owner_id travels in metadata; falling back to a customer lookup is a last resort. */
 async function ownerIdFor(sub: Stripe.Subscription): Promise<string | null> {
   const fromMetadata = sub.metadata?.owner_id;
@@ -133,34 +163,50 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         break;
       }
 
-      case 'customer.subscription.updated': {
+      /*
+        🔴 THESE TWO WERE ORDER-DEPENDENT, fixed 2026-08-13. Each applied the
+        status carried IN the event payload, and Stripe guarantees no ordering
+        and does retry — so a `customer.subscription.updated` carrying an
+        `active` snapshot, delivered after `customer.subscription.deleted`,
+        re-granted the paid tier to a cancelled customer. The delivery order of
+        two webhooks decided what somebody was entitled to.
+
+        THE FIX IS NOT A WATERMARK. Storing `event.created` and dropping older
+        events would work, and would need a schema change plus a new rule for
+        every future handler to remember. Re-reading the subscription from
+        Stripe at handling time makes the question disappear instead: whatever
+        order the events arrive in, every one of them resolves to the SAME
+        current truth, so the handler is idempotent by construction rather than
+        by discipline. That is the structural-safety-over-convention rule.
+
+        A retrieve failure falls back to the event payload rather than dropping
+        the event: a stale-but-present status beats silently ignoring a
+        cancellation.
+      */
+      case 'customer.subscription.updated':
+      case 'customer.subscription.deleted': {
         const sub = event.data.object as Stripe.Subscription;
         const ownerId = await ownerIdFor(sub);
         if (!ownerId) break;
-        // past_due keeps access: someone whose card expired mid-emergency must
-        // not lose the vault their family is relying on. Only a genuinely ended
-        // subscription downgrades.
-        const active = sub.status === 'active' || sub.status === 'trialing' || sub.status === 'past_due';
+
+        const current = await currentSubscriptionStatus(sub);
+        const active = ACTIVE_STATUSES.has(current);
+
         await upsertSubscription({
           ownerId,
           tier: active ? 'paid' : 'free',
           status: active ? 'active' : 'cancelled',
           stripeSubscriptionId: sub.id,
         });
-        break;
-      }
 
-      case 'customer.subscription.deleted': {
-        const sub = event.data.object as Stripe.Subscription;
-        const ownerId = await ownerIdFor(sub);
-        if (!ownerId) break;
-        await upsertSubscription({ ownerId, tier: 'free', status: 'cancelled', stripeSubscriptionId: sub.id });
-        await writeAuditEntry(ownerId, {
-          actor: 'system',
-          action: 'subscription_cancelled',
-          entity: 'subscription',
-          detail: { source: 'stripe' },
-        });
+        if (!active) {
+          await writeAuditEntry(ownerId, {
+            actor: 'system',
+            action: 'subscription_cancelled',
+            entity: 'subscription',
+            detail: { source: 'stripe', status: current },
+          });
+        }
         break;
       }
 

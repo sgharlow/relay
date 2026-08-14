@@ -14,12 +14,13 @@ import { runHeartbeatSweep, resolveElapsedGrace } from '../../../../../lib/relea
 import { ReleaseStateMachine } from '../../../../../lib/release/state-machine';
 import { recordSchedulerRun } from '../../../../../lib/release/scheduler-ledger';
 import { escalateLapsedRequests } from '../../../../../lib/release/escalation';
+import { timingSafeEquals } from '../../../../../lib/http/timing-safe';
 
 async function handle(req: NextRequest): Promise<NextResponse> {
   const secret = process.env.CRON_SECRET;
   const authz = req.headers.get('authorization');
 
-  if (!secret || authz !== `Bearer ${secret}`) {
+  if (!secret || !timingSafeEquals(authz ?? '', `Bearer ${secret}`)) {
     return NextResponse.json(
       { error: 'Unauthorized', message: 'Invalid or missing CRON_SECRET' },
       { status: 401 },

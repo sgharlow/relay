@@ -93,12 +93,31 @@ describe('the recovery code, which is defended by entropy ALONE', () => {
     ).toBeGreaterThanOrEqual(45);
   });
 
+  /*
+    🔴 THIS READ THE RAW FILE AND A COMMENT SET IT OFF, 2026-08-13. A note added
+    to recovery-code.ts explaining that it has NO failed_attempts budget matched
+    a grep for `failed_attempts` and failed the test — the guard concluded the
+    budget existed from a sentence saying it does not.
+
+    Comments are stripped now, which is what api-reachability.ts already
+    established one layer over: a comment must never vouch for anything. And the
+    match is narrowed to the column actually appearing in SQL, because that —
+    not the phrase — is what a budget is.
+
+    ⚠️ NOT RELAXED BY lib/ops/guess-watch.ts. That records a global, in-memory
+    count of guesses that matched no row, and it refuses nothing, blocks nobody
+    and gates no redemption. It is a signal, not a budget, so the floor below is
+    still the whole defence and its justification is untouched.
+  */
   it('and the absence of a budget is still true — if that changes, relax the floor', () => {
-    const src = readFileSync('lib/auth/recovery-code.ts', 'utf8');
+    const src = readFileSync('lib/auth/recovery-code.ts', 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, ' ')
+      .replace(/^\s*\/\/.*$/gm, ' ');
     expect(
-      /failed_attempts/.test(src),
-      'recovery-code.ts now tracks failed attempts. Good — but this test still asserts an ' +
-        'entropy floor justified by their ABSENCE. Re-read the reasoning above and adjust.',
+      /failed_attempts\s*(=|\+|,|\)|FROM|SELECT|INT)/i.test(src),
+      'recovery-code.ts now tracks failed attempts in SQL. Good — but this test still ' +
+        'asserts an entropy floor justified by their ABSENCE. Re-read the reasoning above ' +
+        'and adjust.',
     ).toBe(false);
   });
 
