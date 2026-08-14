@@ -314,3 +314,59 @@ describe('🔴 the contact side of the verification call — 2026-08-12', () => 
     expect(res.relationships[0].fingerprint).not.toBe(other);
   });
 });
+
+
+/**
+ * 🔴 AN UNANSWERED ASK USED TO LOOK LIKE NOTHING HAPPENED. An access_request in
+ * awaiting_owner creates no release row, so /standby said "Nothing open." and
+ * offered the Ask control again — the confirmation lived only in component
+ * state, gone on reload. Every ask is deliberately loud (owner + whole circle,
+ * J6-R9), so a worried requester checking hourly tripled the family's email
+ * until the velocity cap refused them, never once shown their first ask was
+ * heard. The standing answer now comes from the database.
+ */
+describe('the requester can see their own unanswered ask', () => {
+  function route(withAsk: boolean) {
+    mockQuery.mockReset();
+    mockQuery.mockImplementation(async (sql: string) => {
+      const q = String(sql);
+      if (q.includes('FROM recipients r JOIN users')) {
+        return {
+          rows: [{
+            person_id: 'rec-1',
+            person_type: 'recipient',
+            owner_id: 'o-1',
+            owner_email: 'm@example.com',
+            owner_display_name: 'Margaret Chen',
+            standby_state: 'confirmed',
+          }],
+          rowCount: 1,
+        } as never;
+      }
+      if (q.includes('FROM access_requests')) {
+        return {
+          rows: withAsk
+            ? [{ recipient_id: 'rec-1', case_id: 'RLY-TEST-0001', expires_at: '2026-08-14T12:00:00Z' }]
+            : [],
+          rowCount: withAsk ? 1 : 0,
+        } as never;
+      }
+      return { rows: [], rowCount: 0 } as never;
+    });
+  }
+
+  it('surfaces the pending ask on the relationship', async () => {
+    route(true);
+    const res = await resolveStandbyFor({ userId: 'u-1' });
+    expect(res.relationships[0].pendingAsk).toEqual({
+      caseId: 'RLY-TEST-0001',
+      expiresAt: '2026-08-14T12:00:00Z',
+    });
+  });
+
+  it('is null when nothing is pending — the Ask control may render', async () => {
+    route(false);
+    const res = await resolveStandbyFor({ userId: 'u-1' });
+    expect(res.relationships[0].pendingAsk).toBeNull();
+  });
+});

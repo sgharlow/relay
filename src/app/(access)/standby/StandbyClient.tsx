@@ -46,6 +46,8 @@ interface Relationship {
   openRelease: { releaseStateId: string; state: string; caseId: string | null } | null;
   /** Verifiers only: is their answer still outstanding? */
   awaitingDecision?: boolean;
+  /** Recipients only: their own unanswered ask, so it survives a reload. */
+  pendingAsk?: { caseId: string | null; expiresAt: string } | null;
 }
 
 /**
@@ -339,6 +341,35 @@ export default function StandbyClient() {
 
           {rel.openRelease ? (
             <OpenRelease rel={rel} />
+          ) : rel.pendingAsk ? (
+            /*
+              🔴 AN UNANSWERED ASK USED TO LOOK LIKE NOTHING HAPPENED. A request
+              in awaiting_owner creates no release row, so this screen said
+              "Nothing open." and offered the Ask control AGAIN — the
+              confirmation lived only in AskControl's component state, gone on
+              reload. Every ask is deliberately loud (it mails the owner and the
+              whole circle, J6-R9), so a worried requester checking back hourly
+              tripled the family's email until the velocity cap refused them —
+              having never once been shown their first ask was heard. The
+              standing answer now comes from the DATABASE, and the control does
+              not re-render while one is open.
+            */
+            <div
+              style={{
+                marginTop: 12,
+                padding: '12px 16px',
+                borderRadius: 8,
+                border: '1px solid var(--ochre)',
+                background: 'var(--ochre-soft)',
+              }}
+            >
+              <p style={{ fontSize: 16, color: 'var(--ochre-text)' }}>
+                You asked, and {rel.ownerLabel} has been told. If they do not answer by{' '}
+                {new Date(rel.pendingAsk.expiresAt).toLocaleString()}, the people they chose are
+                asked to confirm instead — you do not need to ask again.
+                {rel.pendingAsk.caseId ? ` Reference ${rel.pendingAsk.caseId}.` : ''}
+              </p>
+            </div>
           ) : (
             <>
               <p style={{ fontSize: 16, marginTop: 12, color: '#6b6257' }}>Nothing open.</p>

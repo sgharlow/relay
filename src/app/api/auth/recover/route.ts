@@ -34,6 +34,10 @@ import {
 import { rateLimit, clientKey } from '../../../../../lib/http/rate-limit';
 import { readJson, isResponse } from '../../../../../lib/http/owner-route';
 import { ValidationError } from '../../../../../lib/validation';
+import { bumpSessionEpoch } from '../../../../../lib/auth/session-epoch';
+import { writeAuditEntry } from '../../../../../lib/audit/audit-service';
+import { notifyOwnerOfRecovery } from '../../../../../lib/notify/notifications';
+import { query } from '../../../../../lib/db/connection';
 
 /** Generous for a flustered person, far too slow to grind ~50 bits with. */
 const LIMIT = 5;
@@ -59,10 +63,55 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const { userId, secret } = completeRecoveryEnrolment(body.enrolmentToken, code);
       await replaceTotpSecret(userId, secret);
 
+      /*
+        🔴 RECOVERY USED TO CHANGE THE LOCK AND LEAVE EVERY OLD KEY WORKING,
+        SILENTLY. Until 2026-08-14 this branch replaced the authenticator and
+        stopped — no session revocation, no audit entry, no word to the owner.
+        Recovery is the account-takeover move by construction (a recovery code
+        is the one credential that defeats the second factor), and the three
+        standard consequences were all absent:
+
+        SESSIONS DIE. bumpSessionEpoch was built for exactly this and had no
+        caller. Whoever held a live session — on the lost phone this flow
+        exists for, or an attacker's — keeps 24 hours of access to a vault of
+        credentials unless the epoch moves. isSessionCurrent compares on every
+        request, so this is immediate, not eventual.
+
+        THE CHAIN RECORDS IT. An event that can transfer control of the account
+        was invisible to the audit page whose whole promise is "the record
+        holds what happened". Written BEFORE the new codes are issued, and
+        blocking, per the audit rule — a recovery that cannot be recorded does
+        not complete.
+
+        THE OWNER IS TOLD. If the recoverer was not them, this email is the
+        only way they learn while it still matters, and it says exactly what to
+        do about it. Best-effort — mail must not block the legitimate case.
+      */
+      await bumpSessionEpoch(userId);
+      await writeAuditEntry(userId, {
+        actor: `owner:${userId}`,
+        action: 'account_recovered',
+        entity: 'user',
+        entityId: userId,
+        detail: { method: 'recovery_code', sessionsRevoked: true },
+      });
+
       // Fresh codes, and the old sheet stops working. After a recovery the
       // previous list is of unknown provenance — it may be why the account
       // needed recovering.
       const codes = await issueRecoveryCodes(userId);
+
+      const who = await query<{ email: string }>(`SELECT email FROM users WHERE id = $1 LIMIT 1`, [
+        userId,
+      ]);
+      if (who.rows[0]?.email) {
+        try {
+          await notifyOwnerOfRecovery(who.rows[0].email);
+        } catch (err) {
+          process.stderr.write(`[recover] owner notice failed: ${String(err)}\n`);
+        }
+      }
+
       return NextResponse.json({ recovered: true, recoveryCodes: codes.map(formatRecoveryCode) });
     }
 

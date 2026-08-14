@@ -839,6 +839,41 @@ export async function notifyOwnerOfResignation(params: {
  * Account screen only says so to somebody who has already opened it — which is
  * precisely the person who does not need telling.
  */
+/**
+ * Tells the owner their account was just RECOVERED — an account-takeover-shaped
+ * event, whoever performed it. If it was them: confirmation and next steps. If
+ * it was not: this message is the only way they find out while it still
+ * matters, which is why it cannot be skipped and must not be quiet about what
+ * to do.
+ */
+export async function notifyOwnerOfRecovery(ownerEmail: string): Promise<boolean> {
+  return sendEmailBestEffort({
+    to: ownerEmail,
+    subject: 'Your Relay account was just recovered with a recovery code',
+    text:
+      `Someone — hopefully you — just used a recovery code to enrol a new authenticator ` +
+      `on your Relay account. Every signed-in session was signed out, your old recovery ` +
+      `codes stopped working, and a fresh list was issued to whoever did this.
+
+` +
+      `If this was you: nothing more to do. Keep the new list; only it works now.
+
+` +
+      `If this was NOT you: somebody had one of your recovery codes and now controls the ` +
+      `sign-in. Recover the account back the same way with one of YOUR remaining codes — ` +
+      `that signs them out and cuts off their authenticator — then check your audit page, ` +
+      `and write to us so a person is looking too.
+
+` +
+      `    ${appUrl()}/auth/recover
+
+` +
+      `There is no code in this message and no link that signs anyone in. A message that ` +
+      `asks you to click and log in is not from us.
+`,
+  });
+}
+
 export async function notifyOwnerRecoveryCodesLow(params: {
   ownerEmail: string;
   remaining: number;

@@ -83,6 +83,19 @@ export interface StandbyRelationship {
   grant?: StandbyView;
   openRelease: OpenRelease | null;
   /**
+   * The requester's OWN unanswered ask, so the dashboard can say so.
+   *
+   * 🔴 WITHOUT THIS, ASKING LOOKED LIKE NOTHING HAPPENED. An access_request in
+   * `awaiting_owner` creates no release row, so for the whole challenge window
+   * this screen said "Nothing open." and offered the Ask control AGAIN. The
+   * confirmation lived only in component state — gone on reload — so the worried
+   * requester who checks back hourly re-asked, and EVERY ask is deliberately loud:
+   * it mails the owner and broadcasts to the whole circle (J6-R9). Their worry
+   * tripled the family's email until the velocity cap refused them, having
+   * never once been told their first ask was heard.
+   */
+  pendingAsk?: { caseId: string | null; expiresAt: string } | null;
+  /**
    * Verifiers only, and only while a release is open: is this person's answer
    * still outstanding? Undefined for recipients.
    *
@@ -179,6 +192,22 @@ export async function resolveStandbyFor(params: {
     for (const d of decided.rows) answered.add(`${d.verifier_id}:${d.release_state_id}`);
   }
 
+  // The requester's own unanswered asks, one query for every recipient row.
+  const recipientIds = found.rows
+    .filter((r) => r.person_type === 'recipient')
+    .map((r) => r.person_id);
+  const pendingAsks = new Map<string, { caseId: string | null; expiresAt: string }>();
+  if (recipientIds.length > 0) {
+    const asks = await query<{ recipient_id: string; case_id: string | null; expires_at: string }>(
+      `SELECT recipient_id, case_id, expires_at::text FROM access_requests
+        WHERE recipient_id = ANY($1) AND status = 'awaiting_owner'`,
+      [recipientIds],
+    );
+    for (const a of asks.rows) {
+      pendingAsks.set(a.recipient_id, { caseId: a.case_id, expiresAt: a.expires_at });
+    }
+  }
+
   const relationships: StandbyRelationship[] = [];
   for (const row of found.rows) {
     // Belt and braces. The SQL above already excludes `revoked`; this repeats it
@@ -207,6 +236,7 @@ export async function resolveStandbyFor(params: {
     // no knowledge of what is inside — so we never even build the view.
     if (row.person_type === 'recipient') {
       rel.grant = await buildStandbyView(row.owner_id, row.person_id);
+      rel.pendingAsk = pendingAsks.get(row.person_id) ?? null;
     } else if (rel.openRelease) {
       // `released` is not a question: the decision has already been made and
       // acted on, so nothing is outstanding regardless of who answered what.
