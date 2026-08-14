@@ -22,6 +22,27 @@ const publicSans = localFont({
   weight: "400 700",
   display: "swap",
 });
+/*
+ * 🔴 THE SERIF WAS 129 KB — 41% OF THE AD LANDING PAGE, measured 2026-08-14 on a
+ * simulated old phone (6x CPU throttle, 400 kbps, 320px, cold cache): first
+ * contentful paint 3.16s, full load 7.66s, 311 KB total, and this file was the
+ * single heaviest thing on it by a factor of two.
+ *
+ * That is the exact visitor the paid lanes are buying: someone clicking a
+ * Facebook ad about a parent in hospital, on whatever phone they have.
+ *
+ * The file carried a wght axis of 200-800 while this @font-face declares
+ * "400 600" — so a third of the interpolation data was unreachable through the
+ * only face that references it, and the design system uses 400/500/600 and
+ * nothing else. Instanced to 400-600 with fontTools: 129 KB -> 90 KB, all 224
+ * glyphs intact, opsz left variable so optical sizing is untouched.
+ *
+ * NOT pinned to opsz=18, which would give 37 KB. That changes how the type
+ * renders at every size, and access-mode typography is a ratified design with
+ * the strictest emotional constraints in the product — a 90 KB saving is not
+ * mine to buy with somebody else's letterforms. It is a real option if the
+ * landing-page weight ever matters more than the rendering.
+ */
 const newsreader = localFont({
   src: "./fonts/Newsreader-var.woff2",
   variable: "--font-newsreader",
