@@ -27,6 +27,7 @@
  * Requirements: J5-R7
  */
 
+import { opsAlertAddress } from './alert-address';
 import { sendEmailBestEffort } from '../notify/email';
 
 export interface IncidentReport {
@@ -88,7 +89,18 @@ export async function reportIncident(
   const line = `[incident] mode=${report.mode} path=${report.path} digest=${report.digest ?? 'none'}`;
   process.stderr.write(`${line}\n`);
 
-  const to = process.env.OPS_ALERT_EMAIL?.trim();
+  /*
+    🔴 THIS READ OPS_ALERT_EMAIL ALONE, so an operator following .env.example —
+    which recommends OPS_ALERT_ADDRESS — silently muted every client-side
+    incident alert. Its two siblings already accepted both names after the same
+    misconfiguration was found in production on 2026-08-13; this file was
+    missed, and unlike them it has no reply-to fallback to hide the gap.
+
+    The fallback is deliberately NOT taken here: an incident report should go to
+    the operator address or nowhere, rather than surprising the public reply-to
+    inbox. See lib/ops/alert-address.ts.
+  */
+  const to = opsAlertAddress();
   // No address configured is a valid deployment, not an error. The log still has
   // it; nobody is woken up.
   if (!to) return { alerted: false };

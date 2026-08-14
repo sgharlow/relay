@@ -120,7 +120,20 @@ export default function AuditPage() {
         what makes the summary above trustworthy rather than merely reassuring.
       </p>
 
-      <div className="overflow-hidden rounded border border-rule">
+      {/*
+        🔴 overflow-hidden CLIPPED THIS TABLE ON A PHONE RATHER THAN SCROLLING IT.
+        globals.css sets `overflow-x: hidden` on the root so no page can ever be
+        swiped sideways, and its comment is explicit that "elements that need to
+        scroll horizontally still can; they carry their own overflow-x". This
+        one carried `overflow-hidden` instead, which is the opposite: at 390px
+        the right-hand columns were not merely awkward, they were unreachable by
+        any gesture.
+
+        On the audit page that is the worst place for it — the columns most
+        likely to fall off the edge are the ones saying what happened and when,
+        which is the entire reason somebody opens this page.
+      */}
+      <div className="overflow-x-auto rounded border border-rule">
         <table className="w-full text-left text-t2">
           <thead className="bg-paper-sunken text-t1 uppercase text-muted">
             <tr>

@@ -932,25 +932,50 @@ export async function notifyOwnerRecoveryCodesLow(params: {
   const { remaining } = params;
   const count = remaining === 1 ? 'one recovery code' : `${remaining} recovery codes`;
 
+  /*
+    🔴 THE SEVERITY INVERTED AT EXACTLY THE TERMINAL STATE. `remaining === 1`
+    got the severe warning and EVERYTHING ELSE got "Worth topping up before it
+    becomes urgent" — including zero. So the owner with one code left was told
+    the truth, and the owner with NONE was told it was not urgent yet, when it
+    had already happened: they are one lost authenticator away from a vault
+    nobody on earth can open, including us.
+
+    Zero is not a smaller version of one, it is a different fact, and it is the
+    only state in this product that cannot be undone by anybody. It gets its own
+    branch and the plainest sentence in the file.
+  */
+  const isTerminal = remaining <= 0;
+
   return sendEmailBestEffort({
     to: params.ownerEmail,
-    subject:
-      remaining === 1
+    subject: isTerminal
+      ? 'You have NO Relay recovery codes left'
+      : remaining === 1
         ? 'You have one Relay recovery code left'
         : `You have ${remaining} Relay recovery codes left`,
     text:
-      `You just used a recovery code to get back into Relay, and you now have ${count} left.
+      (isTerminal
+        ? `You just used your LAST recovery code to get back into Relay. You have none left.
 
 ` +
-      (remaining === 1
-        ? `That is the last one. If you use it and then lose your authenticator again, nobody ` +
-          `can let you back in — not us either. That is the same encryption promise that keeps ` +
-          `your vault private, working in the direction that hurts.
+          `Please issue a fresh list today. Until you do, your authenticator is the only way ` +
+          `into your account — and if you lose it, nobody can let you back in. Not us either. ` +
+          `That is the same encryption promise that keeps your vault private, working in the ` +
+          `direction that hurts.
 
 `
-        : `Worth topping up before it becomes urgent.
+        : `You just used a recovery code to get back into Relay, and you now have ${count} left.
 
-`) +
+` +
+          (remaining === 1
+            ? `That is the last one. If you use it and then lose your authenticator again, nobody ` +
+              `can let you back in — not us either. That is the same encryption promise that keeps ` +
+              `your vault private, working in the direction that hurts.
+
+`
+            : `Worth topping up before it becomes urgent.
+
+`)) +
       `Sign in the way you normally do, open Account, and issue a fresh list. The new list ` +
       `replaces the old one, so keep only the newest.
 

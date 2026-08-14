@@ -29,6 +29,7 @@
  * Feature: relay-h0-mvp
  */
 
+import { opsAlertAddress } from './alert-address';
 import { sendEmailBestEffort } from '../notify/email';
 
 /** What was being guessed. Only ever a fixed label — never the code itself. */
@@ -105,11 +106,7 @@ export async function recordCodeMiss(kind: GuessKind, now: number = Date.now()):
     best-effort by design: failing to send must never fail the request that a
     real person is waiting on.
   */
-  const to = (
-    process.env.OPS_ALERT_ADDRESS ??
-    process.env.OPS_ALERT_EMAIL ??
-    process.env.RESEND_REPLY_TO_ADDRESS
-  )?.trim();
+  const to = opsAlertAddress({ fallbackToReplyTo: true });
   if (!to) return;
 
   await sendEmailBestEffort({

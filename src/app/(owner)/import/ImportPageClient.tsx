@@ -135,7 +135,12 @@ export default function ImportPage() {
             </div>
           ) : null}
 
-          <div className="overflow-hidden rounded border border-rule">
+          {/* overflow-x-auto, not overflow-hidden: the root hides horizontal
+              overflow, so a clipped table's right-hand columns are unreachable
+              on a phone rather than just awkward. Here that is the preview of
+              what is about to be imported — the columns a person checks before
+              committing. */}
+          <div className="overflow-x-auto rounded border border-rule">
             <table className="w-full text-left text-t2">
               <thead className="bg-paper-sunken text-t1 uppercase text-muted">
                 <tr>

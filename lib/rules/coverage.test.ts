@@ -38,7 +38,15 @@ describe('computeCoverage', () => {
     const c = computeCoverage([item('a', 'low'), item('b', null)], []);
 
     expect(c.uncoveredCritical).toEqual([]);
-    expect(c.circleComplete).toBe(true);
+    /*
+      🔴 THIS USED TO EXPECT `circleComplete: true` — for a vault holding two
+      items that NOBODY can reach. Nothing in it is critical, so there is
+      nothing to flag, but "no critical item is stranded" and "your circle is
+      complete" are different claims and only the first one was being computed.
+      An owner in this state was shown the sage reassurance while their family
+      could reach nothing at all.
+    */
+    expect(c.circleComplete).toBe(false);
   });
 
   it('treats a root credential as critical even when scored lower', () => {
@@ -75,12 +83,33 @@ describe('computeCoverage', () => {
     expect(c.uncoveredCritical).toEqual([]);
   });
 
-  it('an empty vault is trivially complete', () => {
+  /*
+    🔴 RENAMED FROM "an empty vault is trivially complete", WHICH ASSERTED A
+    FALSE GREEN. Vacuous truth is not reassurance: an owner who has just signed
+    up, with nothing in their vault and nobody named, was shown "Every critical
+    item has someone who can reach it" on the one screen whose job is to say
+    whether their plan would work.
+
+    It also contradicted the readiness banner directly above it on the same
+    page, which correctly said "Nothing is in your vault yet, so there is
+    nothing anyone could reach."
+  */
+  it('an empty vault is NOT complete — zero of zero is an empty room', () => {
     const c = computeCoverage([], []);
+
+    expect(c.circleComplete).toBe(false);
+    expect(c.uncoveredCritical).toEqual([]);
+    expect(c.byRecipient).toEqual({});
+  });
+
+  it('is complete once something critical is genuinely reachable', () => {
+    const c = computeCoverage(
+      [item('a', 'critical')],
+      [{ vault_item_id: 'a', recipient_id: 'r-1' }],
+    );
 
     expect(c.circleComplete).toBe(true);
     expect(c.uncoveredCritical).toEqual([]);
-    expect(c.byRecipient).toEqual({});
   });
 
   it('ignores a rule pointing at an item that no longer exists', () => {

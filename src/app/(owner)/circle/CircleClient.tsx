@@ -263,6 +263,11 @@ export default function CircleClient() {
             Nobody named yet — add the first person below.
           </p>
         ) : (
+          // Wrapped so it can scroll: the root hides horizontal overflow, so a
+          // table wider than the viewport loses its right-hand columns with no
+          // way to reach them. Here that column is "items reachable" — the
+          // number that says whether naming this person actually did anything.
+          <div className="overflow-x-auto">
           <table className="mt-3 w-full text-t2">
             <thead>
               <tr className="border-b border-rule text-left text-t1 uppercase tracking-wide text-muted">
@@ -284,6 +289,7 @@ export default function CircleClient() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </section>
 

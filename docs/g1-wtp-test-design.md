@@ -164,4 +164,11 @@ resolved from the landing's key — but lane B was unattributable until this was
 2. **Disposition (gate `h0-verdict-disposition`, by 8-07):** if commercialize → merge, enable
    Vercel Analytics, wire the real mailbox, start channel sends (human-send, co-pilot).
 3. **G1 verdict:** written line — metric, N, threshold, ship/kill — due **9-15**.
-   G2 (counsel) runs in parallel and is REQUIRED before any paying customer.
+   ~~G2 (counsel) runs in parallel and is REQUIRED before any paying customer.~~
+   **SUPERSEDED 2026-08-14** by `gates.g2-counsel-opinion.declined`. Counsel was not
+   engaged and estate is withdrawn permanently (`journeys.J10: withdrawn`), so G1 does
+   not wait on it. The gate's own wording scoped it to a paying **estate** customer, and
+   there will not be one. Left struck through rather than deleted: a reader who
+   remembers this precondition needs to see that it was retired on purpose, not
+   forgotten. A precondition that can never be met does not stop work — it stops work
+   being scheduled, silently.

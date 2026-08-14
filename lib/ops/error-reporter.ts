@@ -31,6 +31,7 @@
  * Feature: relay-h0-mvp (CC9)
  */
 
+import { opsAlertAddress } from './alert-address';
 import { sendEmailBestEffort } from '../notify/email';
 
 export interface ErrorContext {
@@ -124,11 +125,7 @@ export async function reportServerError(err: unknown, context: ErrorContext = {}
       renaming a live variable can — and the .env.example test now pins both so
       the next person meets one documented answer.
     */
-    const to = (
-      process.env.OPS_ALERT_ADDRESS ??
-      process.env.OPS_ALERT_EMAIL ??
-      process.env.RESEND_REPLY_TO_ADDRESS
-    )?.trim();
+    const to = opsAlertAddress({ fallbackToReplyTo: true });
     // Local and preview environments must not try to mail anyone.
     if (!to) return;
 

@@ -15,6 +15,7 @@ import {
   notifyRecipientAccessClosed,
   notifyOwnerOfDelegation,
   notifyRequesterOfOutcome,
+  notifyOwnerRecoveryCodesLow,
 } from './notifications';
 import { query } from '../db/connection';
 
@@ -761,6 +762,59 @@ describe('the outcome message to whoever asked', () => {
         ownerLabel: 'Margaret', caseId: 'RLY-AAAA-BBBB',
       });
       expect(sent[0].text).toContain('RLY-AAAA-BBBB');
+    }
+  });
+});
+
+/*
+ * 🔴 THE SEVERITY INVERTED AT THE ONE TERMINAL STATE.
+ *
+ * notifyOwnerRecoveryCodesLow branched on `remaining === 1` for the severe
+ * warning and gave everything else "Worth topping up before it becomes urgent"
+ * — including ZERO. So the owner with one code left was told the truth, and the
+ * owner with none was told it was not urgent yet, when it already was: they are
+ * one lost authenticator away from a vault nobody can open, including us.
+ *
+ * Zero is reachable — recovery-code.ts fires this whenever `left <=
+ * LOW_RECOVERY_CODE_THRESHOLD`, and using the final code makes left 0.
+ */
+describe('the recovery-code warning at zero', () => {
+  it('does not call the terminal state "not urgent yet"', async () => {
+    _setResendClientForTesting(stubResend());
+    await notifyOwnerRecoveryCodesLow({ ownerEmail: 'o@example.com', remaining: 0 });
+
+    expect(sent[0].text).not.toMatch(/before it becomes urgent/i);
+    expect(sent[0].subject).toMatch(/NO Relay recovery codes/);
+    expect(sent[0].text).toMatch(/none left/i);
+    expect(sent[0].text).toMatch(/today/i);
+  });
+
+  it('still says plainly that nobody can undo it — including us', async () => {
+    _setResendClientForTesting(stubResend());
+    await notifyOwnerRecoveryCodesLow({ ownerEmail: 'o@example.com', remaining: 0 });
+    expect(sent[0].text).toMatch(/nobody can let you back in/i);
+    expect(sent[0].text).toMatch(/Not us either/i);
+  });
+
+  it('keeps the severe wording at one, which was already right', async () => {
+    _setResendClientForTesting(stubResend());
+    await notifyOwnerRecoveryCodesLow({ ownerEmail: 'o@example.com', remaining: 1 });
+    expect(sent[0].subject).toContain('one Relay recovery code left');
+    expect(sent[0].text).toMatch(/That is the last one/);
+  });
+
+  it('keeps the mild wording where it belongs', async () => {
+    _setResendClientForTesting(stubResend());
+    await notifyOwnerRecoveryCodesLow({ ownerEmail: 'o@example.com', remaining: 3 });
+    expect(sent[0].text).toMatch(/before it becomes urgent/i);
+  });
+
+  it('carries no code and no sign-in link at any count', async () => {
+    for (const remaining of [0, 1, 3]) {
+      sent.length = 0;
+      _setResendClientForTesting(stubResend());
+      await notifyOwnerRecoveryCodesLow({ ownerEmail: 'o@example.com', remaining });
+      expect(sent[0].text).toMatch(/not from us/i);
     }
   });
 });
