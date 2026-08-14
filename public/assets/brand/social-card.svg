@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630"
+     role="img" aria-labelledby="sc-t sc-d">
+  <title id="sc-t">Relay — standby access for the people who will need it</title>
+  <desc id="sc-d">A closed vault with people standing by around it, on warm paper.</desc>
+
+  <!--
+    ═══════════════════════════════════════════════════════════════════════════
+    THE SHARE CARD.
+
+    🔴 THE ONE IN PRODUCTION IS OFF-PALETTE. src/app/opengraph-image.tsx paints
+    #020617 with #3b82f6 and #fbbf24 — Tailwind slate/blue/amber, from before
+    the Warm Archive system existed. So does src/app/icon.svg. Those two files
+    are the most-seen surfaces the brand has: one is every browser tab, the
+    other is every link anybody pastes into Slack or iMessage. Both currently
+    advertise a product that looks nothing like the one behind the link.
+
+    This is the replacement, in the real palette. It is deliberately quiet:
+    a share card for this product competes in a feed full of shouting, and the
+    thing being offered is calm. Paper, one shut vault, people standing by, and
+    a single sage lamp.
+
+    LEFT AS AN ASSET, NOT WIRED IN. Swapping the live card means editing the
+    next/og route, which is app code rather than an asset — see README.md.
+    ═══════════════════════════════════════════════════════════════════════════
+  -->
+
+  <rect width="1200" height="630" fill="var(--paper, #f7f4ee)"/>
+
+  <defs>
+    <g id="sc-figure">
+      <circle cx="0" cy="-17" r="13" fill="none" stroke="var(--ink, #1f1b16)" stroke-width="2.5"/>
+      <path d="M -19 15 A 19 19 0 0 1 19 15" fill="none"
+            stroke="var(--ink, #1f1b16)" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+  </defs>
+
+  <!-- The mark, top left, where a reader's eye lands first. -->
+  <g transform="translate(72 64) scale(0.9)">
+    <circle cx="13" cy="35" r="9.5" fill="var(--ink, #1f1b16)"/>
+    <path d="M 17.5 26.6 C 21 20.5, 22.5 19, 26.4 16.8" fill="none"
+          stroke="var(--ink, #1f1b16)" stroke-width="4.5" stroke-linecap="round"/>
+    <circle cx="36" cy="12" r="8" fill="none" stroke="var(--ochre, #b4703a)" stroke-width="4.5"/>
+  </g>
+
+  <!-- Wordmark and line. Text is baked here BECAUSE a share card is a picture
+       to every platform that renders it — this is the one asset in the set
+       where words in the image are correct rather than an accessibility
+       problem, and the title/desc above carry them for anything that reads. -->
+  <text x="72" y="270" font-family="Georgia, 'Times New Roman', serif" font-size="76"
+        fill="var(--ink, #1f1b16)">Relay</text>
+  <text x="72" y="336" font-family="ui-sans-serif, system-ui, sans-serif" font-size="31"
+        fill="var(--ink-muted, #6b6257)">Standby access for the people who will need it.</text>
+  <text x="72" y="392" font-family="ui-sans-serif, system-ui, sans-serif" font-size="25"
+        fill="var(--ink-faint, #71675a)">Nothing opens until the people you trust say so.</text>
+
+  <!-- The state, stated. Sage, and small. -->
+  <g transform="translate(72 448)">
+    <circle cx="11" cy="11" r="9" fill="var(--sage, #4f7a6b)"/>
+    <text x="32" y="18" font-family="ui-sans-serif, system-ui, sans-serif" font-size="22"
+          fill="var(--sage-text, #365547)">Armed — and nothing is happening</text>
+  </g>
+
+  <!-- The scene, right. Same vault, same people, same rules as the hero. -->
+  <g transform="translate(596 0)">
+    <path d="M 132 452 A 224 128 0 1 1 552 452" fill="none"
+          stroke="var(--rule-strong, #cfc7b8)" stroke-width="1.5"
+          stroke-dasharray="2 10" stroke-linecap="round"/>
+
+    <rect x="277" y="252" width="130" height="130" rx="14"
+          fill="var(--paper-raised, #fffdf9)" stroke="var(--ink, #1f1b16)" stroke-width="2.5"/>
+    <rect x="288" y="263" width="108" height="108" rx="8"
+          fill="none" stroke="var(--rule-strong, #cfc7b8)" stroke-width="1.75"/>
+    <g fill="var(--ink, #1f1b16)">
+      <rect x="272" y="280" width="6.5" height="18" rx="3.25"/>
+      <rect x="272" y="337" width="6.5" height="18" rx="3.25"/>
+    </g>
+    <rect x="389" y="306" width="6" height="24" rx="3" fill="var(--ink, #1f1b16)"/>
+
+    <circle cx="342" cy="317" r="23" fill="none" stroke="var(--ink, #1f1b16)" stroke-width="2.5"/>
+    <circle cx="342" cy="317" r="15" fill="none" stroke="var(--rule-strong, #cfc7b8)" stroke-width="1.75"/>
+    <circle cx="342" cy="317" r="3.5" fill="var(--ink, #1f1b16)"/>
+    <path d="M 342 287 L 342 292.5" stroke="var(--ink, #1f1b16)" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="342" cy="360" r="4.5" fill="var(--sage, #4f7a6b)"/>
+
+    <ellipse cx="132" cy="474" rx="29" ry="7.5" fill="var(--sage-soft, #e6ede9)"
+             stroke="var(--sage, #4f7a6b)" stroke-width="1.75"/>
+    <use href="#sc-figure" x="132" y="452"/>
+
+    <ellipse cx="153" cy="365" rx="29" ry="7.5" fill="var(--sage-soft, #e6ede9)"
+             stroke="var(--sage, #4f7a6b)" stroke-width="1.75"/>
+    <use href="#sc-figure" x="153" y="343"/>
+
+    <ellipse cx="342" cy="211" rx="29" ry="7.5" fill="none"
+             stroke="var(--rule-strong, #cfc7b8)" stroke-width="1.75" stroke-dasharray="4 5"/>
+    <use href="#sc-figure" x="342" y="189"/>
+
+    <ellipse cx="531" cy="365" rx="29" ry="7.5" fill="var(--sage-soft, #e6ede9)"
+             stroke="var(--sage, #4f7a6b)" stroke-width="1.75"/>
+    <use href="#sc-figure" x="531" y="343"/>
+
+    <ellipse cx="552" cy="474" rx="29" ry="7.5" fill="none"
+             stroke="var(--rule-strong, #cfc7b8)" stroke-width="1.75" stroke-dasharray="4 5"/>
+    <use href="#sc-figure" x="552" y="452"/>
+  </g>
+</svg>

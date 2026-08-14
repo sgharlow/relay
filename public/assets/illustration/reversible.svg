@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160"
+     role="img" aria-labelledby="rv-t rv-d">
+  <title id="rv-t">Almost everything here can be undone</title>
+  <desc id="rv-d">An arrow travelling most of the way round a circle and turning back to where it
+    started.</desc>
+
+  <!--
+    THE PRODUCT'S CENTRAL PROMISE, AND THE ONE PEOPLE DO NOT BELIEVE.
+
+    The fear that stops a caregiver signing up is not theft; it is a false alarm
+    handing their brother the bank login while they are on holiday. So the
+    single most valuable thing any drawing here can say is: it comes back.
+
+    Drawn in SAGE rather than ochre. Ochre is the colour of a thing in motion,
+    which is the middle of the story; sage is where it ENDS UP, and the point of
+    reversibility is the destination, not the journey.
+
+    The gap at the top is left open on purpose — a closed loop reads as a cycle
+    that repeats, and this is a return, which happens once and finishes.
+  -->
+
+  <path d="M 80 22 A 58 58 0 1 1 44.5 32.6" fill="none"
+        stroke="var(--sage, #4f7a6b)" stroke-width="9" stroke-linecap="round"/>
+  <!-- A FILLED head, not a stroked chevron. At 9px stroke the chevron's two legs
+       merged into a blob and the arrow lost its direction — which, on the one
+       drawing whose entire job is to say "it comes back", was the only thing it
+       had to communicate. -->
+  <path d="M 30 44 L 62 40 L 44 14 Z" fill="var(--sage, #4f7a6b)"
+        stroke="var(--sage, #4f7a6b)" stroke-width="6" stroke-linejoin="round"/>
+</svg>

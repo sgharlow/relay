@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Relay — asset contact sheet</title>
+<style>
+  :root{
+    --paper:#f7f4ee; --paper-raised:#fffdf9; --paper-sunken:#efeae0;
+    --ink:#1f1b16; --ink-muted:#6b6257; --ink-faint:#71675a; --paper-faint:#948a7d;
+    --rule:#e3dccf; --rule-strong:#cfc7b8;
+    --sage:#4f7a6b; --sage-text:#365547; --sage-soft:#e6ede9;
+    --ochre:#b4703a; --ochre-text:#8a5a2b; --ochre-deep:#a15d27; --ochre-soft:#f6ead9;
+    --clay:#b2402c; --clay-soft:#f8e5e0;
+  }
+  body{background:var(--paper);color:var(--ink);margin:0;padding:40px 48px 80px;
+       font:16px/1.5 ui-sans-serif,system-ui,sans-serif}
+  h1{font-size:30px;margin:0 0 4px}
+  p.sub{color:var(--ink-muted);margin:0 0 8px;max-width:70ch}
+  h2{font-size:20px;margin:44px 0 0;border-top:1px solid var(--rule);padding-top:22px}
+  h2 span{color:var(--ink-faint);font-weight:400;font-size:14px}
+  .grid{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start;margin-top:18px}
+  figure{margin:0;background:var(--paper-raised);border:1px solid var(--rule);
+         border-radius:12px;padding:18px;text-align:center}
+  figure img{display:block;max-width:100%;height:auto;margin:0 auto}
+  figcaption{font-size:12px;color:var(--ink-faint);margin-top:10px}
+  .wide{width:100%}
+  .dark{background:var(--ink);border-color:#3a332b}
+  .dark figcaption{color:var(--paper-faint)}
+  .row{display:flex;gap:18px;align-items:flex-end;justify-content:center}
+  .chips{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;align-items:center}
+  .chip{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--ink-muted);
+        background:var(--paper);border:1px solid var(--rule);border-radius:999px;padding:5px 12px}
+  .chip img{width:18px;height:18px}
+  .icons{display:flex;gap:26px;flex-wrap:wrap;justify-content:center;align-items:flex-end}
+  .icons figure{border:none;background:none;padding:0;width:74px}
+  .icons img{width:30px;height:30px}
+  .sw{display:flex;gap:0;border-radius:8px;overflow:hidden;border:1px solid var(--rule)}
+  .sw i{width:74px;height:44px;display:block}
+</style>
+</head>
+<body>
+<h1>Relay — asset contact sheet</h1>
+<p class="sub">Warm Archive palette. Every asset uses <code>var(--token, #fallback)</code>: it themes
+when inlined into the app and still renders correctly standalone as <code>&lt;img&gt;</code>.
+Reviewed at the sizes each asset is actually used.</p>
+
+<div class="sw" style="margin-top:16px">
+  <i style="background:var(--paper)"></i><i style="background:var(--paper-sunken)"></i>
+  <i style="background:var(--sage)"></i><i style="background:var(--sage-soft)"></i>
+  <i style="background:var(--ochre)"></i><i style="background:var(--ochre-soft)"></i>
+  <i style="background:var(--clay)"></i><i style="background:var(--ink)"></i>
+</div>
+
+<h2>Hero <span>— the landing page</span></h2>
+<div class="grid">
+  <figure class="wide"><img src="illustration/circle-of-trust.svg" alt="" style="width:960px">
+    <figcaption>circle-of-trust.svg</figcaption></figure>
+</div>
+
+<h2>Explainers <span>— how it works, the verifier's screen, security</span></h2>
+<div class="grid">
+  <figure><img src="illustration/quorum-ring.svg" alt="" style="width:250px">
+    <figcaption>quorum-ring.svg — three of five</figcaption></figure>
+  <figure><img src="illustration/the-handoff.svg" alt="" style="width:400px">
+    <figcaption>the-handoff.svg</figcaption></figure>
+  <figure><img src="illustration/reversible.svg" alt="" style="width:130px">
+    <figcaption>reversible.svg</figcaption></figure>
+</div>
+<div class="grid">
+  <figure><img src="illustration/key-stays-with-you.svg" alt="" style="width:400px">
+    <figcaption>key-stays-with-you.svg</figcaption></figure>
+  <figure><img src="illustration/no-sign-in-links.svg" alt="" style="width:250px">
+    <figcaption>no-sign-in-links.svg</figcaption></figure>
+</div>
+
+<h2>At rest <span>— the standby dashboard, for the years nothing happens</span></h2>
+<div class="grid">
+  <figure><img src="illustration/at-rest.svg" alt="" style="width:400px">
+    <figcaption>at-rest.svg</figcaption></figure>
+</div>
+
+<h2>State marks <span>— shown inline, at the size they are read</span></h2>
+<div class="grid"><figure class="wide"><div class="chips">
+  <span class="chip"><img src="state/state-armed.svg" alt="">Armed</span>
+  <span class="chip"><img src="state/state-pending.svg" alt="">Pending</span>
+  <span class="chip"><img src="state/state-grace.svg" alt="">Grace</span>
+  <span class="chip"><img src="state/state-released.svg" alt="">Released</span>
+  <span class="chip"><img src="state/state-stood-down.svg" alt="">Stood down</span>
+</div><figcaption>state/*.svg — no red anywhere: every state a user can reach is reversible</figcaption></figure></div>
+
+<h2>Icons <span>— 24px grid, ink only</span></h2>
+<div class="grid"><figure class="wide"><div class="icons">
+  <figure><img src="icon/vault.svg" alt=""><figcaption>vault</figcaption></figure>
+  <figure><img src="icon/people.svg" alt=""><figcaption>people</figcaption></figure>
+  <figure><img src="icon/standby.svg" alt=""><figcaption>standby</figcaption></figure>
+  <figure><img src="icon/check-in.svg" alt=""><figcaption>check-in</figcaption></figure>
+  <figure><img src="icon/sealed-record.svg" alt=""><figcaption>sealed-record</figcaption></figure>
+  <figure><img src="icon/break-glass.svg" alt=""><figcaption>break-glass</figcaption></figure>
+</div><figcaption>drawn at 30px, the size a nav item uses</figcaption></figure></div>
+
+<h2>Social card <span>— 1200&times;630, what a pasted link renders as</span></h2>
+<div class="grid">
+  <figure class="wide"><img src="brand/social-card.svg" alt="" style="width:820px">
+    <figcaption>brand/social-card.svg — replaces the off-palette next/og route</figcaption></figure>
+</div>
+
+<h2>Brand mark <span>— at the sizes it is actually seen</span></h2>
+<div class="grid">
+  <figure><div class="row">
+      <img src="brand/relay-mark.svg" alt="" style="width:96px">
+      <img src="brand/relay-mark.svg" alt="" style="width:48px">
+      <img src="brand/relay-mark.svg" alt="" style="width:32px">
+    </div><figcaption>relay-mark.svg — 96 / 48 / 32</figcaption></figure>
+  <figure class="dark"><div class="row">
+      <img src="brand/relay-mark-inverse.svg" alt="" style="width:96px">
+      <img src="brand/relay-mark-inverse.svg" alt="" style="width:32px">
+    </div><figcaption>relay-mark-inverse.svg — on ink</figcaption></figure>
+  <figure><div class="row">
+      <img src="brand/relay-icon-16.svg" alt="" style="width:32px">
+      <img src="brand/relay-icon-16.svg" alt="" style="width:16px">
+    </div><figcaption>relay-icon-16.svg — the small cut, 32 / 16</figcaption></figure>
+</div>
+
+</body>
+</html>

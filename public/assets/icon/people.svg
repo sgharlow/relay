@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img" aria-labelledby="people-t">
+  <title id="people-t">The people you have named</title>
+  <!--
+    24px grid, 1.75 stroke, round caps — one set, so a screen never mixes
+    weights. Ink only: an icon that carries state colour competes with the state
+    marks, which are the only things in this product allowed to mean a state.
+  -->
+  <circle cx="9" cy="9" r="3.2" fill="none" stroke="var(--ink, #1f1b16)" stroke-width="1.75"/>
+  <path d="M 3.6 18.5 A 5.4 5.4 0 0 1 14.4 18.5" fill="none" stroke="var(--ink, #1f1b16)" stroke-width="1.75" stroke-linecap="round"/>
+  <circle cx="17" cy="10.5" r="2.4" fill="none" stroke="var(--ink, #1f1b16)" stroke-width="1.75" opacity="0.55"/>
+  <path d="M 14.6 17.4 A 4 4 0 0 1 21 17.4" fill="none" stroke="var(--ink, #1f1b16)" stroke-width="1.75" stroke-linecap="round" opacity="0.55"/>
+</svg>

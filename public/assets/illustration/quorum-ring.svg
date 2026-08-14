@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400"
+     role="img" aria-labelledby="qr-t qr-d">
+  <title id="qr-t">Three of five trusted people have confirmed</title>
+  <desc id="qr-d">Five seats in a ring. Three are filled, meaning those people have confirmed this
+    is genuine. Two are still open. An arc traces how far round the ring the confirmations have
+    reached.</desc>
+
+  <!--
+    ═══════════════════════════════════════════════════════════════════════════
+    N-OF-M, MADE COUNTABLE.
+
+    The references express this as a percentage on a dial ("50% TO UNLOCKED")
+    with red nodes for the people who have not answered. Two problems, both
+    about feeling rather than taste:
+
+      A PERCENTAGE CANNOT BE CHECKED. "Three of five" is a fact a worried
+      person can verify by counting seats. 50% is something a machine asserted.
+
+      RED IS WRONG HERE, AND IN THIS SYSTEM IT IS ALSO A LIE. globals.css
+      reserves clay for what is PERMANENT — estate handoff, closing an account.
+      Painting "has not replied yet" in red would tell the reader that an
+      ordinary, entirely reversible wait is irreversible. A person who has not
+      answered is an ABSENCE, so they are drawn as an empty seat.
+
+    Two colours, doing two different jobs:
+      SAGE on a filled seat — a settled fact. That person answered; it is done.
+      OCHRE on the arc and the centre — the process, in motion and reversible.
+    ═══════════════════════════════════════════════════════════════════════════
+  -->
+
+  <!-- The ring the seats sit on. -->
+  <circle cx="200" cy="200" r="130" fill="none"
+          stroke="var(--rule, #e3dccf)" stroke-width="2"/>
+
+  <!-- How far the confirmations have reached: seat one round to seat three. -->
+  <path d="M 200 70 A 130 130 0 0 1 276.4 305.2" fill="none"
+        stroke="var(--ochre, #b4703a)" stroke-width="5" stroke-linecap="round"/>
+
+  <!-- ── The centre: the thing that opens when enough people agree. ────────
+       🔴 VERSION ONE PUT A VERTICAL STROKE ABOVE A DOT INSIDE A RING, which is
+       the universal glyph for an ERROR. On the screen where a family is being
+       told how their plan works, the centre of the diagram was quietly shouting
+       "something has gone wrong". Replaced by the same small vault used in the
+       hero, so the set shares one object and the centre reads as a thing that
+       is shut rather than a warning.
+
+       It is drawn in ochre, not ink: while confirmations are arriving the
+       release is in motion — and everything in motion here can still be stopped.
+  -->
+  <g>
+    <rect x="172" y="172" width="56" height="56" rx="9"
+          fill="var(--ochre-soft, #f6ead9)"
+          stroke="var(--ochre, #b4703a)" stroke-width="2.5"/>
+    <!-- Pointer INSIDE the ring, turning about a hub — a dial. A stroke that
+         crossed the rim would be the IEC standby symbol instead; see the note
+         in circle-of-trust.svg, where that mistake was made and corrected. -->
+    <circle cx="200" cy="200" r="12" fill="none"
+            stroke="var(--ochre-text, #8a5a2b)" stroke-width="2.25"/>
+    <circle cx="200" cy="200" r="6.5" fill="none"
+            stroke="var(--ochre, #b4703a)" stroke-width="1.75"/>
+    <circle cx="200" cy="200" r="2" fill="var(--ochre-text, #8a5a2b)"/>
+    <path d="M 200 184 L 200 186.5" stroke="var(--ochre-text, #8a5a2b)"
+          stroke-width="2.25" stroke-linecap="round"/>
+  </g>
+
+  <!-- ── Answered. A filled seat is a person who said yes. ────────────────── -->
+  <g>
+    <circle cx="200" cy="70" r="19" fill="var(--sage, #4f7a6b)"/>
+    <circle cx="323.6" cy="159.8" r="19" fill="var(--sage, #4f7a6b)"/>
+    <circle cx="276.4" cy="305.2" r="19" fill="var(--sage, #4f7a6b)"/>
+  </g>
+
+  <!-- ── Still open. Not failed, not late, not red — simply empty. ────────── -->
+  <!-- Strengthened after the first render: at rule-strong on paper-raised these
+       had almost vanished, and "two people have not answered yet" is a fact the
+       owner needs to be able to COUNT. Still dashed, still unfilled — absent,
+       not alarmed. -->
+  <g fill="var(--paper-sunken, #efeae0)" stroke="var(--ink-faint, #71675a)"
+     stroke-width="2.5" stroke-dasharray="5 5">
+    <circle cx="123.6" cy="305.2" r="19"/>
+    <circle cx="76.4" cy="159.8" r="19"/>
+  </g>
+</svg>

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32"
+     role="img" aria-labelledby="ri-t">
+  <title id="ri-t">Relay</title>
+
+  <!--
+    THE SMALL CUT. Below about 32px the arc in relay-mark.svg becomes two grey
+    pixels — worse than absent, because it fills the gap that carries the
+    meaning. So the arc is dropped and the two nodes do the work alone: one
+    solid, one open, on a diagonal that still reads as "from here to there".
+
+    A rounded tile behind them, because a favicon sits on whatever colour the
+    browser chrome happens to be and the paper ground is what makes the ink
+    node visible at all.
+  -->
+
+  <rect width="32" height="32" rx="7" fill="var(--paper, #f7f4ee)"/>
+  <circle cx="11" cy="21" r="6" fill="var(--ink, #1f1b16)"/>
+  <circle cx="22" cy="10.5" r="4.75" fill="none"
+          stroke="var(--ochre, #b4703a)" stroke-width="3.5"/>
+</svg>

@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 220" width="420" height="220"
+     role="img" aria-labelledby="ar-t ar-d">
+  <title id="ar-t">Nothing is open</title>
+  <desc id="ar-d">One person standing on settled ground, with a closed vault at a distance. A quiet
+    horizon behind them.</desc>
+
+  <!--
+    ═══════════════════════════════════════════════════════════════════════════
+    THE EMPTY STATE THAT IS NOT A FAILURE.
+
+    This sits on the standby dashboard — the screen a trusted contact opens
+    once, and then returns to perhaps twice in a decade. For almost all of that
+    time the only thing it has to say is "nothing is open."
+
+    Ordinary empty-state illustration is apologetic: a shrug, a box with
+    nothing in it, "no results". That reading would be exactly wrong here.
+    Nothing being open is the GOOD outcome — it means the person who named them
+    is fine. So this is drawn as a calm scene rather than an absence: a horizon,
+    settled ground, someone patiently present, and the vault shut in the middle
+    distance with its lamp at sage.
+
+    THE PERSON IS NOT DOING ANYTHING, and that is the point. There is no action
+    to take, no prompt, no empty slot waiting to be filled. Standing by IS the
+    task, and it is being performed correctly.
+    ═══════════════════════════════════════════════════════════════════════════
+  -->
+
+  <!-- The horizon. One line, far back, doing all the calming. -->
+  <path d="M 24 150 L 396 150" stroke="var(--rule, #e3dccf)" stroke-width="2"
+        stroke-linecap="round"/>
+
+  <!-- The vault, at a distance and shut. Smaller than the person, deliberately:
+       on this screen the person is the subject and the vault is somebody else's. -->
+  <g opacity="0.85">
+    <rect x="268" y="106" width="62" height="62" rx="8"
+          fill="var(--paper-raised, #fffdf9)"
+          stroke="var(--ink, #1f1b16)" stroke-width="2.25"/>
+    <circle cx="299" cy="137" r="11" fill="none" stroke="var(--ink, #1f1b16)" stroke-width="2.25"/>
+    <circle cx="299" cy="137" r="7" fill="none" stroke="var(--rule-strong, #cfc7b8)" stroke-width="1.57"/>
+    <circle cx="299" cy="137" r="2" fill="var(--ink, #1f1b16)"/>
+    <path d="M 299 122 L 299 124.5" stroke="var(--ink, #1f1b16)" stroke-width="2.25" stroke-linecap="round"/>
+    <g stroke="var(--rule-strong, #cfc7b8)" stroke-width="1.62" stroke-linecap="round">
+      <path d="M 299.0 128.5 L 299.0 127.5"/>
+      <path d="M 305.0 131.0 L 305.7 130.3"/>
+      <path d="M 307.5 137.0 L 308.5 137.0"/>
+      <path d="M 305.0 143.0 L 305.7 143.7"/>
+      <path d="M 299.0 145.5 L 299.0 146.5"/>
+      <path d="M 293.0 143.0 L 292.3 143.7"/>
+      <path d="M 290.5 137.0 L 289.5 137.0"/>
+      <path d="M 293.0 131.0 L 292.3 130.3"/>
+    </g>
+    <!-- Armed. The one spot of colour, and the whole message. -->
+    <circle cx="299" cy="158" r="3.6" fill="var(--sage, #4f7a6b)"/>
+  </g>
+
+  <!-- The person standing by, on settled ground. -->
+  <g>
+    <ellipse cx="128" cy="176" rx="40" ry="10" fill="var(--sage-soft, #e6ede9)"
+             stroke="var(--sage, #4f7a6b)" stroke-width="2"/>
+    <circle cx="128" cy="112" r="17"
+            fill="none" stroke="var(--ink, #1f1b16)" stroke-width="2.75"/>
+    <path d="M 103 155 A 25 25 0 0 1 153 155"
+          fill="none" stroke="var(--ink, #1f1b16)" stroke-width="2.75" stroke-linecap="round"/>
+  </g>
+</svg>

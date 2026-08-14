@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img" aria-labelledby="state-grace-t">
+  <title id="state-grace-t">Grace — the window in which you can still say no</title>
+  <!--
+    ONE FAMILY, FIVE STATES, drawn so the progression is legible without the
+    labels: the same circle, filling as a release advances.
+
+    NEVER RED. globals.css reserves clay for what is PERMANENT, and every state
+    a user can reach is reversible — an owner checking in reverses PENDING,
+    GRACE and RELEASED alike. Painting any of these in alarm colours would make
+    the product feel like it does something it cannot take back.
+  -->
+  <circle cx="12" cy="12" r="7" fill="none" stroke="var(--rule-strong, #cfc7b8)" stroke-width="3"/>
+  <path d="M 12 5 A 7 7 0 0 1 12 19" fill="none" stroke="var(--ochre, #b4703a)" stroke-width="3" stroke-linecap="round"/>
+</svg>

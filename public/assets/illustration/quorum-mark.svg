@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"
+     role="img" aria-labelledby="qm-t qm-d">
+  <title id="qm-t">Three of five have confirmed</title>
+  <desc id="qm-d">Five seats in a ring; three filled, two still open.</desc>
+
+  <!--
+    THE SMALL CUT OF quorum-ring.svg.
+
+    🔴 THE FULL RING IS ILLEGIBLE BELOW ABOUT 140px. It carries a centre vault,
+    a progress arc, dashed empty seats and a rule circle — four levels of detail
+    that resolve beautifully at 400px and collapse into speckle at 64, which is
+    the size the landing page needs. Shrinking it did not make it smaller; it
+    made it noise.
+
+    Same lesson as the brand mark, which needed relay-icon-16.svg for the same
+    reason: an asset that only works at the size it was drawn at is a drawing,
+    not an asset.
+
+    So this drops everything except the one fact worth reading at a glance —
+    HOW MANY HAVE SAID YES. No centre, no arc, no dashes: five seats, three
+    filled, and a hairline to show they belong to one ring. Still countable,
+    which is the whole reason the product says "three of five" rather than 60%.
+  -->
+
+  <circle cx="50" cy="50" r="34" fill="none"
+          stroke="var(--rule-strong, #cfc7b8)" stroke-width="2.5"/>
+
+  <!-- Answered. -->
+  <circle cx="50" cy="16" r="12" fill="var(--sage, #4f7a6b)"/>
+  <circle cx="82.3" cy="26.5" r="12" fill="var(--sage, #4f7a6b)"/>
+  <circle cx="70" cy="64.5" r="12" fill="var(--sage, #4f7a6b)"/>
+
+  <!-- Still open. Absent, not alarmed — no red anywhere in this set. -->
+  <g fill="var(--paper, #f7f4ee)" stroke="var(--ink-faint, #71675a)" stroke-width="3">
+    <circle cx="30" cy="64.5" r="10.5"/>
+    <circle cx="17.7" cy="26.5" r="10.5"/>
+  </g>
+</svg>

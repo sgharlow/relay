@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img" aria-labelledby="vault-t">
+  <title id="vault-t">Your vault</title>
+  <!--
+    24px grid, 1.75 stroke, round caps — one set, so a screen never mixes
+    weights. Ink only: an icon that carries state colour competes with the state
+    marks, which are the only things in this product allowed to mean a state.
+
+    The pointer sits INSIDE the ring and turns about a hub. A stroke crossing
+    the rim would be the standby symbol — the mistake made and corrected in
+    circle-of-trust.svg.
+  -->
+  <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" fill="none" stroke="var(--ink, #1f1b16)" stroke-width="1.75"/>
+  <!-- Concentric, no pointer. At 24px a ring with a hand in it is a CAMERA or a
+       clock; two rings and a hub is a dial. -->
+  <circle cx="12" cy="12" r="4.2" fill="none" stroke="var(--ink, #1f1b16)" stroke-width="1.75"/>
+  <circle cx="12" cy="12" r="1.3" fill="var(--ink, #1f1b16)"/>
+  <path d="M 12 6.2 L 12 7.4" stroke="var(--ink, #1f1b16)" stroke-width="1.75" stroke-linecap="round"/>
+</svg>

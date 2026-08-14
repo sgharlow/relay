@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 150" width="420" height="150"
+     role="img" aria-labelledby="ks-t ks-d">
+  <title id="ks-t">The key stays on your device; only a locked box is sent</title>
+  <desc id="ks-d">On the left, your device, holding a key. On the right, Relay's storage, holding a
+    closed box and no key at all.</desc>
+
+  <!--
+    ═══════════════════════════════════════════════════════════════════════════
+    THE SECURITY CLAIM, AS A PICTURE RATHER THAN A PARAGRAPH.
+
+    Relay encrypts in the browser and sends up only ciphertext and a wrapped
+    data key. Every word of that sentence is a wall to a non-technical reader,
+    and the audience here is somebody deciding whether to type their bank
+    logins into a website run by strangers.
+
+    So it is drawn as a fact about POSSESSION, which needs no vocabulary: the
+    key is on the left, in your hand. On the right there is a box, and the space
+    where a key would be is EMPTY. The reassurance is the emptiness — the same
+    device the hero uses, where the absence of a connection is the promise.
+
+    ONE ARROW, ONE DIRECTION. Nothing travels back. A returning arrow would
+    invite the question this drawing exists to answer.
+    ═══════════════════════════════════════════════════════════════════════════
+  -->
+
+  <!-- ── Your device. ────────────────────────────────────────────────────── -->
+  <g>
+    <rect x="14" y="22" width="126" height="96" rx="10"
+          fill="var(--paper-raised, #fffdf9)"
+          stroke="var(--ink, #1f1b16)" stroke-width="2.5"/>
+    <!-- A browser's chrome, in three dots — enough to say "this is your screen". -->
+    <g fill="var(--rule-strong, #cfc7b8)">
+      <circle cx="28" cy="36" r="3"/><circle cx="38" cy="36" r="3"/><circle cx="48" cy="36" r="3"/>
+    </g>
+    <path d="M 14 48 L 140 48" stroke="var(--rule, #e3dccf)" stroke-width="1.75"/>
+
+    <!-- The key. Sage: it is settled, and it is staying. -->
+    <g stroke="var(--sage, #4f7a6b)" stroke-width="3" fill="none" stroke-linecap="round">
+      <circle cx="64" cy="84" r="11"/>
+      <path d="M 75 84 L 100 84"/>
+      <path d="M 92 84 L 92 92"/>
+      <path d="M 100 84 L 100 91"/>
+    </g>
+  </g>
+
+  <!-- ── What is sent. One direction only. ───────────────────────────────── -->
+  <g stroke="var(--ink-faint, #71675a)" stroke-width="2.25" fill="none" stroke-linecap="round"
+     stroke-linejoin="round">
+    <path d="M 156 70 L 258 70"/>
+    <path d="M 250 63.5 L 257 70 L 250 76.5"/>
+  </g>
+
+  <!-- ── Relay's storage: a shut box, and no key. ────────────────────────── -->
+  <g>
+    <rect x="274" y="22" width="132" height="96" rx="10"
+          fill="var(--paper-sunken, #efeae0)"
+          stroke="var(--ink, #1f1b16)" stroke-width="2.5" stroke-dasharray="7 5"/>
+
+    <!-- The locked box. Ink, plain, shut — and that is all there is. -->
+    <rect x="310" y="56" width="60" height="46" rx="6"
+          fill="var(--paper-raised, #fffdf9)"
+          stroke="var(--ink, #1f1b16)" stroke-width="2.5"/>
+    <path d="M 328 56 L 328 46 A 12 12 0 0 1 352 46 L 352 56"
+          fill="none" stroke="var(--ink, #1f1b16)" stroke-width="2.5"/>
+    <circle cx="340" cy="78" r="4" fill="var(--ink, #1f1b16)"/>
+  </g>
+</svg>

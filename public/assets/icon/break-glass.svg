@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img" aria-labelledby="break-glass-t">
+  <title id="break-glass-t">The way in when everything else is gone</title>
+  <!--
+    24px grid, 1.75 stroke, round caps — one set, so a screen never mixes
+    weights. Ink only: an icon that carries state colour competes with the state
+    marks, which are the only things in this product allowed to mean a state.
+
+    A pane with a fracture across it. Deliberately NOT a hammer: the product
+    gives somebody a code in calm, and the drama is in the moment they use
+    it, not in an implement.
+  -->
+  <rect x="4.5" y="3.5" width="15" height="17" rx="2.5" fill="none" stroke="var(--ink, #1f1b16)" stroke-width="1.75"/>
+  <path d="M 10 3.5 L 13.2 10.4 L 9.6 13 L 13.6 20.5" fill="none" stroke="var(--ink, #1f1b16)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

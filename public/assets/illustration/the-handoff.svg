@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 230" width="620" height="230"
+     role="img" aria-labelledby="ho-t ho-d">
+  <title id="ho-t">Access being handed from one person to another</title>
+  <desc id="ho-d">Two people. Something small travels along an arc from the first toward the second.
+    The path behind it is solid; the path ahead is dotted, because it has not arrived and can still
+    be called back.</desc>
+
+  <!--
+    ═══════════════════════════════════════════════════════════════════════════
+    THE NAME OF THE PRODUCT, DRAWN ONCE.
+
+    Every reference carries a baton, and it is the best idea in them: a relay is
+    something you HAND OVER, deliberately, to a person waiting for it. Kept.
+
+    What is not kept is the hand doing the handing. In one reference it is a
+    robotic claw crackling with energy. For a product whose entire argument is
+    that PEOPLE decide — that nothing opens on its own — a robot arm is the
+    single worst available messenger.
+
+    THE ASYMMETRY IS THE WHOLE DRAWING. Behind the token the line is solid: that
+    part has happened. Ahead of it the line is dotted: it has not arrived, and
+    until it does the owner can still stop it. Every reversible state in this
+    product lives in exactly that gap.
+
+    🔴 VERSION ONE LEFT THE ARC FLOATING. It began in mid-air above the first
+    figure and ended in mid-air above the second, so it read as a decorative
+    swoosh laid over two unrelated people rather than as something passing
+    between them. The arc now starts AT the first figure's shoulder and lands AT
+    the second's — the drawing only means anything if the line touches both.
+    ═══════════════════════════════════════════════════════════════════════════
+  -->
+
+  <defs>
+    <g id="ho-figure">
+      <circle cx="0" cy="-20" r="15"
+              fill="none" stroke="var(--ink, #1f1b16)" stroke-width="2.5"/>
+      <path d="M -22 18 A 22 22 0 0 1 22 18"
+            fill="none" stroke="var(--ink, #1f1b16)" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+  </defs>
+
+  <!-- Travelled: solid, and it happened. Leaves the first figure's shoulder. -->
+  <path d="M 148 148 Q 235 78 310 78" fill="none"
+        stroke="var(--ochre, #b4703a)" stroke-width="3.5" stroke-linecap="round"/>
+
+  <!-- Still to come: dotted, and still refusable. Lands on the second's shoulder. -->
+  <path d="M 310 78 Q 385 78 472 148" fill="none"
+        stroke="var(--ochre, #b4703a)" stroke-width="3.5" stroke-linecap="round"
+        stroke-dasharray="1.5 9" opacity="0.8"/>
+
+  <!-- The thing being handed over. Small, because it is ONE scoped grant and
+       not everything the first person holds. -->
+  <g>
+    <rect x="292" y="70.5" width="36" height="15" rx="7.5"
+          fill="var(--ochre-soft, #f6ead9)"
+          stroke="var(--ochre, #b4703a)" stroke-width="2.5"/>
+    <circle cx="310" cy="78" r="3" fill="var(--ochre-text, #8a5a2b)"/>
+  </g>
+
+  <!-- The one who holds it today, on settled ground. -->
+  <ellipse cx="130" cy="196" rx="34" ry="8.5" fill="var(--sage-soft, #e6ede9)"
+           stroke="var(--sage, #4f7a6b)" stroke-width="1.75"/>
+  <use href="#ho-figure" x="130" y="170"/>
+
+  <!-- The one standing by. Ochre ground: something is on its way to them, and
+       has not landed. -->
+  <ellipse cx="490" cy="196" rx="34" ry="8.5" fill="var(--ochre-soft, #f6ead9)"
+           stroke="var(--ochre, #b4703a)" stroke-width="1.75"/>
+  <use href="#ho-figure" x="490" y="170"/>
+</svg>

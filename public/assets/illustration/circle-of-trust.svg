@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 372" width="1100" height="372"
+     role="img" aria-labelledby="cot-t cot-d">
+  <title id="cot-t">A circle of people standing by around a closed vault</title>
+  <desc id="cot-d">Five people stand in a ring around a small closed vault. Three stand on settled
+    ground, two have not yet confirmed. Nothing joins them to the vault, and the ring is left open
+    at the front.</desc>
+
+  <!--
+    ═══════════════════════════════════════════════════════════════════════════
+    THE HERO. Four decisions, each an inversion of the reference images.
+
+    1. THE PEOPLE ARE THE SUBJECT; THE VAULT IS SCENERY. The references make a
+       bank door the hero and arrange people on rings around it, which reads as
+       a facility with staff. The product's own name for this journey is
+       "building the circle of trust", and the thing being sold is that PEOPLE
+       are the lock. The vault is therefore small, plain, and shut.
+
+    2. NOTHING IS CONNECTED. Every reference shows a release IN PROGRESS — a
+       baton en route, "50% to unlocked", "5 of 6 approvals received". That is
+       the worst day of somebody's life, and the product spends nearly all of
+       its existence in ARMED. Here nothing reaches the vault at all.
+
+       🔴 VERSION ONE DREW THAT AS DASHED RADIAL LINES, and they read as debris:
+       short floating dashes with no start and no end, which the eye files as
+       noise rather than as restraint. They are gone. Five people arranged
+       around a shut vault with NOTHING between them says it more plainly than
+       any line could, and the absence is the point.
+
+    3. THE RING IS OPEN AT THE FRONT, toward the reader, because this drawing
+       sits above a sign-up form. A sealed ring says "complete without you."
+
+    4. NO FACES, and no specific five people. Faces force a decision about
+       whose family this is, and the buyer is meant to see their own.
+
+    Colour obeys the product's own semantics (globals.css), which the
+    references invert: sage is the RESTING state, never "success"; ochre is
+    in-motion-and-reversible; clay is permanent and appears nowhere here,
+    because nothing in this picture is permanent. There is no red — in this
+    system "not yet" is an absence, not an alarm.
+    ═══════════════════════════════════════════════════════════════════════════
+  -->
+
+  <defs>
+    <g id="cot-figure">
+      <circle cx="0" cy="-20" r="15"
+              fill="none" stroke="var(--ink, #1f1b16)" stroke-width="2.5"/>
+      <path d="M -22 18 A 22 22 0 0 1 22 18"
+            fill="none" stroke="var(--ink, #1f1b16)" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+  </defs>
+
+  <!-- The arrangement, not a thing in the room: faint, and broken at the front. -->
+  <path d="M 225.8 289.7 A 345 160 0 1 1 874.2 289.7" fill="none"
+        stroke="var(--rule-strong, #cfc7b8)" stroke-width="1.5"
+        stroke-dasharray="2 10" stroke-linecap="round"/>
+
+  <!-- ── The vault. ──────────────────────────────────────────────────────────
+       🔴 VERSION ONE READ AS A RECORD BUTTON — a rounded square with a circle
+       and a dot in it. Nothing said "shut". Four cues fix it, all of them
+       things a person has actually seen on a safe: a door set inside a frame,
+       hinges down one edge, a handle on the other, and a dial with its mark at
+       rest. Still no bolts, no rivets, no brushed metal: it must stay the least
+       interesting object in the picture.
+  -->
+  <g>
+    <rect x="475" y="160" width="150" height="150" rx="15"
+          fill="var(--paper-raised, #fffdf9)"
+          stroke="var(--ink, #1f1b16)" stroke-width="2.5"/>
+    <rect x="487" y="172" width="126" height="126" rx="9"
+          fill="none" stroke="var(--rule-strong, #cfc7b8)" stroke-width="1.75"/>
+
+    <!-- Hinges. -->
+    <g fill="var(--ink, #1f1b16)">
+      <rect x="470" y="192" width="7" height="20" rx="3.5"/>
+      <rect x="470" y="258" width="7" height="20" rx="3.5"/>
+    </g>
+    <!-- Handle. -->
+    <rect x="606" y="222" width="6.5" height="28" rx="3.25" fill="var(--ink, #1f1b16)"/>
+
+    <!-- ── The dial. Two corrections, both about being MISREAD. ────────────
+         🔴 V2 DREW A POWER BUTTON: a stroke crossing the top of a ring is the
+         IEC 5010 standby symbol, so the centre of the hero was offering to
+         switch something off.
+         🔴 V3 REPLACED IT WITH A CLOCK: a hand on a hub, pointing up, inside a
+         circle. Correct that it was no longer a power symbol; wrong that the
+         one object in the picture meant to say SHUT was telling the time.
+
+         A safe dial has no hand at all. It is a recessed disc with fine
+         graduations and a single index mark on the OUTSIDE of the rim, which
+         is what the eye actually recognises — concentric rings, no pointer.
+    -->
+    <circle cx="550" cy="235" r="27" fill="none" stroke="var(--ink, #1f1b16)" stroke-width="2.5"/>
+    <circle cx="550" cy="235" r="18" fill="none" stroke="var(--rule-strong, #cfc7b8)" stroke-width="1.75"/>
+    <circle cx="550" cy="235" r="4" fill="var(--ink, #1f1b16)"/>
+    <path d="M 550 200 L 550 206.5" stroke="var(--ink, #1f1b16)" stroke-width="2.5" stroke-linecap="round"/>
+    <g stroke="var(--rule-strong, #cfc7b8)" stroke-width="1.80" stroke-linecap="round">
+      <path d="M 550.0 215.5 L 550.0 209.5"/>
+      <path d="M 559.8 218.1 L 562.8 212.9"/>
+      <path d="M 566.9 225.2 L 572.1 222.2"/>
+      <path d="M 569.5 235.0 L 575.5 235.0"/>
+      <path d="M 566.9 244.8 L 572.1 247.8"/>
+      <path d="M 559.8 251.9 L 562.8 257.1"/>
+      <path d="M 550.0 254.5 L 550.0 260.5"/>
+      <path d="M 540.2 251.9 L 537.2 257.1"/>
+      <path d="M 533.1 244.8 L 527.9 247.8"/>
+      <path d="M 530.5 235.0 L 524.5 235.0"/>
+      <path d="M 533.1 225.2 L 527.9 222.2"/>
+      <path d="M 540.2 218.1 L 537.2 212.9"/>
+    </g>
+
+    <!-- The single spot of sage: the state lamp, reading ARMED. Small, because
+         a resting state should not shout. -->
+    <circle cx="550" cy="283" r="5" fill="var(--sage, #4f7a6b)"/>
+  </g>
+
+  <!-- ── The people. ──────────────────────────────────────────────────────────
+       Three stand on settled ground and two do not. Not decoration: a person is
+       only load-bearing once they have CONFIRMED, and a circle where everyone
+       is already green would sell a state most owners are not in yet. The
+       readiness banner in the product says the same thing in words.
+  -->
+  <g>
+    <ellipse cx="225.8" cy="315.7" rx="34" ry="8.5" fill="var(--sage-soft, #e6ede9)"
+             stroke="var(--sage, #4f7a6b)" stroke-width="1.75"/>
+    <use href="#cot-figure" x="225.8" y="289.7"/>
+
+    <ellipse cx="251.2" cy="181" rx="34" ry="8.5" fill="var(--sage-soft, #e6ede9)"
+             stroke="var(--sage, #4f7a6b)" stroke-width="1.75"/>
+    <use href="#cot-figure" x="251.2" y="155"/>
+
+    <ellipse cx="550" cy="101" rx="34" ry="8.5" fill="none"
+             stroke="var(--rule-strong, #cfc7b8)" stroke-width="1.75" stroke-dasharray="4 5"/>
+    <use href="#cot-figure" x="550" y="75"/>
+
+    <ellipse cx="848.8" cy="181" rx="34" ry="8.5" fill="var(--sage-soft, #e6ede9)"
+             stroke="var(--sage, #4f7a6b)" stroke-width="1.75"/>
+    <use href="#cot-figure" x="848.8" y="155"/>
+
+    <ellipse cx="874.2" cy="315.7" rx="34" ry="8.5" fill="none"
+             stroke="var(--rule-strong, #cfc7b8)" stroke-width="1.75" stroke-dasharray="4 5"/>
+    <use href="#cot-figure" x="874.2" y="289.7"/>
+  </g>
+</svg>
