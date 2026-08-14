@@ -2193,3 +2193,67 @@ three lines under an instruction to do exactly that.
 All walk accounts removed through the product's own `deleteAccount`; production
 is one real account, with the paying subscription asserted present before and
 after every deletion.
+
+---
+
+## 27. The last conformance gaps — 2026-08-14
+
+Three items had been triaged and left. All three are closed.
+
+### Requirement 12 — was built, tested, and called by nothing
+
+`detectGaps`, `rankGaps` and `runPrioritize` were fully implemented with ZERO
+production callers, so the **"Custody Risk"** label the requirement names had
+never once been shown to an owner. A custody risk is an irreplaceable item — a
+deed, a will, an ID — with nobody scoped to it or no note saying what it is for.
+Those cannot be regenerated from a login, so an owner who never learns they are
+unreachable keeps a vault that looks complete and loses exactly the things that
+cannot be replaced.
+
+The scan runs on vault load, from the server page, per 12.1. Advisory only per
+12.7 — reasons, no disabled controls, and a catch so a failed scan can never
+stop somebody reaching their own vault.
+
+**This is the second requirement found in this state today** (Req 13 was the
+first). The shape is identical and worth naming: a module with thorough tests
+and no callers passes every check anyone runs, because its tests and the
+consuming screen's tests are both green about different things. A wiring
+assertion is the only thing that catches it.
+
+### Requirement 16.5 — four named audit actions, none ever written
+
+The enforcement worked; the record of it did not exist. The cascade is the one
+that matters: removing a recipient silently takes their access_rules and
+policies with them, and the audit page — the screen that promises to hold what
+happened — showed the recipient leaving and nothing else.
+
+**One deliberate inversion, asserted so it stays deliberate.** These four writes
+do NOT block, and everywhere else in this codebase an audit failure blocks the
+operation it describes. `assertOwns` is the ownership gate: a throwing audit
+write there would turn a logging outage into a total vault outage, including a
+release a family is waiting on — and the refusal being recorded is already
+decided, so blocking buys no safety.
+
+### /standby promised access to people with nothing scoped
+
+It checked only that the release had reached RELEASED, never whether this
+recipient holds rules under the trigger that opened. So it offered "Open what
+they left you" and sent them to `/access`, which correctly says nothing was set
+aside for them — two screens contradicting each other, wrong one first.
+
+### Three of my own checks failed, and were caught
+
+Recorded because the pattern is the session's most-repeated finding:
+
+1. A Req 12 wiring assertion used `toContain('runPrioritize')`, which matches
+   the IMPORT line — it passed while the call had been deleted.
+2. The raw-colour ratchet caught a literal I introduced; it is now the token,
+   which is the only value the contrast test can verify.
+3. **I read a stale build log.** The pre-push hook blocked the command before my
+   build ran, so the "green" I saw was the previous run — while a JSX comment
+   beside a root element had actually broken the build. The suite was green
+   throughout, because vitest does not compile `src/app`.
+
+The third is the most instructive: two independent signals (tests green, build
+green) and one of them was a memory of an older run. Gates now read real exit
+codes, one command at a time.
