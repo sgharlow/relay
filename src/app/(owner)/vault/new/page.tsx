@@ -1,132 +1,21 @@
-'use client';
-
 /**
- * Add vault item (Requirement 1, 2 / task 12.2 CTA).
+ * Server shell for the client page beside it — it exists to carry `metadata`.
  *
- * Collects non-secret metadata + the secret value, then runs the full
- * client-side envelope flow via CryptoService.saveItem: POST /api/kms/wrap →
- * AES-GCM encrypt in-browser → POST /api/vault/items. The plaintext never leaves
- * the browser. On success, returns to the vault.
+ * 🔴 SIX OWNER PAGES HAD NO Add an item · Relay, found 2026-08-13 by looking at the tabs:
+ * /vault, /vault/new, /rules, /triggers, /import and /audit all read as a bare
+ * "Relay", because each was a `'use client'` page and a client component cannot
+ * export metadata. Six identical tabs is not cosmetic on THIS product: check-in
+ * and answering a request are jobs people do with many tabs open, and the tab
+ * label is how they get back to the right one.
  *
- * Feature: relay-h0-mvp
+ * Same shape as /circle and /account, which always had it: server page.tsx that
+ * renders the client component. No logic moved.
  */
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import {
-  VALID_TYPES,
-  VALID_CATEGORIES,
-  VALID_CRITICALITY,
-  type VaultItemType,
-} from '../../../../../lib/domain/enums';
-import { CryptoService } from '../../../../../lib/crypto/crypto-service';
+import NewVaultItemClient from './NewVaultItemClient';
 
-const inputCls =
-  'w-full rounded border border-rule-strong px-2.5 py-1.5 text-t2 focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink';
+export const metadata = { title: 'Add an item · Relay' };
 
-export default function NewVaultItemPage() {
-  const router = useRouter();
-  const [form, setForm] = useState({
-    title: '',
-    type: 'login' as VaultItemType,
-    service_name: '',
-    url: '',
-    category: '',
-    criticality: 'medium',
-    secret: '',
-  });
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setBusy(true);
-    try {
-      await new CryptoService().saveItem(form.secret, {
-        type: form.type,
-        title: form.title,
-        service_name: form.service_name || undefined,
-        url: form.url || undefined,
-        category: form.category || undefined,
-        criticality: form.criticality || undefined,
-      });
-      router.push('/vault');
-      router.refresh();
-    } catch (err) {
-      setError(String((err as Error).message ?? err));
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="mx-auto max-w-xl">
-      <header className="mb-6">
-        <h1 className="text-t7 font-semibold tracking-tight">Add item</h1>
-        <p className="text-t2 text-muted">The secret is encrypted in your browser before it is sent.</p>
-      </header>
-
-      <form onSubmit={submit} className="space-y-4 rounded border border-rule bg-paper-raised p-5">
-        <Field label="Title">
-          <input className={inputCls} required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Gmail" />
-        </Field>
-
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Type">
-            <select className={inputCls} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as VaultItemType })}>
-              {VALID_TYPES.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Criticality">
-            <select className={inputCls} value={form.criticality} onChange={(e) => setForm({ ...form, criticality: e.target.value })}>
-              {VALID_CRITICALITY.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Service name (optional)">
-            <input className={inputCls} value={form.service_name} onChange={(e) => setForm({ ...form, service_name: e.target.value })} placeholder="Google" />
-          </Field>
-          <Field label="Category (optional)">
-            <select className={inputCls} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
-              <option value="">—</option>
-              {VALID_CATEGORIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </Field>
-        </div>
-
-        <Field label="URL (optional)">
-          <input className={inputCls} type="url" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} placeholder="https://…" />
-        </Field>
-
-        <Field label="Secret value">
-          <textarea className={`${inputCls} font-mono`} required rows={3} value={form.secret} onChange={(e) => setForm({ ...form, secret: e.target.value })} placeholder="Password, note, or instructions — encrypted before upload" />
-        </Field>
-
-        {error ? <p role="alert" className="text-t2 text-clay">{error}</p> : null}
-
-        <div className="flex gap-2">
-          <button type="submit" disabled={busy} className="rounded bg-ink px-3 py-1.5 text-t2 font-semibold text-paper hover:bg-ink disabled:opacity-60">
-            {busy ? 'Encrypting…' : 'Save item'}
-          </button>
-          <button type="button" onClick={() => router.push('/vault')} className="rounded border border-rule-strong px-3 py-1.5 text-t2 font-medium hover:bg-paper-sunken">
-            Cancel
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block text-t2">
-      <span className="mb-1 block text-muted">{label}</span>
-      {children}
-    </label>
-  );
+export default function Page() {
+  return <NewVaultItemClient />;
 }

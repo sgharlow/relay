@@ -8,6 +8,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { signOut } from 'next-auth/react';
 
 const LINKS = [
   { href: '/vault', label: 'Vault' },
@@ -154,6 +155,40 @@ export default function SidebarNav() {
           </Link>
         );
       })}
+
+      {/*
+        🔴 THERE WAS NO WAY TO SIGN OUT, anywhere in the product, until
+        2026-08-13 — `grep -rn signOut src/` returned nothing. A session lasted
+        its full 24 hours wherever it was opened, and the audience this product
+        is written for is precisely the one that uses a shared family computer.
+
+        A button and not a Link, because it acts rather than navigates —
+        next-auth POSTs its own CSRF-protected endpoint. Styled as the quietest
+        thing on the rail: it must be findable the day someone borrows a
+        machine, and invisible every other day. No session check needed here:
+        the owner layout already redirects the signed-out to /auth/signin, so
+        this rail never renders without one.
+      */}
+      <button
+        type="button"
+        onClick={() => void signOut({ callbackUrl: '/' })}
+        className="transition-colors"
+        style={{
+          flexShrink: 0,
+          whiteSpace: 'nowrap',
+          borderRadius: 'var(--radius-owner)',
+          padding: 'var(--s2) var(--s3)',
+          fontSize: 'var(--t2)',
+          background: 'transparent',
+          color: 'var(--paper-faint)',
+          border: 'none',
+          cursor: 'pointer',
+          textAlign: 'left' as const,
+          marginTop: 'var(--s4)',
+        }}
+      >
+        Sign out
+      </button>
     </nav>
   );
 }

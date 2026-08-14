@@ -64,8 +64,17 @@ export default function HelpingClient() {
   const [vaults, setVaults] = useState<Vault[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [signedOut, setSignedOut] = useState(false);
+
   const load = useCallback(async () => {
     const res = await fetch('/api/helping');
+    // Same correction as StandbyClient: a 401 is an expired session, not an
+    // outage, and the person it happens to deserves the doors rather than an
+    // error that reads as "the product is broken".
+    if (res.status === 401) {
+      setSignedOut(true);
+      return;
+    }
     if (!res.ok) {
       setError('We could not load what you are helping with.');
       return;
@@ -76,6 +85,23 @@ export default function HelpingClient() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  if (signedOut) {
+    return (
+      <div>
+        <h1 style={{ fontSize: 30, fontWeight: 700, letterSpacing: '-0.01em' }}>
+          You are signed out
+        </h1>
+        <p style={{ fontSize: 17, lineHeight: 1.6, marginTop: 12 }}>
+          Nothing is wrong — sessions end on their own after a while.{' '}
+          <a href="/auth/signin" style={{ textDecoration: 'underline', textUnderlineOffset: 3 }}>
+            Sign back in
+          </a>{' '}
+          and this page will be exactly as you left it.
+        </p>
+      </div>
+    );
+  }
 
   if (error) return <p style={{ fontSize: 17 }}>{error}</p>;
   if (!vaults) return <p style={{ fontSize: 17, color: '#6b6257' }}>Loading…</p>;

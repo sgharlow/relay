@@ -157,16 +157,69 @@ export default function StandbyClient() {
   // Extracted so leaving a circle can re-read it: the card must disappear when
   // somebody steps down, or they are left looking at a relationship they have
   // just ended and wondering whether it worked.
+  const [signedOut, setSignedOut] = useState(false);
+
   const load = useCallback(() => {
     fetch('/api/standby', { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then(setData)
+      .then((r) => {
+        // 🔴 A 401 IS NOT AN OUTAGE, and until 2026-08-13 it was reported as
+        // one. A claimed contact whose session had expired opened their
+        // bookmark and read "We could not load this just now" — a message that
+        // says the product is broken, offers no door, and arrives at exactly
+        // the moment this page exists for. Being signed out is ordinary, has
+        // three known ways back in, and deserves to be told apart.
+        if (r.status === 401) {
+          setSignedOut(true);
+          return null;
+        }
+        return r.ok ? r.json() : Promise.reject(new Error(String(r.status)));
+      })
+      .then((j) => {
+        if (j) setData(j);
+      })
       .catch(() => setError('We could not load this just now.'));
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  if (signedOut) {
+    return (
+      <div style={{ maxWidth: 640, margin: '0 auto', padding: '32px 20px' }}>
+        <h1 style={{ fontSize: 30, fontWeight: 700, letterSpacing: '-0.01em' }}>
+          You are signed out
+        </h1>
+        <p style={{ fontSize: 18, lineHeight: 1.6, marginTop: 12 }}>
+          Nothing is wrong — sessions end on their own after a while. Everything you were
+          standing by for is exactly as you left it.
+        </p>
+        <ul style={{ fontSize: 18, lineHeight: 1.8, marginTop: 16, paddingLeft: 22 }}>
+          <li>
+            If you have signed in here before:{' '}
+            <a href="/auth/signin" style={{ textDecoration: 'underline', textUnderlineOffset: 3 }}>
+              sign back in
+            </a>
+            .
+          </li>
+          <li>
+            If you were given a code and this is your first time:{' '}
+            <a href="/claim" style={{ textDecoration: 'underline', textUnderlineOffset: 3 }}>
+              enter your code
+            </a>
+            .
+          </li>
+          <li>
+            If your usual way in is gone and you hold an emergency code:{' '}
+            <a href="/break-glass" style={{ textDecoration: 'underline', textUnderlineOffset: 3 }}>
+              use it here
+            </a>
+            .
+          </li>
+        </ul>
+      </div>
+    );
+  }
 
   if (error) return <p style={{ fontSize: 18 }}>{error}</p>;
   if (!data) return <p style={{ fontSize: 18, color: '#6b6257' }}>Loading…</p>;

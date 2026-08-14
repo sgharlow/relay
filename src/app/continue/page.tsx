@@ -28,6 +28,8 @@ import { resolveLanding } from '../../../lib/access/landing';
 
 export const dynamic = 'force-dynamic';
 
+export const metadata = { title: 'Signing you in · Relay' };
+
 export default async function ContinuePage() {
   const session = await getOwnerSession().catch(() => null);
   if (!session) redirect('/auth/signin');

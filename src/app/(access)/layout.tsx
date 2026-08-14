@@ -23,6 +23,7 @@
  */
 
 import SupportFooter from '../_components/SupportFooter';
+import SignOutControl from './_components/SignOutControl';
 
 export const metadata = { title: 'Access · Relay' };
 
@@ -37,7 +38,13 @@ export default function AccessLayout({ children }: { children: React.ReactNode }
       <header style={{ borderBottom: '1px solid var(--rule)' }}>
         <div
           className="mx-auto"
-          style={{ maxWidth: 'var(--measure-access)', padding: 'var(--s4) var(--s6)' }}
+          style={{
+            maxWidth: 'var(--measure-access)',
+            padding: 'var(--s4) var(--s6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
         >
           <span
             style={{
@@ -50,6 +57,8 @@ export default function AccessLayout({ children }: { children: React.ReactNode }
           >
             Relay
           </span>
+          {/* Renders nothing for the signed-out (claim, break-glass). See its file. */}
+          <SignOutControl />
         </div>
       </header>
 

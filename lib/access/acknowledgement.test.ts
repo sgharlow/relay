@@ -153,10 +153,14 @@ describe('what the product now tells people', () => {
   });
 
   it('the owner meets it where they set the interval, not only in the Terms', () => {
-    const triggers = readFileSync('src/app/(owner)/triggers/page.tsx', 'utf8').replace(
-      /\{\/\*[\s\S]*?\*\/\}/g,
-      ' ',
-    );
+    // TriggersPageClient, not page.tsx: the page split into a server shell
+    // (which exists to carry the tab title) and the client screen on
+    // 2026-08-13, and the sentence lives on the SCREEN. Following the file
+    // rather than the filename is the point of the assertion.
+    const triggers = readFileSync(
+      'src/app/(owner)/triggers/TriggersPageClient.tsx',
+      'utf8',
+    ).replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ');
     expect(triggers).toMatch(/stop checking in/i);
   });
 
