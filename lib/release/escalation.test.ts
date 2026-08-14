@@ -21,13 +21,25 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../db/connection', () => ({ query: vi.fn() }));
 vi.mock('../audit/audit-service', () => ({ writeAuditEntry: vi.fn(async () => ({})) }));
+/*
+  The notification boundary is mocked rather than left to fall through to the
+  mocked `query`: listVerifiers would otherwise consume entries from the
+  queued-response sequence these tests depend on, and a test that passes because
+  of where a mock queue happened to land is not evidence of anything.
+*/
+vi.mock('../people/verifiers', () => ({ listVerifiers: vi.fn(async () => []) }));
+vi.mock('../notify/notifications', () => ({ notifyVerifiersForTrigger: vi.fn(async () => 0) }));
 
 import { query } from '../db/connection';
 import { writeAuditEntry } from '../audit/audit-service';
+import { listVerifiers } from '../people/verifiers';
+import { notifyVerifiersForTrigger } from '../notify/notifications';
 import { isChallengeLapsed, escalateLapsedRequest, escalateLapsedRequests } from './escalation';
 import { PERMITTED_TRANSITIONS } from './state-machine';
 
 const mockQuery = vi.mocked(query);
+const mockListVerifiers = vi.mocked(listVerifiers);
+const mockNotifyVerifiers = vi.mocked(notifyVerifiersForTrigger);
 const now = new Date('2026-08-11T12:00:00Z');
 
 function machineStub() {
@@ -207,6 +219,48 @@ describe('escalateLapsedRequests — the sweep', () => {
     const lookupSql = String(mockQuery.mock.calls[0][0]);
     expect(lookupSql).toContain("status = 'awaiting_owner'");
     expect(lookupSql).toContain('expires_at');
+  });
+
+  /*
+    🔴 THE ESCALATION RANG NO BELL. It advanced the state machine to GRACE and
+    wrote an audit entry literally called `request_escalated_to_verifiers` — and
+    sent nothing to any verifier. The grace window then ran down while the only
+    people able to act on it had never been told it had opened.
+
+    Five user-facing surfaces promise this in so many words ("if they don't
+    answer, we ask the people you nominated"), so the copy and the audit log
+    agreed with one another and both disagreed with what happened. That is the
+    shape this codebase keeps finding: a green signal that is wrong.
+  */
+  it('TELLS THE VERIFIERS — the promise five surfaces make', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: 'req-1' }] } as never);
+    escalationQueries(REQUEST, ARMED_ROW);
+    mockListVerifiers.mockResolvedValueOnce([
+      { id: 'v-1', name: 'Sarah', email: 'sarah@example.com' },
+      { id: 'v-2', name: 'Lee', email: 'lee@example.com' },
+    ] as never);
+
+    const machine = machineStub();
+    const out = await escalateLapsedRequests(machine, now);
+
+    expect(out).toHaveLength(1);
+    expect(mockNotifyVerifiers).toHaveBeenCalledTimes(1);
+    const [people, triggerType, releaseStateId, ownerId] = mockNotifyVerifiers.mock.calls[0];
+    expect(people.map((p) => p.email)).toEqual(['sarah@example.com', 'lee@example.com']);
+    expect(triggerType).toBe('emergency');
+    expect(releaseStateId).toBe(out[0].releaseStateId);
+    expect(ownerId).toBe('o-1');
+  });
+
+  it('a mail outage does not undo an escalation that already committed', async () => {
+    // The transition is the fact; the notice is a best-effort consequence of it.
+    // Failing the sweep here would also strand every later owner in the batch.
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: 'req-1' }] } as never);
+    escalationQueries(REQUEST, ARMED_ROW);
+    mockNotifyVerifiers.mockRejectedValueOnce(new Error('resend down'));
+
+    const machine = machineStub();
+    await expect(escalateLapsedRequests(machine, now)).resolves.toHaveLength(1);
   });
 
   it('one failing request does not abort the sweep', async () => {

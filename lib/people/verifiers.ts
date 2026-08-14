@@ -12,6 +12,7 @@
 import { query } from '../db/connection';
 import { withOccRetry } from '../db/occ';
 import { cascadeDelete } from '../db/integrity';
+import { withdrawVerifierAttestations } from '../release/withdraw-confirmations';
 import { ValidationError, isNonEmptyString, cleanPersonName } from '../validation';
 import { readStandbyState, type StandbyState } from './standby-state';
 
@@ -108,8 +109,22 @@ export async function updateVerifier(
   return toVerifier(result.rows[0]);
 }
 
-/** Removes verifier_confirmations for the verifier, then the verifier (Req 3.7). */
+/**
+ * Removes verifier_confirmations for the verifier, then the verifier (Req 3.7).
+ *
+ * 🔴 THE VOTE HAS TO BE TAKEN BACK BEFORE THE ROW IS DELETED. Quorum is not
+ * counted from verifier_confirmations at read time — it is a counter on
+ * release_state, incremented once when the attestation arrives. Deleting the row
+ * used to leave that counter untouched, so a verifier the owner had just removed
+ * still counted toward opening their vault, and with a quorum of two the next
+ * single attestation from anybody would reach it.
+ *
+ * Order matters: withdraw first, delete second. The withdrawal reads the
+ * attestation rows to know what to take back, so deleting them first would leave
+ * nothing to find and the counter permanently wrong.
+ */
 export async function deleteVerifier(ownerId: string, id: string): Promise<void> {
+  await withdrawVerifierAttestations(ownerId, id);
   await cascadeDelete('verifier_confirmations', id, 'verifier_id');
   await withOccRetry(() =>
     query(`DELETE FROM verifiers WHERE id = $1 AND owner_id = $2`, [id, ownerId]),

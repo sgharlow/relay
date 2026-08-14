@@ -31,6 +31,8 @@ import { query } from '../db/connection';
 import { writeAuditEntry } from '../audit/audit-service';
 import { graceWindowMs } from './triggers';
 import { isReversibleTrigger, type ReleaseStateMachine, type ReleaseStateRow } from './state-machine';
+import { listVerifiers } from '../people/verifiers';
+import { notifyVerifiersForTrigger } from '../notify/notifications';
 
 type Machine = Pick<ReleaseStateMachine, 'transition'>;
 
@@ -207,7 +209,42 @@ async function escalateEach(
   for (const { id } of rows) {
     try {
       const out = await escalateLapsedRequest({ requestId: id, machine, now });
-      if (out) results.push(out);
+      if (out) {
+        results.push(out);
+
+        /*
+          🔴 THE ESCALATION WROTE AN AUDIT ENTRY CALLED
+          `request_escalated_to_verifiers` AND TOLD NO VERIFIER ANYTHING.
+          The state machine advanced to GRACE, the log said the verifiers had
+          been brought in, and their inboxes stayed empty — so the window ran
+          down while the only people who could act on it had no idea it had
+          opened. Five separate surfaces promise this ("if they don't answer,
+          we ask the people you nominated"), which made the log and the product
+          copy agree with each other and disagree with reality.
+
+          Mirrors heartbeat.ts exactly, and deliberately calls the SAME function
+          the heartbeat and the manual initiate route use, so the three paths
+          cannot drift on who is told what.
+
+          Sent only AFTER the transition committed — never from inside the CAS
+          retry loop, where a transient failure would mean duplicate mail — and
+          best-effort, because a mail outage must not abort a sweep across
+          independent owners. A failure here leaves the escalation itself
+          intact and is re-notified by nothing; that is the same tradeoff the
+          heartbeat already makes, and the alternative is worse.
+        */
+        try {
+          const verifiers = await listVerifiers(out.ownerId);
+          await notifyVerifiersForTrigger(
+            verifiers.map((v) => ({ id: v.id, name: v.name, email: v.email })),
+            out.triggerType,
+            out.releaseStateId,
+            out.ownerId,
+          );
+        } catch (err) {
+          process.stderr.write(`[escalation] verifier notices failed: ${String(err)}\n`);
+        }
+      }
     } catch {
       // Independent owners; the next reader or sweep re-evaluates this one.
     }
