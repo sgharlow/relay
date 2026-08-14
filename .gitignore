@@ -53,3 +53,10 @@ _*.ts
 # them still reached the repo, because `git add -A` plus a `git checkout -- .`
 # that restored deletions is enough to defeat any convention.
 scripts/scratch-*.ts
+
+# Design reference renders at the repo root (relay1.png … relay4.png). Source
+# material for the visual system in public/assets, kept locally and deliberately
+# never committed: 19 MB of AI renders in a PUBLIC repo, to produce a set of
+# SVGs that together weigh 49 KB. Anchored to the root so a legitimately-needed
+# relay*.png under public/ or docs/ still tracks normally.
+/relay[0-9]*.png
