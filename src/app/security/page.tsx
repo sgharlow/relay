@@ -116,6 +116,35 @@ export default function SecurityPage() {
           You are considering putting a parent&rsquo;s bank login into a website you had not heard
           of last week. These are the questions that deserve straight answers.
         </p>
+
+        {/*
+          THE TWO CLAIMS THIS PAGE EXISTS TO MAKE, BEFORE THE PROSE.
+
+          "Encrypted client-side with an envelope-wrapped data key" is a wall to
+          the person this page is written for. Drawn as possession it needs no
+          vocabulary at all: the key is on the left, in your hand, and the space
+          where a second one would be on the right is EMPTY.
+
+          Beside it, the anti-phishing promise — an envelope carrying four
+          characters and nothing else. Both are the assurance-by-absence device
+          the hero uses, which is why they belong together and above the words.
+        */}
+        <div className="mt-8 flex flex-wrap items-end gap-x-10 gap-y-6">
+          <img
+            src="/assets/illustration/key-stays-with-you.svg"
+            alt=""
+            width={420}
+            height={150}
+            className="h-auto w-full max-w-sm"
+          />
+          <img
+            src="/assets/illustration/no-sign-in-links.svg"
+            alt=""
+            width={260}
+            height={160}
+            className="h-auto w-full max-w-[13rem]"
+          />
+        </div>
       </header>
 
       <section className="mx-auto max-w-3xl px-6 py-8">

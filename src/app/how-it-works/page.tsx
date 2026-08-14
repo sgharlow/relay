@@ -140,6 +140,20 @@ export default function HowItWorksPage() {
           Most explanations of this kind of product describe features. Here is the sequence instead,
           in the order a family lives it.
         </p>
+
+        {/*
+          The product's name, drawn once, at the top of the page that explains
+          the sequence. Solid behind the token, dotted ahead: the asymmetry is
+          the whole point, and it is the same distinction the timeline below
+          spends five steps making in words.
+        */}
+        <img
+          src="/assets/illustration/the-handoff.svg"
+          alt=""
+          width={620}
+          height={230}
+          className="mt-8 h-auto w-full max-w-lg"
+        />
       </header>
 
       {/* The narrative. This is the part that makes reversibility mean something. */}

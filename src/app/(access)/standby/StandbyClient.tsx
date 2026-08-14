@@ -187,6 +187,26 @@ export default function StandbyClient() {
         </p>
       )}
 
+      {/*
+        THE PICTURE ONLY APPEARS ON THE QUIET DAY, and disappears the moment
+        anything is open — a decorative scene above an urgent instruction would
+        be the wrong tone at the only moment this screen matters.
+
+        It is drawn as a calm scene rather than the usual apologetic empty
+        state, because "nothing is open" is the GOOD outcome here: it means the
+        person who named them is fine. Standing by IS the task, and it is being
+        performed correctly.
+      */}
+      {data.relationships.length > 0 && !data.anythingOpen ? (
+        <img
+          src="/assets/illustration/at-rest.svg"
+          alt=""
+          width={420}
+          height={220}
+          style={{ display: 'block', width: '100%', maxWidth: 360, height: 'auto', marginTop: 20 }}
+        />
+      ) : null}
+
       {data.relationships.map((rel) => (
         <section
           key={`${rel.personType}-${rel.ownerId}`}

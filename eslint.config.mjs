@@ -98,6 +98,31 @@ const config = [
         the same work either way, and the rule is a good guide for it.
       */
       'react-hooks/set-state-in-effect': 'off',
+
+      /*
+        OFF, and for once the rule is simply wrong about this codebase rather
+        than making a fair point badly.
+
+        `@next/next/no-img-element` advises `next/image` for its resizing and
+        format conversion. Every image asset in this product is a static SVG
+        from public/assets — already vector, already a few KB, and with nothing
+        for an optimiser to do: there is no smaller format to convert to and no
+        raster to resize. next/image would also require
+        `images.dangerouslyAllowSVG`, which Next disables by default for a real
+        reason — an SVG can carry script, and this is the product whose pages
+        hold decrypted plaintext. Taking on that flag to satisfy a lint hint
+        would be trading a genuine security default for a performance benefit
+        that does not exist here.
+
+        Off once with the reason rather than eight `eslint-disable-next-line`
+        comments across four pages, matching the decision directly above.
+
+        ⚠️ REVISIT THE MOMENT A RASTER ASSET APPEARS. A .png or .jpg hero is
+        exactly what this rule is for, and it would then be catching something
+        real. The set is deliberately all-SVG today (public/assets/README.md
+        says why); that is the premise this exemption rests on.
+      */
+      '@next/next/no-img-element': 'off',
     },
   },
 ];

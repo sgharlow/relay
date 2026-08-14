@@ -69,13 +69,48 @@ export default function Home() {
             Show me what actually happens
           </Link>
         </div>
+
+        {/*
+          THE HERO IMAGE SITS BELOW THE WORDS, NOT BESIDE THEM. This page has to
+          survive at 390px, and a side-by-side hero at that width becomes a
+          thumbnail nobody can read next to a paragraph nobody can either.
+
+          Decorative, so `alt=""`: everything it says is already said above it in
+          text. Its own <title>/<desc> stay in the file for anything that opens
+          it directly. Loaded as an <img> rather than inlined so that no colour
+          literal enters this file — see lib/ops/raw-color.test.ts, which treats
+          a new hex in a page as a defect.
+        */}
+        <img
+          src="/assets/illustration/circle-of-trust.svg"
+          alt=""
+          width={1100}
+          height={372}
+          className="mt-12 h-auto w-full"
+        />
       </section>
 
       {/* The three questions that decide whether someone reads on, answered in
           a line each rather than in a features grid. */}
       <section className="border-y border-rule bg-paper-sunken">
-        <div className="mx-auto grid max-w-5xl gap-6 px-6 py-14 sm:grid-cols-3">
+        {/*
+          ONE DRAWING PER CLAIM, and each one drawn for THAT claim rather than
+          chosen from a pile afterwards: the return arc for reversibility, the
+          key that stays on your device for the encryption boundary, the ring of
+          seats for the quorum. A uniform 64px height with the widths left to
+          fall where they will — these are small illustrations, not icons, and
+          forcing them into equal boxes would crop the only one that needs its
+          horizontal room (a device on the left, storage on the right).
+        */}
+        <div className="mx-auto grid max-w-5xl gap-8 px-6 py-14 sm:grid-cols-3">
           <div>
+            <img
+              src="/assets/illustration/reversible.svg"
+              alt=""
+              width={160}
+              height={160}
+              className="mb-4 h-16 w-auto"
+            />
             <h2 className="text-t5 font-semibold text-ink">It closes again</h2>
             <p className="mt-2 text-t2 leading-relaxed text-muted">
               Every other way of doing this is a door you open once. Recover, check in, and access
@@ -83,6 +118,13 @@ export default function Home() {
             </p>
           </div>
           <div>
+            <img
+              src="/assets/illustration/key-stays-with-you.svg"
+              alt=""
+              width={420}
+              height={150}
+              className="mb-4 h-16 w-auto"
+            />
             <h2 className="text-t5 font-semibold text-ink">We cannot read it</h2>
             <p className="mt-2 text-t2 leading-relaxed text-muted">
               Secrets are encrypted in your browser before they reach us. We hold ciphertext, and we
@@ -94,6 +136,20 @@ export default function Home() {
             </p>
           </div>
           <div>
+            {/*
+              The SMALL cut, not the full ring. The explainer version carries a
+              centre vault, a progress arc and dashed empty seats, all of which
+              collapse into speckle at 64px — verified by rendering it, not by
+              assuming. This one keeps only the fact worth reading at a glance:
+              how many have said yes.
+            */}
+            <img
+              src="/assets/illustration/quorum-mark.svg"
+              alt=""
+              width={100}
+              height={100}
+              className="mb-4 h-16 w-auto"
+            />
             <h2 className="text-t5 font-semibold text-ink">Someone has to say yes</h2>
             <p className="mt-2 text-t2 leading-relaxed text-muted">
               Nothing opens on a timer or a guess. A person you named confirms the situation is
