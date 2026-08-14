@@ -1905,3 +1905,106 @@ without you" is the least-proven claim in the product. A complete release walk
 needs three people: the eligibility rule refuses a verifier who is also a
 recipient on that trigger, and refuses the owner as their own verifier.
 `docs/first-invitations.md` now carries the three operator tools for running it.
+
+---
+
+## 23. Second production-quality pass — 2026-08-14
+
+Eight iterations. Scope was deliberately **new ground**: the first pass and the
+five audits before it were thorough, so this one went at what none of them had
+looked at — the product on a phone, the sentences a family reads on their worst
+day, and requirements that are implemented but unreachable.
+
+The through-line is not "bugs". Every defect below was a place where **two
+things that each looked healthy disagreed with each other**, and nothing was
+positioned to notice.
+
+### The phone was never measured
+
+Owner mode had only ever been audited at 1280px. At 390px:
+
+- `flex-wrap` was missing on the check-in card, so `basis-full` — which only
+  claims its own line in a wrapping container — collapsed to a 51px column and
+  pushed **"I'm fine — check in" off the right edge**. That control resets the
+  dead-man's switch. Every automated check passed, because the card clipped its
+  overflowing child and `scrollWidth` still equalled `innerWidth` — the exact
+  failure `globals.css` already records at the 720px rule.
+- **No control in the product met the 44px floor.** There were no base control
+  styles at all: forty files each wrote their own padding, so heights scattered
+  between 34 and 39 with no single place to be wrong. The reversible/permanent
+  checkbox — the control deciding whether a release can be undone — was a 13px
+  box in a 22px label.
+- **Every field was 14px, so iOS Safari zoomed the page on every tap**, starting
+  at sign-in, before anyone has an account. Fixed to `--t3` (the system's own
+  16px), not by disabling pinch zoom, which a test now forbids.
+- The phone nav spent 123 of 390px on a decorative tagline, leaving three of ten
+  destinations reachable.
+
+All scoped to `max-width: 720px` or `pointer: coarse`; desktop renders
+byte-identical, verified at 1280px.
+
+### The product told calm families a frightening story
+
+`resolveReleaseForUser` joined on `owner_id` with **no state predicate**, so an
+`armed` row satisfied it — and an armed row exists for every owner who ever
+wrote an access rule. The route reads any non-released resolve as CLOSED. So a
+claimed recipient of an owner in perfect health, on the page `not-found` links
+for exactly that person, was told *"Everything is back to normal. The vault has
+been re-armed"* and *"You were trusted with 3 items for under an hour."* None of
+it had happened; the duration came from audit rows including the one that
+request had just written.
+
+The predicate alone would have broken two things, both handled: **pending/grace
+is not closed** (it is the wait, and it now says so), and the genuine close
+re-arms the row, so it is indistinguishable by state — it is separated by
+**evidence** in the owner's audit chain instead.
+
+Also: the closure email told a recipient who opened everything *"The other 0 are
+on the record as never opened"*, and could go negative, because granted and
+opened were counted over different sets.
+
+### Promises with nothing behind them
+
+- **Escalation rang no bell.** It advanced to GRACE and wrote an audit entry
+  named `request_escalated_to_verifiers` while notifying nobody. Five surfaces
+  promise it; the copy and the log agreed with each other and both disagreed
+  with reality.
+- **A removed verifier's vote still counted.** Quorum is a counter, not a live
+  count of rows, so `deleteVerifier` left the tally intact.
+- **Requirement 13 was built, tested, and called by nothing.** The
+  dependency-ordered handoff plan had zero production callers while the
+  dashboard sorted by importance alone — shipping what the spec defines as the
+  fallback, and telling a grieving person to start with the bank account whose
+  reset code goes to an email account further down the list.
+- **The CC9 dead-man's switch never checked whether the sweep worked.** Every run
+  writes `failures`; nothing read the column.
+- **One LLM timeout wiped every root credential**, because the default path
+  hard-coded `is_root_credential: false` and wrote it.
+
+### Verification regime
+
+Every fix was **reverted and watched to fail** before being committed. That
+caught four tests that passed against their own defect, including one that
+asserted the bug outright (`!r.is_root_credential` on a fixture where every item
+was already false).
+
+Four checks matched **their own explanatory comments** rather than the code —
+the failure mode is structural, because defects get documented by quoting them.
+`lib/ops/touch-targets.test.ts` now strips comments in a shared helper with the
+reasoning recorded.
+
+Test count: derive with `PROJECT.yaml` `derived.test_count`. Deployed and probed
+on production: 21 surfaces answering, sign-in fields measured at 16px/44px on
+the live domain, and the scheduler probe returning its new counts.
+
+### What this pass did NOT close
+
+- **Req 11.8's owner-override mechanism does not exist** — no column, no UI, so
+  an owner cannot record "other accounts reset through this one". Preserving the
+  flag stops the corruption; letting an owner assert it is a feature.
+- **The `/access` session branches are unit-proven, not live-proven.** Exercising
+  them needs a claimed recipient of an owner with a release, which means the
+  dogfood walk and three people — the same gap §22 ends on.
+- Thirteen further findings from the audit's unverified set remain triaged and
+  unaddressed, including three owner tables that clip rather than scroll on a
+  phone and R7.2's missing "nothing is scoped to you" page.
