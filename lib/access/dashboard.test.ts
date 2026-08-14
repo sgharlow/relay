@@ -12,6 +12,12 @@ vi.mock('../db/connection', () => ({ query: vi.fn() }));
 vi.mock('../audit/audit-service', () => ({ writeAuditEntry: vi.fn(async () => ({})) }));
 vi.mock('../auth/recipient-token', () => ({ verifyRecipientToken: vi.fn() }));
 vi.mock('../kms/kms-client', () => ({ decryptDataKey: vi.fn(async () => 'PLAINTEXT_KEY_B64') }));
+// Widened payload, 2026-08-14. Mocked at the seam like the two above rather than
+// queued as DB fixtures: every test would otherwise have to append two
+// mockResolvedValueOnce calls for a label and a boolean, and the next person to
+// add a test would find out by watching an unrelated assertion fail.
+vi.mock('../people/owner-label', () => ({ getOwnerLabel: vi.fn(async () => 'Margaret Chen') }));
+vi.mock('./acknowledgement', () => ({ hasAcknowledgedLimits: vi.fn(async () => true) }));
 
 import { query } from '../db/connection';
 import { writeAuditEntry } from '../audit/audit-service';

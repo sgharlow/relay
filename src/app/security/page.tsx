@@ -66,6 +66,17 @@ const PLAIN_ANSWERS = [
 /** The mechanism, for the reader who wants it. Unchanged in substance from the original build. */
 const ARCHITECTURE = [
   {
+    /*
+      Added 2026-08-14 with the Terms change, and placed FIRST deliberately. It
+      is the behaviour a reader is most likely to guess wrong about, and the one
+      the Terms previously implied the opposite of. A security page that
+      describes the crypto in detail and stays quiet about what happens when the
+      owner never returns is answering the easy question.
+    */
+    k: 'A release does not expire on its own',
+    v: 'Access opens when the conditions the owner set are met — including their check-ins stopping — and closes when they check in or stand it down. Nothing closes it automatically. If an owner never returns, what was opened stays open to the people they named, and what was never scoped to anybody stays shut. Relay does not offer estate or inheritance services and confers no legal authority on anyone; recipients are told so, once, before they see anything, and the acknowledgement is written to the owner’s audit log.',
+  },
+  {
     k: 'Client-side envelope encryption',
     v: 'A per-item AES-GCM-256 data key is generated in the browser via SubtleCrypto, used to encrypt the secret, then wrapped by an AWS KMS customer master key. The server stores ciphertext plus the wrapped key and never handles the plaintext data key.',
   },

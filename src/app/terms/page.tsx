@@ -54,9 +54,32 @@ export default function TermsPage() {
         <section>
           <h2 className="text-t5 font-semibold text-ink">What Relay does not do</h2>
           <ul className="mt-2 list-disc space-y-1 pl-6">
+            {/*
+              🔴 THIS USED TO END "Estate and inheritance functionality is not
+              offered", and that sentence was not true of the mechanism. A
+              deceased owner stops checking in, their armed emergency trigger
+              arms on the heartbeat sweep (which does not filter by trigger
+              type), verifiers confirm, and access opens — then stays open,
+              because nothing closes a released state except the owner. Saying
+              estate "is not offered" invited a reader to conclude nothing
+              happens after they die, which is the opposite of what happens.
+
+              Ratified 2026-08-14 alongside declining gate g2-counsel-opinion:
+              the release persists, and the Terms say so. Naming people is the
+              decision this asks the owner to make carefully — so it asks.
+            */}
             <li>
               It is <strong>not a legal instrument</strong>. It is not a will, a power of attorney,
-              or a substitute for either. Estate and inheritance functionality is not offered.
+              or a substitute for either, and it gives no one legal authority over your affairs.
+              Relay does not offer estate or inheritance services &mdash; there is no death-verified
+              handoff, no executor role, and nothing here transfers ownership of anything.
+            </li>
+            <li>
+              <strong>It does not stop when you do.</strong> Relay releases access when the
+              conditions you set are met, and one of those conditions is that you stop checking in.
+              If you never check in again &mdash; for any reason &mdash; an armed release will open
+              to the people you named, and it will stay open until someone closes it. Relay does not
+              close it for you. That is the behaviour you are configuring. Name people accordingly.
             </li>
             <li>
               It does not bypass anyone else&rsquo;s security. It organises access you already have

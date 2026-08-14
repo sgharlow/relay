@@ -18,6 +18,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { bucketFor, BUCKET_ORDER, BUCKET_LABELS, type Bucket } from '../../../../lib/ai/buckets';
 import { CryptoService, base64ToBytes, unpackIvCiphertext } from '../../../../lib/crypto/crypto-service';
+import { LimitsNotice, LimitsReminder } from './LimitsNotice';
 
 interface AccessItem {
   id: string;
@@ -34,6 +35,8 @@ interface Dashboard {
   state: string;
   released: boolean;
   items: AccessItem[];
+  ownerLabel: string;
+  acknowledgedLimits: boolean;
 }
 
 export default function AccessClient() {
@@ -45,6 +48,9 @@ export default function AccessClient() {
   const [error, setError] = useState<string | null>(null);
   const [closure, setClosure] = useState<ClosureSummary | null>(null);
   const [revealed, setRevealed] = useState<Record<string, string>>({});
+  // Mirrors data.acknowledgedLimits, so pressing the button reveals the plan
+  // immediately rather than waiting on a round trip somebody is standing in.
+  const [acknowledged, setAcknowledged] = useState(false);
   // A CLAIMED recipient is signed in and has no token at all. Until this existed
   // they were shown the code-entry form — asked for a credential the whole
   // architecture was built to stop sending them — because this component
@@ -176,6 +182,23 @@ export default function AccessClient() {
     );
   }
 
+  /*
+    RELEASED, but not yet told what this is. The statement comes BEFORE the plan
+    — after it, the reader has already seen the credentials and the disclosure is
+    decoration. Shown once per recipient; lib/access/acknowledgement.ts explains
+    why the record matters more than the render, and why a failed write still
+    lets them through.
+  */
+  if (!data.acknowledgedLimits && !acknowledged) {
+    return (
+      <LimitsNotice
+        ownerLabel={data.ownerLabel}
+        token={token || undefined}
+        onAcknowledged={() => setAcknowledged(true)}
+      />
+    );
+  }
+
   // RELEASED — group into time-horizon buckets, number steps across the plan.
   const grouped: Record<Bucket, AccessItem[]> = { do_today: [], this_week: [], within_30_days: [] };
   for (const item of data.items) {
@@ -186,6 +209,7 @@ export default function AccessClient() {
   return (
     <div>
       <h1 className="text-t7 font-semibold">Your access plan</h1>
+      <LimitsReminder ownerLabel={data.ownerLabel} />
       <p className="mt-2 text-muted">Work top to bottom — the most consequential items come first.</p>
 
       <div className="mt-8 space-y-8">

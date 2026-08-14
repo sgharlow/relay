@@ -32,14 +32,20 @@ it('401 when no token is supplied', async () => {
 });
 
 it('accepts a token from the query string', async () => {
-  mockDashboard.mockResolvedValueOnce({ state: 'released', released: true, items: [] });
+  mockDashboard.mockResolvedValueOnce({ state: 'released', released: true, items: [], ownerLabel: 'Margaret Chen', acknowledgedLimits: true });
   const res = await GET(makeReq({}, { token: 'abc' }));
   expect(res.status).toBe(200);
   expect(mockDashboard).toHaveBeenCalledWith('abc');
 });
 
 it('returns the dashboard payload from a Bearer token', async () => {
-  mockDashboard.mockResolvedValueOnce({ state: 'released', released: true, items: [{ id: 'a' } as never] });
+  mockDashboard.mockResolvedValueOnce({
+    state: 'released',
+    released: true,
+    items: [{ id: 'a' } as never],
+    ownerLabel: 'Margaret Chen',
+    acknowledgedLimits: true,
+  });
   const res = await GET(makeReq({ authorization: 'Bearer t' }));
   expect(res.status).toBe(200);
   expect((await res.json()).released).toBe(true);

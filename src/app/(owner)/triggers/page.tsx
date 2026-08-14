@@ -180,6 +180,17 @@ function CadenceForm({ current, onSaved }: { current: number; onSaved: () => Pro
       <button type="submit" className="rounded bg-ink px-3 py-1.5 text-t2 font-semibold text-paper hover:bg-ink">
         Save
       </button>
+      {/*
+        Said where the decision is actually made, not only in the Terms. This
+        field is the dead-man's switch: miss it for long enough and an armed
+        release opens. The owner should meet that fact while choosing the
+        number, because the Terms are read once and this is read every time.
+        Ratified 2026-08-14 alongside declining gate g2-counsel-opinion.
+      */}
+      <p className="basis-full text-t1 text-muted">
+        If you stop checking in — for any reason — an armed release opens to the people you named,
+        and stays open until you or they close it. Relay does not close it for you.
+      </p>
       {/* The check-in itself, which had no control anywhere in the product.
           processCheckin reverses PENDING, GRACE and RELEASED back to ARMED — it
           is the routine "I'm fine" that the whole dead-man's-switch is built

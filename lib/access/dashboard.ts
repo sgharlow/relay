@@ -26,6 +26,8 @@ import { decryptDataKey } from '../kms/kms-client';
 import { resolveReleaseForUser } from './session-access';
 import type { ReleaseStateRow } from '../release/state-machine';
 import { isDelayElapsed, opensAt } from '../rules/release-delay';
+import { getOwnerLabel } from '../people/owner-label';
+import { hasAcknowledgedLimits } from './acknowledgement';
 
 export class AccessError extends Error {
   constructor(message: string, public readonly httpStatus: number) {
@@ -58,6 +60,18 @@ export interface AccessDashboard {
   state: string;
   released: boolean;
   items: AccessItem[];
+  /**
+   * Who named them, for the statement in lib/access/acknowledgement.ts. A
+   * disclosure that says "the person who named you" reads like boilerplate; one
+   * that says their name reads like it is about this family.
+   */
+  ownerLabel: string;
+  /**
+   * False until the recipient has read what this is and is not, and said so.
+   * The client gates the plan on it. See lib/access/acknowledgement.ts for why
+   * the record matters more than the render.
+   */
+  acknowledgedLimits: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -215,10 +229,17 @@ async function buildDashboard(
     detail: { released, scopedCount: scoped.length },
   });
 
+  const [ownerLabel, acknowledgedLimits] = await Promise.all([
+    getOwnerLabel(rs.owner_id),
+    hasAcknowledgedLimits(rs.owner_id, recipientId),
+  ]);
+
   return {
     state: rs.state,
     released,
     items: released ? rankAccessItems(scoped) : scoped.map(toLimited),
+    ownerLabel,
+    acknowledgedLimits,
   };
 }
 
