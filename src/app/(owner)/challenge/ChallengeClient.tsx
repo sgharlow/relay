@@ -34,26 +34,80 @@ export default function ChallengeClient() {
   const [requests, setRequests] = useState<Request[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [done, setDone] = useState<Record<string, 'approve' | 'deny'>>({});
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [sendFailed, setSendFailed] = useState<string | null>(null);
 
+  /*
+    🔴 A FAILED LOAD USED TO RENDER THE CALMING EMPTY STATE. Any non-ok
+    response became `setRequests([])`, which draws "Nobody is asking for
+    access" — the one sentence on this screen that lowers someone's guard,
+    shown precisely when the truth was unknowable. On the screen with a
+    two-hour clock that escalates to the verifiers, a 500 must never
+    impersonate an all-clear.
+  */
   const load = useCallback(async () => {
-    const res = await fetch('/api/access-requests');
-    if (res.ok) setRequests(((await res.json()).requests ?? []) as Request[]);
-    else setRequests([]);
+    try {
+      const res = await fetch('/api/access-requests');
+      if (!res.ok) throw new Error(String(res.status));
+      setRequests(((await res.json()).requests ?? []) as Request[]);
+      setLoadFailed(false);
+    } catch {
+      setLoadFailed(true);
+    }
   }, []);
 
   useEffect(() => {
     void load();
   }, [load]);
 
+  /*
+    🔴 AN ANSWER COULD FAIL IN SILENCE, AND WEDGE THE BUTTONS. respond() had no
+    try/catch and no error state: a non-ok response did nothing at all — the
+    owner taps "I'm fine — don't open anything", believes they denied, and the
+    request keeps escalating — and a network throw skipped setBusy(null),
+    leaving both buttons disabled forever. On the screen its own header says is
+    read from a hospital bed. finally clears busy on every path; a failure now
+    says so, out loud, next to the buttons that still work.
+  */
   async function respond(id: string, response: 'approve' | 'deny') {
     setBusy(id);
-    const res = await fetch(`/api/access-requests/${id}/respond`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ response }),
-    });
-    setBusy(null);
-    if (res.ok) setDone((d) => ({ ...d, [id]: response }));
+    setSendFailed(null);
+    try {
+      const res = await fetch(`/api/access-requests/${id}/respond`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ response }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      setDone((d) => ({ ...d, [id]: response }));
+    } catch {
+      setSendFailed(id);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  if (loadFailed) {
+    return (
+      <div className="mx-auto max-w-xl text-[18px]">
+        <h1 className="text-t7 font-semibold text-ink">We could not check just now</h1>
+        <p className="mt-3 text-ink">
+          This is a loading problem, not an answer — it does not mean nobody is asking. Please
+          reload the page. If this keeps happening, email{' '}
+          <a href="mailto:hello@relaystandby.com" className="underline underline-offset-2">
+            hello@relaystandby.com
+          </a>
+          .
+        </p>
+        <button
+          type="button"
+          onClick={() => void load()}
+          className="mt-5 rounded border-2 border-rule-strong bg-paper-raised px-5 py-3 font-semibold text-ink hover:bg-paper-sunken"
+        >
+          Try again
+        </button>
+      </div>
+    );
   }
 
   if (requests === null) return <p className="text-muted">Loading…</p>;
@@ -103,12 +157,21 @@ export default function ChallengeClient() {
 
             <p className="mt-3 text-ink">{timeLeft(r.expires_at)}</p>
 
+            {/*
+              🔴 THE RENDER CONTRADICTED THE HEADER. This file's own comment
+              says "neither is styled to look like the correct one" (J6-R3) —
+              and "Yes — let them in" was a filled ink button above an outlined
+              deny. The same defect J7-R6 named on the verifier screen, fixed
+              there on 2026-08-12, standing here the whole time. Both answers
+              now share one treatment, exactly as the verifier's do: the words
+              differ, nothing else does.
+            */}
             <div className="mt-5 space-y-3">
               <button
                 type="button"
                 disabled={busy === r.id}
                 onClick={() => respond(r.id, 'deny')}
-                className="w-full rounded border-2 border-rule bg-paper-raised px-5 py-4 font-semibold text-ink hover:bg-paper-sunken disabled:opacity-50"
+                className="w-full rounded border-2 border-rule-strong bg-paper-raised px-5 py-4 font-semibold text-ink hover:bg-paper-sunken disabled:opacity-50"
               >
                 I&rsquo;m fine — don&rsquo;t open anything
               </button>
@@ -116,11 +179,18 @@ export default function ChallengeClient() {
                 type="button"
                 disabled={busy === r.id}
                 onClick={() => respond(r.id, 'approve')}
-                className="w-full rounded border-2 border-rule bg-ink px-5 py-4 font-semibold text-paper hover:bg-ink disabled:opacity-50"
+                className="w-full rounded border-2 border-rule-strong bg-paper-raised px-5 py-4 font-semibold text-ink hover:bg-paper-sunken disabled:opacity-50"
               >
                 Yes — let them in
               </button>
             </div>
+
+            {sendFailed === r.id && (
+              <p className="mt-3 rounded border border-ochre bg-ochre-soft px-4 py-3 text-[16px] text-ochre-text">
+                Your answer did not go through — nothing was recorded either way. Please try
+                again; the buttons above still work.
+              </p>
+            )}
 
             <p className="mt-4 text-[16px] text-muted">
               If you don&rsquo;t answer, we will ask the people you nominated to confirm whether

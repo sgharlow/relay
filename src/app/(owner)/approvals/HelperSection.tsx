@@ -233,7 +233,9 @@ export default function HelperSection({
                   await send('/api/delegations', 'DELETE', { delegationId: d.id });
                   setBusy(null);
                 }}
-                className="mt-3 block min-h-[44px] text-[17px] text-clay underline underline-offset-4 disabled:opacity-50"
+                // Ochre: stopping a helper is reversible (appoint them again). Clay would
+                // say it cannot be undone, which is false and cries wolf.
+                className="mt-3 block min-h-[44px] text-[17px] text-ochre-text underline underline-offset-4 disabled:opacity-50"
               >
                 Stop them helping
               </button>

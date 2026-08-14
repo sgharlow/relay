@@ -43,18 +43,34 @@ export default function ApprovalsClient() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
 
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [decideFailed, setDecideFailed] = useState<string | null>(null);
+
+  /*
+    🔴 THIS SCREEN COULD WEDGE ON "Loading…" FOREVER. A failed /api/approvals
+    left `approvals` null — the permanent spinner — and a throw inside
+    Promise.all was an unhandled rejection. Same class as ChallengeClient, same
+    day, same fix: failures are told apart from emptiness, and every path
+    settles.
+  */
   const load = useCallback(async () => {
-    const [a, d] = await Promise.all([fetch('/api/approvals'), fetch('/api/delegations')]);
-    if (a.ok) setApprovals((await a.json()).approvals as Approval[]);
-    if (d.ok) {
-      const body = (await d.json()) as {
-        concentrationWarning?: Warning | null;
-        delegations?: Delegation[];
-        candidates?: Candidate[];
-      };
-      setWarning(body.concentrationWarning ?? null);
-      setDelegations(body.delegations ?? []);
-      setCandidates(body.candidates ?? []);
+    try {
+      const [a, d] = await Promise.all([fetch('/api/approvals'), fetch('/api/delegations')]);
+      if (!a.ok) throw new Error(String(a.status));
+      setApprovals((await a.json()).approvals as Approval[]);
+      setLoadFailed(false);
+      if (d.ok) {
+        const body = (await d.json()) as {
+          concentrationWarning?: Warning | null;
+          delegations?: Delegation[];
+          candidates?: Candidate[];
+        };
+        setWarning(body.concentrationWarning ?? null);
+        setDelegations(body.delegations ?? []);
+        setCandidates(body.candidates ?? []);
+      }
+    } catch {
+      setLoadFailed(true);
     }
   }, []);
 
@@ -62,15 +78,27 @@ export default function ApprovalsClient() {
     void load();
   }, [load]);
 
+  /*
+    decide() had no res.ok check and no catch: a failed decision looked like a
+    decided one (the reload simply re-listed it, unexplained), and a network
+    throw wedged `busy`. finally settles busy on every path; a failure says so.
+  */
   async function decide(id: string, decision: 'approve' | 'reject') {
     setBusy(id);
-    await fetch(`/api/approvals/${id}`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ decision }),
-    });
-    setBusy(null);
-    await load();
+    setDecideFailed(null);
+    try {
+      const res = await fetch(`/api/approvals/${id}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ decision }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      await load();
+    } catch {
+      setDecideFailed(id);
+    } finally {
+      setBusy(null);
+    }
   }
 
   return (
@@ -84,15 +112,41 @@ export default function ApprovalsClient() {
       </header>
 
       {/* The elder-abuse signature, surfaced to the OWNER (J3-R10) */}
+      {/*
+        Ochre, not clay. Clay is reserved for what cannot be undone (the
+        palette's own rule: "PERMANENT ONLY... Never anything else"), and this
+        warning asks for a second look at something entirely reversible.
+        Painting an advisory in the irreversible colour teaches the reader that
+        clay sometimes just means "important" — which is exactly what must not
+        happen on the one screen where it will one day mean "permanent".
+      */}
       {warning && (
-        <div className="rounded-lg border-2 border-clay bg-clay-soft p-4">
-          <p className="font-semibold text-clay">Worth a second look</p>
-          <p className="mt-2 text-clay">{warning.message}</p>
-          <p className="mt-2 text-clay">{warning.remedy}</p>
+        <div className="rounded-lg border-2 border-ochre bg-ochre-soft p-4">
+          <p className="font-semibold text-ochre-text">Worth a second look</p>
+          <p className="mt-2 text-ochre-text">{warning.message}</p>
+          <p className="mt-2 text-ochre-text">{warning.remedy}</p>
         </div>
       )}
 
-      {approvals === null && <p className="text-muted">Loading…</p>}
+      {loadFailed && (
+        <div className="rounded-lg border border-ochre bg-ochre-soft p-4 text-ochre-text">
+          <p className="font-semibold">We could not load this just now.</p>
+          <p className="mt-1 text-[16px]">
+            That is a loading problem, not an empty queue.{' '}
+            <button type="button" onClick={() => void load()} className="underline underline-offset-2">
+              Try again
+            </button>
+          </p>
+        </div>
+      )}
+
+      {decideFailed && (
+        <p className="rounded border border-ochre bg-ochre-soft px-4 py-3 text-[16px] text-ochre-text">
+          Your decision did not go through — nothing was recorded either way. Please try again.
+        </p>
+      )}
+
+      {!loadFailed && approvals === null && <p className="text-muted">Loading…</p>}
 
       {approvals?.length === 0 && (
         <p className="rounded-lg border border-rule-strong bg-paper-raised p-4 text-ink">
