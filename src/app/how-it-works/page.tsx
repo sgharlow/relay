@@ -245,8 +245,25 @@ export default function HowItWorksPage() {
           ))}
         </div>
 
-        {/* Scrolls on a phone rather than squashing five columns. */}
-        <div className="mt-8 hidden w-full max-w-full overflow-x-auto md:block">
+        {/*
+          Scrolls on a phone rather than squashing five columns — and is
+          reachable from a keyboard while it does.
+
+          🔴 NEITHER AUDIT VIEWPORT COULD SEE THIS ONE. `scripts/a11y-audit.mjs`
+          runs public pages at 390px, where `hidden` removes this from the tree
+          entirely, and owner pages at 1280px, where the table's `min-w-[720px]`
+          fits and nothing scrolls. It scrolls in the band between — from `md`
+          (768px) up to about 800px — which is a tablet in portrait, and no sweep
+          ever looked there. Found 2026-08-15 by lib/ops/scrollable-regions.test.ts
+          reading the markup instead of a rendered page, which is exactly the
+          gap that check exists to cover.
+        */}
+        <div
+          className="mt-8 hidden w-full max-w-full overflow-x-auto md:block"
+          tabIndex={0}
+          role="region"
+          aria-label="How Relay compares with the alternatives"
+        >
           <table className="w-full min-w-[720px] border-collapse text-left">
             <thead>
               <tr className="border-b border-rule-strong">

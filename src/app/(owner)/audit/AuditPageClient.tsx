@@ -133,7 +133,26 @@ export default function AuditPage() {
         likely to fall off the edge are the ones saying what happened and when,
         which is the entire reason somebody opens this page.
       */}
-      <div className="overflow-x-auto rounded border border-rule">
+      {/*
+        AND FOCUSABLE, because making it scrollable is only half the fix. The
+        change above swapped `overflow-hidden` for `overflow-x-auto` so a phone
+        could reach the right-hand columns by swiping — and handed a keyboard
+        user a region they could see and could not move (axe:
+        scrollable-region-focusable, WCAG 2.1.1). Found 2026-08-15 by auditing
+        owner mode at 390px; the same page at 1280px is clean, because nothing
+        overflows there and the rule only fires on a region that actually
+        scrolls.
+
+        `role="region"` with a name, not a bare tabIndex: a focus stop that
+        announces nothing is a place a screen-reader user arrives without being
+        told where they are or why they stopped.
+      */}
+      <div
+        className="overflow-x-auto rounded border border-rule"
+        tabIndex={0}
+        role="region"
+        aria-label="Audit log entries"
+      >
         <table className="w-full text-left text-t2">
           <thead className="bg-paper-sunken text-t1 uppercase text-muted">
             <tr>

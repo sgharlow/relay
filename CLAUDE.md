@@ -226,6 +226,7 @@ actually *use* the thing, and each fails loudly rather than silently:
 | `step-up-guard.ts` | sensitive handlers re-authenticate | `requireStepUp` / `requireStepUpOnce`, or classify it |
 | `api-reachability.ts` | no handler is unreachable | wire it, retire it, or `REACHED_FROM_OUTSIDE` + reason |
 | `fetch-routes-exist.test.ts` | the other direction — no `fetch` names a route nothing serves | spell the path the way `src/app/api` spells it |
+| `scrollable-regions.test.ts` | a box that scrolls sideways is focusable AND named | `tabIndex={0}` + `role="region"` + `aria-label`, or stop it scrolling |
 | `type-scale.ts` | no page invents a tenth type step | `t1`–`t9`, never a px literal |
 | `raw-color.test.ts` | hardcoded colours do not spread | the tokens in `globals.css` |
 
