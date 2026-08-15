@@ -11,8 +11,9 @@
 import { query } from '../db/connection';
 import { withOccRetry } from '../db/occ';
 import { cascadeDelete } from '../db/integrity';
-import { ValidationError, isNonEmptyString, cleanPersonName } from '../validation';
+import { ValidationError, isNonEmptyString, cleanPersonName, isEmailAddress } from '../validation';
 import { readStandbyState, type StandbyState } from './standby-state';
+import { readSecondaryAddress } from './secondary-address';
 import { VALID_ROLES, type RecipientRole } from '../domain/enums';
 
 export { VALID_ROLES, type RecipientRole };
@@ -23,6 +24,14 @@ export interface RecipientInput {
   email: string;
   phone: string | null;
   role: RecipientRole;
+  /**
+   * A second mailbox for the notices that carry no credential — see
+   * `lib/notify/fanout.ts` for what it is and is not used for.
+   *
+   * `undefined` means the caller expressed no opinion and an update must LEAVE
+   * THE STORED VALUE ALONE; `null` means remove it. See `secondary-address.ts`.
+   */
+  email_secondary?: string | null;
 }
 
 export interface Recipient extends RecipientInput {
@@ -31,11 +40,8 @@ export interface Recipient extends RecipientInput {
   created_at: string;
 }
 
-const COLUMNS = 'id, name, relationship, email, phone, role, standby_state, created_at';
-
-function isEmail(v: unknown): v is string {
-  return typeof v === 'string' && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v);
-}
+const COLUMNS =
+  'id, name, relationship, email, email_secondary, phone, role, standby_state, created_at';
 
 export function validateRecipientInput(body: unknown): RecipientInput {
   if (typeof body !== 'object' || body === null) {
@@ -45,7 +51,7 @@ export function validateRecipientInput(body: unknown): RecipientInput {
 
   // Bounded and single-lined — see cleanPersonName; the value reaches an email.
   const name = cleanPersonName(b.name);
-  if (!isEmail(b.email)) throw new ValidationError('a valid email is required', 'email');
+  if (!isEmailAddress(b.email)) throw new ValidationError('a valid email is required', 'email');
   if (!isNonEmptyString(b.role) || !VALID_ROLES.includes(b.role as RecipientRole)) {
     throw new ValidationError(`role must be one of: ${VALID_ROLES.join(', ')}`, 'role');
   }
@@ -56,6 +62,7 @@ export function validateRecipientInput(body: unknown): RecipientInput {
     email: b.email,
     phone: isNonEmptyString(b.phone) ? b.phone : null,
     role: b.role as RecipientRole,
+    email_secondary: readSecondaryAddress(b.email_secondary, b.email),
   };
 }
 
@@ -66,6 +73,7 @@ function toRecipient(row: Record<string, unknown>): Recipient {
     relationship: (row.relationship as string | null) ?? null,
     email: String(row.email),
     phone: (row.phone as string | null) ?? null,
+    email_secondary: (row.email_secondary as string | null) ?? null,
     role: row.role as RecipientRole,
     standby_state: readStandbyState(row.standby_state),
     created_at: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
@@ -105,10 +113,18 @@ export async function createRecipient(ownerId: string, input: RecipientInput): P
 
   const result = await withOccRetry(() =>
     query<Record<string, unknown>>(
-      `INSERT INTO recipients (owner_id, name, relationship, email, phone, role)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO recipients (owner_id, name, relationship, email, phone, role, email_secondary)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING ${COLUMNS}`,
-      [ownerId, input.name, input.relationship, input.email, input.phone, input.role],
+      [
+        ownerId,
+        input.name,
+        input.relationship,
+        input.email,
+        input.phone,
+        input.role,
+        input.email_secondary ?? null,
+      ],
     ),
   );
   return toRecipient(result.rows[0]);
@@ -119,13 +135,31 @@ export async function updateRecipient(
   id: string,
   input: RecipientInput,
 ): Promise<Recipient | null> {
+  /*
+    THE SECOND ADDRESS IS ONLY TOUCHED WHEN THE CALLER SAID SOMETHING ABOUT IT.
+    This route is a full replace and `RenameControl` sends four fields; a plain
+    `email_secondary = $n` would make correcting a typo in a name delete the
+    backup address, silently, on a row nobody was looking at. `undefined` here
+    means "no opinion" and leaves the column out of the statement entirely.
+  */
+  const touchesSecondary = input.email_secondary !== undefined;
   const result = await withOccRetry(() =>
     query<Record<string, unknown>>(
       `UPDATE recipients
           SET name = $1, relationship = $2, email = $3, phone = $4, role = $5
+              ${touchesSecondary ? ', email_secondary = $8' : ''}
         WHERE id = $6 AND owner_id = $7
        RETURNING ${COLUMNS}`,
-      [input.name, input.relationship, input.email, input.phone, input.role, id, ownerId],
+      [
+        input.name,
+        input.relationship,
+        input.email,
+        input.phone,
+        input.role,
+        id,
+        ownerId,
+        ...(touchesSecondary ? [input.email_secondary] : []),
+      ],
     ),
   );
   if (result.rowCount === 0 || result.rows.length === 0) return null;

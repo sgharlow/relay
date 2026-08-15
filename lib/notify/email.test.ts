@@ -15,7 +15,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { Resend } from 'resend';
 
-import { sendEmail, sendEmailBestEffort, _setResendClientForTesting } from './email';
+import {
+  sendEmail,
+  sendEmailBestEffort,
+  sendEmailToAllBestEffort,
+  _setResendClientForTesting,
+} from './email';
 
 function stub(response: unknown): Resend {
   return { emails: { send: vi.fn(async () => response) } } as unknown as Resend;
@@ -35,6 +40,65 @@ beforeEach(() => {
   delete process.env.RESEND_REPLY_TO_ADDRESS;
 });
 afterEach(() => _setResendClientForTesting(null));
+
+/**
+ * Fanning one message out to a person's two addresses.
+ *
+ * The point of a second address is that the first one may be silently junked,
+ * so the failure mode that matters here is a partial one: if the primary is
+ * refused and the backup is accepted, the person WAS reached and the caller
+ * must be told so.
+ */
+describe('sendEmailToAllBestEffort', () => {
+  it('sends one message per address', async () => {
+    const client = stub(ok);
+    _setResendClientForTesting(client);
+
+    await sendEmailToAllBestEffort(['a@b.com', 'a@c.com'], { subject: 's', text: 't' });
+
+    const send = client.emails.send as unknown as { mock: { calls: unknown[][] } };
+    expect(send.mock.calls).toHaveLength(2);
+    expect(send.mock.calls.map((c) => (c[0] as { to: string }).to)).toEqual(['a@b.com', 'a@c.com']);
+  });
+
+  it('reports success when the BACKUP got through and the primary did not', async () => {
+    let call = 0;
+    _setResendClientForTesting({
+      emails: {
+        send: vi.fn(async () =>
+          call++ === 0 ? { data: null, error: { name: 'bounced', message: 'no' } } : ok,
+        ),
+      },
+    } as unknown as Resend);
+
+    await expect(
+      sendEmailToAllBestEffort(['dead@b.com', 'alive@c.com'], { subject: 's', text: 't' }),
+    ).resolves.toBe(true);
+  });
+
+  it('reports failure only when EVERY address failed', async () => {
+    _setResendClientForTesting(stub({ data: null, error: { name: 'bounced', message: 'no' } }));
+    await expect(
+      sendEmailToAllBestEffort(['a@b.com', 'a@c.com'], { subject: 's', text: 't' }),
+    ).resolves.toBe(false);
+  });
+
+  it('is an ordinary single send when there is one address', async () => {
+    const client = stub(ok);
+    _setResendClientForTesting(client);
+    await expect(
+      sendEmailToAllBestEffort(['a@b.com'], { subject: 's', text: 't' }),
+    ).resolves.toBe(true);
+    expect((client.emails.send as unknown as { mock: { calls: unknown[][] } }).mock.calls).toHaveLength(1);
+  });
+
+  it('sends nothing, and claims nothing, for an empty list', async () => {
+    const client = stub(ok);
+    _setResendClientForTesting(client);
+    await expect(sendEmailToAllBestEffort([], { subject: 's', text: 't' })).resolves.toBe(false);
+    expect((client.emails.send as unknown as { mock: { calls: unknown[][] } }).mock.calls).toHaveLength(0);
+  });
+});
 
 describe('sendEmail', () => {
   it('resolves when Resend returns a message id', async () => {

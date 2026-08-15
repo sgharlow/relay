@@ -39,6 +39,7 @@ import {
   notifyRecipientsOfRelease,
   notifyOwnerTriggerPending,
   notifyVerifiersForTrigger,
+  toVerifierContact,
 } from '../notify/notifications';
 import { listVerifiers } from '../people/verifiers';
 import { isReversibleTrigger, type ReleaseStateMachine } from './state-machine';
@@ -245,7 +246,7 @@ export async function runHeartbeatSweep(machine: Machine, deps: SweepDeps = {}):
         try {
           const verifiers = await listVerifiers(owner.id);
           await notifyVerifiersForTrigger(
-            verifiers.map((v) => ({ id: v.id, name: v.name, email: v.email })),
+            verifiers.map(toVerifierContact),
             rs.trigger_type,
             rs.id,
             owner.id,

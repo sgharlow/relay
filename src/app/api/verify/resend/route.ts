@@ -88,15 +88,24 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     verifier_id: string;
     verifier_name: string;
     verifier_email: string;
+    verifier_email_secondary: string | null;
     release_state_id: string;
     owner_id: string;
     trigger_type: string;
   }>(
+    /*
+      MATCHED ON EITHER ADDRESS. This route serves "I never got it", and the
+      commonest reason somebody is here is that their primary mailbox junked
+      us — so the address they type is quite likely to be the backup one they
+      gave for exactly this situation. Keying only on `v.email` would answer the
+      constant no-op to the very person the second address exists to reach.
+    */
     `SELECT v.id AS verifier_id, v.name AS verifier_name, v.email AS verifier_email,
+            v.email_secondary AS verifier_email_secondary,
             rs.id AS release_state_id, rs.owner_id, rs.trigger_type
        FROM verifiers v
        JOIN release_state rs ON rs.owner_id = v.owner_id
-      WHERE lower(v.email) = lower($1)
+      WHERE (lower(v.email) = lower($1) OR lower(v.email_secondary) = lower($1))
         AND rs.state IN ('pending', 'grace')
         AND coalesce(v.standby_state, 'invited') <> 'revoked'
         -- Already answered is not still waiting: same guard as the session
@@ -121,10 +130,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     {
       id: row.verifier_id,
       name: row.verifier_name,
-      // The address ON FILE, not the one supplied. Identical here because the
-      // lookup keyed on it, but stated explicitly so a future change to the
-      // lookup cannot quietly turn this into a redirect.
+      // The address ON FILE, not the one supplied — now load-bearing rather
+      // than merely explicit, because the lookup above matches EITHER address.
+      // Sending to what was typed would let anyone who knows a verifier's name
+      // redirect their notice; sending to what is on file cannot.
       email: row.verifier_email,
+      email_secondary: row.verifier_email_secondary,
     },
     {
       noticeClass,

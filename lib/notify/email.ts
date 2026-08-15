@@ -132,3 +132,37 @@ export async function sendEmailBestEffort(msg: EmailMessage): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Sends the same message to each of a person's addresses. True if ANY was
+ * accepted.
+ *
+ * The whole point of a second address is that the first may be silently junked
+ * or suppressed, so the interesting case is the partial one — primary refused,
+ * backup accepted. That is a success: the person was reached. Returning false
+ * because one leg failed would put a warning in front of an owner about a
+ * message that did arrive, and this product's recurring defect is a signal that
+ * measures something adjacent to the question.
+ *
+ * An empty list returns FALSE rather than true. Nothing was sent, so nothing may
+ * be claimed — the same rule the delivery-event reader follows for silence.
+ *
+ * ⚠️ WHICH MESSAGES MAY USE THIS IS NOT THIS FUNCTION'S DECISION. It sends what
+ * it is given, to the addresses it is given. `lib/notify/fanout.ts` holds the
+ * rule that a message carrying a credential gets exactly one address, and that
+ * is where it belongs — one definition, not a judgement repeated at each site.
+ *
+ * Sequential, not `Promise.all`: two sends to one person are not worth a burst
+ * against a shared provider account, and the ordering makes the primary the
+ * message that actually goes first.
+ */
+export async function sendEmailToAllBestEffort(
+  tos: string[],
+  msg: Omit<EmailMessage, 'to'>,
+): Promise<boolean> {
+  let any = false;
+  for (const to of tos) {
+    if (await sendEmailBestEffort({ ...msg, to })) any = true;
+  }
+  return any;
+}

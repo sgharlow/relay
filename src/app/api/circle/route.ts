@@ -55,11 +55,13 @@ export async function GET(): Promise<NextResponse> {
       name: string;
       role: string;
       email: string;
+      email_secondary: string | null;
       standby_state: string | null;
       claimed_user_id: string | null;
       break_glass_only: boolean | null;
     }>(
-      `SELECT id, name, role, email, standby_state, claimed_user_id, break_glass_only
+      `SELECT id, name, role, email, email_secondary, standby_state, claimed_user_id,
+              break_glass_only
          FROM recipients WHERE owner_id = $1`,
       [auth.ownerId],
     ),
@@ -67,11 +69,12 @@ export async function GET(): Promise<NextResponse> {
       id: string;
       name: string;
       email: string;
+      email_secondary: string | null;
       standby_state: string | null;
       claimed_user_id: string | null;
       break_glass_only: boolean | null;
     }>(
-      `SELECT id, name, email, standby_state, claimed_user_id, break_glass_only
+      `SELECT id, name, email, email_secondary, standby_state, claimed_user_id, break_glass_only
          FROM verifiers WHERE owner_id = $1`,
       [auth.ownerId],
     ),

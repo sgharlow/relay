@@ -28,7 +28,17 @@ vi.mock('../audit/audit-service', () => ({ writeAuditEntry: vi.fn(async () => ({
   of where a mock queue happened to land is not evidence of anything.
 */
 vi.mock('../people/verifiers', () => ({ listVerifiers: vi.fn(async () => []) }));
-vi.mock('../notify/notifications', () => ({ notifyVerifiersForTrigger: vi.fn(async () => 0) }));
+vi.mock('../notify/notifications', () => ({
+  notifyVerifiersForTrigger: vi.fn(async () => 0),
+  // The real mapper, not a stub: it is the thing that carries a verifier's
+  // second address through to the send, and a stub here would hide its removal.
+  toVerifierContact: (v: { id: string; name: string; email: string; email_secondary?: string | null }) => ({
+    id: v.id,
+    name: v.name,
+    email: v.email,
+    email_secondary: v.email_secondary ?? null,
+  }),
+}));
 
 import { query } from '../db/connection';
 import { writeAuditEntry } from '../audit/audit-service';

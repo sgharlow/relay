@@ -13,7 +13,15 @@ vi.mock('../../../../../../lib/release/triggers', async (io) => {
 });
 vi.mock('../../../../../../lib/release/state-machine', () => ({ ReleaseStateMachine: vi.fn() }));
 vi.mock('../../../../../../lib/people/verifiers', () => ({ listVerifiers: vi.fn(async () => []) }));
-vi.mock('../../../../../../lib/notify/notifications', () => ({ notifyVerifiersForTrigger: vi.fn(async () => 0) }));
+vi.mock('../../../../../../lib/notify/notifications', () => ({
+  notifyVerifiersForTrigger: vi.fn(async () => 0),
+  toVerifierContact: (v: { id: string; name: string; email: string; email_secondary?: string | null }) => ({
+    id: v.id,
+    name: v.name,
+    email: v.email,
+    email_secondary: v.email_secondary ?? null,
+  }),
+}));
 
 import { getOwnerSession } from '../../../../../../lib/auth/session';
 import { initiateTrigger, TriggerError } from '../../../../../../lib/release/triggers';

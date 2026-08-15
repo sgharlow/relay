@@ -88,3 +88,19 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 export function isUuid(v: unknown): v is string {
   return typeof v === 'string' && UUID_RE.test(v);
 }
+
+/**
+ * What counts as an email address, stated once.
+ *
+ * PROMOTED HERE 2026-08-14, from two identical private copies in
+ * `lib/people/recipients.ts` and `lib/people/verifiers.ts`, when
+ * `email_secondary` was about to make a third. Deliberately the same permissive
+ * shape those copies had — the authority on whether an address exists is the
+ * mail provider, not a regex, and a stricter pattern here would reject real
+ * addresses while still not proving anything about the ones it accepts.
+ */
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+export function isEmailAddress(v: unknown): v is string {
+  return typeof v === 'string' && EMAIL_RE.test(v);
+}

@@ -17,7 +17,10 @@ import { requireOwner, isResponse } from '../../../../../../lib/http/owner-route
 import { initiateTrigger, TriggerError } from '../../../../../../lib/release/triggers';
 import { ReleaseStateMachine } from '../../../../../../lib/release/state-machine';
 import { listVerifiers } from '../../../../../../lib/people/verifiers';
-import { notifyVerifiersForTrigger } from '../../../../../../lib/notify/notifications';
+import {
+  notifyVerifiersForTrigger,
+  toVerifierContact,
+} from '../../../../../../lib/notify/notifications';
 import { isUserSelectableTriggerType } from '../../../../../../lib/domain/enums';
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -49,7 +52,7 @@ export async function POST(_req: NextRequest, { params }: Ctx): Promise<NextResp
   // Notify verifiers (best-effort) — never lets a mail failure undo the transition.
   const verifiers = await listVerifiers(auth.ownerId);
   const notified = await notifyVerifiersForTrigger(
-    verifiers.map((v) => ({ id: v.id, name: v.name, email: v.email })),
+    verifiers.map(toVerifierContact),
     triggerType,
     row.id,
     auth.ownerId,

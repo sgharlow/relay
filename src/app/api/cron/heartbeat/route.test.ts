@@ -33,11 +33,19 @@ vi.mock('../../../../../lib/release/scheduler-ledger', () => ({
 vi.mock('../../../../../lib/release/escalation', () => ({
   escalateLapsedRequests: vi.fn(async () => []),
 }));
+// The other direction of the same silence: the VERIFIERS not answering. Rides
+// this cron for the same reason and moves no state — it sends the owner the
+// phone numbers already in their circle. Behaviour is covered by
+// lib/release/silence-sweep.test.ts; here it only has to be called.
+vi.mock('../../../../../lib/release/silence-sweep', () => ({
+  sweepSilentVerifiers: vi.fn(async () => []),
+}));
 
 import { GET, POST } from './route';
 import { runHeartbeatSweep } from '../../../../../lib/release/heartbeat';
 import { recordSchedulerRun } from '../../../../../lib/release/scheduler-ledger';
 import { escalateLapsedRequests } from '../../../../../lib/release/escalation';
+import { sweepSilentVerifiers } from '../../../../../lib/release/silence-sweep';
 
 function req(authz?: string) {
   return {
@@ -130,5 +138,31 @@ describe('cron heartbeat route — lapsed challenge escalation', () => {
   it('does not run the sweep for an unauthorized caller', async () => {
     await GET(req('Bearer wrong'));
     expect(escalateLapsedRequests).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The other direction: the VERIFIERS going quiet.
+ *
+ * `escalateLapsedRequests` covers an owner who never answered. Nothing covered a
+ * verifier who never answered — now the likelier failure, because their notice
+ * is the message whose silent loss stalls a release, and a junked notice looks
+ * exactly like a delivered one from inside this product. It has to ride the same
+ * scheduled run for the same reason: during an emergency nobody is looking at a
+ * screen, which is what makes the silence invisible in the first place.
+ */
+describe('cron heartbeat route — silent verifiers', () => {
+  it('sweeps for silent verifiers on the same run and reports the count', async () => {
+    vi.mocked(sweepSilentVerifiers).mockResolvedValueOnce(['rs-1'] as never);
+
+    const res = await GET(req('Bearer test-secret'));
+
+    expect(sweepSilentVerifiers).toHaveBeenCalled();
+    await expect(res.json()).resolves.toMatchObject({ silenceNotices: 1 });
+  });
+
+  it('does not run it for an unauthorized caller', async () => {
+    await GET(req('Bearer wrong'));
+    expect(sweepSilentVerifiers).not.toHaveBeenCalled();
   });
 });

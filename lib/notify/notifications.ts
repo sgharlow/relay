@@ -13,7 +13,8 @@
  * Requirements: 4.4, 6.2, 6.6
  */
 
-import { sendEmailBestEffort } from './email';
+import { sendEmailBestEffort, sendEmailToAllBestEffort } from './email';
+import { addressesFor } from './fanout';
 import { issueVerifierToken } from '../auth/verifier-token';
 import { issueVerifierCode, formatCode } from '../auth/verifier-code';
 import { issueRecipientCode } from '../auth/recipient-code';
@@ -78,9 +79,10 @@ export async function notifyRecipientsOfRelease(params: {
     id: string;
     name: string;
     email: string;
+    email_secondary: string | null;
     claimed_user_id: string | null;
   }>(
-    `SELECT DISTINCT r.id, r.name, r.email, r.claimed_user_id
+    `SELECT DISTINCT r.id, r.name, r.email, r.email_secondary, r.claimed_user_id
        FROM recipients r
        JOIN access_rules ar ON ar.recipient_id = r.id
       WHERE ar.owner_id = $1 AND ar.trigger_type = $2`,
@@ -188,11 +190,24 @@ export async function notifyRecipientsOfRelease(params: {
             `This link asks you for nothing after you follow it — no code and no password. ` +
             `A link that asks you to enter anything is not from us.\n`;
 
-      return sendEmailBestEffort({
-        to: r.email,
-        subject: `Your Relay access is now available (${caseId})`,
-        text: body,
-      });
+      /*
+        ONLY THE CLAIMED BRANCH IS COPIED TO A SECOND ADDRESS. That message is a
+        notification — "sign in the way you normally do" — with no code and no
+        link that signs anyone in, which is exactly the property that makes a
+        duplicate free. The other two branches carry a single-use code or a
+        signed token in a URL; see `lib/notify/fanout.ts`.
+      */
+      return sendEmailToAllBestEffort(
+        addressesFor({
+          primary: r.email,
+          secondary: r.email_secondary,
+          carriesCredential: !r.claimed_user_id,
+        }),
+        {
+          subject: `Your Relay access is now available (${caseId})`,
+          text: body,
+        },
+      );
     }),
   );
   return results.filter(Boolean).length;
@@ -202,6 +217,37 @@ export interface VerifierContact {
   id: string;
   name: string;
   email: string;
+  /**
+   * Optional second mailbox. Used ONLY for the notice classes that carry no
+   * credential — see `lib/notify/fanout.ts`. Optional rather than required so a
+   * caller that has not been taught to select the column degrades to today's
+   * behaviour (one address) rather than to a type error.
+   */
+  email_secondary?: string | null;
+}
+
+/**
+ * Roster row → notification contact, in ONE place.
+ *
+ * 🔴 THE BUG THIS PREVENTS ALREADY HAPPENED, in triplicate. Three call sites —
+ * the heartbeat sweep, the challenge-lapse escalation and the manual initiate
+ * route — each loaded the roster with `listVerifiers` and then rebuilt the
+ * contact inline as `{ id: v.id, name: v.name, email: v.email }`. The moment a
+ * second address existed it was selected from the database and discarded one
+ * line before the send, on every path a release actually takes. Nothing would
+ * have failed; the redundancy would simply never have fired.
+ *
+ * Accepts anything with the three required fields so it works for a roster row,
+ * a raw query result, or a future shape, without any of them having to know
+ * which fields the notifier wants.
+ */
+export function toVerifierContact(v: {
+  id: string;
+  name: string;
+  email: string;
+  email_secondary?: string | null;
+}): VerifierContact {
+  return { id: v.id, name: v.name, email: v.email, email_secondary: v.email_secondary ?? null };
 }
 
 /**
@@ -302,24 +348,34 @@ export async function notifyOneVerifier(
   // Someone who can sign in gets told, and gets nothing to lose. This is
   // core principle 1 finally holding on the verifier side: there is no
   // secret in this message, so intercepting it accomplishes nothing.
+  /*
+    BOTH ADDRESSES, because there is nothing in this message to lose. A verifier
+    who is junked here is the single failure that stalls a release — nobody
+    answers, quorum is never met, and access never opens on the one day the
+    product exists for — and this branch is precisely the one where redundancy
+    costs nothing. See `lib/notify/fanout.ts` for why the `code` branch below
+    does NOT get the same treatment.
+  */
   if (noticeClass === 'sign_in') {
-    return sendEmailBestEffort({
-      to: v.email,
-      subject: `Action needed: confirm ${article(triggerType)} ${triggerType} trigger (${caseId})`,
-      text:
-        `Hi ${v.name},\n\n` +
-        `${ownerLabel} named you as one of the people who would be asked whether an emergency is real, ` +
-        `and ${article(triggerType)} "${triggerType}" release has now been started on their ` +
-        `account.\n\n` +
-        `Sign in the way you normally do and the request will be waiting for you:\n\n` +
-        `    ${appUrl()}/standby\n\n` +
-        `Case ${caseId}.\n\n` +
-        `There is no code in this message, and no link that signs you in — deliberately. ` +
-        `A real message from Relay never asks you to click a link and then enter anything. ` +
-        `If a message claiming to be from us does, it is not from us.\n\n` +
-        `You will not be given access to any private data — you are only confirming ` +
-        `whether the situation is genuine.\n`,
-    });
+    return sendEmailToAllBestEffort(
+      addressesFor({ primary: v.email, secondary: v.email_secondary, carriesCredential: false }),
+      {
+        subject: `Action needed: confirm ${article(triggerType)} ${triggerType} trigger (${caseId})`,
+        text:
+          `Hi ${v.name},\n\n` +
+          `${ownerLabel} named you as one of the people who would be asked whether an emergency is real, ` +
+          `and ${article(triggerType)} "${triggerType}" release has now been started on their ` +
+          `account.\n\n` +
+          `Sign in the way you normally do and the request will be waiting for you:\n\n` +
+          `    ${appUrl()}/standby\n\n` +
+          `Case ${caseId}.\n\n` +
+          `There is no code in this message, and no link that signs you in — deliberately. ` +
+          `A real message from Relay never asks you to click a link and then enter anything. ` +
+          `If a message claiming to be from us does, it is not from us.\n\n` +
+          `You will not be given access to any private data — you are only confirming ` +
+          `whether the situation is genuine.\n`,
+      },
+    );
   }
 
   // Named, never verified. Since quorum tightened to `confirmed` (§4.3) an
@@ -329,20 +385,24 @@ export async function notifyOneVerifier(
   // was never set up" to whoever is in the room is worth more than silence.
   if (noticeClass === 'not_counted') {
     const who = ownerLabel;
-    return sendEmailBestEffort({
-      to: v.email,
-      subject: `${who} named you — but you are not set up to answer (${caseId})`,
-      text:
-        `Hi ${v.name},\n\n` +
-        `${who} named you as one of the people who would be asked whether an emergency is real. ` +
-        `That question has just been raised.\n\n` +
-        `You cannot answer it yet. Setting you up was never finished — ${who} still has to ` +
-        `confirm it is really you — so an answer from you would not count towards anything, ` +
-        `and we would rather say that than let you believe you had helped.\n\n` +
-        `Nothing is expected of you right now. If you would like to be able to help next ` +
-        `time, ask ${who}, or whoever is with them, to finish setting you up.\n\n` +
-        `Case ${caseId}.\n`,
-    });
+    // Also credential-free, so also both addresses. Being told you were named
+    // is worth nothing to anyone who intercepts it.
+    return sendEmailToAllBestEffort(
+      addressesFor({ primary: v.email, secondary: v.email_secondary, carriesCredential: false }),
+      {
+        subject: `${who} named you — but you are not set up to answer (${caseId})`,
+        text:
+          `Hi ${v.name},\n\n` +
+          `${who} named you as one of the people who would be asked whether an emergency is real. ` +
+          `That question has just been raised.\n\n` +
+          `You cannot answer it yet. Setting you up was never finished — ${who} still has to ` +
+          `confirm it is really you — so an answer from you would not count towards anything, ` +
+          `and we would rather say that than let you believe you had helped.\n\n` +
+          `Nothing is expected of you right now. If you would like to be able to help next ` +
+          `time, ask ${who}, or whoever is with them, to finish setting you up.\n\n` +
+          `Case ${caseId}.\n`,
+      },
+    );
   }
 
   // Falls back to the legacy token link when a code cannot be issued. A
@@ -428,6 +488,58 @@ export async function notifyOwnerReleasePendingGrace(
         `can we.\n\n` +
         `If you are reading this and you are well, go to ${appUrl()}/triggers and stand it down ` +
         `now.\n`,
+  });
+}
+
+/**
+ * NOBODY HAS ANSWERED — the message that stops depending on email.
+ *
+ * Every other notice in this file asks somebody to go to a screen. This one
+ * exists precisely because the screen and the inbox may both be silent: the
+ * release opened, the verifier notices went out, the provider said `delivered`,
+ * and the window is running down with no human aware of it. That is not a bug
+ * in the state machine — the state machine is correct — it is the measured
+ * behaviour of a channel this project cannot fix from inside this repo.
+ *
+ * So it hands the reader the one channel Relay does not own: the phone numbers
+ * already sitting in their own circle, which the product has held since the
+ * first sprint and never once used.
+ *
+ * ⚠️ IT CHANGES NOTHING. No transition, no quorum, no access. A lapse is the
+ * absence of a signal and `escalation.ts` is explicit that absence must never be
+ * read as consent. All this does is stop the silence being invisible.
+ *
+ * ⏸️ SENT TO THE OWNER ONLY, for now, and that is a real limitation rather than
+ * an oversight: in the emergency case the owner is by hypothesis the person who
+ * cannot answer. Widening it to the requester or the rest of the circle means
+ * disclosing verifiers' phone numbers to people who cannot see them today — a
+ * product and privacy decision, not a refactor.
+ */
+export async function notifyOwnerOfVerifierSilence(params: {
+  ownerEmail: string;
+  triggerType: string;
+  caseId: string;
+  hoursWaiting: number;
+  callList: string[];
+}): Promise<boolean> {
+  const { triggerType, caseId, hoursWaiting, callList } = params;
+  const hours = hoursWaiting === 1 ? 'an hour' : `${hoursWaiting} hours`;
+
+  return sendEmailBestEffort({
+    to: params.ownerEmail,
+    subject: `Nobody has confirmed your ${triggerType} release yet (${caseId})`,
+    text:
+      `A "${triggerType}" release has been waiting ${hours} and none of the people you named ` +
+      `has answered.\n\n` +
+      `That may mean nothing is wrong. It may also mean they never saw the message — our email ` +
+      `is filed as junk by some providers even when everything about it is correct, and we ` +
+      `cannot see which folder anything landed in.\n\n` +
+      `The fastest thing you can do is ring them:\n\n` +
+      callList.map((l) => `    ${l}`).join('\n') +
+      `\n\nThey do not need anything from this message. Ask them to sign in to Relay the way ` +
+      `they normally do, and the request will be waiting for them.\n\n` +
+      `Nothing has opened, and nothing opens until enough of them agree.\n\n` +
+      `Case ${caseId}.\n`,
   });
 }
 

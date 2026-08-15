@@ -93,6 +93,16 @@ opening anything.**
 
 **If they match** → mark them Verified. Done, permanently, unless they re-accept on a new account.
 
+4. **While you have them on the phone, ask for the safe-sender entry.** It costs one sentence and it
+   is the only lever anyone has on the junk-filing problem — `jmr:0` on both junked test messages
+   means no user rule has ever matched us, so a contacts entry is untried rather than tried and
+   failed. It matters most for Outlook, Hotmail, Live and MSN addresses, which `/circle` now flags
+   on the row; do it for everyone anyway, because it is free.
+
+> "One last thing while I've got you — can you add **relay@relaystandby.com** to your contacts? If
+> this ever fires you'll get one email and it's the sort of thing spam filters eat. Takes ten
+> seconds and it means you'll actually see it."
+
 **If they do not match — stop.** Do not mark them. It means somebody other than the person you are
 speaking to opened that invitation. Use **the words do not match** in the same panel: it removes
 them, cancels the code, and puts them back to not-yet-invited so you can start again on a channel you
@@ -163,6 +173,21 @@ refused."* That is shown in CALM, which is the only time you can act on it.
 ⚠️ **Silence still is not reassurance.** A person with no line under them means
 nothing has been heard about that address yet — not that it works. The first
 real signal usually arrives when you send them something.
+
+🔴 **And "delivered" is not reassurance either.** Until 2026-08-14 that same
+line read *"Email reached Alex"* on a `delivered` event — while both messages in
+that day's Outlook A/B test recorded `delivered` here and sat in the junk folder
+at SCL 5. `delivered` and `junked` are the same event to us. The line now says
+what the event actually licenses: *"Alex's provider accepted our last email.
+That is as much as we can know."* Nothing on this screen claims a message was
+seen, because nothing we receive can tell us that.
+
+**Outlook-family addresses are called out by name.** `/circle` flags anyone on
+outlook / hotmail / live / msn with what we measured and what to do about it,
+and the "Give them a code" panel repeats it at the moment you choose a channel.
+There is no code fix for this — two content hypotheses were tested and refuted,
+and what remains is sending-domain reputation — so the product's job is to stop
+you finding out on the bad day.
 
 ## What you are actually measuring
 

@@ -29,6 +29,8 @@ import BreakGlassControl from './BreakGlassControl';
 import FingerprintControl from './FingerprintControl';
 import FallbackLine from './FallbackLine';
 import DeliveryLine, { type DeliveryState } from './DeliveryLine';
+import ProviderRiskLine from './ProviderRiskLine';
+import SecondAddressControl from './SecondAddressControl';
 import PaperOnlyControl from './PaperOnlyControl';
 
 /**
@@ -66,6 +68,8 @@ export interface Recipient {
   id: string;
   name: string;
   email: string;
+  /** Second mailbox for credential-free notices. See lib/notify/fanout.ts. */
+  email_secondary?: string | null;
   relationship?: string | null;
   role: string;
   standby_state?: string;
@@ -84,6 +88,8 @@ export interface Verifier {
   id: string;
   name: string;
   email: string;
+  /** Second mailbox for credential-free notices. See lib/notify/fanout.ts. */
+  email_secondary?: string | null;
   /** @deprecated dead column — see StandbyLight below. */
   verification_status?: string;
   standby_state?: string;
@@ -445,7 +451,12 @@ export function RecipientSection({
                 {r.relationship ? ` · ${r.relationship}` : ''}
               </div>
               {needsClaimCode(r.standby_state) && !r.break_glass_only ? (
-                <InviteControl personId={r.id} personType="recipient" name={r.name} />
+                <InviteControl
+                  personId={r.id}
+                  personType="recipient"
+                  name={r.name}
+                  email={r.email}
+                />
               ) : null}
               {needsClaimCode(r.standby_state) ? (
                 <PaperOnlyControl
@@ -464,7 +475,10 @@ export function RecipientSection({
                 />
               ) : null}
               {/* Renders nothing until an event actually says something. */}
-              <DeliveryLine name={r.name} delivery={r.delivery} />
+              <DeliveryLine name={r.name} email={r.email} delivery={r.delivery} />
+              {/* Needs no event — the address itself is the evidence. */}
+              <ProviderRiskLine name={r.name} email={r.email} />
+              <SecondAddressControl personType="recipient" person={r} onChanged={onChange} />
               {/* Assurance sits directly under the light it turns green. */}
               {r.fingerprint && hasClaimed(r.standby_state) ? (
                 <FingerprintControl
@@ -599,7 +613,12 @@ export function VerifierSection({
               <StandbyLight state={v.standby_state} paperOnly={v.break_glass_only} />
               <div style={{ fontSize: 'var(--t1)', color: 'var(--ink-muted)' }}>{v.email}</div>
               {needsClaimCode(v.standby_state) && !v.break_glass_only ? (
-                <InviteControl personId={v.id} personType="verifier" name={v.name} />
+                <InviteControl
+                  personId={v.id}
+                  personType="verifier"
+                  name={v.name}
+                  email={v.email}
+                />
               ) : null}
               {needsClaimCode(v.standby_state) ? (
                 <PaperOnlyControl
@@ -619,7 +638,9 @@ export function VerifierSection({
               ) : null}
               {/* Verifiers matter most here: their notice is the one whose
                   silent loss stalls a release. */}
-              <DeliveryLine name={v.name} delivery={v.delivery} />
+              <DeliveryLine name={v.name} email={v.email} delivery={v.delivery} />
+              <ProviderRiskLine name={v.name} email={v.email} />
+              <SecondAddressControl personType="verifier" person={v} onChanged={onChange} />
               {v.fingerprint && hasClaimed(v.standby_state) ? (
                 <FingerprintControl
                   personId={v.id}

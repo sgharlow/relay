@@ -10,7 +10,7 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { CONTACT_EMAIL, CONTACT_MAILTO, ROUTED_ADDRESSES } from './contact';
+import { CONTACT_EMAIL, CONTACT_MAILTO, ROUTED_ADDRESSES, SENDER_EMAIL } from './contact';
 
 describe('the public contact address', () => {
   it('is on the product domain, not a personal mailbox', () => {
@@ -35,5 +35,25 @@ describe('the public contact address', () => {
 
   it('produces a usable mailto link', () => {
     expect(CONTACT_MAILTO).toBe(`mailto:${CONTACT_EMAIL}`);
+  });
+});
+
+/**
+ * The FROM address is now shown to owners, in the "add us to your contacts" ask
+ * that the Microsoft-junk warning ends with. A safe-sender entry for the wrong
+ * address is worse than none: the owner does the work, believes the channel is
+ * fixed, and nothing changed.
+ */
+describe('the sending address owners are told to allow', () => {
+  it('is an address that actually routes', () => {
+    expect(ROUTED_ADDRESSES).toContain(SENDER_EMAIL);
+  });
+
+  it('matches what the app actually sends from, wherever that is configured', () => {
+    const configured = process.env.RESEND_FROM_ADDRESS?.trim();
+    // Absent in a bare test environment; asserted wherever it is present, which
+    // includes any run that loads .env.local and the deployed environment.
+    if (!configured) return;
+    expect(SENDER_EMAIL).toBe(configured.toLowerCase());
   });
 });

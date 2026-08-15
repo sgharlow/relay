@@ -14,7 +14,36 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { cleanPersonName, MAX_PERSON_NAME_LENGTH, ValidationError, isUuid } from './validation';
+import {
+  cleanPersonName,
+  MAX_PERSON_NAME_LENGTH,
+  ValidationError,
+  isUuid,
+  isEmailAddress,
+} from './validation';
+
+/**
+ * ONE DEFINITION, because it was two identical ones. `lib/people/recipients.ts`
+ * and `lib/people/verifiers.ts` each carried a private `isEmail` with the same
+ * regex, and `email_secondary` was about to add a third caller. Two copies of a
+ * rule are how the two ends of a contract stop agreeing.
+ */
+describe('isEmailAddress', () => {
+  it.each(['alex@example.net', 'alex+tag@sub.example.co.uk', 'a@b.co'])('accepts %s', (v) => {
+    expect(isEmailAddress(v)).toBe(true);
+  });
+
+  it.each(['', '   ', 'alex', 'alex@', '@example.net', 'alex@example', 'a b@example.net', 'alex@ex ample.net'])(
+    'rejects %j',
+    (v) => {
+      expect(isEmailAddress(v)).toBe(false);
+    },
+  );
+
+  it.each([null, undefined, 42, {}, []])('rejects the non-string %j', (v) => {
+    expect(isEmailAddress(v)).toBe(false);
+  });
+});
 
 describe('cleanPersonName', () => {
   it('keeps an ordinary name exactly as written', () => {

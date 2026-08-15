@@ -50,3 +50,14 @@ export const CONTACT_EMAIL: (typeof ROUTED_ADDRESSES)[number] = 'hello@relaystan
 
 /** Ready-made mailto: for links. */
 export const CONTACT_MAILTO = `mailto:${CONTACT_EMAIL}`;
+
+/**
+ * The address Relay's notifications are SENT FROM — `RESEND_FROM_ADDRESS`.
+ *
+ * Stated here rather than read from the environment because it is now shown to
+ * owners in the UI: the Microsoft-junk warning ends by asking them to add this
+ * address to the contact's contacts list, and `/circle` is a client component
+ * with no access to server env. Its test asserts the two agree wherever the
+ * variable is present, so the copy cannot drift away from what actually sends.
+ */
+export const SENDER_EMAIL: (typeof ROUTED_ADDRESSES)[number] = 'relay@relaystandby.com';

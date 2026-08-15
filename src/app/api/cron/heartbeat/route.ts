@@ -14,6 +14,7 @@ import { runHeartbeatSweep, resolveElapsedGrace } from '../../../../../lib/relea
 import { ReleaseStateMachine } from '../../../../../lib/release/state-machine';
 import { recordSchedulerRun } from '../../../../../lib/release/scheduler-ledger';
 import { escalateLapsedRequests } from '../../../../../lib/release/escalation';
+import { sweepSilentVerifiers } from '../../../../../lib/release/silence-sweep';
 import { timingSafeEquals } from '../../../../../lib/http/timing-safe';
 
 async function handle(req: NextRequest): Promise<NextResponse> {
@@ -45,10 +46,27 @@ async function handle(req: NextRequest): Promise<NextResponse> {
   // running. See lib/release/escalation.ts.
   const escalated = await escalateLapsedRequests(machine);
 
+  /*
+    The other direction of the same silence. `escalateLapsedRequests` handles the
+    OWNER not answering; nothing handled the VERIFIERS not answering — which is
+    now the likelier failure, because their notice is the one whose loss stalls a
+    release and a junked notice is indistinguishable from a delivered one from
+    inside this product.
+
+    Moves no state. It sends the owner the phone numbers already in their own
+    circle and tells them to ring. See lib/release/silence-sweep.ts.
+  */
+  const silent = await sweepSilentVerifiers();
+
   // CC9: record the run so its ABSENCE is detectable by /api/health/scheduler.
   await recordSchedulerRun(summary);
 
-  return NextResponse.json({ ...summary, graceReleased, escalated: escalated.length });
+  return NextResponse.json({
+    ...summary,
+    graceReleased,
+    escalated: escalated.length,
+    silenceNotices: silent.length,
+  });
 }
 
 /** Vercel Cron invokes cron paths with GET. */

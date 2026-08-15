@@ -13,13 +13,22 @@ import { query } from '../db/connection';
 import { withOccRetry } from '../db/occ';
 import { cascadeDelete } from '../db/integrity';
 import { withdrawVerifierAttestations } from '../release/withdraw-confirmations';
-import { ValidationError, isNonEmptyString, cleanPersonName } from '../validation';
+import { ValidationError, isNonEmptyString, cleanPersonName, isEmailAddress } from '../validation';
 import { readStandbyState, type StandbyState } from './standby-state';
+import { readSecondaryAddress } from './secondary-address';
 
 export interface VerifierInput {
   name: string;
   email: string;
   phone: string | null;
+  /**
+   * A second mailbox for the notices that carry no credential — see
+   * `lib/notify/fanout.ts` for what it is and is not used for.
+   *
+   * `undefined` means the caller expressed no opinion and an update must LEAVE
+   * THE STORED VALUE ALONE; `null` means remove it. See `secondary-address.ts`.
+   */
+  email_secondary?: string | null;
 }
 
 export interface Verifier extends VerifierInput {
@@ -35,11 +44,8 @@ export interface Verifier extends VerifierInput {
   created_at: string;
 }
 
-const COLUMNS = 'id, name, email, phone, verification_status, standby_state, created_at';
-
-function isEmail(v: unknown): v is string {
-  return typeof v === 'string' && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v);
-}
+const COLUMNS =
+  'id, name, email, email_secondary, phone, verification_status, standby_state, created_at';
 
 export function validateVerifierInput(body: unknown): VerifierInput {
   if (typeof body !== 'object' || body === null) {
@@ -49,11 +55,12 @@ export function validateVerifierInput(body: unknown): VerifierInput {
   // Bounded and single-lined: this value is interpolated into mail Relay sends
   // from its own domain. See cleanPersonName.
   const name = cleanPersonName(b.name);
-  if (!isEmail(b.email)) throw new ValidationError('a valid email is required', 'email');
+  if (!isEmailAddress(b.email)) throw new ValidationError('a valid email is required', 'email');
   return {
     name,
     email: b.email,
     phone: isNonEmptyString(b.phone) ? b.phone : null,
+    email_secondary: readSecondaryAddress(b.email_secondary, b.email),
   };
 }
 
@@ -63,6 +70,7 @@ function toVerifier(row: Record<string, unknown>): Verifier {
     name: String(row.name),
     email: String(row.email),
     phone: (row.phone as string | null) ?? null,
+    email_secondary: (row.email_secondary as string | null) ?? null,
     verification_status: String(row.verification_status ?? 'pending'),
     standby_state: readStandbyState(row.standby_state),
     created_at: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
@@ -82,10 +90,10 @@ export async function listVerifiers(ownerId: string): Promise<Verifier[]> {
 export async function createVerifier(ownerId: string, input: VerifierInput): Promise<Verifier> {
   const result = await withOccRetry(() =>
     query<Record<string, unknown>>(
-      `INSERT INTO verifiers (owner_id, name, email, phone)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO verifiers (owner_id, name, email, phone, email_secondary)
+       VALUES ($1, $2, $3, $4, $5)
        RETURNING ${COLUMNS}`,
-      [ownerId, input.name, input.email, input.phone],
+      [ownerId, input.name, input.email, input.phone, input.email_secondary ?? null],
     ),
   );
   return toVerifier(result.rows[0]);
@@ -96,13 +104,24 @@ export async function updateVerifier(
   id: string,
   input: VerifierInput,
 ): Promise<Verifier | null> {
+  // Same rule as updateRecipient: a body that does not mention the second
+  // address cannot delete one. See lib/people/secondary-address.ts.
+  const touchesSecondary = input.email_secondary !== undefined;
   const result = await withOccRetry(() =>
     query<Record<string, unknown>>(
       `UPDATE verifiers
           SET name = $1, email = $2, phone = $3
+              ${touchesSecondary ? ', email_secondary = $6' : ''}
         WHERE id = $4 AND owner_id = $5
        RETURNING ${COLUMNS}`,
-      [input.name, input.email, input.phone, id, ownerId],
+      [
+        input.name,
+        input.email,
+        input.phone,
+        id,
+        ownerId,
+        ...(touchesSecondary ? [input.email_secondary] : []),
+      ],
     ),
   );
   if (result.rowCount === 0 || result.rows.length === 0) return null;

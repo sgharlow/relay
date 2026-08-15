@@ -16,6 +16,12 @@ vi.mock('../notify/notifications', () => ({
   notifyRecipientsOfRelease: vi.fn(async () => 0),
   notifyOwnerTriggerPending: vi.fn(async () => undefined),
   notifyVerifiersForTrigger: vi.fn(async () => 0),
+  toVerifierContact: (v: { id: string; name: string; email: string; email_secondary?: string | null }) => ({
+    id: v.id,
+    name: v.name,
+    email: v.email,
+    email_secondary: v.email_secondary ?? null,
+  }),
 }));
 vi.mock('../people/verifiers', () => ({
   listVerifiers: vi.fn(async () => [{ id: 'v1', name: 'Dr. Chen', email: 'chen@example.com' }]),
@@ -355,8 +361,16 @@ describe('the sweep rings the bell after it arms', () => {
     await runHeartbeatSweep({ transition } as never, { sleep: async () => {} });
 
     expect(notifyOwnerTriggerPending).toHaveBeenCalledWith('owner@example.com', 'emergency');
+    /*
+      The WHOLE contact, including `email_secondary`. This sweep is one of three
+      callers that used to rebuild it inline as `{ id, name, email }` — which
+      selected a verifier's backup address from the database and threw it away
+      one line before the send, on the path a release actually takes. The field
+      is asserted here, null and all, so dropping it fails rather than passing
+      quietly.
+    */
     expect(notifyVerifiersForTrigger).toHaveBeenCalledWith(
-      [{ id: 'v1', name: 'Dr. Chen', email: 'chen@example.com' }],
+      [{ id: 'v1', name: 'Dr. Chen', email: 'chen@example.com', email_secondary: null }],
       'emergency',
       'rs-1',
       'owner-1',

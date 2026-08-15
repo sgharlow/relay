@@ -32,7 +32,7 @@ import { writeAuditEntry } from '../audit/audit-service';
 import { graceWindowMs } from './triggers';
 import { isReversibleTrigger, type ReleaseStateMachine, type ReleaseStateRow } from './state-machine';
 import { listVerifiers } from '../people/verifiers';
-import { notifyVerifiersForTrigger } from '../notify/notifications';
+import { notifyVerifiersForTrigger, toVerifierContact } from '../notify/notifications';
 
 type Machine = Pick<ReleaseStateMachine, 'transition'>;
 
@@ -236,7 +236,7 @@ async function escalateEach(
         try {
           const verifiers = await listVerifiers(out.ownerId);
           await notifyVerifiersForTrigger(
-            verifiers.map((v) => ({ id: v.id, name: v.name, email: v.email })),
+            verifiers.map(toVerifierContact),
             out.triggerType,
             out.releaseStateId,
             out.ownerId,

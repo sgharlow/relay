@@ -29,6 +29,8 @@
 
 import { useState } from 'react';
 
+import { isMicrosoftMailbox } from '../../../../lib/notify/mailbox-provider';
+
 interface Issued {
   claimCode: string;
   claimUrl: string;
@@ -42,11 +44,18 @@ export default function InviteControl({
   personId,
   personType,
   name,
+  email,
 }: {
   personId: string;
   personType: 'recipient' | 'verifier';
   name: string;
+  /** Their address — it decides how honest the "email it" arm is allowed to be. */
+  email: string;
 }) {
+  // See lib/notify/mailbox-provider.ts. The row above already carries the full
+  // warning; what this adds is the same fact AT THE MOMENT OF THE CHOICE, which
+  // is the only moment it changes what the owner does.
+  const junkRisk = isMicrosoftMailbox(email);
   const [issued, setIssued] = useState<Issued | null>(null);
   const [picking, setPicking] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -120,7 +129,9 @@ export default function InviteControl({
           {issued.deliveryChannel === 'owner'
             ? 'Not emailed, as you chose — this code exists only here and in what you tell them.'
             : issued.emailDelivered
-              ? 'Emailed to them as well — but say it out loud if you get the chance. Email is the part that fails.'
+              ? junkRisk
+                ? '⚠️ Handed to their provider — but this is an Outlook-family address, where we have measured our mail being filed as junk. Assume it will not be seen and read the code out instead.'
+                : 'Emailed to them as well — but say it out loud if you get the chance. Email is the part that fails.'
               : '⚠️ The email did not go through. Reading it to them is now the only way they will get it.'}
         </div>
         <button
@@ -186,8 +197,16 @@ export default function InviteControl({
               {busy ? 'Working…' : 'Email it to them'}
             </button>
           </div>
-          <div style={{ fontSize: 'var(--t1)', color: 'var(--ink-muted)', marginTop: '6px' }}>
-            Telling them yourself is more reliable, and it proves it is really you.
+          <div
+            style={{
+              fontSize: 'var(--t1)',
+              color: junkRisk ? 'var(--ochre-text)' : 'var(--ink-muted)',
+              marginTop: '6px',
+            }}
+          >
+            {junkRisk
+              ? `${name} is on an Outlook-family address, where we have measured Relay's mail being filed as junk. Telling them yourself is not just more reliable here — it is the option likely to work.`
+              : 'Telling them yourself is more reliable, and it proves it is really you.'}
           </div>
         </div>
       )}
