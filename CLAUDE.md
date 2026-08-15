@@ -63,6 +63,9 @@ npm run verify:live    # the three E2E walks. NEEDS .env.local AND `npm run dev`
 npm run verify:schema  # do both DSQL regions have the tables the migrations declare?
                        # Read-only (SELECT on pg_tables). NEEDS .env.local, no server.
                        # Run it FIRST after applying a migration, and before a release.
+npm run verify:funnel  # is the G1 ad instrument alive? Drives a real browser against
+                       # production under src=qa (gate-excluded), writes nothing.
+                       # Run it daily during an ad flight — see docs/g1-ad-creatives.md.
 
 npx vitest --run lib/db/occ.test.ts          # run a single test file
 npx vitest --run -t "OCC retry"              # run tests matching a name
