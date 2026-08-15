@@ -225,6 +225,7 @@ actually *use* the thing, and each fails loudly rather than silently:
 | `route-auth.ts` | every handler establishes a principal | a session/token/secret call, or `PUBLIC_ROUTES` + reason |
 | `step-up-guard.ts` | sensitive handlers re-authenticate | `requireStepUp` / `requireStepUpOnce`, or classify it |
 | `api-reachability.ts` | no handler is unreachable | wire it, retire it, or `REACHED_FROM_OUTSIDE` + reason |
+| `fetch-routes-exist.test.ts` | the other direction — no `fetch` names a route nothing serves | spell the path the way `src/app/api` spells it |
 | `type-scale.ts` | no page invents a tenth type step | `t1`–`t9`, never a px literal |
 | `raw-color.test.ts` | hardcoded colours do not spread | the tokens in `globals.css` |
 
