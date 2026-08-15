@@ -17,7 +17,11 @@
     "gate:types": "tsc --noEmit",
     "gate:lint": "eslint . --max-warnings=0",
     "gate:test": "vitest --run",
-    "gate:build": "next build"
+    "gate:build": "next build",
+    "verify:live": "npm run verify:stepup && npm run verify:multiowner && npm run verify:ui",
+    "verify:stepup": "npx tsx --env-file=.env.local scripts/e2e-stepup.ts",
+    "verify:multiowner": "npx tsx --env-file=.env.local scripts/e2e-multiowner.ts",
+    "verify:ui": "npx tsx --env-file=.env.local scripts/e2e-ui.ts"
   },
   "dependencies": {
     "@aws-sdk/client-kms": "3.1072.0",

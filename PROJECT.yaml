@@ -578,12 +578,20 @@ cross_cutting:
          evidence: ".github/workflows/scheduler-monitor.yml, both transitions proven 2026-08-08" }
   CC8: { name: "accessibility as a functional requirement", status: live,
          evidence: "RE-MEASURED 2026-08-15 AFTER THE TYPE-SCALE MIGRATION: 0
-           serious/critical across 26 pages — 18 signed-out AND all 8 owner-mode
-           screens. That is the fuller number; the 21 below is the 2026-08-13
-           run and is superseded. Owner mode had silently stopped being audited
-           because scripts/a11y-audit.mjs had `demo@relay.test` hardcoded and
-           that account no longer exists; it is now A11Y_OWNER_EMAIL, pointed at
-           a disposable owner (scripts/disposable-owner.ts).
+           serious/critical across 34 pages — 18 signed-out, and all 8 owner-mode
+           screens at BOTH 1280 and 390. That is the fuller number; the 21 below
+           is the 2026-08-13 run and is superseded. Owner mode had silently
+           stopped being audited because scripts/a11y-audit.mjs had
+           `demo@relay.test` hardcoded and that account no longer exists; it is
+           now A11Y_OWNER_EMAIL, pointed at a disposable owner
+           (scripts/disposable-owner.ts).
+           OWNER MODE WAS DESKTOP-ONLY UNTIL THIS RUN, and a 1280 viewport
+           cannot see the two defect classes that actually bite: horizontal
+           overflow, and the touch-target rule in globals.css — which applies
+           under `(max-width: 720px), (pointer: coarse)` and therefore does not
+           even RUN in the desktop pass. That rule laid an access-mode option out
+           sideways the same day while its desktop render was perfect. A pass
+           that never triggers a rule cannot test what the rule does.
            ---- superseded 2026-08-13 record ----
            axe clean across 21 pages including access mode and a
            390x844 viewport (2026-08-13); gated in CI for the signed-out half by

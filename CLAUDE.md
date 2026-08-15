@@ -58,6 +58,9 @@ npm test               # vitest --run (one-shot, the default)
 npm run test:watch     # vitest watch mode
 npm run test:coverage  # vitest --coverage (v8; thresholds 80/80/70/80 lines/fn/branches/stmts)
 
+npm run gate           # types + lint + test + build. No database, no server. CI runs this.
+npm run verify:live    # the three E2E walks. NEEDS .env.local AND `npm run dev` running.
+
 npx vitest --run lib/db/occ.test.ts          # run a single test file
 npx vitest --run -t "OCC retry"              # run tests matching a name
 npx tsx db/migrations/migrate.ts             # apply SQL migrations (needs DSQL env vars)
@@ -144,6 +147,28 @@ These cut across multiple files and are easy to break. Preserve them.
   `entry_hash = SHA-256(prev_hash || canonicalJson(entry))`, first entry `prev_hash = '0'*64`.
   INSERT-only, never UPDATE/DELETE. Audit writes **block** the triggering operation if they fail —
   by design, do not make them best-effort.
+
+## Two gates, and why only one of them is in CI
+
+`npm run gate` is types + lint + test + build. It needs no credentials and no server, so CI runs it
+on every push. **`npm run verify:live` is the other half**: three walks that drive the running app —
+`e2e-stepup` (17 assertions over HTTP), `e2e-multiowner` (14), `e2e-ui` (19, in a real browser).
+Start `npm run dev` first.
+
+**It is deliberately NOT in CI.** These walks create and delete real accounts, and `.env.local`
+points at the **production** cluster because Relay has no dev database. A job doing that on every
+pull request would be writing to customers' data to check a diff — and the rows it forgot would be
+the ones nobody was watching (an early run of the multi-owner walk left four behind; that is the
+argument, not a hypothetical). Closing this properly needs a separate test cluster: an
+infrastructure change with a cost, and Steve's call.
+
+So it is one command a person runs before a release. Each walk asserts the layer the others cannot:
+the server refusing correctly, and the screen a person actually meets. The UI walk exists because
+the HTTP ones passed while the picker was laying itself out sideways on a phone.
+
+Accessibility is a third: `node scripts/a11y-audit.mjs` with `A11Y_OWNER_EMAIL` set to an account
+that exists (`scripts/disposable-owner.ts create` makes one). CI covers the signed-out half only —
+it has no database credentials to mint an owner session, and the script says so on every run.
 
 ## The structural checks in `lib/ops/` — read these before adding a route or a screen
 

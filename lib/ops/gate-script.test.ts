@@ -59,3 +59,52 @@ describe('the single-command gate', () => {
     expect(pkg.scripts.gate).toContain('gate:build');
   });
 });
+
+/**
+ * The second gate: the one that needs a database and a running server.
+ *
+ * WHY IT IS SEPARATE FROM `gate` AND NOT IN CI. These walks CREATE AND DELETE
+ * REAL ROWS, and `.env.local` points at the production cluster because there is
+ * no other one — Relay has no dev database. A job that did this on every push
+ * would be writing to the customers' database to check a pull request, and the
+ * accounts it forgot to clean up would be the ones nobody was watching. (An
+ * early run of the multi-owner walk left four behind, which is precisely the
+ * argument.)
+ *
+ * The honest resolution is not to smuggle it into CI. It is to make it ONE
+ * command a person runs deliberately before a release, so "run the E2E walks"
+ * stops being four things somebody has to remember, and to say plainly here
+ * why the pipeline does not do it. Closing this properly needs a separate test
+ * cluster, which is an infrastructure change with a cost attached and is
+ * Steve's call, not a thing to arrange quietly inside a test file.
+ */
+describe('the live-verification gate', () => {
+  it('exists and chains all three walks', () => {
+    const live = pkg.scripts['verify:live'];
+    expect(live, 'npm run verify:live is gone').toBeTruthy();
+    for (const step of ['verify:stepup', 'verify:multiowner', 'verify:ui']) {
+      expect(live, `${step} dropped out of the live gate`).toContain(step);
+    }
+  });
+
+  it('stops at the first failure, for the same reason `gate` does', () => {
+    expect(pkg.scripts['verify:live']).not.toContain(';');
+    expect(pkg.scripts['verify:live'].split('&&').length).toBe(3);
+  });
+
+  it('each step points at the real harness', () => {
+    expect(pkg.scripts['verify:stepup']).toContain('scripts/e2e-stepup.ts');
+    expect(pkg.scripts['verify:multiowner']).toContain('scripts/e2e-multiowner.ts');
+    expect(pkg.scripts['verify:ui']).toContain('scripts/e2e-ui.ts');
+  });
+
+  /*
+    It must NOT be folded into `gate`. `gate` is the fast, credential-free check
+    that CI runs on every push; adding a walk that needs DSQL and a live server
+    would make the ordinary gate fail for anyone without production credentials
+    — which is everyone except the maintainer, and every CI runner.
+  */
+  it('is not folded into the credential-free gate', () => {
+    expect(pkg.scripts.gate).not.toContain('verify:');
+  });
+});

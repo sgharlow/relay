@@ -204,10 +204,40 @@ async function audit(ctx, path, label) {
   await p.close();
 }
 
+/*
+  Owner mode on a PHONE as well as a desktop.
+
+  🔴 IT WAS AUDITED AT 1280 ONLY, and a 1280px viewport cannot see the two
+  defect classes that actually bite: horizontal overflow, and the touch-target
+  rule in globals.css — which applies under `(max-width: 720px), (pointer:
+  coarse)` and therefore does not even RUN in the desktop pass. That rule turns
+  every button into `inline-flex`, and on 2026-08-15 it silently laid an option
+  out sideways on the access picker; the desktop render of the same component
+  was perfect. A pass that never triggers a rule cannot test what the rule does.
+
+  Owner mode is written as dense desktop-first, and its audience is still the
+  fifty-something adult child setting this up — often on the phone in their
+  hand. Both viewports, or the claim is only about one of them.
+*/
+const ownerPhoneCtx = ownerCtx
+  ? await (async () => {
+      const value = (await ownerCtx.cookies()).find((c) => c.name.includes('session-token'))?.value;
+      const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+      if (value) {
+        await ctx.addCookies([
+          { name: 'next-auth.session-token', value, domain: 'localhost', path: '/', httpOnly: true, sameSite: 'Lax' },
+        ]);
+      }
+      return ctx;
+    })()
+  : null;
+
 for (const path of PUBLIC_PAGES) await audit(publicCtx, path, 'signed-out');
 if (ownerCtx) for (const path of OWNER_PAGES) await audit(ownerCtx, path, 'owner');
+if (ownerPhoneCtx) for (const path of OWNER_PAGES) await audit(ownerPhoneCtx, path, 'owner:390');
 
-const expected = PUBLIC_PAGES.length + (ownerCtx ? OWNER_PAGES.length : 0);
+const expected =
+  PUBLIC_PAGES.length + (ownerCtx ? OWNER_PAGES.length : 0) + (ownerPhoneCtx ? OWNER_PAGES.length : 0);
 console.log(`\n${total} serious/critical violation type(s) across ${audited} pages`);
 
 if (ownerSkipReason) {
