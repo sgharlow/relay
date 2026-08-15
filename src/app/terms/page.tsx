@@ -161,6 +161,31 @@ export default function TermsPage() {
             is real. If you stand by for more than one person, none of them can learn about the
             others.
           </p>
+          {/*
+            Added 2026-08-15, ahead of A2P 10DLC registration, and placed HERE
+            rather than in a section of its own because this is the page's one
+            section addressed to the standby person rather than the owner — they
+            are the only people we would ever text.
+
+            Note what it does NOT say. This section already describes a code
+            being "read out, texted, or handed to you" — that is the OWNER
+            texting from their own phone, which is untouched by any of this and
+            deliberately still allowed. The distinction between somebody else
+            texting you and US texting you is the whole point, and carriers care
+            about exactly that line.
+          */}
+          <p className="mt-2">
+            If you choose to, you can give us a mobile number and we will text you when something
+            genuinely needs you — an emergency being raised, or a reminder that one is still waiting.{' '}
+            <strong className="font-semibold text-ink">
+              You turn this on yourself and nobody can turn it on for you
+            </strong>
+            , not even the person who named you; a number they typed in is there to help{' '}
+            <em>them</em> reach you, never used by us for texts. Reply STOP to any message and it
+            ends, or HELP to reach us. Standard message and data rates apply, and how often you hear
+            from us depends entirely on what happens. As with email, we will never text you a link
+            that signs you in.
+          </p>
         </section>
 
         <section>

@@ -106,6 +106,32 @@ export default function PrivacyPage() {
             conditions you set are met.
           </p>
           {/*
+            🔴 THE CONSENT HAS TO COME FROM THE SUBSCRIBER, NOT FROM YOU.
+            Added 2026-08-15, ahead of A2P 10DLC registration. The list above
+            says we store "the names, emails and phone numbers of people you
+            designate" — so a number can arrive here typed by somebody else.
+            Carriers require SMS consent from the person who owns the handset,
+            and it is the right rule anyway: being named by a third party is not
+            agreement to be texted by us.
+
+            So the sentence below is load-bearing rather than decorative. Any
+            future opt-in screen must read the number the PERSON entered while
+            signed in, never the one on the roster row, or this page becomes
+            false and the campaign becomes non-compliant in the same stroke.
+          */}
+          <p className="mt-2">
+            <strong className="font-semibold text-ink">Text messages.</strong> We only text someone
+            who gave us a mobile number themselves, from inside their own signed-in account, with the
+            box ticked. It is off unless chosen, and can be switched off there or by replying STOP.{' '}
+            <strong className="font-semibold text-ink">
+              A number somebody else entered for you is never used for text messages
+            </strong>{' '}
+            — only one you added yourself. We use it for a single thing: telling you something needs
+            your attention and that you should sign in. Never marketing, and never a code, a link, or
+            anything else worth intercepting. Message and data rates may apply and message frequency
+            varies. We do not sell, rent or share these numbers.
+          </p>
+          {/*
             Sharpened 2026-08-12. This said a trusted contact is "never shown
             your vault, before or after", which is not precise: at the moment
             they are asked, they are shown how many items and which categories,
