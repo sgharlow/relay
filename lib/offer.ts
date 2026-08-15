@@ -26,6 +26,42 @@
 
 import { CONTACT_EMAIL } from './contact';
 
+/**
+ * The yearly price, in dollars. RATIFIED by Steve 2026-07-03 against the
+ * Everplans anchor (`docs/g1-wtp-test-design.md`), and it is the number G1 is
+ * measuring willingness to pay against.
+ *
+ * 🔴 IT LIVES HERE NOW BECAUSE IT WAS WRITTEN DOWN IN NINE PLACES, one of them
+ * a SQL literal. `src/app/api/stripe/webhook/route.ts` inserted `11900` into
+ * `subscriptions.price_cents` directly in the statement, so the row recording
+ * what a customer paid was a constant rather than an observation.
+ *
+ * That was days away from mattering. `PriceCard.tsx` reads
+ * `NEXT_PUBLIC_PRICE_YEARLY_USD` at runtime on purpose — "Runtime-configurable
+ * so a price test does not require a deploy (J1-R8)" — and the G1 gate is
+ * literally "click-to-intent AT A REAL PRICE POINT". Showing $99, charging $99
+ * and recording $119 was not a hypothetical drift; it was the intended
+ * operation meeting a hardcoded number.
+ *
+ * The webhook no longer uses this for a completed charge at all: it records
+ * what Stripe says it charged. This remains the definition for everything the
+ * product SAYS, and the fallback when Stripe sends no amount.
+ *
+ * This file already claimed the job — "The commercial offer, in one place."
+ * `src/app/caregivers/content.ts` re-exports it so no existing import changed.
+ */
+export const PRICE_YEARLY_USD = 119;
+
+/** The same price in cents, which is the unit Stripe and `price_cents` use. */
+export const PRICE_YEARLY_CENTS = PRICE_YEARLY_USD * 100;
+
+/**
+ * The price as it is written in copy. Exists so prose interpolates one value
+ * rather than embedding a `$119` that reads as ordinary text and is therefore
+ * invisible to every search for the number.
+ */
+export const PRICE_YEARLY_LABEL = `$${PRICE_YEARLY_USD}`;
+
 /** Days after a charge during which that charge is refundable in full. */
 export const REFUND_WINDOW_DAYS = 30;
 

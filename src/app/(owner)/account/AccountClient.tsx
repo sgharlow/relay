@@ -20,6 +20,7 @@
 import { useRouter } from 'next/navigation';
 import PasskeySection from './PasskeySection';
 import StepUpPrompt, { type StepUpFactors } from './StepUpPrompt';
+import { PRICE_YEARLY_LABEL } from '../../../../lib/offer';
 import { useCallback, useEffect, useState } from 'react';
 
 import { CryptoService, base64ToBytes, unpackIvCiphertext } from '../../../../lib/crypto/crypto-service';
@@ -374,7 +375,7 @@ export default function AccountClient() {
       <section className="rounded border border-rule bg-paper-raised p-5">
         <h2 className="text-t5 font-semibold text-ink">Subscription and billing</h2>
         <p className="mt-2 text-t2 leading-relaxed text-muted">
-          Relay is $119 a year and renews automatically until you cancel. You can cancel at any
+          Relay is {PRICE_YEARLY_LABEL} a year and renews automatically until you cancel. You can cancel at any
           time from this page. Nothing in your vault is deleted when a subscription ends — it stays
           exactly as it is, and the free limits apply only to adding more.
         </p>

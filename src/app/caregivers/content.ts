@@ -11,7 +11,16 @@
  * Feature: relay-g1-wtp (post-H0-disposition; ships only after the verdict)
  */
 
-export const PRICE_YEARLY_USD = 119;
+/*
+  Re-exported, not redeclared. The definition moved to `lib/offer.ts` on
+  2026-08-15 — the file that already said "The commercial offer, in one place" —
+  because this number had been written down in nine places, one of them a SQL
+  literal in the Stripe webhook. Every existing `import { PRICE_YEARLY_USD }
+  from '.../content'` keeps working; there is simply only one number now.
+*/
+import { PRICE_YEARLY_USD } from '../../../lib/offer';
+
+export { PRICE_YEARLY_USD };
 
 export const ANCHOR = { name: 'Everplans', priceYearlyUsd: 99.99 } as const;
 

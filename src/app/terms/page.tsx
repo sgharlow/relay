@@ -22,7 +22,7 @@
  */
 
 import { CONTACT_EMAIL, CONTACT_MAILTO } from '../../../lib/contact';
-import { GUARANTEE_LABEL, REFUND_POLICY } from '../../../lib/offer';
+import { GUARANTEE_LABEL, PRICE_YEARLY_LABEL, REFUND_POLICY } from '../../../lib/offer';
 
 export const metadata = {
   title: 'Terms · Relay',
@@ -191,13 +191,13 @@ export default function TermsPage() {
         <section>
           <h2 className="text-t5 font-semibold text-ink">Payment and renewal</h2>
           <p className="mt-2">
-            Relay costs $119 per year in US dollars for a vault of your own. You are never charged
+            Relay costs {PRICE_YEARLY_LABEL} per year in US dollars for a vault of your own. You are never charged
             without going through checkout yourself, and there is a free tier you can stay on
             indefinitely. Standby accounts, described above, are free and are not part of this.
           </p>
           <p className="mt-2">
             <strong className="font-semibold text-ink">
-              A subscription renews automatically every year at $119
+              A subscription renews automatically every year at {PRICE_YEARLY_LABEL}
             </strong>{' '}
             until you cancel it, and the card you paid with is charged on each renewal date.
             Payments are processed by Stripe; we never see or store your card details.

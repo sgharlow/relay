@@ -22,14 +22,40 @@ import type Stripe from 'stripe';
 import { getStripe } from '../../../../../lib/billing/stripe';
 import { query } from '../../../../../lib/db/connection';
 import { writeAuditEntry } from '../../../../../lib/audit/audit-service';
+import { PRICE_YEARLY_CENTS } from '../../../../../lib/offer';
 
 /** Stripe needs the byte-exact body; Next must not pre-parse it. */
 export const dynamic = 'force-dynamic';
+
+/**
+ * What Stripe says it charged, in cents.
+ *
+ * 🔴 THIS USED TO BE THE LITERAL `11900` INSIDE THE INSERT, which made the row
+ * recording a payment a restatement of the list price rather than an
+ * observation of the payment. `PriceCard.tsx` reads a runtime price override on
+ * purpose — "so a price test does not require a deploy (J1-R8)" — and G1's gate
+ * is "click-to-intent AT A REAL PRICE POINT", so showing $99, charging $99 and
+ * recording $119 was the intended operation meeting a hardcoded number.
+ *
+ * Stripe is the authority on what moved, so the row records Stripe. This is the
+ * same move the status handling below already makes: read the truth at handling
+ * time instead of trusting something we carried in.
+ */
+function chargedCents(event: Stripe.Event): number | null {
+  const o = event.data.object as Partial<Stripe.Checkout.Session> & Partial<Stripe.Subscription>;
+
+  if (typeof o.amount_total === 'number') return o.amount_total;
+
+  const unit = o.items?.data?.[0]?.price?.unit_amount;
+  return typeof unit === 'number' ? unit : null;
+}
 
 async function upsertSubscription(params: {
   ownerId: string;
   tier: 'free' | 'paid';
   status: 'active' | 'cancelled';
+  /** What Stripe charged. Falls back to the list price only when absent. */
+  priceCents?: number | null;
   stripeCustomerId?: string | null;
   stripeSubscriptionId?: string | null;
   currentPeriodEnd?: string | null;
@@ -62,11 +88,13 @@ async function upsertSubscription(params: {
   await query(
     `INSERT INTO subscriptions
        (owner_id, tier, status, price_cents, stripe_customer_id, stripe_subscription_id, current_period_end)
-     VALUES ($1, $2, $3, 11900, $4, $5, $6)`,
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
     [
       params.ownerId,
       params.tier,
       params.status,
+      // The list price is the FALLBACK, not the record. See chargedCents().
+      params.priceCents ?? PRICE_YEARLY_CENTS,
       params.stripeCustomerId ?? null,
       params.stripeSubscriptionId ?? null,
       params.currentPeriodEnd ?? null,
@@ -151,6 +179,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           ownerId,
           tier: 'paid',
           status: 'active',
+          priceCents: chargedCents(event),
           stripeCustomerId: typeof s.customer === 'string' ? s.customer : s.customer?.id,
           stripeSubscriptionId: typeof s.subscription === 'string' ? s.subscription : s.subscription?.id,
         });
@@ -196,6 +225,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           ownerId,
           tier: active ? 'paid' : 'free',
           status: active ? 'active' : 'cancelled',
+          priceCents: chargedCents(event),
           stripeSubscriptionId: sub.id,
         });
 
