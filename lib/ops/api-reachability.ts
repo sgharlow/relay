@@ -51,6 +51,11 @@ export const REACHED_FROM_OUTSIDE: Record<string, string> = {
   '/api/cron/heartbeat': 'Vercel Cron (vercel.json), hourly, bearer CRON_SECRET.',
   '/api/health/scheduler':
     'Probed by .github/workflows/scheduler-monitor.yml — the dead-man’s switch.',
+  '/api/health/delivery-webhook':
+    'Probed daily by .github/workflows/delivery-webhook-monitor.yml — the same ' +
+    'shape of switch, for the mail telemetry rather than the cron. Without it, ' +
+    'Resend silently ceasing to deliver events leaves /circle blind about every ' +
+    'address while looking exactly like a quiet week.',
   '/api/stripe/webhook': 'Stripe, signature-verified.',
   '/api/incident': 'Posted to by the error boundary, from a page that has already failed.',
   '/api/resend/webhook':

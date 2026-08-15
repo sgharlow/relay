@@ -1,0 +1,82 @@
+# Dead-man's switch for the mail-delivery telemetry.
+#
+# WHAT IT PROTECTS. /circle can only tell an owner what became of a message
+# because Resend pushes events to /api/resend/webhook. That endpoint can be
+# deleted in a dashboard, or its signing secret rotated, and nothing in the
+# application would notice: events stop, every address falls back to `unknown`,
+# and the circle screen goes back to saying nothing at all — which reads to an
+# owner as "no news" rather than "we cannot see". Silent blindness is the worst
+# way a monitoring surface can fail, and this product has been caught by that
+# shape more than once.
+#
+# WHY GITHUB ACTIONS. Same reasoning as scheduler-monitor.yml: a watchdog must be
+# able to outlive the thing it watches. Hosting it on the same platform as the
+# app would let one outage take out both, and silence would look like health.
+#
+# WHY DAILY, NOT EVERY 30 MINUTES. The endpoint answers "have we EVER heard
+# anything", which is a slow-moving fact — deliberately, because Relay sends
+# rarely by design and a freshness alarm would fire on ordinary quiet weeks and
+# be muted inside a fortnight. See lib/notify/webhook-health.ts. Sampling a
+# slow fact quickly buys nothing and spends attention.
+#
+# Feature: relay-standby
+
+name: Delivery webhook monitor
+
+on:
+  schedule:
+    - cron: '17 8 * * *' # daily, off the hour so it does not collide with everything else
+  workflow_dispatch: {} # so the alarm can be proven to work on demand
+
+concurrency:
+  group: delivery-webhook-monitor
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe /api/health/delivery-webhook
+        env:
+          HEALTH_URL: https://relaystandby.com/api/health/delivery-webhook
+        run: |
+          set -uo pipefail
+
+          # Two attempts, 30s apart — a single failure is as likely to be a
+          # transient blip as a dead webhook, and a monitor that cries wolf gets
+          # muted, which is the failure this exists to prevent.
+          for attempt in 1 2; do
+            body=$(curl -sS --max-time 20 -w '\n%{http_code}' "$HEALTH_URL" || echo -e '\n000')
+            code=$(printf '%s' "$body" | tail -n1)
+            payload=$(printf '%s' "$body" | sed '$d')
+
+            # Truncated: a non-200 from Vercel is a full HTML error page, and
+            # dumping it buries the one line that matters.
+            echo "attempt $attempt -> HTTP $code"
+            printf '%s\n' "$payload" | head -c 400
+            echo
+
+            if [ "$code" = "200" ]; then
+              echo "::notice::Delivery telemetry alive."
+              exit 0
+            fi
+
+            if [ "$attempt" = "1" ]; then
+              echo "Retrying in 30s before alarming..."
+              sleep 30
+            fi
+          done
+
+          echo "::error::No delivery event has EVER arrived, or the endpoint is unreachable (HTTP $code)."
+          echo "Resend is not delivering webhook events, so /circle cannot report what"
+          echo "happened to any message — it renders nothing, which an owner reads as"
+          echo "'no news' rather than 'we cannot see'."
+          echo ""
+          echo "Check, in order:"
+          echo "  1. Resend dashboard -> Webhooks: does the endpoint exist and point at"
+          echo "     https://relaystandby.com/api/resend/webhook ?"
+          echo "  2. Does RESEND_WEBHOOK_SECRET in Vercel still match the endpoint's"
+          echo "     signing secret? A rotation there silently drops every event."
+          echo "  3. npx tsx --env-file=.env.local scripts/verify-delivery-webhook.ts <your-address>"
+          exit 1
