@@ -14,7 +14,7 @@
  * Feature: relay-h0-mvp
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 
 vi.mock('../notify/email', () => ({ sendEmailBestEffort: vi.fn(async () => true) }));
@@ -33,6 +33,13 @@ beforeEach(() => {
   vi.clearAllMocks();
   _resetGuessWatchForTesting();
   process.env.OPS_ALERT_ADDRESS = 'ops@example.com';
+  // Says which environment these assert. Ops alerting is gated on it since
+  // 2026-08-15 (see lib/ops/alert-address.ts) and under vitest NODE_ENV is
+  // 'test' — positively not production, and correctly silent.
+  vi.stubEnv('VERCEL_ENV', 'production');
+});
+afterEach(() => {
+  vi.unstubAllEnvs();
 });
 
 describe('counting', () => {

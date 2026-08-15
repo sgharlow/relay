@@ -13,7 +13,7 @@
  * healthy day looks like. That is why this is pinned rather than trusted.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { opsAlertAddress } from './alert-address';
 
@@ -25,12 +25,17 @@ beforeEach(() => {
     saved[k] = process.env[k];
     delete process.env[k];
   }
+  // Every test below asserts where a PRODUCTION alert goes, so each one says so
+  // rather than inheriting whatever the runner's environment happens to be.
+  // Under vitest NODE_ENV is 'test', which is now positively non-production.
+  vi.stubEnv('VERCEL_ENV', 'production');
 });
 afterEach(() => {
   for (const k of KEYS) {
     if (saved[k] === undefined) delete process.env[k];
     else process.env[k] = saved[k];
   }
+  vi.unstubAllEnvs();
 });
 
 describe('opsAlertAddress', () => {
@@ -73,6 +78,80 @@ describe('opsAlertAddress', () => {
 });
 
 /*
+  🔴 THE GUARD ABOVE WAS NEVER AN ENVIRONMENT GUARD. On 2026-08-15 a `next dev`
+  server on a laptop emailed hello@relaystandby.com to report that "a request
+  failed in production", with a stack trace whose every frame read
+  C:\Users\...\.next\dev\server. Nothing had failed in production. The operator
+  was told to go read Vercel logs that would never contain it.
+
+  The reason is one assumption in this file's own docstring: "Returns undefined
+  when nothing is configured — local and preview environments must not try to
+  mail anyone." That sentence silently equates *unconfigured* with *not
+  production*, and in THIS repo the two are opposites. `.env.local` is a full
+  production env file — CLAUDE.md says so outright, because Relay has no dev
+  database — so the laptop had RESEND_REPLY_TO_ADDRESS, a live RESEND_API_KEY
+  and the production cluster. The one machine the guard was written to stop was
+  the one machine that satisfied every condition for sending.
+
+  The old test only ever proved the unconfigured case, then described itself as
+  covering "local and preview". A check that measures config-absence and reports
+  environment-safety is the same failure this repo has now recorded four times.
+
+  So the environment is decided HERE, once, structurally — not by asking every
+  caller to remember. The direction is deliberately fail-safe: silence requires
+  POSITIVE evidence of a non-production process, and anything unrecognised still
+  sends. Silencing the ops channel by accident is strictly worse than the noise
+  this closes, because a channel that has gone quiet looks exactly like a
+  healthy one.
+*/
+describe('the environment decides whether an alert may be sent at all', () => {
+  it('sends nothing from a local dev server, however well configured it is', () => {
+    // Today's shape, exactly: the full production env file on a laptop.
+    vi.stubEnv('VERCEL_ENV', undefined);
+    vi.stubEnv('NODE_ENV', 'development');
+    process.env.OPS_ALERT_ADDRESS = 'ops@example.com';
+    process.env.RESEND_REPLY_TO_ADDRESS = 'hello@relaystandby.com';
+
+    expect(opsAlertAddress()).toBeUndefined();
+    expect(opsAlertAddress({ fallbackToReplyTo: true })).toBeUndefined();
+  });
+
+  it('sends nothing from a preview deployment', () => {
+    // A preview inherits production's environment variables on Vercel, so it is
+    // configured to mail the real operator inbox about a branch nobody shipped.
+    vi.stubEnv('VERCEL_ENV', 'preview');
+    process.env.OPS_ALERT_ADDRESS = 'ops@example.com';
+
+    expect(opsAlertAddress()).toBeUndefined();
+  });
+
+  it('sends from production, which is the whole point', () => {
+    vi.stubEnv('VERCEL_ENV', 'production');
+    process.env.OPS_ALERT_ADDRESS = 'ops@example.com';
+
+    expect(opsAlertAddress()).toBe('ops@example.com');
+  });
+
+  /*
+    The fail-safe direction, and the reason this is not written as
+    `if (VERCEL_ENV !== 'production') return undefined`.
+
+    VERCEL_ENV is a system variable that a project setting can stop exposing.
+    Gate on its PRESENCE and the day it goes missing is the day every ops alert
+    stops, invisibly, with no failure to notice — this file's docstring already
+    warns that a monitor needing a variable before it works is a monitor that is
+    silently off. So an unrecognised environment sends.
+  */
+  it('still alerts when VERCEL_ENV is missing but the build is a production one', () => {
+    vi.stubEnv('VERCEL_ENV', undefined);
+    vi.stubEnv('NODE_ENV', 'production');
+    process.env.OPS_ALERT_ADDRESS = 'ops@example.com';
+
+    expect(opsAlertAddress()).toBe('ops@example.com');
+  });
+});
+
+/*
   The structural half: nothing may resolve this address on its own again. Three
   independent readings is what allowed one of them to be wrong for months.
 */
@@ -92,5 +171,35 @@ describe('the address is resolved in exactly one place', () => {
 
     expect(offenders, `these resolve the alert address themselves:\n${offenders.join('\n')}`)
       .toEqual([]);
+  });
+
+  /*
+    The same argument, applied to the other half of the decision.
+
+    "Is this production?" is now load-bearing: get it wrong in one direction and
+    a laptop mails the operator, get it wrong in the other and the channel goes
+    quiet with nobody noticing. That is precisely the kind of question that must
+    have one answer, for the reason the block above exists — three independent
+    readings of OPS_ALERT_ADDRESS is what let one of them be wrong for months.
+
+    A new ops module reaching for VERCEL_ENV itself is that drift starting over,
+    so it fails here instead of in an inbox.
+  */
+  it('no ops module decides for itself whether it is running in production', async () => {
+    const { readFileSync, readdirSync } = await import('node:fs');
+    const offenders = readdirSync('lib/ops')
+      .filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts') && f !== 'alert-address.ts')
+      .filter((f) => {
+        const code = readFileSync(`lib/ops/${f}`, 'utf8')
+          .replace(/\/\*[\s\S]*?\*\//g, '')
+          .replace(/^[ \t]*\/\/.*$/gm, '');
+        return /process\.env\.(VERCEL_ENV|NODE_ENV)/.test(code);
+      });
+
+    expect(
+      offenders,
+      `these decide the environment themselves instead of using ` +
+        `alertEnvironmentLabel() / opsAlertAddress():\n${offenders.join('\n')}`,
+    ).toEqual([]);
   });
 });
