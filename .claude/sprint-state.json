@@ -125,5 +125,95 @@
     "dsqlDivergence": "GRANT USAGE ON SCHEMA public -> feature not supported on system entity (0A000); public is a system entity",
     "notYetVerified": "npm run verify:live has NOT been re-run under relay_dev - recommended gate before phase 3",
     "housekeeping": ".relay-dev-key.json (gitignored) holds the laptop key; move to 1Password and delete"
+  },
+  "sprint2": {
+    "scope": "unblock the advertising",
+    "branch": "sprint/2026-08-15-2",
+    "iterationsUsed": 4,
+    "iterationCap": 5,
+    "backlogSource": [
+      "docs/g1-launch-checklist.md (step 8 the only open item)",
+      "docs/g1-ad-creatives.md"
+    ],
+    "backlogInferred": false,
+    "verdict": "Engineering was not the blocker and is now closed. Critical path is step 8 - Steve's card sitting.",
+    "baseline": {
+      "start": "2333 passed, 1 skipped",
+      "end": "2363 passed, 1 skipped",
+      "newlySkipped": 0
+    },
+    "shipped": [
+      {
+        "id": "AD-1",
+        "commit": "a829dbe",
+        "title": "npm run verify:funnel - repeatable live instrument check",
+        "proven": "7/7 live on production; planted event-name change fails 3/7 exit 1; src guard proven with base URL on a dead port",
+        "note": "first version was WRONG - asserted on the network POST, which Vercel suppresses for automation (navigator.webdriver). Now reads window.vaq."
+      },
+      {
+        "id": "AD-2",
+        "commit": "72fca74",
+        "title": "ad creatives checked against the product and themselves",
+        "proven": "no current defect; planted wrong count, overflowing headline and stale $129 all caught"
+      },
+      {
+        "id": "AD-3",
+        "commit": "42719db",
+        "title": "verify:funnel wired into daily rhythm + pre-flight gate; verify:* must be documented",
+        "proven": "planted verify:planted script fails the guard"
+      },
+      {
+        "id": "AD-4",
+        "commit": "1600695",
+        "title": "ad image palette had drifted off the product",
+        "proven": "failed on the real #f59e0b before the fix, on a planted #ff00ff after",
+        "note": "generating the images first would have produced 5 dark creatives for a light landing page"
+      }
+    ],
+    "liveEvidence": {
+      "caregiver_qualified": "{\"src\":\"qa\"}",
+      "caregiver_intent": "{\"src\":\"qa\",\"cta\":\"hero\"}",
+      "landingPalette": "rgb(247,244,238) paper / rgb(31,27,22) ink - warm and LIGHT",
+      "productionCommit": "ff696dc (master); no sprint work deployed"
+    },
+    "checkedAndNotDefects": [
+      "honeypot correctly hidden (aria-hidden + tabIndex -1 + offscreen)",
+      "CTA ?src=hero does not clobber the channel - sessionStorage holds it, hero becomes the cta",
+      "reddit-ads / meta-ads already pinned as gate-qualifying in content.test.ts"
+    ],
+    "blocked": [
+      {
+        "id": "step-8",
+        "title": "Launch the paid lanes",
+        "category": "human-send by design",
+        "owner": "steve",
+        "need": "a ~45 minute sitting; card entry and submit are Steve-only per the co-pilot contract",
+        "deadline": "submit by ~2026-08-26 for R1 serving by ~2026-08-28; gate due 2026-10-02",
+        "engineeringBlockers": "none - destination live, instrument verified, copy fits, src values qualify"
+      }
+    ],
+    "deferred": [
+      {
+        "id": "D5",
+        "title": "Decide dark vs warm ad art direction",
+        "note": "Steve's call; both answers written into PROMPTS.md"
+      },
+      {
+        "id": "D6",
+        "title": "Generate the 7 image assets",
+        "score": 4,
+        "note": "needs Gemini; blocks only the Meta lane"
+      },
+      {
+        "id": "D7",
+        "title": "opengraph-image.tsx still on the retired dark palette",
+        "score": 4
+      },
+      {
+        "id": "D8",
+        "title": "$119 restated in ~6 UI files and hardcoded as 11900 in the Stripe webhook",
+        "score": 6
+      }
+    ]
   }
 }
