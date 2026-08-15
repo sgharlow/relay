@@ -2,7 +2,7 @@
   "sprint": "2026-08-15",
   "branch": "sprint/2026-08-15-1",
   "baseCommit": "ff696dc6949dde62c825e8d1a1fa2a331addfb6f",
-  "iterationsUsed": 3,
+  "iterationsUsed": 4,
   "iterationCap": 5,
   "stoppedBecause": "scored queue exhausted; remaining items are decision-needed or infeasible as scoped",
   "backlogSource": [
@@ -11,8 +11,19 @@
   ],
   "backlogInferred": false,
   "baseline": {
-    "start": { "types": "green", "lint": "green", "build": "green", "tests": "2302 passed, 1 skipped (2303)" },
-    "end": { "types": "green", "lint": "green", "build": "green", "tests": "2322 passed, 1 skipped (2323)", "schema": "green (24/24 tables, both regions)" },
+    "start": {
+      "types": "green",
+      "lint": "green",
+      "build": "green",
+      "tests": "2302 passed, 1 skipped (2303)"
+    },
+    "end": {
+      "types": "green",
+      "lint": "green",
+      "build": "green",
+      "tests": "2333 passed, 1 skipped (2334)",
+      "schema": "green (24/24 tables, both regions)"
+    },
     "newlySkippedTests": 0
   },
   "reportedIssue": {
@@ -51,27 +62,68 @@
       "partial": "marks the notification only; blocking the write is escalated as D1"
     }
   ],
-  "blocked": [
-    {
-      "id": "D1",
-      "title": "May a non-production process write a G1 lead at all?",
-      "category": "decision needed",
-      "owner": "steve",
-      "needFromYou": "one ruling: (a) block the write outside production, (b) leave as-is now the mail is marked, or (c) authorise a migration adding an origin column",
-      "estUnblockMinutes": 5,
-      "urgency": "low — caregiver_leads is at 0 rows",
-      "partialWork": "none pending; I3 shipped the safe half"
-    }
-  ],
+  "blocked": [],
   "deferred": [
-    { "id": "D2", "title": "CI check: every table the code queries is declared by a migration", "score": 7.5, "note": "attempted and abandoned deliberately — naive parse yields 183 candidates, mostly English prose in comments; needs SQL extracted from query template strings" },
-    { "id": "D3", "title": "Environment guard for product email", "score": 5, "note": "blocked on D1; a blanket gag would break verify:live" },
-    { "id": "D4", "title": "Migration ledger in the database", "score": 5, "note": "infrastructure change — 5-criteria gate, Steve's approval" }
+    {
+      "id": "D2",
+      "title": "CI check: every table the code queries is declared by a migration",
+      "score": 7.5,
+      "note": "attempted and abandoned deliberately — naive parse yields 183 candidates, mostly English prose in comments; needs SQL extracted from query template strings"
+    },
+    {
+      "id": "D3",
+      "title": "Environment guard for product email",
+      "score": 5,
+      "note": "blocked on D1; a blanket gag would break verify:live"
+    },
+    {
+      "id": "D4",
+      "title": "Migration ledger in the database",
+      "score": 5,
+      "note": "infrastructure change — 5-criteria gate, Steve's approval"
+    }
   ],
   "liveFactsVerified": {
     "auth_challenges": "present in us-east-1 and us-west-2",
     "caregiver_leads": 0,
     "users": 1,
     "note": "MEMORY.md records users=2 as of 2026-08-11; the absent row is the demo account. sgharlow+relaycardtest@gmail.com is intact with a paid/active subscription."
+  },
+  "d1Ruling": {
+    "date": "2026-08-15",
+    "by": "steve",
+    "ruling": "Only Steve acting as sysadmin may write to the database outside the product's own features and APIs. One environment until G1 is decided.",
+    "answer": "identity + privilege separation on the single cluster, not a second environment"
+  },
+  "leastPrivilege": {
+    "groundTruthFound": "app minted getDbConnectAdminAuthToken() unconditionally (production ran as DSQL admin with DDL rights); Vercel and laptop shared one IAM access key",
+    "phasesDone": [
+      "fix-false-green",
+      "backup",
+      "phase0-laptop-identity",
+      "phase1-relay_dev-role",
+      "phase2-local-cutover"
+    ],
+    "phasesOutstanding": [
+      "phase3-vercel-cutover",
+      "phase4-strip-DbConnectAdmin"
+    ],
+    "backupRecoveryPoint": "arn:aws:backup:us-east-1:461293170793:recovery-point:cba21459-8dcf-4cd5-b4ff-3aca1aea3113",
+    "identities": {
+      ".env.local": "IAM relay-dev -> DB role relay_dev (no DDL, cannot write caregiver_leads)",
+      ".env.admin": "IAM autospecai -> DB role admin (migrations/roles); holds no secrets, AWS_PROFILE only",
+      "production": "UNCHANGED - IAM relay-runtime -> admin; DSQL_ROLE unset"
+    },
+    "liveProven": [
+      "autospecai connects as admin independently of relay-runtime",
+      "relay_dev privileges read back as intended incl. no DDL",
+      "INSERT INTO caregiver_leads refused SQLSTATE 42501",
+      "app runs on relay_dev; POST /api/caregivers/interest -> 500 CaptureRefused",
+      "caregiver_leads still 0 rows",
+      "both DSQL regions accept relay_dev"
+    ],
+    "dsqlDivergence": "GRANT USAGE ON SCHEMA public -> feature not supported on system entity (0A000); public is a system entity",
+    "notYetVerified": "npm run verify:live has NOT been re-run under relay_dev - recommended gate before phase 3",
+    "housekeeping": ".relay-dev-key.json (gitignored) holds the laptop key; move to 1Password and delete"
   }
 }
