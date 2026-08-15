@@ -16,12 +16,42 @@
  * Satori subset: flexbox only, explicit display:flex on any multi-child node,
  * no external font fetch (a blocked font request must not break the build).
  *
+ * 🔴 IT WAS LEFT ON THE OLD PALETTE. When the Warm Archive system landed on
+ * 2026-08-13 the root card was rebuilt and this one was missed, so for two days
+ * the preview for the page PAID ADS LAND ON painted #020617 slate with #fcd34d
+ * amber while the page itself rendered warm paper. Its sibling's header had
+ * already written the verdict: a share card "advertised a product that looked
+ * nothing like the one behind the link."
+ *
+ * Two things changed here, and only one of them is colour.
+ *
+ * THE COPY WAS SECOND PERSON, attached to an emergency: "Opens for YOU in a
+ * real emergency." That is the exact shape `g1-ad-creatives.md` §1a rules out
+ * — a prediction about the reader's own family — and the landing page was
+ * rewritten to third person for it (`ratified.landing-copy-third-person`). The
+ * card that previews that page kept the old voice, which is worse than a page
+ * being wrong on its own: this is the surface a reviewer sees first.
+ *
+ * Colours are literals because Satori resolves no CSS variables, which is why
+ * `raw-color.test.ts` exempts these files. `og-palette.test.ts` closes that
+ * exemption's hole: a literal is allowed, an INVENTED literal is not.
+ *
  * Feature: relay-g1-wtp
  */
 
 import { ImageResponse } from 'next/og';
 
 import { HEADLINE, PRICE_YEARLY_USD, WINNER_BADGE } from './content';
+
+/* Warm Archive, from globals.css. Ochre uses its TEXT cut: plain --ochre
+   measures 3.9:1 on paper, which is a contrast failure for wording. */
+const PAPER = '#f7f4ee';
+const INK = '#1f1b16';
+const INK_MUTED = '#6b6257';
+const INK_FAINT = '#71675a';
+const OCHRE_TEXT = '#8a5a2b';
+const OCHRE_SOFT = '#f6ead9';
+const RULE_STRONG = '#cfc7b8';
 
 export const runtime = 'edge';
 export const alt = 'Relay for caregivers — emergency access that closes itself';
@@ -38,7 +68,7 @@ export default function CaregiverOpengraphImage() {
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          backgroundColor: '#020617',
+          backgroundColor: PAPER,
           padding: '64px 72px',
         }}
       >
@@ -47,9 +77,9 @@ export default function CaregiverOpengraphImage() {
             style={{
               display: 'flex',
               alignSelf: 'flex-start',
-              border: '1px solid rgba(245, 158, 11, 0.45)',
-              backgroundColor: 'rgba(245, 158, 11, 0.12)',
-              color: '#fcd34d',
+              border: `1px solid ${RULE_STRONG}`,
+              backgroundColor: OCHRE_SOFT,
+              color: OCHRE_TEXT,
               borderRadius: 999,
               padding: '10px 22px',
               fontSize: 24,
@@ -64,7 +94,7 @@ export default function CaregiverOpengraphImage() {
               marginTop: 40,
               fontSize: 82,
               fontWeight: 700,
-              color: '#f8fafc',
+              color: INK,
               lineHeight: 1.06,
               letterSpacing: '-0.02em',
               maxWidth: 1010,
@@ -78,21 +108,21 @@ export default function CaregiverOpengraphImage() {
               display: 'flex',
               marginTop: 28,
               fontSize: 31,
-              color: '#94a3b8',
+              color: INK_MUTED,
               maxWidth: 960,
               lineHeight: 1.4,
             }}
           >
-            One encrypted vault for a parent&apos;s accounts. Opens for you in a real emergency —
-            and seals itself again when they recover.
+            One encrypted vault for a parent&apos;s accounts. It opens exactly what was granted
+            when a real emergency is verified — and seals itself again when they recover.
           </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', fontSize: 27, color: '#fcd34d' }}>
+          <div style={{ display: 'flex', fontSize: 27, color: OCHRE_TEXT }}>
             One price, the whole family — ${PRICE_YEARLY_USD}/year
           </div>
-          <div style={{ display: 'flex', fontSize: 27, color: '#64748b' }}>relaystandby.com</div>
+          <div style={{ display: 'flex', fontSize: 27, color: INK_FAINT }}>relaystandby.com</div>
         </div>
       </div>
     ),

@@ -226,9 +226,31 @@ describe('the image palette is really taken from the product', () => {
   const fenced = [...prompts.matchAll(/```[\s\S]*?```/g)].map((m) => m[0]).join('\n');
   const cited = [...new Set([...fenced.matchAll(/#[0-9a-fA-F]{6}/g)].map((m) => m[0].toLowerCase()))];
 
-  it('finds colours inside the prompt blocks, so this is not vacuous', () => {
+  /*
+    The vacuity guard NAMES the palette rather than counting it.
+
+    It used to assert "at least 5 distinct colours", a number calibrated to the
+    old slate-and-amber set. Migrating the prompts to Warm Archive on 2026-08-15
+    brought that to four — the palette is genuinely more restrained — and the
+    guard failed on correct input.
+
+    Lowering the number to 4 would have been the wrong repair: it is the move
+    that turns a guard into a rubber stamp, and the next migration would meet
+    the same argument with less resistance. Naming the three colours the prompts
+    must actually use is a STRONGER assertion than any count — a regex that
+    matched nothing, or prompts that silently reverted to slate, both fail it,
+    and neither could be waved through by adjusting a threshold.
+  */
+  it('the prompt blocks really carry the product palette', () => {
     expect(fenced.length, 'no fenced prompt blocks found in PROMPTS.md').toBeGreaterThan(0);
-    expect(cited.length).toBeGreaterThanOrEqual(5);
+
+    for (const [role, hex] of [
+      ['paper (the ground)', '#f7f4ee'],
+      ['ink (text and dark forms)', '#1f1b16'],
+      ['ochre (the access state)', '#b4703a'],
+    ] as const) {
+      expect(cited, `no prompt cites ${role} ${hex}`).toContain(hex);
+    }
   });
 
   it('every colour it cites exists somewhere in the product', () => {
