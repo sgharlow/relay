@@ -206,6 +206,63 @@ The rule that falls out — *guard unattended origination, and guard unattended 
 is now pinned by a cross-cutting test in `lib/ops/outbound-mail-bounds.test.ts`, deliberately narrow
 so it does not force the guard onto the two paths that must not have it.
 
+## The authentication posture, and a telemetry stream nobody was reading
+
+Read live from DNS on 2026-08-14. "SPF/DKIM/DMARC pass" was already established by the header
+analysis; *passing* and *a strong posture to a receiver deciding how to treat a new domain* are not
+the same question, and the second one had never been asked.
+
+```
+_dmarc.relaystandby.com   v=DMARC1; p=none; rua=mailto:dmarc@relaystandby.com; fo=1
+relaystandby.com    TXT   v=spf1 include:_spf.mx.cloudflare.net ~all
+relaystandby.com    MX    route1/2/3.mx.cloudflare.net
+send.relaystandby.com TXT v=spf1 include:amazonses.com ~all
+send.relaystandby.com MX  feedback-smtp.us-east-1.amazonses.com
+```
+
+Everything here is *correct*. The apex SPF authorises Cloudflare's routing servers and not Amazon,
+which looks alarming for about ten seconds until you remember SPF is checked against the envelope
+sender — that is on `send.relaystandby.com`, which includes `amazonses.com`. That is why SPF passes.
+The apex now has MX records too, so the domain can receive mail, which is itself a mild positive
+signal and closes the old "no apex MX" note.
+
+**🔴 The finding: Microsoft has been sending us DMARC aggregate reports, and they are being thrown
+away.** `rua=` is set with `fo=1`, the domain has a catch-all, and `dmarc@relaystandby.com` is
+receiving reports from `dmarcreport@microsoft.com` (submitter `protection.outlook.com`) as well as
+from Google. Several — including one of the two Microsoft reports — are sitting in **Trash**. The one
+receiver-side telemetry channel this domain has was configured, has been flowing for at least a week,
+and has never been read by anybody.
+
+⚠️ **Be clear about what it will and will not say, so nobody raises their hopes.** A DMARC aggregate
+report gives per-source-IP counts with SPF/DKIM alignment results and the **policy disposition**
+applied. It does **not** report spam scoring or folder placement — there is no SCL in it, and no
+"we junked this". So it will *not* explain the filing on its own.
+
+What it is genuinely good for, and why it is worth preserving anyway:
+
+1. **It would reveal a sender we do not know about.** If anything other than Resend/SES is emitting
+   mail as `relaystandby.com`, that is a real and unconsidered reputation cause, and this is the only
+   place it would show up. Nobody has looked.
+2. **It is the evidence base for moving off `p=none`.** The domain is at monitoring only. Going to
+   `p=quarantine` once the reports confirm every legitimate source aligns is the standard
+   reputation-building step for a new domain, and it materially strengthens the Microsoft submission
+   — "we monitor DMARC and are moving to enforcement" is a different conversation from "we pass".
+
+### Recommended, in order
+
+1. **Stop discarding them** (free, no risk): a Gmail filter that labels anything from
+   `dmarcreport@microsoft.com` / `noreply-dmarc-support@google.com` and never trashes it. Do this
+   before anything else, because every report thrown away is a week of evidence gone.
+2. **Read the last two weeks** and confirm 100% of volume is Resend/SES and aligned. That is a
+   fifteen-minute job with any free DMARC XML viewer.
+3. **Only then**, consider `p=none` → `p=quarantine`, and `~all` → `-all`.
+
+🔴 **Step 3 is a DNS change to a working mail setup and is Infrastructure-Change-Policy gated.** It
+carries real risk — an SPF or DMARC edit that gets it wrong stops mail leaving at all, and this
+domain's SPF has already been silently rewritten once by enabling Cloudflare Email Routing. It needs
+a documented problem, a snapshot of the current records, and Steve's explicit go. **Not done here,
+and it must not be done casually as a "best practice" tidy-up.**
+
 ## What none of this changes
 
 Beta is not blocked. The calm-day path is email-free by design (`BETA_INVITE_CHANNEL='owner'`, claim

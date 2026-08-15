@@ -20,6 +20,22 @@ The two test messages are sitting in **`skillcrossroads@outlook.com`**.
 
 ---
 
+## Step 0 — two minutes, and do it today regardless of everything else
+
+**Stop throwing away the DMARC reports.** `dmarc@relaystandby.com` has been receiving aggregate
+reports from `dmarcreport@microsoft.com` and from Google for at least a week. Several are already in
+**Trash**, including one of the two Microsoft ones.
+
+Add a Gmail filter — from `dmarcreport@microsoft.com` OR `noreply-dmarc-support@google.com` → apply a
+label, never delete. Every report discarded is a week of receiver-side evidence gone, and it is the
+only such stream this domain has.
+
+⚠️ It will **not** show junk placement — DMARC reports carry authentication results and policy
+disposition, never a spam score. Its value is that it would reveal any sender emitting mail as
+`relaystandby.com` that we do not know about, and it is the evidence base for moving off `p=none`.
+
+---
+
 ## Step 1 — Resend ticket first (Steve, ~5 minutes)
 
 The Microsoft form asks for **sending IPs**, and we do not own them — Resend does, and it rides
@@ -128,6 +144,12 @@ Paste this as the description:
 > intact):
 > - Arm A — subject reference `RLY-CTRL-A118`, Message-ID `⬜`, Date (UTC) `⬜`
 > - Arm B — subject reference `RLY-HTML-B227`, Message-ID `⬜`, Date (UTC) `⬜`
+>
+> **DMARC posture:** `v=DMARC1; p=none; rua=mailto:dmarc@relaystandby.com; fo=1`. We receive and
+> monitor your aggregate reports (submitter `protection.outlook.com`) and are preparing to move to
+> `p=quarantine` once they confirm every legitimate source aligns. SPF is published on the envelope
+> domain `send.relaystandby.com` (`include:amazonses.com`); the apex carries MX records and can
+> receive mail.
 >
 > **Already eliminated by measurement:**
 > - Authentication — `compauth=pass reason=100`, SPF/DKIM/DMARC all pass.
