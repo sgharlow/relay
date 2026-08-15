@@ -106,17 +106,21 @@ Send this to Resend support:
 
 ---
 
-## Step 2 — two fields only you can read (Steve, ~3 minutes)
+## ~~Step 2 — two fields only you can read~~ ✅ DONE 2026-08-15
 
-Open each of the two messages in `skillcrossroads@outlook.com` (subjects contain `RLY-CTRL-A118` and
-`RLY-HTML-B227`), view message source, and copy out:
+Captured by browser automation against the live mailbox, read-only — the messages were opened, the
+source read, and nothing was clicked, moved or marked. Values are in the submission below.
 
-| Field | Where it is | Arm A (`RLY-CTRL-A118`) | Arm B (`RLY-HTML-B227`) |
-|---|---|---|---|
-| `Message-ID` | header, `<…@…>` | ⬜ fill in | ⬜ fill in |
-| `Date` in **UTC** | header `Date:` | ⬜ fill in | ⬜ fill in |
+⚠️ **A date correction fell out of this.** These messages are timestamped **15 August 2026 UTC**
+(`03:16:37Z` and `03:18:08Z`), not 14 August. Everything written about "the 2026-08-14 test" used the
+local (PDT) date. The evidence is unchanged; only the label was off, and a submission to Microsoft
+needs the UTC values, which are the ones quoted below.
 
-Everything else in the form text below is already correct — do not re-derive it.
+🔴 **A SECOND DEADLINE, found in the mailbox and previously unknown.** Outlook shows
+*"Items in Junk Email will be permanently deleted after 10 days."* These arrived 14–15 August, so
+**they are destroyed around 2026-08-24** — sooner than the DMARC-in-Trash deadline. Everything
+needed for this submission has now been extracted, so the messages are no longer load-bearing, but
+if a re-read is ever wanted it has to happen before then.
 
 ---
 
@@ -162,9 +166,19 @@ Paste this as the description:
 > The HTML arm additionally fired ARA rules `9400799043` and `30041999003` and suppressed none.
 >
 > **Sample messages** (in `skillcrossroads@outlook.com`, retained un-actioned so the evidence is
-> intact):
-> - Arm A — subject reference `RLY-CTRL-A118`, Message-ID `⬜`, Date (UTC) `⬜`
-> - Arm B — subject reference `RLY-HTML-B227`, Message-ID `⬜`, Date (UTC) `⬜`
+> intact). Both were sent to that mailbox, both filed to Junk:
+>
+> - **Arm A — control, `text/plain` only.** Subject: *Action needed: confirm an emergency trigger
+>   (RLY-CTRL-A118)*
+>   Message-ID: `<010001a0036be47c-5479ede9-6ea8-4e22-bddc-b73bf4993441-000000@email.amazonses.com>`
+>   Date: `Sat, 15 Aug 2026 03:16:37 +0000` · sender IP `54.240.48.188`
+>
+> - **Arm B — variant, `multipart/alternative`.** Subject: *Action needed: confirm an emergency
+>   trigger (RLY-HTML-B227)*
+>   Message-ID: `<010001a0036d45ff-ee477832-3060-447d-bb88-2cb529c4ae7c-000000@email.amazonses.com>`
+>   Date: `Sat, 15 Aug 2026 03:18:08 +0000` · sender IP `54.240.11.161`
+>
+> The two are 91 seconds apart, to the same freshly created mailbox, differing only in body shape.
 >
 > **DMARC posture:** `v=DMARC1; p=none; rua=mailto:dmarc@relaystandby.com; fo=1`. We receive and
 > read your aggregate reports (submitter `protection.outlook.com`) and are preparing to move to
