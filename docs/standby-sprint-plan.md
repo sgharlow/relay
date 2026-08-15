@@ -1809,9 +1809,10 @@ the unwrap contract, and the scheduler's freshness.
 
 ### Still open, and where it is written
 
-The four deliberate deferrals live in PROJECT.yaml `deferred:` (step-up
+~~The four deliberate deferrals live in PROJECT.yaml `deferred:` (step-up
 re-auth, WebAuthn nonce store, the multi-owner LIMIT 1, the type-scale
-ratchet). The demand-side facts are unchanged by any of this: wtp_evidence
+ratchet).~~ **All four closed 2026-08-15 — see §30. `deferred:` is now `[]`.**
+The demand-side facts are unchanged by any of this: wtp_evidence
 none, invitations sent zero. The engineering bar this pass raised was never
 the thing between the product and its first user.
 
@@ -2342,12 +2343,162 @@ No owner, no emailed code, no authenticator app. Two independent runs, two
 different contacts, same result. **"They can get back in without you" is
 demonstrated.**
 
-### Why this is the last section
+### ~~Why this is the last section~~ — it was not
 
-The brief capped the work at ten iterations. This file has twenty-nine sections
+~~The brief capped the work at ten iterations. This file has twenty-nine sections
 and the last several rounds produced corrections to my own records rather than
 changes to the product — which is the point at which more passes stop paying
-for themselves. Everything the brief named has been worked and, where provable,
-proven on production. What is left is written down plainly in §24–§28: it is a
-scope judgment for the owner of this product, not a list of undiscovered
-defects.
+for themselves.~~
+
+**Superseded by §30 (2026-08-15).** The reasoning above was sound about
+*that* pass and wrong as a prediction: a later session closed all four carried
+deferrals and found five real defects doing it, including two that were visible
+only in a screenshot. "The last several rounds found only corrections" describes
+a search that had exhausted one method, not a product that had run out of
+defects — the next pass simply looked somewhere the previous ones had not.
+
+The rest stands: everything the brief named has been worked and, where provable,
+proven on production, and what is left is a scope judgment for the owner of this
+product.
+
+---
+
+## 30. `deferred: []` — 2026-08-15, five iterations and three more
+
+A second production-bar pass. Eight commits, pushed to `origin/master` at
+`76edda2`. **All four carried deferrals closed, plus three opened and shut in
+the same session.** `PROJECT.yaml → deferred:` is now `[]`, written as an
+explicit empty list because a key with only comments under it parses as null and
+a reader cannot tell null from nobody-looked.
+
+Volatile numbers are not restated here — derive them with `PROJECT.yaml
+derived.*`.
+
+### The four carried deferrals
+
+**Single-use WebAuthn challenges.** The seal was a stateless five-minute JWT and
+nothing burned it, so a captured assertion replayed for the rest of the window.
+Its own header had argued a new table was forbidden. The cost argument was right
+and the security argument was a category error: **a signature proves we minted a
+token, never that it is unspent.** `openChallenge` now burns a nonce in
+`auth_challenges` (migration 029). LIVE-PROVEN on the cluster — a challenge
+minted by a real `/api/webauthn/authenticate/options` spent twice gives
+`burn #1 true`, `burn #2 false`. The 500 it replaces was observed first, on
+purpose: before the migration the same endpoint answered `42P01`, which is the
+loud failure the design chose over a silent fallback.
+
+**Step-up re-authentication.** Issuing recovery codes, exporting the vault and
+closing the account ran on the ordinary 24-hour session, so a walked-away-from
+machine became permanent control or a full plaintext export. Now a five-minute
+sudo window: **a row, so it is revocable rather than merely expiring**, bound to
+subject *and* session epoch, and account closure SPENDS it. The guard stands
+down for an account holding neither factor — a freshly-claimed contact has
+neither, and the privacy page promises anybody can close their account.
+DOGFOODED, see below.
+
+**The multi-owner `LIMIT 1`.** A contact standing by for two owners with
+simultaneous open releases saw an arbitrary one — arbitrary in the strict sense,
+since two rows in the same state came back in planner order, so the same person
+could get a different answer between requests. It was deferred on the reasoning
+that `/standby` lists every relationship and is the linked path. True, and not
+enough for the person who arrives at `/access` from an emergency email, where
+nothing hinted the other existed. **Two parents in crisis at once is rare, and it
+is exactly what this product is for.**
+
+A second defect was hiding behind it and would have shipped with the fix:
+`decryptAccessItemForUser` also resolved one release, so choosing the second
+parent produced a plan on which every Reveal refused. It picks by the item now,
+from the access rule — not from a client-supplied owner, which would be an input
+to validate when the rule already knows.
+
+**The type-scale ratchet.** Closed by migration rather than the ceiling it
+planned, because two of its premises did not survive measurement. It recorded
+"~9 arbitrary font sizes"; there were **211 across 30 files** — the old count
+had only looked at Tailwind arbitrary classes and missed the inline literals,
+which were the larger half. And "every value in use was audited readable" was
+true at the default font size and beside the point at any other: measured on
+`/security` with the root raised to 20px, every rem token scaled and every px
+literal did not. Twenty-one elements on one page were **frozen against the
+reader's own accessibility setting**. That is a CC8 defect, not tidiness.
+211 → 11, and the 11 are the two error boundaries that must not resolve tokens.
+
+### Proven, not recorded
+
+The three gaps this pass opened were written up as things a dogfood would settle
+later. On reading them back, the blocker in each was an assumption rather than a
+missing person, and all three closed the same day.
+
+| Walk | Asserts | Result |
+|---|---|---|
+| `scripts/e2e-stepup.ts` | the server: refusal, elevation, revocation, the spend on closure | 17/17 |
+| `scripts/e2e-multiowner.ts` | two owners, one contact, both firing | 14/14 |
+| `scripts/e2e-ui.ts` | the two screens, in a real browser, clicked | 19/19 |
+
+"Needs a real authenticator" was true and did not mean "needs a human": the
+signup API returns the TOTP secret inside the otpauth URL it issues, so a
+harness can hold a real second factor for an account it just created. "No real
+multi-owner contact exists" was true of the beta and irrelevant — the product
+can build one.
+
+### Five defects, each invisible to the layer below it
+
+This is the part worth keeping. Every one of these passed the check one level
+down:
+
+1. **The replayable challenge** — a valid signature said nothing about spentness.
+2. **`?owner=` reporting a closure.** Naming somebody the contact does not stand
+   by for fell through to the closure branch and answered *"That access has
+   closed because they checked back in"* — to a contact with two releases open at
+   that moment, on the screen where being wrong costs the most. The bug was in
+   **which branch ran**, and every test on that path mocks the resolver.
+3. **The picker laid out sideways on a phone.** `globals.css` makes every button
+   `inline-flex; align-items: center` under `(pointer: coarse)` — the
+   touch-target rule — so two stacked spans became flex items **in a row**: the
+   owner's name in a narrow column, wrapped mid-word, the sentence beside it. On
+   exactly the device J8 specifies. Every textual assertion passed, because every
+   word was present and correct.
+4. **The modal had no backdrop.** `bg-ink/40` compiles to `rgba(0,0,0,0)` —
+   Tailwind cannot split a hex behind a CSS variable into channels. Valid class,
+   green build, a "modal" floating over undimmed content. Fixed with a `--scrim`
+   token carrying its own alpha; a ratchet now fails any `token/NN` in `src`.
+5. **Owner-mode accessibility silently unaudited**, because
+   `scripts/a11y-audit.mjs` had a since-deleted account hardcoded — and then,
+   once fixed, audited at 1280 only. **A 1280 viewport never triggers the
+   `(pointer: coarse)` rule, so it cannot test what that rule does** — the rule
+   that caused defect 3. Now both viewports: 0 serious/critical across 34 pages.
+
+### What was added so these cannot come back
+
+- `lib/ops/route-auth.ts` — every handler authenticates or is declared public
+  **with a reason**, and reasons that make checkable claims are themselves
+  checked. This is the gap `api-reachability.ts` names in its own header.
+- `lib/ops/type-scale.ts`, and an opacity-modifier ratchet in `raw-color.test.ts`.
+- `lib/ops/readme-claims.test.ts` — the README claimed 28 API routes; the real
+  count was 75. Counts are commands now (`PROJECT.yaml derived.api_routes`).
+- `Cross-Origin-Opener-Policy`, found by probing the running app rather than
+  reading the config: six of seven headers were present and this one was not
+  argued away anywhere, which is how a header goes missing.
+- `npm run verify:live` — the three walks as one `&&`-chained command.
+
+### Two gates, and why only one is in CI
+
+`npm run gate` needs no credentials and CI runs it on every push.
+`npm run verify:live` is **deliberately not in CI**: those walks create and
+delete real accounts and `.env.local` points at the **production** cluster,
+because Relay has no dev database. A job doing that per pull request would be
+writing to customers' data to check a diff, and the rows it forgot would be the
+ones nobody was watching — an early run of the multi-owner walk left four
+behind, which is the argument rather than a hypothetical. Closing it properly
+needs a separate test cluster: an infrastructure change with a cost, and Steve's
+call.
+
+### What this pass did not change
+
+Nothing on the demand side. `wtp_evidence` none, `demand_signal` none,
+invitations sent zero. **No arms-length user has touched any of this**, and that
+is not an engineering deliverable: a harness can prove the screen does what it
+claims; only a person can prove they wanted it. §21 said the engineering bar was
+never the thing between the product and its first user, and that is still the
+truest sentence in this file.
+
+Ended at Steve's direction after eight commits against a five-iteration brief.
