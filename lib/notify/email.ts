@@ -11,6 +11,7 @@
 
 import { Resend } from 'resend';
 
+import { textToHtml } from './text-to-html';
 import { recordSend } from './transcript';
 
 let _client: Resend | null = null;
@@ -81,11 +82,25 @@ export async function sendEmail(msg: EmailMessage): Promise<void> {
 
   const replyTo = resolveReplyTo(msg.replyTo);
 
+  /*
+    TEST 2 of the Outlook investigation (docs/g1-ad-creatives.md §"Fix and
+    re-test, one variable at a time"). Supplying `html` alongside `text` makes
+    Resend emit multipart/alternative instead of the text/plain-only shape that
+    every Relay message had until now — the last candidate we control, after
+    test 1 (Reply-To) was run and refuted.
+
+    `text` stays the authoritative body and is UNCHANGED: the HTML is derived
+    from it, so no call site can make the two disagree, and no other variable
+    moves in this experiment. The readout is the SCL in the next message's
+    headers, read at the mailbox — never Resend's `Delivered`, which cannot see
+    which folder a message was filed into.
+  */
   const result = await getClient().emails.send({
     from,
     to: msg.to,
     subject: msg.subject,
     text: msg.text,
+    html: textToHtml(msg.text),
     ...(replyTo ? { replyTo } : {}),
   });
 

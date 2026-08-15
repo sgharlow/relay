@@ -70,6 +70,45 @@ describe('sendEmail', () => {
 });
 
 /**
+ * TEST 2 of the Outlook investigation, at the seam where it either reaches the
+ * provider or does not.
+ *
+ * `text-to-html.test.ts` proves the HTML is correct. It cannot prove the send
+ * PASSES it — and that gap is the exact shape of the defect this whole file
+ * exists for, where a function looked healthy and nothing it produced ever
+ * reached Resend intact. So: assert on the payload handed to the SDK.
+ */
+describe('multipart/alternative — the html part reaches the provider', () => {
+  it('sends BOTH parts, so Resend emits multipart/alternative', async () => {
+    const client = stub(ok);
+    _setResendClientForTesting(client);
+
+    await sendEmail({ to: 'a@b.com', subject: 's', text: 'Hi Alex,\n\nYou were named.' });
+
+    const payload = sentPayload(client);
+    expect(payload.text, 'the text part must remain authoritative').toBe(
+      'Hi Alex,\n\nYou were named.',
+    );
+    expect(String(payload.html)).toContain('<!doctype html>');
+    expect(String(payload.html)).toContain('You were named.');
+  });
+
+  it('the text part is byte-identical to the caller-supplied body — one variable', async () => {
+    // The experiment is "add an alternative part", nothing else. If the SCL
+    // moves, the reason has to be unambiguous, so the text may not drift by so
+    // much as a newline. Test 3 (a subject without "Action needed") stays unrun.
+    const body = `Hi Alex,\n\n    4KMPQ-7XR2W\n\nCase RLY-DECY-X347.\n`;
+    const client = stub(ok);
+    _setResendClientForTesting(client);
+
+    await sendEmail({ to: 'a@b.com', subject: 'Action needed: confirm', text: body });
+
+    expect(sentPayload(client).text).toBe(body);
+    expect(sentPayload(client).subject).toBe('Action needed: confirm');
+  });
+});
+
+/**
  * The From address (relay@relaystandby.com) has no MX record behind it, so a
  * reply to it reaches nobody. These pin the header that makes replies land.
  */

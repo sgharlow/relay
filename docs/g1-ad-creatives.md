@@ -245,13 +245,83 @@ Microsoft never discloses which rule fired, so these are ranked suspicions, not 
 |---|---|---|
 | 0 | *(baseline)* | SCL 5/6 → Junk |
 | 1 | `RESEND_REPLY_TO_ADDRESS=hello@relaystandby.com`, nothing else | 🚫 **REFUTED** — SCL unchanged, same rules |
-| 2 | not run: add an HTML `multipart/alternative` part | — |
+| 2 | add an HTML `multipart/alternative` part | 🚫 **REFUTED 2026-08-14** — identical SCL, identical folder, **two ADDITIONAL rules fired** |
 | 3 | not run: subject without "Action needed" | — |
+
+### 🚫 Test 2 — RUN AND REFUTED, 2026-08-14
+
+Run as a **contemporaneous A/B** rather than against the 2026-08-09 baseline, because
+that baseline is no longer a valid control: the verifier message body was rewritten
+across ten commits in between, so a single send today would have differed from it in
+both the body text and the HTML part. Both arms were sent to a **fresh** outlook.com
+mailbox (`skillcrossroads@outlook.com`, created minutes earlier, never contacted by
+Relay), 90 seconds apart, control first so the variant could not benefit from being the
+mailbox's first contact with the sender. `Reply-To` was pinned to the production value
+so this did not silently re-run test 1's variable in reverse.
+
+| | Arm A — control | Arm B — variant |
+|---|---|---|
+| Shape | `text/plain` only | `multipart/alternative` |
+| `X-MS-Exchange-Organization-SCL` | **5** | **5** |
+| `X-Message-Delivery` | `…SCL=6` | `…SCL=6` — **byte-identical base64** |
+| Filing | `dest:J` `RF:JunkEmail` `OFR:SpamFilterAuthJ` | identical |
+| Auth | spf/dkim/dmarc pass, `compauth=pass reason=100`, `BCL:0`, `ucf:0`, `jmr:0` | identical |
+| ARA rules | 29 | **31 — the same 29, plus two** |
+
+**Both landed in Junk.** The HTML part did not move the score by a single point, and it
+was not even neutral: it fired two rules the text-only arm did not (`9400799043`,
+`30041999003`) and suppressed none.
+
+The two arms also left on **different** shared SES IPs (`54.240.48.188` and
+`54.240.11.161`) and scored identically. With the baseline's `54.240.11.140` and `.138`
+that is **four distinct IPs at SCL 5** — so the IP is not the discriminator either.
+
+**What this eliminates.** Message shape was the last candidate we control. Of the two
+named in "What is left" below, it is now closed by measurement, leaving
+**shared-pool and new-domain reputation** — which no code change reaches. Test 3
+(a subject without "Action needed") remains available and its baseline is intact, but
+the prior is now poor: two content-shaped hypotheses have been refuted in a row while
+the score has never moved off 5.
+
+### ✅ A separate finding from the same test — and it is NOT a rescue of test 2
+
+**Outlook rewrites our links with SafeLinks, and it damages the text-only message
+specifically.** In arm A the clean `https://relaystandby.com/verify` in the body was
+replaced inline by a ~400-character `na01.safelinks.protection.outlook.com/?url=…`
+string. That is what a verifier reads — an opaque wall of URL, in a message that is
+already asking them to act in an emergency, which is exactly the silhouette a careful
+person is right to distrust.
+
+In arm B the anchor text stayed `https://relaystandby.com/verify` and only the `href`
+was rewritten (`originalsrc` preserved). That is a direct consequence of the
+anchor-text-equals-href rule in `lib/notify/text-to-html.ts` — written to avoid looking
+like phishing, and it also happens to survive SafeLinks legibly.
+
+⚠️ **This does not make test 2 anything other than refuted**, and the HTML part is
+retained for this readability reason ALONE, not because it improved deliverability. It
+did not. Recorded separately so the two claims cannot merge into "we added HTML and
+things got better", which is not what happened.
 
 ⚠️ Send each test to a **fresh** Outlook address, and do not click "It's not junk" on any of them —
 that trains the filter and destroys the baseline the next test is measured against.
 
 ### What is left, and why the investigation stops here for now
+
+> ⚠️ **SUPERSEDED 2026-08-14 — candidate 1 is now CLOSED BY MEASUREMENT.** Test 2 ran and was
+> refuted (see above): an HTML `multipart/alternative` part changed the SCL by nothing, on a fresh
+> mailbox, against a contemporaneous control. **Only candidate 2 remains, and it is the one we do
+> not control.** The section below is kept because its reasoning is what led to the test, and
+> because candidate 2's description is unchanged and now carries the whole explanation.
+>
+> **The beta consequence, stated plainly.** Email is not a reliable channel to an Outlook
+> contact, and no change we can make in this repo alters that. The architecture already routes
+> around it for INVITATIONS — `BETA_INVITE_CHANNEL='owner'` means the owner reads the code down
+> the phone and nothing secret is transmitted, which is exactly the pivot `standby-architecture.md`
+> was written for. 🔴 **It does NOT route around it for release-time verifier notices**, which are
+> still email and still land in Junk. That is the catastrophic shape §22 of the sprint plan named:
+> a release fires, the notice is junked, quorum is never met, and access never opens on the one day
+> it exists for. Nothing in this test fixes that, and it should be read as an open beta risk rather
+> than a closed investigation.
 
 With auth, bulk classification, user rules and Reply-To all eliminated by evidence, two candidates
 remain, and **we control only one of them:**
