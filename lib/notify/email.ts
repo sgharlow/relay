@@ -119,17 +119,25 @@ function assertSendableFromThisEnvironment(to: string): void {
 /**
  * The address a recipient reaches by hitting reply.
  *
- * This is NOT cosmetic. `relaystandby.com` has no apex MX record, so the From
- * address — relay@relaystandby.com — cannot receive mail at all. Without a
- * Reply-To header, a caregiver who reads "someone is requesting access to your
- * parent's vault" and replies is writing to a mailbox that does not exist, and
- * gets a bounce instead of a person. For a product whose entire proposition is
- * trust, that is the worst possible failure.
+ * This is NOT cosmetic. Without a Reply-To header, a caregiver who reads
+ * "someone is requesting access to your parent's vault" and replies is writing
+ * to a mailbox nobody reads, and gets silence or a bounce instead of a person.
+ * For a product whose entire proposition is trust, that is the worst possible
+ * failure.
  *
- * A Reply-To pointing at a real inbox fixes this today, without waiting on
- * inbound-mail DNS. When Cloudflare Email Routing is enabled (see
- * docs/email-dns-runbook.md) this can point at relay@relaystandby.com instead;
- * nothing else needs to change.
+ * ⚠️ THIS PARAGRAPH USED TO SAY THE APEX HAD NO MX RECORD AND COULD NOT RECEIVE
+ * MAIL AT ALL. That stopped being true on 2026-08-09, when Cloudflare Email
+ * Routing was enabled — `lib/contact.ts` recorded it that day and this file did
+ * not, so two files carried two answers for six days. Measured 2026-08-15:
+ * relaystandby.com has three apex MX records (route1/2/3.mx.cloudflare.net) and
+ * receives mail.
+ *
+ * The header is still right, and now for a better reason: it names the inbox a
+ * human actually watches. Note the runbook's outstanding follow-up — with the
+ * apex receiving, RESEND_REPLY_TO_ADDRESS could point at relay@relaystandby.com
+ * so From and Reply-To match, since a mismatch is a mild spam signal. It is
+ * currently hello@relaystandby.com, which is monitored; the change is a
+ * deliverability judgement, not a fix, and is unmade on purpose.
  *
  * Returns undefined when unset — an absent header is correct, an empty one is
  * malformed.

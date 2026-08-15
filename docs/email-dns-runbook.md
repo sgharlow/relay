@@ -108,11 +108,50 @@ aggregate reports show authentication passing consistently.
 
 The `rua=` address needs to exist to receive reports — Email Routing (step 2) covers it.
 
+### 🔴 The reports are arriving and mostly FAILING to forward (found 2026-08-15)
+
+Cloudflare's Email Routing activity log shows **258** DMARC aggregate reports from
+`noreply-dmarc-support@google.com` to `dmarc@relaystandby.com`, the large majority **"Delivery
+failed"**, with occasional successes.
+
+**The DNS is not the problem** — the apex MX records are present and correct, and the successful
+rows prove the path works. The mechanism is forwarding itself:
+
+1. Cloudflare forwards the report to the destination inbox.
+2. Forwarding breaks SPF by construction — the message now arrives from Cloudflare's IPs, which are
+   not in `google.com`'s SPF.
+3. DMARC therefore rests entirely on DKIM surviving the hop byte-intact. When it does not, DMARC
+   fails.
+4. **`_dmarc.google.com` is `p=reject`** (verified 2026-08-15). So the receiving mailbox is
+   instructed to *reject* rather than junk — and Cloudflare records that as "Delivery failed".
+
+**No customer impact.** These are inbound reports *about* our sending. Outbound product mail leaves
+via Resend from `send.relaystandby.com` and is untouched.
+
+**But it is a real loss**, because it is exactly the evidence two open questions need: the Outlook
+junk-filing investigation, and the `p=none` → `p=quarantine` decision this document gates on
+"aggregate reports showing authentication passing consistently". That data is not arriving.
+
+**The fix is to stop forwarding them.** Point `rua=` at a DMARC processing service (Postmark's free
+DMARC digest, dmarcian, URIports). They receive reports *directly* — no second SMTP hop, so no DMARC
+re-evaluation — and they parse the XML into something a person can read. External `rua=` normally
+requires the destination to publish `relaystandby.com._report._dmarc.<their-domain>`; these services
+do that for you, which is precisely why they work where a personal mailbox does not. A Cloudflare
+Email **Worker** destination is the alternative: it terminates the message instead of relaying it.
+
 ## 2. Reply capability — Cloudflare Email Routing
 
-`relay@relaystandby.com` currently **cannot receive replies**; the apex has no MX record. A
-caregiver who gets *"someone is asking for access to your parent's vault"* and hits reply is
-talking to nobody, which is a poor look for a product selling trust.
+> ✅ **DONE — Email Routing is live.** Measured 2026-08-15: the apex carries three MX records
+> (`route1/2/3.mx.cloudflare.net`) and `relaystandby.com` receives mail. The paragraph below is the
+> original problem statement, kept for the reasoning; it is no longer the current state.
+>
+> ⚠️ Outstanding follow-up from this section, still unmade: `RESEND_REPLY_TO_ADDRESS` is
+> `hello@relaystandby.com`, not `relay@relaystandby.com`, so From and Reply-To still differ. That is
+> a mild spam signal and is one of the few remaining variables in the Outlook junk investigation.
+
+`relay@relaystandby.com` **could not receive replies** when this was written; the apex had no MX
+record. A caregiver who gets *"someone is asking for access to your parent's vault"* and hits reply
+is talking to nobody, which is a poor look for a product selling trust.
 
 **Shipped in code as of 2026-08-08 — replies work now.** `lib/notify/email.ts` sets a `Reply-To`
 header from `RESEND_REPLY_TO_ADDRESS` (set in `.env.local` and Vercel production; currently
