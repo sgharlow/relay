@@ -34,9 +34,22 @@ label, never delete. Then **untrash the ones already in there.**
 Microsoft reports this domain has ever received. Every report discarded is a week of receiver-side
 evidence gone, and it is the only such stream we have.
 
-> ⚠️ Claude did not do this. The Gmail connector is treated as read-only in this portfolio, so the
-> reports were found and read but nothing in the mailbox was moved, labelled or recovered. If you
-> would rather Claude rescue them directly, say so and that constraint can be lifted for this task.
+> ⚠️ **Claude cannot do this, and it is not a policy choice.** Steve authorised it on 2026-08-14 and
+> both attempts — `create_label` and `untrash_thread` — were refused by Google with *"Request had
+> insufficient authentication scopes."* The Gmail connector holds **read-only** OAuth scopes, so it
+> can find and read these reports and can move nothing. Filter creation is not exposed to it at all,
+> at any scope. **This step is genuinely yours; do not wait on Claude for it.**
+>
+> The three trashed threads, so you can find them fast:
+>
+> | Received | From | Thread ID |
+> |---|---|---|
+> | 2026-08-12 | `dmarcreport@microsoft.com` ← **the important one** | `19ff4ba2c04e90c4` |
+> | 2026-08-11 | `noreply-dmarc-support@google.com` | `19ff5db751e24c0f` |
+> | 2026-08-13 | `noreply-dmarc-support@google.com` | `1a002aa0909b5b86` |
+>
+> Or just search Gmail for `in:trash subject:"relaystandby.com"`. Four more reports are already safe
+> under an existing label; these three are the ones on the clock.
 
 ⚠️ It will **not** show junk placement — DMARC reports carry authentication results and policy
 disposition, never a spam score. Its value is that it would reveal any sender emitting mail as
