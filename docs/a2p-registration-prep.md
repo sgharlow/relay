@@ -9,43 +9,71 @@
 
 ---
 
-## The one question that decides which form you fill in
+## ✅ Settled 2026-08-15: Relay is an LLC → **Standard brand**
 
-**Does Relay have a business Tax ID (a US EIN)?**
-
-- **No EIN** → Sole Proprietor brand. Cheapest and fastest, but capped: one 10DLC number per
-  campaign and low throughput.
-- **Has an EIN** → Standard (or Low-Volume Standard) brand. More vetting, higher fee, higher
-  throughput. Stripe is already live in this business, so this is the likelier answer.
-
-Answer this before opening the console; the two paths ask for different things and a wrong start
-costs a re-registration.
+Steve confirmed the entity. That closes the fork, and it also **retires the trap this document led
+with**: the OTP mobile number with a lifetime three-use limit is a **Sole Proprietor** mechanism.
+Standard brands are not verified by OTP at all — they go through business vetting against public
+records instead. Ignore anything below about OTP numbers; it does not apply to us.
 
 ---
 
-## 🔴 Three traps, in the order they will bite
+## 🔴 The traps that DO apply, in the order they will bite
 
-1. **The OTP number has a lifetime limit of three uses, across all vendors.** Sole Proprietor
-   verification sends a one-time code to a mobile number, and that number can only ever be used
-   three times for this purpose anywhere. Do not spend one on a trial account or an experiment. Use
-   the number you intend to keep.
-2. **It must be a real mobile number.** VoIP numbers are rejected — including Twilio's own numbers,
-   Google Voice, and most virtual numbers. A carrier-issued mobile line only.
-3. **Campaign approval is the slow part, not brand approval.** Budget 2–4 weeks end to end and do
-   not plan anything against a date inside that window.
+1. **The legal name and EIN must match the IRS record EXACTLY.** This is reported as the single
+   commonest rejection reason. The authority is the **CP 575** EIN confirmation letter (or a **147C**
+   if the CP 575 is lost) — not what the bank has, not what Stripe has, not what feels right.
+   Punctuation, "LLC" vs "L.L.C.", and abbreviations all matter. **Find the CP 575 before you start.**
+2. **There is a three-attempt limit here too, in a different form.** Repeated failed submissions
+   produce a *"Maximum 3 tries exhausted"* state, after which you need a manual identity appeal —
+   send the CP 575 or 147C to support, roughly 5–7 business days. So getting it right first time is
+   worth ten minutes of checking the letter.
+3. **Reported new for 2026, verify at your provider before relying on it:** the EIN must be at least
+   **15 days old**, and **opt-in URLs must be live and carrier-verifiable**. The second one changes
+   our build order — see below.
+4. **Campaign approval is still the slow part.** Budget 2–4 weeks end to end and plan nothing
+   against a date inside that window.
+
+---
+
+## 🔴 A correction to the build order I gave earlier
+
+The earlier version of this file said, flatly, *"build no SMS code until the brand and campaign are
+approved."* That is **wrong for the campaign stage**, and it is worth saying plainly rather than
+quietly editing: if carriers must be able to **load and verify the opt-in URL**, then something
+public has to exist before the campaign is submitted, not after it is approved.
+
+The reasoning behind the original advice still holds and is unchanged: **do not build the SMS
+send path on spec.** Response shapes and error handling written against an unapproved campaign have
+never touched the real API, and calling that done is the trap.
+
+What actually has to exist, and when:
+
+| Stage | Needs | Build before? |
+|---|---|---|
+| **Brand** registration | Legal name, EIN (CP 575 exact), address, website | Nothing new |
+| **Campaign** registration | A **publicly loadable** page showing the opt-in language | **Yes — a public page** |
+| **First real send** | The signed-in opt-in screen, and the send path | Yes, after approval |
+
+⚠️ **The signed-in opt-in screen is NOT carrier-verifiable** — a reviewer cannot get behind the
+sign-in wall to look at it. What they can check is a public page that states the consent language,
+what the messages are, and how to stop. That is a small, honest page describing a flow we are
+committed to building, and Claude can write it on request.
 
 ---
 
 ## What you enter (yours)
 
-Have these to hand before starting:
+Have these to hand before starting — **read them off the CP 575, not from memory**:
 
-- Legal business name, exactly as registered
-- EIN (or the decision that there isn't one)
-- Registered business address
+- **Legal business name**, character-for-character as the IRS has it
+- **EIN**, same source
+- **Registered business address**, as filed
+- Entity type (LLC) and industry classification
 - Business website — `https://relaystandby.com`
-- Your name, email, and a mobile number for OTP (see trap 1)
-- Business type / industry classification
+- Your name, email and a contact phone (a contact number, *not* an OTP verification — Standard
+  brands are not verified that way)
+- Not publicly traded, so the stock-exchange fields are N/A
 
 ---
 
@@ -118,13 +146,20 @@ it before submitting the campaign, not after a rejection.
 
 ## The order to do it in
 
-1. Answer the EIN question.
-2. Check `/privacy` and `/terms` cover SMS; edit if not.
-3. Register the brand. Wait for approval (1–3 business days).
-4. Submit the campaign with the copy above. Wait (3–7 days, possibly 10–15).
-5. **Only once approved:** build the opt-in screen and the send path, behind the existing
-   notification seam, exactly matching the samples and the opt-in description registered above.
+1. ✅ ~~Answer the EIN question.~~ **LLC → Standard brand.** Settled 2026-08-15.
+2. ✅ ~~Check `/privacy` and `/terms` cover SMS.~~ **Both edited and shipped 2026-08-15**, guarded by
+   `lib/ops/sms-disclosure.test.ts`.
+3. **Find the CP 575** and copy the legal name, EIN and address off it verbatim. Ten minutes here
+   buys you the three-attempt limit.
+4. **Register the brand.** Approval 1–3 business days.
+5. **Publish the public opt-in page** so the campaign's opt-in URL resolves for a carrier reviewer.
+   Ask Claude and it gets written and deployed the same session.
+6. **Submit the campaign** with the copy above. Wait — 3–7 days nominal, 10–15 reported through
+   mid-2026.
+7. **Only once the campaign is approved:** build the signed-in opt-in screen and the send path,
+   behind the existing notification seam, matching exactly what was registered.
 
-Step 5 is deliberately last. A send path written against an unapproved campaign has never touched
-the real API — its response shapes and error handling are guesses — and this portfolio has a
-standing rule against calling that done.
+Step 7 stays last on purpose. A send path written against an unapproved campaign has never touched
+the real API — its response shapes and error handling are guesses — and this portfolio has a standing
+rule against calling that done. Step 5 moved *earlier* for a different reason: a carrier has to be
+able to load the URL, and a page behind a sign-in wall is not loadable.
