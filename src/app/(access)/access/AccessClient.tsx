@@ -260,10 +260,22 @@ export default function AccessClient() {
         <ul className="mt-6 space-y-3">
           {choices.map((c) => (
             <li key={c.ownerId}>
+              {/*
+                `flex-col items-start` is LOAD-BEARING, not decoration. globals.css
+                gives every button `display: inline-flex; align-items: center;
+                justify-content: center` under `(max-width: 720px), (pointer:
+                coarse)` — the touch-target rule — so on the phone this screen is
+                specified for, two stacked spans become two flex items IN A ROW.
+                The name and the sentence about it sat side by side, the name
+                wrapped mid-word into a narrow column, and it looked broken on
+                exactly the device J8 describes. Found by screenshotting it; no
+                assertion in this file's E2E walk noticed, because every one of
+                them passed on the text being present.
+              */}
               <button
                 type="button"
                 onClick={() => setOwner(c.ownerId)}
-                className="w-full min-h-[44px] rounded-lg border border-rule-strong px-5 py-4 text-left hover:bg-ochre-soft"
+                className="flex w-full min-h-[44px] flex-col items-start justify-center rounded-lg border border-rule-strong px-5 py-4 text-left hover:bg-ochre-soft"
               >
                 <span className="block text-t4 font-semibold text-ink">{c.ownerLabel}</span>
                 <span className="mt-1 block text-t2 text-muted">

@@ -45,6 +45,22 @@
   --rule: #e3dccf;         /* hairline borders */
   --rule-strong: #cfc7b8;
 
+  /* The ground behind a modal. One job, and it needed a name of its own.
+
+     🔴 THE STEP-UP DIALOG SHIPPED WITH NO BACKDROP AT ALL, found 2026-08-15 by
+     screenshotting it. It asked for `bg-ink/40`, and Tailwind cannot apply an
+     opacity modifier to a colour that resolves to a hex through a CSS variable —
+     `bg-ink/40` computes to `rgba(0, 0, 0, 0)`, measured in the browser. Fully
+     transparent, silently: the class exists, the build passes, and a "modal"
+     floats over undimmed content that competes with it for attention.
+
+     This is exactly the case tailwind.config.ts describes — "if a name is
+     missing, that is a prompt to ask what job the colour does". The job is
+     dimming the page behind something that must be answered before anything
+     else. Written as a complete rgba so no modifier is involved and it cannot
+     fail the same way. */
+  --scrim: rgba(31, 27, 22, 0.45);
+
   /* --- State. Each colour has exactly one job and appears nowhere else. ----
      This is what makes reversibility legible without a paragraph explaining
      it, and why there is no "success" colour: nothing in Relay is a success.

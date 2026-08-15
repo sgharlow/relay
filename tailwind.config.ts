@@ -30,6 +30,11 @@ const config: Config = {
         faint: "var(--ink-faint)",
         rule: "var(--rule)",
         "rule-strong": "var(--rule-strong)",
+        /* The ground behind a modal. A complete rgba, never a colour plus an
+           opacity modifier — `bg-ink/40` computes to rgba(0,0,0,0) because --ink
+           resolves to a hex, which is how the step-up dialog shipped with no
+           backdrop at all. See globals.css. */
+        scrim: "var(--scrim)",
 
         /* State. One job each — see globals.css for why there is no "success". */
         sage: "var(--sage)",

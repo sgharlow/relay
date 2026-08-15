@@ -121,7 +121,11 @@ export default function StepUpPrompt({
       role="dialog"
       aria-modal="true"
       aria-labelledby="step-up-heading"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
+      /* `bg-scrim`, NOT `bg-ink/40`: Tailwind cannot apply an opacity modifier
+         to a colour that resolves to a hex through a CSS variable, so the
+         original computed to rgba(0,0,0,0) and this dialog shipped with no
+         backdrop — measured in the browser, not guessed. See globals.css. */
+      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim p-4"
     >
       <div className="w-full max-w-md rounded border border-rule bg-paper-raised p-5 shadow-lg">
         <h2 id="step-up-heading" className="text-t5 font-semibold text-ink">

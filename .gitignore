@@ -60,3 +60,6 @@ scripts/scratch-*.ts
 # SVGs that together weigh 49 KB. Anchored to the root so a legitimately-needed
 # relay*.png under public/ or docs/ still tracks normally.
 /relay[0-9]*.png
+
+# Screenshots written by scripts/e2e-ui.ts. Run artefacts, not source.
+e2e-*.png
