@@ -334,8 +334,17 @@ precise, with clean generous padding inside the tile. Absolutely flat design —
 shadows, no highlights, no 3D, no texture. No text, no letters, no numbers. Square 1:1.
 ```
 
-Faster and exact: **render `src/app/icon.svg` at 400 × 400** instead of generating it. Use the
-prompt only if a softer, more brand-like avatar is wanted. The SVG is the authoritative mark.
+✅ **DONE 2026-08-15 — `avatar-400.png` exists**, rendered rather than generated, from
+`docs/ad-assets/avatar-400.svg` via `node scripts/render-svg.mjs docs/ad-assets/avatar-400.svg 400 400`.
+Regenerate with that command after any change to the mark. The prompt above is kept only in case a
+softer, less literal avatar is ever wanted.
+
+⚠️ **It is NOT a render of `src/app/icon.svg`, and this line used to say it was.** That file is the
+**32px cut** and it deliberately drops the connecting arc — its own header explains why: "below
+about 32px it renders as two grey pixels sitting in the gap that carries the whole idea, which is
+worse than leaving it out." At 400 × 400 that constraint is gone, and rendering the 32px cut would
+have shipped an avatar missing the one element the mark is *about*. The source is the FULL mark,
+`public/assets/brand/relay-mark.svg`, on the paper tile icon.svg contributes.
 
 ---
 

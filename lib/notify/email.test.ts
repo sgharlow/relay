@@ -38,8 +38,92 @@ beforeEach(() => {
   process.env.RESEND_FROM_ADDRESS = 'relay@example.com';
   process.env.RESEND_API_KEY = 'test-key';
   delete process.env.RESEND_REPLY_TO_ADDRESS;
+  delete process.env.DEV_MAIL_ALLOWLIST;
+  // These assert what a PRODUCTION send does. Outbound mail is gated on the
+  // environment since 2026-08-15, and under vitest NODE_ENV is 'test' —
+  // positively not production, and correctly refused.
+  vi.stubEnv('VERCEL_ENV', 'production');
 });
-afterEach(() => _setResendClientForTesting(null));
+afterEach(() => {
+  _setResendClientForTesting(null);
+  vi.unstubAllEnvs();
+});
+
+/*
+  🔴 A LAPTOP COULD MAIL A REAL CAREGIVER.
+
+  `.env.local` carries the production Resend key and points at the production
+  cluster, because Relay has no dev database. So a `next dev` server running any
+  notification path — an invitation, a verifier notice, an access request — sent
+  a real email, from the real sending domain, to whatever address was in the
+  row. The ops-alert path was gated on 2026-08-15; this one was not, and it is
+  the one that reaches customers rather than operators.
+
+  The guard is an explicit allow-list rather than a domain rule, and the reason
+  is that the obvious rule is backwards here. `assertDeliverableDomain` already
+  REFUSES .test/.invalid/.localhost — reserved domains cannot receive mail, and
+  burning reputation on them is self-harm on an account shared with
+  report-bridge. So "outside production, only reserved domains" would permit
+  exactly the set that is already blocked, i.e. nothing. The only way to test
+  mail off production is a real address somebody controls, so that is what gets
+  named.
+
+  The three E2E walks are unaffected: they make no mail assertions at all, and
+  their accounts are on reserved domains that were already refused.
+*/
+describe('mail from a non-production environment', () => {
+  it('refuses a real recipient, loudly', async () => {
+    vi.stubEnv('VERCEL_ENV', undefined);
+    vi.stubEnv('NODE_ENV', 'development');
+    const client = stub(ok);
+    _setResendClientForTesting(client);
+
+    await expect(sendEmail({ to: 'a-real-caregiver@gmail.com', subject: 's', text: 't' }))
+      .rejects.toThrow(/development/i);
+
+    const send = client.emails.send as unknown as { mock: { calls: unknown[][] } };
+    expect(send.mock.calls, 'the provider must not even be asked').toHaveLength(0);
+  });
+
+  it('allows an address explicitly named for dev testing', async () => {
+    vi.stubEnv('VERCEL_ENV', undefined);
+    vi.stubEnv('NODE_ENV', 'development');
+    process.env.DEV_MAIL_ALLOWLIST = 'me@example.com, other@example.com';
+    const client = stub(ok);
+    _setResendClientForTesting(client);
+
+    await expect(sendEmail({ to: 'other@example.com', subject: 's', text: 't' })).resolves.toBeUndefined();
+  });
+
+  it('is case- and whitespace-insensitive about the allow-list', async () => {
+    vi.stubEnv('VERCEL_ENV', undefined);
+    vi.stubEnv('NODE_ENV', 'development');
+    process.env.DEV_MAIL_ALLOWLIST = '  Me@Example.com  ';
+    _setResendClientForTesting(stub(ok));
+
+    await expect(sendEmail({ to: 'me@example.com', subject: 's', text: 't' })).resolves.toBeUndefined();
+  });
+
+  it('does not consult the allow-list in production', async () => {
+    // Production must never depend on a variable nobody sets there.
+    vi.stubEnv('VERCEL_ENV', 'production');
+    delete process.env.DEV_MAIL_ALLOWLIST;
+    _setResendClientForTesting(stub(ok));
+
+    await expect(sendEmail({ to: 'anyone@gmail.com', subject: 's', text: 't' })).resolves.toBeUndefined();
+  });
+
+  it('still refuses a reserved domain outside production, allow-listed or not', async () => {
+    // The two guards are orthogonal and both apply.
+    vi.stubEnv('VERCEL_ENV', undefined);
+    vi.stubEnv('NODE_ENV', 'development');
+    process.env.DEV_MAIL_ALLOWLIST = 'nobody@relay.test';
+    _setResendClientForTesting(stub(ok));
+
+    await expect(sendEmail({ to: 'nobody@relay.test', subject: 's', text: 't' }))
+      .rejects.toThrow(/reserved/i);
+  });
+});
 
 /**
  * Fanning one message out to a person's two addresses.

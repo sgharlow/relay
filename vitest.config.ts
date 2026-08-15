@@ -6,6 +6,8 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'lib/**/*.test.ts'],
+    // Declares which environment the assertions are about. See vitest.setup.ts.
+    setupFiles: ['./vitest.setup.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
@@ -20,6 +22,7 @@ export default defineConfig({
         'src/app/**',          // Next.js page/layout components — UI tested separately
         '**/*.d.ts',
         'vitest.config.ts',
+        'vitest.setup.ts',
         'tailwind.config.ts',
         'postcss.config.mjs',
         'next.config.mjs',
