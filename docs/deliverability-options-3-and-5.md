@@ -289,9 +289,42 @@ reports. Rescuing them is a two-minute job with a real expiry date on it.
    `dmarcreport@microsoft.com` / `noreply-dmarc-support@google.com` and never trashes it — **and
    untrash the ones already in there, before ~2026-09-10.** Do this before anything else, because
    every report thrown away is a week of evidence gone.
-2. **Read the last two weeks** and confirm 100% of volume is Resend/SES and aligned. That is a
-   fifteen-minute job with any free DMARC XML viewer.
+2. ~~**Read the last two weeks**~~ ✅ **DONE 2026-08-15 — reports rescued by Steve and read.**
 3. **Only then**, consider `p=none` → `p=quarantine`, and `~all` → `-all`.
+
+### ✅ What the reports actually said (read 2026-08-15)
+
+Both Microsoft aggregate reports, IDs `8e476174a8e7490fb13272a5b2eafef2` (08-10→11) and
+`98d0152c24574e4eb5c9fb98b8ccaf61` (08-11→12):
+
+| Window | Source IP | Disposition | SPF | DKIM |
+|---|---|---|---|---|
+| 10→11 Aug | `54.240.11.140` | none | pass | pass |
+| 11→12 Aug | `54.240.11.138` | none | pass | pass |
+
+**The open question is closed: there is no unknown sender.** Every record is ours — envelope from
+`send.relaystandby.com`, header from `relaystandby.com`, one record per report, and those two IPs are
+exactly the 08-09 baseline test's. Nothing is spoofing or piggybacking on this domain, so that
+candidate reputation cause is eliminated by the receiver's own data rather than by assumption.
+
+**Authentication is stronger than had been documented.** The mail is **double DKIM-signed** —
+`d=relaystandby.com` (selector `resend`) *and* `d=amazonses.com` — both passing, alongside SPF.
+Published policy is `p=none; sp=none; pct=100; fo=1` with relaxed alignment.
+
+**And it explains nothing about the filing, exactly as predicted.** `disposition: none` throughout;
+there is no SCL anywhere in a DMARC report. The junking happens after DMARC passes.
+
+**One thing it does unlock.** `d=relaystandby.com` aligns with the header From under **strict**
+alignment, not merely relaxed — so DMARC would still pass on the DKIM leg if policy tightened. That
+removes the main technical risk from a future `p=quarantine`.
+
+⚠️ **But the sample is two messages across two days, Outlook-only** (the Google reports were not
+saved). That is far too thin to change a DNS record on. **Recommendation: hold `p=none`, accumulate a
+fortnight, then decide.** Still Infrastructure-Change-Policy gated regardless.
+
+📌 **The reports for the 2026-08-14 A/B test have not arrived yet** — that test post-dates this
+window, so its IPs (`54.240.48.188`, `54.240.11.161`) will appear in reports landing ~08-15/16.
+Those are the receiver's view of the experiment and are worth reading when they come.
 
 🔴 **Step 3 is a DNS change to a working mail setup and is Infrastructure-Change-Policy gated.** It
 carries real risk — an SPF or DMARC edit that gets it wrong stops mail leaving at all, and this

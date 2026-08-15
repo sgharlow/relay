@@ -167,10 +167,20 @@ Paste this as the description:
 > - Arm B — subject reference `RLY-HTML-B227`, Message-ID `⬜`, Date (UTC) `⬜`
 >
 > **DMARC posture:** `v=DMARC1; p=none; rua=mailto:dmarc@relaystandby.com; fo=1`. We receive and
-> monitor your aggregate reports (submitter `protection.outlook.com`) and are preparing to move to
-> `p=quarantine` once they confirm every legitimate source aligns. SPF is published on the envelope
-> domain `send.relaystandby.com` (`include:amazonses.com`); the apex carries MX records and can
-> receive mail.
+> read your aggregate reports (submitter `protection.outlook.com`) and are preparing to move to
+> `p=quarantine`. SPF is published on the envelope domain `send.relaystandby.com`
+> (`include:amazonses.com`); the apex carries MX records and can receive mail.
+>
+> **Your own aggregate reports corroborate this.** Report IDs
+> `8e476174a8e7490fb13272a5b2eafef2` (2026-08-10→11) and
+> `98d0152c24574e4eb5c9fb98b8ccaf61` (2026-08-11→12) each contain a single record, from
+> `54.240.11.140` and `54.240.11.138` respectively — both `disposition: none`, both SPF **pass** and
+> DKIM **pass**. The mail is double DKIM-signed (`d=relaystandby.com` selector `resend`, and
+> `d=amazonses.com`), and `d=relaystandby.com` aligns with the header From under strict alignment,
+> not merely relaxed.
+>
+> So by your own measurement there is exactly one sender on this domain, it is the one we operate,
+> and it authenticates cleanly on every leg — while the same messages are filed to Junk at SCL 5.
 >
 > **Already eliminated by measurement:**
 > - Authentication — `compauth=pass reason=100`, SPF/DKIM/DMARC all pass.
