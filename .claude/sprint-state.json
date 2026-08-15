@@ -333,5 +333,119 @@
         "score": 5
       }
     ]
+  },
+  "sprint4": {
+    "scope": "goal-driven: next sprint of completeness, correctness, security, docs, journeys, wiring, UI",
+    "branch": "sprint/2026-08-15-3",
+    "iterationsUsed": 5,
+    "iterationCap": 5,
+    "backlogSource": [
+      ".claude/sprint-state.json -> sprint3.deferred",
+      "repo survey across the seven axes"
+    ],
+    "backlogInferred": false,
+    "verdict": "The deferred queue offered feature work. The survey found three pieces of monitoring that could not report the failure they were built for, plus one measurement never taken. Nothing was red at any point.",
+    "baseline": {
+      "start": "2381 passed, 1 skipped",
+      "end": "2421 passed, 1 skipped",
+      "newlySkipped": 0,
+      "schema": "green both regions (25 tables)",
+      "a11y": "0 serious/critical across 34 pages (was: owner mode never run)"
+    },
+    "shipped": [
+      {
+        "id": "I1",
+        "commit": "18213e0",
+        "axis": "security+correctness",
+        "score": 15,
+        "title": "Relay's production DB was recording another product's mail",
+        "evidence": "Measured 113 rows, 70 foreign across 8 nonexistent synthetic*.report-bridge.com domains; the newest row in the table was foreign. Guard at recordDeliveryEvent, the seam every write passes. 12 of 26 new assertions fail against the old code. delivery-events.ts had NO test file before this."
+      },
+      {
+        "id": "I2",
+        "commit": "50d97a2",
+        "axis": "correctness",
+        "score": 7.5,
+        "title": "the mail dead-man's switch had been disarmed since its first event",
+        "evidence": "healthy = count(*)>0 over an append-only table = permanently true once the first event landed. Rebuilt against a send-side record (migration 031: provider id + timestamp, no recipient, no body). Live-proven on production: one ripe unheard send turned it false, one heard send turned it back, proof rows removed.",
+        "alsoFound": "migration 030's GRANT ON ALL TABLES resolves once, so 031 locked relay_dev out of the table it had just created. 032 fixes the cause with ALTER DEFAULT PRIVILEGES (verified supported on DSQL). verify:schema now probes readability too, proven by planting a REVOKE and watching it fail in both regions."
+      },
+      {
+        "id": "I3",
+        "commit": "a9a5717",
+        "axis": "wiring",
+        "score": 4,
+        "title": "no fetch names a route nothing serves",
+        "evidence": "Tree clean: 63 fetch sites, 75 routes. The check was WRONG TWICE on the way — a nested template literal produced a false positive, and the obvious repair let a real planted typo pass green. Both are now cases in the file. Proven by planting in the tree, not in a fixture array."
+      },
+      {
+        "id": "I4",
+        "commit": "c102c6f",
+        "axis": "ui-experience",
+        "score": 3,
+        "title": "owner mode had never been audited; keyboard trap on /audit at 390px",
+        "evidence": "34 pages audited with a disposable owner. One serious violation found and fixed, three latent siblings fixed, and a fifth found by the new structural check in the 768-800px band neither audit viewport covers. Re-audited against the rebuilt product: 0 across 34."
+      },
+      {
+        "id": "I5",
+        "commit": "a5e567f",
+        "axis": "correctness",
+        "title": "the rebuilt switch could be disarmed the same way, one layer down",
+        "evidence": "recordSendAttempt is best-effort by design, so a mute writer reads as a quiet week and the check reverts to permanently healthy. Orphan-event comparison, bounded to events at or after the first attempt so deploy day cannot false-alarm. Live-proven in isolation on production: ripe=0, orphans=2, healthy=false."
+      }
+    ],
+    "blocked": [
+      {
+        "id": "FOREIGN-ROWS",
+        "owner": "steve",
+        "category": "decision needed (destructive write)",
+        "need": "approve deleting 70 rows of another product's recipient data from production",
+        "statement": "DELETE FROM email_delivery_events WHERE email LIKE '%@synthetic%.report-bridge.com'",
+        "cost": "2 minutes",
+        "note": "Cause is fixed — the count can no longer grow. No live collision: every foreign address is on a domain that is in no Relay circle. Recovery point cba21459-8dcf-4cd5-b4ff-3aca1aea3113."
+      },
+      {
+        "id": "DEPLOY",
+        "owner": "steve",
+        "category": "decision needed",
+        "need": "merge and deploy sprint/2026-08-15-3",
+        "note": "EVERY fix this sprint is inert until deployed. Production is master @ ff696dc. Foreign events keep arriving and the daily monitor keeps passing on a condition that cannot fail."
+      },
+      {
+        "id": "REPORT-BRIDGE-PROBES",
+        "owner": "steve",
+        "category": "change outside this repo",
+        "need": "direction",
+        "note": "report-bridge mails synth-probe@synthetic.report-bridge.com, which is NXDOMAIN, generating a new nonexistent subdomain per run. Every probe is a guaranteed hard bounce on the Resend account Relay shares. Most recent 2026-08-15T19:43. Strongest surviving explanation for the Outlook junk-filing."
+      }
+    ],
+    "deferred": [
+      {
+        "id": "DMARC-RUA",
+        "note": "the one DNS change worth making; a Cloudflare forward is what breaks it against p=reject"
+      },
+      {
+        "id": "P3/P4",
+        "note": "verify:live under relay_dev first, then the Vercel cutover to relay_app and strip DbConnectAdmin"
+      },
+      {
+        "id": "J9-5-7",
+        "note": "reversal receipt, re-arm confirmation, thank-you. Deliberately not taken — the demand gate is unmet"
+      },
+      {
+        "id": "step-8",
+        "note": "ad sitting parked by Steve to 2026-08-16"
+      }
+    ],
+    "debtCreated": [
+      "email_send_attempts grows one row per outbound message forever — a retention question, not a correctness one",
+      "scrollable-regions.test.ts reads utility classes only; scroll from raw CSS and overflow-y still need the rendered audit",
+      "verify:schema probes SELECT, not INSERT — a grant allowing reads and refusing writes would still pass"
+    ],
+    "nextTop3": [
+      "Deploy, then watch writerProven go false -> true. That transition is the proof I2 and I5 rest on and is observable nowhere else.",
+      "npm run verify:live under relay_dev, then P3 Vercel cutover — the named gate, unrun since the privilege split",
+      "J9 steps 5-7 — the last gap in the journey the product calls its differentiator"
+    ]
   }
 }
