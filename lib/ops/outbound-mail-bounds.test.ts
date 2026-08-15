@@ -94,6 +94,57 @@ describe('sending an invitation is bounded in both dimensions', () => {
   });
 });
 
+/*
+  THE OTHER HALF OF THE SAME PROPERTY, added 2026-08-14. Everything above bounds
+  what an AUTHENTICATED CALLER can make Relay send. Nothing bounded what an
+  UNATTENDED JOB can send — and the cron is the more dangerous sender, because
+  nobody is watching and there is no owner to stop it.
+
+  THE RULE, derived by reading production rather than the code. `demo@relay.test`
+  is a live seeded account whose OWNER address sits in a reserved domain that can
+  never receive mail; `email_delivery_events` already holds 18 rows for it, every
+  one a delivery failure. Mail to it hard-bounces on a Resend account SHARED with
+  report-bridge, so the reputation cost lands on a different project — and sender
+  reputation is precisely the surviving explanation for the Outlook junk-filing
+  this product has been chasing since 2026-08-09. An unattended job that quietly
+  burns it is attacking our own deliverability.
+
+  WHERE THE GUARD BELONGS, and where it deliberately does NOT:
+
+    ✅ unattended ORIGINATION — `runHeartbeatSweep` arming a trigger nobody asked
+       for. Guarded since 2026-08-13.
+    ✅ unattended OWNER-DIRECTED mail — `sweepSilentVerifiers` writes to
+       `users.email`, which for the demo account IS the reserved address.
+       Guarded 2026-08-14, after this test's rule was written.
+    ⛔ `resolveElapsedGrace` and `escalateLapsedRequests` — CHECKED AND
+       CORRECTLY UNGUARDED. Both mail CONTACTS, not the owner, and the seed's
+       contacts were deliberately made deliverable (lib/seed/demo-data.ts); the
+       live table shows them delivering 14/14. A demo can only reach those states
+       via /api/demo/simulate, which is explicit and driven by a person who meant
+       it, so completing it is the intended behaviour rather than a stray send.
+
+  So the test is narrow on purpose: it pins the two paths that must be guarded
+  without forcing the guard onto the two that must not be.
+*/
+describe('an unattended job cannot mail a seeded account at its reserved address', () => {
+  it.each([
+    ['lib/release/heartbeat.ts', 'arms triggers nobody asked for'],
+    ['lib/release/silence-sweep.ts', 'writes to users.email'],
+  ])('%s excludes demo accounts — it %s', (path) => {
+    expect(code(path)).toContain('is_demo_account');
+  });
+
+  /*
+    A JOIN, not a post-hoc filter. A row that must never be mailed should never
+    be fetched, so no later edit can reach past the guard by iterating the list
+    it was handed. Structural safety over convention.
+  */
+  it('the silence sweep filters in SQL rather than in JavaScript', () => {
+    const src = code('lib/release/silence-sweep.ts');
+    expect(src).toMatch(/JOIN\s+users[\s\S]{0,80}is_demo_account\s*=\s*false/);
+  });
+});
+
 describe('what an attacker would put in the message is bounded too', () => {
   it('a contact name is cleaned by the one shared definition', () => {
     for (const p of ['lib/people/recipients.ts', 'lib/people/verifiers.ts']) {

@@ -185,9 +185,26 @@ delivery failures.
 `is_demo_account = false`, as a join rather than a filter so a row that must never be mailed is never
 fetched. Caught by asking production what was in the table, not by any test.
 
-⚠️ **Not checked, and worth someone's time:** whether `escalateLapsedRequests` — which also runs
-unattended on the same cron and also sends mail — carries the same exclusion. It is pre-existing and
-was not touched here.
+**The other two unattended senders were then checked, and are correctly unguarded.** An earlier
+draft of this file flagged them as suspicious; that flag was wrong and is retracted here rather than
+left to worry somebody.
+
+| Path | Mails whom | Guarded? |
+|---|---|---|
+| `runHeartbeatSweep` | arms triggers, then owner + verifiers | ✅ yes — unattended *origination* |
+| `sweepSilentVerifiers` | the **owner**, at `users.email` | ✅ yes — that is the reserved address |
+| `resolveElapsedGrace` | recipients only | ⛔ correctly not — see below |
+| `escalateLapsedRequests` | verifiers only | ⛔ correctly not — see below |
+
+The last two mail **contacts, not the owner**, and the seed's contacts were deliberately made
+deliverable (`lib/seed/demo-data.ts` sub-addresses them to a real inbox — the live table shows them
+delivering 14/14). Only the owner address stays `demo@relay.test`. And a demo can only reach those
+states through `/api/demo/simulate`, which is explicit and driven by a person who meant it, so
+completing it is the intended behaviour rather than a stray send.
+
+The rule that falls out — *guard unattended origination, and guard unattended owner-directed mail* —
+is now pinned by a cross-cutting test in `lib/ops/outbound-mail-bounds.test.ts`, deliberately narrow
+so it does not force the guard onto the two paths that must not have it.
 
 ## What none of this changes
 
