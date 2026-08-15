@@ -307,6 +307,24 @@ that trains the filter and destroys the baseline the next test is measured again
 
 ### What is left, and why the investigation stops here for now
 
+> 🔴 **IT DID NOT STOP HERE. SUPERSEDED BY `docs/deliverability-options-3-and-5.md` (2026-08-14),
+> which is the authoritative record of this investigation from here on.** This heading is kept only
+> because the reasoning below is what led to test 2; do not conclude from it that the work ended at
+> "no code change reaches it". After it, in the same day:
+>
+> - Four of the five proposed remedies were **built, tested and live-proven** — the delivered-event
+>   false green on `/circle`, a second address for credential-free notices, a verifier-silence
+>   escalation to a phone call, and a rehearsal a verifier must acknowledge.
+> - The **dedicated-IP remedy was refuted on mechanism**, not merely deferred: Resend gates it at the
+>   Scale plan *and* >3,000 emails/day, and a cold IP is worse than a warm pool at bursty low volume.
+> - **We were degrading our own sending reputation** — 18 undeliverable sends to a reserved TLD on
+>   the shared account, now refused at the seam in `lib/notify/email.ts`.
+> - **Microsoft has been sending us DMARC aggregate reports all along**, and several were sitting in
+>   Trash unread.
+>
+> The remaining actions are Steve's and are written to paste-and-send in
+> `docs/outlook-sender-support-submission.md` and `docs/a2p-registration-prep.md`.
+
 > ⚠️ **SUPERSEDED 2026-08-14 — candidate 1 is now CLOSED BY MEASUREMENT.** Test 2 ran and was
 > refuted (see above): an HTML `multipart/alternative` part changed the SCL by nothing, on a fresh
 > mailbox, against a contemporaneous control. **Only candidate 2 remains, and it is the one we do
