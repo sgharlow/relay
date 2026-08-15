@@ -22,6 +22,9 @@ import {
   QA_SRCS,
   SHOWCASE_SRCS,
   SUBHEAD,
+  OG_DESCRIPTION,
+  OG_TITLE,
+  TRUST_POINTS,
 } from './content';
 
 describe('G1 caregiver WTP instrument', () => {
@@ -85,6 +88,88 @@ describe('G1 caregiver WTP instrument', () => {
     const text = JSON.stringify(DIFFERENTIATORS);
     expect(text).toContain('Everplans');
     expect(text).toContain('Apple Legacy Contact');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Ad-policy compliance of the DESTINATION (added 2026-08-14).
+//
+// WHY THIS IS A TEST AND NOT A NOTE. `g1-ad-creatives.md` §1a rewrote four
+// creatives after reading Meta's Personal Attributes standard from the source:
+// the attribute is not the violation, the attribute joined to "you/your" is.
+// That rewrite was applied to the ADS only, and the finding in
+// `g1-flight-log.md` is that reviewers visit the destination — so the landing
+// page carried the prohibited shape while every ad pointing at it was compliant.
+//
+// §1a states the rule in prose: "describe the situation in the third person and
+// let the reader recognise themselves in it. Never join 'you/your' to a health
+// event or a relative's condition." A rule with no test is how the ads were
+// fixed and the page was not. This is that test.
+//
+// It is deliberately NARROW. Second person is fine everywhere else on this page
+// and is used freely — "Encrypted in your browser", "the trigger you chose",
+// "Start your family's vault". Only the JOIN to a medical condition or a named
+// relative is refused, per the standard, which is why the two token sets are
+// checked for co-occurrence inside one sentence rather than separately.
+// ---------------------------------------------------------------------------
+
+describe('landing copy is ad-policy compliant at the destination (§1a)', () => {
+  /** Second person, in the forms this copy actually uses. */
+  const SECOND_PERSON = /\b(you|your|yours|you['’]re|yourself)\b/i;
+
+  /** Health / medical condition — Meta's protected personal attribute. */
+  const CONDITION =
+    /\b(hospital\w*|recover\w*|ill|illness|sick\w*|diagnos\w*|dementia|alzheimer\w*|stroke|surgery|medical|incapacit\w*|survivab\w*)\b/i;
+
+  /**
+   * A named relative. Lower risk than a condition — §1a calls "your parent's
+   * accounts" its weakest case — but it is the second half of the prohibited
+   * "knowledge of medical information of a user's family" shape, so it is held
+   * to the same rule. "family" is deliberately NOT here: having a family is not
+   * a protected attribute, and the priced CTA says "Start your family's vault".
+   */
+  const RELATIVE = /\b(parent|parents|mother|father|mum|mom|dad|spouse|grandparent)\b/i;
+
+  /** Every string a reviewer or crawler reads on the destination. */
+  const COPY: Array<[string, string]> = [
+    ['HEADLINE', HEADLINE],
+    ['SUBHEAD', SUBHEAD],
+    ['OG_TITLE', OG_TITLE],
+    ['OG_DESCRIPTION', OG_DESCRIPTION],
+    ['CTA_LABEL', CTA_LABEL],
+    ['SECONDARY_CTA_LABEL', SECONDARY_CTA_LABEL],
+    ...TRUST_POINTS.map((t, i): [string, string] => [`TRUST_POINTS[${i}]`, t]),
+    ...DIFFERENTIATORS.flatMap((d, i): Array<[string, string]> => [
+      [`DIFFERENTIATORS[${i}].them`, d.them],
+      [`DIFFERENTIATORS[${i}].problem`, d.problem],
+      [`DIFFERENTIATORS[${i}].relay`, d.relay],
+    ]),
+  ];
+
+  /** Sentence-level, because the standard is about the join, not the page. */
+  const sentences = (s: string): string[] => s.split(/(?<=[.!?])\s+/).filter(Boolean);
+
+  it.each(COPY)('%s never joins second person to a condition or a relative', (label, text) => {
+    for (const sentence of sentences(text)) {
+      const offends =
+        SECOND_PERSON.test(sentence) && (CONDITION.test(sentence) || RELATIVE.test(sentence));
+      expect(
+        offends,
+        `${label} — prohibited shape (§1a): "${sentence.trim()}"`,
+      ).toBe(false);
+    }
+  });
+
+  it('the guard can actually fail — the shape it refuses is the one that shipped', () => {
+    // The exact SUBHEAD text as it stood until 2026-08-14. A guard that has never
+    // been seen to fail proves nothing; this repo has found four of those.
+    const shipped = 'When a parent lands in the hospital, you need their accounts NOW.';
+    expect(SECOND_PERSON.test(shipped) && CONDITION.test(shipped)).toBe(true);
+  });
+
+  it('still leads with reversibility after the rewrite — the positioning is unchanged', () => {
+    expect(`${HEADLINE} ${SUBHEAD}`.toLowerCase()).toMatch(/closes itself|seals itself|reversib/);
+    expect(SUBHEAD).toContain('No rival does the second half');
   });
 });
 

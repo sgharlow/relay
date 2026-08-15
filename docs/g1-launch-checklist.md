@@ -229,11 +229,19 @@ Re-run all four checks at merge time if the branch has moved past `af4ddf3`.
       2026-08-10 with the execution detail it was missing — compliant creative rewrites, the
       correct Reddit ad format, character-limit-checked Meta copy, structural spend caps, the
       rejection path, the daily rhythm, and a who-does-what contract.
-      ⚠️ **Deadline the calendar imposes: the first ad must be APPROVED AND SERVING by 2026-08-18**
-      for a full 4-week window inside the 2026-09-15 hard stop → submit by ~2026-08-16.
-      ⚠️ Its pre-flight gate is not optional, and **part 1 step 5 (the Lane-B numerator) has never
-      been proven live** — it is unit-pinned only, and the defect it replaced shipped for two days
-      with the suite green.
+      ⚠️ **Deadline the calendar imposes: the first ad must be APPROVED AND SERVING by ~2026-10-03**
+      for a full 4-week window inside the **2026-10-31** hard stop → submit by ~2026-10-01.
+      **CORRECTED 2026-08-14** — this line read "SERVING by 2026-08-18 … inside the 2026-09-15 hard
+      stop" for three days after the gate moved on 2026-08-11 (`PROJECT.yaml`
+      `gates.g1-caregiver-wtp.moved`). `g1-ad-creatives.md` §"The date the calendar actually
+      imposes" was rebased that day; this line and `g1-flight-log.md` were missed. The dates live in
+      `PROJECT.yaml`; the derived serving-by date lives in `g1-ad-creatives.md` and is restated here
+      only because this is the step that acts on it.
+      ✅ **Its pre-flight gate PASSED 2026-08-10**, including part 1 step 5 (the Lane-B numerator),
+      which this line previously said "has never been proven live". It was walked end to end on
+      production the same day — signup → TOTP → seed → reveal → price card → the Stripe branch,
+      with `caregiver_intent {"src":"qa","cta":"start"}` read off the wire. Evidence:
+      `g1-flight-log.md` §"Step 5".
 
 - [x] **9. Gate tracking note — BUILT 2026-08-10: `docs/g1-flight-log.md`.** It carries the
   

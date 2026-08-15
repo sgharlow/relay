@@ -414,6 +414,47 @@ ratified:
       enforce' plan for script-src has no observer. Deliberate for now — routing
       it through lib/ops/incident.ts was offered and declined."
 
+  - id: landing-copy-third-person
+    date: 2026-08-14
+    owner: steve
+    decision: "rewrite the caregiver landing copy into the third person BEFORE the
+      first ad submission — option (b) of the three posed in docs/g1-flight-log.md"
+    detail: "g1-ad-creatives.md §1a rewrote four creatives after reading Meta's
+      Personal Attributes standard from the source: the attribute is not the
+      violation, the attribute joined to 'you/your' is. That rewrite was applied to
+      the ADS ONLY. Reviewers visit the destination, so the landing page kept the
+      prohibited shape while every ad pointing at it was compliant. Three strings
+      carried it, not the one the finding named: SUBHEAD ('when a parent lands in
+      the hospital, YOU need THEIR accounts NOW'), OG_DESCRIPTION ('Opens for YOU
+      in a real emergency, seals itself when THEY recover') and
+      DIFFERENTIATORS[2].relay ('the emergencies YOU actually face — which are
+      usually survivable', R3's exposed phrase verbatim)."
+    rationale: "Timing is the whole argument. Editing ratified instrument copy
+      mid-flight changes what the gate measures; editing it now costs nothing,
+      because ZERO qualified visitors have ever seen either version
+      (caregiver_leads = 0, N = 0, re-verified live 2026-08-14). The alternative —
+      option (c), rewrite only if a creative is rejected — pays for the information
+      in rejections, and repeated rejections put an ad account at risk inside a
+      window that has no spare account."
+    implemented: "src/app/caregivers/content.ts is the single definition;
+      OG_TITLE/OG_DESCRIPTION MOVED there from page.tsx, because copy governed by a
+      pre-committed rule has to be testable without rendering RSC — that is the
+      file's own stated purpose, and living outside it is why the rule that fixed
+      the ads could not see it. §1a's prose rule is now
+      content.test.ts 'landing copy is ad-policy compliant at the destination':
+      sentence-level co-occurrence of second person with a medical condition or a
+      named relative, across every string on the page, with a negative case that
+      fails on the text which actually shipped. It caught a fourth join no human
+      read had noticed ('a recovery check-in … so nothing you share')."
+    unchanged: "price, CTA, the reversibility lead, 'No rival does the second
+      half', every src exclusion rule, both lane definitions. The gate measures the
+      same thing. Second person stays everywhere it is harmless — 'Encrypted in
+      your browser', 'the trigger you chose', 'Start your family's vault'."
+    note: "⚠️ Compliance here is a self-assessment against a published standard,
+      exactly as §1a says. Policy review at submission is the only authoritative
+      signal, and Reddit's policy still has not been read from a primary source
+      (business.reddithelp.com returns a CSS error to every fetch)."
+
   - id: stripe-merchant-name
     date: 2026-08-09
     decision: "leave as-is for the G1 flight"

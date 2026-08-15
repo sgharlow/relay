@@ -405,10 +405,12 @@ that decides the product. A Vercel Analytics event cannot be deleted, so the exc
 
 ### Still open — decisions this file cannot make
 
-1. **The landing page's own copy.** `g1-flight-log.md` records that `SUBHEAD` still carries the
-   exact second-person-plus-family-health construction §1a removed from four creatives — and ad
-   reviewers visit the destination. Recorded there as **Steve's call** and still undecided. Compliant
-   creatives pointing at a non-compliant landing page is a partial mitigation, not a fix.
+1. ~~**The landing page's own copy.**~~ ✅ **DECIDED AND SHIPPED 2026-08-14** — Steve took option
+   (b): rewritten into third person before the first submission, while no traffic existed to
+   invalidate. Three strings moved, not the one this item named (`SUBHEAD`, `OG_DESCRIPTION` — which
+   is what a reviewer's crawler reads — and `DIFFERENTIATORS[2].relay`, which carried R3's exposed
+   phrase verbatim). §1a's rule is now enforced by `content.test.ts` rather than stated in prose.
+   Evidence and the before/after table: `g1-flight-log.md` §"RESOLVED 2026-08-14".
 2. **What the destination says about the free plan.** `SECONDARY_CTA_LABEL` reads "free, 10 items"
    and says nothing about the recipient cap. F1 states the free on-ramp in the ad; the destination
    should confirm it, or the click bounces on a promise the page does not repeat.

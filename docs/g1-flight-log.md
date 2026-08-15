@@ -11,8 +11,22 @@
 |---|---|
 | **Window start** | _fill on the day the first ad is APPROVED and serving — not the day it was submitted_ |
 | **Window end** | start + 4 weeks, or N ≥ 100 qualified, whichever first (decision #4, ratified 7-03) |
-| **Gate hard-stop** | **2026-09-15** (`PROJECT.yaml`) — the window ends here regardless of N |
-| **Ladder at flight start** | `dogfooded` · `wtp_evidence: none` · `caregiver_leads` = 0 rows (verified live 2026-08-10) |
+| **Gate hard-stop** | **2026-10-31** (`PROJECT.yaml` `gates.g1-caregiver-wtp`) — the window ends here regardless of N |
+| **Ladder at flight start** | `dogfooded` · `wtp_evidence: none` · `caregiver_leads` = 0 rows (re-verified live 2026-08-14) |
+
+> ⚠️ **The hard-stop row was STALE until 2026-08-14 and read 2026-09-15.** The gate moved to
+> 2026-10-31 on 2026-08-11 (`PROJECT.yaml` `gates.g1-caregiver-wtp.moved`, with its derivation)
+> and this file — the one the verdict gets written from — kept the superseded date while citing
+> `PROJECT.yaml` as its source. `g1-ad-creatives.md` was rebased the same day; this file and
+> `g1-launch-checklist.md` were missed. Both are corrected now.
+>
+> ⚠️ **The derivation behind 10-31 is already overtaken by events, and that is a decision for
+> Steve, not a correction to make here.** It read "sprints C-E ~4 weeks → ~09-08; Phase 0 on the
+> real claim flow ~09-15; ad serving ~09-22". Sprints C-E landed **2026-08-14**, three weeks
+> early. The only remaining input is Phase 0, which is at **N = 0 invitations issued** — so the
+> schedule is now waiting on invitations, not on engineering. Per the `moved:` block's own rule, a
+> SECOND move needs an explicit decision, a derivation and a record; moving it *earlier* deserves
+> the same treatment.
 
 ## What N is, precisely
 
@@ -114,6 +128,40 @@ Envelope encryption was observed working live alongside it (`/api/kms/wrap` → 
 ⚠️ **An abandoned `cs_live_` checkout session exists from this walk.** Nothing was charged — no
 payment details were entered — and Stripe expires uncompleted sessions. No action needed; recorded
 so it is not mistaken later for a real customer starting checkout.
+
+### ✅ RESOLVED 2026-08-14 — the landing page carried the copy shape the ads were rewritten to avoid
+
+**Steve's call: option (b) — rewrite into third person before the first submission.** Taken now,
+while zero qualified traffic has ever seen either version, so nothing measured is invalidated.
+
+Three strings changed in `src/app/caregivers/`, not one. The finding below named `SUBHEAD`; the
+same defect was one field away in copy the finding never looked at:
+
+| Constant | Was | Now |
+|---|---|---|
+| `SUBHEAD` | "When a parent lands in the hospital, **you** need **their** accounts NOW" | "A hospital stay can mean a family suddenly needs access to accounts only one person could reach" — §1a's own sanctioned example |
+| `OG_DESCRIPTION` | "Opens for **you** in a real emergency, seals itself when **they** recover" | "Opens to the people named in it when an emergency is confirmed, then seals itself on the next check-in" |
+| `DIFFERENTIATORS[2].relay` | "built for the emergencies **you** actually face — which are usually survivable" | "…the emergencies **families** actually face…" — R3's exposed phrase, verbatim, still on the page |
+
+`OG_DESCRIPTION` is the one worth dwelling on: it lived in `page.tsx`, outside the file whose whole
+stated purpose is that gate-governed copy be testable without rendering RSC — **so the rule that
+fixed the ads could not see it, and it is the copy a reviewer's crawler reads rather than skims.**
+It has moved into `content.ts` with the rest.
+
+**What did NOT change:** the price, the CTA, the reversibility lead, "No rival does the second
+half", every `src` exclusion rule, and both lane definitions. The gate measures the same thing.
+
+**The rule is now a test, not a note** (`content.test.ts`, "landing copy is ad-policy compliant at
+the destination"). §1a stated it in prose — *never join "you/your" to a health event or a
+relative's condition* — and prose is exactly why the ads were fixed and the destination was not.
+The test checks co-occurrence inside a single sentence across every string on the page, carries a
+negative case proving it can fail on the text that actually shipped, and caught a fourth join
+during the fix that no human read had noticed ("a **recovery** check-in … so nothing **you** share").
+
+Second person is untouched everywhere it is harmless, which is most of the page: "Encrypted in your
+browser", "the trigger you chose", "Start your family's vault". The attribute is not the violation.
+
+**Original finding follows, unedited.**
 
 ### 🔴 Finding — the LANDING PAGE carries the copy shape the ads were just rewritten to avoid
 

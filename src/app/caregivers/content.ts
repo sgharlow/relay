@@ -17,14 +17,50 @@ export const ANCHOR = { name: 'Everplans', priceYearlyUsd: 99.99 } as const;
 
 export const HEADLINE = 'Emergency access that closes itself.';
 
+/**
+ * RATIFIED THIRD PERSON 2026-08-14 (Steve), closing the open decision recorded in
+ * `docs/g1-flight-log.md`. Option (b) of the three: rewrite before the first ad
+ * submission, while zero traffic exists to invalidate.
+ *
+ * WHAT WAS WRONG. It read "When a parent lands in the hospital, YOU need THEIR
+ * accounts NOW". That is the exact second-person-plus-family-health construction
+ * `g1-ad-creatives.md` §1a removed from four creatives after reading Meta's
+ * Personal Attributes standard from the source — and **ad reviewers visit the
+ * destination**, so compliant ad copy pointing here was only a partial mitigation.
+ * The attribute is not the violation; the attribute joined to "you/your" is.
+ *
+ * The opening clause is now §1a's own sanctioned example ("A hospital stay can
+ * mean a family suddenly needs access"), which is the strongest position available
+ * if a reviewer ever queries it.
+ *
+ * ⚠️ THIS CHANGES WHAT THE GATE MEASURES, and that is why it happens NOW rather
+ * than mid-flight: the reversibility lead, the price, the CTA and every exclusion
+ * rule are untouched, and no qualified visitor has ever seen either version.
+ * `content.test.ts` pins the compliance rule so it cannot regress by a later edit.
+ */
 export const SUBHEAD =
-  'When a parent lands in the hospital, you need their accounts NOW — and you need that ' +
-  'access to end when the crisis does. Relay opens exactly what you were granted, and when ' +
-  'they recover and check in, it seals itself again. No rival does the second half.';
+  'A hospital stay can mean a family suddenly needs access to accounts only one person ' +
+  'could reach — and needs that access to end when the crisis does. Relay opens exactly ' +
+  'what was granted, and seals itself again as soon as that person checks back in. ' +
+  'No rival does the second half.';
 
 export const CTA_LABEL = `Start your family's vault — $${PRICE_YEARLY_USD}/yr`;
 
 export const CTA_HREF = '/caregivers/interest';
+
+/**
+ * Share-card copy. MOVED HERE from page.tsx 2026-08-14, for the reason stated at
+ * the top of this file: copy that a pre-committed rule governs has to be testable
+ * without rendering RSC. It sat one field away from SUBHEAD carrying the identical
+ * §1a defect — "Opens for YOU in a real emergency, seals itself when THEY recover"
+ * — and it is the copy an ad reviewer's crawler reads, so fixing only the visible
+ * subhead would have left the destination non-compliant where it is read by machine.
+ */
+export const OG_TITLE = 'Relay for caregivers — emergency access that closes itself';
+export const OG_DESCRIPTION =
+  'One encrypted vault for a parent’s accounts and instructions. Opens to the people named ' +
+  'in it when an emergency is confirmed, then seals itself on the next check-in. ' +
+  'Reversible by design.';
 
 /**
  * H0 win — distribution ammunition, per the disposition plan's WIN branch.
@@ -125,12 +161,17 @@ export const DIFFERENTIATORS = [
   {
     them: 'Static organizers (Everplans, GoodTrust, Trustworthy)',
     problem: 'A binder is permanent: once shared, it cannot be unshared — and it goes stale.',
-    relay: 'Reversible by default — a recovery check-in closes access automatically, so nothing you share is shared for good.',
+    // "so nothing YOU share" sat in the same sentence as "a recovery check-in".
+    // Incidental rather than a health claim — but it is the join a skimming
+    // reviewer pattern-matches, and third person costs nothing here.
+    relay: 'Reversible by default — a recovery check-in closes access automatically, so nothing shared here is shared for good.',
   },
   {
     them: 'Platform legacy features (Apple Legacy Contact, Google Inactive Account)',
     problem: 'One platform each, death-only, nothing for the six-week hospitalization in between.',
-    relay: 'One vault across everything they use, built for the emergencies you actually face — which are usually survivable.',
+    // "you actually face … usually survivable" was R3's exposed phrase verbatim —
+    // a prediction about the reader's own family, joined to "you". Third person now.
+    relay: 'One vault across everything they use, built for the emergencies families actually face — which are usually survivable.',
   },
 ] as const;
 

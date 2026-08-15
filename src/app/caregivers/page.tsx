@@ -33,16 +33,14 @@ import {
   DIFFERENTIATORS,
   HEADLINE,
   intentHref,
+  OG_DESCRIPTION,
+  OG_TITLE,
   PRICE_YEARLY_USD,
   SUBHEAD,
   TRUST_POINTS,
 } from './content';
 import { GUARANTEE_LABEL } from '../../../lib/offer';
 import QualifiedTracker from './QualifiedTracker';
-
-const OG_TITLE = 'Relay for caregivers — emergency access that closes itself';
-const OG_DESCRIPTION =
-  'One encrypted vault for a parent’s accounts and instructions. Opens for you in a real emergency, seals itself when they recover. Reversible by design.';
 
 /**
  * openGraph is set explicitly rather than inherited. The root layout's OG copy
