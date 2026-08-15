@@ -150,10 +150,23 @@ function item(
  * rather than merely not bouncing. `DEMO_CONTACT_INBOX` overrides the base for
  * anyone running the seed against their own mailbox.
  *
+ * 🔴 THE LAST CLAUSE OF THIS NOTE WAS FALSE, corrected 2026-08-14 by reading
+ * production. It said `.test` "is an identifier here rather than a channel …
+ * nothing addresses mail to the demo owner". `email_delivery_events` held
+ * EIGHTEEN failures for `relay.test`, and three paths mail this address: a
+ * verifier confirming a release (`/api/triggers/[id]/confirm` →
+ * `notifyOwnerReleasePendingGraceById`), a break-glass redemption, and
+ * `scripts/family-arc.ts`. Every one of those is a send that cannot succeed,
+ * spending reputation on a Resend account shared with another project.
+ *
+ * The address is still correct to keep — see below — but the safety now comes
+ * from `lib/notify/email.ts`, which refuses reserved TLDs at the seam, rather
+ * than from this paragraph being true.
+ *
  * ⚠️ THE OWNER'S OWN ADDRESS STAYS `demo@relay.test`, deliberately. That string
  * is the account's IDENTITY — `auth_sub` is derived from it — so changing it
  * would not rename the production account, it would seed a second one beside the
- * first. `.test` is reserved too, but it is an identifier here rather than a
+ * first. `.test` is reserved too, and it is an identifier here rather than a
  * channel: with seeded accounts excluded from the heartbeat sweep and no
  * credential able to sign in, nothing addresses mail to the demo owner.
  */

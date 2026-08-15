@@ -100,6 +100,62 @@ describe('sendEmailToAllBestEffort', () => {
   });
 });
 
+/**
+ * 🔴 AN ADDRESS THAT CAN NEVER RECEIVE MAIL IS NEVER WORTH THE REPUTATION.
+ *
+ * `demo@relay.test` is a live seeded account in production, and
+ * `email_delivery_events` holds 18 failures for that domain — measured
+ * 2026-08-14. `lib/seed/demo-data.ts` asserts in a comment that "nothing
+ * addresses mail to the demo owner"; three paths do (a verifier confirming, a
+ * break-glass redemption, and a script), which is why the guard cannot live at
+ * the call sites. RFC 6761 reserves `.test`, `.invalid` and `.localhost`; no
+ * mail can ever be delivered to them, so every such send is pure cost —
+ * retries, then failures, on a Resend account SHARED with report-bridge. And
+ * sending reputation is the surviving explanation for the Outlook filing this
+ * product has been chasing, so burning it on undeliverable addresses is
+ * self-harm.
+ *
+ * `example.com` and friends are deliberately NOT blocked: they are reserved
+ * second-level domains used throughout this suite's fixtures, and they are not
+ * what is costing us anything.
+ */
+describe('reserved-TLD addresses are refused before the provider is called', () => {
+  it.each(['demo@relay.test', 'someone@my.invalid', 'root@box.localhost'])(
+    'refuses %s',
+    async (to) => {
+      const client = stub(ok);
+      _setResendClientForTesting(client);
+
+      await expect(sendEmail({ to, subject: 's', text: 't' })).rejects.toThrow(/never receive/i);
+      expect(
+        (client.emails.send as unknown as { mock: { calls: unknown[][] } }).mock.calls,
+        'the provider must not be asked to try',
+      ).toHaveLength(0);
+    },
+  );
+
+  it('is caught by the best-effort wrapper like any other failure', async () => {
+    _setResendClientForTesting(stub(ok));
+    await expect(
+      sendEmailBestEffort({ to: 'demo@relay.test', subject: 's', text: 't' }),
+    ).resolves.toBe(false);
+  });
+
+  it('leaves example.com alone — reserved, but harmless and used by every fixture here', async () => {
+    _setResendClientForTesting(stub(ok));
+    await expect(
+      sendEmail({ to: 'lee@example.com', subject: 's', text: 't' }),
+    ).resolves.toBeUndefined();
+  });
+
+  it('does not fire on a real domain that merely contains the word test', async () => {
+    _setResendClientForTesting(stub(ok));
+    await expect(
+      sendEmail({ to: 'a@test-results.com', subject: 's', text: 't' }),
+    ).resolves.toBeUndefined();
+  });
+});
+
 describe('sendEmail', () => {
   it('resolves when Resend returns a message id', async () => {
     _setResendClientForTesting(stub({ data: { id: 'msg-1' }, error: null }));

@@ -261,6 +261,21 @@ Microsoft's filter.
 the dedicated-IP path is gated **twice** over, not once: it needs a plan upgrade to Scale *and*
 >3,000 emails/day. That strengthens rather than changes the verdict above.
 
+### And we were burning our own reputation
+
+The 18 `relay.test` rows are not inert noise — they are **sends that can never succeed**, on the
+shared Resend account, spending the exact reputation that is the last surviving explanation for the
+Outlook filing. `lib/seed/demo-data.ts` asserted in a comment that *"nothing addresses mail to the
+demo owner"*; production disagreed, and three paths do it: a verifier confirming a release
+(`/api/triggers/[id]/confirm`), a break-glass redemption, and `scripts/family-arc.ts`.
+
+Fixed at the seam rather than at three call sites: `lib/notify/email.ts` now refuses any address in a
+TLD RFC 6761 reserves as permanently undeliverable — `.test`, `.invalid`, `.localhost` — before the
+provider is asked. `example.com` and friends are deliberately untouched; they are reserved
+second-level domains used by fixtures throughout the suite and they cost nothing. The whole existing
+suite still passes, which is itself the evidence that no legitimate path was sending to a reserved
+TLD.
+
 ### 🔴 A deadline nobody set
 
 Gmail purges Trash after **30 days**. The trashed DMARC reports were received 2026-08-11 to

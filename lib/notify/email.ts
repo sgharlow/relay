@@ -39,6 +39,41 @@ export interface EmailMessage {
 }
 
 /**
+ * TLDs RFC 6761 reserves as permanently undeliverable.
+ *
+ * 🔴 WHY THIS IS A SEAM GUARD AND NOT A CALL-SITE FIX. `demo@relay.test` is a
+ * live seeded account in production, and `email_delivery_events` held 18
+ * failures for that domain when this was measured (2026-08-14).
+ * `lib/seed/demo-data.ts` states in a comment that "nothing addresses mail to
+ * the demo owner" — and three paths do: a verifier confirming a release
+ * (`/api/triggers/[id]/confirm`), a break-glass redemption, and `family-arc.ts`.
+ * A comment asserting a property that three call sites violate is exactly the
+ * shape that keeps costing this project, so the guard goes where every send
+ * must pass instead of where somebody has to remember it.
+ *
+ * The cost is real, not theoretical. A send here cannot succeed; it buys
+ * retries and then failures on a Resend account SHARED with report-bridge —
+ * and sending reputation is the last surviving explanation for the Outlook
+ * junk-filing this product has spent two weeks chasing. Burning it on
+ * addresses that can never receive anything is self-harm.
+ *
+ * ⚠️ `example.com` / `.net` / `.org` are deliberately NOT here. They are
+ * reserved second-level domains, they are used by fixtures throughout this
+ * suite, and they are not what is costing anything.
+ */
+const RESERVED_TLDS = ['test', 'invalid', 'localhost'];
+
+function assertDeliverableDomain(to: string): void {
+  const tld = to.trim().toLowerCase().split('@').pop()?.split('.').pop();
+  if (tld && RESERVED_TLDS.includes(tld)) {
+    throw new Error(
+      `Refusing to send to ${to}: .${tld} is reserved and can never receive mail, ` +
+        'so the attempt would only spend sending reputation',
+    );
+  }
+}
+
+/**
  * The address a recipient reaches by hitting reply.
  *
  * This is NOT cosmetic. `relaystandby.com` has no apex MX record, so the From
@@ -79,6 +114,9 @@ function resolveReplyTo(explicit?: string): string | undefined {
 export async function sendEmail(msg: EmailMessage): Promise<void> {
   const from = process.env.RESEND_FROM_ADDRESS;
   if (!from) throw new Error('RESEND_FROM_ADDRESS environment variable is not set');
+
+  // Refused before the provider is asked. See RESERVED_TLDS.
+  assertDeliverableDomain(msg.to);
 
   const replyTo = resolveReplyTo(msg.replyTo);
 
