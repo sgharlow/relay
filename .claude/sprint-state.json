@@ -248,5 +248,90 @@
         "note": "needs SQL extracted from query template strings; naive parse yields 183 prose false positives"
       }
     ]
+  },
+  "sprint3": {
+    "scope": "the three unblocked items, after walking through D5",
+    "branch": "sprint/2026-08-15-3",
+    "iterationsUsed": 3,
+    "iterationCap": 5,
+    "backlogSource": [
+      ".claude/sprint-state.json -> sprint2.unblockedNext"
+    ],
+    "backlogInferred": false,
+    "baseline": {
+      "start": "2364 passed, 1 skipped",
+      "end": "2376 passed, 1 skipped",
+      "newlySkipped": 0
+    },
+    "d5Ruling": {
+      "date": "2026-08-15",
+      "by": "steve",
+      "decision": "match the destination - warm paper",
+      "palette": {
+        "ground": "#f7f4ee",
+        "ink": "#1f1b16",
+        "ochre": "#b4703a"
+      },
+      "basis": "icon.svg and social-card.svg both record the dark-vs-product mismatch as a DEFECT, in red",
+      "alternativeKept": "relay-mark-inverse.svg defines a sanctioned dark mode (ink ground, ochre lifted to #f6ead9) if a lane ever needs contrast - NOT the retired slate"
+    },
+    "shipped": [
+      {
+        "id": "D8",
+        "commit": "311bfc9",
+        "title": "price_cents recorded what Stripe charged, not a hardcoded 11900",
+        "severity": "data-corruption path, imminent",
+        "why": "PriceCard reads a runtime price override by design and G1 is a price test; show $99 / charge $99 / record $119",
+        "proven": "3 webhook tests failed before (no webhook test existed at all); literal guard proven on both $119 and 11900"
+      },
+      {
+        "id": "D7+D5",
+        "commit": "1fe6f7b",
+        "title": "caregivers OG card ported to Warm Archive; ad prompts migrated",
+        "proven": "og-palette.test.ts failed on the 5 stale hexes before; card verified by RENDERING it",
+        "note": "fixing the OG card broke ad-copy.test.ts - three greys in PROMPTS.md were justified ONLY by that stale file. Two checks, one root cause."
+      },
+      {
+        "id": "D2",
+        "commit": "b0facb6",
+        "title": "CI check: code queries no table a migration fails to declare",
+        "proven": "zero false positives on the current tree (the bar it failed yesterday); planted caregiver_leads_typo caught",
+        "note": "filed as debt yesterday because a naive parse returned 183 prose matches; fixed by extracting SQL from template literals after stripping comments"
+      }
+    ],
+    "thresholdChanged": {
+      "what": "PROMPTS.md vacuity guard: 'at least 5 colours' -> names paper/ink/ochre",
+      "why": "Warm Archive uses 4 colours so the count failed on CORRECT input; lowering it to 4 is how a guard becomes a rubber stamp. Naming the three is strictly stronger."
+    },
+    "housekeeping": "terminated a leftover next dev process (PID 53732) from the Phase 2 test",
+    "blocked": [],
+    "deferred": [
+      {
+        "id": "D6",
+        "title": "generate the 7 ad image assets",
+        "score": 4,
+        "note": "NOW fully unblocked - D5 ruled, prompts correct, every matrix row has a block, avatar is a render of icon.svg. Needs Gemini; blocks only the Meta lane"
+      },
+      {
+        "id": "step-8",
+        "title": "the ad sitting",
+        "note": "parked to 2026-08-16; docs/g1-sitting-sheet.md ready"
+      },
+      {
+        "id": "P3/P4",
+        "title": "least-privilege: Vercel cutover, strip DbConnectAdmin",
+        "note": "needs go-ahead; rollback is one env var"
+      },
+      {
+        "id": "D3",
+        "title": "environment guard for product email",
+        "score": 5
+      },
+      {
+        "id": "D4",
+        "title": "migration ledger in the database",
+        "score": 5
+      }
+    ]
   }
 }
