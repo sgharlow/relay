@@ -145,6 +145,29 @@ These cut across multiple files and are easy to break. Preserve them.
   INSERT-only, never UPDATE/DELETE. Audit writes **block** the triggering operation if they fail —
   by design, do not make them best-effort.
 
+## The structural checks in `lib/ops/` — read these before adding a route or a screen
+
+They all exist for one reason: **a guard that lives in a helper is a guard on the helper.**
+A request-body cap shipped in `readJson` on 2026-08-13 and was recorded as closed while sixteen
+handlers still called `req.json()` directly. Each check below is the sibling that asserts routes
+actually *use* the thing, and each fails loudly rather than silently:
+
+| Check | Asserts | How you satisfy it |
+|---|---|---|
+| `body-limit.ts` | no handler reads an unbounded body | `readJson` / `readJsonOptional`, or `ALLOWED_RAW` + reason |
+| `route-auth.ts` | every handler establishes a principal | a session/token/secret call, or `PUBLIC_ROUTES` + reason |
+| `step-up-guard.ts` | sensitive handlers re-authenticate | `requireStepUp` / `requireStepUpOnce`, or classify it |
+| `api-reachability.ts` | no handler is unreachable | wire it, retire it, or `REACHED_FROM_OUTSIDE` + reason |
+| `type-scale.ts` | no page invents a tenth type step | `t1`–`t9`, never a px literal |
+| `raw-color.test.ts` | hardcoded colours do not spread | the tokens in `globals.css` |
+
+Two habits they encode. **Every allowlist entry argues for itself** — a reason under ~40 characters
+fails, and a reason that makes a checkable claim (*"it is rate-limited"*) is itself checked, because
+a justification that cannot be falsified is decoration. **Every check can be proven to fail** via a
+planted violation, because three checks in this repo have passed on the very defect they were
+written for: `api-reachability`'s module-specifier false positive, `step-up-guard`'s `Once?` typo,
+and `type-scale`'s backtracking lookahead, which counted 388 violations that were all tokens.
+
 ## Conventions observed in the existing code
 
 - Pools/clients initialize lazily so missing env vars don't crash at import time during tests.

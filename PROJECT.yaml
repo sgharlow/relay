@@ -791,3 +791,47 @@ deferred:
   #     scripts/a11y-audit.mjs could not mint a session (no demo@relay.test on
   #     the cluster) and says so itself. Eight owner screens are unmeasured.
   #
+  # ── OPENED 2026-08-15 by the same pass. What it built and did not prove, and
+  # what it found it could not measure. Recorded here rather than left implicit,
+  # because the four items above show what an unwritten "we should probably..."
+  # becomes.
+  #
+  - id: step-up-not-dogfooded
+    found: 2026-08-15 (production-bar pass, iteration 1)
+    what: "Step-up elevation is WIRED and unit-covered but no elevated round trip
+      has been walked by a signed-in owner: prompt shown, TOTP accepted, cookie
+      set, export completed, elevation revoked on sign-out. The routes were
+      confirmed to authenticate before they check elevation (all three answer 401
+      signed-out) and the nonce burn is live-proven, but that is the half BELOW
+      the flow a person actually meets."
+    why_deferred: "Needs a real authenticator against a real account. The env
+      TOTP fallback was retired 2026-08-13 (lib/auth/resolve-totp-secret.ts), so
+      there is no synthetic path to a signed-in owner any more — by design."
+    ends_when: "the next owner dogfood, and BEFORE any claim that step-up is
+      live-proven. It is a UI flow on the two most sensitive screens; a guard
+      that returns 403 correctly and a prompt nobody can answer look identical
+      from the server side."
+  - id: multi-owner-access-not-live-proven
+    found: 2026-08-15 (production-bar pass, iteration 2)
+    what: "The owner picker on /access and the item-scoped decrypt that makes it
+      usable are covered by tests and have never run against two real
+      simultaneous releases."
+    why_deferred: "No real multi-owner contact exists yet — the condition is a
+      person standing by for two owners who both have something open at once."
+    ends_when: "the first real multi-owner contact exists (Phase 0 data will
+      show it), or a seeded two-owner fixture is walked end to end"
+  - id: owner-mode-a11y-unaudited
+    found: 2026-08-15 (production-bar pass, iteration 3)
+    what: "scripts/a11y-audit.mjs covers 18 signed-out pages and skips the eight
+      owner-mode screens, because it cannot mint a session: `demo@relay.test`
+      does not exist on the cluster, so scripts/mint-owner-session.ts fails. CC9
+      records axe as clean across 21 pages from the 2026-08-13 run; the current
+      run measures 18 and says so itself, which is the honest version."
+    why_deferred: "Restoring the demo account means running scripts/reset-demo.ts
+      against the production cluster — a write, and not one to make in passing.
+      The script says what it is: it resets the demo owner to a clean 25-item
+      ARMED state."
+    ends_when: "the next session with the demo account seeded — run the audit
+      with credentials BEFORE any release that claims owner-mode accessibility.
+      The type-scale migration touched owner screens and they are the ones this
+      cannot see."

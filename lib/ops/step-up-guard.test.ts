@@ -26,6 +26,8 @@ import {
   findUnguardedSensitiveRoutes,
   findUndeclaredAccountRoutes,
 } from './step-up-guard';
+import { stripComments } from './body-limit';
+import { STEP_UP_TTL_SECONDS } from '../auth/step-up';
 
 describe('sensitive routes are elevation-guarded', () => {
   it('every declared route calls a guard', () => {
@@ -123,5 +125,61 @@ describe('sensitive routes are elevation-guarded', () => {
       expect(src).toMatch(/requireStepUp\(req,\s*auth\.ownerId\)/);
       expect(src).not.toMatch(/requireStepUpOnce\(/);
     }
+  });
+});
+
+/**
+ * The public security page makes this promise in plain words. It has to be true.
+ *
+ * Same rule and same reason as `guide-claims.test.ts`: a fact stated in two
+ * places drifts, and /security is a marketing surface with nothing connecting it
+ * to the constants it describes. Nobody re-reads a FAQ when they change a number
+ * in step-up.ts — and this particular answer is read by somebody deciding
+ * whether to put a parent's bank login into a website, which makes an
+ * out-of-date reassurance worse than none.
+ */
+describe('the security page describes the elevation the code enforces', () => {
+  const page = readFileSync('src/app/security/page.tsx', 'utf8');
+
+  it('names the same window the code enforces', () => {
+    expect(STEP_UP_TTL_SECONDS).toBe(300);
+    expect(page).toMatch(/lasts five minutes/);
+  });
+
+  it('claims exactly as many guarded actions as there are', () => {
+    // "The three things that would outlast the session".
+    expect(Object.keys(STEP_UP_REQUIRED)).toHaveLength(3);
+    expect(page).toMatch(/three things that would outlast the session/);
+    // And names them, so the count and the list cannot drift apart.
+    for (const phrase of ['exporting everything', 'issuing new recovery codes', 'closing the account']) {
+      expect(page).toContain(phrase);
+    }
+  });
+
+  /*
+    "Signing out ends it immediately, everywhere, not just on that machine" is a
+    claim about a server-side revoke, not about dropping a cookie. It is only
+    true because endSession() calls DELETE /api/account/step-up before signOut.
+  */
+  it('the sign-out path really does revoke elevation server-side', () => {
+    const endSession = readFileSync('src/hooks/useEndSession.ts', 'utf8');
+    expect(endSession).toMatch(/\/api\/account\/step-up/);
+    expect(endSession).toMatch(/method:\s*'DELETE'/);
+    expect(page).toMatch(/Signing out ends it immediately, everywhere/);
+
+    for (const f of [
+      'src/app/(owner)/_components/SidebarNav.tsx',
+      'src/app/(access)/_components/SignOutControl.tsx',
+    ]) {
+      const src = readFileSync(f, 'utf8');
+      expect(src, `${f} must sign out through endSession`).toMatch(/endSession\(/);
+      // Calling signOut directly would drop the session and leave the elevation
+      // row live — the exact thing the sentence promises does not happen.
+      expect(stripComments(src)).not.toMatch(/\bsignOut\s*\(/);
+    }
+  });
+
+  it('does not promise export without the prompt it now shows', () => {
+    expect(page).toMatch(/asks for your authenticator code first/);
   });
 });

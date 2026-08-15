@@ -51,7 +51,18 @@ const PLAIN_ANSWERS = [
   },
   {
     q: 'What happens if Relay disappears?',
-    a: 'You can export everything, decrypted in your browser, from your account page at any time — not on request, and not only if we are still around to answer. Keep that file the way you would keep a password list.',
+    a: 'You can export everything, decrypted in your browser, from your account page at any time — not on request, and not only if we are still around to answer. It asks for your authenticator code first, because the file it produces is unprotected once it leaves. Keep it the way you would keep a password list.',
+  },
+  /*
+    ADDED 2026-08-15, alongside step-up re-authentication.
+    It is the question this audience actually has — a caregiver's laptop lives in
+    a kitchen, gets borrowed, and gets left open — and the honest answer changed
+    that week, so it is worth being asked out loud rather than left for somebody
+    to discover by testing us.
+  */
+  {
+    q: 'What if someone gets to my computer while I am signed in?',
+    a: 'They can see your vault labels, and they cannot take permanent control of it. The three things that would outlast the session — exporting everything, issuing new recovery codes, and closing the account — each ask for your authenticator code again before they will run, and that permission lasts five minutes rather than the whole day. Signing out ends it immediately, everywhere, not just on that machine.',
   },
   {
     q: 'Can someone trick you into opening my vault?',
