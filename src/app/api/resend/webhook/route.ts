@@ -53,6 +53,14 @@ interface ResendEvent {
   data?: {
     email_id?: unknown;
     to?: unknown;
+    /**
+     * WHO SENT IT. The Resend account is shared with another project and a
+     * webhook endpoint is configured per ACCOUNT, so events for mail Relay never
+     * sent arrive here too — 70 of the 113 rows on production were another
+     * product's when this was measured. Passed to `recordDeliveryEvent`, which
+     * owns the rule; see its header for why the rule fails open.
+     */
+    from?: unknown;
     bounce?: { type?: unknown; subType?: unknown; message?: unknown };
   };
 }
@@ -133,6 +141,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       event: type,
       detail: bounceDetail(event.data),
       providerId: typeof event.data?.email_id === 'string' ? event.data.email_id : null,
+      from: event.data?.from,
     });
   } catch (err) {
     // A recording failure must not make Resend retry forever against a broken

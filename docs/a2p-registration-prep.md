@@ -1,5 +1,29 @@
 # A2P 10DLC registration — everything that is not yours to supply
 
+> ## ⏸️ PARKED 2026-08-15 by Steve, in favour of the G1 ad sitting.
+>
+> **Not cancelled, and not blocked — a priority call, made with the numbers in front of him.**
+> Registration is ~$60 one-time, ~$3–11/month forever, ~45 minutes of his time and 2–4 weeks of
+> waiting, plus about a day of engineering after approval. On a product whose `wtp_evidence` and
+> `demand_signal` are both still `none`, that lost to the G1 ad sitting, which is the actual
+> critical path to the **2026-10-02** gate and has a submit-by of roughly **2026-08-26**.
+>
+> **What the park costs, stated so the decision can be re-made honestly:** the 2–4 week clock does
+> not start. If SMS is wanted in, say, October, it arrives in November. That is the entire downside;
+> nothing here expires and no work is wasted.
+>
+> **Already done and still good whenever this resumes** — none of it needs redoing:
+> `/privacy` and `/terms` SMS disclosures (shipped, guarded, live) · the public `/sms` opt-in URL
+> (shipped, guarded, live) · campaign copy, sample messages, opt-in description and keyword
+> responses (below) · provider chosen (Twilio) · brand type settled (Standard, LLC).
+>
+> **To resume, three things:** check the EIN is 30–90 days old, put the LLC's legal name on the
+> website (Twilio requires the site to bear a relationship to the business name, and it currently
+> names no entity), then work the field table below off the CP 575.
+>
+> 🔁 **Re-raise at the next `/daily-priority`** per the blocker protocol — a parked item is deferred,
+> never dropped.
+
 > Option 3 from the deliverability review. **Start this now, gate nothing on it, and write no SMS
 > code until the campaign is approved.** The whole item is lead time: brand approval runs 1–3
 > business days, campaign approval 3–7 but reported at 10–15 through mid-2026. Fees are noise at

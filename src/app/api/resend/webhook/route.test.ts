@@ -136,4 +136,23 @@ describe('POST /api/resend/webhook', () => {
     await POST(signed({ type: 'email.delivered', data: { to: 'solo@example.org' } }));
     expect(mockRecord.mock.calls[0][0].email).toBe('solo@example.org');
   });
+
+  /*
+    🔴 WIRING, AND IT IS THE WHOLE FIX. The decision about whose mail we keep
+    lives in `recordDeliveryEvent` — which is right, because that is the seam
+    every write passes through — but a rule that is never handed the field it
+    reads is a rule that always says yes. This route mocks that module, so
+    nothing else in this file can notice the omission; without this test the
+    guard would sit there looking correct while 70 rows of another product's
+    mail carried on arriving, which is exactly the state production was in.
+  */
+  it('hands the sender to the recorder, which is what makes the guard reachable', async () => {
+    await POST(
+      signed({
+        type: 'email.bounced',
+        data: { to: ['x@example.org'], from: 'ReportBridge <monitor@report-bridge.com>' },
+      }),
+    );
+    expect(mockRecord.mock.calls[0][0].from).toBe('ReportBridge <monitor@report-bridge.com>');
+  });
 });
