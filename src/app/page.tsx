@@ -225,6 +225,12 @@ export default function Home() {
             <Link href="/terms" className="inline-flex min-h-[44px] items-center hover:text-muted">
               Terms
             </Link>
+            {/* The A2P opt-in URL. Footer-linked as well as in the sitemap,
+                because a carrier reviewer checks that it is reachable from the
+                site rather than only that the URL resolves. */}
+            <Link href="/sms" className="inline-flex min-h-[44px] items-center hover:text-muted">
+              Texts
+            </Link>
           </div>
         </div>
       </footer>

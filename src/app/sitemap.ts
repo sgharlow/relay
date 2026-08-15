@@ -19,6 +19,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${SITE_URL}/`, changeFrequency: 'monthly', priority: 0.5 },
     { url: `${SITE_URL}/privacy`, changeFrequency: 'yearly', priority: 0.3 },
     { url: `${SITE_URL}/terms`, changeFrequency: 'yearly', priority: 0.3 },
+    // The A2P 10DLC opt-in URL. Listed because a carrier reviewer has to be able
+    // to find and load it, which is the entire reason the page is public.
+    { url: `${SITE_URL}/sms`, changeFrequency: 'yearly', priority: 0.3 },
     // Live public pages the list had drifted behind (2026-08-13): the guided
     // demo, the help page, and the user's guide — the three pages an invitation
     // or a search is most likely to want.
