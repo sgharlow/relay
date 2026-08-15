@@ -38,6 +38,13 @@ interface Dashboard {
   ownerLabel: string;
   acknowledgedLimits: boolean;
 }
+/** One open release, when a contact is standing by for more than one person. */
+interface OwnerChoice {
+  ownerId: string;
+  ownerLabel: string;
+  state: string;
+  released: boolean;
+}
 
 export default function AccessClient() {
   const urlToken = useSearchParams().get('token') ?? '';
@@ -56,6 +63,18 @@ export default function AccessClient() {
   // architecture was built to stop sending them — because this component
   // returned early whenever `token` was empty. `null` means "not asked yet".
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
+  /*
+    More than one person this contact stands by for needs them at once.
+
+    🔴 THIS USED TO COLLAPSE SILENTLY. The server resolved with `LIMIT 1` and no
+    tiebreak, so an adult child standing by for both parents saw one plan and had
+    nothing on the page suggesting the other existed. Rare — and exactly the
+    situation this product is for, which is why rarity was never the answer.
+
+    `owner` is the choice once made; `choices` is the list while it has not been.
+  */
+  const [choices, setChoices] = useState<OwnerChoice[] | null>(null);
+  const [owner, setOwner] = useState<string | null>(null);
 
   useEffect(() => {
     if (token) return; // A token wins: unclaimed recipients keep the old path.
@@ -69,7 +88,12 @@ export default function AccessClient() {
     // Either a token, or a session to resolve from. Neither yet → the code form.
     if (!token && !signedIn) return;
     // No token: the server resolves membership from the row (§3.7 rule 1).
-    const url = token ? `/api/access?token=${encodeURIComponent(token)}` : '/api/access';
+    // `owner` carries the choice when this contact stands by for more than one.
+    const url = token
+      ? `/api/access?token=${encodeURIComponent(token)}`
+      : owner
+        ? `/api/access?owner=${encodeURIComponent(owner)}`
+        : '/api/access';
     fetch(url)
       .then(async (res) => {
         if (res.status === 403) {
@@ -78,8 +102,22 @@ export default function AccessClient() {
           // product working, and this person just helped during someone's worst
           // week; an expiry error is the wrong last word.
           const body = (await res.json().catch(() => null)) as
-            | { closed?: boolean; pending?: boolean; message?: string; summary?: ClosureSummary | null }
+            | {
+                closed?: boolean;
+                pending?: boolean;
+                choose?: boolean;
+                releases?: OwnerChoice[];
+                message?: string;
+                summary?: ClosureSummary | null;
+              }
             | null;
+          // Checked FIRST. Two people needing this contact at once is not an
+          // error, a close, or a wait — it is a question, and every branch below
+          // would answer it with the wrong screen.
+          if (body?.choose && body.releases?.length) {
+            setChoices(body.releases);
+            return;
+          }
           /*
             A release that is PENDING or in GRACE is not an expired link and not
             a closed one — it is the wait. This branch used to fall through to
@@ -124,7 +162,7 @@ export default function AccessClient() {
         setData((await res.json()) as Dashboard);
       })
       .catch((e) => setError(String(e.message)));
-  }, [token, signedIn]);
+  }, [token, signedIn, owner]);
 
   const decrypt = useCallback(
     async (item: AccessItem) => {
@@ -200,12 +238,95 @@ export default function AccessClient() {
       />
     );
   }
+  /*
+    Two people need this contact at once.
+
+    Placed BEFORE the error and loading branches: it arrives as a 403, and every
+    branch below would render it as a failure. It is the opposite of a failure —
+    it is the product noticing something a single-owner screen would have hidden.
+
+    Names, not identifiers, and the state of each in plain words. Somebody
+    reading this is deciding which parent to attend to first; "released" and
+    "grace" are our vocabulary, not theirs.
+  */
+  if (choices && !owner) {
+    return (
+      <div>
+        <h1 className="text-t7 font-semibold">Two people need you</h1>
+        <p className="mt-2 text-muted">
+          You stand by for more than one person, and more than one of them has something happening
+          right now. Choose who to help first — the other will still be here.
+        </p>
+        <ul className="mt-6 space-y-3">
+          {choices.map((c) => (
+            <li key={c.ownerId}>
+              <button
+                type="button"
+                onClick={() => setOwner(c.ownerId)}
+                className="w-full min-h-[44px] rounded-lg border border-rule-strong px-5 py-4 text-left hover:bg-ochre-soft"
+              >
+                <span className="block text-t4 font-semibold text-ink">{c.ownerLabel}</span>
+                <span className="mt-1 block text-t2 text-muted">
+                  {c.released
+                    ? 'Open now — you can see what they left you.'
+                    : 'Being confirmed. Nothing is open yet, and you do not need to do anything.'}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+
   if (error) {
-    return <p className="rounded-lg border border-ochre bg-ochre-soft px-5 py-4 text-ink">{error}</p>;
+    return (
+      <div>
+        <p className="rounded-lg border border-ochre bg-ochre-soft px-5 py-4 text-ink">{error}</p>
+        {/* Only after a choice was made: the way back to the other person. */}
+        {choices && owner ? (
+          <button
+            type="button"
+            onClick={() => {
+              setOwner(null);
+              setError(null);
+            }}
+            className="mt-4 min-h-[44px] rounded-lg border border-rule-strong px-5 text-t2 text-ink hover:bg-ochre-soft"
+          >
+            Someone else you stand by for
+          </button>
+        ) : null}
+      </div>
+    );
   }
   if (!data) {
     return <p className="text-muted">Loading your access…</p>;
   }
+
+  /*
+    The way back, once a choice has been made.
+
+    Quiet and at the bottom of every branch below — a switcher at the TOP of a
+    dashboard invites somebody mid-emergency to wonder whether they are looking
+    at the right person's plan. The heading already says whose it is. This is for
+    when they have finished here.
+
+    Rendered only when a choice was actually offered; a contact standing by for
+    one person never sees it.
+  */
+  const otherOwner =
+    choices && choices.length > 1 ? (
+      <button
+        type="button"
+        onClick={() => {
+          setOwner(null);
+          setData(null);
+        }}
+        className="mt-10 min-h-[44px] rounded-lg border border-rule px-5 text-t2 text-muted hover:bg-ochre-soft"
+      >
+        Someone else you stand by for
+      </button>
+    ) : null;
 
   if (!data.released) {
     return (
@@ -226,6 +347,7 @@ export default function AccessClient() {
             </li>
           ))}
         </ul>
+        {otherOwner}
       </div>
     );
   }
@@ -281,6 +403,7 @@ export default function AccessClient() {
           {data.ownerLabel} are the right place to ask — we cannot see what is inside their vault,
           only that none of it is pointed at you.
         </p>
+        {otherOwner}
       </div>
     );
   }
@@ -343,6 +466,7 @@ export default function AccessClient() {
           </section>
         ))}
       </div>
+      {otherOwner}
     </div>
   );
 }

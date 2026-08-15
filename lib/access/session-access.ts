@@ -69,11 +69,61 @@ export interface ResolvedRelease {
  * not fill an owner's audit chain with noise. With the predicate above, a calm
  * visit now resolves nothing and so writes nothing — previously every such visit
  * appended a `recipient_dashboard_viewed` entry for a release that never opened.
+ *
+ * `ownerId` SELECTS among several. Absent, it returns the first of a
+ * deterministic order rather than an arbitrary row — see `resolveReleasesForUser`
+ * below, which is where the multi-owner story actually lives. Callers that can
+ * carry a choice should pass one; callers that cannot get a stable default
+ * instead of a coin flip.
  */
 export async function resolveReleaseForUser(
   userId: string,
-  opts: { audit?: boolean } = {},
+  opts: { audit?: boolean; ownerId?: string } = {},
 ): Promise<ResolvedRelease | null> {
+  const all = await resolveReleasesForUser(userId);
+
+  const resolved = opts.ownerId
+    ? (all.find((r) => r.ownerId === opts.ownerId) ?? null)
+    : (all[0] ?? null);
+
+  if (!resolved) return null;
+
+  if (opts.audit) {
+    await writeAuditEntry(resolved.ownerId, {
+      actor: `recipient:${resolved.recipientId}`,
+      action: 'recipient_dashboard_viewed',
+      entity: 'release_state',
+      entityId: resolved.releaseStateId,
+      detail: { released: resolved.released, via: 'standby_session' },
+    });
+  }
+
+  return resolved;
+}
+
+/**
+ * EVERY open release this user is standing by for.
+ *
+ * 🔴 THE SINGULAR RESOLVER ABOVE USED `LIMIT 1` WITH NO TIEBREAK, so a contact
+ * standing by for two owners with simultaneous open releases saw an ARBITRARY
+ * one — and had no way to reach the other. That was carried as a known defect
+ * (PROJECT.yaml `deferred:` session-access-multi-owner-limit1) on the reasoning
+ * that /standby lists every relationship separately and is the linked path, so
+ * the collapsed case had a correct door. True, and not enough: the person who
+ * arrives at /access from an emergency email lands on one owner's plan with
+ * nothing on the page even hinting the other exists.
+ *
+ * Two owners in crisis at once is rare. It is also EXACTLY the situation this
+ * product is for — an adult child standing by for both parents — and "rare"
+ * describes how often it happens, not how much it matters when it does.
+ *
+ * ORDER IS DETERMINISTIC, which the old query was not. Released first, because
+ * something that is already open outranks something that might open; then by
+ * owner id, which is arbitrary but STABLE — the same person gets the same
+ * default on every request rather than whatever the planner returned first.
+ * Display order is the caller's business; this only has ids.
+ */
+export async function resolveReleasesForUser(userId: string): Promise<ResolvedRelease[]> {
   const res = await query<{
     recipient_id: string;
     owner_id: string;
@@ -89,32 +139,16 @@ export async function resolveReleaseForUser(
       WHERE r.claimed_user_id = $1
         AND coalesce(r.standby_state, 'invited') <> 'revoked'
         AND rs.state IN ('pending', 'grace', 'released')
-      ORDER BY CASE rs.state WHEN 'released' THEN 0 ELSE 1 END
-      LIMIT 1`,
+      ORDER BY CASE rs.state WHEN 'released' THEN 0 ELSE 1 END, r.owner_id`,
     [userId],
   );
 
-  const row = res.rows[0];
-  if (!row) return null;
-
-  const resolved: ResolvedRelease = {
+  return (res?.rows ?? []).map((row) => ({
     recipientId: row.recipient_id,
     ownerId: row.owner_id,
     releaseStateId: row.release_state_id,
     triggerType: row.trigger_type,
     state: row.state,
     released: row.state === 'released',
-  };
-
-  if (opts.audit) {
-    await writeAuditEntry(row.owner_id, {
-      actor: `recipient:${row.recipient_id}`,
-      action: 'recipient_dashboard_viewed',
-      entity: 'release_state',
-      entityId: row.release_state_id,
-      detail: { released: resolved.released, via: 'standby_session' },
-    });
-  }
-
-  return resolved;
+  }));
 }

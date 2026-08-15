@@ -712,16 +712,39 @@ deferred:
   # (`migrate.ts` now mints its own IAM token when DSQL_PASSWORD is absent —
   # before 2026-08-15 it refused to start against the cluster the app uses.)
   #
-  - id: session-access-multi-owner-limit1
-    found: 2026-08-14 (six-lens audit)
-    what: "lib/access/session-access.ts resolves a signed-in recipient's open
-      release with LIMIT 1, so a contact standing by for TWO owners with
-      simultaneous open releases sees an arbitrary one on /access."
-    why_deferred: "Requires an owner-picker UI on the access screen. /standby
-      already lists every relationship separately and is the linked path, so the
-      collapsed case has a correct door today."
-    ends_when: "the first real multi-owner contact exists (Phase 0 data will
-      show it) — or immediately if a beta family reports it"
+  # ── CLOSED 2026-08-15, production-bar pass iteration 2 ────────────────────
+  #
+  #   session-access-multi-owner-limit1 — the resolver took `LIMIT 1` with no
+  #     tiebreak, so a contact standing by for two owners with simultaneous open
+  #     releases saw an arbitrary one and had no way to reach the other. It was
+  #     deferred on the reasoning that /standby lists every relationship and is
+  #     the linked path. True, and not enough for the person who arrives at
+  #     /access from an emergency email: nothing on that page hinted the other
+  #     existed. Two parents in crisis at once is rare, and it is exactly what
+  #     this product is for — "rare" describes how often, not how much it
+  #     matters.
+  #
+  #     `resolveReleasesForUser` returns ALL open releases in a DETERMINISTIC
+  #     order (the old query's ordering was planner-dependent, so the same person
+  #     could get a different answer between requests). /api/access offers the
+  #     choice as a fourth `error` discriminator on the existing 403 branch —
+  #     deliberately not 2xx, so a client that has never heard of `ChooseOwner`
+  #     cannot render it as an empty dashboard — and audits NOTHING while the
+  #     question is open, because being shown a list of names is not viewing
+  #     anybody's plan.
+  #
+  #     ⚠️ A SECOND DEFECT WAS HIDING BEHIND THE FIRST. Offering the choice would
+  #     have produced a dashboard on which every Reveal failed:
+  #     `decryptAccessItemForUser` also resolved one release and looked for the
+  #     item under that recipient. It now picks the release BY THE ITEM, from the
+  #     access rule — not from a client-supplied owner, which would be an input
+  #     to validate — and the coverage lookup is read-only so that trying does
+  #     not write a `denied` entry into a second family's audit chain.
+  #
+  #     WIRED, not live-proven. No real multi-owner contact exists yet, so this
+  #     has not been walked end to end; the tests cover both the picker and the
+  #     item-scoped decrypt.
+  #
   - id: type-scale-ratchet
     found: 2026-08-14 (six-lens audit, UI lens)
     what: "~9 arbitrary font sizes (text-[17px], fontSize: 15, …) exist outside

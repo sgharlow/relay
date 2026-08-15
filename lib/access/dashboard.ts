@@ -24,7 +24,7 @@ import { byteaToBase64 } from '../db/bytea';
 import { writeAuditEntry } from '../audit/audit-service';
 import { verifyRecipientToken } from '../auth/recipient-token';
 import { decryptDataKey } from '../kms/kms-client';
-import { resolveReleaseForUser } from './session-access';
+import { resolveReleasesForUser, type ResolvedRelease } from './session-access';
 import type { ReleaseStateRow } from '../release/state-machine';
 import { isDelayElapsed, opensAt } from '../rules/release-delay';
 import { getOwnerLabel } from '../people/owner-label';
@@ -348,24 +348,68 @@ export async function decryptAccessItem(token: string, itemId: string): Promise<
  * then posted an empty token and took a 401. J8, the primary demand journey, did
  * not work on the architecture meant to replace the token.
  *
- * Membership is resolved from the database by `resolveReleaseForUser`, never
- * from the session token (§3.7 rule 1) — the JWT establishes WHO you are, and
- * what that person may open is a question only the row can answer.
+ * Membership is resolved from the database, never from the session token
+ * (§3.7 rule 1) — the JWT establishes WHO you are, and what that person may open
+ * is a question only the row can answer.
+ *
+ * 🔴 IT RESOLVED ONE RELEASE AND TRIED ONLY THAT ONE. A contact standing by for
+ * two owners with simultaneous open releases could see the second owner's plan
+ * (once /api/access learned to offer both) and then fail to open a single item
+ * on it, because the decrypt resolved whichever release sorted first and looked
+ * for the item under the wrong recipient. The dashboard would have listed items
+ * that every Reveal refused.
+ *
+ * The release is chosen BY THE ITEM rather than by a parameter the client sends.
+ * That is deliberate: a client-supplied owner is an input to be validated, and
+ * the access rule already knows the answer authoritatively. It grants nothing
+ * extra — every release considered is one this user is genuinely standing by
+ * for, and `decryptForPrincipal` still applies every gate to whichever is chosen.
  */
 export async function decryptAccessItemForUser(
   userId: string,
   itemId: string,
 ): Promise<DecryptResult> {
-  const resolved = await resolveReleaseForUser(userId);
-  if (!resolved) {
+  const open = await resolveReleasesForUser(userId);
+  if (open.length === 0) {
     // Indistinguishable from a scope failure on purpose: "you are not a claimed
     // recipient" and "that item is not yours" tell an attacker different things.
     throw new AccessError('Item not in scope', 403);
   }
+
+  const resolved = open.length === 1 ? open[0] : ((await releaseCovering(open, itemId)) ?? open[0]);
+
   return decryptForPrincipal(
     { recipientId: resolved.recipientId, releaseStateId: resolved.releaseStateId },
     itemId,
   );
+}
+
+/**
+ * Which of these releases actually scopes `itemId` to its recipient?
+ *
+ * Read-only and side-effect free ON PURPOSE. The obvious implementation — try
+ * each release through `decryptForPrincipal` until one works — would write a
+ * `denied` audit entry to every owner it tried, so one recipient opening one
+ * item would leave a denial in a second family's tamper-evident log. An audit
+ * chain that records things that did not happen is worse than one that misses
+ * things.
+ *
+ * Returns null when nothing matches; the caller falls back to the first release
+ * so the denial that follows is audited against a release this user really is
+ * party to, rather than being swallowed.
+ */
+async function releaseCovering(
+  open: ResolvedRelease[],
+  itemId: string,
+): Promise<ResolvedRelease | null> {
+  const res = await query<{ recipient_id: string }>(
+    `SELECT recipient_id FROM access_rules
+      WHERE vault_item_id = $1 AND recipient_id = ANY($2::uuid[])`,
+    [itemId, open.map((r) => r.recipientId)],
+  );
+
+  const owning = new Set((res?.rows ?? []).map((r) => r.recipient_id));
+  return open.find((r) => owning.has(r.recipientId)) ?? null;
 }
 
 async function decryptForPrincipal(

@@ -28,7 +28,7 @@ vi.mock('../audit/audit-service', () => ({ writeAuditEntry: vi.fn(async () => ({
 
 import { query } from '../db/connection';
 import { writeAuditEntry } from '../audit/audit-service';
-import { resolveReleaseForUser } from './session-access';
+import { resolveReleaseForUser, resolveReleasesForUser } from './session-access';
 
 const mockQuery = vi.mocked(query);
 
@@ -129,5 +129,96 @@ describe('resolveReleaseForUser', () => {
     rows([CLAIM_ROW]);
     await resolveReleaseForUser('user-1');
     expect(writeAuditEntry).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Standing by for two people at once.
+ *
+ * 🔴 THE SINGULAR RESOLVER TOOK `LIMIT 1` WITH NO TIEBREAK, so an adult child
+ * standing by for both parents saw an arbitrary one of them and had no way to
+ * reach the other. It was carried as a known defect on the reasoning that
+ * /standby lists every relationship and is the linked path — true, and not
+ * enough for the person who arrives at /access from an emergency email.
+ *
+ * Two owners in crisis at once is rare, and it is exactly what this product is
+ * for. "Rare" describes how often, not how much it matters.
+ */
+const SECOND_ROW = {
+  recipient_id: 'rec-2',
+  owner_id: 'owner-2',
+  release_state_id: 'rs-2',
+  trigger_type: 'emergency',
+  state: 'grace',
+  version: '2',
+};
+
+describe('resolveReleasesForUser — more than one person at once', () => {
+  it('returns every open release, not the first one the planner happened to give', async () => {
+    rows([CLAIM_ROW, SECOND_ROW]);
+
+    const out = await resolveReleasesForUser('user-1');
+
+    expect(out.map((r) => r.ownerId)).toEqual(['owner-1', 'owner-2']);
+    expect(out[1]).toMatchObject({ state: 'grace', released: false });
+  });
+
+  /*
+    The old query had no ORDER BY beyond the state case, so two rows in the same
+    state came back in whatever order the planner chose — and the caller took
+    row zero. Same person, same data, different answer between requests.
+  */
+  it('orders deterministically: open first, then a stable tiebreak', async () => {
+    rows([]);
+    await resolveReleasesForUser('user-1');
+
+    const sql = String(mockQuery.mock.calls[0][0]);
+    expect(sql).toMatch(/ORDER BY CASE rs\.state WHEN 'released' THEN 0 ELSE 1 END, r\.owner_id/);
+    expect(sql).not.toContain('LIMIT 1');
+  });
+
+  it('is empty, not null, for somebody with nothing open', async () => {
+    rows([]);
+    await expect(resolveReleasesForUser('nobody')).resolves.toEqual([]);
+  });
+
+  it('applies the same revoked and open-state predicates as the singular resolver', async () => {
+    rows([]);
+    await resolveReleasesForUser('user-1');
+    const sql = String(mockQuery.mock.calls[0][0]);
+    expect(sql).toContain("<> 'revoked'");
+    expect(sql).toContain("state IN ('pending', 'grace', 'released')");
+  });
+});
+
+describe('resolveReleaseForUser — selecting among several', () => {
+  it('returns the named owner rather than the first', async () => {
+    rows([CLAIM_ROW, SECOND_ROW]);
+
+    const out = await resolveReleaseForUser('user-1', { ownerId: 'owner-2' });
+
+    expect(out).toMatchObject({ ownerId: 'owner-2', recipientId: 'rec-2' });
+  });
+
+  /*
+    A selector nobody is standing by for must resolve NOTHING, not fall back to
+    whichever release happened to be first. Falling back would mean a crafted
+    `?owner=` silently opened somebody else's plan — the caller asked for one
+    thing and would have been handed another without being told.
+  */
+  it('resolves nothing for an owner this user does not stand by for', async () => {
+    rows([CLAIM_ROW, SECOND_ROW]);
+    await expect(resolveReleaseForUser('user-1', { ownerId: 'owner-9' })).resolves.toBeNull();
+  });
+
+  it('audits against the owner that was actually selected', async () => {
+    rows([CLAIM_ROW, SECOND_ROW]);
+
+    await resolveReleaseForUser('user-1', { audit: true, ownerId: 'owner-2' });
+
+    expect(vi.mocked(writeAuditEntry)).toHaveBeenCalledWith(
+      'owner-2',
+      expect.objectContaining({ action: 'recipient_dashboard_viewed' }),
+    );
   });
 });

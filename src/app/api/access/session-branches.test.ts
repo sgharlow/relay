@@ -32,33 +32,57 @@ vi.mock('../../../../lib/access/dashboard', async (io) => {
   return { ...actual, getAccessDashboard: vi.fn(), getAccessDashboardForRecipient: vi.fn() };
 });
 vi.mock('../../../../lib/auth/session', () => ({ getOwnerSession: vi.fn() }));
-vi.mock('../../../../lib/access/session-access', () => ({ resolveReleaseForUser: vi.fn() }));
+vi.mock('../../../../lib/access/session-access', () => ({
+  resolveReleaseForUser: vi.fn(),
+  resolveReleasesForUser: vi.fn(),
+}));
+vi.mock('../../../../lib/people/owner-label', () => ({ getOwnerLabel: vi.fn() }));
 vi.mock('../../../../lib/access/closure', () => ({
   getClosureSummary: vi.fn(),
   getClosureSummaryForUser: vi.fn(),
 }));
 
 import { getOwnerSession } from '../../../../lib/auth/session';
-import { resolveReleaseForUser } from '../../../../lib/access/session-access';
+import {
+  resolveReleaseForUser,
+  resolveReleasesForUser,
+} from '../../../../lib/access/session-access';
+import { getOwnerLabel } from '../../../../lib/people/owner-label';
 import { getClosureSummaryForUser } from '../../../../lib/access/closure';
 import { getAccessDashboardForRecipient } from '../../../../lib/access/dashboard';
 import { GET } from './route';
 
 const mockSession = vi.mocked(getOwnerSession);
 const mockResolve = vi.mocked(resolveReleaseForUser);
+const mockResolveAll = vi.mocked(resolveReleasesForUser);
+const mockLabel = vi.mocked(getOwnerLabel);
 const mockClosure = vi.mocked(getClosureSummaryForUser);
 const mockDash = vi.mocked(getAccessDashboardForRecipient);
 
-/** No token at all — the claimed-recipient path. */
-const req = () =>
+/** No token at all — the claimed-recipient path. `owner` selects among several. */
+const req = (params: Record<string, string> = {}) =>
   ({
     headers: { get: () => null },
-    nextUrl: { searchParams: { get: () => null } },
+    nextUrl: { searchParams: { get: (k: string) => params[k] ?? null } },
   }) as never;
+
+const release = (o: Record<string, unknown> = {}) => ({
+  recipientId: 'rec-1',
+  ownerId: 'owner-1',
+  releaseStateId: 'rs-1',
+  triggerType: 'emergency',
+  state: 'released',
+  released: true,
+  ...o,
+});
 
 beforeEach(() => {
   vi.clearAllMocks();
   mockSession.mockResolvedValue({ ownerId: 'user-1' } as never);
+  // Default: at most one thing open, so the picker never fires in the branch
+  // tests below. `resolveReleaseForUser` is what those assert against.
+  mockResolveAll.mockResolvedValue([]);
+  mockLabel.mockImplementation(async (id: string) => `Owner ${id}`);
 });
 
 describe('a signed-in contact with nothing open', () => {
@@ -153,5 +177,77 @@ describe('a signed-in contact whose access genuinely closed', () => {
     expect(body.closed).toBe(true);
     expect(body.summary.grantedCount).toBe(3);
     expect(body.message).toMatch(/checked back in/i);
+  });
+});
+
+/**
+ * A contact standing by for two people, both of whom need them at once.
+ *
+ * 🔴 THIS COLLAPSED SILENTLY. The resolver took `LIMIT 1` with no tiebreak, so
+ * an adult child standing by for both parents was shown one plan with nothing on
+ * the page suggesting the other existed — and which one they got could differ
+ * between requests.
+ */
+describe('a signed-in contact needed by more than one person', () => {
+  const twoOpen = () =>
+    mockResolveAll.mockResolvedValue([
+      release(),
+      release({ recipientId: 'rec-2', ownerId: 'owner-2', releaseStateId: 'rs-2', state: 'grace', released: false }),
+    ]);
+
+  it('is offered the choice instead of being handed one at random', async () => {
+    twoOpen();
+
+    const res = await GET(req());
+    const body = await res.json();
+
+    expect(body.choose).toBe(true);
+    expect(body.releases.map((r: { ownerId: string }) => r.ownerId)).toEqual(['owner-1', 'owner-2']);
+    // Names, not identifiers: somebody is deciding which parent to attend to.
+    expect(body.releases[0].ownerLabel).toBe('Owner owner-1');
+    expect(body.releases[1].released).toBe(false);
+  });
+
+  /*
+    NOT 2xx. A client that has never heard of `ChooseOwner` must not be able to
+    mistake this for a dashboard and render an empty one.
+  */
+  it('answers a non-success status carrying the discriminator', async () => {
+    twoOpen();
+    const res = await GET(req());
+    expect(res.ok).toBe(false);
+    expect((await res.json()).error).toBe('ChooseOwner');
+  });
+
+  /*
+    Being shown a list of names is not viewing anybody's plan. Auditing here
+    would put a `dashboard_viewed` entry in TWO families' tamper-evident chains
+    for one visit that opened nothing.
+  */
+  it('resolves nothing, and so audits nothing, while the question is open', async () => {
+    twoOpen();
+    await GET(req());
+    expect(mockResolve).not.toHaveBeenCalled();
+  });
+
+  it('passes the choice through once it is made', async () => {
+    twoOpen();
+    mockResolve.mockResolvedValue(release({ ownerId: 'owner-2', recipientId: 'rec-2' }));
+    mockDash.mockResolvedValue({ items: [] } as never);
+
+    await GET(req({ owner: 'owner-2' }));
+
+    expect(mockResolve).toHaveBeenCalledWith('user-1', { audit: true, ownerId: 'owner-2' });
+  });
+
+  it('does not ask the question when only one thing is open', async () => {
+    mockResolveAll.mockResolvedValue([release()]);
+    mockResolve.mockResolvedValue(release());
+    mockDash.mockResolvedValue({ items: [] } as never);
+
+    const res = await GET(req());
+
+    expect(res.status).toBe(200);
+    expect(mockLabel).not.toHaveBeenCalled();
   });
 });

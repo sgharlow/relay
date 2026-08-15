@@ -15,8 +15,12 @@ import {
   getAccessDashboardForRecipient,
   AccessError,
 } from '../../../../lib/access/dashboard';
-import { resolveReleaseForUser } from '../../../../lib/access/session-access';
+import {
+  resolveReleaseForUser,
+  resolveReleasesForUser,
+} from '../../../../lib/access/session-access';
 import { getOwnerSession } from '../../../../lib/auth/session';
+import { getOwnerLabel } from '../../../../lib/people/owner-label';
 import { getClosureSummary, getClosureSummaryForUser } from '../../../../lib/access/closure';
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
@@ -33,7 +37,55 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     // change.
     const session = await getOwnerSession().catch(() => null);
     if (session) {
-      const resolved = await resolveReleaseForUser(session.ownerId, { audit: true });
+      /*
+        🔴 TWO OWNERS AT ONCE USED TO COLLAPSE TO AN ARBITRARY ONE. The resolver
+        took `LIMIT 1` with no tiebreak, so an adult child standing by for both
+        parents saw one plan and had nothing on the page suggesting the other
+        existed. That is rare — and it is also precisely the situation this
+        product is for, which is why "rare" was never a good enough answer.
+
+        Offered rather than chosen: with more than one open, the caller is told
+        both and picks. `?owner=` carries the choice. Nothing is audited on this
+        branch — being shown a list of names is not viewing anybody's plan, and
+        writing a `dashboard_viewed` entry into two families' chains for one
+        visit would put an event in a log that did not happen.
+      */
+      const open = await resolveReleasesForUser(session.ownerId);
+      const chosen = req.nextUrl.searchParams.get('owner') ?? undefined;
+
+      if (open.length > 1 && !chosen) {
+        return NextResponse.json(
+          {
+            error: 'ChooseOwner',
+            choose: true,
+            message: 'More than one person you stand by for needs you right now.',
+            releases: await Promise.all(
+              open.map(async (r) => ({
+                ownerId: r.ownerId,
+                ownerLabel: await getOwnerLabel(r.ownerId),
+                state: r.state,
+                released: r.released,
+              })),
+            ),
+          },
+          /*
+            403 with a discriminator, matching the two branches below it, rather
+            than the technically-precise 300 Multiple Choices. Every sibling on
+            this path answers 403 + `error` and the client already switches on
+            that string, so a fourth case joins an existing switch instead of
+            introducing a status class this codebase uses nowhere else. What
+            matters is that it is NOT 2xx: a client that has never heard of
+            `ChooseOwner` must not be able to mistake this for a dashboard and
+            render an empty one.
+          */
+          { status: 403 },
+        );
+      }
+
+      const resolved = await resolveReleaseForUser(session.ownerId, {
+        audit: true,
+        ownerId: chosen,
+      });
 
       if (resolved?.released) {
         return NextResponse.json(
