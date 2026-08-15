@@ -79,16 +79,60 @@ misspelled word in the one line of copy is worse than no line at all.
 > it, and a composition centred for 1:1 loses its subject. Either supply the 9:16 asset or restrict
 > placements to Feed — **decide deliberately; do not discover it in the delivery breakdown.**
 
-**Palette, taken from the shipped product so the click-through reads as continuous** — these are the
-real values in `src/app/caregivers/opengraph-image.tsx` and `src/app/icon.svg`, not invented:
+### 🔴 THE PALETTE BELOW WAS STALE, AND IT WOULD HAVE PRODUCED OFF-BRAND ADS
 
-| Role | Hex |
-|---|---|
-| Background (near-black) | `#020617`, deepening to `#0f172a` |
-| Amber — access, the live state | `#f59e0b`, highlights `#fcd34d`, mark `#fbbf24` |
-| Blue — the owner | `#3b82f6` |
-| Text / high contrast | `#f8fafc` |
-| Muted line + secondary text | `#94a3b8`, `#64748b` |
+Corrected 2026-08-15, before any asset was generated. Read this before generating anything.
+
+This section used to say: *"Palette, taken from the shipped product so the click-through reads as
+continuous — these are the real values in `opengraph-image.tsx` and `icon.svg`, not invented"*,
+followed by a near-black-and-amber table. Three things were wrong with that, and the third is the
+one that costs money.
+
+1. **`#f59e0b` is not in the product at all.** It appears in no stylesheet, no component and no
+   icon — it was invented, in the table that promised it was not. It was quoted into five prompts.
+2. **The values attributed to `icon.svg` are the ones it stopped using on 2026-08-13.** That file's
+   own header records the fix: *"🔴 IT WAS OFF-PALETTE… #0f172a with #3b82f6 and #fbbf24 — Tailwind
+   slate, blue and amber. Every browser tab advertised a product that looked nothing like the one
+   behind it."* The prompts inherited exactly the palette that comment was written to retire.
+3. **The destination is not near-black.** `relaystandby.com/caregivers` renders
+   `background: rgb(247, 244, 238)` with `rgb(31, 27, 22)` text — measured in a browser on
+   2026-08-15, not read from a file. It is a warm, LIGHT page. A near-black creative landing on it
+   is the opposite of "reads as continuous", which is the only reason this section exists.
+
+**The shipped palette — "Warm Archive", from `src/app/globals.css` and `src/app/icon.svg`:**
+
+| Role | Hex | Token |
+|---|---|---|
+| Background — warm paper, and it is LIGHT | `#f7f4ee` | `--paper` |
+| Raised / sunken surfaces | `#fffdf9`, `#efeae0` | `--paper-raised`, `--paper-sunken` |
+| Ink — all text, all primary buttons | `#1f1b16` | `--ink` |
+| Muted text | `#6b6257` | `--ink-muted` |
+| Ochre — in motion and REVERSIBLE (the access state) | `#b4703a` | `--ochre` |
+| Ochre, deep / soft | `#a15d27`, `#f6ead9` | `--ochre-deep`, `--ochre-soft` |
+
+⚠️ **`src/app/caregivers/opengraph-image.tsx` is still on the old dark palette** (`#020617`,
+`#fcd34d`, `#94a3b8`). That is a separate drift, recorded here rather than fixed in passing — it
+governs link previews, not ads, and changing it is its own decision with its own review.
+
+> ### ⛔ ONE DECISION IS OUTSTANDING AND IT IS NOT CLAUDE'S TO MAKE
+> The concept prompts below still describe a **dark** composition — "deep near-black slate field",
+> amber light through metal. Only the hex values have been corrected to real ones; the art
+> direction has not been rewritten, because whether a paid creative should match the landing page
+> or deliberately contrast with it is a marketing judgement, and dark creatives genuinely do carry
+> in dark-mode feeds on both platforms.
+>
+> **The two coherent answers, either of which is fine — but pick one before generating:**
+> - **Match the destination.** Rewrite the prompts to warm paper `#f7f4ee` with ink `#1f1b16` and
+>   ochre `#b4703a`. Continuity from ad to page, which is what this section originally claimed.
+> - **Deliberately contrast.** Keep the dark field, and accept the flip as a considered choice
+>   rather than an accident — but then delete the "reads as continuous" rationale, because it is no
+>   longer the reason.
+>
+> What is NOT acceptable is generating from a dark prompt while believing it matches the page. That
+> was the state this file was in until 2026-08-15.
+>
+> `lib/ops/ad-copy.test.ts` now fails if any colour cited here is absent from the product, so this
+> particular drift cannot recur silently.
 
 ---
 
@@ -108,7 +152,7 @@ and closes by itself*; a padlock reads as *shut*, which is the wrong half of the
 A high-end 3D render of a precision mechanical iris aperture, seen straight on and centred,
 filling about 55% of a square frame. The iris is machined from dark brushed metal with fine
 concentric tooling marks. It is caught mid-motion, roughly one third open, and warm amber light
-(#f59e0b) pours through the opening and spills onto the surrounding blades, catching every bevelled
+(#b4703a) pours through the opening and spills onto the surrounding blades, catching every bevelled
 edge. The background is a deep near-black slate field (#020617) with a very subtle vertical
 gradient, empty and calm, no texture or pattern. A faint amber glow bleeds a short distance into
 the darkness around the aperture. Cinematic studio lighting from the upper left, shallow depth of
@@ -126,6 +170,20 @@ Across the lower third of the frame, in a clean modern geometric sans-serif, off
 one single line of text reading exactly: It opens. Then it closes itself. The text is horizontally
 centred, sits well clear of the frame edges with at least 10% margin, is large enough to read on a
 phone, and is the only text anywhere in the image. Spell it exactly as written.
+```
+
+**`meta-m1-1080x1350` — 4:5, the recommended feed size**
+
+> Added 2026-08-15. The asset matrix has listed this file as **recommended** since the 4:5 note was
+> written, and it was the only row in that table with no prompt to run — so the size the note calls
+> "free reach" was the one size nobody could produce. Everything else there had a block.
+
+```
+[Concept A clean prompt, with these changes:]
+Vertical 4:5 composition. The aperture stays centred horizontally and sits slightly above the
+optical centre, with the extra vertical space distributed as calm empty field above and below it —
+the frame is taller, not more crowded. Keep the subject clear of the top and bottom eighths, which
+Meta may crop for different placements.
 ```
 
 **`story-1080x1920` — vertical**
@@ -161,7 +219,7 @@ any readable word, letter or number anywhere. Rising from the open page and drif
 right are a dozen translucent duplicate copies of that same page, each fainter and more dispersed
 than the last, scattering outward beyond the edge of the frame like something released that cannot
 be gathered back. The duplicates are lit with a cool grey-blue edge (#94a3b8); a single warm amber
-light (#f59e0b) rakes across the notebook itself from the left, so the original is warm and the
+light (#b4703a) rakes across the notebook itself from the left, so the original is warm and the
 escaping copies are cold. Photographic realism, shallow depth of field, sharp on the notebook and
 soft on the furthest copies. Melancholy and quiet, not alarming. No readable text of any kind, no
 numbers, no logos, no people, no hands, no phones, no computers. Square 1:1 composition with
@@ -187,7 +245,7 @@ shows after the seed — so it sets an accurate expectation rather than a promis
 
 ```
 A refined dark-mode data visualisation, centred in a square frame on a deep near-black slate
-background (#020617). One large bright node glows warm amber (#f59e0b) slightly above centre, with
+background (#020617). One large bright node glows warm amber (#b4703a) slightly above centre, with
 a soft halo. Six smaller nodes are arranged in a loose arc below and around it, each a dim
 desaturated slate grey (#64748b) with no glow of its own. Six thin luminous lines run from the
 bright node to each of the small ones; the lines are brightest where they leave the amber node and
@@ -226,7 +284,7 @@ so the image survives a cap change and only the platform text field needs editin
 A clean dark-mode interface abstraction on a deep near-black slate background (#020617), seen
 straight on. A neat grid of ten identical small rounded rectangular tiles, arranged five across and
 two down, centred in a square frame. The tiles are dark slate with a thin border; each glows softly
-from within in warm amber (#f59e0b), and they brighten in sequence from the top-left tile to the
+from within in warm amber (#b4703a), and they brighten in sequence from the top-left tile to the
 bottom-right so the leftmost are fully lit and the last one or two are only just beginning to
 glow — a set being filled in, one at a time. Below the grid, well separated from it, four small
 simple abstract person markers stand in a row: minimal geometric silhouettes, no faces, no detail,
@@ -261,14 +319,15 @@ advertiser profile is itself a small trust signal, and the mark already exists i
 **`avatar-400`**
 
 ```
-A minimal flat vector app icon on a square rounded-corner tile filled with dark slate (#0f172a).
-Centred within it: a single smooth arc sweeping from lower-left to upper-right in muted slate grey
-(#94a3b8), with a medium-thick rounded stroke. At the lower-left end of the arc sits a solid filled
-circle in clear blue (#3b82f6); at the upper-right end sits a solid filled circle in warm amber
-(#fbbf24). Both circles are the same size and clearly larger than the stroke width. The composition
-is balanced, geometric and precise, with clean generous padding inside the tile. Absolutely flat
-design — no gradients, no shadows, no highlights, no 3D, no texture. No text, no letters, no
-numbers. Square 1:1.
+A minimal flat vector app icon on a square rounded-corner tile filled with warm off-white paper
+(#f7f4ee). Centred within it: a single smooth arc sweeping from lower-left to upper-right in warm
+ochre (#b4703a), with a medium-thick rounded stroke. At the lower-left end of the arc sits a SOLID
+FILLED circle in near-black ink (#1f1b16) — the person who holds everything. At the upper-right end
+sits an OPEN circle: the same size, drawn as a ring in warm ochre (#b4703a) with a thick stroke and
+no fill — the person standing by, holding nothing. The contrast between the filled node and the
+open one is the whole idea and must be unmistakable. The composition is balanced, geometric and
+precise, with clean generous padding inside the tile. Absolutely flat design — no gradients, no
+shadows, no highlights, no 3D, no texture. No text, no letters, no numbers. Square 1:1.
 ```
 
 Faster and exact: **render `src/app/icon.svg` at 400 × 400** instead of generating it. Use the

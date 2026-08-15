@@ -186,6 +186,62 @@ describe('the ads cannot quote a price the product does not charge', () => {
   });
 });
 
+/*
+  The image spec makes one checkable claim, and it is the load-bearing one.
+
+  `docs/ad-assets/PROMPTS.md` heads its palette with: "Palette, taken from the
+  shipped product so the click-through reads as continuous — these are the real
+  values in `src/app/caregivers/opengraph-image.tsx` and `src/app/icon.svg`, NOT
+  INVENTED." Every concept prompt then quotes those hexes into the image a model
+  will generate.
+
+  A colour that is not in the product is therefore two failures at once: the
+  creative does not match the destination, and the sentence promising it does is
+  false. Neither is visible until the assets exist — or worse, until they run.
+*/
+describe('the image palette is really taken from the product', () => {
+  const productSource = [
+    'src/app/globals.css',
+    'src/app/icon.svg',
+    'src/app/caregivers/opengraph-image.tsx',
+  ]
+    .map((f) => readFileSync(f, 'utf8'))
+    .join('\n')
+    .toLowerCase();
+
+  const prompts = readFileSync('docs/ad-assets/PROMPTS.md', 'utf8');
+
+  /*
+    Only the FENCED BLOCKS are checked — those are the text pasted into an image
+    model, and a colour reaches a generated asset only from there.
+
+    The surrounding prose is deliberately exempt, for the same reason four other
+    checks in this repo strip comments before matching: the document has to be
+    able to NAME a retired colour in order to explain what went wrong with it.
+    The correction note above this file's palette says "#f59e0b is not in the
+    product at all" — a true sentence that a naive whole-file scan would flag as
+    the very defect it is describing. A check that cannot tell an example from a
+    use will be silenced, and then it checks nothing.
+  */
+  const fenced = [...prompts.matchAll(/```[\s\S]*?```/g)].map((m) => m[0]).join('\n');
+  const cited = [...new Set([...fenced.matchAll(/#[0-9a-fA-F]{6}/g)].map((m) => m[0].toLowerCase()))];
+
+  it('finds colours inside the prompt blocks, so this is not vacuous', () => {
+    expect(fenced.length, 'no fenced prompt blocks found in PROMPTS.md').toBeGreaterThan(0);
+    expect(cited.length).toBeGreaterThanOrEqual(5);
+  });
+
+  it('every colour it cites exists somewhere in the product', () => {
+    const invented = cited.filter((hex) => !productSource.includes(hex));
+    expect(
+      invented,
+      `docs/ad-assets/PROMPTS.md says its palette is "not invented", but these appear ` +
+        `nowhere in globals.css, icon.svg or opengraph-image.tsx: ${invented.join(', ')}. ` +
+        `An ad generated from an invented colour cannot match the page it lands on.`,
+    ).toEqual([]);
+  });
+});
+
 describe('the destination URLs carry the measurement', () => {
   /*
     "the `src` is the whole measurement. A URL without it is invisible to the
