@@ -26,6 +26,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   delete process.env.LEAD_NOTIFY_ADDRESS;
+  vi.unstubAllEnvs();
 });
 
 describe('validateLead', () => {
@@ -130,6 +131,49 @@ describe('recordLead attribution and content', () => {
   it('includes the note in the body', async () => {
     await recordLead({ email: 'a@b.com', note: 'mum has dementia' });
     expect(sendEmail.mock.calls[0][0].text).toContain('mum has dementia');
+  });
+
+  /*
+    🔴 A LEAD IS THE ONE EMAIL THAT MUST NOT BE AMBIGUOUS ABOUT WHERE IT CAME
+    FROM, because it is not really an email — it is the G1 gate's measurement
+    arriving in an inbox. PROJECT.yaml calls caregiver_leads "the input to the
+    G1 gate — the measurement that decides whether the product has a market",
+    and the portfolio rule it serves is that the signal must be ARMS-LENGTH. A
+    lead the team generated is the exact opposite of the thing being measured.
+
+    Nothing stops a `next dev` server producing one. .env.local carries the
+    production Resend key and points at the production cluster (no dev
+    database), so submitting the landing form locally emails the real operator
+    inbox and writes a real row. On 2026-08-15 the sibling case actually fired:
+    an ops alert from a laptop claiming to be production, believed because it
+    said so. The subscriber row is real, caregiver_leads is at 0, and this is
+    latent — which is the moment to close it, not after a row lands.
+
+    Blocking the write is NOT this test's call: whether a dev server may record
+    a G1 lead at all is Steve's gate decision, and suppressing the email alone
+    would HIDE a contaminated row rather than prevent it. So the honest minimum
+    is that the notification says what it is, and a dev-origin lead can never be
+    counted as demand by mistake.
+  */
+  it('says which environment a lead came from, so a dev-origin one cannot pass as demand', async () => {
+    vi.stubEnv('VERCEL_ENV', undefined);
+    vi.stubEnv('NODE_ENV', 'development');
+    await recordLead({ email: 'a@b.com', src: 'reddit' });
+
+    const { subject, text } = sendEmail.mock.calls[0][0];
+    expect(`${subject} ${text}`).toMatch(/development/i);
+    // Loud enough that it cannot be skimmed past in an inbox.
+    expect(subject).toMatch(/NOT PRODUCTION/i);
+  });
+
+  it('says nothing extra about a real production lead', async () => {
+    vi.stubEnv('VERCEL_ENV', 'production');
+    await recordLead({ email: 'a@b.com', src: 'reddit' });
+
+    const { subject, text } = sendEmail.mock.calls[0][0];
+    expect(subject).not.toMatch(/NOT PRODUCTION/i);
+    expect(subject).toContain('reddit');
+    expect(text).toContain('a@b.com');
   });
 
   it('still stores when no notify address is configured', async () => {

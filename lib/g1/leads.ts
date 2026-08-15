@@ -17,6 +17,7 @@
 
 import { query } from '../db/connection';
 import { sendEmail } from '../notify/email';
+import { alertEnvironmentLabel } from '../ops/alert-address';
 
 export const MAX_NOTE_LENGTH = 1000;
 
@@ -87,8 +88,43 @@ function notifyAddress(): string | undefined {
   return addr || undefined;
 }
 
+/**
+ * Whether this lead was generated somewhere that cannot produce real demand.
+ *
+ * 🔴 A LEAD IS NOT REALLY AN EMAIL — it is the G1 gate's measurement arriving
+ * in an inbox. `PROJECT.yaml` calls `caregiver_leads` "the input to the G1 gate
+ * — the measurement that decides whether the product has a market", and the
+ * whole worth of that number is that it is ARMS-LENGTH. A lead the team
+ * generated is precisely the opposite of the thing being measured.
+ *
+ * Nothing stops a `next dev` server producing one: `.env.local` carries the
+ * production Resend key and points at the production cluster, because Relay has
+ * no dev database. Submitting the landing form on a laptop therefore mails the
+ * real operator inbox and writes a real row, and on 2026-08-15 the sibling case
+ * proved the inbox believes what it is told — an ops alert from a dev server
+ * announced itself as production and was read as one.
+ *
+ * So the notification says where it came from. It does NOT block the write:
+ * whether a dev server may record a G1 lead at all is a gate decision, and
+ * suppressing only the email would hide a contaminated row instead of
+ * preventing one. Marking is the honest half that is safe to do unilaterally.
+ */
+function nonProductionOrigin(): string | undefined {
+  const label = alertEnvironmentLabel();
+  return label === 'production' ? undefined : label;
+}
+
 function composeNotification(lead: { email: string; note?: string }, input: LeadInput): string {
+  const origin = nonProductionOrigin();
+
   return [
+    ...(origin
+      ? [
+          `⚠️ THIS LEAD WAS NOT GENERATED IN PRODUCTION (${origin}).`,
+          `It is somebody testing, not demand. Do not count it toward G1.`,
+          ``,
+        ]
+      : []),
     `New Relay caregiver lead.`,
     ``,
     `Email:   ${lead.email}`,
@@ -115,9 +151,14 @@ export async function recordLead(input: LeadInput): Promise<LeadOutcome> {
   const to = notifyAddress();
   if (to) {
     try {
+      const origin = nonProductionOrigin();
       await sendEmail({
         to,
-        subject: `Relay lead — ${lead.email}${input.src ? ` (${input.src})` : ''}`,
+        // The marker leads the subject, because that is the part read in a
+        // notification list without opening anything.
+        subject:
+          (origin ? `[NOT PRODUCTION: ${origin}] ` : '') +
+          `Relay lead — ${lead.email}${input.src ? ` (${input.src})` : ''}`,
         text: composeNotification(lead, input),
         // Replying to the notification reaches the caregiver, not ourselves.
         replyTo: lead.email,
