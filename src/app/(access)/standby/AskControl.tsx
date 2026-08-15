@@ -56,7 +56,7 @@ export default function AskControl({
   if (sent) {
     return (
       <p
-        style={{ fontSize: 16, lineHeight: 1.6, marginTop: 12, color: '#6b6257' }}
+        style={{ fontSize: 'var(--t3)', lineHeight: 1.6, marginTop: 12, color: '#6b6257' }}
         role="status"
       >
         Asked. {ownerLabel} has been told first, and has a window to answer. If they cannot, the
@@ -75,7 +75,7 @@ export default function AskControl({
           marginTop: 12,
           minHeight: 44,
           padding: '10px 18px',
-          fontSize: 17,
+          fontSize: 'var(--t4)',
           fontWeight: 600,
           color: '#211d18',
           background: 'transparent',
@@ -123,7 +123,7 @@ export default function AskControl({
         hears; someone with an honest reason should know that and be unbothered
         by it, and someone without one should be told before they start.
       */}
-      <p style={{ fontSize: 16, lineHeight: 1.6, color: '#211d18' }}>
+      <p style={{ fontSize: 'var(--t3)', lineHeight: 1.6, color: '#211d18' }}>
         <strong>{ownerLabel} will be asked first.</strong> Everyone else they named is told that you
         asked, whatever the outcome — that is deliberate, so nobody can quietly reach into someone
         else&rsquo;s accounts.
@@ -131,7 +131,7 @@ export default function AskControl({
 
       <label
         htmlFor="ask-trigger"
-        style={{ display: 'block', marginTop: 14, fontSize: 16, fontWeight: 600 }}
+        style={{ display: 'block', marginTop: 14, fontSize: 'var(--t3)', fontWeight: 600 }}
       >
         What has happened?
       </label>
@@ -143,7 +143,7 @@ export default function AskControl({
           marginTop: 6,
           minHeight: 48,
           width: '100%',
-          fontSize: 17,
+          fontSize: 'var(--t4)',
           padding: '0 10px',
           border: '1px solid #cfc7ba',
           borderRadius: 8,
@@ -159,11 +159,11 @@ export default function AskControl({
 
       <label
         htmlFor="ask-reason"
-        style={{ display: 'block', marginTop: 14, fontSize: 16, fontWeight: 600 }}
+        style={{ display: 'block', marginTop: 14, fontSize: 'var(--t3)', fontWeight: 600 }}
       >
         In your own words
       </label>
-      <p style={{ fontSize: 15, lineHeight: 1.5, color: '#6b6257', marginTop: 2 }}>
+      <p style={{ fontSize: 'var(--t3)', lineHeight: 1.5, color: '#6b6257', marginTop: 2 }}>
         Whoever reads this may have to decide without being able to ask you anything, so say where
         they are and what you need.
       </p>
@@ -175,7 +175,7 @@ export default function AskControl({
         style={{
           marginTop: 6,
           width: '100%',
-          fontSize: 17,
+          fontSize: 'var(--t4)',
           lineHeight: 1.5,
           padding: 10,
           border: '1px solid #cfc7ba',
@@ -185,7 +185,7 @@ export default function AskControl({
       />
 
       {err ? (
-        <p role="alert" style={{ marginTop: 10, fontSize: 16, color: '#9a3412' }}>
+        <p role="alert" style={{ marginTop: 10, fontSize: 'var(--t3)', color: '#9a3412' }}>
           {err}
         </p>
       ) : null}
@@ -197,7 +197,7 @@ export default function AskControl({
           style={{
             minHeight: 48,
             padding: '0 20px',
-            fontSize: 17,
+            fontSize: 'var(--t4)',
             fontWeight: 600,
             color: '#fffdf9',
             background: '#211d18',
@@ -215,7 +215,7 @@ export default function AskControl({
           style={{
             minHeight: 48,
             padding: '0 20px',
-            fontSize: 17,
+            fontSize: 'var(--t4)',
             color: '#6b6257',
             background: 'transparent',
             border: 'none',

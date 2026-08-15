@@ -72,7 +72,7 @@ export default function PasskeyButton({ callbackUrl = '/continue' }: { callbackU
         style={{
           width: '100%',
           minHeight: 52,
-          fontSize: 17,
+          fontSize: 'var(--t3)',
           fontWeight: 600,
           borderRadius: 6,
           border: '1px solid var(--ink, #111)',
@@ -86,12 +86,12 @@ export default function PasskeyButton({ callbackUrl = '/continue' }: { callbackU
       </button>
 
       {error ? (
-        <p role="alert" style={{ marginTop: 8, fontSize: 15, color: 'var(--clay, #a33)' }}>
+        <p role="alert" style={{ marginTop: 8, fontSize: 'var(--t2)', color: 'var(--clay, #a33)' }}>
           {error}
         </p>
       ) : null}
 
-      <p style={{ marginTop: 10, fontSize: 15, color: 'var(--ink-muted, #666)' }}>
+      <p style={{ marginTop: 10, fontSize: 'var(--t2)', color: 'var(--ink-muted, #666)' }}>
         Nothing to type. If you were given standby access, your device already knows who you are.
       </p>
     </div>

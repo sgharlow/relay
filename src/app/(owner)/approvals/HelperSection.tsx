@@ -184,7 +184,7 @@ export default function HelperSection({
                     <button
                       type="button"
                       onClick={() => setConsenting(d.id)}
-                      className="mt-2 min-h-[44px] rounded border border-rule-strong px-4 text-[17px] font-medium text-ink"
+                      className="mt-2 min-h-[44px] rounded border border-rule-strong px-4 text-t3 font-medium text-ink"
                     >
                       Record how we agreed
                     </button>
@@ -235,7 +235,7 @@ export default function HelperSection({
                 }}
                 // Ochre: stopping a helper is reversible (appoint them again). Clay would
                 // say it cannot be undone, which is false and cries wolf.
-                className="mt-3 block min-h-[44px] text-[17px] text-ochre-text underline underline-offset-4 disabled:opacity-50"
+                className="mt-3 block min-h-[44px] text-t3 text-ochre-text underline underline-offset-4 disabled:opacity-50"
               >
                 Stop them helping
               </button>
@@ -271,7 +271,7 @@ export default function HelperSection({
                     await send('/api/delegations', 'POST', { delegateUserId: c.user_id });
                     setBusy(null);
                   }}
-                  className="min-h-[44px] shrink-0 rounded bg-ink px-4 text-[17px] font-medium text-paper disabled:opacity-50"
+                  className="min-h-[44px] shrink-0 rounded bg-ink px-4 text-t3 font-medium text-paper disabled:opacity-50"
                 >
                   {busy === c.user_id ? 'Adding…' : 'Ask them to help'}
                 </button>
@@ -353,18 +353,18 @@ function ConsentForm({
         value={ref}
         onChange={(e) => setRef(e.target.value)}
         placeholder="e.g. signed form in the blue folder"
-        className="mt-1 min-h-[48px] w-full rounded border border-rule-strong px-3 text-[17px] text-ink"
+        className="mt-1 min-h-[48px] w-full rounded border border-rule-strong px-3 text-t3 text-ink"
       />
 
       <div className="mt-4 flex gap-3">
         <button
           type="submit"
           disabled={busy}
-          className="min-h-[48px] rounded bg-ink px-5 text-[17px] font-semibold text-paper disabled:opacity-50"
+          className="min-h-[48px] rounded bg-ink px-5 text-t3 font-semibold text-paper disabled:opacity-50"
         >
           {busy ? 'Saving…' : 'Record it and start'}
         </button>
-        <button type="button" onClick={onCancel} className="min-h-[48px] px-4 text-[17px] text-muted">
+        <button type="button" onClick={onCancel} className="min-h-[48px] px-4 text-t3 text-muted">
           Not now
         </button>
       </div>

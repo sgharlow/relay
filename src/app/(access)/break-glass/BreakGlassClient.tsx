@@ -53,14 +53,14 @@ export default function BreakGlassClient() {
 
   return (
     <div style={{ maxWidth: 560, margin: '0 auto', padding: '32px 20px' }}>
-      <h1 style={{ fontSize: 30, fontWeight: 700, letterSpacing: '-0.01em' }}>
+      <h1 style={{ fontSize: 'var(--t7)', fontWeight: 700, letterSpacing: '-0.01em' }}>
         Use your emergency code
       </h1>
-      <p style={{ fontSize: 18, lineHeight: 1.6, marginTop: 12 }}>
+      <p style={{ fontSize: 'var(--t4)', lineHeight: 1.6, marginTop: 12 }}>
         If you were given a code to keep somewhere safe, type it here. It is the way back in when
         your usual sign-in is not available.
       </p>
-      <p style={{ fontSize: 17, lineHeight: 1.6, marginTop: 12, color: '#6b6257' }}>
+      <p style={{ fontSize: 'var(--t4)', lineHeight: 1.6, marginTop: 12, color: '#6b6257' }}>
         It works once. The person who gave it to you will be told that you used it, and they will be
         asked to check it was really you — that is deliberate, and it is what makes a code like this
         safe to carry.
@@ -69,7 +69,7 @@ export default function BreakGlassClient() {
       <form onSubmit={submit} style={{ marginTop: 24 }}>
         <label
           htmlFor="bg-code"
-          style={{ display: 'block', fontSize: 17, fontWeight: 600, marginBottom: 8 }}
+          style={{ display: 'block', fontSize: 'var(--t4)', fontWeight: 600, marginBottom: 8 }}
         >
           Your emergency code
         </label>
@@ -85,7 +85,7 @@ export default function BreakGlassClient() {
             width: '100%',
             minHeight: 52,
             padding: '0 14px',
-            fontSize: 20,
+            fontSize: 'var(--t5)',
             fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
             letterSpacing: '0.06em',
             borderRadius: 6,
@@ -104,7 +104,7 @@ export default function BreakGlassClient() {
             border: '1px solid #211d18',
             background: '#211d18',
             color: '#fffdf9',
-            fontSize: 18,
+            fontSize: 'var(--t4)',
             fontWeight: 600,
             cursor: busy ? 'default' : 'pointer',
             opacity: busy || code.trim().length === 0 ? 0.6 : 1,
@@ -125,8 +125,8 @@ export default function BreakGlassClient() {
       */}
       {error ? (
         <div role="alert" style={{ marginTop: 16 }}>
-          <p style={{ fontSize: 17, color: '#9a3412', lineHeight: 1.6 }}>{error}</p>
-          <p style={{ fontSize: 16, marginTop: 8, color: '#6b6257', lineHeight: 1.6 }}>
+          <p style={{ fontSize: 'var(--t4)', color: '#9a3412', lineHeight: 1.6 }}>{error}</p>
+          <p style={{ fontSize: 'var(--t3)', marginTop: 8, color: '#6b6257', lineHeight: 1.6 }}>
             Codes are one-use, so a code that worked before will not work again. Ask the person who
             named you for a fresh one — or{' '}
             <a href="/help#code-not-working" style={{ color: '#6b6257' }}>
@@ -137,7 +137,7 @@ export default function BreakGlassClient() {
         </div>
       ) : null}
 
-      <p style={{ fontSize: 16, lineHeight: 1.6, marginTop: 28, color: '#6b6257' }}>
+      <p style={{ fontSize: 'var(--t3)', lineHeight: 1.6, marginTop: 28, color: '#6b6257' }}>
         No code? Ask the person who named you, if you can reach them — they can issue a new one.
         Relay cannot send you one directly, because a code that arrives in an email is a code anyone
         who reaches that inbox could use.

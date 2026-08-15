@@ -159,7 +159,7 @@ function ClaimCodeEntry({ onCode }: { onCode: (c: string) => void }) {
   return (
     <div className="mx-auto max-w-md rounded-2xl border border-rule bg-paper-raised px-6 py-7">
       <h1 className="text-t7 font-semibold leading-snug text-ink">Enter your invitation code</h1>
-      <p className="mt-3 text-[17px] leading-relaxed text-ink">
+      <p className="mt-3 text-t4 leading-relaxed text-ink">
         Someone has named you in their Relay plan. Type the code they gave you — they may have read it out, texted it, or written it down.
       </p>
 
@@ -185,13 +185,13 @@ function ClaimCodeEntry({ onCode }: { onCode: (c: string) => void }) {
         <button
           type="submit"
           disabled={!code.trim()}
-          className="mt-5 min-h-[52px] w-full rounded-md bg-ink px-6 text-[17px] font-semibold text-paper hover:bg-ink disabled:opacity-50"
+          className="mt-5 min-h-[52px] w-full rounded-md bg-ink px-6 text-t4 font-semibold text-paper hover:bg-ink disabled:opacity-50"
         >
           Continue
         </button>
       </form>
 
-      <p className="mt-6 text-[15px] leading-relaxed text-muted">
+      <p className="mt-6 text-t3 leading-relaxed text-muted">
         Nothing is being opened. Accepting only tells them you have seen it.
       </p>
     </div>

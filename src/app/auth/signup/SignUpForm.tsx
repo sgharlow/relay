@@ -128,16 +128,16 @@ export default function SignUpForm() {
     return (
       <div>
         <h1 className="text-t7 font-semibold text-ink">Save these somewhere safe</h1>
-        <p className="mt-3 text-[15px] leading-relaxed text-ink">
+        <p className="mt-3 text-t2 leading-relaxed text-ink">
           Relay has no password. If you lose the phone with your authenticator on it, one of these
           codes is the only way back into your vault.
         </p>
-        <p className="mt-2 text-[15px] leading-relaxed text-ink">
+        <p className="mt-2 text-t2 leading-relaxed text-ink">
           Print them, or put them where you keep important papers.{' '}
           <span className="font-medium">We cannot show them again.</span>
         </p>
 
-        <ul className="mt-5 grid grid-cols-2 gap-2 rounded-md border border-rule-strong bg-paper-sunken p-4 font-mono text-[15px] tracking-wide text-ink">
+        <ul className="mt-5 grid grid-cols-2 gap-2 rounded-md border border-rule-strong bg-paper-sunken p-4 font-mono text-t2 tracking-wide text-ink">
           {recoveryCodes.map((c) => (
             <li key={c}>{c}</li>
           ))}

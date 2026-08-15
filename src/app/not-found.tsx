@@ -18,7 +18,7 @@ export const metadata = { title: 'Not found · Relay' };
 
 const link: React.CSSProperties = {
   display: 'block',
-  fontSize: 17,
+  fontSize: 'var(--t3)',
   color: '#211d18',
   padding: '10px 0',
   textDecoration: 'underline',
@@ -39,15 +39,15 @@ export default function NotFound() {
       }}
     >
       <div style={{ maxWidth: 520 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.02em' }}>
+        <h1 style={{ fontSize: 'var(--t7)', fontWeight: 600, letterSpacing: '-0.02em' }}>
           There is nothing at this address
         </h1>
 
-        <p style={{ fontSize: 18, lineHeight: 1.6, marginTop: 12 }}>
+        <p style={{ fontSize: 'var(--t4)', lineHeight: 1.6, marginTop: 12 }}>
           Most likely a letter is off somewhere. Nothing is broken and nothing has been lost.
         </p>
 
-        <p style={{ fontSize: 17, lineHeight: 1.6, marginTop: 16, color: '#6b6257' }}>
+        <p style={{ fontSize: 'var(--t3)', lineHeight: 1.6, marginTop: 16, color: '#6b6257' }}>
           If somebody sent you here, you probably want one of these:
         </p>
 
@@ -72,7 +72,7 @@ export default function NotFound() {
           </a>
         </div>
 
-        <p style={{ fontSize: 15, lineHeight: 1.6, marginTop: 20, color: '#6b6257' }}>
+        <p style={{ fontSize: 'var(--t2)', lineHeight: 1.6, marginTop: 20, color: '#6b6257' }}>
           A real Relay message never asks you to click and then enter anything, so if you arrived from a message promising
           that, it was not from us.
         </p>

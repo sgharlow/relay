@@ -316,7 +316,7 @@ function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promi
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="font-medium capitalize">{rs.trigger_type}</span>
-          <span className={`rounded px-2 py-0.5 text-[11px] font-semibold uppercase ${STATE_STYLE[rs.state] ?? 'bg-paper-sunken text-muted'}`}>
+          <span className={`rounded px-2 py-0.5 text-t1 font-semibold uppercase ${STATE_STYLE[rs.state] ?? 'bg-paper-sunken text-muted'}`}>
             {rs.state}
           </span>
           <span className="text-t1 text-muted">

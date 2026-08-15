@@ -193,7 +193,7 @@ export default function VerifyClient() {
             reasonable answer.
           </p>
         )}
-        <p className="mt-4 text-[16px] text-muted">Reference {ctx.caseId}</p>
+        <p className="mt-4 text-t3 text-muted">Reference {ctx.caseId}</p>
       </div>
     );
   }
@@ -201,7 +201,7 @@ export default function VerifyClient() {
   return (
     <div className="space-y-5">
       <div className="rounded-lg border border-rule-strong bg-paper-raised p-6">
-        <p className="text-[16px] uppercase tracking-wide text-muted">Reference {ctx.caseId}</p>
+        <p className="text-t3 uppercase tracking-wide text-muted">Reference {ctx.caseId}</p>
         {/*
           🔴 J7-R3 SAYS "WHO IS ASKING" FIRST, and until 2026-08-12 this said
           "Someone has asked for {trigger} access to a vault you agreed to help
@@ -303,7 +303,7 @@ export default function VerifyClient() {
         </button>
       </div>
 
-      <p className="text-[16px] text-muted">
+      <p className="text-t3 text-muted">
         &ldquo;I don&rsquo;t know&rdquo; is a real answer. We will ask someone else rather than
         counting it either way.
       </p>
@@ -352,7 +352,7 @@ function CodeEntry({ onToken }: { onToken: (t: string) => void }) {
   return (
     <div className="rounded-lg border border-rule-strong bg-paper-raised p-6">
       <h1 className="text-t7 font-semibold text-ink">Enter your code</h1>
-      <p className="mt-3 text-[17px] leading-relaxed text-ink">
+      <p className="mt-3 text-t4 leading-relaxed text-ink">
         Someone has asked you to confirm that a situation is genuine. Type the code we sent you.
       </p>
 
@@ -372,12 +372,12 @@ function CodeEntry({ onToken }: { onToken: (t: string) => void }) {
           className="mt-2 min-h-[52px] w-full rounded-md border border-rule-strong px-4 text-center font-mono text-t7 tracking-[0.2em] text-ink placeholder:text-muted focus:border-rule focus:outline-none"
         />
 
-        {err ? <p className="mt-3 text-[16px] text-clay">{err}</p> : null}
+        {err ? <p className="mt-3 text-t3 text-clay">{err}</p> : null}
 
         <button
           type="submit"
           disabled={busy || !code.trim()}
-          className="mt-5 min-h-[52px] w-full rounded-md bg-ink px-6 text-[17px] font-semibold text-paper hover:bg-ink disabled:opacity-50"
+          className="mt-5 min-h-[52px] w-full rounded-md bg-ink px-6 text-t4 font-semibold text-paper hover:bg-ink disabled:opacity-50"
         >
           {busy ? 'Checking…' : 'Continue'}
         </button>
@@ -385,7 +385,7 @@ function CodeEntry({ onToken }: { onToken: (t: string) => void }) {
 
       <ExpiredCodeHelp />
 
-      <p className="mt-6 text-[15px] leading-relaxed text-muted">
+      <p className="mt-6 text-t3 leading-relaxed text-muted">
         You will never be shown anyone&rsquo;s private information — not now, and not after you
         answer. A real message from Relay never asks you to click a link and then enter anything.
       </p>
@@ -419,7 +419,7 @@ function ExpiredCodeHelp() {
 
   if (sent) {
     return (
-      <p className="mt-6 rounded-md bg-paper-sunken px-4 py-3 text-[16px] leading-relaxed text-ink">
+      <p className="mt-6 rounded-md bg-paper-sunken px-4 py-3 text-t3 leading-relaxed text-ink">
         If that address is expected on an open request, we have sent it what it needs. It can take a
         minute to arrive.
       </p>
@@ -431,7 +431,7 @@ function ExpiredCodeHelp() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mt-5 min-h-[24px] text-[16px] text-muted underline underline-offset-4 hover:text-ink"
+        className="mt-5 min-h-[24px] text-t3 text-muted underline underline-offset-4 hover:text-ink"
       >
         My code has expired, or never arrived
       </button>
@@ -457,10 +457,10 @@ function ExpiredCodeHelp() {
         }
       }}
     >
-      <label htmlFor="vresend" className="block text-[16px] font-medium text-ink">
+      <label htmlFor="vresend" className="block text-t3 font-medium text-ink">
         The email address they used for you
       </label>
-      <p className="mt-1 text-[15px] leading-relaxed text-muted">
+      <p className="mt-1 text-t3 leading-relaxed text-muted">
         We send to the address already on file, never to one typed here — so this cannot be used to
         redirect anything.
       </p>
@@ -470,12 +470,12 @@ function ExpiredCodeHelp() {
         value={email}
         onChange={(ev) => setEmail(ev.target.value)}
         autoComplete="email"
-        className="mt-2 min-h-[52px] w-full rounded-md border border-rule-strong px-4 text-[17px] text-ink focus:border-rule focus:outline-none"
+        className="mt-2 min-h-[52px] w-full rounded-md border border-rule-strong px-4 text-t4 text-ink focus:border-rule focus:outline-none"
       />
       <button
         type="submit"
         disabled={busy || !email.trim()}
-        className="mt-3 min-h-[52px] w-full rounded-md border border-rule-strong px-6 text-[17px] font-semibold text-ink disabled:opacity-50"
+        className="mt-3 min-h-[52px] w-full rounded-md border border-rule-strong px-6 text-t4 font-semibold text-ink disabled:opacity-50"
       >
         {busy ? 'Sending…' : 'Send it again'}
       </button>

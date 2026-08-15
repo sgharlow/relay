@@ -13,7 +13,7 @@ export const metadata = { title: 'Helping · Relay' };
 
 export default function HelpingPage() {
   return (
-    <Suspense fallback={<p style={{ fontSize: 17, color: '#6b6257' }}>Loading…</p>}>
+    <Suspense fallback={<p style={{ fontSize: 'var(--t4)', color: '#6b6257' }}>Loading…</p>}>
       <HelpingClient />
     </Suspense>
   );

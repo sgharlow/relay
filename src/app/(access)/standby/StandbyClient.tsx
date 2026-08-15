@@ -93,7 +93,7 @@ function OpenRelease({ rel }: { rel: Relationship }) {
   if (rel.personType === 'verifier') {
     return awaitingDecision ? (
       <div style={{ marginTop: 12 }}>
-        <p style={{ fontSize: 17, fontWeight: 600 }}>They need your answer{caseRef}</p>
+        <p style={{ fontSize: 'var(--t4)', fontWeight: 600 }}>They need your answer{caseRef}</p>
         <a
           href={`/verify?release=${encodeURIComponent(open.releaseStateId)}`}
           style={{
@@ -105,7 +105,7 @@ function OpenRelease({ rel }: { rel: Relationship }) {
             borderRadius: 6,
             background: '#211d18',
             color: '#fffdf9',
-            fontSize: 17,
+            fontSize: 'var(--t4)',
             fontWeight: 600,
             textDecoration: 'none',
           }}
@@ -114,7 +114,7 @@ function OpenRelease({ rel }: { rel: Relationship }) {
         </a>
       </div>
     ) : (
-      <p style={{ fontSize: 16, marginTop: 12, color: '#6b6257' }}>
+      <p style={{ fontSize: 'var(--t3)', marginTop: 12, color: '#6b6257' }}>
         Answered — nothing more is needed from you{caseRef}.
       </p>
     );
@@ -146,7 +146,7 @@ function OpenRelease({ rel }: { rel: Relationship }) {
     // raw-colour ratchet counts literals, and a token is the only value
     // lib/ops/contrast.test.ts can actually verify. Same colour, checkable.
     return (
-      <p style={{ fontSize: 16, marginTop: 12, color: 'var(--ink-muted)' }}>
+      <p style={{ fontSize: 'var(--t3)', marginTop: 12, color: 'var(--ink-muted)' }}>
         Something has opened for {rel.ownerLabel}, but nothing of theirs is set aside for you in
         this situation{caseRef}. There is nothing for you to do.
       </p>
@@ -156,7 +156,7 @@ function OpenRelease({ rel }: { rel: Relationship }) {
   // A recipient can open nothing until the release is actually RELEASED.
   return open.state === 'released' ? (
     <div style={{ marginTop: 12 }}>
-      <p style={{ fontSize: 17, fontWeight: 600 }}>Open now{caseRef}</p>
+      <p style={{ fontSize: 'var(--t4)', fontWeight: 600 }}>Open now{caseRef}</p>
       <a
         href="/access"
         style={{
@@ -168,7 +168,7 @@ function OpenRelease({ rel }: { rel: Relationship }) {
           borderRadius: 6,
           background: '#211d18',
           color: '#fffdf9',
-          fontSize: 17,
+          fontSize: 'var(--t4)',
           fontWeight: 600,
           textDecoration: 'none',
         }}
@@ -177,7 +177,7 @@ function OpenRelease({ rel }: { rel: Relationship }) {
       </a>
     </div>
   ) : (
-    <p style={{ fontSize: 16, marginTop: 12, color: '#6b6257' }}>
+    <p style={{ fontSize: 'var(--t3)', marginTop: 12, color: '#6b6257' }}>
       Being confirmed now{caseRef}. Nothing is open yet, and there is nothing for you to do.
     </p>
   );
@@ -227,14 +227,14 @@ export default function StandbyClient() {
   if (signedOut) {
     return (
       <div style={{ maxWidth: 640, margin: '0 auto', padding: '32px 20px' }}>
-        <h1 style={{ fontSize: 30, fontWeight: 700, letterSpacing: '-0.01em' }}>
+        <h1 style={{ fontSize: 'var(--t7)', fontWeight: 700, letterSpacing: '-0.01em' }}>
           You are signed out
         </h1>
-        <p style={{ fontSize: 18, lineHeight: 1.6, marginTop: 12 }}>
+        <p style={{ fontSize: 'var(--t4)', lineHeight: 1.6, marginTop: 12 }}>
           Nothing is wrong — sessions end on their own after a while. Everything you were
           standing by for is exactly as you left it.
         </p>
-        <ul style={{ fontSize: 18, lineHeight: 1.8, marginTop: 16, paddingLeft: 22 }}>
+        <ul style={{ fontSize: 'var(--t4)', lineHeight: 1.8, marginTop: 16, paddingLeft: 22 }}>
           <li>
             If you have signed in here before:{' '}
             <a href="/auth/signin" style={{ textDecoration: 'underline', textUnderlineOffset: 3 }}>
@@ -261,19 +261,19 @@ export default function StandbyClient() {
     );
   }
 
-  if (error) return <p style={{ fontSize: 18 }}>{error}</p>;
-  if (!data) return <p style={{ fontSize: 18, color: '#6b6257' }}>Loading…</p>;
+  if (error) return <p style={{ fontSize: 'var(--t4)' }}>{error}</p>;
+  if (!data) return <p style={{ fontSize: 'var(--t4)', color: '#6b6257' }}>Loading…</p>;
 
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', padding: '32px 20px' }}>
-      <h1 style={{ fontSize: 30, fontWeight: 700, letterSpacing: '-0.01em' }}>You are on standby</h1>
+      <h1 style={{ fontSize: 'var(--t7)', fontWeight: 700, letterSpacing: '-0.01em' }}>You are on standby</h1>
 
       {data.relationships.length === 0 ? (
-        <p style={{ fontSize: 18, lineHeight: 1.6, marginTop: 12 }}>
+        <p style={{ fontSize: 'var(--t4)', lineHeight: 1.6, marginTop: 12 }}>
           Nobody has named you yet. If someone told you they would, ask them to send you their code.
         </p>
       ) : (
-        <p style={{ fontSize: 18, lineHeight: 1.6, marginTop: 12, color: '#6b6257' }}>
+        <p style={{ fontSize: 'var(--t4)', lineHeight: 1.6, marginTop: 12, color: '#6b6257' }}>
           {data.anythingOpen
             ? 'Something needs your attention below.'
             : 'Nothing is open. There is nothing you need to do today.'}
@@ -311,9 +311,9 @@ export default function StandbyClient() {
             background: rel.openRelease ? '#fdf6ea' : '#fffdf9',
           }}
         >
-          <h2 style={{ fontSize: 21, fontWeight: 600 }}>{rel.ownerLabel}</h2>
+          <h2 style={{ fontSize: 'var(--t5)', fontWeight: 600 }}>{rel.ownerLabel}</h2>
 
-          <p style={{ fontSize: 17, lineHeight: 1.6, marginTop: 8 }}>
+          <p style={{ fontSize: 'var(--t4)', lineHeight: 1.6, marginTop: 8 }}>
             {rel.personType === 'verifier'
               ? 'If an emergency is claimed, you will be asked one question: is this real? You will never see anything inside their vault — not now, and not after you answer.'
               : 'If an emergency is confirmed by the people they trust, what they set aside for you opens. Until then it stays sealed, and it closes again when they check back in.'}
@@ -341,14 +341,14 @@ export default function StandbyClient() {
                 border: '1px solid #e4ded4',
               }}
             >
-              <p style={{ fontSize: 16, lineHeight: 1.6 }}>
+              <p style={{ fontSize: 'var(--t3)', lineHeight: 1.6 }}>
                 <strong>{rel.ownerLabel} will call you and read out four words.</strong> These are
                 yours — they should be the same.
               </p>
               <p
                 style={{
                   fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-                  fontSize: 22,
+                  fontSize: 'var(--t6)',
                   fontWeight: 600,
                   margin: '10px 0',
                   letterSpacing: '0.02em',
@@ -356,7 +356,7 @@ export default function StandbyClient() {
               >
                 {rel.fingerprint}
               </p>
-              <p style={{ fontSize: 15, lineHeight: 1.6, color: '#6b6257' }}>
+              <p style={{ fontSize: 'var(--t3)', lineHeight: 1.6, color: '#6b6257' }}>
                 If they do not match, say so and stop — it means somebody else opened the
                 invitation meant for you. Nothing is lost; they can start again on a channel you
                 both trust.
@@ -365,7 +365,7 @@ export default function StandbyClient() {
           ) : null}
 
           {rel.grant && rel.grant.itemCount > 0 ? (
-            <p style={{ fontSize: 16, marginTop: 10, color: '#6b6257' }}>
+            <p style={{ fontSize: 'var(--t3)', marginTop: 10, color: '#6b6257' }}>
               Set aside for you: {rel.grant.itemCount} item
               {rel.grant.itemCount === 1 ? '' : 's'}
               {Object.keys(rel.grant.categories).length > 0
@@ -401,7 +401,7 @@ export default function StandbyClient() {
                 background: 'var(--ochre-soft)',
               }}
             >
-              <p style={{ fontSize: 16, color: 'var(--ochre-text)' }}>
+              <p style={{ fontSize: 'var(--t3)', color: 'var(--ochre-text)' }}>
                 You asked, and {rel.ownerLabel} has been told. If they do not answer by{' '}
                 {new Date(rel.pendingAsk.expiresAt).toLocaleString()}, the people they chose are
                 asked to confirm instead — you do not need to ask again.
@@ -410,7 +410,7 @@ export default function StandbyClient() {
             </div>
           ) : (
             <>
-              <p style={{ fontSize: 16, marginTop: 12, color: '#6b6257' }}>Nothing open.</p>
+              <p style={{ fontSize: 'var(--t3)', marginTop: 12, color: '#6b6257' }}>Nothing open.</p>
               {/*
                 J6's front door, and it belongs exactly here — next to the
                 sentence saying nothing is open, which is the moment somebody
@@ -463,8 +463,8 @@ export default function StandbyClient() {
             border: '1px solid #e4ded4',
           }}
         >
-          <h2 style={{ fontSize: 19, fontWeight: 600 }}>Who would step in for you?</h2>
-          <p style={{ fontSize: 17, lineHeight: 1.6, marginTop: 8, color: '#6b6257' }}>
+          <h2 style={{ fontSize: 'var(--t5)', fontWeight: 600 }}>Who would step in for you?</h2>
+          <p style={{ fontSize: 'var(--t4)', lineHeight: 1.6, marginTop: 8, color: '#6b6257' }}>
             You are covering someone else. The same thing can be set up for your own family, and the
             first ten items are free.
           </p>
@@ -479,7 +479,7 @@ export default function StandbyClient() {
               borderRadius: 6,
               background: '#211d18',
               color: '#fffdf9',
-              fontSize: 17,
+              fontSize: 'var(--t4)',
               fontWeight: 600,
               textDecoration: 'none',
             }}

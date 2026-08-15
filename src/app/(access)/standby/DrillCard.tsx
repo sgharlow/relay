@@ -59,7 +59,7 @@ export default function DrillCard({ onAcknowledged }: { onAcknowledged: () => vo
           background: 'var(--paper-sunken)',
         }}
       >
-        <p style={{ margin: 0, fontSize: 18 }}>
+        <p style={{ margin: 0, fontSize: 'var(--t4)' }}>
           Thank you — they know you can be reached. Nothing else is needed.
         </p>
       </section>
@@ -76,8 +76,8 @@ export default function DrillCard({ onAcknowledged }: { onAcknowledged: () => vo
         background: 'var(--paper-sunken)',
       }}
     >
-      <h2 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 600 }}>This is only practice</h2>
-      <p style={{ margin: '0 0 16px', fontSize: 18, lineHeight: 1.5 }}>
+      <h2 style={{ margin: '0 0 8px', fontSize: 'var(--t5)', fontWeight: 600 }}>This is only practice</h2>
+      <p style={{ margin: '0 0 16px', fontSize: 'var(--t4)', lineHeight: 1.5 }}>
         Nothing has happened and nothing is wrong. Someone who named you wants to check that a
         message would actually reach you if it ever mattered. Press the button and you are done.
       </p>
@@ -88,7 +88,7 @@ export default function DrillCard({ onAcknowledged }: { onAcknowledged: () => vo
         style={{
           minHeight: 48,
           padding: '0 24px',
-          fontSize: 18,
+          fontSize: 'var(--t4)',
           fontWeight: 600,
           borderRadius: 10,
           border: 'none',
@@ -101,7 +101,7 @@ export default function DrillCard({ onAcknowledged }: { onAcknowledged: () => vo
         {busy ? 'Sending…' : 'I got this'}
       </button>
       {error ? (
-        <p role="alert" style={{ marginTop: 12, fontSize: 16, color: 'var(--clay)' }}>
+        <p role="alert" style={{ marginTop: 12, fontSize: 'var(--t3)', color: 'var(--clay)' }}>
           {error}
         </p>
       ) : null}

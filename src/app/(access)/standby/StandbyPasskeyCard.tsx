@@ -43,8 +43,8 @@ export default function StandbyPasskeyCard() {
           background: '#fffdf9',
         }}
       >
-        <h2 style={{ fontSize: 19, fontWeight: 600 }}>This device is set up</h2>
-        <p style={{ fontSize: 17, lineHeight: 1.6, marginTop: 8, color: '#6b6257' }}>
+        <h2 style={{ fontSize: 'var(--t5)', fontWeight: 600 }}>This device is set up</h2>
+        <p style={{ fontSize: 'var(--t4)', lineHeight: 1.6, marginTop: 8, color: '#6b6257' }}>
           {outcome.kind === 'already'
             ? 'You had already done this. Nothing more is needed.'
             : 'Next time, sign in with your face, fingerprint or device PIN.'}
@@ -63,8 +63,8 @@ export default function StandbyPasskeyCard() {
         background: '#fffdf9',
       }}
     >
-      <h2 style={{ fontSize: 19, fontWeight: 600 }}>Make sure you can get back in</h2>
-      <p style={{ fontSize: 17, lineHeight: 1.6, marginTop: 8, color: '#6b6257' }}>
+      <h2 style={{ fontSize: 'var(--t5)', fontWeight: 600 }}>Make sure you can get back in</h2>
+      <p style={{ fontSize: 'var(--t4)', lineHeight: 1.6, marginTop: 8, color: '#6b6257' }}>
         Set up your face, fingerprint or device PIN for this account. Then a new phone will not lock
         you out, and there is no code to keep somewhere — nothing we could send you that a stranger
         could imitate. You can do this later.
@@ -82,7 +82,7 @@ export default function StandbyPasskeyCard() {
           border: '1px solid #211d18',
           background: '#fffdf9',
           color: '#211d18',
-          fontSize: 17,
+          fontSize: 'var(--t4)',
           fontWeight: 600,
           cursor: outcome.kind === 'busy' ? 'default' : 'pointer',
           opacity: outcome.kind === 'busy' ? 0.6 : 1,
@@ -92,7 +92,7 @@ export default function StandbyPasskeyCard() {
       </button>
 
       {outcome.kind === 'error' ? (
-        <p role="alert" style={{ fontSize: 16, marginTop: 12, color: '#9a3412' }}>
+        <p role="alert" style={{ fontSize: 'var(--t3)', marginTop: 12, color: '#9a3412' }}>
           {outcome.message}
         </p>
       ) : null}

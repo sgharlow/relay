@@ -745,14 +745,43 @@ deferred:
   #     has not been walked end to end; the tests cover both the picker and the
   #     item-scoped decrypt.
   #
-  - id: type-scale-ratchet
-    found: 2026-08-14 (six-lens audit, UI lens)
-    what: "~9 arbitrary font sizes (text-[17px], fontSize: 15, …) exist outside
-      the nine-step scale, mostly in (access) mode — 'no page may invent a tenth
-      step' is a rule with no test."
-    why_deferred: "Same reasoning as the raw-colour ratchet it mirrors: every
-      value in use was audited readable, and a bulk re-size of the least-tested
-      mode days before beta is the exact sweeping-visual-change that rule exists
-      to prevent. Stop the growth, ship, migrate after."
-    ends_when: "post-beta, by extending lib/ops/raw-color.test.ts's ratchet
-      pattern to font sizes — ceilings per file, lowered as files migrate"
+  # ── CLOSED 2026-08-15, production-bar pass iteration 3 ────────────────────
+  #
+  #   type-scale-ratchet — closed by MIGRATION rather than the ceiling this
+  #     entry planned, because two of its own premises turned out to be wrong.
+  #
+  #     🔴 IT SAID "~9 arbitrary font sizes". The real count was 211 across 30
+  #     files. The old measurement had only ever looked at `text-[17px]`-style
+  #     classes and non-token `fontSize:` values and had missed the inline
+  #     literals, which were the larger half. A debt item whose size is wrong by
+  #     an order of magnitude is not a debt item, it is a wrong belief with a
+  #     ticket number — and the ceiling it proposed would have been set from
+  #     that number.
+  #
+  #     🔴 IT SAID "every value in use was audited readable". True at the
+  #     DEFAULT font size and beside the point at any other. Measured in a real
+  #     browser on /security with the root raised to 20px — a reader who has
+  #     enlarged their text — every rem token scaled (16→20, 14→17.5, 48→60) and
+  #     every px literal did not (17px stayed 17px, 15px stayed 15px). Twenty-one
+  #     elements on that page were frozen against the reader's own accessibility
+  #     setting. That makes this a CC8 defect, not tidiness, which is what
+  #     changed the answer from "ratchet it" to "fix it".
+  #
+  #     211 → 11, and the 11 are the two error boundaries that must NOT resolve
+  #     tokens (global-error.tsx replaces the root layout, so `var(--tN)` there
+  #     resolves to nothing). A codemod did rewrite both and it was reverted the
+  #     same hour on the strength of the headers those files already carried;
+  #     lib/ops/type-scale.test.ts now records them as the only exemptions, with
+  #     the reason, so the next codemod is stopped by a test instead.
+  #
+  #     Ties went to each mode's own ratified floor — access up to t4 (18), owner
+  #     down to t3 (16) — rather than uniformly up, because globals.css specifies
+  #     both and rounding everything up would have quietly re-specified owner
+  #     mode as dense-but-18px on the way past. Every change is ≤2px.
+  #
+  #     VERIFIED, signed-out half only: axe clean across 18 pages, /security
+  #     renders with no horizontal overflow at 320×568, computed sizes checked
+  #     against the tokens in a live browser. ⚠️ OWNER MODE WAS NOT AUDITED —
+  #     scripts/a11y-audit.mjs could not mint a session (no demo@relay.test on
+  #     the cluster) and says so itself. Eight owner screens are unmeasured.
+  #

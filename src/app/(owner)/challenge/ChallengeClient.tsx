@@ -89,7 +89,7 @@ export default function ChallengeClient() {
 
   if (loadFailed) {
     return (
-      <div className="mx-auto max-w-xl text-[18px]">
+      <div className="mx-auto max-w-xl text-t4">
         <h1 className="text-t7 font-semibold text-ink">We could not check just now</h1>
         <p className="mt-3 text-ink">
           This is a loading problem, not an answer — it does not mean nobody is asking. Please
@@ -114,7 +114,7 @@ export default function ChallengeClient() {
 
   if (requests.length === 0) {
     return (
-      <div className="mx-auto max-w-xl text-[18px]">
+      <div className="mx-auto max-w-xl text-t4">
         <h1 className="text-t7 font-semibold text-ink">Nobody is asking for access</h1>
         <p className="mt-3 text-ink">
           If someone ever does, we will contact you here first — before anyone else is involved.
@@ -124,7 +124,7 @@ export default function ChallengeClient() {
   }
 
   return (
-    <div className="mx-auto max-w-xl space-y-6 text-[18px] leading-relaxed text-ink">
+    <div className="mx-auto max-w-xl space-y-6 text-t4 leading-relaxed text-ink">
       {requests.map((r) => {
         const decided = done[r.id];
 
@@ -139,14 +139,14 @@ export default function ChallengeClient() {
                   ? 'We told them no. Nobody else was contacted, and your vault stayed closed.'
                   : 'They will be able to reach what you designated. You can close it again at any time.'}
               </p>
-              <p className="mt-3 text-[16px] text-muted">Reference {r.case_id}</p>
+              <p className="mt-3 text-t3 text-muted">Reference {r.case_id}</p>
             </div>
           );
         }
 
         return (
           <div key={r.id} className="rounded-lg border-2 border-ochre bg-paper-raised p-6">
-            <p className="text-[16px] uppercase tracking-wide text-muted">
+            <p className="text-t3 uppercase tracking-wide text-muted">
               Reference {r.case_id}
             </p>
             <h1 className="mt-2 text-t7 font-semibold">
@@ -186,13 +186,13 @@ export default function ChallengeClient() {
             </div>
 
             {sendFailed === r.id && (
-              <p className="mt-3 rounded border border-ochre bg-ochre-soft px-4 py-3 text-[16px] text-ochre-text">
+              <p className="mt-3 rounded border border-ochre bg-ochre-soft px-4 py-3 text-t3 text-ochre-text">
                 Your answer did not go through — nothing was recorded either way. Please try
                 again; the buttons above still work.
               </p>
             )}
 
-            <p className="mt-4 text-[16px] text-muted">
+            <p className="mt-4 text-t3 text-muted">
               If you don&rsquo;t answer, we will ask the people you nominated to confirm whether
               this is real.
             </p>

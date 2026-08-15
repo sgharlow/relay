@@ -21,7 +21,7 @@ export const metadata = { title: 'Your emergency code · Relay' };
 
 export default function BreakGlassPage() {
   return (
-    <Suspense fallback={<p style={{ fontSize: 18, color: '#6b6257' }}>Loading…</p>}>
+    <Suspense fallback={<p style={{ fontSize: 'var(--t4)', color: '#6b6257' }}>Loading…</p>}>
       <BreakGlassClient />
     </Suspense>
   );

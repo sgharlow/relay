@@ -95,11 +95,11 @@ export default function RecoverForm() {
     return (
       <div>
         <h1 className="text-t7 font-semibold text-ink">You&rsquo;re back in</h1>
-        <p className="mt-3 text-[15px] leading-relaxed text-ink">
+        <p className="mt-3 text-t2 leading-relaxed text-ink">
           Your new authenticator is set up. Your old one no longer works, and the recovery codes
           you had before have been replaced — here is a new set.
         </p>
-        <ul className="mt-5 grid grid-cols-2 gap-2 rounded-md border border-rule-strong bg-paper-sunken p-4 font-mono text-[15px] text-ink">
+        <ul className="mt-5 grid grid-cols-2 gap-2 rounded-md border border-rule-strong bg-paper-sunken p-4 font-mono text-t2 text-ink">
           {fresh.map((c) => (
             <li key={c}>{c}</li>
           ))}
@@ -119,7 +119,7 @@ export default function RecoverForm() {
     return (
       <form onSubmit={onEnrol}>
         <h1 className="text-t7 font-semibold text-ink">Set up your new authenticator</h1>
-        <p className="mt-3 text-[15px] leading-relaxed text-ink">
+        <p className="mt-3 text-t2 leading-relaxed text-ink">
           Scan this with your authenticator app.
         </p>
 
@@ -130,10 +130,10 @@ export default function RecoverForm() {
           />
         ) : null}
 
-        <p className="mt-4 text-[15px] leading-relaxed text-ink">
+        <p className="mt-4 text-t2 leading-relaxed text-ink">
           Cannot scan? Choose &ldquo;enter a setup key&rdquo; instead and type this:
         </p>
-        <p className="mt-2 break-all rounded bg-paper-sunken px-3 py-2 font-mono text-[15px] text-ink">
+        <p className="mt-2 break-all rounded bg-paper-sunken px-3 py-2 font-mono text-t2 text-ink">
           {secret.replace(/(.{4})/g, '$1 ').trim()}
         </p>
 
@@ -161,7 +161,7 @@ export default function RecoverForm() {
   return (
     <form onSubmit={onIdentify}>
       <h1 className="text-t7 font-semibold text-ink">Get back in</h1>
-      <p className="mt-3 text-[15px] leading-relaxed text-ink">
+      <p className="mt-3 text-t2 leading-relaxed text-ink">
         Lost the phone with your authenticator? Use one of the recovery codes you saved when you
         created your vault. Your vault contents are untouched — this only replaces how you sign in.
       </p>

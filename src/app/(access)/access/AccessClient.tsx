@@ -219,7 +219,7 @@ export default function AccessClient() {
   // Still asking whether they are signed in. Showing the code form here would
   // flash "type your code" at somebody who never received one.
   if (!token && signedIn === null) {
-    return <p style={{ fontSize: 18, color: '#6b6257' }}>Loading…</p>;
+    return <p style={{ fontSize: 'var(--t4)', color: '#6b6257' }}>Loading…</p>;
   }
   if (!token && !signedIn) {
     return (
@@ -506,17 +506,17 @@ function ClosedGracefully({ summary }: { summary: ClosureSummary }) {
   return (
     <div className="mx-auto max-w-xl">
       <div className="rounded-2xl border border-rule bg-paper-raised px-6 py-7">
-        <p className="text-[15px] uppercase tracking-wide text-muted">Access closed</p>
+        <p className="text-t3 uppercase tracking-wide text-muted">Access closed</p>
         <h1 className="mt-3 text-t7 font-semibold leading-snug text-ink">
           Everything is back to normal.
         </h1>
-        <p className="mt-4 text-[18px] leading-relaxed text-ink">
+        <p className="mt-4 text-t4 leading-relaxed text-ink">
           The vault has been re-armed, so this link no longer opens anything. That is the system
           working as intended — access was temporary, and it has now closed.
         </p>
 
         <div className="mt-6 rounded-xl bg-paper-sunken px-5 py-4">
-          <p className="text-[17px] leading-relaxed text-ink">
+          <p className="text-t4 leading-relaxed text-ink">
             You were trusted with{' '}
             <span className="font-semibold text-ink">
               {grantedCount} {grantedCount === 1 ? 'item' : 'items'}
@@ -526,18 +526,18 @@ function ClosedGracefully({ summary }: { summary: ClosureSummary }) {
 
           {opened.length > 0 ? (
             <>
-              <p className="mt-3 text-[17px] text-ink">
+              <p className="mt-3 text-t4 text-ink">
                 You opened {opened.length} of them:
               </p>
               <ul className="mt-2 space-y-1">
                 {opened.map((o) => (
-                  <li key={`${o.title}-${o.openedAt}`} className="text-[17px] text-ink">
+                  <li key={`${o.title}-${o.openedAt}`} className="text-t4 text-ink">
                     · {o.title}
                   </li>
                 ))}
               </ul>
               {grantedCount > opened.length ? (
-                <p className="mt-3 text-[16px] leading-relaxed text-muted">
+                <p className="mt-3 text-t3 leading-relaxed text-muted">
                   {grantedCount - opened.length === 1
                     ? 'The other one was never opened.'
                     : `The other ${grantedCount - opened.length} were never opened.`}{' '}
@@ -547,18 +547,18 @@ function ClosedGracefully({ summary }: { summary: ClosureSummary }) {
               ) : null}
             </>
           ) : (
-            <p className="mt-3 text-[17px] leading-relaxed text-ink">
+            <p className="mt-3 text-t4 leading-relaxed text-ink">
               You did not need to open any of them. That is recorded too.
             </p>
           )}
         </div>
 
-        <p className="mt-6 text-[18px] leading-relaxed text-ink">
+        <p className="mt-6 text-t4 leading-relaxed text-ink">
           Thank you for stepping in. If they need help again, you will get a new link.
         </p>
       </div>
 
-      <p className="mt-4 px-2 text-[15px] leading-relaxed text-muted">
+      <p className="mt-4 px-2 text-t3 leading-relaxed text-muted">
         Nothing you saw is stored on this device, and this page holds no vault contents.
       </p>
     </div>
@@ -612,7 +612,7 @@ function AccessCodeEntry({ onToken, onClosed }: { onToken: (t: string) => void; 
   return (
     <div className="mx-auto max-w-md rounded-2xl border border-rule bg-paper-raised px-6 py-7">
       <h1 className="text-t7 font-semibold leading-snug text-ink">Enter your code</h1>
-      <p className="mt-3 text-[17px] leading-relaxed text-ink">
+      <p className="mt-3 text-t4 leading-relaxed text-ink">
         Someone arranged for you to reach their accounts, and that access is open. Type the code
         from the email we sent you.
       </p>
@@ -632,12 +632,12 @@ function AccessCodeEntry({ onToken, onClosed }: { onToken: (t: string) => void; 
           className="mt-2 min-h-[52px] w-full rounded-md border border-rule-strong px-4 text-center font-mono text-t7 tracking-[0.2em] text-ink placeholder:text-muted focus:border-rule focus:outline-none"
         />
 
-        {err ? <p className="mt-3 text-[16px] text-clay">{err}</p> : null}
+        {err ? <p className="mt-3 text-t3 text-clay">{err}</p> : null}
 
         <button
           type="submit"
           disabled={busy || !code.trim()}
-          className="mt-5 min-h-[52px] w-full rounded-md bg-ink px-6 text-[17px] font-semibold text-paper hover:bg-ink disabled:opacity-50"
+          className="mt-5 min-h-[52px] w-full rounded-md bg-ink px-6 text-t4 font-semibold text-paper hover:bg-ink disabled:opacity-50"
         >
           {busy ? 'Checking…' : 'Continue'}
         </button>
@@ -645,7 +645,7 @@ function AccessCodeEntry({ onToken, onClosed }: { onToken: (t: string) => void; 
 
       <ExpiredCodeHelp />
 
-      <p className="mt-6 text-[15px] leading-relaxed text-muted">
+      <p className="mt-6 text-t3 leading-relaxed text-muted">
         A real message from Relay never asks you to click a link and then enter anything.
       </p>
     </div>
@@ -671,7 +671,7 @@ function ExpiredCodeHelp() {
 
   if (sent) {
     return (
-      <p className="mt-6 rounded-md bg-paper-sunken px-4 py-3 text-[16px] leading-relaxed text-ink">
+      <p className="mt-6 rounded-md bg-paper-sunken px-4 py-3 text-t3 leading-relaxed text-ink">
         If that address has active access, a new code is on its way. It can take a minute to arrive.
       </p>
     );
@@ -682,7 +682,7 @@ function ExpiredCodeHelp() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mt-5 text-[16px] text-muted underline underline-offset-4 hover:text-ink"
+        className="mt-5 text-t3 text-muted underline underline-offset-4 hover:text-ink"
       >
         My code has expired
       </button>
@@ -708,7 +708,7 @@ function ExpiredCodeHelp() {
         }
       }}
     >
-      <label htmlFor="resend" className="block text-[15px] font-medium text-ink">
+      <label htmlFor="resend" className="block text-t3 font-medium text-ink">
         Your email address
       </label>
       <input
@@ -717,17 +717,17 @@ function ExpiredCodeHelp() {
         required
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        className="mt-2 min-h-[48px] w-full rounded-md border border-rule-strong px-4 text-[17px]"
+        className="mt-2 min-h-[48px] w-full rounded-md border border-rule-strong px-4 text-t4"
         placeholder="you@example.com"
       />
       <button
         type="submit"
         disabled={busy}
-        className="mt-3 min-h-[48px] w-full rounded-md border border-rule-strong bg-paper-raised px-4 text-[16px] font-medium text-ink hover:bg-paper-sunken disabled:opacity-50"
+        className="mt-3 min-h-[48px] w-full rounded-md border border-rule-strong bg-paper-raised px-4 text-t3 font-medium text-ink hover:bg-paper-sunken disabled:opacity-50"
       >
         {busy ? 'Sending…' : 'Send me a new code'}
       </button>
-      <p className="mt-2 text-[14px] leading-relaxed text-muted">
+      <p className="mt-2 text-t2 leading-relaxed text-muted">
         We send it to the address already on file, so this only works if you are the person who was
         given access.
       </p>

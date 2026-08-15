@@ -53,7 +53,7 @@ const CONSENT =
 
 export default function SmsPage() {
   return (
-    <main className="min-h-screen bg-paper-raised px-6 py-12 text-[17px] leading-relaxed text-ink">
+    <main className="min-h-screen bg-paper-raised px-6 py-12 text-t3 leading-relaxed text-ink">
       <div className="mx-auto max-w-2xl space-y-6">
         <header>
           <h1 className="text-t7 font-semibold tracking-tight text-ink">Text messages</h1>

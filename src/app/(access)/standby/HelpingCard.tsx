@@ -47,8 +47,8 @@ export default function HelpingCard() {
         background: '#fffdf9',
       }}
     >
-      <h2 style={{ fontSize: 21, fontWeight: 600 }}>You are helping {who} set up</h2>
-      <p style={{ fontSize: 17, lineHeight: 1.6, marginTop: 8 }}>
+      <h2 style={{ fontSize: 'var(--t5)', fontWeight: 600 }}>You are helping {who} set up</h2>
+      <p style={{ fontSize: 'var(--t4)', lineHeight: 1.6, marginTop: 8 }}>
         You can add things to their vault and suggest people. You cannot open anything, and anything
         that decides who can reach what goes to them as a question.
       </p>
@@ -59,7 +59,7 @@ export default function HelpingCard() {
           marginTop: 12,
           minHeight: 44,
           padding: '11px 18px',
-          fontSize: 17,
+          fontSize: 'var(--t4)',
           fontWeight: 600,
           color: '#211d18',
           border: '1px solid #cfc7ba',

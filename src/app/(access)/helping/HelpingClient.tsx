@@ -89,10 +89,10 @@ export default function HelpingClient() {
   if (signedOut) {
     return (
       <div>
-        <h1 style={{ fontSize: 30, fontWeight: 700, letterSpacing: '-0.01em' }}>
+        <h1 style={{ fontSize: 'var(--t7)', fontWeight: 700, letterSpacing: '-0.01em' }}>
           You are signed out
         </h1>
-        <p style={{ fontSize: 17, lineHeight: 1.6, marginTop: 12 }}>
+        <p style={{ fontSize: 'var(--t4)', lineHeight: 1.6, marginTop: 12 }}>
           Nothing is wrong — sessions end on their own after a while.{' '}
           <a href="/auth/signin" style={{ textDecoration: 'underline', textUnderlineOffset: 3 }}>
             Sign back in
@@ -103,14 +103,14 @@ export default function HelpingClient() {
     );
   }
 
-  if (error) return <p style={{ fontSize: 17 }}>{error}</p>;
-  if (!vaults) return <p style={{ fontSize: 17, color: '#6b6257' }}>Loading…</p>;
+  if (error) return <p style={{ fontSize: 'var(--t4)' }}>{error}</p>;
+  if (!vaults) return <p style={{ fontSize: 'var(--t4)', color: '#6b6257' }}>Loading…</p>;
 
   if (vaults.length === 0) {
     return (
       <div>
-        <h1 style={{ fontSize: 28, fontWeight: 600 }}>You are not helping anyone yet</h1>
-        <p style={{ fontSize: 17, lineHeight: 1.6, marginTop: 10, color: '#6b6257' }}>
+        <h1 style={{ fontSize: 'var(--t7)', fontWeight: 600 }}>You are not helping anyone yet</h1>
+        <p style={{ fontSize: 'var(--t4)', lineHeight: 1.6, marginTop: 10, color: '#6b6257' }}>
           If somebody asks you to help set up their Relay vault, and you both record how you agreed
           to it, their vault will appear here.
         </p>
@@ -120,7 +120,7 @@ export default function HelpingClient() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 28, fontWeight: 600 }}>
+      <h1 style={{ fontSize: 'var(--t7)', fontWeight: 600 }}>
         {vaults.length === 1 ? `Helping ${vaults[0].ownerLabel}` : 'People you are helping'}
       </h1>
       {vaults.map((v) => (
@@ -138,12 +138,12 @@ function VaultWorkspace({ vault, onChange }: { vault: Vault; onChange: () => Pro
         read yesterday's entry will assume the product lost it.
       */}
       <div style={{ padding: 16, borderRadius: 10, background: '#f6f3ee', border: '1px solid #e4ded4' }}>
-        <p style={{ fontSize: 17, lineHeight: 1.6 }}>
+        <p style={{ fontSize: 'var(--t4)', lineHeight: 1.6 }}>
           <strong>You can add things to {vault.ownerLabel}&rsquo;s vault, and suggest people.</strong>{' '}
           Anything that decides <strong>who can reach what</strong> goes to {vault.ownerLabel} as a
           question — you cannot make that call for them.
         </p>
-        <p style={{ fontSize: 16, lineHeight: 1.6, marginTop: 10, color: '#6b6257' }}>
+        <p style={{ fontSize: 'var(--t3)', lineHeight: 1.6, marginTop: 10, color: '#6b6257' }}>
           You cannot open or read anything in their vault — including the things you type here. Once
           an entry is saved it is sealed to them, so check it before you save it. That is deliberate:
           it is what makes it safe for them to accept help.
@@ -152,21 +152,21 @@ function VaultWorkspace({ vault, onChange }: { vault: Vault; onChange: () => Pro
 
       <AddItem vault={vault} onSaved={onChange} />
 
-      <h2 style={{ fontSize: 21, fontWeight: 600, marginTop: 28 }}>What you have added</h2>
+      <h2 style={{ fontSize: 'var(--t5)', fontWeight: 600, marginTop: 28 }}>What you have added</h2>
       {vault.items.length === 0 ? (
-        <p style={{ fontSize: 16, marginTop: 8, color: '#6b6257' }}>Nothing yet.</p>
+        <p style={{ fontSize: 'var(--t3)', marginTop: 8, color: '#6b6257' }}>Nothing yet.</p>
       ) : (
         <ul style={{ marginTop: 10, paddingLeft: 0, listStyle: 'none' }}>
           {vault.items.map((i) => (
             <li
               key={i.id}
               style={{
-                fontSize: 17, padding: '10px 14px', borderRadius: 8,
+                fontSize: 'var(--t4)', padding: '10px 14px', borderRadius: 8,
                 background: '#fffdf9', border: '1px solid #e4ded4', marginBottom: 8,
               }}
             >
               {i.title}
-              <span style={{ color: '#6b6257', fontSize: 15 }}>
+              <span style={{ color: '#6b6257', fontSize: 'var(--t3)' }}>
                 {' '}· {i.type}
                 {i.category ? ` · ${i.category}` : ''}
               </span>
@@ -179,7 +179,7 @@ function VaultWorkspace({ vault, onChange }: { vault: Vault; onChange: () => Pro
 
       {vault.proposals.length > 0 && (
         <>
-          <h2 style={{ fontSize: 21, fontWeight: 600, marginTop: 28 }}>
+          <h2 style={{ fontSize: 'var(--t5)', fontWeight: 600, marginTop: 28 }}>
             Waiting for {vault.ownerLabel}
           </h2>
           <ul style={{ marginTop: 10, paddingLeft: 0, listStyle: 'none' }}>
@@ -187,7 +187,7 @@ function VaultWorkspace({ vault, onChange }: { vault: Vault; onChange: () => Pro
               <li
                 key={p.id}
                 style={{
-                  fontSize: 17, padding: '10px 14px', borderRadius: 8,
+                  fontSize: 'var(--t4)', padding: '10px 14px', borderRadius: 8,
                   background: '#fdf6ea', border: '1px solid #e8d9b8', marginBottom: 8,
                 }}
               >
@@ -236,9 +236,9 @@ function AddItem({ vault, onSaved }: { vault: Vault; onSaved: () => Promise<void
         }
       }}
     >
-      <h2 style={{ fontSize: 21, fontWeight: 600 }}>Add something</h2>
+      <h2 style={{ fontSize: 'var(--t5)', fontWeight: 600 }}>Add something</h2>
 
-      <label htmlFor="h-title" style={{ display: 'block', fontSize: 16, fontWeight: 600, marginTop: 12 }}>
+      <label htmlFor="h-title" style={{ display: 'block', fontSize: 'var(--t3)', fontWeight: 600, marginTop: 12 }}>
         What is it?
       </label>
       <input
@@ -251,23 +251,23 @@ function AddItem({ vault, onSaved }: { vault: Vault; onSaved: () => Promise<void
 
       <div style={{ display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
         <label style={{ flex: '1 1 160px' }}>
-          <span style={{ display: 'block', fontSize: 16, fontWeight: 600 }}>Kind</span>
+          <span style={{ display: 'block', fontSize: 'var(--t3)', fontWeight: 600 }}>Kind</span>
           <select value={type} onChange={(e) => setType(e.target.value)} style={fieldStyle}>
             {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         </label>
         <label style={{ flex: '1 1 160px' }}>
-          <span style={{ display: 'block', fontSize: 16, fontWeight: 600 }}>Category</span>
+          <span style={{ display: 'block', fontSize: 'var(--t3)', fontWeight: 600 }}>Category</span>
           <select value={category} onChange={(e) => setCategory(e.target.value)} style={fieldStyle}>
             {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </label>
       </div>
 
-      <label htmlFor="h-secret" style={{ display: 'block', fontSize: 16, fontWeight: 600, marginTop: 12 }}>
+      <label htmlFor="h-secret" style={{ display: 'block', fontSize: 'var(--t3)', fontWeight: 600, marginTop: 12 }}>
         The details they would need
       </label>
-      <p style={{ fontSize: 15, lineHeight: 1.5, color: '#6b6257', marginTop: 2 }}>
+      <p style={{ fontSize: 'var(--t3)', lineHeight: 1.5, color: '#6b6257', marginTop: 2 }}>
         Account number, sign-in, where the paperwork is — whatever would actually help. This is
         encrypted before it leaves this page, and you will not be able to read it back.
       </p>
@@ -279,8 +279,8 @@ function AddItem({ vault, onSaved }: { vault: Vault; onSaved: () => Promise<void
         style={{ ...fieldStyle, lineHeight: 1.5 }}
       />
 
-      {err ? <p role="alert" style={{ fontSize: 16, color: '#9a3412', marginTop: 10 }}>{err}</p> : null}
-      {msg ? <p role="status" style={{ fontSize: 16, color: '#365547', marginTop: 10 }}>{msg}</p> : null}
+      {err ? <p role="alert" style={{ fontSize: 'var(--t3)', color: '#9a3412', marginTop: 10 }}>{err}</p> : null}
+      {msg ? <p role="status" style={{ fontSize: 'var(--t3)', color: '#365547', marginTop: 10 }}>{msg}</p> : null}
 
       <button type="submit" disabled={busy || !title.trim() || !secret.trim()} style={primaryStyle(busy || !title.trim() || !secret.trim())}>
         {busy ? 'Saving…' : 'Save to their vault'}
@@ -332,25 +332,25 @@ function ProposePerson({ vault, onProposed }: { vault: Vault; onProposed: () => 
         }
       }}
     >
-      <h2 style={{ fontSize: 21, fontWeight: 600 }}>Suggest someone who would step in</h2>
-      <p style={{ fontSize: 16, lineHeight: 1.6, marginTop: 4, color: '#6b6257' }}>
+      <h2 style={{ fontSize: 'var(--t5)', fontWeight: 600 }}>Suggest someone who would step in</h2>
+      <p style={{ fontSize: 'var(--t3)', lineHeight: 1.6, marginTop: 4, color: '#6b6257' }}>
         This does not add them. It goes to {vault.ownerLabel} as a question, and only they can say
         yes.
       </p>
 
       {sent ? (
-        <p role="status" style={{ fontSize: 16, color: '#365547', marginTop: 10 }}>
+        <p role="status" style={{ fontSize: 'var(--t3)', color: '#365547', marginTop: 10 }}>
           Sent. It is waiting for {vault.ownerLabel} to answer.
         </p>
       ) : null}
 
-      <label htmlFor="p-name" style={{ display: 'block', fontSize: 16, fontWeight: 600, marginTop: 12 }}>Their name</label>
+      <label htmlFor="p-name" style={{ display: 'block', fontSize: 'var(--t3)', fontWeight: 600, marginTop: 12 }}>Their name</label>
       <input id="p-name" value={name} onChange={(e) => setName(e.target.value)} style={fieldStyle} />
 
-      <label htmlFor="p-email" style={{ display: 'block', fontSize: 16, fontWeight: 600, marginTop: 12 }}>Their email</label>
+      <label htmlFor="p-email" style={{ display: 'block', fontSize: 'var(--t3)', fontWeight: 600, marginTop: 12 }}>Their email</label>
       <input id="p-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={fieldStyle} />
 
-      <label htmlFor="p-role" style={{ display: 'block', fontSize: 16, fontWeight: 600, marginTop: 12 }}>How would you describe them?</label>
+      <label htmlFor="p-role" style={{ display: 'block', fontSize: 'var(--t3)', fontWeight: 600, marginTop: 12 }}>How would you describe them?</label>
       <select id="p-role" value={role} onChange={(e) => setRole(e.target.value)} style={fieldStyle}>
         {['recipient', 'partner', 'caregiver', 'executor'].map((r) => <option key={r} value={r}>{r}</option>)}
       </select>
@@ -361,7 +361,7 @@ function ProposePerson({ vault, onProposed }: { vault: Vault; onProposed: () => 
         labelled on the way past rather than hidden — hiding it would only mean
         somebody typing their own name into the field above and nobody noticing.
       */}
-      <label style={{ display: 'flex', gap: 10, marginTop: 14, fontSize: 16 }}>
+      <label style={{ display: 'flex', gap: 10, marginTop: 14, fontSize: 'var(--t3)' }}>
         {/*
           `flexShrink: 0` because without it the flex row squashed this to 13x20
           — a visibly lopsided box on the single most consequential control a
@@ -377,14 +377,14 @@ function ProposePerson({ vault, onProposed }: { vault: Vault; onProposed: () => 
         />
         <span>
           This is me.
-          <span style={{ display: 'block', color: '#6b6257', fontSize: 15 }}>
+          <span style={{ display: 'block', color: '#6b6257', fontSize: 'var(--t3)' }}>
             Perfectly reasonable to ask — and {vault.ownerLabel} will be told clearly that the
             person suggesting it is the person it is about.
           </span>
         </span>
       </label>
 
-      {err ? <p role="alert" style={{ fontSize: 16, color: '#9a3412', marginTop: 10 }}>{err}</p> : null}
+      {err ? <p role="alert" style={{ fontSize: 'var(--t3)', color: '#9a3412', marginTop: 10 }}>{err}</p> : null}
 
       <button type="submit" disabled={busy || !name.trim() || !email.trim()} style={primaryStyle(busy || !name.trim() || !email.trim())}>
         {busy ? 'Sending…' : `Suggest to ${vault.ownerLabel}`}
@@ -397,7 +397,7 @@ const fieldStyle: React.CSSProperties = {
   marginTop: 6,
   width: '100%',
   minHeight: 48,
-  fontSize: 17,
+  fontSize: 'var(--t4)',
   padding: '0 12px',
   border: '1px solid #cfc7ba',
   borderRadius: 8,
@@ -409,7 +409,7 @@ function primaryStyle(disabled: boolean): React.CSSProperties {
     marginTop: 16,
     minHeight: 48,
     padding: '0 22px',
-    fontSize: 17,
+    fontSize: 'var(--t4)',
     fontWeight: 600,
     color: '#fffdf9',
     background: '#211d18',

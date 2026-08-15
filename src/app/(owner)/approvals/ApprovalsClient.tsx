@@ -102,7 +102,7 @@ export default function ApprovalsClient() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 text-[18px] leading-relaxed text-ink">
+    <div className="mx-auto max-w-2xl space-y-6 text-t4 leading-relaxed text-ink">
       <header>
         <h1 className="text-t7 font-semibold tracking-tight">Things waiting for you</h1>
         <p className="mt-2 text-ink">
@@ -131,7 +131,7 @@ export default function ApprovalsClient() {
       {loadFailed && (
         <div className="rounded-lg border border-ochre bg-ochre-soft p-4 text-ochre-text">
           <p className="font-semibold">We could not load this just now.</p>
-          <p className="mt-1 text-[16px]">
+          <p className="mt-1 text-t3">
             That is a loading problem, not an empty queue.{' '}
             <button type="button" onClick={() => void load()} className="underline underline-offset-2">
               Try again
@@ -141,7 +141,7 @@ export default function ApprovalsClient() {
       )}
 
       {decideFailed && (
-        <p className="rounded border border-ochre bg-ochre-soft px-4 py-3 text-[16px] text-ochre-text">
+        <p className="rounded border border-ochre bg-ochre-soft px-4 py-3 text-t3 text-ochre-text">
           Your decision did not go through — nothing was recorded either way. Please try again.
         </p>
       )}
@@ -183,7 +183,7 @@ export default function ApprovalsClient() {
             </button>
           </div>
 
-          <p className="mt-3 text-[16px] text-muted">
+          <p className="mt-3 text-t3 text-muted">
             Saying no changes nothing else. You can decide later.
           </p>
         </div>

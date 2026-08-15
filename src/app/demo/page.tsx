@@ -264,7 +264,7 @@ export default function DemoTour() {
                     <div className="text-t2 text-muted">{entry.detail}</div>
                   </div>
                 </div>
-                <div className="font-mono text-[11px] text-muted sm:text-right">
+                <div className="font-mono text-t1 text-muted sm:text-right">
                   <div>{shortHash(entry.prev_hash)} →</div>
                   <div className="text-muted">{shortHash(entry.entry_hash)}</div>
                 </div>

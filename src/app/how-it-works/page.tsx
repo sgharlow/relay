@@ -136,7 +136,7 @@ export default function HowItWorksPage() {
         <h1 className="mt-4 font-serif text-t9 font-semibold leading-tight tracking-tight text-ink">
           What actually happens
         </h1>
-        <p className="mt-4 text-[19px] leading-relaxed text-ink">
+        <p className="mt-4 text-t4 leading-relaxed text-ink">
           Most explanations of this kind of product describe features. Here is the sequence instead,
           in the order a family lives it.
         </p>
@@ -164,12 +164,12 @@ export default function HowItWorksPage() {
               <span className="absolute -left-[31px] top-1.5 h-2.5 w-2.5 rounded-full bg-ink" />
               <p className="text-t1 font-semibold uppercase tracking-wider text-ochre-text">{step.when}</p>
               <h2 className="mt-1 text-t5 font-semibold text-ink">{step.title}</h2>
-              <p className="mt-2 text-[17px] leading-relaxed text-ink">{step.body}</p>
+              <p className="mt-2 text-t3 leading-relaxed text-ink">{step.body}</p>
             </li>
           ))}
         </ol>
 
-        <p className="mt-10 rounded-xl border border-ochre bg-ochre-soft p-5 text-[17px] leading-relaxed text-ink">
+        <p className="mt-10 rounded-xl border border-ochre bg-ochre-soft p-5 text-t3 leading-relaxed text-ink">
           <span className="font-semibold">The last step is the one nothing else does.</span> Every
           other way of doing this — a shared note, a deputy, a legacy contact — is a door you open
           once. Relay is the only one that closes again on its own, which is what makes it safe to
@@ -185,11 +185,11 @@ export default function HowItWorksPage() {
             {USE_CASES.map((u) => (
               <div key={u.title} className="rounded-xl border border-rule bg-paper-raised p-5">
                 <h3 className="font-semibold text-ink">{u.title}</h3>
-                <p className="mt-2 text-[15px] leading-relaxed text-muted">{u.body}</p>
+                <p className="mt-2 text-t2 leading-relaxed text-muted">{u.body}</p>
               </div>
             ))}
           </div>
-          <p className="mt-5 text-[15px] leading-relaxed text-muted">
+          <p className="mt-5 text-t2 leading-relaxed text-muted">
             Relay is not a will and does not handle inheritance. If that is what you need, an estate
             attorney is the right call — this is about the years before that.
           </p>
@@ -199,7 +199,7 @@ export default function HowItWorksPage() {
       {/* The matrix. */}
       <section id="compare" className="mx-auto max-w-5xl px-6 py-12 scroll-mt-6">
         <h2 className="text-t5 font-semibold tracking-tight text-ink">How it compares</h2>
-        <p className="mt-3 max-w-3xl text-[17px] leading-relaxed text-ink">
+        <p className="mt-3 max-w-3xl text-t3 leading-relaxed text-ink">
           These are the four things people actually choose between. We have included the rows we
           lose, because a comparison where the newcomer wins everything is not worth reading.
         </p>
@@ -213,9 +213,9 @@ export default function HowItWorksPage() {
         <div className="mt-8 space-y-6 md:hidden">
           {ROWS.map((row) => (
             <div key={row.question} className="rounded-xl border border-rule p-4">
-              <p className="text-[15px] font-semibold text-ink">{row.question}</p>
+              <p className="text-t2 font-semibold text-ink">{row.question}</p>
               {row.note ? (
-                <p className="mt-1 text-[13px] leading-relaxed text-muted">{row.note}</p>
+                <p className="mt-1 text-t1 leading-relaxed text-muted">{row.note}</p>
               ) : null}
               <ul className="mt-3 space-y-1.5">
                 {COLUMNS.map((c) => (
@@ -226,7 +226,7 @@ export default function HowItWorksPage() {
                     }`}
                   >
                     <span
-                      className={`text-[14px] ${
+                      className={`text-t2 ${
                         c.key === 'relay' ? 'font-semibold text-ochre-text' : 'text-ink'
                       }`}
                     >
@@ -234,7 +234,7 @@ export default function HowItWorksPage() {
                     </span>
                     <span className="flex items-center gap-1.5 whitespace-nowrap">
                       <Mark state={row.cells[c.key]} />
-                      <span className="text-[12px] text-muted">
+                      <span className="text-t1 text-muted">
                         {CELL_MARK[row.cells[c.key]].label}
                       </span>
                     </span>
@@ -267,9 +267,9 @@ export default function HowItWorksPage() {
               {ROWS.map((row) => (
                 <tr key={row.question} className="border-b border-rule align-top">
                   <th scope="row" className="py-4 pr-4 text-left font-normal">
-                    <span className="text-[15px] font-medium text-ink">{row.question}</span>
+                    <span className="text-t2 font-medium text-ink">{row.question}</span>
                     {row.note ? (
-                      <span className="mt-1 block text-[13px] leading-relaxed text-muted">{row.note}</span>
+                      <span className="mt-1 block text-t1 leading-relaxed text-muted">{row.note}</span>
                     ) : null}
                   </th>
                   {COLUMNS.map((c) => (
@@ -283,14 +283,14 @@ export default function HowItWorksPage() {
           </table>
         </div>
 
-        <div className="mt-5 flex flex-wrap gap-x-6 gap-y-1 text-[13px] text-muted">
+        <div className="mt-5 flex flex-wrap gap-x-6 gap-y-1 text-t1 text-muted">
           <span><span className="text-sage-text">●</span> yes</span>
           <span><span className="text-ochre-text">◐</span> partly</span>
           <span><span className="text-muted">—</span> not offered</span>
           <span><span className="text-muted">?</span> not published by the vendor</span>
         </div>
 
-        <p className="mt-4 max-w-3xl text-[13px] leading-relaxed text-muted">
+        <p className="mt-4 max-w-3xl text-t1 leading-relaxed text-muted">
           Checked against vendor documentation on {VERIFIED_ON}. Where a company does not publish
           whether it does something, we say so rather than guessing. If you believe a cell is wrong,
           tell us and we will correct it — these are their products, not ours.
@@ -299,7 +299,7 @@ export default function HowItWorksPage() {
 
       <section className="border-t border-rule">
         <div className="mx-auto max-w-3xl px-6 py-12 text-center">
-          <p className="text-[19px] leading-relaxed text-ink">
+          <p className="text-t4 leading-relaxed text-ink">
             One vault, the whole family, {`$${PRICE_YEARLY_USD}`} a year.
           </p>
           <Link

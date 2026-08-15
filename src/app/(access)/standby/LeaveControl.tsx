@@ -77,7 +77,7 @@ export default function LeaveControl({
     borderRadius: 6,
     border: '1px solid #cfc7ba',
     background: '#fffdf9',
-    fontSize: 17,
+    fontSize: 'var(--t4)',
     fontWeight: 600,
     cursor: 'pointer',
     textAlign: 'left',
@@ -94,7 +94,7 @@ export default function LeaveControl({
           border: 'none',
           background: 'none',
           color: '#6b6257',
-          fontSize: 16,
+          fontSize: 'var(--t3)',
           textDecoration: 'underline',
           cursor: 'pointer',
         }}
@@ -114,13 +114,13 @@ export default function LeaveControl({
         background: '#fffdf9',
       }}
     >
-      <p style={{ fontSize: 17, lineHeight: 1.6 }}>
+      <p style={{ fontSize: 'var(--t4)', lineHeight: 1.6 }}>
         {ownerLabel} will be told, and their plan will be weaker until they find someone else. They
         can ask you again — stepping down now does not close the door.
       </p>
 
       {somethingOpen ? (
-        <p style={{ fontSize: 17, lineHeight: 1.6, marginTop: 10, color: '#9a3412' }}>
+        <p style={{ fontSize: 'var(--t4)', lineHeight: 1.6, marginTop: 10, color: '#9a3412' }}>
           Something is open for them right now, and they may be counting on you today. If you can,
           answer first and step down afterwards.
         </p>
@@ -146,7 +146,7 @@ export default function LeaveControl({
       </div>
 
       {error ? (
-        <p role="alert" style={{ fontSize: 16, marginTop: 12, color: '#9a3412' }}>
+        <p role="alert" style={{ fontSize: 'var(--t3)', marginTop: 12, color: '#9a3412' }}>
           {error}
         </p>
       ) : null}

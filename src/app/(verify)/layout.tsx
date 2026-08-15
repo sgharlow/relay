@@ -12,7 +12,7 @@ import SupportFooter from '../_components/SupportFooter';
 
 export default function VerifyLayout({ children }: { children: React.ReactNode }) {
   return (
-    <main className="min-h-screen bg-paper-sunken px-4 py-8 text-[18px] leading-relaxed text-ink">
+    <main className="min-h-screen bg-paper-sunken px-4 py-8 text-t4 leading-relaxed text-ink">
       <div className="mx-auto max-w-xl">
         {children}
         {/*
