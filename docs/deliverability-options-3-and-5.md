@@ -134,6 +134,61 @@ after there is a number that can send.
 
 ---
 
+## Live verification, 2026-08-14 — read-only, against production
+
+Every test in this repo mocks the database, so nothing in the 2,150-odd of them can catch a wrong
+column name or a wrong assumption about what production actually contains. These checks were run
+directly against the live cluster, SELECT-only, and are worth repeating before beta.
+
+**1. The schema assumptions hold.** `email_secondary` exists on **both** `recipients` and
+`verifiers` — migration 020 *is* applied, so the option-2 work will not 500 on the first `/circle`
+load. Every column the fire drill and the silence sweep query (`audit_log.entity_id`, `ts`, `actor`,
+`entity`, `detail`; `release_state.received_confirmations` / `required_confirmations`;
+`verifier_confirmations.verifier_id`) is present.
+
+**2. The Resend webhook is live and current** — 73 events, newest minutes before the check. So
+`DeliveryLine` will have something to say. It was worth proving: that component renders *nothing*
+until the webhook is configured, and shipping honest copy onto a surface fed by nothing would have
+been its own kind of false green.
+
+**3. A 75% "delayed" rate that is NOT ours.** 55 of 73 events are `email.delivery_delayed`, which
+looks alarming until it is split by recipient domain:
+
+| Recipient domain | Events | Delayed | Delivered | Bounced |
+|---|---|---|---|---|
+| `relay.test` | 18 | 18 | 0 | 0 |
+| `gmail.com` | 14 | 0 | **14** | 0 |
+| `*.report-bridge.com` (synthetic) | ~39 | ~38 | 0 | 1 |
+| `outlook.com` | 3 | 0 | **3** | 0 |
+
+Every delay is synthetic or test traffic. **Relay's real addresses are clean: 14/14 delivered to
+Gmail, 3/3 "delivered" to Outlook, nothing bounced.** Never read this table without splitting it —
+the webhook is account-scoped and `/api/resend/webhook` has no sender-domain filter.
+
+**4. 🔴 The false green is sitting in production right now.** Those three `outlook.com` rows are
+`email.delivered`, and we know from the A/B that at least two of those messages were filed to Junk.
+That is the defect option 1 corrects, visible in live data rather than only in test headers.
+
+**5. The roster is empty**, so the new per-person lines have nobody to render for yet. Expected
+pre-beta, and consistent with the G1 baseline — but it does mean none of these surfaces has been
+seen with real data, only rendered and screenshotted in isolation.
+
+### A bug this found, and one it did not fix
+
+`runHeartbeatSweep` excludes `is_demo_account` for a documented reason: `demo@relay.test` is live in
+production, its owner address is in a reserved domain that cannot receive mail, and an unattended job
+mailing it means **hard bounces on a Resend account shared with report-bridge**, where the reputation
+cost lands on a different project. The 18 `relay.test` rows above are that address already collecting
+delivery failures.
+
+**The new verifier-silence sweep had no such guard and now does** — it joins `users` on
+`is_demo_account = false`, as a join rather than a filter so a row that must never be mailed is never
+fetched. Caught by asking production what was in the table, not by any test.
+
+⚠️ **Not checked, and worth someone's time:** whether `escalateLapsedRequests` — which also runs
+unattended on the same cron and also sends mail — carries the same exclusion. It is pre-existing and
+was not touched here.
+
 ## What none of this changes
 
 Beta is not blocked. The calm-day path is email-free by design (`BETA_INVITE_CHANNEL='owner'`, claim

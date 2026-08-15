@@ -191,6 +191,31 @@ describe('sweepSilentVerifiers', () => {
   });
 
   /*
+    🔴 SEEDED ACCOUNTS ARE EXCLUDED, and this sweep nearly repeated a defect the
+    release audit had already closed once. `runHeartbeatSweep` carries
+    `is_demo_account = false` with a long comment explaining why: `demo@relay.test`
+    is live in production and its contacts sit in reserved domains that CANNOT
+    receive mail, so an unattended job mailing them produces hard bounces on a
+    Resend account SHARED with report-bridge — where the reputation cost lands on
+    a different project entirely.
+
+    Confirmed against production 2026-08-14: `email_delivery_events` holds 18
+    rows for `relay.test`, every one of them `delivery_delayed`. This sweep runs
+    hourly and unattended, which is exactly the shape the exclusion exists for.
+  */
+  it('never mails a seeded demo account, whose contacts are in reserved domains', async () => {
+    world();
+    await sweepSilentVerifiers(now);
+
+    const releaseQuery = mockQuery.mock.calls
+      .map((c) => String(c[0]))
+      .find((s) => s.includes('FROM release_state'));
+    expect(releaseQuery, 'the sweep must not consider demo accounts at all').toMatch(
+      /is_demo_account/,
+    );
+  });
+
+  /*
     Independent owners. One failing lookup must not leave every other family's
     silence unreported — the same rule escalateEach already follows.
   */

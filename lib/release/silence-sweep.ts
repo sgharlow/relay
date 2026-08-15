@@ -64,11 +64,28 @@ async function alreadyNotified(ownerId: string, releaseStateId: string): Promise
  * is not a reason to leave the rest in silence.
  */
 export async function sweepSilentVerifiers(now: Date = new Date()): Promise<string[]> {
+  /*
+    🔴 SEEDED ACCOUNTS EXCLUDED — the same guard `runHeartbeatSweep` carries, and
+    for the same reason, stated at length in its header. `demo@relay.test` is
+    live in production and its contacts sit in reserved domains that cannot
+    receive mail, so an UNATTENDED job mailing them produces hard bounces on a
+    Resend account SHARED with report-bridge, where the reputation cost lands on
+    a different project. This sweep runs hourly with nobody watching, which is
+    precisely the shape that guard exists for.
+
+    Measured 2026-08-14: `email_delivery_events` already holds 18 rows for
+    `relay.test`, every one `delivery_delayed`. Without this join, the first
+    demo release to sit six hours in pending would add owner mail to that pile.
+
+    A JOIN rather than a filter in JS — a row that must never be mailed should
+    not be fetched, so no later edit can reach past the guard.
+  */
   const waiting = await query<WaitingRow>(
-    `SELECT id, owner_id, trigger_type, state, initiated_at::text,
-            received_confirmations, required_confirmations
-       FROM release_state
-      WHERE state IN ('pending', 'grace')`,
+    `SELECT rs.id, rs.owner_id, rs.trigger_type, rs.state, rs.initiated_at::text,
+            rs.received_confirmations, rs.required_confirmations
+       FROM release_state rs
+       JOIN users u ON u.id = rs.owner_id AND u.is_demo_account = false
+      WHERE rs.state IN ('pending', 'grace')`,
   );
 
   const notified: string[] = [];
