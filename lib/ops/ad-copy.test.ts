@@ -257,4 +257,31 @@ describe('the destination URLs carry the measurement', () => {
       expect(url, `${url} has no ?src= — it would be invisible to the gate`).toMatch(/[?&]src=[^&\s]+/);
     }
   });
+
+  /*
+    The sitting sheet restates ONE volatile value — the Reddit destination URL —
+    because it is the field being read aloud and typed under time pressure, and
+    "go and look it up" is how a sitting acquires a typo. Restating it creates a
+    second definition, so the second definition is pinned to the first here.
+
+    The sheet deliberately does NOT restate the creative copy, for exactly the
+    reason this file exists; it points at `g1-ad-creatives.md` instead. This test
+    is what makes the one exception safe rather than a precedent.
+  */
+  it('the sitting sheet quotes the same Reddit destination as the runbook', () => {
+    const sheet = readFileSync('docs/g1-sitting-sheet.md', 'utf8');
+
+    const runbookReddit = [...md.matchAll(/\*\*Destination:\*\*\s*`([^`]+)`/g)]
+      .map((m) => m[1])
+      .find((u) => /src=reddit/.test(u));
+    expect(runbookReddit, 'no reddit destination in the runbook').toBeTruthy();
+
+    const inSheet = sheet.includes(runbookReddit as string);
+    expect(
+      inSheet,
+      `docs/g1-sitting-sheet.md must quote the runbook's Reddit destination verbatim ` +
+        `(${runbookReddit}). A sitting sheet that disagrees with the runbook sends the spend ` +
+        `somewhere the gate cannot see.`,
+    ).toBe(true);
+  });
 });
