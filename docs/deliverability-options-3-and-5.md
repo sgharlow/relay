@@ -1,0 +1,143 @@
+# Options 3 and 5 — the two that are not Claude's to execute
+
+> Written 2026-08-14, after shipping options 1, 2 and 4 (see `git log`). Those three are code and
+> are done. These two need money, business identity, or an infrastructure decision, so what follows
+> is the homework rather than the work.
+>
+> ⚠️ **Every figure below was verified live on 2026-08-14 from the source named beside it.**
+> Vendor pricing and carrier fees move — re-verify before acting on any of them, and do not quote
+> them from this file into another document. If you only take one thing from each section, take the
+> recommendation, not the number.
+
+---
+
+## Where the problem actually stands
+
+Two hypotheses have been tested against a real Outlook mailbox and **both were refuted**:
+
+| # | Hypothesis | Result |
+|---|---|---|
+| 1 | Reply-To pointed somewhere unhelpful (2026-08-09) | 🚫 Refuted — SCL unchanged |
+| 2 | Message shape: every Relay message was `text/plain` only (2026-08-14) | 🚫 Refuted — both arms SCL 5, byte-identical `X-Message-Delivery`, and the HTML arm fired *two extra* ARA rules |
+
+Authentication is flawless in every sample (`compauth=pass reason=100`, `BCL:0`, `ucf:0`, `jmr:0`)
+and four distinct sending IPs across two runs all scored SCL 5 — so the IP is not the discriminator
+either.
+
+**What survives is shared-pool and new-domain sending reputation.** Options 3 and 5 are the two
+proposals that claim to reach it. One of them does not, and that is the main finding here.
+
+---
+
+## Option 5 — move critical mail to a dedicated sending identity
+
+### The dedicated-IP version is not available to Relay, and would be the wrong move if it were
+
+**Not available.** Resend gates dedicated IPs at *"$30 / mo: Available on the Scale plan to
+customers exceeding 3,000 emails sent per day"* (resend.com/pricing, read 2026-08-14). Scale starts
+at $90/mo. Relay's own real-address delivery record is **14 delivered messages across 9 addresses**
+— re-derive it, but it is not within three orders of magnitude of 3,000 *per day*.
+
+**And wrong anyway.** A dedicated IP starts with no reputation at all and has to be warmed, which
+takes weeks of *consistent* volume. Published floors from other vendors, read 2026-08-14: Mailgun
+~50,000/week, Postmark ~300,000/month, with general guidance that below ~50,000/month a dedicated IP
+*"struggles to generate enough signal to maintain a reputation, and inconsistent volume lets it
+decay."*
+
+Relay's sending profile is the worst possible fit for that. It is not merely low volume — it is
+**bursty by design**. A release is a rare event; most weeks the product should send almost nothing.
+A dedicated IP would sit cold between bursts and then be asked to carry the one message that
+matters, on the one day it matters. That is strictly worse than riding a pool that is already warm.
+
+> **Verdict: do not pursue a dedicated IP.** Not "blocked on budget" — refuted on mechanism.
+
+### The dedicated-subdomain version attacks the wrong half
+
+Moving the From address to something like `alerts.relaystandby.com` is cheap, reversible, and sits
+behind the existing `sendEmail` seam. It is also pointed at the wrong half of the surviving
+hypothesis: that hypothesis includes **new-domain** reputation, and a subdomain created this week is
+by definition newer than the apex, which at least has whatever history it has accumulated since
+2026-06. Expected effect: neutral at best, mildly negative at worst.
+
+It is worth doing for *isolation* reasons — keeping Relay's reputation independent of a sibling
+product's — but note that the Resend account being shared with report-bridge does not put them on
+different IP pools, so it does not address the "shared pool" half either.
+
+> **Verdict: not a fix. Only worth doing if isolation becomes desirable for another reason.**
+
+### What IS available, free, and aimed at the measured symptom
+
+**Microsoft's own sender support path.** Microsoft maintains a submission route for Outlook.com /
+Hotmail / Live / MSN delivery problems (support.microsoft.com "Sender Support in Outlook.com", and
+the Postmaster troubleshooting page under *Sender services, tools, and issue submission*, both read
+2026-08-14). It asks for exactly the evidence this investigation has already captured: IPs, domains,
+full headers, UTC timestamps, sample recipients, message IDs, and recent sending changes.
+
+Relay has all of it: two message IDs (`RLY-CTRL-A118`, `RLY-HTML-B227`), full headers showing SCL 5
+with `compauth=pass reason=100`, the ARA rule IDs (`9400799043`, `30041999003`), and four distinct
+sending IPs.
+
+- **Cost:** nothing. **Infrastructure change:** none. **Rollback:** not applicable.
+- ⚠️ **One complication:** the form wants IPs, and Relay does not own them — Resend does. Expect to
+  either file it alongside a Resend support ticket, or ask Resend to file it. That is the first
+  step, not a blocker.
+- 🔴 **DO NOT CLICK "IT'S NOT JUNK"** on the two test messages sitting in `skillcrossroads@outlook.com`.
+  They are the evidence for this submission. Marking them trains the filter and destroys the
+  baseline in the same click.
+
+> **Recommendation: replace option 5 with this.** It is the only remaining action that targets the
+> surviving hypothesis, and it is free.
+
+---
+
+## Option 3 — SMS for critical alerts only
+
+The design constraint is settled and does not change: **the message carries no code and no link**,
+so principle 1 stays intact. It is a nudge — *"something needs you, sign in the way you normally
+do"* — exactly like the credential-free email notices that options 2 and 4 already fan out.
+
+### The gate is US A2P 10DLC registration, and it is lead time, not difficulty
+
+Figures below are Twilio's published fees plus carrier pass-throughs, read 2026-08-14. Other
+providers differ; the registry (TCR) fees behind them do not.
+
+| Item | Sole Proprietor | Standard brand |
+|---|---|---|
+| Brand registration | ~$4 one-time | ~$48+ one-time, includes secondary vetting |
+| Campaign vetting | ~$15 one-time | ~$15 one-time |
+| Campaign, monthly | ~$2/mo | ~$1.50–$10/mo |
+| Carrier surcharge | ~$0.003–$0.005 per SMS | same |
+
+**Timeline:** brand approval 1–3 business days; campaign 3–7 business days, but reported at
+**10–15 days through mid-2026** on volume. Call it 2–4 weeks end to end, and treat that as the
+number that matters — the money is noise at Relay's scale.
+
+### Three traps worth knowing before starting
+
+1. **Sole Proprietor is only for senders with NO business Tax ID.** If Relay has an EIN, that route
+   is closed and it is a Standard (or Low-Volume Standard) brand — more vetting, higher fee.
+2. **OTP verification must use a real US/Canada *mobile* number.** VoIP numbers, including Twilio's
+   own, are rejected. And that number carries a **lifetime three-use limit across all vendors** —
+   so it must not be spent on an experiment.
+3. **Sole Proprietor campaigns allow exactly one 10DLC number** and low throughput.
+
+### Recommendation
+
+**Start the registration now, on its own clock, and gate nothing on it.** It is almost entirely
+waiting, so the cost of starting early is a few dollars and the cost of starting late is two to four
+weeks at the moment SMS is actually wanted.
+
+**Build no SMS code until the brand and campaign are approved.** An SMS seam written against an
+unapproved campaign is "wired, not live-proven" — response shapes and error paths that have never
+touched the real API — and this portfolio has a rule about exactly that. The right first commit is
+after there is a number that can send.
+
+---
+
+## What none of this changes
+
+Beta is not blocked. The calm-day path is email-free by design (`BETA_INVITE_CHANNEL='owner'`, claim
+needs no email, contacts sign in by claim code or passkey), and options 1, 2 and 4 have shipped:
+the screen no longer claims a junked message arrived, credential-free notices reach a second address,
+a rehearsal measures whether a human can actually be reached, and a release that nobody answers now
+tells the owner to pick up a phone.
