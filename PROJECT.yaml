@@ -79,24 +79,76 @@ gates:
     target: ">= 2% click-to-intent at a real price point  # ratified by Steve 2026-07-01"
     kill: "< 0.5% after 100+ qualified -> park D2C; B2B2C-only or archive  # ratified 2026-07-01"
     owner: steve
-    due: 2026-10-31
+    due: 2026-10-02
+    # `moved:` is a LIST as of the second move. It was a single mapping, and a
+    # second move would have had to overwrite the first -- destroying the record
+    # the rule below exists to create. Newest LAST; the date above always equals
+    # the last entry's `to:`.
     moved:
-      from: 2026-09-15
-      date: 2026-08-11
-      by: steve
-      why: "Consequence of ratified.build-standby-before-g1. The old date required the first ad
-        SERVING by 08-18 to fit a 4-week window, and sprint C alone (passkeys, with no first-class
-        next-auth v4 support) does not fit in seven days. Running the flight on the funnel we are
-        replacing would spend the ratified $250 on a reading of the old product -- the exact
-        known-bad reading the build ruling was made to avoid."
-      derivation: "sprints C-E ~4 weeks -> ~09-08; Phase 0 claim conversion measured on the REAL
-        claim flow ~09-15; ad serving by ~09-22; 4-week window -> verdict ~10-20; slack -> 10-31."
-      unchanged: "thresholds, the $250 ceiling (ratified.g1-flight-power), and the directional-read
-        constraint. Only the date moved."
-    # ⚠️ This gate has now moved once, deliberately and with a recorded reason. A SECOND move
-    # requires the same treatment -- an explicit decision, a derivation, and a record. A gate that
-    # slides quietly is how this portfolio accumulates past-due-undecided gates.
-    revisit: "at every /daily-priority from 2026-10-01"
+      - from: 2026-09-15
+        to: 2026-10-31
+        date: 2026-08-11
+        by: steve
+        why: "Consequence of ratified.build-standby-before-g1. The old date required the first ad
+          SERVING by 08-18 to fit a 4-week window, and sprint C alone (passkeys, with no first-class
+          next-auth v4 support) does not fit in seven days. Running the flight on the funnel we are
+          replacing would spend the ratified $250 on a reading of the old product -- the exact
+          known-bad reading the build ruling was made to avoid."
+        derivation: "sprints C-E ~4 weeks -> ~09-08; Phase 0 claim conversion measured on the REAL
+          claim flow ~09-15; ad serving by ~09-22; 4-week window -> verdict ~10-20; slack -> 10-31."
+        unchanged: "thresholds, the $250 ceiling (ratified.g1-flight-power), and the directional-read
+          constraint. Only the date moved."
+      - from: 2026-10-31
+        to: 2026-10-02
+        date: 2026-08-14
+        by: steve
+        direction: EARLIER
+        why: "The first move's derivation was overtaken by events within three days,
+          and a date carrying slack it no longer earns is a date that invites the
+          drift this gate's own rule was written against. Sprints C-E were budgeted
+          at ~4 weeks to ~09-08; they landed 2026-08-14, twenty-five days early. The
+          reason the flight was held -- that buying traffic for the funnel we were
+          replacing would purchase a reading of the old product -- is satisfied: the
+          replacement is live, and the landing page it lands on was made ad-policy
+          compliant the same day (ratified.landing-copy-third-person)."
+        derivation: "Re-derived term by term against today rather than adjusted.
+          Ad sitting + submission ~2 weeks (Steve's card, Steve's sitting, per the
+          co-pilot contract) -> R1 APPROVED AND SERVING by 2026-08-28; 4-week window
+          -> 2026-09-25 (or N>=100, whichever first); 1 week slack, sized to absorb
+          exactly one rejection-and-resubmit cycle -> 2026-10-02."
+        phase_0_is_not_in_this_chain: "The first derivation placed Phase 0 claim
+          conversion in SERIES between the build and ad serving. That was wrong on
+          its own terms -- ratified.build-standby-before-g1 states Phase 0 'can run
+          in parallel at no engineering cost' -- and it is wrong on the mechanics:
+          neither lane's conversion path touches the claim flow (Lane A is a form
+          POST; Lane B is signup -> seed -> reveal -> price -> Stripe). Phase 0
+          remains at N=0 and remains important; it is simply not a precondition for
+          the measurement this gate makes, and holding the gate for it would be
+          holding it for an invitation nobody has sent."
+        unchanged: "thresholds, the $250 ceiling (ratified.g1-flight-power), the
+          directional-read constraint, the 4-week window and the N>=100 stop. Only
+          the date moved -- in the other direction this time."
+        note: "⚠️ The window straddles report-bridge's go-live target. Accepted
+          knowingly: the daily obligation here is the snapshot in g1-flight-log.md,
+          a ten-minute read of two dashboards.
+          ⚠️ THE DATE IS NOT RESTATED HERE ON PURPOSE. It belongs to another repo
+          (domo-ssrs/roadmap.md, 'GO-LIVE ROADMAP'), that repo says in its own
+          header it is 'still deciding whether 9-12 holds', and its GL-G1 gate
+          carries an explicit re-date clause. A cross-project date copied into this
+          file is one nobody maintaining the other project will ever update — the
+          volatile-numbers rule applies across repos, not just within one. Read it
+          there if the overlap ever matters."
+    # ⚠️ This gate has now moved TWICE, both times with an explicit decision, a
+    # derivation and a record -- 2026-08-11 later, 2026-08-14 earlier. The rule is
+    # unchanged and applies to a THIRD move: a gate that slides quietly is how this
+    # portfolio accumulates past-due-undecided gates. Note that the rule is about
+    # RECORDING, not about direction; moving a date earlier is just as capable of
+    # being a quiet fudge as moving it later, so it gets the same treatment.
+    revisit: "at every /daily-priority from 2026-09-01 -- moved earlier with the gate.
+      A revisit that began 2026-10-01 would have first fired the day before the hard
+      stop, which is a reminder that arrives too late to change anything. 09-01 is
+      four days after the serving-by date, so the first question it asks is the one
+      that matters: did the ad actually go live?"
   - id: g2-counsel-opinion
     metric: legal_opinion_on_fiduciary_custodian_status (RUFADAA/estate access — REQUIRED before any paying estate customer)
     target: "written counsel opinion obtained"
@@ -237,6 +289,12 @@ ratified:
       defect fix in its own right and did not need this override."
     unchanged: "G1 itself, its thresholds and its 2026-09-15 hard stop are untouched, as is
       g2-counsel-opinion. This changes WHEN building happens, not what the gates measure."
+    # ⚠️ That sentence is the record of what was ratified on 2026-08-11 and is left
+    # standing as such -- but the hard stop it names did NOT stay untouched. It moved
+    # the same day (to 2026-10-31) as a stated consequence of this very ruling, and
+    # again on 2026-08-14 (to 2026-10-02) once the sprints it waited on landed early.
+    # THE THRESHOLDS ARE STILL UNTOUCHED, which is the part of the claim that matters.
+    # Read gates.g1-caregiver-wtp for the live date; do not read it from here.
     risk_accepted: "If claim conversion is poor (sprint plan Phase 0), this build is partly wasted.
       Phase 0 exists to find that out and can run in parallel at no engineering cost."
   # ⚠️ SUPERSEDED 2026-08-14 by gates.g2-counsel-opinion.declined. Its "until" is

@@ -2,7 +2,10 @@
 
 > Instrument built 2026-07-03 on branch `exp/g1-caregiver-landing` (Story R2/R3, in-lock relay
 > prep). **Deploys only post-H0-disposition** — merging to master before the verdict would
-> redeploy the judged artifact. Gate: `g1-caregiver-wtp` (PROJECT.yaml, due **2026-09-15**).
+> redeploy the judged artifact. Gate: `g1-caregiver-wtp` — **due date in `PROJECT.yaml`, not here.**
+> It read 2026-09-15 when this line was written and has since moved twice (2026-08-11 to 10-31,
+> 2026-08-14 to 10-02), each with a recorded derivation. Thresholds and the $250 ceiling are
+> unchanged by both moves.
 
 ## What G1 decides
 

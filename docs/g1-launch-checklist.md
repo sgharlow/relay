@@ -229,14 +229,19 @@ Re-run all four checks at merge time if the branch has moved past `af4ddf3`.
       2026-08-10 with the execution detail it was missing — compliant creative rewrites, the
       correct Reddit ad format, character-limit-checked Meta copy, structural spend caps, the
       rejection path, the daily rhythm, and a who-does-what contract.
-      ⚠️ **Deadline the calendar imposes: the first ad must be APPROVED AND SERVING by ~2026-10-03**
-      for a full 4-week window inside the **2026-10-31** hard stop → submit by ~2026-10-01.
-      **CORRECTED 2026-08-14** — this line read "SERVING by 2026-08-18 … inside the 2026-09-15 hard
-      stop" for three days after the gate moved on 2026-08-11 (`PROJECT.yaml`
-      `gates.g1-caregiver-wtp.moved`). `g1-ad-creatives.md` §"The date the calendar actually
-      imposes" was rebased that day; this line and `g1-flight-log.md` were missed. The dates live in
-      `PROJECT.yaml`; the derived serving-by date lives in `g1-ad-creatives.md` and is restated here
-      only because this is the step that acts on it.
+      ⚠️ **Deadline the calendar imposes: the first ad must be APPROVED AND SERVING by ~2026-08-28**
+      for a full 4-week window inside the **2026-10-02** hard stop → submit by ~2026-08-26.
+      **THIS LINE HAS BEEN WRONG ONCE — read the dates from `PROJECT.yaml`, not from here.** It read
+      "SERVING by 2026-08-18 … inside the 2026-09-15 hard stop" for three days after the gate moved
+      on 2026-08-11; `g1-ad-creatives.md` was rebased that day and this line was missed. The gate
+      then moved EARLIER on 2026-08-14, to 2026-10-02, once sprints C-E landed twenty-five days
+      ahead of their budget and the landing page was made ad-policy compliant
+      (`gates.g1-caregiver-wtp.moved`, second entry). The dates live in `PROJECT.yaml`; the derived
+      serving-by date lives in `g1-ad-creatives.md` and is restated here only because this is the
+      step that acts on it.
+      **This step is now the critical path.** Everything upstream of it is closed: the build, the
+      pre-flight gate, the instrument, the destination copy. What is left is a sitting with your
+      card, per the co-pilot contract in `g1-ad-creatives.md`.
       ✅ **Its pre-flight gate PASSED 2026-08-10**, including part 1 step 5 (the Lane-B numerator),
       which this line previously said "has never been proven live". It was walked end to end on
       production the same day — signup → TOTP → seed → reveal → price card → the Stripe branch,
@@ -247,7 +252,8 @@ Re-run all four checks at merge time if the branch has moved past `af4ddf3`.
   
       N-counting rules (including both exclusion sets and why each exists), the four ratios to
       record, the known-offsets table, the daily snapshot table, and the amended five-line verdict
-      template. The gate hard-stops per `PROJECT.yaml` (`g1-caregiver-wtp`, due 2026-09-15).
+      template. The gate hard-stops per `PROJECT.yaml` (`gates.g1-caregiver-wtp.due` — read it
+      there rather than from any restatement; it has moved twice, 08-11 later and 08-14 earlier).
       **The window start date is deliberately left blank** — it is the day the first ad is APPROVED
       AND SERVING, which is not knowable until step 8 happens. Fill it then; everything else is
       pre-committed so the verdict cannot be reverse-engineered from whichever number looked better.

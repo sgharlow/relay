@@ -551,28 +551,35 @@ is the signal that the product funnel is worth routing paid traffic through.
 
 ## The date the calendar actually imposes
 
-The gate hard-stops **2026-09-15** (`PROJECT.yaml`) and the window is **4 weeks from the day the
-first ad is approved and serving** (decision #4). Those two facts multiply out to a deadline this
-plan never stated:
+The gate hard-stops on the date in `PROJECT.yaml` (`gates.g1-caregiver-wtp.due` — **read it there,
+it has moved twice**) and the window is **4 weeks from the day the first ad is approved and
+serving** (decision #4). Those two facts multiply out to a deadline this plan never stated:
 
-> ⚠️ **REBASED 2026-08-11.** The gate moved to **2026-10-31** (`PROJECT.yaml`
-> `gates.g1-caregiver-wtp.moved`) because the standby build has to land first — flying against the
-> funnel being replaced would buy a reading of the old product. The derived deadline moves with it:
-> **the first ad must be APPROVED AND SERVING by ~2026-10-03** for a full 4-week window, so submit
-> by ~2026-10-01. Everything else in this file stands.
+> ⚠️ **REBASED AGAIN 2026-08-14, and this time EARLIER.** The gate moved to **2026-10-02**
+> (`PROJECT.yaml` `gates.g1-caregiver-wtp.moved`, second entry). The 08-11 move budgeted sprints C-E
+> at four weeks; they landed on **2026-08-14**, twenty-five days early, and the landing page was made
+> ad-policy compliant the same day. The reason the flight was held — that traffic bought against the
+> funnel being replaced purchases a reading of the old product — is therefore **satisfied**, and a
+> date carrying slack it no longer earns is a date that invites drift.
 >
-> ~~The first ad must be APPROVED AND SERVING by 2026-08-18~~ — superseded. The reasoning still
-> holds and is why the date is derived rather than chosen: slipping does not move the hard stop, it
-> shortens the window, and at a flight already expected to land short of the honest N, every lost
-> day comes straight off N.
+> **The first ad must be APPROVED AND SERVING by ~2026-08-28**, so submit by ~2026-08-26. Everything
+> else in this file stands.
+>
+> ~~Serving by ~2026-10-03, submit ~2026-10-01, hard stop 2026-10-31~~ (08-11) and
+> ~~serving by 2026-08-18~~ (original) are both superseded. The reasoning that made the date
+> *derived* rather than chosen has not changed and is why it can move in either direction: slipping
+> does not move the hard stop, it shortens the window, and at a flight already expected to land short
+> of the honest N, every lost day comes straight off N.
 
 | Date | What must have happened |
 |---|---|
-| **~2026-10-01** | R1 submitted for review (both accounts created, caps set, pre-flight passed) |
-| **~2026-10-03** | R1 approved and serving → **window start recorded in `g1-flight-log.md`** |
-| ~2026-10-05 | R2/R3 added, once R1 has a CPC to compare against |
-| ~2026-10-06 | Meta lane opens *only if* pace misses N=100-by-day-10 |
-| **2026-10-31** | Gate hard stop — verdict written regardless of N |
+| **~2026-08-26** | R1 submitted for review (both accounts created, caps set, pre-flight passed) |
+| **~2026-08-28** | R1 approved and serving → **window start recorded in `g1-flight-log.md`** |
+| ~2026-08-31 | R2/R3 added, once R1 has a CPC to compare against |
+| ~2026-09-01 | Meta lane opens *only if* pace misses N=100-by-day-10 |
+| *(mid-Sept)* | ⚠️ report-bridge's go-live target falls inside this window — accepted knowingly; the daily obligation here is the ten-minute snapshot. **Date deliberately not restated: it lives in `domo-ssrs/roadmap.md`, which says it is still deciding whether that date holds** |
+| **~2026-09-25** | Window ends (4 weeks) or N ≥ 100, whichever first |
+| **2026-10-02** | Gate hard stop — verdict written regardless of N. The week between is sized for exactly one rejection-and-resubmit cycle |
 
 ## Flight sequence
 

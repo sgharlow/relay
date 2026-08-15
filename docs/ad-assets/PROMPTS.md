@@ -390,7 +390,8 @@ is discarded and regenerated; it is not "fixed" in the ad platform.
 ### Ruled 2026-08-12 (Steve) — closed, recorded so it is not reopened
 
 **These ads serve the G1 WTP gate and nothing else. There is no beta-recruitment campaign.** The
-lanes, ceiling, thresholds, srcs and the ~2026-10-01 submit-by in `g1-ad-creatives.md` stand exactly
+lanes, ceiling, thresholds, srcs and the submit-by in `g1-ad-creatives.md` (~2026-08-26 as of the
+2026-08-14 gate move — do not re-quote it from here) stand exactly
 as written — this ruling changes nothing in that file, which is why nothing was edited there and no
 new `PROJECT.yaml` entry was added. The free plan is **mentioned, not led** (§3).
 

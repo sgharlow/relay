@@ -11,22 +11,27 @@
 |---|---|
 | **Window start** | _fill on the day the first ad is APPROVED and serving — not the day it was submitted_ |
 | **Window end** | start + 4 weeks, or N ≥ 100 qualified, whichever first (decision #4, ratified 7-03) |
-| **Gate hard-stop** | **2026-10-31** (`PROJECT.yaml` `gates.g1-caregiver-wtp`) — the window ends here regardless of N |
+| **Gate hard-stop** | **2026-10-02** (`PROJECT.yaml` `gates.g1-caregiver-wtp`) — the window ends here regardless of N |
+| **Serving-by** | **~2026-08-28** (derived, `g1-ad-creatives.md`) — submit by ~2026-08-26 |
 | **Ladder at flight start** | `dogfooded` · `wtp_evidence: none` · `caregiver_leads` = 0 rows (re-verified live 2026-08-14) |
 
-> ⚠️ **The hard-stop row was STALE until 2026-08-14 and read 2026-09-15.** The gate moved to
-> 2026-10-31 on 2026-08-11 (`PROJECT.yaml` `gates.g1-caregiver-wtp.moved`, with its derivation)
-> and this file — the one the verdict gets written from — kept the superseded date while citing
-> `PROJECT.yaml` as its source. `g1-ad-creatives.md` was rebased the same day; this file and
-> `g1-launch-checklist.md` were missed. Both are corrected now.
+> ⚠️ **This row has been wrong once and has now moved twice. Read it from `PROJECT.yaml`, never
+> from memory.** It said 2026-09-15 for three days after the gate moved on 08-11, while citing
+> `PROJECT.yaml` as its source — `g1-ad-creatives.md` was rebased that day, this file and
+> `g1-launch-checklist.md` were missed.
 >
-> ⚠️ **The derivation behind 10-31 is already overtaken by events, and that is a decision for
-> Steve, not a correction to make here.** It read "sprints C-E ~4 weeks → ~09-08; Phase 0 on the
-> real claim flow ~09-15; ad serving ~09-22". Sprints C-E landed **2026-08-14**, three weeks
-> early. The only remaining input is Phase 0, which is at **N = 0 invitations issued** — so the
-> schedule is now waiting on invitations, not on engineering. Per the `moved:` block's own rule, a
-> SECOND move needs an explicit decision, a derivation and a record; moving it *earlier* deserves
-> the same treatment.
+> ✅ **Then the gate moved EARLIER, to 2026-10-02, on 2026-08-14 (Steve).** The 08-11 derivation
+> was overtaken within three days: sprints C-E were budgeted at four weeks to ~09-08 and landed
+> 08-14, and the landing page was made ad-policy compliant the same day — so the condition the
+> flight was being held for is satisfied. Re-derived rather than adjusted: ad sitting ~2 weeks →
+> **serving by 08-28**; 4-week window → **09-25**; one week of slack for a single
+> rejection-and-resubmit cycle → **10-02**.
+>
+> **Phase 0 is deliberately NOT in that chain.** The 08-11 derivation put it in series between the
+> build and ad serving; that contradicted `ratified.build-standby-before-g1` ("can run in parallel
+> at no engineering cost") and the mechanics — neither lane's conversion path touches the claim
+> flow. It stays at **N = 0** and stays important; it is simply not a precondition for what this
+> gate measures. Full record: `PROJECT.yaml` `gates.g1-caregiver-wtp.moved`, second entry.
 
 ## What N is, precisely
 
