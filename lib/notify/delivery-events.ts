@@ -169,6 +169,32 @@ export async function recordDeliveryEvent(params: {
 }
 
 /**
+ * Records that Resend accepted one message from us. The send-side half of the
+ * dead-man's switch — see db/migrations/031 and lib/notify/webhook-health.ts.
+ *
+ * ⚠️ NO RECIPIENT AND NO BODY, deliberately. The switch needs to know THAT we
+ * sent, not to whom: `provider_id` alone joins to the event that should come
+ * back. That makes this strictly less personal data than the events table, and
+ * it is why the objection that killed this idea before — `transcript.ts` cannot
+ * arm in production because bodies carry live access codes — does not apply.
+ *
+ * BEST EFFORT, AND THAT DIRECTION IS DELIBERATE. A failure to record an attempt
+ * must never fail the send itself; the mail is the product and this is the
+ * telemetry about it. The cost of the choice, stated plainly: a dropped attempt
+ * row makes the switch slightly less likely to fire, never more — it can lose a
+ * warning, it cannot invent one.
+ */
+export async function recordSendAttempt(providerId: string): Promise<void> {
+  const id = providerId.trim();
+  if (!id) return;
+  try {
+    await query(`INSERT INTO email_send_attempts (provider_id) VALUES ($1)`, [id.slice(0, 128)]);
+  } catch (err) {
+    process.stderr.write(`[notify] could not record send attempt: ${String(err)}\n`);
+  }
+}
+
+/**
  * The latest verdict per address, for a set of addresses.
  *
  * Returns a map containing ONLY addresses we have heard something about. A

@@ -57,8 +57,15 @@ interface Target {
   endpoint: string | undefined;
 }
 
-/** Reads the tables a cluster actually has. SELECT only. */
-async function liveTables(endpoint: string): Promise<string[]> {
+interface LiveSchema {
+  /** Every table in the public schema. */
+  tables: string[];
+  /** Declared tables the CONNECTED identity cannot read. See the note below. */
+  unreadable: string[];
+}
+
+/** Reads the tables a cluster actually has, and which of them we may read. */
+async function liveTables(endpoint: string, declared: string[]): Promise<LiveSchema> {
   const match = endpoint.match(/\.dsql\.([a-z0-9-]+)\.on\.aws$/i);
   const region = match ? match[1] : (process.env.AWS_REGION ?? 'us-east-1');
   const signer = new DsqlSigner({ hostname: endpoint, region });
@@ -91,7 +98,46 @@ async function liveTables(endpoint: string): Promise<string[]> {
     const result = await client.query<{ tablename: string }>(
       `SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename`,
     );
-    return result.rows.map((r) => r.tablename);
+    const tables = result.rows.map((r) => r.tablename);
+
+    /*
+      🔴 A TABLE CAN BE PRESENT AND STILL UNUSABLE, and that is not a hypothetical.
+      Migration 030 granted the least-privilege role
+      `SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public` — which
+      resolves ONCE, against the tables existing at that moment. Migration 031
+      created `email_send_attempts` the next day and the first read as relay_dev
+      failed with `permission denied for table email_send_attempts`.
+
+      `pg_tables` is readable by any role, so the presence check above passed
+      cleanly on a table the application could not touch. That is the same shape
+      as everything else this repo has been caught by: a green signal measuring
+      something adjacent to the question.
+
+      Migration 032 fixes the cause with ALTER DEFAULT PRIVILEGES, so future
+      tables are covered by a rule rather than by somebody remembering. This
+      exists because that rule binds to the CREATING role, and a table made by
+      any other identity would fall straight back into the hole — silently, at
+      runtime, in whatever code happened to touch it first. Here it is loud, and
+      before a deploy rather than after one.
+
+      READ-ONLY, like everything else in this file: `LIMIT 0` returns no rows and
+      the planner still enforces the privilege, so it is a permission probe that
+      reads nothing. Each runs as its own statement, so one refusal does not
+      abort the next.
+    */
+    const unreadable: string[] = [];
+    for (const t of declared) {
+      if (!tables.includes(t)) continue; // absent is already reported, louder
+      try {
+        // Sequential on purpose: 25 cheap probes on one connection, and a burst
+        // of parallel refusals would only make the output harder to read.
+        await client.query(`SELECT 1 FROM "${t}" LIMIT 0`);
+      } catch {
+        unreadable.push(t);
+      }
+    }
+
+    return { tables, unreadable };
   } finally {
     await client.end();
   }
@@ -119,9 +165,9 @@ async function main(): Promise<void> {
       continue;
     }
 
-    let live: string[];
+    let live: LiveSchema;
     try {
-      live = await liveTables(endpoint);
+      live = await liveTables(endpoint, declared);
     } catch (err) {
       // A region we could not reach is an unknown, not a pass.
       console.error(`[schema] ${label}: UNREACHABLE — ${(err as Error).message}`);
@@ -130,7 +176,7 @@ async function main(): Promise<void> {
     }
 
     checked += 1;
-    const { missing, undeclared } = compareSchema(declared, live);
+    const { missing, undeclared } = compareSchema(declared, live.tables);
 
     if (missing.length > 0) {
       console.error(
@@ -142,6 +188,17 @@ async function main(): Promise<void> {
       failed = true;
     } else {
       console.log(`[schema] ${label}: ✓ all ${declared.length} declared tables present.`);
+    }
+
+    if (live.unreadable.length > 0) {
+      console.error(
+        `[schema] ${label}: ✗ ${live.unreadable.length} table(s) PRESENT but not readable as ${dsqlIdentity().user}:\n` +
+          live.unreadable.map((t) => `           - ${t}`).join('\n') +
+          `\n           The table exists, so the check above passed. The application still cannot use it.\n` +
+          `           Grant it, and check whether a migration created a table after 030's ON ALL TABLES:\n` +
+          `             npx tsx --env-file=.env.admin db/migrations/migrate.ts 032_relay_dev_default_privileges.sql`,
+      );
+      failed = true;
     }
 
     if (undeclared.length > 0) {

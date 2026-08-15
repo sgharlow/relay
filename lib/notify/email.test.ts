@@ -271,6 +271,26 @@ describe('sendEmail', () => {
     _setResendClientForTesting(stub({ data: { id: 'x' }, error: null }));
     await expect(sendEmail({ to: 'a@b.com', subject: 's', text: 't' })).rejects.toThrow(/RESEND_FROM_ADDRESS/);
   });
+
+  /*
+    THE MAIL IS THE PRODUCT; THE TELEMETRY ABOUT IT IS NOT. `recordSendAttempt`
+    writes the row that lets the dead-man's switch in webhook-health.ts notice a
+    stopped event stream, and it runs on the path that delivers a caregiver's
+    access code. If a DSQL blip could make that path throw, an outage in the
+    monitoring would become an outage in the thing monitored — a strictly worse
+    product than having no monitor at all.
+
+    The direction is asserted rather than left to be noticed: this test passes
+    today only because the failure is swallowed. Every other test in this file
+    exercises the same swallow incidentally (the suite has no database and logs
+    the failure on each send), and incidental coverage of a deliberate design
+    choice is how that choice gets reversed by somebody tidying up.
+  */
+  it('still succeeds when the send-attempt record cannot be written', async () => {
+    // No DSQL in this suite, so recordSendAttempt's INSERT genuinely fails here.
+    _setResendClientForTesting(stub({ data: { id: 'msg-9' }, error: null }));
+    await expect(sendEmail({ to: 'a@b.com', subject: 's', text: 't' })).resolves.toBeUndefined();
+  });
 });
 
 /**

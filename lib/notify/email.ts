@@ -13,6 +13,7 @@ import { Resend } from 'resend';
 
 import { alertEnvironmentLabel } from '../ops/alert-address';
 
+import { recordSendAttempt } from './delivery-events';
 import { textToHtml } from './text-to-html';
 import { recordSend } from './transcript';
 
@@ -210,6 +211,22 @@ export async function sendEmail(msg: EmailMessage): Promise<void> {
   }
 
   recordSend(msg, { accepted: true });
+
+  /*
+    THE ONLY DURABLE RECORD THAT WE SENT ANYTHING. `recordSend` above is
+    lib/notify/transcript.ts, which is in-memory and refuses to arm in production
+    by design — message bodies carry live access codes. So until now nothing
+    outlived the request, and the mail dead-man's switch had nothing to compare
+    its silence against: it fell back to "have we EVER heard anything", which is
+    monotonic over an append-only table and had been permanently true since the
+    first event.
+
+    This line is what gives that switch a condition that can still become false.
+    It stores Resend's id and nothing else — no recipient, no subject, no body —
+    and it is awaited but cannot throw, because telemetry must not be able to
+    fail a send. See db/migrations/031.
+  */
+  await recordSendAttempt(result.data.id);
 }
 
 /** Sends one email, swallowing+logging any failure (never throws). */

@@ -198,6 +198,16 @@ cluster has — **both regions**, because failover here is an env switch (`DSQL_
 migration applied to only one region stays invisible until the day somebody flips it. Read-only, so
 it is safe against production, which is the only place worth running it.
 
+It also asks whether each declared table is **readable by the identity you are connecting as**,
+because presence is not usability. Migration 030 granted the least-privilege role
+`SELECT … ON ALL TABLES`, which resolves once against the tables existing at that moment; 031
+created one the next day and the first read failed with `permission denied`. `pg_tables` is
+readable by any role, so the presence check passed cleanly on a table the application could not
+touch. Migration 032 fixes the cause (`ALTER DEFAULT PRIVILEGES`, verified supported on DSQL), and
+the probe is here because that rule binds to the creating role — a table made by any other identity
+would drop straight back into the hole, silently, at runtime. Both halves were proven by planting a
+`REVOKE` and watching the check fail in both regions.
+
 Accessibility is a fourth: `node scripts/a11y-audit.mjs` with `A11Y_OWNER_EMAIL` set to an account
 that exists (`scripts/disposable-owner.ts create` makes one). CI covers the signed-out half only —
 it has no database credentials to mint an owner session, and the script says so on every run.
