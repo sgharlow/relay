@@ -60,6 +60,9 @@ npm run test:coverage  # vitest --coverage (v8; thresholds 80/80/70/80 lines/fn/
 
 npm run gate           # types + lint + test + build. No database, no server. CI runs this.
 npm run verify:live    # the three E2E walks. NEEDS .env.local AND `npm run dev` running.
+npm run verify:schema  # do both DSQL regions have the tables the migrations declare?
+                       # Read-only (SELECT on pg_tables). NEEDS .env.local, no server.
+                       # Run it FIRST after applying a migration, and before a release.
 
 npx vitest --run lib/db/occ.test.ts          # run a single test file
 npx vitest --run -t "OCC retry"              # run tests matching a name
@@ -166,7 +169,16 @@ So it is one command a person runs before a release. Each walk asserts the layer
 the server refusing correctly, and the screen a person actually meets. The UI walk exists because
 the HTTP ones passed while the picker was laying itself out sideways on a phone.
 
-Accessibility is a third: `node scripts/a11y-audit.mjs` with `A11Y_OWNER_EMAIL` set to an account
+**`npm run verify:schema` is a third, and the cheapest.** `migrate.ts` applies one named file and
+tracks nothing, so which migrations have reached which cluster was never recorded anywhere. On
+2026-08-15 that produced its first alert: `auth_challenges` was absent for four minutes while
+migration 029 was being applied, every passkey sign-in threw, and the thing that noticed reported it
+as a production failure from a laptop. This compares what the migrations declare against what each
+cluster has — **both regions**, because failover here is an env switch (`DSQL_USE_SECONDARY`) and a
+migration applied to only one region stays invisible until the day somebody flips it. Read-only, so
+it is safe against production, which is the only place worth running it.
+
+Accessibility is a fourth: `node scripts/a11y-audit.mjs` with `A11Y_OWNER_EMAIL` set to an account
 that exists (`scripts/disposable-owner.ts create` makes one). CI covers the signed-out half only —
 it has no database credentials to mint an owner session, and the script says so on every run.
 
