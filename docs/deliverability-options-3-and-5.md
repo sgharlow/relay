@@ -248,11 +248,32 @@ What it is genuinely good for, and why it is worth preserving anyway:
    reputation-building step for a new domain, and it materially strengthens the Microsoft submission
    — "we monitor DMARC and are moving to enforcement" is a different conversation from "we pass".
 
+### Two more things the mailbox settled
+
+**The ESP has never once complained about us.** A 60-day sweep for bounce, complaint, suppression,
+reputation or sending-review notices from Resend or SES found **nothing** — only invoices, a
+subprocessor notice and a product newsletter. That is a meaningful negative: if our complaint rate or
+bounce rate were the problem, this is where it would have shown up first, and it hasn't. It is
+consistent with everything else — our mail is clean, well-authenticated, and unwanted only by
+Microsoft's filter.
+
+**The Resend plan is Transactional Pro** (confirmed from the renewal notice, renews 2026-08-15). So
+the dedicated-IP path is gated **twice** over, not once: it needs a plan upgrade to Scale *and*
+>3,000 emails/day. That strengthens rather than changes the verdict above.
+
+### 🔴 A deadline nobody set
+
+Gmail purges Trash after **30 days**. The trashed DMARC reports were received 2026-08-11 to
+2026-08-13, so they are destroyed around **2026-09-10**. After that the earliest receiver-side
+evidence this domain has ever produced is gone permanently, including one of only two Microsoft
+reports. Rescuing them is a two-minute job with a real expiry date on it.
+
 ### Recommended, in order
 
 1. **Stop discarding them** (free, no risk): a Gmail filter that labels anything from
-   `dmarcreport@microsoft.com` / `noreply-dmarc-support@google.com` and never trashes it. Do this
-   before anything else, because every report thrown away is a week of evidence gone.
+   `dmarcreport@microsoft.com` / `noreply-dmarc-support@google.com` and never trashes it — **and
+   untrash the ones already in there, before ~2026-09-10.** Do this before anything else, because
+   every report thrown away is a week of evidence gone.
 2. **Read the last two weeks** and confirm 100% of volume is Resend/SES and aligned. That is a
    fifteen-minute job with any free DMARC XML viewer.
 3. **Only then**, consider `p=none` → `p=quarantine`, and `~all` → `-all`.

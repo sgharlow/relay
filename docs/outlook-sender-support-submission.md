@@ -27,8 +27,16 @@ reports from `dmarcreport@microsoft.com` and from Google for at least a week. Se
 **Trash**, including one of the two Microsoft ones.
 
 Add a Gmail filter — from `dmarcreport@microsoft.com` OR `noreply-dmarc-support@google.com` → apply a
-label, never delete. Every report discarded is a week of receiver-side evidence gone, and it is the
-only such stream this domain has.
+label, never delete. Then **untrash the ones already in there.**
+
+🔴 **This has a real deadline.** Gmail purges Trash after 30 days and those reports arrived
+2026-08-11 to 2026-08-13, so they are destroyed around **2026-09-10** — including one of only two
+Microsoft reports this domain has ever received. Every report discarded is a week of receiver-side
+evidence gone, and it is the only such stream we have.
+
+> ⚠️ Claude did not do this. The Gmail connector is treated as read-only in this portfolio, so the
+> reports were found and read but nothing in the mailbox was moved, labelled or recovered. If you
+> would rather Claude rescue them directly, say so and that constraint can be lifted for this task.
 
 ⚠️ It will **not** show junk placement — DMARC reports carry authentication results and policy
 disposition, never a spam score. Its value is that it would reveal any sender emitting mail as
