@@ -48,6 +48,7 @@ import { Client } from 'pg';
 import { DsqlSigner } from '@aws-sdk/dsql-signer';
 
 import { declaredTables, compareSchema } from '../lib/db/schema-manifest';
+import { dsqlIdentity } from '../lib/db/connection';
 
 const MIGRATIONS_DIR = path.resolve(__dirname, '..', 'db', 'migrations');
 
@@ -62,12 +63,24 @@ async function liveTables(endpoint: string): Promise<string[]> {
   const region = match ? match[1] : (process.env.AWS_REGION ?? 'us-east-1');
   const signer = new DsqlSigner({ hostname: endpoint, region });
 
+  /*
+    Connects as whatever identity is configured, not always as admin.
+
+    `pg_tables` is readable by any role, so this check has never needed
+    privilege — and asking for admin to run a read-only comparison would mean
+    the safest command in the repo was also the one that required the most
+    powerful credential. It resolves the role through the same helper the
+    application uses, so there is one answer to "who am I connecting as".
+  */
+  const { user, admin } = dsqlIdentity();
+
   const client = new Client({
     host: endpoint,
     port: parseInt(process.env.DSQL_PORT ?? '5432', 10),
     database: process.env.DSQL_DATABASE ?? 'postgres',
-    user: process.env.DSQL_USER ?? 'admin',
-    password: () => signer.getDbConnectAdminAuthToken(),
+    user,
+    password: () =>
+      admin ? signer.getDbConnectAdminAuthToken() : signer.getDbConnectAuthToken(),
     ssl: { rejectUnauthorized: process.env.DSQL_SSL_REJECT_UNAUTHORIZED !== 'false' },
     connectionTimeoutMillis: 10_000,
     query_timeout: 30_000,

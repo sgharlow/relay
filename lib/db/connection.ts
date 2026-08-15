@@ -78,13 +78,48 @@ function dsqlRegion(host: string): string {
   return m ? m[1] : (process.env.AWS_REGION ?? 'us-east-1');
 }
 
+/**
+ * Which database role to connect as, and therefore which kind of token to mint.
+ *
+ * 🔴 THIS EXISTS BECAUSE RELAY HAD ONE CREDENTIAL AND IT WAS ROOT. Until
+ * 2026-08-15 this module called `getDbConnectAdminAuthToken()` unconditionally,
+ * so the live production app connected as `admin` holding full DDL rights — it
+ * could DROP TABLE — and the IAM user carrying that power, `relay-runtime`, was
+ * the very same user whose access key sat in `.env.local` on a laptop. There was
+ * no layer, in IAM or in the database, at which the deployed product and a
+ * developer's machine could be told apart.
+ *
+ * Steve's ruling: only a sysadmin should be able to write outside the product's
+ * own features and APIs. There is one cluster, and there will be one cluster
+ * until G1 is decided, so the separation is built from identity and privilege
+ * instead of environments.
+ *
+ * The two halves are inseparable, which is why this returns both. A custom role
+ * REQUIRES the non-admin token: `dsql:DbConnect` mints credentials that cannot
+ * authenticate as `admin` at all, so this is a wall rather than a convention —
+ * the credential is incapable of the thing, not merely discouraged from it.
+ *
+ * ⚠️ UNSET MEANS ADMIN, AND THAT DEFAULT IS DELIBERATE. Production still runs
+ * on the admin path; changing how the live application authenticates as a side
+ * effect of adding an option is exactly the kind of silent change that breaks
+ * things nobody was watching. Production moves when somebody sets the variable.
+ */
+export function dsqlIdentity(): { user: string; admin: boolean } {
+  const role = process.env.DSQL_ROLE?.trim();
+  if (!role || role === 'admin') return { user: 'admin', admin: true };
+  return { user: role, admin: false };
+}
+
 function makeDsqlPool(host: string): pg.Pool {
   const signer = new DsqlSigner({ hostname: host, region: dsqlRegion(host) });
+  const { user, admin } = dsqlIdentity();
   return new pg.Pool({
     ...POOL_CONFIG,
     host,
+    user,
     ssl: { rejectUnauthorized: sslRejectUnauthorized() },
-    password: async () => signer.getDbConnectAdminAuthToken(),
+    password: async () =>
+      admin ? signer.getDbConnectAdminAuthToken() : signer.getDbConnectAuthToken(),
   });
 }
 

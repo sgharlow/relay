@@ -66,7 +66,7 @@ npm run verify:schema  # do both DSQL regions have the tables the migrations dec
 
 npx vitest --run lib/db/occ.test.ts          # run a single test file
 npx vitest --run -t "OCC retry"              # run tests matching a name
-npx tsx db/migrations/migrate.ts             # apply SQL migrations (needs DSQL env vars)
+npx tsx --env-file=.env.admin db/migrations/migrate.ts 0NN_x.sql   # migrations = a SYSADMIN act
 ```
 
 Test layout: vitest collects `src/**/*.test.ts(x)` and `lib/**/*.test.ts`. Tests live **next to the
@@ -84,6 +84,23 @@ No `.env.local` is committed. Copy `.env.example` → `.env.local`. Pools and KM
 env vars are only required when DB/KMS code actually runs (tests that don't touch the DB pass
 without them). AWS provisioning lives in `docs/aws-setup.md` + `scripts/provision-dsql.sh`;
 `infra/iam-policy.json` holds the `dsql:DbConnect` role.
+
+**Two env files, and the split is the security model** (2026-08-15). There is one cluster and there
+will be one until G1 is decided, so least privilege is built from identity, not environments.
+
+| File | Identity | Can |
+|---|---|---|
+| `.env.local` | IAM `relay-dev` → DB role `relay_dev` | read/write product tables. **No DDL.** **Cannot write `caregiver_leads`.** |
+| `.env.admin` | IAM `autospecai` → DB role `admin` | everything: migrations, roles, grants |
+
+`.env.admin` holds **no secrets** — just `AWS_PROFILE`, so the key stays in `~/.aws/credentials`
+alone. Being a sysadmin is something you *choose* by naming that file, not a power you carry by
+default. Until this existed the app minted an **admin** token, so production ran with full DDL
+rights and the same IAM user's key sat on a laptop; nothing anywhere could tell them apart.
+
+⚠️ **Production is still on the admin path.** `DSQL_ROLE` unset means `admin`, deliberately —
+Vercel moves to `relay_app` as a separate, explicit step. A denied write surfaces as
+`500 CaptureRefused`; if you ever see that on the lead form, it is a grant, not a bug.
 
 ## Architecture — the non-obvious invariants
 
