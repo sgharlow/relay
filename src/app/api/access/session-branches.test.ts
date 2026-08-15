@@ -250,4 +250,68 @@ describe('a signed-in contact needed by more than one person', () => {
     expect(res.status).toBe(200);
     expect(mockLabel).not.toHaveBeenCalled();
   });
+
+  /*
+    🔴 A SELECTOR THAT MATCHES NOTHING WAS REPORTED AS A CLOSURE, found
+    2026-08-15 by walking this live rather than by any test — the bug was in
+    which BRANCH execution reached, and every test here mocked the resolver, so
+    the fall-through was invisible.
+
+    `?owner=` naming somebody this contact does not stand by for made
+    resolveReleaseForUser return null, execution fell to the closure branch, and
+    a contact with two releases open RIGHT NOW was told "That access has closed
+    because they checked back in" — a sentence about an event that did not
+    happen, on the screen where being wrong costs the most.
+  */
+  it('re-asks the question for an owner that resolves nothing, rather than reporting a closure', async () => {
+    twoOpen();
+    mockResolve.mockResolvedValue(null);
+    mockClosure.mockResolvedValue({
+      grantedCount: 1,
+      opened: [],
+      firstSeenAt: null,
+      lastSeenAt: null,
+      hoursOfAccess: 0,
+    });
+
+    const res = await GET(req({ owner: 'owner-nobody' }));
+    const body = await res.json();
+
+    expect(body.error).toBe('ChooseOwner');
+    expect(body.closed).toBeUndefined();
+    // The closure branch must not even be consulted while something is open.
+    expect(mockClosure).not.toHaveBeenCalled();
+  });
+
+  it('re-asks even when only ONE release is open, if the selector missed it', async () => {
+    mockResolveAll.mockResolvedValue([release()]);
+    mockResolve.mockResolvedValue(null);
+
+    const body = await (await GET(req({ owner: 'owner-nobody' }))).json();
+
+    expect(body.error).toBe('ChooseOwner');
+    expect(body.releases).toHaveLength(1);
+  });
+
+  /*
+    The fall-through must SURVIVE for the case it was written for: nothing open
+    and a real footprint in the chain is a genuine graceful close, and a stray
+    `?owner=` must not convert that into a question about nobody.
+  */
+  it('still reports a real closure when nothing is open at all', async () => {
+    mockResolveAll.mockResolvedValue([]);
+    mockResolve.mockResolvedValue(null);
+    mockClosure.mockResolvedValue({
+      grantedCount: 2,
+      opened: [],
+      firstSeenAt: null,
+      lastSeenAt: null,
+      hoursOfAccess: 1,
+    });
+
+    const body = await (await GET(req({ owner: 'owner-1' }))).json();
+
+    expect(body.closed).toBe(true);
+    expect(body.error).toBe('AccessClosed');
+  });
 });

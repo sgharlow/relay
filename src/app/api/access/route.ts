@@ -53,12 +53,30 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       const open = await resolveReleasesForUser(session.ownerId);
       const chosen = req.nextUrl.searchParams.get('owner') ?? undefined;
 
-      if (open.length > 1 && !chosen) {
+      /*
+        🔴 A CHOICE THAT DOES NOT RESOLVE USED TO BE REPORTED AS A CLOSURE, found
+        2026-08-15 by walking this live rather than by any test. With `?owner=`
+        naming somebody this contact does not stand by for, the resolver returns
+        null, execution falls through to the closure branch below, and a contact
+        with TWO releases open right now is told "That access has closed because
+        they checked back in" — a sentence about an event that did not happen,
+        on the screen where being wrong costs the most.
+
+        A selector that matches nothing is a bad selector, not an ending. Re-ask
+        the question while anything is still open; only fall through when there
+        is genuinely nothing, which is what the closure branch is for.
+      */
+      const unresolved = Boolean(chosen) && !open.some((r) => r.ownerId === chosen);
+
+      if (open.length > 0 && (unresolved || (open.length > 1 && !chosen))) {
         return NextResponse.json(
           {
             error: 'ChooseOwner',
             choose: true,
-            message: 'More than one person you stand by for needs you right now.',
+            message:
+              open.length > 1
+                ? 'More than one person you stand by for needs you right now.'
+                : 'Choose who to open.',
             releases: await Promise.all(
               open.map(async (r) => ({
                 ownerId: r.ownerId,

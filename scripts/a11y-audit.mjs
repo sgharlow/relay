@@ -105,6 +105,23 @@ const PUBLIC_PAGES = [
  */
 const SCOPE = process.env.A11Y_SCOPE || 'all';
 
+/**
+ * Whose session to audit owner mode in.
+ *
+ * 🔴 IT WAS HARDCODED TO `demo@relay.test`, AND THAT ACCOUNT NO LONGER EXISTS —
+ * so from some point before 2026-08-15 this script silently stopped auditing
+ * owner mode entirely and fell into the skip branch below on every run. The
+ * skip is loud, which is the only reason it was noticeable at all; what it
+ * could not say was that the cause was a fixable one-line assumption rather
+ * than a missing credential. CC8 still records axe as clean across 21 pages
+ * from the 2026-08-13 run; this was measuring 18.
+ *
+ * A disposable owner created through the ordinary signup API and deleted after
+ * is the practice the production sweeps already use, and it needs this to be a
+ * parameter.
+ */
+const OWNER_EMAIL = process.env.A11Y_OWNER_EMAIL || 'demo@relay.test';
+
 let ownerCtx = null;
 let ownerSkipReason = SCOPE === 'public' ? 'A11Y_SCOPE=public' : null;
 
@@ -114,7 +131,7 @@ if (!ownerSkipReason) {
   try {
     const value = execFileSync(
       'npx',
-      ['tsx', '--env-file=.env.local', 'scripts/mint-owner-session.ts', 'demo@relay.test'],
+      ['tsx', '--env-file=.env.local', 'scripts/mint-owner-session.ts', OWNER_EMAIL],
       { encoding: 'utf8', shell: true },
     )
       .split('\n')
@@ -127,7 +144,10 @@ if (!ownerSkipReason) {
       { name: '__Secure-next-auth.session-token', value, domain: 'localhost', path: '/', httpOnly: true, sameSite: 'Lax', secure: true },
     ]);
   } catch (e) {
-    ownerSkipReason = `could not mint an owner session (${e.message.split('\n')[0].slice(0, 60)})`;
+    ownerSkipReason =
+      `could not mint an owner session for ${OWNER_EMAIL} ` +
+      `(${e.message.split('\n')[0].slice(0, 60)}). Set A11Y_OWNER_EMAIL to an ` +
+      `account that exists — scripts/disposable-owner.ts makes one`;
   }
 }
 

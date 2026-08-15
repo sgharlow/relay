@@ -577,7 +577,15 @@ cross_cutting:
   CC9: { name: "dead-man's switch on the scheduler", status: live,
          evidence: ".github/workflows/scheduler-monitor.yml, both transitions proven 2026-08-08" }
   CC8: { name: "accessibility as a functional requirement", status: live,
-         evidence: "axe clean across 21 pages including access mode and a
+         evidence: "RE-MEASURED 2026-08-15 AFTER THE TYPE-SCALE MIGRATION: 0
+           serious/critical across 26 pages — 18 signed-out AND all 8 owner-mode
+           screens. That is the fuller number; the 21 below is the 2026-08-13
+           run and is superseded. Owner mode had silently stopped being audited
+           because scripts/a11y-audit.mjs had `demo@relay.test` hardcoded and
+           that account no longer exists; it is now A11Y_OWNER_EMAIL, pointed at
+           a disposable owner (scripts/disposable-owner.ts).
+           ---- superseded 2026-08-13 record ----
+           axe clean across 21 pages including access mode and a
            390x844 viewport (2026-08-13); gated in CI for the signed-out half by
            .github/workflows/a11y.yml. Printable fallbacks shipped for the guide
            and the screens that carry irrecoverable instructions.
@@ -648,7 +656,15 @@ cross_cutting:
 # fixes, iterations 1-9): four items measured, understood, and deliberately not
 # fixed in that pass. Everything else the audit confirmed WAS fixed — these are
 # the survivors, each with the trigger that ends its acceptance.
-deferred:
+# EMPTY as of 2026-08-15, and the empty list is written out rather than left
+# implied: `deferred:` with only comments under it parses as null, and a reader
+# — human or script — cannot tell null from "nobody has looked". [] says the
+# list was looked at and is genuinely clear.
+#
+# Seven items were carried here at the start of the day; all seven are closed
+# below, four from the 2026-08-14 audit and three opened and shut on 08-15. The
+# next honest entry belongs here and not in a new file.
+deferred: []
   # ── CLOSED 2026-08-15, production-bar pass iteration 1 ────────────────────
   #
   # Both security deferrals are closed, together, because they were the same
@@ -796,42 +812,54 @@ deferred:
   # because the four items above show what an unwritten "we should probably..."
   # becomes.
   #
-  - id: step-up-not-dogfooded
-    found: 2026-08-15 (production-bar pass, iteration 1)
-    what: "Step-up elevation is WIRED and unit-covered but no elevated round trip
-      has been walked by a signed-in owner: prompt shown, TOTP accepted, cookie
-      set, export completed, elevation revoked on sign-out. The routes were
-      confirmed to authenticate before they check elevation (all three answer 401
-      signed-out) and the nonce burn is live-proven, but that is the half BELOW
-      the flow a person actually meets."
-    why_deferred: "Needs a real authenticator against a real account. The env
-      TOTP fallback was retired 2026-08-13 (lib/auth/resolve-totp-secret.ts), so
-      there is no synthetic path to a signed-in owner any more — by design."
-    ends_when: "the next owner dogfood, and BEFORE any claim that step-up is
-      live-proven. It is a UI flow on the two most sensitive screens; a guard
-      that returns 403 correctly and a prompt nobody can answer look identical
-      from the server side."
-  - id: multi-owner-access-not-live-proven
-    found: 2026-08-15 (production-bar pass, iteration 2)
-    what: "The owner picker on /access and the item-scoped decrypt that makes it
-      usable are covered by tests and have never run against two real
-      simultaneous releases."
-    why_deferred: "No real multi-owner contact exists yet — the condition is a
-      person standing by for two owners who both have something open at once."
-    ends_when: "the first real multi-owner contact exists (Phase 0 data will
-      show it), or a seeded two-owner fixture is walked end to end"
-  - id: owner-mode-a11y-unaudited
-    found: 2026-08-15 (production-bar pass, iteration 3)
-    what: "scripts/a11y-audit.mjs covers 18 signed-out pages and skips the eight
-      owner-mode screens, because it cannot mint a session: `demo@relay.test`
-      does not exist on the cluster, so scripts/mint-owner-session.ts fails. CC9
-      records axe as clean across 21 pages from the 2026-08-13 run; the current
-      run measures 18 and says so itself, which is the honest version."
-    why_deferred: "Restoring the demo account means running scripts/reset-demo.ts
-      against the production cluster — a write, and not one to make in passing.
-      The script says what it is: it resets the demo owner to a clean 25-item
-      ARMED state."
-    ends_when: "the next session with the demo account seeded — run the audit
-      with credentials BEFORE any release that claims owner-mode accessibility.
-      The type-scale migration touched owner screens and they are the ones this
-      cannot see."
+  # ── ALL THREE CLOSED 2026-08-15, same day they were opened ────────────────
+  #
+  # They were written as things a dogfood would have to prove later. On reading
+  # them back, two of the three were provable immediately — the blocker in each
+  # case was an assumption, not a missing person:
+  #
+  #   step-up-not-dogfooded — "needs a real authenticator" was true and did not
+  #     mean "needs a human". The signup API returns the TOTP secret inside the
+  #     otpauth URL it issues, so a harness can hold a real second factor for an
+  #     account it just created. DOGFOODED: scripts/scratch-stepup-e2e.ts walks
+  #     a disposable owner through every branch over HTTP — 17/17.
+  #     Export and recovery-codes REFUSED on an ordinary session with 403
+  #     StepUpRequired (never 401) · factors reported {totp:true,passkey:false} ·
+  #     a wrong code refused 400 · a correct one elevates and sets the cookie ·
+  #     BOTH actions then pass on the SAME elevation, so the window is a window ·
+  #     DELETE revokes and export is refused again, which proves the ROW and not
+  #     the cookie decides · a mistyped confirmation does NOT burn the elevation ·
+  #     closure spends it · the deleted account's session answers 401.
+  #
+  #   multi-owner-access-not-live-proven — "no real multi-owner contact exists"
+  #     was true of the beta and irrelevant: the product can build one. Two
+  #     disposable owners, one contact who claims BOTH standby roles (the second
+  #     linking to the same account rather than forking one), both owners firing
+  #     an emergency. LIVE-PROVEN: scripts/scratch-multiowner-e2e.ts — 14/14.
+  #     The contact is offered both by NAME, the order is stable between
+  #     requests, and each choice reaches that owner's own release.
+  #
+  #     🔴 AND IT FOUND A DEFECT NO TEST COULD SEE. `?owner=` naming somebody the
+  #     contact does not stand by for fell through to the closure branch and
+  #     answered "That access has closed because they checked back in" — to a
+  #     contact with TWO releases open at that moment. The bug was in which
+  #     BRANCH execution reached, and every test on that path mocks the resolver,
+  #     so the fall-through was invisible. A selector that matches nothing is a
+  #     bad selector, not an ending; it now re-asks the question, and the closure
+  #     branch is not consulted while anything is open.
+  #
+  #   owner-mode-a11y-unaudited — the cause was not a missing credential. The
+  #     audit had `demo@relay.test` HARDCODED, so when that account went it fell
+  #     into the skip branch on every run and reported 18 pages where CC8 records
+  #     21. Now `A11Y_OWNER_EMAIL`, pointed at a disposable owner.
+  #     MEASURED: 0 serious/critical across 26 pages — 18 signed-out AND all 8
+  #     owner-mode screens, including the ones the type-scale migration touched.
+  #     That is more coverage than the 21 CC8 records, so CC8's number is now the
+  #     stale one; re-run before quoting either.
+  #
+  # ⚠️ The harnesses create and delete DISPOSABLE accounts on the production
+  # cluster — the practice the 2026-08-08 and 2026-08-13 sweeps already used.
+  # Every address is on an RFC 6761 reserved domain, refused at the send seam by
+  # lib/notify/email.ts, and the scripts now assert that themselves so a later
+  # edit cannot point one at a real domain. Confirmed against the dev log: ZERO
+  # send attempts across all three walks. No sending reputation was spent.
