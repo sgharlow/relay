@@ -36,7 +36,9 @@ export async function POST(): Promise<NextResponse> {
 
     return NextResponse.json({
       options,
-      challengeToken: await sealChallenge(challenge, 'registration'),
+      // Attributed: registration always knows who is asking, so the nonce row
+      // carries the user. Sign-in deliberately does not — it is identifier-free.
+      challengeToken: await sealChallenge(challenge, 'registration', auth.ownerId),
     });
   } catch (err) {
     return mapError(err);

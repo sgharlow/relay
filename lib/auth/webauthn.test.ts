@@ -7,7 +7,7 @@
  * we own — where the challenge lives, what gets stored, and what comes back out
  * of Postgres in the wrong type.
  *
- * Two traps have real teeth:
+ * Three traps have real teeth:
  *
  *   1. A challenge sealed for REGISTRATION must not be openable as an
  *      AUTHENTICATION challenge. Without a purpose claim, a challenge minted for
@@ -18,6 +18,12 @@
  *      it through unconverted hands the library a string where it expects a
  *      number, and the signature-counter check silently stops meaning anything.
  *
+ *   3. 🔴 A SEAL IS NOT SINGLE-USE BY BEING SIGNED. Until 2026-08-15 the seal was
+ *      a stateless five-minute JWT and nothing burned it, so a captured assertion
+ *      could be replayed for the rest of the window. The signature proves WE
+ *      minted it and says nothing about whether it has been spent. Only the nonce
+ *      row can say "once".
+ *
  * Feature: relay-standby
  * Requirements: J4-R9, J4-R11
  */
@@ -25,6 +31,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../db/connection', () => ({ query: vi.fn() }));
+vi.mock('./challenge-store', () => ({
+  newChallengeId: vi.fn(() => 'nonce-1'),
+  recordChallenge: vi.fn(async () => {}),
+  burnChallenge: vi.fn(async () => true),
+}));
 vi.mock('@simplewebauthn/server', () => ({
   generateRegistrationOptions: vi.fn(async () => ({ challenge: 'reg-challenge', rp: {} })),
   verifyRegistrationResponse: vi.fn(),
@@ -33,6 +44,7 @@ vi.mock('@simplewebauthn/server', () => ({
 }));
 
 import { query } from '../db/connection';
+import { newChallengeId, recordChallenge, burnChallenge } from './challenge-store';
 import {
   verifyRegistrationResponse,
   verifyAuthenticationResponse,
@@ -51,6 +63,9 @@ const mockQuery = vi.mocked(query);
 beforeEach(() => {
   vi.clearAllMocks();
   mockQuery.mockReset();
+  vi.mocked(newChallengeId).mockReturnValue('nonce-1');
+  vi.mocked(recordChallenge).mockResolvedValue(undefined);
+  vi.mocked(burnChallenge).mockResolvedValue(true);
   process.env.NEXTAUTH_SECRET = 'test-secret-that-is-long-enough-for-hs256-signing';
   process.env.NEXT_PUBLIC_SITE_URL = 'https://relaystandby.com';
 });
@@ -70,7 +85,7 @@ describe('rpConfig — the relying party is the origin, and must never be guesse
   });
 });
 
-describe('challenge sealing — no new table, no cleanup job', () => {
+describe('challenge sealing — signed, purposed, and single-use', () => {
   it('round-trips a challenge', async () => {
     const sealed = await sealChallenge('abc123', 'registration');
     await expect(openChallenge(sealed, 'registration')).resolves.toBe('abc123');
@@ -87,6 +102,61 @@ describe('challenge sealing — no new table, no cleanup job', () => {
 
   it('is short-lived by construction', () => {
     expect(CHALLENGE_TTL_SECONDS).toBeLessThanOrEqual(600);
+  });
+
+  it('records the nonce before the token exists', async () => {
+    await sealChallenge('abc123', 'registration', 'user-1');
+    expect(recordChallenge).toHaveBeenCalledWith({
+      jti: 'nonce-1',
+      purpose: 'registration',
+      ttlSeconds: CHALLENGE_TTL_SECONDS,
+      userId: 'user-1',
+    });
+  });
+
+  /*
+    Sign-in is deliberately identifier-free — the options endpoint takes no email
+    and looks nothing up — so there is nobody to attribute its nonce to.
+  */
+  it('records an unattributed nonce for identifier-free sign-in', async () => {
+    await sealChallenge('abc123', 'authentication');
+    expect(vi.mocked(recordChallenge).mock.calls[0][0].userId).toBeUndefined();
+  });
+
+  it('does not hand out a seal whose nonce could not be recorded', async () => {
+    vi.mocked(recordChallenge).mockRejectedValueOnce(new Error('DSQL unavailable'));
+    await expect(sealChallenge('abc123', 'registration')).rejects.toThrow();
+  });
+
+  /*
+    🔴 THE REPLAY. This is the defect the nonce store closes: the same valid,
+    unexpired, correctly-purposed seal presented twice.
+  */
+  it('REFUSES the same seal a second time', async () => {
+    const sealed = await sealChallenge('abc123', 'authentication');
+    vi.mocked(burnChallenge).mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+
+    await expect(openChallenge(sealed, 'authentication')).resolves.toBe('abc123');
+    await expect(openChallenge(sealed, 'authentication')).rejects.toThrow();
+  });
+
+  it('spends the nonce against the purpose it is being opened as', async () => {
+    const sealed = await sealChallenge('abc123', 'authentication');
+    await openChallenge(sealed, 'authentication');
+    expect(burnChallenge).toHaveBeenCalledWith('nonce-1', 'authentication');
+  });
+
+  /*
+    An unburnable nonce and a replayed one are the same refusal from outside. A
+    message that told them apart would tell somebody whether their captured
+    assertion was fresh.
+  */
+  it('refuses without saying whether the nonce was spent or unreachable', async () => {
+    const sealed = await sealChallenge('abc123', 'authentication');
+    vi.mocked(burnChallenge).mockResolvedValue(false);
+    await expect(openChallenge(sealed, 'authentication')).rejects.toThrow(
+      /expired or was already used/,
+    );
   });
 });
 

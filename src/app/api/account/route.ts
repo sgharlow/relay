@@ -17,10 +17,21 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
 import { requireOwner, readJson, isResponse } from '../../../../lib/http/owner-route';
+import { requireStepUpOnce } from '../../../../lib/auth/step-up';
 import { deleteAccount } from '../../../../lib/account/lifecycle';
 import { MAX_DISPLAY_NAME_LENGTH } from '../../../../lib/auth/signup';
 import { query } from '../../../../lib/db/connection';
 
+/**
+ * STEP-UP GUARDED, AND IT SPENDS THE ELEVATION. Typing an email address proves
+ * somebody read the warning; it does not prove they are the owner, because the
+ * address is on the screen they are already looking at. This is the one action
+ * in the product with no undo and with third parties depending on the outcome —
+ * everyone standing by loses their access the moment it completes.
+ *
+ * `requireStepUpOnce` rather than `requireStepUp`: the elevation that authorised
+ * a deletion is consumed by it, so nothing else can ride the same proof.
+ */
 export async function DELETE(req: NextRequest): Promise<NextResponse> {
   const auth = await requireOwner(req);
   if (isResponse(auth)) return auth;
@@ -40,6 +51,13 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
       { status: 400 },
     );
   }
+
+  // AFTER the typed confirmation, not before: a mistyped address would otherwise
+  // burn the elevation and make somebody re-authenticate to fix a typo. Nothing
+  // leaks by ordering it this way — the caller is already signed in as the owner
+  // and is looking at their own address on the screen.
+  const elevate = await requireStepUpOnce(req, auth.ownerId);
+  if (elevate) return elevate;
 
   return NextResponse.json(await deleteAccount(auth.ownerId));
 }

@@ -27,6 +27,7 @@
  */
 
 import { query } from '../db/connection';
+import { revokeChallenges } from './challenge-store';
 
 /** Current epoch for a user, or null if that user no longer exists. */
 export async function readSessionEpoch(userId: string): Promise<number | null> {
@@ -68,6 +69,17 @@ export async function isSessionCurrent(
  * `coalesce` because the column is nullable and NULL + 1 is NULL — which would
  * silently leave the epoch unset and the sessions valid, the exact failure this
  * function exists to prevent.
+ *
+ * STEP-UP ELEVATION DIES WITH THE SESSIONS, and it is done HERE rather than at
+ * each call site on purpose. "Sign out everywhere" that leaves a five-minute
+ * elevation window open on the device somebody has just declared compromised is
+ * the same bug in a smaller box, and remembering to revoke it at every future
+ * caller is exactly the convention that structure should replace.
+ *
+ * Belt and braces: elevation tokens are ALSO sealed with the epoch they were
+ * minted at and refused once the account moves past it, so the bump alone is
+ * sufficient. This revoke makes the stored row agree with that, which is what
+ * an incident read-back needs.
  */
 export async function bumpSessionEpoch(userId: string): Promise<number> {
   const res = await query<{ session_epoch: number }>(
@@ -76,5 +88,6 @@ export async function bumpSessionEpoch(userId: string): Promise<number> {
       RETURNING session_epoch`,
     [userId],
   );
+  await revokeChallenges(userId, 'step-up');
   return Number(res.rows[0]?.session_epoch ?? 0);
 }

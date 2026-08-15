@@ -14,9 +14,10 @@
  * Requirements: 17.1
  */
 
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 
 import { requireOwner, isResponse } from '../../../../../lib/http/owner-route';
+import { requireStepUp } from '../../../../../lib/auth/step-up';
 import {
   issueRecoveryCodes,
   formatRecoveryCode,
@@ -47,9 +48,22 @@ export async function GET(): Promise<NextResponse> {
   return NextResponse.json({ remaining: await remainingRecoveryCodes(auth.ownerId) });
 }
 
-export async function POST(): Promise<NextResponse> {
-  const auth = await requireOwner();
+/**
+ * POST — mint a fresh sheet.
+ *
+ * STEP-UP GUARDED. A recovery sheet is the one artefact that outlives the
+ * session that produced it: it is the way back in when the authenticator is
+ * gone, so somebody who finds an unlocked machine and issues a new one has
+ * PERMANENT control of the account, not a session's worth. There is no password
+ * to change afterwards that would take it away. So the ordinary 24-hour session
+ * is not enough — the person has to still be there.
+ */
+export async function POST(req: NextRequest): Promise<NextResponse> {
+  const auth = await requireOwner(req);
   if (isResponse(auth)) return auth;
+
+  const elevate = await requireStepUp(req, auth.ownerId);
+  if (elevate) return elevate;
 
   const codes = await issueRecoveryCodes(auth.ownerId);
 

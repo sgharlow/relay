@@ -33,6 +33,7 @@
 import fs from 'fs';
 import path from 'path';
 import { Client } from 'pg';
+import { DsqlSigner } from '@aws-sdk/dsql-signer';
 
 // ---------------------------------------------------------------------------
 // Configuration — read from environment variables
@@ -57,15 +58,29 @@ if (!ENDPOINT) {
   process.exit(1);
 }
 
-if (!PASSWORD) {
-  console.error(
-    '[migrate] ERROR: DSQL_PASSWORD environment variable is not set.\n' +
-      '  For IAM authentication, generate a token with:\n' +
-      '    aws dsql generate-db-connect-auth-token \\\n' +
-      '      --hostname $DSQL_PRIMARY_ENDPOINT \\\n' +
-      '      --region us-east-1',
-  );
-  process.exit(1);
+/**
+ * Authentication, matching how the APPLICATION connects.
+ *
+ * 🔴 THIS SCRIPT COULD NOT REACH THE CLUSTER THE APP USES. It demanded a static
+ * `DSQL_PASSWORD` and exited if one was absent — but Aurora DSQL authenticates
+ * with short-lived IAM tokens, `lib/db/connection.ts` mints one per connection
+ * via `DsqlSigner`, and no `.env` in this repo carries a static password because
+ * there is no such thing to carry. So the one env file that lets `npm run dev`
+ * talk to DSQL was exactly the env file that made the migration runner refuse to
+ * start, and every migration since 001 had to be applied by hand-generating a
+ * token first. A migration tool that cannot authenticate to the database is a
+ * migration tool that does not get run.
+ *
+ * `DSQL_PASSWORD` still wins when set, so any existing invocation keeps working.
+ */
+function passwordSource(): string | (() => Promise<string>) {
+  if (PASSWORD) return PASSWORD;
+
+  const m = (ENDPOINT as string).match(/\.dsql\.([a-z0-9-]+)\.on\.aws$/i);
+  const region = m ? m[1] : (process.env.AWS_REGION ?? 'us-east-1');
+  const signer = new DsqlSigner({ hostname: ENDPOINT as string, region });
+  console.log(`[migrate] No DSQL_PASSWORD — minting an IAM auth token for ${region}.`);
+  return () => signer.getDbConnectAdminAuthToken();
 }
 
 // ---------------------------------------------------------------------------
@@ -94,7 +109,7 @@ async function migrate(): Promise<void> {
     port: PORT,
     database: DATABASE,
     user: USER,
-    password: PASSWORD,
+    password: passwordSource(),
     ssl: {
       rejectUnauthorized: SSL_REJECT_UNAUTHORIZED,
     },

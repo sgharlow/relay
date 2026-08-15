@@ -15,6 +15,7 @@ import { ReleaseStateMachine } from '../../../../../lib/release/state-machine';
 import { recordSchedulerRun } from '../../../../../lib/release/scheduler-ledger';
 import { escalateLapsedRequests } from '../../../../../lib/release/escalation';
 import { sweepSilentVerifiers } from '../../../../../lib/release/silence-sweep';
+import { sweepExpiredChallenges } from '../../../../../lib/auth/challenge-store';
 import { timingSafeEquals } from '../../../../../lib/http/timing-safe';
 
 async function handle(req: NextRequest): Promise<NextResponse> {
@@ -58,6 +59,20 @@ async function handle(req: NextRequest): Promise<NextResponse> {
   */
   const silent = await sweepSilentVerifiers();
 
+  /*
+    HOUSEKEEPING, NOT A GUARD — and it rides here rather than becoming a second
+    scheduled thing precisely because it is not one. Single-use auth nonces
+    (migration 029) expire by a predicate on the read path, in the database, on
+    every burn; deleting the spent rows only reclaims space. If this line never
+    ran again the table would grow and nothing would become less safe, which is
+    the opposite of the ledger recorded below — whose ABSENCE is the failure and
+    which is monitored for exactly that reason. Do not wire an alert to this.
+
+    It swallows its own errors, so housekeeping can never fail the sweep it
+    rides on.
+  */
+  const challengesSwept = await sweepExpiredChallenges();
+
   // CC9: record the run so its ABSENCE is detectable by /api/health/scheduler.
   await recordSchedulerRun(summary);
 
@@ -66,6 +81,7 @@ async function handle(req: NextRequest): Promise<NextResponse> {
     graceReleased,
     escalated: escalated.length,
     silenceNotices: silent.length,
+    challengesSwept,
   });
 }
 

@@ -19,6 +19,7 @@
 
 import { useRouter } from 'next/navigation';
 import PasskeySection from './PasskeySection';
+import StepUpPrompt, { type StepUpFactors } from './StepUpPrompt';
 import { useCallback, useEffect, useState } from 'react';
 
 import { CryptoService, base64ToBytes, unpackIvCiphertext } from '../../../../lib/crypto/crypto-service';
@@ -54,6 +55,16 @@ export default function AccountClient() {
   /** How many recovery codes are left. `null` until the first read answers. */
   const [remaining, setRemaining] = useState<number | null>(null);
 
+  /**
+   * The re-authentication prompt, and what to resume once it succeeds.
+   *
+   * Held here rather than inside each action so that only ONE prompt can ever be
+   * open: two overlapping dialogs on a page that closes accounts is exactly the
+   * confusion that gets somebody to confirm the wrong thing.
+   */
+  const [stepUp, setStepUp] = useState<{ action: string; retry: () => void } | null>(null);
+  const [factors, setFactors] = useState<StepUpFactors>({ totp: false, passkey: false });
+
   const loadRemaining = useCallback(async () => {
     try {
       const res = await fetch('/api/account/recovery-codes');
@@ -67,6 +78,37 @@ export default function AccountClient() {
   useEffect(() => {
     void loadRemaining();
   }, [loadRemaining]);
+
+  // Which factors the prompt can offer. Read once on arrival so the dialog never
+  // has to load before it can be answered — the interruption is already the
+  // cost, and a spinner inside it would double that.
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch('/api/account/step-up');
+        if (res.ok) setFactors(((await res.json()) as { factors: StepUpFactors }).factors);
+      } catch {
+        // Left as "neither", which the prompt states plainly rather than
+        // offering a button that cannot work.
+      }
+    })();
+  }, []);
+
+  /**
+   * Did the server ask for re-authentication? If so, remember what to resume.
+   *
+   * Returns true when the caller should stop and let the prompt take over. The
+   * contract is the literal string `StepUpRequired` and the 403 — 401 would send
+   * the app's generic handler to the sign-in page and destroy a session that is
+   * perfectly valid.
+   */
+  function needsStepUp(res: Response, data: { error?: string }, action: string, retry: () => void) {
+    if (res.status === 403 && data.error === 'StepUpRequired') {
+      setStepUp({ action, retry });
+      return true;
+    }
+    return false;
+  }
   const [name, setName] = useState('');
   const [nameSaved, setNameSaved] = useState<string | null>(null);
   const [newCodes, setNewCodes] = useState<string[] | null>(null);
@@ -103,7 +145,14 @@ export default function AccountClient() {
     setProgress('Fetching your vault…');
     try {
       const res = await fetch('/api/account/export');
-      if (!res.ok) throw new Error('Could not read your vault.');
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        if (needsStepUp(res, body, 'Exporting your vault', () => void onExport())) {
+          setProgress(null);
+          return;
+        }
+        throw new Error('Could not read your vault.');
+      }
       const data = (await res.json()) as ExportPayload;
 
       const crypto = new CryptoService();
@@ -176,9 +225,10 @@ export default function AccountClient() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ confirmEmail }),
       });
-      const data = (await res.json().catch(() => ({}))) as { message?: string };
+      const data = (await res.json().catch(() => ({}))) as { message?: string; error?: string };
       if (!res.ok) {
         setDeleting(false);
+        if (needsStepUp(res, data, 'Closing your account', () => void onDelete())) return;
         setError(data.message ?? 'Could not close the account.');
         return;
       }
@@ -213,6 +263,7 @@ export default function AccountClient() {
     const data = await res.json().catch(() => ({}));
     setRegenerating(false);
     if (!res.ok) {
+      if (needsStepUp(res, data, 'Issuing a new recovery sheet', () => void onRegenerate())) return;
       setError(data.message ?? 'Could not issue new codes.');
       return;
     }
@@ -224,6 +275,19 @@ export default function AccountClient() {
 
   return (
     <div className="space-y-8">
+      {stepUp ? (
+        <StepUpPrompt
+          action={stepUp.action}
+          factors={factors}
+          onConfirmed={() => {
+            const { retry } = stepUp;
+            setStepUp(null);
+            retry();
+          }}
+          onCancel={() => setStepUp(null)}
+        />
+      ) : null}
+
       <section className="rounded border border-rule bg-paper-raised p-5">
         <h2 className="text-t5 font-semibold text-ink">Your name</h2>
         <p className="mt-2 text-t2 leading-relaxed text-muted">
@@ -258,7 +322,9 @@ export default function AccountClient() {
           new one now, while you still can.
         </p>
         <p className="mt-2 text-t2 leading-relaxed text-muted">
-          Issuing a new list immediately stops the old one working.
+          Issuing a new list immediately stops the old one working. Relay will ask for your
+          authenticator code again first — a new sheet outlives this session, so it should not be
+          possible from a machine you walked away from.
         </p>
 
         {/*
@@ -327,6 +393,10 @@ export default function AccountClient() {
           people you have designated. Keep it somewhere you would keep a password list — it is not
           protected once it leaves.
         </p>
+        <p className="mt-2 text-t2 leading-relaxed text-muted">
+          Because that file is unprotected, Relay asks for your authenticator code again before
+          building it.
+        </p>
         <button
           onClick={onExport}
           className="mt-4 rounded bg-ink px-3 py-2 text-t2 font-medium text-paper hover:bg-ink"
@@ -345,6 +415,10 @@ export default function AccountClient() {
         <p className="mt-2 text-t2 leading-relaxed text-clay">
           The tamper-evident event log is kept, exactly as our privacy page says. It holds no
           secrets — only the record of what happened and when.
+        </p>
+        <p className="mt-2 text-t2 leading-relaxed text-clay">
+          You will be asked for your authenticator code as well as your email address. Typing an
+          address that is already on this screen proves you read the warning, not that you are you.
         </p>
 
         {!confirming ? (

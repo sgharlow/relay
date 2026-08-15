@@ -9,9 +9,23 @@
  *
  * WHERE THE CHALLENGE LIVES. A WebAuthn ceremony needs a challenge to survive one
  * round trip. This seals it into a short-lived signed JWT (via `jose`, already a
- * dependency) which the route puts in an httpOnly cookie. No new table and
- * therefore no expiry sweep — one scheduler ledger is already carried and a
- * second thing that can silently stop is exactly what the architecture forbids.
+ * dependency) which travels through the client.
+ *
+ * 🔴 THAT SEAL WAS NOT SINGLE-USE, and this header used to argue it did not need
+ * to be: "no new table and therefore no expiry sweep — one scheduler ledger is
+ * already carried and a second thing that can silently stop is exactly what the
+ * architecture forbids." The cost argument was right. The security argument was
+ * a category error: a signature proves WE minted the token and says nothing
+ * about whether it has already been spent, so a captured assertion could be
+ * replayed for the whole five minutes. Closed 2026-08-15 — the nonce now lives
+ * in `auth_challenges` and `openChallenge` BURNS it, so a second presentation of
+ * the same seal is refused however valid its signature.
+ *
+ * And the architectural objection does not survive contact with what was
+ * actually added: the sweep is housekeeping, not a guard. Expiry is enforced by
+ * a predicate on the read path; if the sweep never runs the table grows and
+ * nothing becomes less safe. It rides the heartbeat cron rather than becoming a
+ * second scheduled thing that can silently stop. See migration 029.
  *
  * The `purpose` claim is not decoration. Without it, a challenge minted for an
  * authenticated user REGISTERING a passkey could be replayed into the
@@ -36,9 +50,16 @@ import type {
 
 import { query } from '../db/connection';
 import { ValidationError } from '../validation';
+import { newChallengeId, recordChallenge, burnChallenge } from './challenge-store';
 
 export const CHALLENGE_TTL_SECONDS = 300;
 
+/**
+ * The two WebAuthn ceremonies. `challenge-store.ts` carries a third (`step-up`)
+ * which is not a WebAuthn purpose and must not be sealable through here — this
+ * narrower type is what stops a step-up nonce being spent as a passkey
+ * challenge or the reverse.
+ */
 export type ChallengePurpose = 'registration' | 'authentication';
 
 export interface RpConfig {
@@ -69,15 +90,43 @@ function secret(): Uint8Array {
   return new TextEncoder().encode(s);
 }
 
-export async function sealChallenge(challenge: string, purpose: ChallengePurpose): Promise<string> {
+/**
+ * Seals a challenge AND records its nonce as live.
+ *
+ * The record is written before the token is handed out, and a failure to write
+ * it throws rather than returning an unbacked seal — a ceremony whose nonce was
+ * never recorded would be refused at the end by `openChallenge`, and telling
+ * somebody their perfectly good passkey failed is worse than refusing to start.
+ *
+ * `userId` is optional because sign-in is deliberately identifier-free: the
+ * options endpoint takes no email, looks nothing up, and so has nobody to
+ * attribute the nonce to. Registration always knows who is asking.
+ */
+export async function sealChallenge(
+  challenge: string,
+  purpose: ChallengePurpose,
+  userId?: string,
+): Promise<string> {
+  const jti = newChallengeId();
+  await recordChallenge({ jti, purpose, ttlSeconds: CHALLENGE_TTL_SECONDS, userId });
+
   return new SignJWT({ challenge, purpose })
     .setProtectedHeader({ alg: 'HS256' })
+    .setJti(jti)
     .setIssuedAt()
     .setExpirationTime(`${CHALLENGE_TTL_SECONDS}s`)
     .sign(secret());
 }
 
-/** Throws on a bad signature, an expired seal, or a purpose mismatch. */
+/**
+ * Opens a seal and SPENDS it. Throws on a bad signature, an expired seal, a
+ * purpose mismatch, or a second presentation of one that has already been used.
+ *
+ * The burn is what makes a captured assertion worthless: replaying it inside the
+ * five-minute window now meets a nonce that is already consumed. Every refusal
+ * carries the same message, so a replay and an expiry are indistinguishable to
+ * whoever is trying.
+ */
 export async function openChallenge(sealed: string, purpose: ChallengePurpose): Promise<string> {
   const { payload } = await jwtVerify(sealed, secret());
   if (payload.purpose !== purpose) {
@@ -87,6 +136,12 @@ export async function openChallenge(sealed: string, purpose: ChallengePurpose): 
   if (typeof challenge !== 'string') {
     throw new ValidationError('Malformed challenge.', 'challenge');
   }
+
+  const { jti } = payload;
+  if (typeof jti !== 'string' || !(await burnChallenge(jti, purpose))) {
+    throw new ValidationError('That step expired or was already used. Try again.', 'challenge');
+  }
+
   return challenge;
 }
 

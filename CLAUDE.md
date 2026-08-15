@@ -127,6 +127,19 @@ These cut across multiple files and are easy to break. Preserve them.
   for **unclaimed** contacts only. Do not build new work against the token path assuming it is the
   primary one.
 
+- **Authentication nonces are single-use, and elevation is a row.** `auth_challenges`
+  (migration 029) backs both: `openChallenge()` BURNS a WebAuthn challenge, so a captured
+  assertion cannot be replayed inside its five-minute window; and step-up elevation
+  (`lib/auth/step-up.ts`) is a five-minute sudo window recorded as a row so it can be
+  *withdrawn*, not just expire. A signed token proves we minted it and never that it is
+  unspent — that distinction is the whole point of the table. Sensitive routes call
+  `requireStepUp` (window) or `requireStepUpOnce` (spends it; account closure only);
+  `lib/ops/step-up-guard.ts` fails the build if a declared route drops the call or a new
+  handler appears under `/api/account` unclassified. The guard deliberately **stands down**
+  for an account with neither TOTP nor a passkey — a freshly-claimed contact — because a
+  guard nobody can satisfy is a lockout. The sweep in the heartbeat cron is housekeeping,
+  **not** a dead-man's-switch candidate: expiry is enforced by a predicate on the read path.
+
 - **Audit log is append-only and hash-chained per owner.** Each entry:
   `entry_hash = SHA-256(prev_hash || canonicalJson(entry))`, first entry `prev_hash = '0'*64`.
   INSERT-only, never UPDATE/DELETE. Audit writes **block** the triggering operation if they fail —

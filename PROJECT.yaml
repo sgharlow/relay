@@ -643,26 +643,75 @@ cross_cutting:
 # fixed in that pass. Everything else the audit confirmed WAS fixed — these are
 # the survivors, each with the trigger that ends its acceptance.
 deferred:
-  - id: step-up-reauth-on-sensitive-actions
-    found: 2026-08-14 (six-lens audit, security lens)
-    what: "Issuing new recovery codes and exporting the vault run on the ordinary
-      24h session with no re-authentication, so a walked-away-from machine can be
-      converted into permanent control (fresh codes) or a full plaintext export."
-    why_deferred: "A re-auth step is a UX flow (TOTP/passkey re-prompt), not a
-      guard clause — designing it mid-pass would be invented UX on the two most
-      sensitive screens. Sign-out now exists on every surface (iteration 1),
-      which shrinks the walked-away window it exploits."
-    ends_when: "before the paywall flips on (ratified.beta-free-release review,
-      2026-10-01) — paying customers get step-up on codes + export + account close"
-  - id: webauthn-challenge-single-use
-    found: 2026-08-14 (six-lens audit, security lens)
-    what: "Passkey challenges are stateless signed tokens valid ~5 minutes and
-      not burned on use, so a captured assertion could replay within the window."
-    why_deferred: "Requires a server-side nonce store (new table or cache) — an
-      infra-shaped change. The window is short, the token is origin-bound, and
-      the assertion itself is TLS-protected; the risk is real but narrow."
-    ends_when: "the first session-hardening pass after beta, alongside the
-      re-auth work above — the same nonce store serves both"
+  # ── CLOSED 2026-08-15, production-bar pass iteration 1 ────────────────────
+  #
+  # Both security deferrals are closed, together, because they were the same
+  # object: a nonce minted by us, spendable once, expiring on a clock. Two
+  # stores would have been two sweeps and two places to get the burn wrong.
+  # The deliverable is db/migrations/029_auth_challenges.sql +
+  # lib/auth/challenge-store.ts.
+  #
+  #   webauthn-challenge-single-use — openChallenge() now BURNS the nonce, so a
+  #     captured assertion replayed inside its five-minute window meets a row
+  #     that is already consumed. The old header argued a new table was
+  #     forbidden because a second scheduled thing can silently stop; the sweep
+  #     added is HOUSEKEEPING, not a guard — expiry is a predicate on the read
+  #     path, so if the sweep never ran the table would grow and nothing would
+  #     become less safe. It rides the heartbeat cron. Do not alert on it.
+  #     lib/auth/webauthn.test.ts asserts the second presentation is refused.
+  #
+  #   step-up-reauth-on-sensitive-actions — a five-minute sudo window (the
+  #     GitHub/AWS shape, not a per-action prompt) on POST recovery-codes,
+  #     GET export and DELETE account. Elevation is a ROW so it is revocable,
+  #     bound to subject AND session epoch so a stolen cookie elevates nobody
+  #     and "sign out everywhere" ends it, and DELETE /api/account SPENDS it so
+  #     nothing rides the same proof twice. Sign-out revokes it server-side via
+  #     src/hooks/useEndSession.ts.
+  #
+  #     ⚠️ THE GUARD STANDS DOWN for an account holding neither factor — a
+  #     freshly-claimed standby contact has no TOTP secret and passkeys are
+  #     stage two and deferrable. A guard nobody can satisfy is a lockout, and
+  #     the privacy page promises anybody can close their account. Both sides
+  #     are tested. It engages the moment they register a passkey.
+  #
+  #     lib/ops/step-up-guard.ts is the sibling check that keeps it true — the
+  #     same shape as body-limit.ts, added on the day it shipped rather than
+  #     after learning the same lesson twice. It also fails if a NEW handler
+  #     appears under /api/account without being classified.
+  #
+  # ── Ladder position, stated per half ─────────────────────────────────────
+  #
+  # webauthn-challenge-single-use is LIVE-PROVEN on the real cluster
+  # (2026-08-15). Migration 029 applied to frt34buqso4inluojgnj6horuy
+  # (us-east-1) with Steve's approval; a challenge minted by a real
+  # POST /api/webauthn/authenticate/options was then spent twice:
+  #
+  #     live before burn : true
+  #     burn #1          : true
+  #     burn #2 (replay) : false     <- the defect, closed
+  #     live after burn  : false
+  #     wrong purpose    : false
+  #     unknown nonce    : false
+  #
+  # The 500 it replaces was observed first, on purpose: before the migration the
+  # same endpoint answered `42P01 relation "auth_challenges" does not exist`,
+  # which is the loud failure the design chose over a silent fallback.
+  #
+  # step-up-reauth-on-sensitive-actions is WIRED, not live-proven. The guards,
+  # bindings and stand-down are covered by tests and the routes were confirmed
+  # to authenticate before they check elevation (all three answer 401 unsigned-
+  # in), but no elevated round trip has been walked by a signed-in owner. That
+  # needs an authenticator and belongs in the next dogfood. Do not write it up
+  # as proven until it is.
+  #
+  # ⚠️ Deploy order, now satisfied but still true for any fresh environment:
+  # migration 029 MUST precede the code. `sealChallenge()` records a nonce
+  # before handing out a token and THROWS if that write fails, so deploying
+  # first stops passkey registration and sign-in.
+  #     npx tsx --env-file=.env.local db/migrations/migrate.ts 029_auth_challenges.sql
+  # (`migrate.ts` now mints its own IAM token when DSQL_PASSWORD is absent —
+  # before 2026-08-15 it refused to start against the cluster the app uses.)
+  #
   - id: session-access-multi-owner-limit1
     found: 2026-08-14 (six-lens audit)
     what: "lib/access/session-access.ts resolves a signed-in recipient's open

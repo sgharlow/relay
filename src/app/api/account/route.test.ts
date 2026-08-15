@@ -34,7 +34,7 @@ import { query } from '../../../../lib/db/connection';
 import { issueRecoveryCodes } from '../../../../lib/auth/recovery-code';
 import { writeAuditEntry } from '../../../../lib/audit/audit-service';
 import { PATCH } from './route';
-import { POST as regenerate } from './recovery-codes/route';
+import { POST as rawRegenerate } from './recovery-codes/route';
 
 const mockSession = vi.mocked(getOwnerSession);
 const mockQuery = vi.mocked(query);
@@ -61,6 +61,20 @@ function req(body: unknown): NextRequest {
     body: JSON.stringify(body),
   }) as unknown as NextRequest;
 }
+
+/**
+ * The recovery-codes handler takes a request now, because it reads the step-up
+ * elevation cookie off it. No cookie here: these tests run as an account with no
+ * re-presentable factor, where the guard correctly stands down (see the
+ * dedicated describe block below for both sides of that).
+ */
+function postReq(): NextRequest {
+  return new Request('https://relaystandby.com/api/account/recovery-codes', {
+    method: 'POST',
+  }) as unknown as NextRequest;
+}
+
+const regenerate = (r: NextRequest = postReq()) => rawRegenerate(r);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -155,5 +169,49 @@ describe('POST /api/account/recovery-codes — regeneration', () => {
     mockIssue.mockResolvedValueOnce(['eeee-ffff']);
     const second = await regenerate();
     expect((await second.json()).recoveryCodes).toEqual(['eeee-ffff']);
+  });
+});
+
+/**
+ * A fresh recovery sheet is the ONE artefact that outlives the session that
+ * produced it — there is no password to change afterwards that would take it
+ * away — so a machine somebody walked away from must not be able to mint one.
+ *
+ * Both sides are asserted, because the guard has a deliberate stand-down: an
+ * account holding neither factor cannot answer a prompt, and a guard nobody can
+ * satisfy is a lockout rather than a defence.
+ */
+describe('POST /api/account/recovery-codes — elevation', () => {
+  it('refuses with StepUpRequired when the account HAS a factor and has not re-presented it', async () => {
+    // An owner: `users.totp_secret` is set, and no elevation cookie is sent.
+    mockQuery.mockImplementation((async (sql: string) =>
+      /totp_secret/.test(String(sql))
+        ? { rows: [{ totp_secret: 'ABCDEFGHIJKLMNOP' }], rowCount: 1 }
+        : { rows: [], rowCount: 0 }) as never);
+
+    const res = await regenerate();
+
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toBe('StepUpRequired');
+    // The point of the guard: no sheet was minted.
+    expect(mockIssue).not.toHaveBeenCalled();
+  });
+
+  it('403 and not 401 — the session is valid, so the client must not sign them out', async () => {
+    mockQuery.mockImplementation((async (sql: string) =>
+      /totp_secret/.test(String(sql))
+        ? { rows: [{ totp_secret: 'ABCDEFGHIJKLMNOP' }], rowCount: 1 }
+        : { rows: [], rowCount: 0 }) as never);
+
+    expect((await regenerate()).status).not.toBe(401);
+  });
+
+  it('stands down for an account with neither an authenticator nor a passkey', async () => {
+    mockIssue.mockResolvedValueOnce(['aaaa-bbbb']);
+    // Default mock: no totp_secret row, no webauthn credential.
+    const res = await regenerate();
+
+    expect(res.status).toBe(200);
+    expect(mockIssue).toHaveBeenCalledWith('owner-1');
   });
 });

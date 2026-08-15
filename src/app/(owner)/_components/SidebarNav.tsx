@@ -8,7 +8,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { signOut } from 'next-auth/react';
+import { endSession } from '../../../hooks/useEndSession';
 
 const LINKS = [
   { href: '/vault', label: 'Vault' },
@@ -168,10 +168,14 @@ export default function SidebarNav() {
         machine, and invisible every other day. No session check needed here:
         the owner layout already redirects the signed-out to /auth/signin, so
         this rail never renders without one.
+
+        `endSession` rather than signOut directly: it revokes step-up elevation
+        server-side first, so leaving the machine ends the elevated window
+        everywhere rather than only in this browser.
       */}
       <button
         type="button"
-        onClick={() => void signOut({ callbackUrl: '/' })}
+        onClick={() => void endSession('/')}
         className="transition-colors"
         style={{
           flexShrink: 0,

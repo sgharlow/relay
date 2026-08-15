@@ -26,7 +26,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { signOut } from 'next-auth/react';
+import { endSession } from '../../../hooks/useEndSession';
 
 export default function SignOutControl() {
   const [hasSession, setHasSession] = useState(false);
@@ -51,7 +51,7 @@ export default function SignOutControl() {
   return (
     <button
       type="button"
-      onClick={() => void signOut({ callbackUrl: '/' })}
+      onClick={() => void endSession('/')}
       style={{
         fontFamily: 'var(--font-ui)',
         fontSize: 'var(--t1)',
