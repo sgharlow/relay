@@ -81,6 +81,13 @@ export interface DeliveryWebhookHealth {
   ripeSends: number;
   /** How many of those we did hear about. The live half of the switch. */
   ripeSendsHeard: number;
+  /** Has the send-side recorder ever written a row? False = it is unproven. */
+  writerProven: boolean;
+  /**
+   * Events about messages we have no send record for, since the recorder
+   * started working. Non-zero means the recorder has stopped — see below.
+   */
+  orphanEvents: number;
   healthy: boolean;
   /** What it means for a human. Required, for the same reason the canary's is. */
   meaning: string;
@@ -130,6 +137,47 @@ export async function getDeliveryWebhookHealth(
   const ripeSendsHeard = Number(s.rows[0]?.heard ?? 0);
 
   /*
+    🔴 THE WAY THIS SWITCH GETS DISARMED A SECOND TIME. Everything above rests on
+    `email_send_attempts` having rows in it. `recordSendAttempt` is best-effort
+    and swallows its own failures — deliberately, because telemetry must not be
+    able to fail a send — so if it ever stops working, `ripeSends` falls to zero,
+    that reads as "a quiet week", and this file returns to reporting healthy
+    forever. Exactly the shape it was just rebuilt to escape, one layer down.
+
+    It is not hypothetical. Migration 030's grant did not cover tables created
+    afterwards, so the first read of this very table failed with `permission
+    denied` — a privilege change is precisely the kind of thing that would mute
+    the recorder while leaving everything else running.
+
+    THE INCONSISTENCY IS DETECTABLE, and exactly, because since the webhook
+    boundary started refusing other products' mail every event we store is about
+    a message WE sent. So an event whose `provider_id` matches no attempt row is
+    a message the recorder missed. Attempts are written at send time and events
+    arrive afterwards, so the ordering is never ambiguous.
+
+    ⚠️ COUNTED ONLY FROM THE FIRST ATTEMPT ONWARD, which is what makes this safe
+    to switch on. Every event recorded before this code shipped has no attempt
+    row and never will; without that bound, deploying it would alarm immediately
+    about mail that was sent correctly months earlier. Until the first attempt
+    exists the recorder is UNPROVEN — reported, not alarmed — and it becomes
+    decisive the moment one send goes out.
+  */
+  const w = await query<{ attempts: string; orphans: string }>(
+    `SELECT (SELECT count(*) FROM email_send_attempts)::text AS attempts,
+            COALESCE((
+              SELECT count(*) FROM email_delivery_events e
+               WHERE e.provider_id IS NOT NULL
+                 AND e.occurred_at >= (SELECT min(occurred_at) FROM email_send_attempts)
+                 AND NOT EXISTS (
+                   SELECT 1 FROM email_send_attempts a WHERE a.provider_id = e.provider_id
+                 )
+            ), 0)::text AS orphans`,
+  );
+
+  const writerProven = Number(w.rows[0]?.attempts ?? 0) > 0;
+  const orphanEvents = Number(w.rows[0]?.orphans ?? 0);
+
+  /*
     THE TWO CONDITIONS THAT ARE UNAMBIGUOUSLY WRONG, and nothing else.
 
     `!everHeard` is the original: we have never heard anything at all, so the
@@ -141,7 +189,8 @@ export async function getDeliveryWebhookHealth(
     nothing did about any of them. That is a dead pipe, not a slow day.
   */
   const deaf = ripeSends > 0 && ripeSendsHeard === 0;
-  const healthy = everHeard && !deaf;
+  const mute = writerProven && orphanEvents > 0;
+  const healthy = everHeard && !deaf && !mute;
 
   return {
     everHeard,
@@ -150,6 +199,8 @@ export async function getDeliveryWebhookHealth(
     ageSeconds,
     ripeSends,
     ripeSendsHeard,
+    writerProven,
+    orphanEvents,
     healthy,
     meaning: !everHeard
       ? 'No delivery event has EVER arrived, so the Resend webhook is unconfigured or broken. ' +
@@ -161,8 +212,19 @@ export async function getDeliveryWebhookHealth(
           'so this is a stream that has stopped: check that the webhook endpoint still exists in ' +
           'the Resend dashboard and that RESEND_WEBHOOK_SECRET still matches its signing secret. ' +
           'While this lasts, /circle cannot tell an owner what became of any message.'
-        : 'Delivery events are arriving for the messages we send. A long age here is normal — ' +
-          'this product sends rarely by design, and the judgement above is made against sends, ' +
-          'not against the clock.',
+        : mute
+          ? `${orphanEvents} delivery event(s) arrived for messages with no send record, so ` +
+            'recordSendAttempt has stopped writing. It swallows its own failures by design, and ' +
+            'without those rows this check silently reverts to reporting healthy no matter what ' +
+            'happens to the mail. Look for a privilege or schema change on email_send_attempts ' +
+            '— migration 030 already locked the application out of it once.'
+          : writerProven
+            ? 'Delivery events are arriving for the messages we send. A long age here is normal ' +
+              '— this product sends rarely by design, and the judgement above is made against ' +
+              'sends, not against the clock.'
+            : 'Events are arriving, but no send has been recorded yet, so the comparison this ' +
+              'check depends on is UNPROVEN. Expected immediately after deploying the send-side ' +
+              'recorder; it resolves itself on the first message Relay sends. If it persists ' +
+              'past the next send, recordSendAttempt is not writing.',
   };
 }
