@@ -46,6 +46,17 @@ export interface LeadOutcome {
   stored: boolean;
   /** Resend accepted the notification email. */
   notified: boolean;
+  /**
+   * The write was REFUSED (SQLSTATE 42501), not merely unsuccessful.
+   *
+   * Absent in every other case, so the field only ever appears when something
+   * is genuinely misconfigured — which is what lets the route treat it
+   * differently without disturbing the deliberate soft handling of transient
+   * failures. Optional rather than always-present because `recordLead`'s
+   * contract is "inspect the outcome", and existing callers must keep reading
+   * the same two booleans they always did.
+   */
+  storeDenied?: true;
 }
 
 export class LeadValidationError extends Error {
@@ -189,6 +200,31 @@ export async function recordLead(input: LeadInput): Promise<LeadOutcome> {
     stored = true;
   } catch (err) {
     process.stderr.write(`[g1] lead persist failed for ${lead.email}: ${String(err)}\n`);
+
+    /*
+      A REFUSED write is not a failed write.
+
+      Everything else caught here is transient — a 40001 conflict, a dropped
+      connection — and swallowing it is deliberate: the operator email went out
+      first and is the durable record, so the cost is analysis, not the lead.
+
+      42501 (insufficient_privilege) never heals. The credential is not allowed
+      to write this table and will not be until somebody changes a grant. Left
+      indistinguishable from the transient cases it becomes invisible, and the
+      route compounds it by reporting success whenever the email succeeded — so
+      a permanently unwritable caregiver_leads would tell every visitor "ok"
+      while the only number the G1 gate reads stayed at zero.
+
+      Reported through the outcome rather than by throwing, because this
+      function's contract is that a leg failure is inspected, not caught.
+    */
+    if ((err as { code?: string }).code === '42501') {
+      process.stderr.write(
+        `[g1] 🔴 REFUSED: this credential may not write caregiver_leads. ` +
+          `The G1 measurement is not being recorded. Check the role's grants.\n`,
+      );
+      return { stored: false, notified, storeDenied: true };
+    }
   }
 
   return { stored, notified };

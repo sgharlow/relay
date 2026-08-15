@@ -166,6 +166,48 @@ describe('recordLead attribution and content', () => {
     expect(subject).toMatch(/NOT PRODUCTION/i);
   });
 
+  /*
+    🔴 A REFUSED WRITE IS NOT A FAILED WRITE, and collapsing the two is how the
+    G1 dataset would go quietly missing.
+
+    `recordLead` deliberately swallows storage failures: the operator email is
+    sent first and treated as the durable record, so a transient DSQL error
+    (40001, a dropped connection) costs analysis, not the lead. That design is
+    right and is left alone.
+
+    SQLSTATE 42501 — insufficient_privilege — is a different animal. It does not
+    retry, it does not resolve, and it does not vary by luck: it means the
+    credential is not allowed to write this table and never will be until
+    somebody changes a grant. Swallowed alongside the transient cases it becomes
+    invisible, and the route makes it worse by returning `{ok:true}` whenever the
+    EMAIL succeeded — so a permanently unwritable caregiver_leads reports success
+    to every visitor while the number the G1 gate reads stays at zero.
+
+    This matters imminently: the planned relay_dev role is REVOKEd from
+    INSERTing here precisely so a laptop cannot fabricate demand. That wall is
+    only worth building if hitting it is visible. Without this, pointing local
+    dev at the restricted role would return ok:true and look like the grant
+    worked — the experiment would be read through a broken meter.
+  */
+  it('marks a REFUSED write distinctly, so it cannot pass as a transient failure', async () => {
+    const denied = Object.assign(new Error('permission denied for table caregiver_leads'), {
+      code: '42501',
+    });
+    query.mockRejectedValueOnce(denied);
+
+    const outcome = await recordLead({ email: 'a@b.com' });
+    expect(outcome.stored).toBe(false);
+    expect(outcome.storeDenied).toBe(true);
+  });
+
+  it('does NOT mark a transient failure as refused — those stay soft on purpose', async () => {
+    query.mockRejectedValueOnce(Object.assign(new Error('conflict'), { code: '40001' }));
+
+    const outcome = await recordLead({ email: 'a@b.com' });
+    expect(outcome.stored).toBe(false);
+    expect(outcome.storeDenied).toBeUndefined();
+  });
+
   it('says nothing extra about a real production lead', async () => {
     vi.stubEnv('VERCEL_ENV', 'production');
     await recordLead({ email: 'a@b.com', src: 'reddit' });
