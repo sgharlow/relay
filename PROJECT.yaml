@@ -39,6 +39,12 @@ derived:
   test_count: "npx vitest run 2>&1 | grep -E 'Tests .* passed' | tail -1   # static proxy: grep -rE '\\b(it|test)\\(' --include='*.test.*' lib src | wc -l"
   head: "git rev-parse --short HEAD"
   branch: "git branch --show-current"
+  # Added 2026-08-15 because README.md had been claiming "28 API routes" — a
+  # hardcoded number that had drifted to less than half the truth, in the one
+  # document a stranger reads first. The volatile-numbers rule exists for exactly
+  # this; the number now has a command instead of a copy.
+  api_routes: "find src/app/api -name route.ts -not -name '*.test.*' | wc -l"
+  pages: "find src/app -name page.tsx | wc -l"
 
 # Sequencing rule (from the 2026-07-01 audit): NO further building until G1 produces evidence.
 #

@@ -54,6 +54,26 @@ const SECURITY_HEADERS = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
 
   /*
+    ADDED 2026-08-15, after a live header probe found six of the seven a
+    production checklist asks for and this one simply absent — not argued away
+    anywhere in this file, which is how a header goes missing: nobody decided
+    against it, nobody thought of it.
+
+    It severs `window.opener` between this origin and any cross-origin document
+    that opened it or that it opens. On a page where vault plaintext is decrypted
+    in the browser, a retained handle from another origin is the one reference
+    worth cutting — and it also makes the outbound `target="_blank"` links on
+    /demo and /security safe by construction rather than by remembering `rel`.
+
+    SAFE HERE SPECIFICALLY, checked rather than assumed: nothing in this product
+    depends on a popup talking back. Stripe checkout and the billing portal are
+    full navigations (`window.location.href = url`), and `window.open` appears
+    nowhere in src. A product that signed in through an OAuth popup could not
+    take this header without breaking that flow.
+  */
+  { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+
+  /*
     Matters more here than on most sites: the unclaimed-contact fallback still
     puts ?token= in a URL, and the default policy would leak that whole URL to
     any off-site link a recipient follows from an access screen.

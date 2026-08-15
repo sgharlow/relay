@@ -80,10 +80,14 @@ handlers are thin and build-verified. AWS provisioning + live dogfood:
 
 ## Status
 
-Backend complete (**28 API routes**), all UI built, recipient-release
-notifications wired. Full suite green — run `npx vitest --run` for the live count;
-`tsc --noEmit` + `next build` clean. Deployed live and dogfooded end-to-end on
-Aurora DSQL + AWS KMS, submitted to H0, and awarded **Most Impactful**. Specs (the build contract):
+Backend complete, all UI built, recipient-release notifications wired. Full suite
+green — run `npx vitest --run` for the live count, and the commands in
+`PROJECT.yaml → derived` for the route and page counts; `tsc --noEmit` +
+`next build` clean. (This paragraph used to hardcode the route count. It had
+drifted to under half the real number, in the first document a stranger reads —
+which is why the counts are commands now and not copies.) Deployed live and dogfooded
+end-to-end on Aurora DSQL + AWS KMS, submitted to H0, and awarded
+**Most Impactful**. Specs (the build contract):
 [`.kiro/specs/relay-h0-mvp/`](.kiro/specs/relay-h0-mvp/) and
 [`specs/Relay_H0_Build_Spec_v2.md`](specs/Relay_H0_Build_Spec_v2.md);
 Devpost write-up: [`specs/Relay_Devpost_Submission.md`](specs/Relay_Devpost_Submission.md).

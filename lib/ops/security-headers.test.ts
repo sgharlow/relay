@@ -18,7 +18,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import nextConfig from '../../next.config.mjs';
 
 async function headerMap(): Promise<Record<string, string>> {
@@ -59,6 +60,52 @@ describe('security headers', () => {
 
   it('stops content-type sniffing', async () => {
     expect((await headerMap())['X-Content-Type-Options']).toBe('nosniff');
+  });
+
+  /*
+    ADDED 2026-08-15. A live probe of the running app found six of the seven
+    headers a production checklist asks for, and this one absent — not argued
+    against anywhere, which is how a header goes missing: nobody decides against
+    it, nobody thinks of it. On a page that decrypts vault plaintext in the
+    browser, a retained `window.opener` handle from another origin is the one
+    reference worth cutting.
+  */
+  it('isolates the browsing context from any cross-origin opener', async () => {
+    expect((await headerMap())['Cross-Origin-Opener-Policy']).toBe('same-origin');
+  });
+
+  /*
+    THE CHECK THAT KEEPS THAT HEADER SAFE TO HOLD. `same-origin` severs the
+    handle a popup uses to talk back, so a sign-in or payment flow that opened a
+    window and waited on it would break — silently, in the flow that earns money.
+    Stripe is a full navigation here and `window.open` appears nowhere, which is
+    the precondition. If that ever changes, this fails BEFORE the header does.
+  */
+  it('nothing in the product depends on a popup talking back', () => {
+    const src = readFileSync('next.config.mjs', 'utf8');
+    expect(src).toContain('Cross-Origin-Opener-Policy');
+
+    const offenders: string[] = [];
+    const walk = (dir: string) => {
+      for (const e of readdirSync(dir)) {
+        const p = join(dir, e);
+        if (statSync(p).isDirectory()) walk(p);
+        else if (/\.tsx?$/.test(e) && !e.includes('.test.')) {
+          if (/\bwindow\.open\s*\(/.test(readFileSync(p, 'utf8'))) offenders.push(p);
+        }
+      }
+    };
+    walk('src');
+
+    expect(
+      offenders,
+      offenders.length
+        ? 'window.open() found. Cross-Origin-Opener-Policy: same-origin severs ' +
+          'window.opener, so a popup flow that waits on the opened window will ' +
+          'break. Either use a full navigation, or drop the header and say why:\n' +
+          offenders.join('\n')
+        : 'ok',
+    ).toEqual([]);
   });
 
   /*
