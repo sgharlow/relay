@@ -31,7 +31,10 @@ import FallbackLine from './FallbackLine';
 import DeliveryLine, { type DeliveryState } from './DeliveryLine';
 import ProviderRiskLine from './ProviderRiskLine';
 import SecondAddressControl from './SecondAddressControl';
+import DrillLine from './DrillLine';
+import FireDrillControl from './FireDrillControl';
 import PaperOnlyControl from './PaperOnlyControl';
+import type { DrillState } from '../../../../lib/release/drill-claim';
 
 /**
  * Someone who has not bound an account yet still needs a way in. `revoked` is
@@ -90,6 +93,8 @@ export interface Verifier {
   email: string;
   /** Second mailbox for credential-free notices. See lib/notify/fanout.ts. */
   email_secondary?: string | null;
+  /** Last rehearsal sent to them, and whether they answered it. */
+  drill?: DrillState | null;
   /** @deprecated dead column — see StandbyLight below. */
   verification_status?: string;
   standby_state?: string;
@@ -639,6 +644,8 @@ export function VerifierSection({
               {/* Verifiers matter most here: their notice is the one whose
                   silent loss stalls a release. */}
               <DeliveryLine name={v.name} email={v.email} delivery={v.delivery} />
+              {/* Evidence about a PERSON, not about a provider's queue. */}
+              <DrillLine name={v.name} drill={v.drill} />
               <ProviderRiskLine name={v.name} email={v.email} />
               <SecondAddressControl personType="verifier" person={v} onChanged={onChange} />
               {v.fingerprint && hasClaimed(v.standby_state) ? (
@@ -687,6 +694,13 @@ export function VerifierSection({
           </p>
         ) : null}
       </form>
+
+      {/*
+        Sits under the verifiers and nowhere else. They are the people whose
+        silence stalls a release — a recipient who misses a message can be
+        reached again, a verifier who misses one means quorum is never met.
+      */}
+      {items.length > 0 ? <FireDrillControl onRun={onChange} /> : null}
     </section>
   );
 }

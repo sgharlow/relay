@@ -18,6 +18,7 @@ import { requireOwner, isResponse, mapError } from '../../../../lib/http/owner-r
 import { resolveStandbyFor } from '../../../../lib/access/standby-resolve';
 import { listCredentialIdsForUser } from '../../../../lib/auth/webauthn';
 import { query } from '../../../../lib/db/connection';
+import { pendingDrillsFor } from '../../../../lib/release/fire-drill';
 
 export async function GET(): Promise<NextResponse> {
   // `requireOwner` is a misnomer inherited from when every session was an owner.
@@ -41,10 +42,20 @@ export async function GET(): Promise<NextResponse> {
     // indexed read rather than a second round trip from the client.
     const credentialIds = await listCredentialIdsForUser(auth.ownerId);
 
+    /*
+      Is anybody waiting to hear that this person can be reached? READ-ONLY on
+      purpose — `pendingDrillsFor` looks and `acknowledgePendingDrills` answers,
+      and they are separate functions because a dashboard that acknowledged on
+      render would manufacture the very evidence the drill exists to earn from a
+      human pressing a button.
+    */
+    const drillPending = (await pendingDrillsFor(auth.ownerId)).length > 0;
+
     return NextResponse.json({
       ...resolution,
       hasOwnVault: Number(own.rows[0]?.n ?? 0) > 0,
       hasPasskey: credentialIds.length > 0,
+      drillPending,
     });
   } catch (err) {
     return mapError(err);

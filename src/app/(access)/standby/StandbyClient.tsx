@@ -23,6 +23,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import StandbyPasskeyCard from './StandbyPasskeyCard';
+import DrillCard from './DrillCard';
 import HelpingCard from './HelpingCard';
 import LeaveControl from './LeaveControl';
 import AskControl from './AskControl';
@@ -188,6 +189,8 @@ export default function StandbyClient() {
     anythingOpen: boolean;
     hasOwnVault: boolean;
     hasPasskey?: boolean;
+    /** Somebody has run a practice run and is waiting to hear back. */
+    drillPending?: boolean;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -441,6 +444,13 @@ export default function StandbyClient() {
         nothing to say.
       */}
       <HelpingCard />
+
+      {/*
+        Above the passkey nudge and below the standby cards: it is a request
+        somebody is actively waiting on, but it is explicitly NOT an emergency
+        and must not be dressed as one.
+      */}
+      {data.drillPending ? <DrillCard onAcknowledged={load} /> : null}
 
       {data.relationships.length > 0 && data.hasPasskey === false ? <StandbyPasskeyCard /> : null}
 

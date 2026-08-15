@@ -20,6 +20,7 @@ import { proposePolicies } from '../../../../lib/rules/policy-proposals';
 import type { PolicyItem } from '../../../../lib/rules/policy-predicate';
 import { fingerprintFor } from '../../../../lib/people/fingerprint';
 import { latestDeliveryByEmail } from '../../../../lib/notify/delivery-events';
+import { fireDrillStatus } from '../../../../lib/release/fire-drill';
 
 /**
  * Takes no request argument, so Next tries to prerender it at build time —
@@ -121,6 +122,15 @@ export async function GET(): Promise<NextResponse> {
   const withCode = new Set(codeRows.rows.map((r) => r.person_id));
 
   /*
+    THE ONE REACHABILITY SIGNAL A JUNKED MESSAGE CANNOT FAKE. Everything else on
+    this screen is a claim by a machine about a machine — `email.delivered` is
+    what the provider says about its own queue, and both messages in the
+    2026-08-14 Outlook test recorded it while sitting in a junk folder. A drill
+    acknowledgement was pressed by a person. See lib/release/fire-drill.ts.
+  */
+  const drills = await fireDrillStatus(auth.ownerId);
+
+  /*
     🔴 "WE TOLD THEM" WAS UNKNOWABLE. Resend answers 200 with a message id for
     a SUPPRESSED address, so a previously-bounced contact is muted permanently
     and every caller reports success. On the day a release fires, that is
@@ -164,6 +174,14 @@ export async function GET(): Promise<NextResponse> {
       const { claimed_user_id, ...rest } = person;
       return {
         ...rest,
+        /*
+          The rehearsal record. Unlike `delivery` below, an acknowledgement is
+          evidence about a HUMAN rather than about a provider's queue — it is the
+          only reachability signal in this product that a junked message cannot
+          fake. Raw timestamps; `describeDrill` decides what may be claimed from
+          them, so the judgement lives in one place and is tested.
+        */
+        drill: drills.get(person.id) ?? null,
         fingerprint: claimed_user_id
           ? fingerprintFor({ ownerId, personId: person.id, claimedUserId: claimed_user_id })
           : null,
