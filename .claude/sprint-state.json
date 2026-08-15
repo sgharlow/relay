@@ -129,7 +129,7 @@
   "sprint2": {
     "scope": "unblock the advertising",
     "branch": "sprint/2026-08-15-2",
-    "iterationsUsed": 4,
+    "iterationsUsed": 5,
     "iterationCap": 5,
     "backlogSource": [
       "docs/g1-launch-checklist.md (step 8 the only open item)",
@@ -168,6 +168,12 @@
         "title": "ad image palette had drifted off the product",
         "proven": "failed on the real #f59e0b before the fix, on a planted #ff00ff after",
         "note": "generating the images first would have produced 5 dark creatives for a light landing page"
+      },
+      {
+        "id": "AD-5",
+        "commit": "df4c392",
+        "title": "one-page sitting sheet + a pin on its single restated value",
+        "proven": "planted src=reddit-ad (singular) in the sheet fails the guard"
       }
     ],
     "liveEvidence": {
@@ -189,7 +195,9 @@
         "owner": "steve",
         "need": "a ~45 minute sitting; card entry and submit are Steve-only per the co-pilot contract",
         "deadline": "submit by ~2026-08-26 for R1 serving by ~2026-08-28; gate due 2026-10-02",
-        "engineeringBlockers": "none - destination live, instrument verified, copy fits, src values qualify"
+        "engineeringBlockers": "none - destination live, instrument verified, copy fits, src values qualify",
+        "status": "PARKED by Steve 2026-08-15 -> sitting scheduled for 2026-08-16",
+        "prepared": "docs/g1-sitting-sheet.md - 13 screens, pure transcription"
       }
     ],
     "deferred": [
@@ -213,6 +221,31 @@
         "id": "D8",
         "title": "$119 restated in ~6 UI files and hardcoded as 11900 in the Stripe webhook",
         "score": 6
+      }
+    ],
+    "parked": {
+      "item": "step-8 ad sitting",
+      "until": "2026-08-16",
+      "by": "steve",
+      "note": "submit-by ~2026-08-26 unchanged; slack absorbs exactly one rejection cycle. Re-raise at next /daily-priority."
+    },
+    "unblockedNext": [
+      {
+        "id": "D8",
+        "title": "price restated in 9 files; 11900 hardcoded in the Stripe webhook INSERT",
+        "score": 6,
+        "why": "a price change writes the OLD price into every new subscription row, silently, while the UI shows the new one"
+      },
+      {
+        "id": "D7",
+        "title": "opengraph-image.tsx still on the retired dark palette",
+        "score": 4
+      },
+      {
+        "id": "D2",
+        "title": "CI check that code only queries tables a migration declares",
+        "score": 7.5,
+        "note": "needs SQL extracted from query template strings; naive parse yields 183 prose false positives"
       }
     ]
   }
