@@ -439,9 +439,45 @@ Everything below is limited to what is built and live-proven. Nothing here needs
 **Destination:** `https://relaystandby.com/caregivers?src=reddit-ads`
 **Objective:** Traffic · **Format:** **Free-form ad** (the only format that carries body text — §1b)
 **Brand display name:** `Relay` (25-char field) · **CTA button:** `Learn More`
-**Targeting:** audiences of r/AgingParents, r/CaregiverSupport, r/Alzheimers, r/dementia,
-r/eldercare. Interest/community targeting, not subreddit posting — ads are platform-sanctioned and
-do not violate those subs' promotion rules.
+**Targeting:** ~~audiences of r/AgingParents, r/CaregiverSupport, r/Alzheimers, r/dementia,
+r/eldercare~~ — 🔴 **THIS CANNOT BE BOUGHT. Established at the sitting, 2026-08-16.**
+
+> ### 🔴 Reddit does not sell targeting against any caregiver community
+>
+> Attempted live in Ads Manager against a real ad account. `dementia` and `Alzheimers` were
+> **refused outright on ToS** — expected, since a subreddit defined by a diagnosis identifies people
+> by inferred medical status, which is a restricted category (the same principle as §1a). What was
+> *not* expected is that the other three are simply **absent from the targetable index**:
+>
+> | Typed into Community audience | Result |
+> |---|---|
+> | `personalfinance` | r/personalfinance 21.8M · r/FinancialPlanning 985K · r/povertyfinance 2.8M |
+> | `AgingParents` | **No Search Results** |
+> | `CaregiverSupport` | **No Search Results** |
+> | `caregiv` | **No Search Results** |
+> | `eldercare` | r/CircleOfCaregivers — **245 users** · r/politics · r/singapore |
+>
+> The finance query proves the lookup works, so this is the index, not the tooling. The only
+> caregiving community Reddit will sell has 245 members.
+>
+> **Keyword targeting was then tested as the fallback and also failed, on a threshold set before
+> the number was seen** (Steve, 2026-08-16: *"if it stays in the hundreds of millions, keyword
+> targeting is not targeting and we stop there rather than spend"*). With Personal Finance removed,
+> the keyword list cut to nine caregiving terms, no communities and location United States, the
+> audience estimate read **251.2m – 314.1m** — slightly *higher* than the 248.3m–310.4m baseline
+> that had included Personal Finance and twenty-five broad keywords. It also exceeds Reddit's entire
+> US user base while scoped to the US, so the estimator is either ignoring the targeting or the
+> targeting does not narrow delivery. Neither supports spending: we could not predict or verify who
+> received the ad.
+>
+> **What this invalidates.** Screen 7 of `g1-sitting-sheet.md` and row 7 of the walkthrough table
+> below are not executable as written. The lane was designed around five named subreddits and the
+> platform sells none of them — an assumption never checked against the source, which is exactly the
+> failure the 2026-07-05 retrospective rule *"verify the real data/API shape against the source
+> before building"* was adopted to prevent.
+>
+> **Nothing was submitted and nothing spent.** The campaign draft (`G1 caregiver WTP — Reddit lane
+> 1`, Traffic, $25/day) is saved and unlaunched.
 
 ### R1 — the reversibility hook *(lead with this)*
 

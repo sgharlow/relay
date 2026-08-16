@@ -41,7 +41,7 @@ If line 1 fails, **stop.** A lane measured by a dead instrument reads as no dema
 | 4 | Brand display name | `Relay` | Steve |
 | 5 | Campaign → Objective | **Traffic** (not Conversions — there is no pixel, and the privacy page says so) | Claude dictates |
 | 6 | Campaign budget | Daily **$25** · **LIFETIME $150** ← the lifetime cap is the structural control | Steve sets, Claude reads back |
-| 7 | Ad group → Targeting | Location **United States**; communities `r/AgingParents`, `r/CaregiverSupport`, `r/Alzheimers`, `r/dementia`, `r/eldercare` | Claude dictates |
+| 7 | Ad group → Targeting | 🔴 **NOT EXECUTABLE — Reddit sells none of these.** Established at the 2026-08-16 sitting; evidence table in `g1-ad-creatives.md` under "Targeting". `dementia`/`Alzheimers` refused on ToS; the other three absent from the index while `personalfinance` resolves fine. The keyword fallback failed its own pre-set threshold at an audience of 251.2m–314.1m. **Do not proceed past this row on Reddit.** | — |
 | 8 | Ad group → Bid | **Automatic** | Claude dictates |
 | 9 | Ad → Format | **Free-form ad** — a standard image/link ad is headline-only and silently drops R1's whole body | Claude dictates |
 | 10 | Ad → Headline / Body | **R1, pasted from `g1-ad-creatives.md`.** Title should read 78 characters | Steve pastes |
