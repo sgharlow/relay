@@ -1,4 +1,15 @@
-# G1 lane 1 — Google Ads search intent
+# G1 lane 1 — Google Ads search intent · ⛔ CANCELLED 2026-08-16
+
+> **Steve cancelled this lane on 2026-08-16.** No payment method was added, no campaign was
+> launched, nothing was spent. Account `668-681-8891` ("Relay") exists and is **dormant** — it
+> cannot serve, because it has no billing, which is a structural fact rather than a setting someone
+> has to remember. Full record: `PROJECT.yaml` `ratified.g1-google-lane-cancelled`.
+>
+> **Editorial is now lane 1** — `docs/g1-editorial-lane.md`.
+>
+> This document is retained, not deleted. The plan is sound and the tests still pass; it is simply
+> aimed at a market the measurement below says is not there. If the lane is ever revived, the work
+> is done and the reason it was shelved is at the top of it.
 
 > # 🔴 MEASURED 2026-08-16, BEFORE ANY SPEND: THE DEMAND IS NOT THERE.
 >

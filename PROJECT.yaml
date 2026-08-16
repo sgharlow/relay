@@ -559,6 +559,35 @@ ratified:
       destination src is a declared lane, because under an allow-list a typo there reads
       as zero demand rather than as a typo."
 
+  - id: g1-google-lane-cancelled
+    date: 2026-08-16
+    owner: steve
+    decision: "Cancel the Google Ads work. No payment added, no campaign launched, nothing spent."
+    account: "668-681-8891 ('Relay'), created 2026-08-16 under sgharlow@gmail.com. Left DORMANT
+      with no payment method, which is what makes it structurally unable to serve — not a setting
+      anyone has to remember. Deliberately NOT closed; closing is irreversible and nothing is
+      gained by it. ⚠️ Do NOT reuse report-bridge's account 990-960-7101 if this is ever revived."
+    why: "The measurement, not the effort. Keyword Planner returned ~330 on-wedge searches/month
+      with ten of sixteen keyword ideas resolving to Netflix password sharing, so N>=100 was
+      arithmetically out of reach inside a window that hard-stops 2026-10-02. Continuing to
+      configure would have produced a well-built instrument pointed at a market that is not there."
+    also_observed_while_stopping: "Google's onboarding silently routed the campaign into
+      PERFORMANCE MAX ('/campaigns/new/performancemax' — 'optimized by Google AI across Search,
+      YouTube, Display and more'), which with zero conversion history drains into Display
+      placements. A third instance of the same pattern seen on Reddit today: the platform's
+      default configuration is built to spend, not to measure."
+    loose_ends: "⚠️ A FRANCE phone number (05 46 74 56 38) and country code FR were attached during
+      onboarding and survived both an Unlink click and Skip — visible in the campaign URL
+      parameters. Harmless while the account is dormant; fix it before any future use.
+      ⚠️ The products/services field reverted to 'Network Security' on reload; free-text
+      replacements did not persist. Same caveat — only matters if revived."
+    pending_offer_declined_by_inaction: "A spend-$500-get-$500 credit was offered and is confirmed
+      only at the payment step, which was never reached. Nothing was accepted."
+    what_survives: "docs/g1-google-lane.md, lib/g1/google-lane.ts and lib/ops/google-lane.test.ts
+      are RETAINED and still pass. The copy fits Google's real field limits, the negatives are
+      sound, and the keywords now carry measured volumes. If a reason to revive this ever appears,
+      the work is done and the reason it was shelved is recorded above it."
+
   - id: g1-editorial-over-paid
     date: 2026-08-16
     owner: steve
