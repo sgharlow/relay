@@ -513,7 +513,14 @@
         "need": "set DSQL_ROLE=relay_app in Vercel Production, redeploy, watch the first authenticated request, then remove dsql:DbConnectAdmin from relay-runtime-policy",
         "cost": "~15 minutes",
         "runbook": "docs/least-privilege-cutover.md",
-        "note": "Everything in the repo is done and inert until the variable is set. verify:live under the tighter role already removed the \"will the app still work\" question."
+        "note": "Everything in the repo is done and inert until the variable is set. verify:live under the tighter role already removed the \"will the app still work\" question.",
+        "resolved": {
+          "date": "2026-08-16",
+          "by": "steve",
+          "what": "DSQL_ROLE=relay_app set in Vercel Production, redeployed, dsql:DbConnectAdmin stripped from relay-runtime-policy (v2; v1 retained as rollback)",
+          "proven": "revoking SELECT from relay_app ALONE took production to 500 and restoring brought it back — it could only break if connecting as relay_app; then verify:stepup 17/17 against relaystandby.com, run after the cutover and again after the IAM strip",
+          "leftOpen": "the IAM half is not automated — re-adding dsql:DbConnectAdmin would go unnoticed by verify:roles. Command recorded in docs/least-privilege-cutover.md."
+        }
       }
     ],
     "deferred": [
@@ -553,6 +560,7 @@
       "Do the cutover, then watch one request — the only remaining step of an otherwise complete security fix, ~15 minutes",
       "Watch writerProven flip false -> true; sprint 4's switch is deployed and still untested in production because every e2e walk uses reserved domains that are refused at the send seam",
       "J9 steps 5-7 — twice deferred; build it if G1 produces numbers, drop it if it does not"
-    ]
+    ],
+    "housekeeping": ".relay-dev-key.json deleted 2026-08-16 — it duplicated the credential already in .env.local and nothing read it, so there was nothing to move to 1Password."
   }
 }

@@ -44,6 +44,37 @@ recovery-code issue (INSERT), account closure (DELETE). Row counts unchanged aft
 `.env.admin` as `autospecai`, a different principal. Confirmed after the strip —
 `current_user=admin`, `CREATE=true`. `relay_dev` on the same check: `CREATE=false`.
 
+## ⚠️ The half `verify:roles` does not watch
+
+`npm run verify:roles` re-measures the **database** side — grants, DDL, and the IAM-to-role
+bindings recorded in `sys.iam_pg_role_mappings`. It does **not** check the **IAM policies**, and
+those are the other half of the wall: re-adding `dsql:DbConnectAdmin` to `relay-runtime-policy`
+would silently restore the latent admin capability that phase 4 removed, and nothing in this
+repository would notice.
+
+It was left as a command rather than a script deliberately. The DB side needed automating because
+grants change routinely as migrations land; an IAM policy changes only when a person decides to
+change it, and `scripts/aws-sig.mjs` — the repo's way of calling AWS around Norton's TLS
+interception — imports `@smithy/signature-v4` and `@aws-crypto/sha256-js`, which are **transitive
+dependencies of `@aws-sdk/*` and are not declared in `package.json`**. Building a gate on undeclared
+deps trades one silent failure for another.
+
+So: run this after any change to either runtime principal. Both must print `dsql:DbConnect` and
+nothing more.
+
+```bash
+export AWS_CA_BUNDLE="$HOME/.aws-certs/win-root-ca-<current>.pem"   # Norton rotates these
+for u in relay-runtime relay-dev; do
+  arn="arn:aws:iam::461293170793:policy/${u}-policy"
+  v=$(aws iam get-policy --profile autospecai --policy-arn "$arn" --query 'Policy.DefaultVersionId' --output text)
+  echo "== $u =="
+  aws iam get-policy-version --profile autospecai --policy-arn "$arn" --version-id "$v" \
+    --query 'PolicyVersion.Document.Statement[?starts_with(Sid, `Dsql`)].Action' --output json
+done
+```
+
+Verified 2026-08-16: `relay-runtime` → `["dsql:DbConnect"]` (v2), `relay-dev` → `["dsql:DbConnect"]`.
+
 ## Rollback
 
 | To undo | Do this |
