@@ -37,13 +37,69 @@ export const LANE_B_CTA = 'start';
 export const LANE_B_FALLBACK_HREF = `/caregivers/interest?src=${LANE_B_CTA}`;
 
 /**
+ * One intent per page load, however many times the button is pressed.
+ *
+ * 🔴 THE SECOND WAY THIS GATE GETS THE WRONG ANSWER. The bug above biased it
+ * toward a FALSE KILL by losing the numerator; this one biases it the other way.
+ * `PriceCard` awaits a Stripe round-trip — commonly a second or more — before
+ * `window.location.href` is assigned, and until this it showed the visitor
+ * nothing while that happened. An unacknowledged button gets pressed again;
+ * that is not a hypothesis about users, it is what buttons without feedback are
+ * for. Every press called straight through to here, and every call emitted
+ * `intent_clicked` AND `caregiver_intent` — the ratified numerator — so one
+ * visitor's impatience counted as two conversions, and created two Stripe
+ * Checkout Sessions on the way.
+ *
+ * It matters more than the raw duplication suggests. `ratified.g1-flight-power`
+ * accepts a DIRECTIONAL read at N ≈ 100–180, structurally short of the N ≈ 250
+ * the ratio needs; at that size a handful of double-clicks is a material part of
+ * a 2% threshold. The gate is being asked whether the product has a market, and
+ * an inflated numerator answers yes for the wrong reason.
+ *
+ * THE PROMISE IS MEMOISED, not a boolean, and that is what makes it correct for
+ * the case that actually happens: the second press arrives while the first is
+ * still in flight, so a flag set after the await would be set too late. The
+ * repeat caller gets the same destination, the same single emit, and the same
+ * checkout session.
+ *
+ * ⚠️ Per PAGE LOAD, which is the right scope and not a limitation. The visitor
+ * navigates away immediately afterwards — to Stripe or to the fallback — so the
+ * module is discarded. A genuinely new intent is a new page load.
+ *
+ * The guard lives here rather than in the component because this module already
+ * "owns the measurement" (its own header), and a second Lane-B surface would
+ * otherwise have to remember to re-implement it. The component keeps a `busy`
+ * state as well, for the human half: telling somebody their click registered is
+ * a different job from making the count right.
+ */
+let inFlight: Promise<string> | null = null;
+
+/** Clears the once-per-page-load memo. Tests only. */
+export function _resetLaneBIntentForTesting(): void {
+  inFlight = null;
+}
+
+/**
  * Records a Lane-B price-CTA click and returns where the visitor should be sent.
  *
  * Always emits `intent_clicked` (the product funnel's own stage). Emits the ratified gate
  * numerator ONLY when the visitor is leaving for Stripe, because the fallback destination
  * emits it on mount.
+ *
+ * Repeat calls within one page load return the first call's destination without
+ * emitting again — see the note above.
  */
 export async function completeLaneBIntent(opts: {
+  search: string;
+  price: string;
+  startCheckout: () => Promise<string | null>;
+}): Promise<string> {
+  if (inFlight) return inFlight;
+  inFlight = completeLaneBIntentOnce(opts);
+  return inFlight;
+}
+
+async function completeLaneBIntentOnce(opts: {
   search: string;
   price: string;
   startCheckout: () => Promise<string | null>;
