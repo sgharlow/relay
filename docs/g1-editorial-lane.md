@@ -127,6 +127,25 @@ whole article about the problem. But it is a **different** signal, so record it 
 `g1-flight-log.md` already computes per-lane ratios (ratio #4). Do not blend editorial and paid into
 one headline number without saying so.
 
+## What to send an outlet
+
+The boilerplate lives in **`lib/g1/press-kit.ts`** and is composed from the product's own values —
+`PRICE_YEARLY_USD`, `TIER_LIMITS.free.items`, `OPERATOR_NAME` — rather than typed. It supplies the
+one-line description, the paragraph that goes under an article, the author line, the facts an editor
+can check independently, and the brand-asset paths.
+
+**Why it is code and not a template.** A pitch restates those facts every time, and hand-copied
+facts drift — three separate instances surfaced in this repo on 2026-08-16 alone. A journalist
+quoting a stale price in a published article is the one version of that bug that cannot be fixed
+with a commit. `lib/ops/press-kit.test.ts` pins it, including that the copy never implies estate
+handling (which the API answers `400` to) and never references employment.
+
+Read it with:
+
+```
+npx tsx -e "import('./lib/g1/press-kit').then(k => console.log(k.boilerplate(), '\n\n', k.authorLine()))"
+```
+
 ## Sequence
 
 1. **Read the contributor guidelines** for Next Avenue, Senior Planet, AgingCare and DailyCaring.
