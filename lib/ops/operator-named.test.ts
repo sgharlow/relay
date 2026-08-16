@@ -88,4 +88,19 @@ describe('the public surface names who is behind Relay', () => {
       expect(readFileSync(file, 'utf8'), `${file} should link to /about`).toContain('href="/about"');
     }
   });
+
+  it('the EDITORIAL DESTINATION reaches it — op-eds land on /caregivers, not the homepage', () => {
+    /*
+      The link every op-ed carries is relaystandby.com/caregivers?src=ed-<outlet>
+      (docs/g1-editorial-lane.md), so /caregivers is where a reader asks "who is
+      asking me to store my mother's passwords". Until 2026-08-16 that page
+      offered How it works, Security, Privacy and Terms — and no route to an
+      answer.
+
+      Asserted separately from the homepage and the legal pages because it is the
+      one that carries the traffic the plan is built to create, and it is the
+      easiest to drop in a footer refactor.
+    */
+    expect(readFileSync('src/app/caregivers/page.tsx', 'utf8')).toContain("'/about'");
+  });
 });
