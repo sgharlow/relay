@@ -612,6 +612,25 @@ ratified:
       destination src is a declared lane, because under an allow-list a typo there reads
       as zero demand rather than as a typo."
 
+  - id: j9-5-7-dropped
+    date: 2026-08-16
+    owner: steve
+    decision: "DROP J9 steps 5-7 — reversal receipt, re-arm confirmation, thank-you-the-recipient.
+      Not deferred a fourth time: dropped."
+    rationale: "docs/user-journeys.md filed these under a heading that reads 'Known gaps that are
+      NOT defects', and the sentence directly beneath them was always the answer: 'Step 4 now
+      carries the emotional weight these were meant to share.' Step 4 — the graceful close — was
+      built 2026-08-08 and live-proven. A recipient whose access has closed sees what the vault did
+      on their behalf, which items they opened, that the unopened ones are on the owner's record,
+      and a thank-you. The payoff moment of the product's own differentiator exists and works, so
+      5-7 were enhancements to a complete journey rather than gaps in an incomplete one."
+    why_now: "Deferred in sprint 4 and again in sprint 5, which wrote 'do not carry it a third
+      time'. It was carried a third time. A backlog item that survives three deferrals without
+      anyone choosing it is being avoided, not prioritised — deciding it is what stops a fourth."
+    reopen_if: "a real user completing a stand-down reports that the close feels abrupt. That is a
+      signal from a person, not a backlog item. Nothing in the architecture makes these harder to
+      add later than they are today."
+
   - id: retire-paid-advertising
     date: 2026-08-16
     owner: steve
