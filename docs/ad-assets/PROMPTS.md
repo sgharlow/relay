@@ -387,8 +387,15 @@ read. Adding it there means **replacing** a variant, not appending one.
 
 ⚠️ **Before running it, verify three things against the source and not against this file:**
 
-1. `TIER_LIMITS.free` in `lib/billing/entitlements.ts` — the item and recipient caps. Both numbers
-   below are read from there at time of writing and **both have moved before**.
+1. ✅ **Now a test, not a check you have to remember (2026-08-16).** `lib/ops/ad-copy.test.ts`
+   fails if any free-plan cap written into this file or into `g1-ad-creatives.md` disagrees with
+   `TIER_LIMITS.free.items`, and the landing page's own `SECONDARY_CTA_LABEL` is pinned to it too —
+   eleven hand-copies of one live contract, none of which were tied to it. Proven by moving the cap
+   in `entitlements.ts` alone and watching every restatement get named.
+   ⚠️ This item used to read "the item and recipient caps — **both** numbers below are read from
+   there", and the recipient cap appears in no line of F1's copy. Only the item cap is stated, so
+   only the item cap is pinned; if a recipient number is ever added to an ad, extend the test in the
+   same edit.
 2. `TIER_LIMITS.free.canRelease`. It is currently `true` **as a dated beta decision**, and the
    source carries the comment *"FLIP TO false WHEN BETA ENDS."* **No copy below depends on it** —
    deliberately. Never write an ad that promises the free plan will open access in an emergency,

@@ -38,7 +38,8 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 
-import { PRICE_YEARLY_USD } from '../../src/app/caregivers/content';
+import { PRICE_YEARLY_USD, SECONDARY_CTA_LABEL } from '../../src/app/caregivers/content';
+import { TIER_LIMITS } from '../billing/entitlements';
 import { GUARANTEE_LABEL } from '../offer';
 
 const DOC = 'docs/g1-ad-creatives.md';
@@ -355,6 +356,103 @@ describe('the image palette is really taken from the product', () => {
         `PROMPTS.md's own correction note calls it "un-migrated legacy from before the Warm ` +
         `Archive system existed".`,
     ).toEqual([]);
+  });
+});
+
+/*
+  THE FREE-PLAN CAP IS A LIVE CONTRACT RESTATED ELEVEN TIMES, AND NOTHING TIED
+  ANY OF THEM TO IT.
+
+  `TIER_LIMITS.free.items` is the number the product actually enforces —
+  assertWithinItemCap refuses the import and says "The free plan holds N items".
+  That number is hand-copied into six places in `g1-ad-creatives.md`, four in
+  `PROMPTS.md` §3, and into `SECONDARY_CTA_LABEL`, which is the landing page the
+  ads point at.
+
+  Both documents already know this is a hazard and both answered it with a
+  convention. PROMPTS.md §3: "verify three things against the source and not
+  against this file — TIER_LIMITS.free ... Both numbers below are read from
+  there at time of writing and BOTH HAVE MOVED BEFORE." §0 of the same file
+  refuses to bake a cap into a PNG because "the caps are a live contract".
+  A convention is what you write when a structure is unavailable; here one is
+  available, and this is it — the same treatment `$119` already gets above.
+
+  What makes this worth a test rather than a note is the direction of the
+  damage. Recipients moved 1 -> 4 once already. If items moves, a running ad
+  promises a number the product refuses, the visitor meets the refusal at
+  import time, and nothing anywhere notices — the ad keeps serving.
+
+  TWO EXCLUSIONS, both deliberate and both narrow:
+
+  1. Lines carrying ❌ are the §1b overflow audit — a table of drafts that were
+     REJECTED, recorded with their measured character counts. Editing a number
+     inside a discarded string would falsify the record of why it was discarded.
+  2. M3's "the 8 accounts a family would need first" is a suggested SEED SIZE,
+     not a cap. It is the reason this check cannot simply assert that every
+     number beside "accounts" is the cap, and it is named here rather than
+     dodged by a looser regex, so a future reader can see the exception is one
+     line long.
+*/
+describe('the free-plan cap in the ads is the one the product enforces', () => {
+  const CAP = TIER_LIMITS.free.items;
+
+  const WORD_NUMBERS: Record<string, number> = {
+    one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7,
+    eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, fifteen: 15, twenty: 20,
+  };
+
+  /** A seed-size suggestion, not an entitlement. The only non-cap count in either file. */
+  const NOT_A_CAP = /the 8 accounts a family would need first/;
+
+  const CLAIM = /\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty)[ -](accounts|items)\b/gi;
+
+  function claimsIn(label: string, text: string): { where: string; stated: number; phrase: string }[] {
+    const out: { where: string; stated: number; phrase: string }[] = [];
+    text.split(/\r?\n/).forEach((line, i) => {
+      if (line.includes('❌')) return; // the overflow audit — records of rejected drafts
+      if (NOT_A_CAP.test(line)) return;
+      for (const m of line.matchAll(CLAIM)) {
+        const raw = m[1].toLowerCase();
+        out.push({
+          where: `${label}:${i + 1}`,
+          stated: /^\d+$/.test(raw) ? Number(raw) : WORD_NUMBERS[raw],
+          phrase: m[0],
+        });
+      }
+    });
+    return out;
+  }
+
+  it('every free-plan cap written into ad copy matches TIER_LIMITS.free.items', () => {
+    const claims = [
+      ...claimsIn(DOC, md),
+      ...claimsIn('docs/ad-assets/PROMPTS.md', readFileSync('docs/ad-assets/PROMPTS.md', 'utf8')),
+    ];
+
+    // Vacuity guard: if the phrasing changes so nothing matches, this check has
+    // quietly stopped checking. The claims are numerous and are not going away.
+    expect(claims.length, 'no free-plan cap claims found — has the matcher gone blind?').toBeGreaterThan(5);
+
+    const wrong = claims.filter((c) => c.stated !== CAP);
+    expect(
+      wrong,
+      `TIER_LIMITS.free.items is ${CAP}, and the product says so to the visitor's face ` +
+        `("The free plan holds ${CAP} items"). These ad claims say something else: ` +
+        `${wrong.map((c) => `${c.where} "${c.phrase}"`).join(', ')}. A running ad promising a ` +
+        `cap the product refuses is discovered by the customer, at import time.`,
+    ).toEqual([]);
+  });
+
+  it('the landing page the ads point at states the same cap', () => {
+    /*
+      PROMPTS.md §6 open item 2: "F1 states the free on-ramp in the ad; the
+      destination should confirm it, or the click bounces on a promise the page
+      does not repeat." It does confirm it — this pins that it keeps doing so,
+      and with the right number.
+    */
+    const m = SECONDARY_CTA_LABEL.match(CLAIM);
+    expect(m, `SECONDARY_CTA_LABEL no longer states the free cap: "${SECONDARY_CTA_LABEL}"`).not.toBeNull();
+    expect(SECONDARY_CTA_LABEL).toContain(`${CAP} items`);
   });
 });
 
