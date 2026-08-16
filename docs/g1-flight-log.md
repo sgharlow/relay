@@ -84,6 +84,33 @@ happens is not recoverable later.
 |---|---|---|---|---|
 | 2026-08-10 | 1 × `caregiver_intent` | `visual-check` | **No** | Pre-flight audit walk. Emitted because a stale channel was parked in the QA browser profile — the asymmetry fixed the same day. Not a lane value, so it filters out of every lane read; recorded because it is in the dashboard. |
 | _(fill)_ | 1 × `caregiver_qualified` | `reddit-ads` | **Yes — subtract 1** | Part-2 verification click (`g1-ad-creatives.md`). Deliberately no intent, so it biases the ratio DOWN, never up. |
+| 2026-08-16 | 1 × `caregiver_leads` row (**no analytics event**) | `qa` | **No** | 🔴 **DELETE BEFORE THE WINDOW OPENS — Steve, sysadmin.** The capture proof below. It affects verdict line 3 (the lead COUNT), not N. `npm run flight:snapshot` exits 1 until it is gone, so it cannot be forgotten. |
+
+### ✅ 2026-08-16 — the demand-capture write, proven under the production role
+
+The last unproven link in the path that produces verdict lines 3 and 4. `verify:roles` confirmed
+`relay_app` **holds** `INSERT` on `caregiver_leads` in both regions, but `verify:live` runs as
+`relay_dev`, which by construction cannot exercise that one write — so the grant was verified and
+the path was not. A grant read from a catalog is not a row written by an application.
+
+One submission through the live API on production, `src=qa` (gate-excluded, so no analytics event
+was emitted and the ratio cannot be touched):
+
+| | |
+|---|---|
+| `POST /api/caregivers/interest` | **200** `{"ok":true}` |
+| Row in `caregiver_leads` | present — `src=qa`, `cta=capture-proof` |
+| `notified` | **true** — Resend accepted the notification, so **both** legs of the deliberately-paired capture work |
+| Guard behaviour | `flight:snapshot` went from exit 0 to **exit 1**, naming the row |
+
+🔴 **Outstanding, and it is a sysadmin act:** the row must be deleted before the first ad serves.
+
+```sql
+DELETE FROM caregiver_leads WHERE email = 'g1-capture-proof@example.com';
+```
+
+Run it from `.env.admin`. `relay_dev` cannot — `caregiver_leads` is the one table it may read and
+not write, which is the same property that made this proof necessary.
 
 ## Daily snapshot
 
