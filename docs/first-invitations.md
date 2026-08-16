@@ -25,6 +25,27 @@ to send.
 ⚠️ **The code is readable exactly once**, at the moment you issue it — only a hash is stored. Copy it
 before you close the panel.
 
+### ⚠️ If you send anyone a link to the marketing page, tag it `beta-`
+
+The three messages below point at `relaystandby.com/claim`, which is outside the G1 funnel and
+needs no tag. This rule is for the other kind of message — *"have a look at what it is"* — where the
+link is to `/caregivers`.
+
+> `https://relaystandby.com/caregivers?src=beta-founding`
+
+Any `src` starting with **`beta-`** is excluded from the G1 gate ratio (`isGateQualifyingSrc` in
+`src/app/caregivers/content.ts`). The suffix after the prefix is free — use whatever describes the
+batch.
+
+**Why it matters more than it looks.** A beta recruit is being offered the free plan, so they land
+in the gate's denominator and can never appear in its priced numerator. Untagged, every person you
+show the page to pushes the measured conversion rate **down**, toward the `<0.5%` that kills the
+consumer product. And this one cannot be cleaned up afterwards: a `caregiver_leads` row can be
+deleted, a Vercel Analytics event cannot.
+
+An **untagged** link is also safe — it reads as `direct` and is already excluded. The dangerous case
+is a link tagged with anything else, so if you are unsure, send the bare URL.
+
 ---
 
 ## To someone who would step in (a recipient)

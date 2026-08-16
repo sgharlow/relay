@@ -151,13 +151,40 @@ export const SHOWCASE_SRCS = ['h0-demo', 'h0-home'] as const;
  */
 export const QA_SRCS = ['qa', 'preflight'] as const;
 
+/**
+ * BETA AND FOUNDING-FAMILY traffic — recruited, and recruited to the FREE plan.
+ *
+ * `docs/ad-assets/PROMPTS.md` §6 (Steve's 2026-08-12 scope ruling) pre-committed this and
+ * named the condition that arms it: "If a beta or founding-family campaign is ever
+ * revived, this becomes a pre-flight blocker again: every tagged non-excluded `src` counts
+ * toward N, free-signup conversions emit no priced numerator, and the ratio would be
+ * biased **down** — toward a false KILL on the gate that decides the product."
+ *
+ * The asymmetry is what makes it worth a rule rather than a note. Somebody invited into the
+ * beta lands in the denominator and can never appear in the priced numerator, because they
+ * were not asked to pay. So this traffic does not merely dilute N, it moves the ratio in
+ * one direction only — toward the <0.5% that kills D2C.
+ *
+ * A PREFIX, not a list, and that is the whole design. A list works only if whoever composes
+ * the next beta link guesses the string this file guessed first, and the cost of guessing
+ * wrong is not recoverable: a `caregiver_leads` row can be deleted, a Vercel Analytics event
+ * cannot. `beta-` holds for tags nobody has invented yet. It is anchored at the start, so a
+ * real lane is never swallowed by it — `reddit-ads-beta` still counts.
+ *
+ * ⚠️ THIS ONLY WORKS IF BETA LINKS CARRY IT. The convention is stated where such a link is
+ * actually composed — `docs/first-invitations.md` — because a rule that lives only in a test
+ * is a rule the person pasting a URL into a text message will never meet.
+ */
+export const BETA_SRC_PREFIX = 'beta-';
+
 /** Sources that are tagged but must never reach the gate ratio, for any reason. */
-const NON_QUALIFYING_SRCS: readonly string[] = [...SHOWCASE_SRCS, ...QA_SRCS];
+const NON_QUALIFYING_SRCS: readonly string[] = [...SHOWCASE_SRCS, ...QA_SRCS, 'beta'];
 
 /** True when a src counts toward the G1 gate ratio (tagged, caregiver-targeted, not ours). */
 export function isGateQualifyingSrc(src: string): boolean {
   const s = src.trim();
   if (!s || s === 'direct') return false;
+  if (s.startsWith(BETA_SRC_PREFIX)) return false;
   return !NON_QUALIFYING_SRCS.includes(s);
 }
 

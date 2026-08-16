@@ -84,6 +84,46 @@ describe('G1 caregiver WTP instrument', () => {
     }
   });
 
+  /*
+    docs/ad-assets/PROMPTS.md §6, Steve's 2026-08-12 scope ruling, pre-committed
+    this exclusion and the condition that arms it:
+
+      "⚠️ If a beta or founding-family campaign is ever revived, this becomes a
+      pre-flight blocker again: every tagged non-excluded src counts toward N,
+      free-signup conversions emit no priced numerator, and the ratio would be
+      biased DOWN — toward a false KILL on the gate that decides the product. A
+      Vercel Analytics event cannot be deleted, so the exclusion has to exist
+      BEFORE the first such ad, not after."
+
+    A beta recruit is being asked for the free plan, so they arrive in the
+    denominator and can never appear in the priced numerator. Every one of them
+    pushes the ratio toward the <0.5% kill on a gate whose whole question is
+    whether caregivers will PAY.
+
+    It is a PREFIX rather than a list because a list only works if whoever
+    writes the next beta link guesses the same string this file guessed first,
+    and being wrong is unrecoverable in exactly one direction. `beta-` is one
+    rule, it cannot be defeated by an unforeseen suffix, and it reads plainly in
+    a URL Steve is pasting into a message.
+  */
+  it('beta and founding-family traffic is EXCLUDED — it can never reach the priced numerator', () => {
+    expect(isGateQualifyingSrc('beta')).toBe(false);
+    expect(isGateQualifyingSrc('beta-founding')).toBe(false);
+    expect(isGateQualifyingSrc('beta-reddit')).toBe(false);
+    // The suffix is deliberately not enumerated anywhere — that is the point.
+    expect(isGateQualifyingSrc('beta-a-tag-nobody-has-invented-yet')).toBe(false);
+  });
+
+  it('the exclusion is anchored, so a paid lane is never swallowed by it', () => {
+    // A substring rule would exclude anything merely CONTAINING the word, and the
+    // failure would be silent in the other direction: real bought traffic dropped
+    // from N, on a gate that also kills on a low absolute count.
+    expect(isGateQualifyingSrc('reddit-ads-beta')).toBe(true);
+    expect(isGateQualifyingSrc('betamax-forum')).toBe(true);
+    expect(isGateQualifyingSrc('reddit-ads')).toBe(true);
+    expect(isGateQualifyingSrc('meta-ads')).toBe(true);
+  });
+
   it('names the real competitive frames, not strawmen', () => {
     const text = JSON.stringify(DIFFERENTIATORS);
     expect(text).toContain('Everplans');

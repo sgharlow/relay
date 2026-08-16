@@ -46,6 +46,7 @@ enforced by `isGateQualifyingSrc()` in `src/app/caregivers/content.ts` and pinne
 | untagged | `direct`, empty | not attributable to a caregiver-targeted channel |
 | `SHOWCASE_SRCS` | `h0-demo`, `h0-home` | real humans, wrong audience — H0-win traffic. Read as a separate secondary segment ("did the tech audience contain caregivers?") |
 | `QA_SRCS` | `qa`, `preflight` | **us.** Instrument verification, not demand |
+| beta | `beta`, and anything starting `beta-` | **recruited, and recruited to the FREE plan.** They land in the denominator and can never reach the priced numerator, so they bias the ratio one way only — toward the `<0.5%` kill. A prefix rather than a list, so a tag nobody has invented yet is still covered. Added 2026-08-16 per `PROMPTS.md` §6, which pre-committed it as a pre-flight blocker the moment beta recruitment revived |
 
 Both sides of the ratio resolve `src` through the same session-parked channel
 (`qualifiedProps` / `intentProps`), so a visitor counts under one label on both sides.
