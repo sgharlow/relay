@@ -601,7 +601,7 @@ verdict time. Naming: `meta-m1-1080.png`, `meta-m2-1080.png`, `meta-m3-1080.png`
 |---|---|
 | Meta feed (primary) | **1080 × 1080**, 1:1, PNG or JPG |
 | Reddit free-form | **1200 × 628** (1.91:1) or 1080 × 1080 |
-| Colour | Amber on near-black, matched to the landing page so the click-through reads as continuous |
+| Colour | **Warm Archive** — ochre `#b4703a` and deep ink `#1f1b16` on warm paper `#f7f4ee`, matched to the landing page so the click-through reads as continuous. ⚠️ This row read "Amber on near-black" until 2026-08-16, which was the opposite of the destination it claims to match; the palette itself lives in `docs/ad-assets/PROMPTS.md` §1 and `src/app/globals.css`, and is not restated here beyond the three roles |
 | Text in image | Short. The old 20%-text rule is retired, but text-heavy images still get throttled delivery — keep it to one line |
 | Must NOT contain | Stock photos of smiling seniors (the audience is exhausted by them and it reads as insurance marketing); any price other than $119/yr; any testimonial, badge or certification beyond the H0 award |
 | Safe zone | Keep text ≥ 8% from every edge — placements crop differently |
