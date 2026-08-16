@@ -717,5 +717,123 @@
       "Prove the lead INSERT at the top of the sitting - two minutes, closes the last unproven link behind verdict lines 3 and 4."
     ],
     "report": "docs/sprint-reports/2026-08-16-sprint-2-beta-ads.md"
+  },
+  "sprint7": {
+    "scope": "complete and polished enough for editorial outreach to land",
+    "branch": "sprint/2026-08-16-3",
+    "iterationsUsed": 5,
+    "iterationCap": 5,
+    "backlogSource": [
+      "repo survey against a new lens: what a reader arriving from an AARP/caregiver.com op-ed encounters"
+    ],
+    "backlogInferred": true,
+    "inferredWhy": "the previous deferred queue was written for a paid-ads world retired hours earlier",
+    "verdict": "The product is complete and polished. The gap was that it named nobody — the Terms of Service, a contract a paying customer enters, named no party at all.",
+    "baseline": {
+      "start": {
+        "types": "green",
+        "lint": "green",
+        "build": "green",
+        "tests": "2492 passed, 1 skipped"
+      },
+      "end": {
+        "types": "green",
+        "lint": "green",
+        "build": "green",
+        "tests": "2507 passed, 1 skipped"
+      },
+      "newlySkippedTests": 0
+    },
+    "surveyFoundSound": [
+      "all 10 public pages 200; /continue correctly 307s",
+      "23 internal links crawled from 9 seeds — zero broken",
+      "no console errors on the public surface",
+      "J1-J9 live, J10 withdrawn deliberately",
+      "a11y 0 serious/critical across 34 pages (sprint 4)",
+      "real design system — semantic state palette: sage=closed/safe, ochre=in motion, clay=permanent"
+    ],
+    "theFinding": "One unresolved fact — who operates Relay — blocked four surfaces: the legal pages named no entity, Stripe checkout reads Relay/ReportBridge/LearningAI365 from a shared personal account, 10DLC could not choose a route without knowing about an EIN, and editorial needs an attributable author. The repo had hit it three times without settling it.",
+    "shipped": [
+      {
+        "id": "I1",
+        "commit": "d19f7cb",
+        "axis": "assessment",
+        "title": "readiness assessment — what is sound, what is missing, what is explicitly not worth doing"
+      },
+      {
+        "id": "I3",
+        "commit": "fb5205f",
+        "axis": "documentation",
+        "title": "J9 5-7 dropped by decision after three deferrals",
+        "evidence": "step 4 built 2026-08-08 carries the payoff; filed under a heading that already read \"Known gaps that are NOT defects\""
+      },
+      {
+        "id": "I2",
+        "commit": "d568a4d",
+        "axis": "completeness",
+        "title": "Relay names its operator — /about, /terms, /privacy, footer",
+        "evidence": "operator-named.test.ts 6 assertions; proven by reverting /terms to its exact pre-today wording and by hardcoding the name"
+      },
+      {
+        "id": "I4",
+        "commit": "a7042fc",
+        "axis": "completeness",
+        "title": "press boilerplate composed from the product, not typed",
+        "evidence": "press-kit.test.ts 9 assertions; proven by planting a $99 price, an estate promise and a dead asset path"
+      },
+      {
+        "id": "I5",
+        "commit": "b12f518",
+        "axis": "wiring",
+        "title": "the editorial destination /caregivers now reaches /about",
+        "evidence": "proven by deleting the footer entry"
+      }
+    ],
+    "nameResolved": "436 commits said 'Steve Gharlow', GitHub said 'Steve Harlow'; the LinkedIn slug stevengharlow reconciled it as Steven G. Harlow. Asked rather than guessed — it was going onto a contract.",
+    "blocked": [
+      {
+        "id": "H0-BADGE",
+        "owner": "steve",
+        "category": "decision needed (ratified copy)",
+        "need": "rule on whether \"Winner — Most Impactful, H0 Hackathon 2026\" stays on /caregivers for a caregiver audience",
+        "note": "/security already moved the hackathon artefacts off the front door because \"on a landing page it frames a credential vault as a weekend project\". The badge is the remaining instance. Not changed unilaterally — the copy is pinned by content.test.ts."
+      },
+      {
+        "id": "DEPLOY",
+        "owner": "steve",
+        "category": "decision needed",
+        "need": "merge and deploy sprint/2026-08-16-3",
+        "note": "relaystandby.com still has no /about and its Terms still name nobody. Every finding is true of the branch, not of the site an editor checks today."
+      }
+    ],
+    "deferred": [
+      {
+        "id": "STRIPE-NAME",
+        "score": 4,
+        "note": "ratified.stripe-merchant-name left it 'for the G1 flight' and that flight is cancelled, so the stated reason expired. With no entity, separating means a second personal account. Not urgent at zero volume."
+      },
+      {
+        "id": "10DLC",
+        "score": 3,
+        "note": "now unblocked by relay-operator-is-an-individual — Sole Proprietor is the only route without a Tax ID"
+      },
+      {
+        "id": "PROMPTS-PALETTE",
+        "score": 1,
+        "note": "omits sage/clay; wrong, and in a document retired with advertising"
+      }
+    ],
+    "debtCreated": [
+      "lib/g1/press-kit.ts is a fifth place the price appears — composed and pinned rather than copied, noted so the count stays honest",
+      "/about is prose that will age; nothing tests it stays true, only that it names the operator and routes to a human"
+    ],
+    "correctionMade": "I asserted this morning that the product palette is paper/ink/ochre. It is not — it is semantic, and sage (#4f7a6b) is the RESTING state. Recorded in the assessment rather than quietly fixed.",
+    "nextTop3": [
+      "Deploy — everything is inert until then, and an editor checking today still finds a site that names nobody",
+      "Rule on the hackathon badge before the first pitch, since a piece may point at that page",
+      "Draft angle 3 — the product is ready; the article is now the work"
+    ],
+    "doneCondition": "No material incremental product work remains identifiable. What is left is a positioning decision, a deploy, and writing. Adding surface before the first reader arrives is the horizontal build the demand gate exists to stop.",
+    "report": "docs/sprint-reports/2026-08-16-sprint-3-readiness.md"
   }
 }
