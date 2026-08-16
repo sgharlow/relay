@@ -66,6 +66,10 @@ npm run verify:schema  # do both DSQL regions have the tables the migrations dec
 npm run verify:funnel  # is the G1 ad instrument alive? Drives a real browser against
                        # production under src=qa (gate-excluded), writes nothing.
                        # Run it daily during an ad flight — see docs/g1-ad-creatives.md.
+npm run verify:iam     # the OTHER half of the least-privilege wall — can the live site's IAM
+                       # principal still obtain a DSQL ADMIN token? Reads the live policy,
+                       # managed AND inline, wildcards included. verify:roles cannot see
+                       # this. Read-only; NEEDS .env.admin (an identity that can read IAM).
 npm run flight:snapshot # the G1 flight's daily read AND the sitting sheet's pre-flight
                        # line 3. Prints the snapshot row + the lead notes (verdict line
                        # 4), and EXITS 1 if caregiver_leads is not empty before the
@@ -106,9 +110,17 @@ alone. Being a sysadmin is something you *choose* by naming that file, not a pow
 default. Until this existed the app minted an **admin** token, so production ran with full DDL
 rights and the same IAM user's key sat on a laptop; nothing anywhere could tell them apart.
 
-⚠️ **Production is still on the admin path.** `DSQL_ROLE` unset means `admin`, deliberately —
-Vercel moves to `relay_app` as a separate, explicit step. A denied write surfaces as
-`500 CaptureRefused`; if you ever see that on the lead form, it is a grant, not a bug.
+✅ **Production moved off the admin path on 2026-08-16.** `DSQL_ROLE=relay_app` is set in Vercel
+and `dsql:DbConnectAdmin` has been stripped from `relay-runtime-policy` (v2; v1 retained as the
+rollback), so the live site cannot obtain database admin by permission rather than by
+configuration. Both halves are re-measurable: `npm run verify:roles` for the database wall,
+`npm run verify:iam` for the IAM wall. A denied write still surfaces as `500 CaptureRefused`; if
+you ever see that on the lead form, it is a grant, not a bug.
+
+> ⚠️ This paragraph read *"Production is still on the admin path… Vercel moves to `relay_app` as a
+> separate, explicit step"* for a day after that step was taken, while the `verify:roles` section
+> 110 lines below already said the cutover was done. One file, two answers, about which identity
+> the live site holds. Corrected 2026-08-16.
 
 ## Architecture — the non-obvious invariants
 
@@ -223,6 +235,18 @@ bound to exactly one IAM principal. Proven to fail in both directions by plantin
 `relay_dev` and a starved `relay_app`. ✅ **Cutover DONE 2026-08-16**: production connects as `relay_app`, and `dsql:DbConnectAdmin` has been
 stripped from `relay-runtime-policy` (v2; v1 retained as rollback), so the live site can no longer
 obtain database admin by permission rather than by configuration. `docs/least-privilege-cutover.md`.
+
+**`npm run verify:iam` is the sixth, and it watches the half `verify:roles` structurally cannot.**
+The cutover has two walls. `verify:roles` re-measures what a role may do *once connected*, by
+reading the live catalog; the IAM policy decides something prior — whether the production principal
+can obtain an admin connection at all. One `aws iam create-policy-version` puts `dsql:DbConnectAdmin`
+back, in no diff, no test run and no build, and the app keeps working. This reads the live policy and
+refuses three ways it can return: the literal action, a wildcard (`dsql:*`, `*`) that confers it
+without naming it, and an **inline** user policy, which is a different API call entirely. It also
+asserts the positive half — a policy stripped to nothing grants no admin and takes the site down, and
+a check that is happiest when the product is broken is measuring the wrong thing. Proven in both
+directions against real AWS data, with no IAM mutation: v1 is retained as the rollback and still
+carries the grant, so pointing the reader at it is a live negative control.
 
 Accessibility is a fifth: `node scripts/a11y-audit.mjs` with `A11Y_OWNER_EMAIL` set to an account
 that exists (`scripts/disposable-owner.ts create` makes one). CI covers the signed-out half only —

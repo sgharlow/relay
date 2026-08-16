@@ -180,6 +180,33 @@ serving normally as `relay_app`, because it removes the fallback.
 different principal that keeps its admin rights. This was proven independently before phase 2, and
 it is the reason stripping `relay-runtime` does not lock anybody out of the schema.
 
+### ✅ The IAM half is now watched — `npm run verify:iam` (2026-08-16)
+
+Phase 4 shipped, and the sprint that shipped it recorded what it had left open: *"the IAM half is
+not automated — re-adding `dsql:DbConnectAdmin` would go unnoticed by `verify:roles`."* That is the
+uncomfortable property of this wall — it is enforced by a policy document in another system, one
+`create-policy-version` restores it, and nothing in this repo would change. The application would
+keep working, which is precisely why nobody would notice.
+
+`npm run verify:iam` reads the live policy on `relay-runtime` and refuses **three** ways the grant
+can come back, not one:
+
+| Route back | Caught by |
+|---|---|
+| the literal `dsql:DbConnectAdmin` re-added to the managed policy | exact match on the default version |
+| a wildcard — `dsql:*`, or `*` — which confers it without naming it | prefix matching, not string equality |
+| an **inline** user policy sitting beside the managed one | `ListUserPolicies`, a different API call |
+
+It also asserts `dsql:DbConnect` is still granted. A policy stripped to nothing grants no admin and
+takes the site down; reporting that as secure would be a check that is happiest when the product is
+broken.
+
+**Proven in both directions against real AWS data, with no IAM mutation.** v1 of this policy is
+retained as the rollback above and still carries the admin grant, so pointing the reader at it is a
+live negative control that costs nothing and changes nothing: the check exits 1 and names the
+statement. Read-only throughout — five IAM read calls, no writes. Needs `.env.admin`, because the
+application's own credentials deliberately cannot read IAM.
+
 ## Keeping it true
 
 A `GRANT` leaves no trace in this repository. `db/migrations/*.sql` records what was intended when
