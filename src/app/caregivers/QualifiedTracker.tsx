@@ -11,7 +11,12 @@
 
 import { useEffect } from 'react';
 
-import { CAREGIVER_QUALIFIED, qualifiedProps } from './analytics';
+import {
+  CAREGIVER_QUALIFIED,
+  qualifiedProps,
+  firstTimeThisSession,
+  QUALIFIED_ONCE_KEY,
+} from './analytics';
 import { clickIdFrom, rememberClickId } from './click-id';
 import { trackG1 } from './track';
 
@@ -26,6 +31,15 @@ export default function QualifiedTracker() {
     // The click ID exists on this URL and nowhere after it. Parked alongside
     // the channel so it survives the walk to the conversion page.
     rememberClickId(clickIdFrom(window.location.search));
+    /*
+      ⚠️ THE PARKING ABOVE STILL RUNS ON EVERY MOUNT, and only the emit is
+      deduplicated. Those two lines are not measurement — they carry the channel
+      and the click ID forward to the conversion page — so skipping them on a
+      return visit would break attribution for the very session this is trying to
+      count correctly. The order matters and is the whole reason the guard is
+      here rather than wrapped around the effect.
+    */
+    if (!firstTimeThisSession(QUALIFIED_ONCE_KEY)) return;
     // trackG1, not track: this effect runs before <Analytics/> creates the queue,
     // so a bare track() call is silently dropped. See track.ts.
     trackG1(CAREGIVER_QUALIFIED, props);
