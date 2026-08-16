@@ -24,6 +24,7 @@ import { useRef, useState, type FormEvent } from 'react';
 
 import { CAREGIVER_CHECKOUT, CAREGIVER_LEAD, recallChannel } from '../analytics';
 import { recallClickId } from '../click-id';
+import { PRICE_YEARLY_LABEL } from '../../../../lib/offer';
 import { CONTACT_EMAIL } from '../../../../lib/contact';
 import { trackG1 } from '../track';
 
@@ -131,7 +132,7 @@ export default function InterestForm() {
         }
         className="flex min-h-[52px] w-full items-center justify-center rounded-md bg-ink px-6 text-t3 font-semibold text-paper transition-colors hover:bg-ink"
       >
-        Set up my vault now — $119/yr
+        Set up my vault now — {PRICE_YEARLY_LABEL}/yr
       </a>
       <p className="mt-2 text-center text-t1 leading-relaxed text-muted">
         Takes a few minutes. You will need an authenticator app — there is no password to lose.

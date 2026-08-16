@@ -811,10 +811,20 @@ the dashboards every day — never carried forward from yesterday's row.
 
 | Read | From |
 |---|---|
+| **Is the instrument alive?** | **`npm run verify:funnel`** — 30 seconds, run it FIRST |
 | Spend to date, impressions, clicks, CPC | the ad platform's billing/campaign view (**Steve is signed in**) |
 | N (gate-qualifying `caregiver_qualified`), Lane-A intents, Lane-B intents | Vercel Analytics → Events |
 | `/caregivers` pageviews | Vercel Analytics — the cross-check against clicks |
 | Lead count and **the lead notes themselves** | `caregiver_leads` |
+
+> **Why the instrument check leads the list.** The first pause trigger below is
+> "N is flat while pageviews track clicks — the instrument is broken, not the
+> market." Read that way round, the fault is inferred from a *day of missing
+> data*, which is a day of spend already lost, and only after somebody notices a
+> zero that looks exactly like an unpopular product. `verify:funnel` asks the
+> question directly and answers it in half a minute, before the numbers are read
+> rather than after they disappoint. It drives a real browser under `src=qa`,
+> which the gate excludes, and it writes nothing.
 
 **Pause triggers — any one of these stops the lane the same day:**
 
@@ -860,6 +870,7 @@ by driving a real browser. **Do not trust a green suite here.**
 
 | | Condition | How it is checked |
 |---|---|---|
+| 0 | The trackers fire with the right `src` and `cta` | **`npm run verify:funnel`** — scripted, repeatable, and safe to re-run any day of the flight. It is the mechanical half of row 1: it cannot prove Vercel *ingested* an event (automation is suppressed by `navigator.webdriver`, so it reads the SDK's pre-flush queue), so it does not replace the human walk — it makes the part that breaks checkable more than once |
 | 1 | Steps 1–6 below pass on production | driven in a real browser, payloads read off the wire |
 | 2 | `caregiver_leads` = **0 rows** | live query, not a remembered number |
 | 3 | The test account and test lead row from step 5 are **deleted** | live query |

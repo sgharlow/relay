@@ -13,11 +13,26 @@
 # able to outlive the thing it watches. Hosting it on the same platform as the
 # app would let one outage take out both, and silence would look like health.
 #
-# WHY DAILY, NOT EVERY 30 MINUTES. The endpoint answers "have we EVER heard
-# anything", which is a slow-moving fact — deliberately, because Relay sends
-# rarely by design and a freshness alarm would fire on ordinary quiet weeks and
-# be muted inside a fortnight. See lib/notify/webhook-health.ts. Sampling a
-# slow fact quickly buys nothing and spends attention.
+# 🔴 FOR ITS FIRST WEEK THIS COULD NOT DETECT ANY OF THAT. The endpoint decided
+# health from "has any event EVER arrived" — count(*) > 0 over an append-only
+# table. Once the first event landed that was true forever, and 113 rows had
+# landed. Every word above described a failure this job would have passed
+# straight through: the secret could rotate, the endpoint could be deleted, and
+# the probe would keep reporting "Delivery telemetry alive."
+#
+# Fixed 2026-08-15 by giving the check a condition that can still become false:
+# messages Resend accepted more than six hours ago that NOTHING has been
+# reported back about. That state is now reachable, and was demonstrated against
+# production before this line was written. See lib/notify/webhook-health.ts and
+# db/migrations/031_email_send_attempts.sql.
+#
+# WHY DAILY, NOT EVERY 30 MINUTES. The fact is still slow-moving on purpose:
+# Relay sends rarely by design, so the check judges against SENDS rather than
+# against the clock, and a six-hour settle window sits under it. A quiet week
+# reports nothing either way — there is nothing to conclude — so sampling
+# quickly buys nothing and spends attention. What daily costs is up to a day's
+# delay noticing a dead stream, which is the right trade for a product whose
+# mail is bursty; what it buys is an alarm nobody learns to ignore.
 #
 # Feature: relay-standby
 

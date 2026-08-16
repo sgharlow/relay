@@ -140,7 +140,12 @@ export default function ImportPage() {
               on a phone rather than just awkward. Here that is the preview of
               what is about to be imported — the columns a person checks before
               committing. */}
-          <div className="overflow-x-auto rounded border border-rule">
+          <div
+            className="overflow-x-auto rounded border border-rule"
+            tabIndex={0}
+            role="region"
+            aria-label="Preview of the items about to be imported"
+          >
             <table className="w-full text-left text-t2">
               <thead className="bg-paper-sunken text-t1 uppercase text-muted">
                 <tr>

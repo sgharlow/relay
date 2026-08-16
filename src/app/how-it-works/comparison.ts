@@ -1,3 +1,5 @@
+import { PRICE_YEARLY_LABEL } from '../../../lib/offer';
+
 /**
  * The comparison matrix — factual claims about named companies.
  *
@@ -40,7 +42,7 @@ export interface ComparisonColumn {
  * fourth column is what most families genuinely do today.
  */
 export const COLUMNS: ComparisonColumn[] = [
-  { key: 'relay', label: 'Relay', sublabel: '$119/year' },
+  { key: 'relay', label: 'Relay', sublabel: `${PRICE_YEARLY_LABEL}/year` },
   { key: 'organizer', label: 'Everplans', sublabel: 'The organizer · $99.99/year' },
   { key: 'pwmgr', label: 'Bitwarden Emergency Access', sublabel: 'The password manager · Premium only' },
   { key: 'platform', label: 'Apple / Google legacy features', sublabel: 'The phone · free' },

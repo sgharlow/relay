@@ -5,7 +5,19 @@
 
   <!--
     ═══════════════════════════════════════════════════════════════════════════
-    THE SHARE CARD.
+    THE SHARE CARD — ⚠️ REFERENCE ART, NOT THE ONE THAT SHIPS (ruled 2026-08-15).
+
+    src/app/opengraph-image.tsx is the live card. It was rebuilt by hand in this
+    same Warm Archive palette rather than adopting this file, so the two agree on
+    colour and differ on composition — this one carries the vault illustration,
+    the shipped one is typographic. Adopting this would mean rasterising it or
+    rebuilding the illustration inside Satori's flexbox-only subset, which is
+    real work for a card that already looks right.
+
+    Kept because the illustration may be wanted later. Labelled because an
+    unlabelled "replacement" that nothing references is the second definition
+    this project keeps having to hunt down — and the header below still reads as
+    though this file is on its way to production. It is not.
 
     🔴 THE ONE IN PRODUCTION IS OFF-PALETTE. src/app/opengraph-image.tsx paints
     #020617 with #3b82f6 and #fbbf24 — Tailwind slate/blue/amber, from before

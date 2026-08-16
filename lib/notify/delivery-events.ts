@@ -58,13 +58,101 @@ export interface DeliveryRecord {
   verdict: DeliveryVerdict;
 }
 
-/** Records one provider event. Lowercases the address; bounds the detail. */
+/**
+ * The domain Relay sends from, or null when we have nothing to compare against.
+ *
+ * Read from `RESEND_FROM_ADDRESS` — the same variable `sendEmail` refuses to
+ * send without — so the sender and the attribution rule can never disagree
+ * about who "we" are. One definition, not two.
+ */
+function ourSendingDomain(): string | null {
+  const from = process.env.RESEND_FROM_ADDRESS;
+  const domain = addressDomain(from);
+  return domain ?? null;
+}
+
+/**
+ * The domain out of an address that may be bare or in display form.
+ *
+ * Resend sends `from` as a STRING that is usually `Acme <onboarding@acme.com>`
+ * rather than a bare address (verified against Resend's own payload example for
+ * `email.bounced`, 2026-08-15), so taking everything after the first `@` would
+ * yield `acme.com>` and match nothing. Returns undefined for anything that is
+ * not usably an address.
+ */
+function addressDomain(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const angled = value.match(/<([^>]*)>/);
+  const addr = (angled ? angled[1] : value).trim().toLowerCase();
+  const at = addr.lastIndexOf('@');
+  if (at < 0) return undefined;
+  const domain = addr.slice(at + 1).trim();
+  return domain || undefined;
+}
+
+/**
+ * Is this event about mail RELAY sent?
+ *
+ * 🔴 THE PROBLEM IT SOLVES: RELAY'S PRODUCTION DATABASE WAS STORING ANOTHER
+ * PRODUCT'S MAIL. The Resend account is shared with report-bridge, and a Resend
+ * webhook endpoint is configured per ACCOUNT, not per sending domain — so every
+ * event for every project on that account POSTs to `/api/resend/webhook`, and
+ * this module wrote all of them. Measured on production 2026-08-15: of 113 rows,
+ * **70 were report-bridge's**, across eight distinct `synthetic*.report-bridge.com`
+ * domains that do not resolve, and the NEWEST row in the entire table was one of
+ * theirs. Relay's own real-recipient telemetry was 18 rows.
+ *
+ * Two consequences, and the first is the serious one:
+ *
+ *   1. PERSONAL DATA. Today those addresses are synthetic probes. The moment
+ *      report-bridge mails a real person, that person's address lands in Relay's
+ *      production database — someone with no relationship to Relay, no notice,
+ *      and no basis in Relay's own privacy policy. Nothing about that is
+ *      Relay's to hold.
+ *   2. A COLLISION WOULD LIE TO AN OWNER. `latestDeliveryByEmail` keys on the
+ *      address alone. If the other product ever mails an address that is also in
+ *      a Relay owner's circle, `/circle` would show that owner a delivery verdict
+ *      for a message Relay never sent.
+ *
+ * ⚠️ EXCLUSION REQUIRES POSITIVE EVIDENCE — the same fail-safe direction as
+ * `positivelyNonProduction` in lib/ops/alert-address.ts, and it points this way
+ * deliberately. This module's entire purpose is that going blind is invisible
+ * (`unknown` means "we have not heard", never "fine"). So an event is dropped
+ * ONLY when the payload positively says it came from somebody else. A payload
+ * with no `from`, or an unparseable one, or a Relay with no configured sending
+ * domain, is still recorded — that keeps this change strictly incapable of
+ * making the sensor blinder than it was before it, which a rule that dropped on
+ * doubt could not promise.
+ *
+ * Matched on DOMAIN, not the full address: a future `notifications@` or
+ * `alerts@` on the same domain is still Relay, and a rule pinned to one mailbox
+ * would silently drop it.
+ */
+export function attributableToRelay(from: unknown): boolean {
+  const ours = ourSendingDomain();
+  if (!ours) return true; // nothing to compare against — record, see above
+  const theirs = addressDomain(from);
+  if (!theirs) return true; // payload said nothing — record, see above
+  return theirs === ours;
+}
+
+/**
+ * Records one provider event. Lowercases the address; bounds the detail.
+ *
+ * `from` is the provider's claim about who sent the message. It is NOT stored —
+ * only used to decide whether this event is ours to keep at all. The guard lives
+ * here rather than in the route because this is the seam every write passes
+ * through, and a guard at the call site is a guard the next call site forgets.
+ */
 export async function recordDeliveryEvent(params: {
   email: string;
   event: string;
   detail?: string | null;
   providerId?: string | null;
+  from?: unknown;
 }): Promise<void> {
+  if (!attributableToRelay(params.from)) return;
+
   const email = params.email.trim().toLowerCase();
   if (!email) return;
 
@@ -78,6 +166,32 @@ export async function recordDeliveryEvent(params: {
       params.providerId ? params.providerId.slice(0, 128) : null,
     ],
   );
+}
+
+/**
+ * Records that Resend accepted one message from us. The send-side half of the
+ * dead-man's switch — see db/migrations/031 and lib/notify/webhook-health.ts.
+ *
+ * ⚠️ NO RECIPIENT AND NO BODY, deliberately. The switch needs to know THAT we
+ * sent, not to whom: `provider_id` alone joins to the event that should come
+ * back. That makes this strictly less personal data than the events table, and
+ * it is why the objection that killed this idea before — `transcript.ts` cannot
+ * arm in production because bodies carry live access codes — does not apply.
+ *
+ * BEST EFFORT, AND THAT DIRECTION IS DELIBERATE. A failure to record an attempt
+ * must never fail the send itself; the mail is the product and this is the
+ * telemetry about it. The cost of the choice, stated plainly: a dropped attempt
+ * row makes the switch slightly less likely to fire, never more — it can lose a
+ * warning, it cannot invent one.
+ */
+export async function recordSendAttempt(providerId: string): Promise<void> {
+  const id = providerId.trim();
+  if (!id) return;
+  try {
+    await query(`INSERT INTO email_send_attempts (provider_id) VALUES ($1)`, [id.slice(0, 128)]);
+  } catch (err) {
+    process.stderr.write(`[notify] could not record send attempt: ${String(err)}\n`);
+  }
 }
 
 /**

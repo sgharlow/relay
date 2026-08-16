@@ -199,7 +199,29 @@ describe('notifyRecipientsOfRelease', () => {
     await notifyRecipientsOfRelease({ releaseStateId: 'rs-1', ownerId: 'o', triggerType: 'emergency', version: 3 });
 
     const inserts = mockQuery.mock.calls.map((c) => c[0] as string).filter((q) => /INSERT/i.test(q));
-    expect(inserts).toEqual([]);
+
+    /*
+      ⚠️ THIS ASSERTED `inserts` WAS EMPTY, WHICH WAS A PROXY, NOT THE PROPERTY.
+      The comment above has always said what is actually meant — "no INSERT into
+      recipient code storage" — and "no INSERT at all" happened to be equivalent
+      only while nothing else on this path wrote anything. On 2026-08-15 the mail
+      dead-man's switch started recording that a send was accepted
+      (`email_send_attempts`, migration 031: a provider id and a timestamp, no
+      recipient and no body) and the proxy broke on a change that does not touch
+      the property at all.
+
+      Rewritten as the property, in two halves that are each stronger than the
+      proxy was. First: name the credential stores and assert none is touched —
+      a claimed recipient is the one person the architecture promises never to
+      send a credential to. Second: pin the FULL set of tables written, so a
+      future credential write cannot arrive under a table name this pattern was
+      never taught, which is the failure mode a substring check invites.
+    */
+    const CREDENTIAL_STORES = /recipient_codes|verifier_codes|break_glass_codes|recovery_codes/i;
+    expect(inserts.filter((q) => CREDENTIAL_STORES.test(q))).toEqual([]);
+
+    const tables = inserts.map((q) => /INSERT INTO\s+(\w+)/i.exec(q)?.[1] ?? q);
+    expect(tables).toEqual(['email_send_attempts']);
   });
 
   it('the token-link fallback still exists, but ONLY for an unclaimed recipient whose code failed', async () => {

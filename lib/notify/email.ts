@@ -11,6 +11,9 @@
 
 import { Resend } from 'resend';
 
+import { alertEnvironmentLabel } from '../ops/alert-address';
+
+import { recordSendAttempt } from './delivery-events';
 import { textToHtml } from './text-to-html';
 import { recordSend } from './transcript';
 
@@ -74,19 +77,68 @@ function assertDeliverableDomain(to: string): void {
 }
 
 /**
+ * 🔴 A LAPTOP COULD MAIL A REAL CAREGIVER, and did nothing to stop itself.
+ *
+ * `.env.local` carries the production Resend key and points at the production
+ * cluster, because Relay has no dev database. So a `next dev` server running any
+ * notification path — an invitation, a verifier notice, an access request — sent
+ * a real email from the real sending domain to whatever address was in the row.
+ * The ops-alert path was gated on 2026-08-15; this is the one that reaches
+ * CUSTOMERS rather than operators, and it was still open.
+ *
+ * AN ALLOW-LIST, NOT A DOMAIN RULE, because the obvious rule is backwards here.
+ * `assertDeliverableDomain` above already refuses .test/.invalid/.localhost, so
+ * "outside production, only reserved domains" would permit exactly the set that
+ * is already blocked — which is nothing. The only way to exercise mail off
+ * production is a real address somebody controls, so that address gets named.
+ *
+ * The two guards are orthogonal and both apply: an allow-listed reserved domain
+ * is still refused, because it still cannot receive anything.
+ *
+ * The three E2E walks are unaffected — they assert nothing about mail, and
+ * their accounts sit on reserved domains that were already refused.
+ */
+function assertSendableFromThisEnvironment(to: string): void {
+  const environment = alertEnvironmentLabel();
+  if (environment === 'production') return;
+
+  const allowed = (process.env.DEV_MAIL_ALLOWLIST ?? '')
+    .split(',')
+    .map((a) => a.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (allowed.includes(to.trim().toLowerCase())) return;
+
+  throw new Error(
+    `Refusing to send to ${to} from ${environment}: this is not a production ` +
+      'environment and the address is not in DEV_MAIL_ALLOWLIST. Mailing a real ' +
+      'person from a dev server spends the sending reputation of an account ' +
+      'shared with report-bridge, and reaches somebody who did not expect it.',
+  );
+}
+
+/**
  * The address a recipient reaches by hitting reply.
  *
- * This is NOT cosmetic. `relaystandby.com` has no apex MX record, so the From
- * address — relay@relaystandby.com — cannot receive mail at all. Without a
- * Reply-To header, a caregiver who reads "someone is requesting access to your
- * parent's vault" and replies is writing to a mailbox that does not exist, and
- * gets a bounce instead of a person. For a product whose entire proposition is
- * trust, that is the worst possible failure.
+ * This is NOT cosmetic. Without a Reply-To header, a caregiver who reads
+ * "someone is requesting access to your parent's vault" and replies is writing
+ * to a mailbox nobody reads, and gets silence or a bounce instead of a person.
+ * For a product whose entire proposition is trust, that is the worst possible
+ * failure.
  *
- * A Reply-To pointing at a real inbox fixes this today, without waiting on
- * inbound-mail DNS. When Cloudflare Email Routing is enabled (see
- * docs/email-dns-runbook.md) this can point at relay@relaystandby.com instead;
- * nothing else needs to change.
+ * ⚠️ THIS PARAGRAPH USED TO SAY THE APEX HAD NO MX RECORD AND COULD NOT RECEIVE
+ * MAIL AT ALL. That stopped being true on 2026-08-09, when Cloudflare Email
+ * Routing was enabled — `lib/contact.ts` recorded it that day and this file did
+ * not, so two files carried two answers for six days. Measured 2026-08-15:
+ * relaystandby.com has three apex MX records (route1/2/3.mx.cloudflare.net) and
+ * receives mail.
+ *
+ * The header is still right, and now for a better reason: it names the inbox a
+ * human actually watches. Note the runbook's outstanding follow-up — with the
+ * apex receiving, RESEND_REPLY_TO_ADDRESS could point at relay@relaystandby.com
+ * so From and Reply-To match, since a mismatch is a mild spam signal. It is
+ * currently hello@relaystandby.com, which is monitored; the change is a
+ * deliverability judgement, not a fix, and is unmade on purpose.
  *
  * Returns undefined when unset — an absent header is correct, an empty one is
  * malformed.
@@ -115,8 +167,9 @@ export async function sendEmail(msg: EmailMessage): Promise<void> {
   const from = process.env.RESEND_FROM_ADDRESS;
   if (!from) throw new Error('RESEND_FROM_ADDRESS environment variable is not set');
 
-  // Refused before the provider is asked. See RESERVED_TLDS.
+  // Both refused before the provider is asked.
   assertDeliverableDomain(msg.to);
+  assertSendableFromThisEnvironment(msg.to);
 
   const replyTo = resolveReplyTo(msg.replyTo);
 
@@ -158,6 +211,22 @@ export async function sendEmail(msg: EmailMessage): Promise<void> {
   }
 
   recordSend(msg, { accepted: true });
+
+  /*
+    THE ONLY DURABLE RECORD THAT WE SENT ANYTHING. `recordSend` above is
+    lib/notify/transcript.ts, which is in-memory and refuses to arm in production
+    by design — message bodies carry live access codes. So until now nothing
+    outlived the request, and the mail dead-man's switch had nothing to compare
+    its silence against: it fell back to "have we EVER heard anything", which is
+    monotonic over an append-only table and had been permanently true since the
+    first event.
+
+    This line is what gives that switch a condition that can still become false.
+    It stores Resend's id and nothing else — no recipient, no subject, no body —
+    and it is awaited but cannot throw, because telemetry must not be able to
+    fail a send. See db/migrations/031.
+  */
+  await recordSendAttempt(result.data.id);
 }
 
 /** Sends one email, swallowing+logging any failure (never throws). */

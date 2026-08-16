@@ -63,3 +63,10 @@ scripts/scratch-*.ts
 
 # Screenshots written by scripts/e2e-ui.ts. Run artefacts, not source.
 e2e-*.png
+
+# Phase 0 laptop credential, written by scripts/scratch-phase0.mjs. Never commit.
+.relay-dev-key.json
+
+# Sysadmin profile pointer for migrations. Holds NO secrets (AWS_PROFILE only),
+# but never commit it regardless.
+.env.admin

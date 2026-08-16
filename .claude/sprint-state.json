@@ -1,0 +1,451 @@
+{
+  "sprint": "2026-08-15",
+  "branch": "sprint/2026-08-15-1",
+  "baseCommit": "ff696dc6949dde62c825e8d1a1fa2a331addfb6f",
+  "iterationsUsed": 4,
+  "iterationCap": 5,
+  "stoppedBecause": "scored queue exhausted; remaining items are decision-needed or infeasible as scoped",
+  "backlogSource": [
+    "docs/standby-sprint-plan.md (roadmap; §6 gate discipline permits defect fixes only)",
+    "Gmail ops alert 2026-08-15T17:23:06Z"
+  ],
+  "backlogInferred": false,
+  "baseline": {
+    "start": {
+      "types": "green",
+      "lint": "green",
+      "build": "green",
+      "tests": "2302 passed, 1 skipped (2303)"
+    },
+    "end": {
+      "types": "green",
+      "lint": "green",
+      "build": "green",
+      "tests": "2333 passed, 1 skipped (2334)",
+      "schema": "green (24/24 tables, both regions)"
+    },
+    "newlySkippedTests": 0
+  },
+  "reportedIssue": {
+    "subject": "Relay: server error on /api/webauthn/authenticate/options",
+    "verdict": "NOT a production incident — resolved dev-time migration-ordering artifact",
+    "evidence": "stack frames are .next\\dev\\server; alert 17:23:06Z predates migration 029 commit 36ea9bf at 17:27:56Z; auth_challenges present in BOTH DSQL regions (verified read-only)",
+    "customerImpact": "none"
+  },
+  "items": [
+    {
+      "id": "I1",
+      "title": "Ops alerts mail from non-production and assert they are production",
+      "axis": "correctness",
+      "score": 10,
+      "status": "done",
+      "commit": "4d192888029375dac3e92bf958a70de565a4ebee",
+      "provenBy": "suppression tests fail against old resolver; structural check proven via planted process.env.VERCEL_ENV in lib/ops/canary.ts"
+    },
+    {
+      "id": "I2",
+      "title": "Nothing detects an unapplied migration before it breaks a live path",
+      "axis": "correctness",
+      "score": 7.5,
+      "status": "done",
+      "commit": "8395c50b56f5f91324c7b0b28dc904c71ad639c9",
+      "provenBy": "live-proven green on both regions (exit 0); planted migration fails both regions (exit 1); parser plants trip 6 tests and the ghost-table case"
+    },
+    {
+      "id": "I3",
+      "title": "A dev server can emit a G1 lead notification indistinguishable from real demand",
+      "axis": "correctness",
+      "score": 6,
+      "status": "done",
+      "commit": "6f2b716ae6d351a41ba5f2fbb19770a5b65b8ecf",
+      "provenBy": "test fails before change (expected subject to match /NOT PRODUCTION/i); caregiver_leads verified at 0 rows, so latent not active",
+      "partial": "marks the notification only; blocking the write is escalated as D1"
+    }
+  ],
+  "blocked": [],
+  "deferred": [
+    {
+      "id": "D2",
+      "title": "CI check: every table the code queries is declared by a migration",
+      "score": 7.5,
+      "note": "attempted and abandoned deliberately — naive parse yields 183 candidates, mostly English prose in comments; needs SQL extracted from query template strings"
+    },
+    {
+      "id": "D3",
+      "title": "Environment guard for product email",
+      "score": 5,
+      "note": "blocked on D1; a blanket gag would break verify:live"
+    },
+    {
+      "id": "D4",
+      "title": "Migration ledger in the database",
+      "score": 5,
+      "note": "infrastructure change — 5-criteria gate, Steve's approval"
+    }
+  ],
+  "liveFactsVerified": {
+    "auth_challenges": "present in us-east-1 and us-west-2",
+    "caregiver_leads": 0,
+    "users": 1,
+    "note": "MEMORY.md records users=2 as of 2026-08-11; the absent row is the demo account. sgharlow+relaycardtest@gmail.com is intact with a paid/active subscription."
+  },
+  "d1Ruling": {
+    "date": "2026-08-15",
+    "by": "steve",
+    "ruling": "Only Steve acting as sysadmin may write to the database outside the product's own features and APIs. One environment until G1 is decided.",
+    "answer": "identity + privilege separation on the single cluster, not a second environment"
+  },
+  "leastPrivilege": {
+    "groundTruthFound": "app minted getDbConnectAdminAuthToken() unconditionally (production ran as DSQL admin with DDL rights); Vercel and laptop shared one IAM access key",
+    "phasesDone": [
+      "fix-false-green",
+      "backup",
+      "phase0-laptop-identity",
+      "phase1-relay_dev-role",
+      "phase2-local-cutover"
+    ],
+    "phasesOutstanding": [
+      "phase3-vercel-cutover",
+      "phase4-strip-DbConnectAdmin"
+    ],
+    "backupRecoveryPoint": "arn:aws:backup:us-east-1:461293170793:recovery-point:cba21459-8dcf-4cd5-b4ff-3aca1aea3113",
+    "identities": {
+      ".env.local": "IAM relay-dev -> DB role relay_dev (no DDL, cannot write caregiver_leads)",
+      ".env.admin": "IAM autospecai -> DB role admin (migrations/roles); holds no secrets, AWS_PROFILE only",
+      "production": "UNCHANGED - IAM relay-runtime -> admin; DSQL_ROLE unset"
+    },
+    "liveProven": [
+      "autospecai connects as admin independently of relay-runtime",
+      "relay_dev privileges read back as intended incl. no DDL",
+      "INSERT INTO caregiver_leads refused SQLSTATE 42501",
+      "app runs on relay_dev; POST /api/caregivers/interest -> 500 CaptureRefused",
+      "caregiver_leads still 0 rows",
+      "both DSQL regions accept relay_dev"
+    ],
+    "dsqlDivergence": "GRANT USAGE ON SCHEMA public -> feature not supported on system entity (0A000); public is a system entity",
+    "notYetVerified": "npm run verify:live has NOT been re-run under relay_dev - recommended gate before phase 3",
+    "housekeeping": ".relay-dev-key.json (gitignored) holds the laptop key; move to 1Password and delete"
+  },
+  "sprint2": {
+    "scope": "unblock the advertising",
+    "branch": "sprint/2026-08-15-2",
+    "iterationsUsed": 5,
+    "iterationCap": 5,
+    "backlogSource": [
+      "docs/g1-launch-checklist.md (step 8 the only open item)",
+      "docs/g1-ad-creatives.md"
+    ],
+    "backlogInferred": false,
+    "verdict": "Engineering was not the blocker and is now closed. Critical path is step 8 - Steve's card sitting.",
+    "baseline": {
+      "start": "2333 passed, 1 skipped",
+      "end": "2363 passed, 1 skipped",
+      "newlySkipped": 0
+    },
+    "shipped": [
+      {
+        "id": "AD-1",
+        "commit": "a829dbe",
+        "title": "npm run verify:funnel - repeatable live instrument check",
+        "proven": "7/7 live on production; planted event-name change fails 3/7 exit 1; src guard proven with base URL on a dead port",
+        "note": "first version was WRONG - asserted on the network POST, which Vercel suppresses for automation (navigator.webdriver). Now reads window.vaq."
+      },
+      {
+        "id": "AD-2",
+        "commit": "72fca74",
+        "title": "ad creatives checked against the product and themselves",
+        "proven": "no current defect; planted wrong count, overflowing headline and stale $129 all caught"
+      },
+      {
+        "id": "AD-3",
+        "commit": "42719db",
+        "title": "verify:funnel wired into daily rhythm + pre-flight gate; verify:* must be documented",
+        "proven": "planted verify:planted script fails the guard"
+      },
+      {
+        "id": "AD-4",
+        "commit": "1600695",
+        "title": "ad image palette had drifted off the product",
+        "proven": "failed on the real #f59e0b before the fix, on a planted #ff00ff after",
+        "note": "generating the images first would have produced 5 dark creatives for a light landing page"
+      },
+      {
+        "id": "AD-5",
+        "commit": "df4c392",
+        "title": "one-page sitting sheet + a pin on its single restated value",
+        "proven": "planted src=reddit-ad (singular) in the sheet fails the guard"
+      }
+    ],
+    "liveEvidence": {
+      "caregiver_qualified": "{\"src\":\"qa\"}",
+      "caregiver_intent": "{\"src\":\"qa\",\"cta\":\"hero\"}",
+      "landingPalette": "rgb(247,244,238) paper / rgb(31,27,22) ink - warm and LIGHT",
+      "productionCommit": "ff696dc (master); no sprint work deployed"
+    },
+    "checkedAndNotDefects": [
+      "honeypot correctly hidden (aria-hidden + tabIndex -1 + offscreen)",
+      "CTA ?src=hero does not clobber the channel - sessionStorage holds it, hero becomes the cta",
+      "reddit-ads / meta-ads already pinned as gate-qualifying in content.test.ts"
+    ],
+    "blocked": [
+      {
+        "id": "step-8",
+        "title": "Launch the paid lanes",
+        "category": "human-send by design",
+        "owner": "steve",
+        "need": "a ~45 minute sitting; card entry and submit are Steve-only per the co-pilot contract",
+        "deadline": "submit by ~2026-08-26 for R1 serving by ~2026-08-28; gate due 2026-10-02",
+        "engineeringBlockers": "none - destination live, instrument verified, copy fits, src values qualify",
+        "status": "PARKED by Steve 2026-08-15 -> sitting scheduled for 2026-08-16",
+        "prepared": "docs/g1-sitting-sheet.md - 13 screens, pure transcription"
+      }
+    ],
+    "deferred": [
+      {
+        "id": "D5",
+        "title": "Decide dark vs warm ad art direction",
+        "note": "Steve's call; both answers written into PROMPTS.md"
+      },
+      {
+        "id": "D6",
+        "title": "Generate the 7 image assets",
+        "score": 4,
+        "note": "needs Gemini; blocks only the Meta lane"
+      },
+      {
+        "id": "D7",
+        "title": "opengraph-image.tsx still on the retired dark palette",
+        "score": 4
+      },
+      {
+        "id": "D8",
+        "title": "$119 restated in ~6 UI files and hardcoded as 11900 in the Stripe webhook",
+        "score": 6
+      }
+    ],
+    "parked": {
+      "item": "step-8 ad sitting",
+      "until": "2026-08-16",
+      "by": "steve",
+      "note": "submit-by ~2026-08-26 unchanged; slack absorbs exactly one rejection cycle. Re-raise at next /daily-priority."
+    },
+    "unblockedNext": [
+      {
+        "id": "D8",
+        "title": "price restated in 9 files; 11900 hardcoded in the Stripe webhook INSERT",
+        "score": 6,
+        "why": "a price change writes the OLD price into every new subscription row, silently, while the UI shows the new one"
+      },
+      {
+        "id": "D7",
+        "title": "opengraph-image.tsx still on the retired dark palette",
+        "score": 4
+      },
+      {
+        "id": "D2",
+        "title": "CI check that code only queries tables a migration declares",
+        "score": 7.5,
+        "note": "needs SQL extracted from query template strings; naive parse yields 183 prose false positives"
+      }
+    ]
+  },
+  "sprint3": {
+    "scope": "the three unblocked items, after walking through D5",
+    "branch": "sprint/2026-08-15-3",
+    "iterationsUsed": 3,
+    "iterationCap": 5,
+    "backlogSource": [
+      ".claude/sprint-state.json -> sprint2.unblockedNext"
+    ],
+    "backlogInferred": false,
+    "baseline": {
+      "start": "2364 passed, 1 skipped",
+      "end": "2376 passed, 1 skipped",
+      "newlySkipped": 0
+    },
+    "d5Ruling": {
+      "date": "2026-08-15",
+      "by": "steve",
+      "decision": "match the destination - warm paper",
+      "palette": {
+        "ground": "#f7f4ee",
+        "ink": "#1f1b16",
+        "ochre": "#b4703a"
+      },
+      "basis": "icon.svg and social-card.svg both record the dark-vs-product mismatch as a DEFECT, in red",
+      "alternativeKept": "relay-mark-inverse.svg defines a sanctioned dark mode (ink ground, ochre lifted to #f6ead9) if a lane ever needs contrast - NOT the retired slate"
+    },
+    "shipped": [
+      {
+        "id": "D8",
+        "commit": "311bfc9",
+        "title": "price_cents recorded what Stripe charged, not a hardcoded 11900",
+        "severity": "data-corruption path, imminent",
+        "why": "PriceCard reads a runtime price override by design and G1 is a price test; show $99 / charge $99 / record $119",
+        "proven": "3 webhook tests failed before (no webhook test existed at all); literal guard proven on both $119 and 11900"
+      },
+      {
+        "id": "D7+D5",
+        "commit": "1fe6f7b",
+        "title": "caregivers OG card ported to Warm Archive; ad prompts migrated",
+        "proven": "og-palette.test.ts failed on the 5 stale hexes before; card verified by RENDERING it",
+        "note": "fixing the OG card broke ad-copy.test.ts - three greys in PROMPTS.md were justified ONLY by that stale file. Two checks, one root cause."
+      },
+      {
+        "id": "D2",
+        "commit": "b0facb6",
+        "title": "CI check: code queries no table a migration fails to declare",
+        "proven": "zero false positives on the current tree (the bar it failed yesterday); planted caregiver_leads_typo caught",
+        "note": "filed as debt yesterday because a naive parse returned 183 prose matches; fixed by extracting SQL from template literals after stripping comments"
+      }
+    ],
+    "thresholdChanged": {
+      "what": "PROMPTS.md vacuity guard: 'at least 5 colours' -> names paper/ink/ochre",
+      "why": "Warm Archive uses 4 colours so the count failed on CORRECT input; lowering it to 4 is how a guard becomes a rubber stamp. Naming the three is strictly stronger."
+    },
+    "housekeeping": "terminated a leftover next dev process (PID 53732) from the Phase 2 test",
+    "blocked": [],
+    "deferred": [
+      {
+        "id": "D6",
+        "title": "generate the 7 ad image assets",
+        "score": 4,
+        "note": "NOW fully unblocked - D5 ruled, prompts correct, every matrix row has a block, avatar is a render of icon.svg. Needs Gemini; blocks only the Meta lane"
+      },
+      {
+        "id": "step-8",
+        "title": "the ad sitting",
+        "note": "parked to 2026-08-16; docs/g1-sitting-sheet.md ready"
+      },
+      {
+        "id": "P3/P4",
+        "title": "least-privilege: Vercel cutover, strip DbConnectAdmin",
+        "note": "needs go-ahead; rollback is one env var"
+      },
+      {
+        "id": "D3",
+        "title": "environment guard for product email",
+        "score": 5
+      },
+      {
+        "id": "D4",
+        "title": "migration ledger in the database",
+        "score": 5
+      }
+    ]
+  },
+  "sprint4": {
+    "scope": "goal-driven: next sprint of completeness, correctness, security, docs, journeys, wiring, UI",
+    "branch": "sprint/2026-08-15-3",
+    "iterationsUsed": 5,
+    "iterationCap": 5,
+    "backlogSource": [
+      ".claude/sprint-state.json -> sprint3.deferred",
+      "repo survey across the seven axes"
+    ],
+    "backlogInferred": false,
+    "verdict": "The deferred queue offered feature work. The survey found three pieces of monitoring that could not report the failure they were built for, plus one measurement never taken. Nothing was red at any point.",
+    "baseline": {
+      "start": "2381 passed, 1 skipped",
+      "end": "2421 passed, 1 skipped",
+      "newlySkipped": 0,
+      "schema": "green both regions (25 tables)",
+      "a11y": "0 serious/critical across 34 pages (was: owner mode never run)"
+    },
+    "shipped": [
+      {
+        "id": "I1",
+        "commit": "18213e0",
+        "axis": "security+correctness",
+        "score": 15,
+        "title": "Relay's production DB was recording another product's mail",
+        "evidence": "Measured 113 rows, 70 foreign across 8 nonexistent synthetic*.report-bridge.com domains; the newest row in the table was foreign. Guard at recordDeliveryEvent, the seam every write passes. 12 of 26 new assertions fail against the old code. delivery-events.ts had NO test file before this."
+      },
+      {
+        "id": "I2",
+        "commit": "50d97a2",
+        "axis": "correctness",
+        "score": 7.5,
+        "title": "the mail dead-man's switch had been disarmed since its first event",
+        "evidence": "healthy = count(*)>0 over an append-only table = permanently true once the first event landed. Rebuilt against a send-side record (migration 031: provider id + timestamp, no recipient, no body). Live-proven on production: one ripe unheard send turned it false, one heard send turned it back, proof rows removed.",
+        "alsoFound": "migration 030's GRANT ON ALL TABLES resolves once, so 031 locked relay_dev out of the table it had just created. 032 fixes the cause with ALTER DEFAULT PRIVILEGES (verified supported on DSQL). verify:schema now probes readability too, proven by planting a REVOKE and watching it fail in both regions."
+      },
+      {
+        "id": "I3",
+        "commit": "a9a5717",
+        "axis": "wiring",
+        "score": 4,
+        "title": "no fetch names a route nothing serves",
+        "evidence": "Tree clean: 63 fetch sites, 75 routes. The check was WRONG TWICE on the way — a nested template literal produced a false positive, and the obvious repair let a real planted typo pass green. Both are now cases in the file. Proven by planting in the tree, not in a fixture array."
+      },
+      {
+        "id": "I4",
+        "commit": "c102c6f",
+        "axis": "ui-experience",
+        "score": 3,
+        "title": "owner mode had never been audited; keyboard trap on /audit at 390px",
+        "evidence": "34 pages audited with a disposable owner. One serious violation found and fixed, three latent siblings fixed, and a fifth found by the new structural check in the 768-800px band neither audit viewport covers. Re-audited against the rebuilt product: 0 across 34."
+      },
+      {
+        "id": "I5",
+        "commit": "a5e567f",
+        "axis": "correctness",
+        "title": "the rebuilt switch could be disarmed the same way, one layer down",
+        "evidence": "recordSendAttempt is best-effort by design, so a mute writer reads as a quiet week and the check reverts to permanently healthy. Orphan-event comparison, bounded to events at or after the first attempt so deploy day cannot false-alarm. Live-proven in isolation on production: ripe=0, orphans=2, healthy=false."
+      }
+    ],
+    "blocked": [
+      {
+        "id": "FOREIGN-ROWS",
+        "owner": "steve",
+        "category": "decision needed (destructive write)",
+        "need": "approve deleting 70 rows of another product's recipient data from production",
+        "statement": "DELETE FROM email_delivery_events WHERE email LIKE '%@synthetic%.report-bridge.com'",
+        "cost": "2 minutes",
+        "note": "Cause is fixed — the count can no longer grow. No live collision: every foreign address is on a domain that is in no Relay circle. Recovery point cba21459-8dcf-4cd5-b4ff-3aca1aea3113."
+      },
+      {
+        "id": "DEPLOY",
+        "owner": "steve",
+        "category": "decision needed",
+        "need": "merge and deploy sprint/2026-08-15-3",
+        "note": "EVERY fix this sprint is inert until deployed. Production is master @ ff696dc. Foreign events keep arriving and the daily monitor keeps passing on a condition that cannot fail."
+      },
+      {
+        "id": "REPORT-BRIDGE-PROBES",
+        "owner": "steve",
+        "category": "change outside this repo",
+        "need": "direction",
+        "note": "report-bridge mails synth-probe@synthetic.report-bridge.com, which is NXDOMAIN, generating a new nonexistent subdomain per run. Every probe is a guaranteed hard bounce on the Resend account Relay shares. Most recent 2026-08-15T19:43. Strongest surviving explanation for the Outlook junk-filing."
+      }
+    ],
+    "deferred": [
+      {
+        "id": "DMARC-RUA",
+        "note": "the one DNS change worth making; a Cloudflare forward is what breaks it against p=reject"
+      },
+      {
+        "id": "P3/P4",
+        "note": "verify:live under relay_dev first, then the Vercel cutover to relay_app and strip DbConnectAdmin"
+      },
+      {
+        "id": "J9-5-7",
+        "note": "reversal receipt, re-arm confirmation, thank-you. Deliberately not taken — the demand gate is unmet"
+      },
+      {
+        "id": "step-8",
+        "note": "ad sitting parked by Steve to 2026-08-16"
+      }
+    ],
+    "debtCreated": [
+      "email_send_attempts grows one row per outbound message forever — a retention question, not a correctness one",
+      "scrollable-regions.test.ts reads utility classes only; scroll from raw CSS and overflow-y still need the rendered audit",
+      "verify:schema probes SELECT, not INSERT — a grant allowing reads and refusing writes would still pass"
+    ],
+    "nextTop3": [
+      "Deploy, then watch writerProven go false -> true. That transition is the proof I2 and I5 rest on and is observable nowhere else.",
+      "npm run verify:live under relay_dev, then P3 Vercel cutover — the named gate, unrun since the privilege split",
+      "J9 steps 5-7 — the last gap in the journey the product calls its differentiator"
+    ]
+  }
+}

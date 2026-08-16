@@ -79,16 +79,64 @@ misspelled word in the one line of copy is worse than no line at all.
 > it, and a composition centred for 1:1 loses its subject. Either supply the 9:16 asset or restrict
 > placements to Feed — **decide deliberately; do not discover it in the delivery breakdown.**
 
-**Palette, taken from the shipped product so the click-through reads as continuous** — these are the
-real values in `src/app/caregivers/opengraph-image.tsx` and `src/app/icon.svg`, not invented:
+### 🔴 THE PALETTE BELOW WAS STALE, AND IT WOULD HAVE PRODUCED OFF-BRAND ADS
 
-| Role | Hex |
-|---|---|
-| Background (near-black) | `#020617`, deepening to `#0f172a` |
-| Amber — access, the live state | `#f59e0b`, highlights `#fcd34d`, mark `#fbbf24` |
-| Blue — the owner | `#3b82f6` |
-| Text / high contrast | `#f8fafc` |
-| Muted line + secondary text | `#94a3b8`, `#64748b` |
+Corrected 2026-08-15, before any asset was generated. Read this before generating anything.
+
+This section used to say: *"Palette, taken from the shipped product so the click-through reads as
+continuous — these are the real values in `opengraph-image.tsx` and `icon.svg`, not invented"*,
+followed by a near-black-and-amber table. Three things were wrong with that, and the third is the
+one that costs money.
+
+1. **`#f59e0b` is not in the product at all.** It appears in no stylesheet, no component and no
+   icon — it was invented, in the table that promised it was not. It was quoted into five prompts.
+2. **The values attributed to `icon.svg` are the ones it stopped using on 2026-08-13.** That file's
+   own header records the fix: *"🔴 IT WAS OFF-PALETTE… #0f172a with #3b82f6 and #fbbf24 — Tailwind
+   slate, blue and amber. Every browser tab advertised a product that looked nothing like the one
+   behind it."* The prompts inherited exactly the palette that comment was written to retire.
+3. **The destination is not near-black.** `relaystandby.com/caregivers` renders
+   `background: rgb(247, 244, 238)` with `rgb(31, 27, 22)` text — measured in a browser on
+   2026-08-15, not read from a file. It is a warm, LIGHT page. A near-black creative landing on it
+   is the opposite of "reads as continuous", which is the only reason this section exists.
+
+**The shipped palette — "Warm Archive", from `src/app/globals.css` and `src/app/icon.svg`:**
+
+| Role | Hex | Token |
+|---|---|---|
+| Background — warm paper, and it is LIGHT | `#f7f4ee` | `--paper` |
+| Raised / sunken surfaces | `#fffdf9`, `#efeae0` | `--paper-raised`, `--paper-sunken` |
+| Ink — all text, all primary buttons | `#1f1b16` | `--ink` |
+| Muted text | `#6b6257` | `--ink-muted` |
+| Ochre — in motion and REVERSIBLE (the access state) | `#b4703a` | `--ochre` |
+| Ochre, deep / soft | `#a15d27`, `#f6ead9` | `--ochre-deep`, `--ochre-soft` |
+
+✅ **`src/app/caregivers/opengraph-image.tsx` was on that old dark palette too, and was fixed on
+2026-08-15.** It is the link preview for the page the ads land on, and it was the file this table
+cited as proof its own palette came from the product — so the evidence for the dark palette was a
+file nobody had migrated. `lib/ops/og-palette.test.ts` now fails if a share card paints a colour
+that is not in `globals.css`.
+
+> ### ✅ RULED 2026-08-15 (Steve): MATCH THE DESTINATION
+> The creatives are **warm paper** — `#f7f4ee` ground, `#1f1b16` ink, `#b4703a` ochre — and every
+> prompt below has been rewritten accordingly. The click-through reads as continuous, which is what
+> this section always claimed and had stopped being true.
+>
+> **The alternative was real and was declined.** Dark creatives do carry in dark-mode feeds, and the
+> brand has a sanctioned dark mode: `public/assets/brand/relay-mark-inverse.svg` defines it, ink
+> ground with ochre lifted to `#f6ead9` "because `#b4703a` on `#1f1b16` measures about 3.4:1 and a
+> brand mark that is hard to see is a brand mark that gets replaced by a wordmark." If a lane ever
+> needs contrast, **that** is the dark to use — not the retired slate.
+>
+> What settled it was that this project has already answered the question twice, in red, in its own
+> source. `src/app/icon.svg`: *"Every browser tab advertised a product that looked nothing like the
+> one behind it."* `public/assets/brand/social-card.svg`: *"Both currently advertise a product that
+> looks nothing like the one behind the link… a share card for this product competes in a feed full
+> of shouting, and the thing being offered is calm."* Both treated the mismatch as a defect to fix,
+> not a contrast to keep. The slate in these prompts was never an art direction — it was un-migrated
+> legacy from before the Warm Archive system existed.
+>
+> `lib/ops/ad-copy.test.ts` fails if any colour in a prompt block is absent from the product, and
+> `lib/ops/og-palette.test.ts` does the same for share cards, so this drift cannot recur silently.
 
 ---
 
@@ -106,12 +154,12 @@ and closes by itself*; a padlock reads as *shut*, which is the wrong half of the
 
 ```
 A high-end 3D render of a precision mechanical iris aperture, seen straight on and centred,
-filling about 55% of a square frame. The iris is machined from dark brushed metal with fine
-concentric tooling marks. It is caught mid-motion, roughly one third open, and warm amber light
-(#f59e0b) pours through the opening and spills onto the surrounding blades, catching every bevelled
-edge. The background is a deep near-black slate field (#020617) with a very subtle vertical
-gradient, empty and calm, no texture or pattern. A faint amber glow bleeds a short distance into
-the darkness around the aperture. Cinematic studio lighting from the upper left, shallow depth of
+filling about 55% of a square frame. The iris is machined from deep ink-dark brushed metal
+(#1f1b16) with fine concentric tooling marks. It is caught mid-motion, roughly one third open, and warm ochre light
+(#b4703a) pours through the opening and spills onto the surrounding blades, catching every bevelled
+edge. The background is a warm off-white paper field (#f7f4ee) with a very subtle vertical
+gradient, empty and calm, no texture or pattern. A soft ochre glow bleeds a short distance into the
+paper around the aperture. Bright, even studio lighting from the upper left, shallow depth of
 field, sharp focus on the blade edges. Restrained, engineered, premium — the visual language of
 security hardware, not of a hospital or a family album. No text, no letters, no numbers, no logos,
 no watermarks, no people, no hands, no keyholes, no padlocks. Square 1:1 composition with generous
@@ -122,10 +170,24 @@ empty margin on all four sides.
 
 ```
 [the prompt above, then:]
-Across the lower third of the frame, in a clean modern geometric sans-serif, off-white (#f8fafc),
+Across the lower third of the frame, in a clean modern geometric sans-serif, deep ink (#1f1b16),
 one single line of text reading exactly: It opens. Then it closes itself. The text is horizontally
 centred, sits well clear of the frame edges with at least 10% margin, is large enough to read on a
 phone, and is the only text anywhere in the image. Spell it exactly as written.
+```
+
+**`meta-m1-1080x1350` — 4:5, the recommended feed size**
+
+> Added 2026-08-15. The asset matrix has listed this file as **recommended** since the 4:5 note was
+> written, and it was the only row in that table with no prompt to run — so the size the note calls
+> "free reach" was the one size nobody could produce. Everything else there had a block.
+
+```
+[Concept A clean prompt, with these changes:]
+Vertical 4:5 composition. The aperture stays centred horizontally and sits slightly above the
+optical centre, with the extra vertical space distributed as calm empty field above and below it —
+the frame is taller, not more crowded. Keep the subject clear of the top and bottom eighths, which
+Meta may crop for different placements.
 ```
 
 **`story-1080x1920` — vertical**
@@ -155,13 +217,13 @@ beyond recall*, without ever showing a legible credential.
 
 ```
 A dark, moody still-life render, seen from directly above, on a deep near-black slate surface
-(#020617). At the centre-left lies a small worn paper notebook, open, its pages covered in soft
+(#f7f4ee). At the centre-left lies a small worn paper notebook, open, its pages covered in soft
 indistinct handwriting — deliberately blurred and illegible, suggesting handwritten notes without
 any readable word, letter or number anywhere. Rising from the open page and drifting up and to the
 right are a dozen translucent duplicate copies of that same page, each fainter and more dispersed
 than the last, scattering outward beyond the edge of the frame like something released that cannot
-be gathered back. The duplicates are lit with a cool grey-blue edge (#94a3b8); a single warm amber
-light (#f59e0b) rakes across the notebook itself from the left, so the original is warm and the
+be gathered back. The duplicates are edged in muted warm grey (#6b6257); a single warm ochre
+light (#b4703a) rakes across the notebook itself from the left, so the original is warm and the
 escaping copies are cold. Photographic realism, shallow depth of field, sharp on the notebook and
 soft on the furthest copies. Melancholy and quiet, not alarming. No readable text of any kind, no
 numbers, no logos, no people, no hands, no phones, no computers. Square 1:1 composition with
@@ -173,7 +235,7 @@ generous dark margin around the subject.
 ```
 [the prompt above, then:]
 In the upper right region, over empty dark background and clear of the notebook and the drifting
-copies, one single line of text in a clean modern geometric sans-serif, off-white (#f8fafc),
+copies, one single line of text in a clean modern geometric sans-serif, deep ink (#1f1b16),
 reading exactly: This cannot be unshared. It is the only text in the image, sits at least 10% in
 from every edge, and is large enough to read on a phone. Spell it exactly as written.
 ```
@@ -187,9 +249,9 @@ shows after the seed — so it sets an accurate expectation rather than a promis
 
 ```
 A refined dark-mode data visualisation, centred in a square frame on a deep near-black slate
-background (#020617). One large bright node glows warm amber (#f59e0b) slightly above centre, with
+background (#f7f4ee). One large node glows warm ochre (#b4703a) slightly above centre, with
 a soft halo. Six smaller nodes are arranged in a loose arc below and around it, each a dim
-desaturated slate grey (#64748b) with no glow of its own. Six thin luminous lines run from the
+muted warm grey (#6b6257) with no glow of its own. Six thin luminous lines run from the
 bright node to each of the small ones; the lines are brightest where they leave the amber node and
 fade toward the grey ones, so the direction of dependency is unmistakable — everything hangs off
 the single bright node. The lines are gently curved, not straight. Thin, precise, elegant strokes;
@@ -202,9 +264,9 @@ icons inside the nodes, no people. Square 1:1 composition with generous empty ma
 
 ```
 [the prompt above, then:]
-Directly beneath the large amber node, in a clean modern geometric sans-serif, off-white (#f8fafc),
+Directly beneath the large amber node, in a clean modern geometric sans-serif, deep ink (#1f1b16),
 a single short label reading exactly: the email account. Below the six grey nodes, in smaller
-muted grey (#94a3b8) type, one line reading exactly: If this one is locked, the other six do not
+muted warm grey (#6b6257) type, one line reading exactly: If this one is locked, the other six do not
 matter. Both lines are horizontally centred, at least 10% in from every edge, and are the only text
 in the image. Spell both exactly as written.
 ```
@@ -223,14 +285,14 @@ so the image survives a cap change and only the platform text field needs editin
 **`meta-f1-1080-clean`**
 
 ```
-A clean dark-mode interface abstraction on a deep near-black slate background (#020617), seen
+A clean interface abstraction on a warm off-white paper background (#f7f4ee), seen
 straight on. A neat grid of ten identical small rounded rectangular tiles, arranged five across and
 two down, centred in a square frame. The tiles are dark slate with a thin border; each glows softly
-from within in warm amber (#f59e0b), and they brighten in sequence from the top-left tile to the
+from within in warm amber (#b4703a), and they brighten in sequence from the top-left tile to the
 bottom-right so the leftmost are fully lit and the last one or two are only just beginning to
 glow — a set being filled in, one at a time. Below the grid, well separated from it, four small
 simple abstract person markers stand in a row: minimal geometric silhouettes, no faces, no detail,
-lit in cool slate blue (#3b82f6), evenly spaced. Thin elegant lines, generous negative space, a
+drawn in deep ink (#1f1b16), evenly spaced. Thin elegant lines, generous negative space, a
 premium product-design aesthetic. Nothing is locked, closed, warning-coloured or alarming; the mood
 is open, calm and inviting. No text, no letters, no numbers, no logos, no icons inside the tiles,
 no photographic people, no faces. Square 1:1 composition with wide empty margins.
@@ -241,7 +303,7 @@ no photographic people, no faces. Square 1:1 composition with wide empty margins
 ```
 [the prompt above, then:]
 Across the lower portion of the frame, below the four person markers and clear of every element, a
-single line of text in a clean modern geometric sans-serif, off-white (#f8fafc), reading exactly:
+single line of text in a clean modern geometric sans-serif, deep ink (#1f1b16), reading exactly:
 Start free. It is the only text in the image, horizontally centred, at least 10% in from every
 edge, and large enough to read easily on a phone. Spell it exactly as written.
 ```
@@ -261,18 +323,28 @@ advertiser profile is itself a small trust signal, and the mark already exists i
 **`avatar-400`**
 
 ```
-A minimal flat vector app icon on a square rounded-corner tile filled with dark slate (#0f172a).
-Centred within it: a single smooth arc sweeping from lower-left to upper-right in muted slate grey
-(#94a3b8), with a medium-thick rounded stroke. At the lower-left end of the arc sits a solid filled
-circle in clear blue (#3b82f6); at the upper-right end sits a solid filled circle in warm amber
-(#fbbf24). Both circles are the same size and clearly larger than the stroke width. The composition
-is balanced, geometric and precise, with clean generous padding inside the tile. Absolutely flat
-design — no gradients, no shadows, no highlights, no 3D, no texture. No text, no letters, no
-numbers. Square 1:1.
+A minimal flat vector app icon on a square rounded-corner tile filled with warm off-white paper
+(#f7f4ee). Centred within it: a single smooth arc sweeping from lower-left to upper-right in warm
+ochre (#b4703a), with a medium-thick rounded stroke. At the lower-left end of the arc sits a SOLID
+FILLED circle in near-black ink (#1f1b16) — the person who holds everything. At the upper-right end
+sits an OPEN circle: the same size, drawn as a ring in warm ochre (#b4703a) with a thick stroke and
+no fill — the person standing by, holding nothing. The contrast between the filled node and the
+open one is the whole idea and must be unmistakable. The composition is balanced, geometric and
+precise, with clean generous padding inside the tile. Absolutely flat design — no gradients, no
+shadows, no highlights, no 3D, no texture. No text, no letters, no numbers. Square 1:1.
 ```
 
-Faster and exact: **render `src/app/icon.svg` at 400 × 400** instead of generating it. Use the
-prompt only if a softer, more brand-like avatar is wanted. The SVG is the authoritative mark.
+✅ **DONE 2026-08-15 — `avatar-400.png` exists**, rendered rather than generated, from
+`docs/ad-assets/avatar-400.svg` via `node scripts/render-svg.mjs docs/ad-assets/avatar-400.svg 400 400`.
+Regenerate with that command after any change to the mark. The prompt above is kept only in case a
+softer, less literal avatar is ever wanted.
+
+⚠️ **It is NOT a render of `src/app/icon.svg`, and this line used to say it was.** That file is the
+**32px cut** and it deliberately drops the connecting arc — its own header explains why: "below
+about 32px it renders as two grey pixels sitting in the gap that carries the whole idea, which is
+worse than leaving it out." At 400 × 400 that constraint is gone, and rendering the 32px cut would
+have shipped an avatar missing the one element the mark is *about*. The source is the FULL mark,
+`public/assets/brand/relay-mark.svg`, on the paper tile icon.svg contributes.
 
 ---
 

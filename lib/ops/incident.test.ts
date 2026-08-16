@@ -24,9 +24,14 @@ beforeEach(() => {
   vi.clearAllMocks();
   _resetIncidentStateForTesting();
   process.env.OPS_ALERT_EMAIL = 'ops@example.com';
+  // Says which environment these assert. Ops alerting is gated on it since
+  // 2026-08-15 (see lib/ops/alert-address.ts) and under vitest NODE_ENV is
+  // 'test' — positively not production, and correctly silent.
+  vi.stubEnv('VERCEL_ENV', 'production');
 });
 afterEach(() => {
   delete process.env.OPS_ALERT_EMAIL;
+  vi.unstubAllEnvs();
 });
 
 const base = { digest: 'abc123', path: '/standby', mode: 'access' as const };

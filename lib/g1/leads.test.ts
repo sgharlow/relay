@@ -26,6 +26,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   delete process.env.LEAD_NOTIFY_ADDRESS;
+  vi.unstubAllEnvs();
 });
 
 describe('validateLead', () => {
@@ -130,6 +131,91 @@ describe('recordLead attribution and content', () => {
   it('includes the note in the body', async () => {
     await recordLead({ email: 'a@b.com', note: 'mum has dementia' });
     expect(sendEmail.mock.calls[0][0].text).toContain('mum has dementia');
+  });
+
+  /*
+    🔴 A LEAD IS THE ONE EMAIL THAT MUST NOT BE AMBIGUOUS ABOUT WHERE IT CAME
+    FROM, because it is not really an email — it is the G1 gate's measurement
+    arriving in an inbox. PROJECT.yaml calls caregiver_leads "the input to the
+    G1 gate — the measurement that decides whether the product has a market",
+    and the portfolio rule it serves is that the signal must be ARMS-LENGTH. A
+    lead the team generated is the exact opposite of the thing being measured.
+
+    Nothing stops a `next dev` server producing one. .env.local carries the
+    production Resend key and points at the production cluster (no dev
+    database), so submitting the landing form locally emails the real operator
+    inbox and writes a real row. On 2026-08-15 the sibling case actually fired:
+    an ops alert from a laptop claiming to be production, believed because it
+    said so. The subscriber row is real, caregiver_leads is at 0, and this is
+    latent — which is the moment to close it, not after a row lands.
+
+    Blocking the write is NOT this test's call: whether a dev server may record
+    a G1 lead at all is Steve's gate decision, and suppressing the email alone
+    would HIDE a contaminated row rather than prevent it. So the honest minimum
+    is that the notification says what it is, and a dev-origin lead can never be
+    counted as demand by mistake.
+  */
+  it('says which environment a lead came from, so a dev-origin one cannot pass as demand', async () => {
+    vi.stubEnv('VERCEL_ENV', undefined);
+    vi.stubEnv('NODE_ENV', 'development');
+    await recordLead({ email: 'a@b.com', src: 'reddit' });
+
+    const { subject, text } = sendEmail.mock.calls[0][0];
+    expect(`${subject} ${text}`).toMatch(/development/i);
+    // Loud enough that it cannot be skimmed past in an inbox.
+    expect(subject).toMatch(/NOT PRODUCTION/i);
+  });
+
+  /*
+    🔴 A REFUSED WRITE IS NOT A FAILED WRITE, and collapsing the two is how the
+    G1 dataset would go quietly missing.
+
+    `recordLead` deliberately swallows storage failures: the operator email is
+    sent first and treated as the durable record, so a transient DSQL error
+    (40001, a dropped connection) costs analysis, not the lead. That design is
+    right and is left alone.
+
+    SQLSTATE 42501 — insufficient_privilege — is a different animal. It does not
+    retry, it does not resolve, and it does not vary by luck: it means the
+    credential is not allowed to write this table and never will be until
+    somebody changes a grant. Swallowed alongside the transient cases it becomes
+    invisible, and the route makes it worse by returning `{ok:true}` whenever the
+    EMAIL succeeded — so a permanently unwritable caregiver_leads reports success
+    to every visitor while the number the G1 gate reads stays at zero.
+
+    This matters imminently: the planned relay_dev role is REVOKEd from
+    INSERTing here precisely so a laptop cannot fabricate demand. That wall is
+    only worth building if hitting it is visible. Without this, pointing local
+    dev at the restricted role would return ok:true and look like the grant
+    worked — the experiment would be read through a broken meter.
+  */
+  it('marks a REFUSED write distinctly, so it cannot pass as a transient failure', async () => {
+    const denied = Object.assign(new Error('permission denied for table caregiver_leads'), {
+      code: '42501',
+    });
+    query.mockRejectedValueOnce(denied);
+
+    const outcome = await recordLead({ email: 'a@b.com' });
+    expect(outcome.stored).toBe(false);
+    expect(outcome.storeDenied).toBe(true);
+  });
+
+  it('does NOT mark a transient failure as refused — those stay soft on purpose', async () => {
+    query.mockRejectedValueOnce(Object.assign(new Error('conflict'), { code: '40001' }));
+
+    const outcome = await recordLead({ email: 'a@b.com' });
+    expect(outcome.stored).toBe(false);
+    expect(outcome.storeDenied).toBeUndefined();
+  });
+
+  it('says nothing extra about a real production lead', async () => {
+    vi.stubEnv('VERCEL_ENV', 'production');
+    await recordLead({ email: 'a@b.com', src: 'reddit' });
+
+    const { subject, text } = sendEmail.mock.calls[0][0];
+    expect(subject).not.toMatch(/NOT PRODUCTION/i);
+    expect(subject).toContain('reddit');
+    expect(text).toContain('a@b.com');
   });
 
   it('still stores when no notify address is configured', async () => {

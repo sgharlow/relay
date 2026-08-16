@@ -84,6 +84,28 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       clickId: str(body.clickId),
     });
 
+    /*
+      A refused write fails the request even though the email went out.
+
+      The test below this line — "either leg succeeded, so report success" — is
+      right for a transient blip: we have the caregiver's address, somebody will
+      reply, and asking them to try again would serve us rather than them. It is
+      wrong for a REFUSAL. 42501 does not heal, so a permanently unwritable
+      caregiver_leads would report ok to every visitor while the number the G1
+      gate reads stayed at zero, with nothing anywhere raising a fault.
+
+      Failing here is what makes that visible: in production this 500 reaches
+      `onRequestError` and alerts an operator, and against a credential that is
+      deliberately denied this table (the planned relay_dev role) it is what
+      makes the wall observable instead of silent.
+    */
+    if (outcome.storeDenied) {
+      return NextResponse.json(
+        { error: 'CaptureRefused', message: 'We could not save that. Please email us directly.' },
+        { status: 500 },
+      );
+    }
+
     if (!outcome.stored && !outcome.notified) {
       return NextResponse.json(
         { error: 'CaptureFailed', message: 'We could not save that. Please email us directly.' },

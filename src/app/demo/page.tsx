@@ -218,7 +218,21 @@ export default function DemoTour() {
               </div>
               <h3 className="mt-3 font-semibold text-ink">{step.headline}</h3>
               <p className="mt-1 text-t2 leading-relaxed text-muted">{step.detail}</p>
-              <div className="mt-3 overflow-x-auto rounded-md border border-rule bg-paper px-3 py-2 font-mono text-t1 text-muted">
+              {/*
+                `break-words`, not `overflow-x-auto`. These are SQL statements
+                around 90 characters long, and they already wrapped at their
+                spaces — so the scroll class never engaged and axe never had a
+                scrolling region to complain about. It was a latent one all the
+                same: the day a `cas` value arrives without a space in it, this
+                becomes a region a keyboard cannot reach.
+
+                Wrapping is the better answer for prose-shaped content anyway.
+                Making it focusable would have been the other option, and it
+                would have put five empty tab stops on a page whose whole job is
+                to be read straight through. The best fix for a scrollable
+                region is often not to have one.
+              */}
+              <div className="mt-3 break-words rounded-md border border-rule bg-paper px-3 py-2 font-mono text-t1 text-muted">
                 {step.cas}
               </div>
             </li>

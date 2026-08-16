@@ -31,7 +31,7 @@
  * Feature: relay-h0-mvp (CC9)
  */
 
-import { opsAlertAddress } from './alert-address';
+import { alertEnvironmentLabel, opsAlertAddress } from './alert-address';
 import { sendEmailBestEffort } from '../notify/email';
 
 export interface ErrorContext {
@@ -137,11 +137,24 @@ export async function reportServerError(err: unknown, context: ErrorContext = {}
     if (lastAlerted.size >= MAX_TRACKED) lastAlerted.clear();
     lastAlerted.set(key, now);
 
+    /*
+      The environment is stated, never assumed. This line used to read "A
+      request failed in production." unconditionally, which is how a `next dev`
+      server on a laptop came to file a production incident on 2026-08-15 and
+      send the operator to Vercel logs that could not contain it.
+
+      opsAlertAddress() now refuses to resolve outside production, so in
+      practice this reads "production" — but it reads it because that is what
+      the process reported, and an alert from an environment we could not name
+      says so on its face instead of claiming the one that matters most.
+    */
+    const environment = alertEnvironmentLabel();
+
     await sendEmailBestEffort({
       to,
       subject: `Relay: server error on ${path ?? 'an unknown route'}`,
       text:
-        `A request failed in production.\n\n` +
+        `A request failed in ${environment}.\n\n` +
         `Path:    ${path ?? 'unknown'}\n` +
         `Error:   ${safeMessage}\n` +
         (context.digest ? `Digest:  ${context.digest}\n` : '') +

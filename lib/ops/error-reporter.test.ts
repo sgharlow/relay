@@ -34,6 +34,10 @@ beforeEach(() => {
   sendEmailBestEffort.mockReset().mockResolvedValue(true);
   _resetErrorReporterForTesting();
   process.env.OPS_ALERT_ADDRESS = 'ops@example.com';
+  // These assert what a PRODUCTION 500 does, so they say which environment they
+  // are exercising. Alerting is gated on it since 2026-08-15, and under vitest
+  // NODE_ENV is 'test' — positively not production, and correctly silent.
+  vi.stubEnv('VERCEL_ENV', 'production');
   stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation((c: unknown) => {
     written.push(String(c));
     return true;
@@ -42,6 +46,7 @@ beforeEach(() => {
 afterEach(() => {
   stderrSpy.mockRestore();
   delete process.env.OPS_ALERT_ADDRESS;
+  vi.unstubAllEnvs();
 });
 
 describe('reportServerError', () => {
@@ -121,6 +126,74 @@ describe('reportServerError', () => {
     await reportServerError(new Error('boom'), { path: '/api/vault' });
     expect(sendEmailBestEffort).not.toHaveBeenCalled();
     expect(written.join('')).toContain('boom'); // still logged
+  });
+
+  /*
+    🔴 2026-08-15, and the reason this file now stubs an environment at all.
+
+    A `next dev` server on a laptop emailed hello@relaystandby.com: "A request
+    failed in production", path /api/webauthn/authenticate/options, error
+    `relation "auth_challenges" does not exist`. Every frame of the stack read
+    C:\Users\...\.next\dev\server. Nothing had failed in production — the table
+    was missing for about four minutes on one machine while migration 029 was
+    being applied, and the alert went out five minutes before that migration was
+    even committed.
+
+    Two things made it possible, and only the first was a bug in this file's
+    neighbour. `.env.local` is a full production env file (no dev database), so
+    the reply-to fallback resolved and the send guard — which only ever checked
+    whether an address was *configured* — waved it through. Then this file
+    asserted "in production" in the body regardless, so the one clue that would
+    have identified it as noise was overwritten by a confident claim.
+
+    The cost is not the wasted minutes. It is that this channel is the thing
+    watching an open beta, and its own header says a channel that floods gets
+    muted — that a muted channel is worse than none because it still looks like
+    coverage. Every alert on it has to be true, or none of them get read.
+  */
+  it('sends nothing from a local dev server, however well configured it is', async () => {
+    vi.stubEnv('VERCEL_ENV', undefined);
+    vi.stubEnv('NODE_ENV', 'development');
+    process.env.RESEND_REPLY_TO_ADDRESS = 'hello@relaystandby.com';
+    try {
+      await reportServerError(new Error('relation "auth_challenges" does not exist'), {
+        path: '/api/webauthn/authenticate/options',
+      });
+
+      expect(sendEmailBestEffort).not.toHaveBeenCalled();
+      // Still logged. A developer looking at their own terminal must lose
+      // nothing — the change is who gets mailed, not what gets recorded.
+      expect(written.join('')).toContain('auth_challenges');
+    } finally {
+      delete process.env.RESEND_REPLY_TO_ADDRESS;
+    }
+  });
+
+  it('names the environment it actually came from, rather than asserting production', async () => {
+    await reportServerError(new Error('boom'), { path: '/api/vault' });
+    const body = (sendEmailBestEffort.mock.calls[0][0] as { text: string }).text;
+    expect(body).toContain('failed in production');
+
+    /*
+      And when the process reports something else, the alert says so instead of
+      claiming the environment that would send someone hunting Vercel logs.
+
+      Note the shape needed to reach this branch, because it is the design in
+      miniature: a PRESENT VERCEL_ENV is authoritative, so `VERCEL_ENV=staging`
+      is positively-not-production and sends nothing at all. Only an ABSENT
+      VERCEL_ENV falls through to NODE_ENV, and only a NODE_ENV that is neither
+      'development' nor 'test' is unrecognised enough to still send. That is the
+      fail-safe path — an environment nobody anticipated, mailed anyway, and
+      labelled honestly rather than dressed up as production.
+    */
+    _resetErrorReporterForTesting();
+    sendEmailBestEffort.mockReset().mockResolvedValue(true);
+    vi.stubEnv('VERCEL_ENV', undefined);
+    vi.stubEnv('NODE_ENV', 'staging');
+    await reportServerError(new Error('boom'), { path: '/api/vault' });
+    const staged = (sendEmailBestEffort.mock.calls[0][0] as { text: string }).text;
+    expect(staged).toContain('failed in staging');
+    expect(staged).not.toContain('failed in production');
   });
 
   it('keeps secrets out of the alert', async () => {

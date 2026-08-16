@@ -21,6 +21,7 @@ import {
   isPrimaryUnhealthy,
   resetUnhealthyState,
   closeAllPools,
+  dsqlIdentity,
   _setPoolsForTesting,
 } from './connection.js';
 
@@ -355,5 +356,56 @@ describe('closeAllPools', () => {
 
     await closeAllPools();
     expect(primary.end).toHaveBeenCalledTimes(1);
+  });
+});
+
+/*
+  🔴 WHICH ROLE THE APP CONNECTS AS — added 2026-08-15.
+
+  Until now relay had exactly one database credential and it was root. This
+  module minted `getDbConnectAdminAuthToken()` unconditionally, so the live
+  production app connected as `admin` with full DDL rights — it could DROP
+  TABLE — and the IAM user holding that power, `relay-runtime`, was the SAME
+  user whose access key sat in .env.local on a laptop. There was no layer, IAM
+  or database, at which the deployed product and a developer's machine were
+  distinguishable.
+
+  Steve's ruling: only he, acting as a sysadmin, should be able to write outside
+  the product's own features and APIs. One cluster, and one cluster until G1 is
+  decided, so the separation is identity and privilege rather than environments.
+
+  The DEFAULT IS DELIBERATELY UNCHANGED. With DSQL_ROLE unset this behaves
+  exactly as it always has, because production is still running on the admin
+  path and a silent change to how the live app authenticates is the one thing
+  that must not happen as a side effect of adding an option. Production moves
+  when someone sets the variable, not when this ships.
+*/
+describe('dsqlIdentity — which role, and therefore which token', () => {
+  const saved = process.env.DSQL_ROLE;
+  afterEach(() => {
+    if (saved === undefined) delete process.env.DSQL_ROLE;
+    else process.env.DSQL_ROLE = saved;
+  });
+
+  it('defaults to admin when unset, exactly as before', () => {
+    delete process.env.DSQL_ROLE;
+    expect(dsqlIdentity()).toEqual({ user: 'admin', admin: true });
+  });
+
+  it('uses a named role and the NON-admin token when set', () => {
+    // dsql:DbConnect cannot mint an admin session, so this is a wall rather
+    // than a preference: the credential is incapable of becoming admin.
+    process.env.DSQL_ROLE = 'relay_dev';
+    expect(dsqlIdentity()).toEqual({ user: 'relay_dev', admin: false });
+  });
+
+  it('treats an explicit "admin" as the admin path, not a custom role', () => {
+    process.env.DSQL_ROLE = 'admin';
+    expect(dsqlIdentity()).toEqual({ user: 'admin', admin: true });
+  });
+
+  it('treats blank or whitespace as unset — a set-but-empty var must not lock anyone out', () => {
+    process.env.DSQL_ROLE = '   ';
+    expect(dsqlIdentity()).toEqual({ user: 'admin', admin: true });
   });
 });

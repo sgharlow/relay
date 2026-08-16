@@ -60,10 +60,16 @@ npm run test:coverage  # vitest --coverage (v8; thresholds 80/80/70/80 lines/fn/
 
 npm run gate           # types + lint + test + build. No database, no server. CI runs this.
 npm run verify:live    # the three E2E walks. NEEDS .env.local AND `npm run dev` running.
+npm run verify:schema  # do both DSQL regions have the tables the migrations declare?
+                       # Read-only (SELECT on pg_tables). NEEDS .env.local, no server.
+                       # Run it FIRST after applying a migration, and before a release.
+npm run verify:funnel  # is the G1 ad instrument alive? Drives a real browser against
+                       # production under src=qa (gate-excluded), writes nothing.
+                       # Run it daily during an ad flight — see docs/g1-ad-creatives.md.
 
 npx vitest --run lib/db/occ.test.ts          # run a single test file
 npx vitest --run -t "OCC retry"              # run tests matching a name
-npx tsx db/migrations/migrate.ts             # apply SQL migrations (needs DSQL env vars)
+npx tsx --env-file=.env.admin db/migrations/migrate.ts 0NN_x.sql   # migrations = a SYSADMIN act
 ```
 
 Test layout: vitest collects `src/**/*.test.ts(x)` and `lib/**/*.test.ts`. Tests live **next to the
@@ -81,6 +87,23 @@ No `.env.local` is committed. Copy `.env.example` → `.env.local`. Pools and KM
 env vars are only required when DB/KMS code actually runs (tests that don't touch the DB pass
 without them). AWS provisioning lives in `docs/aws-setup.md` + `scripts/provision-dsql.sh`;
 `infra/iam-policy.json` holds the `dsql:DbConnect` role.
+
+**Two env files, and the split is the security model** (2026-08-15). There is one cluster and there
+will be one until G1 is decided, so least privilege is built from identity, not environments.
+
+| File | Identity | Can |
+|---|---|---|
+| `.env.local` | IAM `relay-dev` → DB role `relay_dev` | read/write product tables. **No DDL.** **Cannot write `caregiver_leads`.** |
+| `.env.admin` | IAM `autospecai` → DB role `admin` | everything: migrations, roles, grants |
+
+`.env.admin` holds **no secrets** — just `AWS_PROFILE`, so the key stays in `~/.aws/credentials`
+alone. Being a sysadmin is something you *choose* by naming that file, not a power you carry by
+default. Until this existed the app minted an **admin** token, so production ran with full DDL
+rights and the same IAM user's key sat on a laptop; nothing anywhere could tell them apart.
+
+⚠️ **Production is still on the admin path.** `DSQL_ROLE` unset means `admin`, deliberately —
+Vercel moves to `relay_app` as a separate, explicit step. A denied write surfaces as
+`500 CaptureRefused`; if you ever see that on the lead form, it is a grant, not a bug.
 
 ## Architecture — the non-obvious invariants
 
@@ -166,7 +189,26 @@ So it is one command a person runs before a release. Each walk asserts the layer
 the server refusing correctly, and the screen a person actually meets. The UI walk exists because
 the HTTP ones passed while the picker was laying itself out sideways on a phone.
 
-Accessibility is a third: `node scripts/a11y-audit.mjs` with `A11Y_OWNER_EMAIL` set to an account
+**`npm run verify:schema` is a third, and the cheapest.** `migrate.ts` applies one named file and
+tracks nothing, so which migrations have reached which cluster was never recorded anywhere. On
+2026-08-15 that produced its first alert: `auth_challenges` was absent for four minutes while
+migration 029 was being applied, every passkey sign-in threw, and the thing that noticed reported it
+as a production failure from a laptop. This compares what the migrations declare against what each
+cluster has — **both regions**, because failover here is an env switch (`DSQL_USE_SECONDARY`) and a
+migration applied to only one region stays invisible until the day somebody flips it. Read-only, so
+it is safe against production, which is the only place worth running it.
+
+It also asks whether each declared table is **readable by the identity you are connecting as**,
+because presence is not usability. Migration 030 granted the least-privilege role
+`SELECT … ON ALL TABLES`, which resolves once against the tables existing at that moment; 031
+created one the next day and the first read failed with `permission denied`. `pg_tables` is
+readable by any role, so the presence check passed cleanly on a table the application could not
+touch. Migration 032 fixes the cause (`ALTER DEFAULT PRIVILEGES`, verified supported on DSQL), and
+the probe is here because that rule binds to the creating role — a table made by any other identity
+would drop straight back into the hole, silently, at runtime. Both halves were proven by planting a
+`REVOKE` and watching the check fail in both regions.
+
+Accessibility is a fourth: `node scripts/a11y-audit.mjs` with `A11Y_OWNER_EMAIL` set to an account
 that exists (`scripts/disposable-owner.ts create` makes one). CI covers the signed-out half only —
 it has no database credentials to mint an owner session, and the script says so on every run.
 
@@ -183,6 +225,8 @@ actually *use* the thing, and each fails loudly rather than silently:
 | `route-auth.ts` | every handler establishes a principal | a session/token/secret call, or `PUBLIC_ROUTES` + reason |
 | `step-up-guard.ts` | sensitive handlers re-authenticate | `requireStepUp` / `requireStepUpOnce`, or classify it |
 | `api-reachability.ts` | no handler is unreachable | wire it, retire it, or `REACHED_FROM_OUTSIDE` + reason |
+| `fetch-routes-exist.test.ts` | the other direction — no `fetch` names a route nothing serves | spell the path the way `src/app/api` spells it |
+| `scrollable-regions.test.ts` | a box that scrolls sideways is focusable AND named | `tabIndex={0}` + `role="region"` + `aria-label`, or stop it scrolling |
 | `type-scale.ts` | no page invents a tenth type step | `t1`–`t9`, never a px literal |
 | `raw-color.test.ts` | hardcoded colours do not spread | the tokens in `globals.css` |
 

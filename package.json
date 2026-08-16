@@ -19,6 +19,8 @@
     "gate:test": "vitest --run",
     "gate:build": "next build",
     "verify:live": "npm run verify:stepup && npm run verify:multiowner && npm run verify:ui",
+    "verify:schema": "npx tsx --env-file=.env.local scripts/verify-schema.ts",
+    "verify:funnel": "npx tsx scripts/verify-funnel.ts",
     "verify:stepup": "npx tsx --env-file=.env.local scripts/e2e-stepup.ts",
     "verify:multiowner": "npx tsx --env-file=.env.local scripts/e2e-multiowner.ts",
     "verify:ui": "npx tsx --env-file=.env.local scripts/e2e-ui.ts"

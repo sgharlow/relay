@@ -267,7 +267,12 @@ export default function CircleClient() {
           // table wider than the viewport loses its right-hand columns with no
           // way to reach them. Here that column is "items reachable" — the
           // number that says whether naming this person actually did anything.
-          <div className="overflow-x-auto">
+          <div
+            className="overflow-x-auto"
+            tabIndex={0}
+            role="region"
+            aria-label="Who is in the circle, and what each person can reach"
+          >
           <table className="mt-3 w-full text-t2">
             <thead>
               <tr className="border-b border-rule text-left text-t1 uppercase tracking-wide text-muted">
