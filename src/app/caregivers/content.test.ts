@@ -16,6 +16,7 @@ import {
   DIFFERENTIATORS,
   HEADLINE,
   intentHref,
+  GATE_LANES,
   isGateQualifyingSrc,
   LANDING_HREF,
   PRICE_YEARLY_USD,
@@ -114,14 +115,57 @@ describe('G1 caregiver WTP instrument', () => {
     expect(isGateQualifyingSrc('beta-a-tag-nobody-has-invented-yet')).toBe(false);
   });
 
-  it('the exclusion is anchored, so a paid lane is never swallowed by it', () => {
-    // A substring rule would exclude anything merely CONTAINING the word, and the
-    // failure would be silent in the other direction: real bought traffic dropped
-    // from N, on a gate that also kills on a low absolute count.
-    expect(isGateQualifyingSrc('reddit-ads-beta')).toBe(true);
-    expect(isGateQualifyingSrc('betamax-forum')).toBe(true);
+  /*
+    ⚠️ RATIFIED BY STEVE 2026-08-16 — N IS AN ALLOW-LIST.
+
+    It was a deny-list, which counted anything tagged and unlisted: a newsletter,
+    a launch post, a founding-family link, a src somebody invented on a Tuesday.
+    None of those carries a priced numerator, so every one of them pushed the
+    ratio toward the <0.5% that kills D2C — silently, because nobody notices a
+    denominator that is slightly too big.
+
+    The failure direction is the whole argument. Forget to declare a new lane
+    under an allow-list and its traffic reads ZERO on day one of a flight, which
+    is impossible to miss and is fixed by adding one string.
+
+    Decided before traffic existed because there is no retroactive version:
+    caregiver_leads rows can be deleted, Vercel Analytics events cannot.
+  */
+  it('only the declared paid lanes count toward N', () => {
+    for (const lane of GATE_LANES) expect(isGateQualifyingSrc(lane)).toBe(true);
+
+    // The cases the deny-list used to wave through. Each is a real thing
+    // somebody could plausibly tag, and none was ever bought as caregiver reach.
+    for (const stray of [
+      'newsletter',
+      'linkedin',
+      'producthunt',
+      'hn',
+      'friend',
+      'reddit-ads-beta', // a lane-shaped typo is NOT the lane
+      'betamax-forum',
+      'a-tag-somebody-invented-on-a-tuesday',
+    ]) {
+      expect(isGateQualifyingSrc(stray), `${stray} must not count toward N`).toBe(false);
+    }
+  });
+
+  it('a lane can never also be an excluded value', () => {
+    // The allow-list alone would happily count a QA or beta string pasted into
+    // GATE_LANES. This is the second lock, and the reason the exclusion checks
+    // are kept in the resolver rather than deleted as redundant.
+    for (const lane of GATE_LANES) {
+      expect(QA_SRCS as readonly string[], `${lane} is a QA value`).not.toContain(lane);
+      expect(SHOWCASE_SRCS as readonly string[], `${lane} is a showcase value`).not.toContain(lane);
+      expect(lane.startsWith('beta-'), `${lane} is a beta value`).toBe(false);
+    }
+  });
+
+  it('the sitting sheet destination is a declared lane', () => {
+    // docs/g1-sitting-sheet.md screen 12 sends traffic to ?src=reddit-ads and
+    // calls it "the whole measurement". Under an allow-list a mismatch between
+    // that URL and this list reads as zero demand rather than as a typo.
     expect(isGateQualifyingSrc('reddit-ads')).toBe(true);
-    expect(isGateQualifyingSrc('meta-ads')).toBe(true);
   });
 
   it('names the real competitive frames, not strawmen', () => {

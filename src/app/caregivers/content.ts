@@ -180,12 +180,54 @@ export const BETA_SRC_PREFIX = 'beta-';
 /** Sources that are tagged but must never reach the gate ratio, for any reason. */
 const NON_QUALIFYING_SRCS: readonly string[] = [...SHOWCASE_SRCS, ...QA_SRCS, 'beta'];
 
-/** True when a src counts toward the G1 gate ratio (tagged, caregiver-targeted, not ours). */
+/**
+ * THE DECLARED PAID LANES — the only sources that count toward N.
+ *
+ * ⚠️ RATIFIED BY STEVE 2026-08-16: this is an ALLOW-LIST, and it replaced a
+ * deny-list. Recorded in `PROJECT.yaml` `ratified.g1-n-is-an-allow-list`.
+ *
+ * The deny-list counted anything tagged and unlisted, which meant the gate that
+ * decides this product's future treated *any* labelled visitor as caregiver
+ * demand — a newsletter, a launch post, a founding-family link, a src somebody
+ * invented on a Tuesday. All of them arrive without a priced numerator behind
+ * them, so they pushed the ratio one way only: toward the `<0.5%` that kills
+ * D2C.
+ *
+ * The decisive argument is the DIRECTION OF THE FAILURE, not tidiness.
+ *
+ *   - A deny-list fails SILENTLY. Nobody notices a denominator that is slightly
+ *     too big; the ratio just reads worse than the truth, and the verdict is
+ *     written from it.
+ *   - An allow-list fails LOUDLY. Forget to declare a new lane and its traffic
+ *     reads zero, which is impossible to miss on the first day of a flight and
+ *     is fixed by adding one string.
+ *
+ * And it had to be decided before traffic existed: `caregiver_leads` rows can be
+ * deleted, Vercel Analytics events cannot. There is no retroactive version of
+ * this change.
+ *
+ * ADDING A LANE IS DELIBERATE. Put the src here in the same commit that creates
+ * the ad carrying it, and it must not collide with any exclusion set above —
+ * `content.test.ts` asserts that intersection is empty, so a lane that is also
+ * a QA or showcase value fails the build rather than quietly counting us.
+ */
+export const GATE_LANES = ['reddit-ads', 'meta-ads'] as const;
+
+/**
+ * True when a src counts toward the G1 gate ratio.
+ *
+ * The exclusion checks run FIRST and are now, strictly speaking, redundant —
+ * nothing in them appears in `GATE_LANES`. They are kept because they are the
+ * only place the reasoning lives, and because they are a second lock on the one
+ * mistake that cannot be undone: if a beta tag or a QA value were ever pasted
+ * into `GATE_LANES`, the allow-list alone would happily count it.
+ */
 export function isGateQualifyingSrc(src: string): boolean {
   const s = src.trim();
   if (!s || s === 'direct') return false;
   if (s.startsWith(BETA_SRC_PREFIX)) return false;
-  return !NON_QUALIFYING_SRCS.includes(s);
+  if (NON_QUALIFYING_SRCS.includes(s)) return false;
+  return (GATE_LANES as readonly string[]).includes(s);
 }
 
 export const DIFFERENTIATORS = [

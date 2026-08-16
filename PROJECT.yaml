@@ -526,6 +526,39 @@ ratified:
     rationale: "G1 measures click-to-intent, which happens before checkout, so this cannot bias the gate reading. It is only seen by someone who reaches payment during the beta."
     revisit: "if G1 passes — at which point the options are a neutral shared name or a Relay-only Stripe account"
 
+  - id: g1-n-is-an-allow-list
+    date: 2026-08-16
+    owner: steve
+    decision: "N counts ONLY the declared paid lanes. `isGateQualifyingSrc` becomes an
+      allow-list (`GATE_LANES` in src/app/caregivers/content.ts), replacing the deny-list
+      that counted anything tagged and not explicitly excluded."
+    supersedes: "the deny-list form of the same function, and — as a consequence — makes
+      SHOWCASE_SRCS, QA_SRCS and the `beta-` prefix redundant rather than load-bearing.
+      They are KEPT in the resolver: they are the only place the reasoning lives, and they
+      are a second lock on the one mistake that has no undo (a QA or beta value pasted into
+      GATE_LANES, which the allow-list alone would happily count). content.test.ts asserts
+      that intersection is empty."
+    rationale: "The direction of the failure, not tidiness. A deny-list fails SILENTLY —
+      nobody notices a denominator that is slightly too big; the ratio simply reads worse
+      than the truth and the verdict is written from it, and every stray tagged source
+      (a newsletter, a launch post, a founding-family link) arrives with no priced
+      numerator behind it, so the bias is one-directional toward the <0.5% that KILLS D2C.
+      An allow-list fails LOUDLY: forget to declare a new lane and its traffic reads zero
+      on day one of a flight, which is impossible to miss and costs one string to fix.
+      This is the portfolio's `structural safety over convention` rule applied to a
+      measurement rather than to a permission."
+    timing: "Taken before any traffic exists, deliberately, because there is no retroactive
+      version: a caregiver_leads row can be deleted, a Vercel Analytics event cannot. The
+      same argument that made the beta exclusion worth building the same day."
+    unchanged: "the thresholds, the $250 ceiling, the 4-week window, the N>=100 stop, the
+      directional-read constraint and both lane definitions. This narrows WHICH visitors
+      enter the denominator; it does not change what the gate asks or where it cuts."
+    implemented: "GATE_LANES = ['reddit-ads', 'meta-ads'] — the two lanes
+      docs/g1-channel-send-kit.md buys. Adding a lane goes in the same commit as the ad
+      that carries it. Pinned by content.test.ts, including that the sitting sheet's
+      destination src is a declared lane, because under an allow-list a typo there reads
+      as zero demand rather than as a typo."
+
 # Per-journey build state — THE one authoritative record, added 2026-08-13.
 #
 # WHY IT MOVED HERE. docs/user-journeys.md carried per-journey state in three

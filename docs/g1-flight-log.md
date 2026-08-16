@@ -35,11 +35,24 @@
 
 ## What N is, precisely
 
-**N = count of `caregiver_qualified` events whose `src` is gate-qualifying.**
+**N = count of `caregiver_qualified` events whose `src` is a DECLARED PAID LANE.**
 
-A `src` is gate-qualifying when it is tagged, not `direct`, and not in the excluded sets —
-enforced by `isGateQualifyingSrc()` in `src/app/caregivers/content.ts` and pinned by
-`content.test.ts`. It is **not** a matter of dashboard discipline; do not re-derive it by eye.
+> ⚠️ **CHANGED 2026-08-16, ratified by Steve** (`PROJECT.yaml`
+> `ratified.g1-n-is-an-allow-list`). This was *"tagged, not `direct`, and not in the excluded
+> sets"* — a deny-list, which counted anything labelled that nobody had thought to exclude. A
+> newsletter, a launch post, a founding-family link: none carries a priced numerator, so each
+> pushed the ratio one way only, toward the `<0.5%` that kills D2C, **silently**. It is now an
+> allow-list — `GATE_LANES` in `src/app/caregivers/content.ts` — whose failure mode is loud
+> instead: an undeclared lane reads zero on day one, which nobody can miss.
+>
+> Taken before any traffic existed because there is no retroactive version. **Thresholds, the
+> window, the N≥100 stop and both lane definitions are untouched;** this narrows who enters the
+> denominator, not what the gate asks.
+
+Enforced by `isGateQualifyingSrc()` and pinned by `content.test.ts`. It is **not** a matter of
+dashboard discipline; do not re-derive it by eye. The exclusion sets below are now redundant
+rather than load-bearing, and are kept as a second lock and as the record of why each value is
+not audience.
 
 | Excluded set | Values | Why |
 |---|---|---|
