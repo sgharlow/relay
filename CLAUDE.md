@@ -208,7 +208,17 @@ the probe is here because that rule binds to the creating role — a table made 
 would drop straight back into the hole, silently, at runtime. Both halves were proven by planting a
 `REVOKE` and watching the check fail in both regions.
 
-Accessibility is a fourth: `node scripts/a11y-audit.mjs` with `A11Y_OWNER_EMAIL` set to an account
+**`npm run verify:roles` is a fourth**, and it guards a wall that leaves no trace in this repo. The
+least-privilege split is enforced by GRANTs on a live cluster: `db/migrations/*.sql` records what was
+*intended* when each file ran, and anyone with admin can widen a role in one statement that appears
+in no diff, test run or build. It re-measures the thing itself — both regions, read-only — asserting
+that `relay_app` (the live site, IAM `relay-runtime`) has full DML including `caregiver_leads`, that
+`relay_dev` (a laptop) can read that table and not write it, that neither holds DDL, and that each is
+bound to exactly one IAM principal. Proven to fail in both directions by planting a widened
+`relay_dev` and a starved `relay_app`. ⚠️ **Production still runs as `admin`** — the cutover is one
+Vercel variable and has not been made: `docs/least-privilege-cutover.md`.
+
+Accessibility is a fifth: `node scripts/a11y-audit.mjs` with `A11Y_OWNER_EMAIL` set to an account
 that exists (`scripts/disposable-owner.ts create` makes one). CI covers the signed-out half only —
 it has no database credentials to mint an owner session, and the script says so on every run.
 
