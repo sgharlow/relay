@@ -612,6 +612,35 @@ ratified:
       destination src is a declared lane, because under an allow-list a typo there reads
       as zero demand rather than as a typo."
 
+  - id: relay-operator-is-an-individual
+    date: 2026-08-16
+    owner: steve
+    decision: "Relay is operated by Steve personally. There is NO business entity and NO EIN."
+    why_it_was_asked: "The Terms of Service — a contract a paying customer enters — name no party.
+      The 2026-08-16 readiness assessment found the same unresolved fact blocking four separate
+      surfaces, and the repo had already hit it three times without settling it."
+    consequences:
+      legal: "/terms and /privacy must name Steve as the operator. An unnamed provider in a contract
+        is a defect in its own right, and it is the first thing a cautious reader checks before
+        handing over family credentials."
+      editorial: "An About page naming a real person unblocks the op-ed plan. Most contributor
+        guidelines require an author bio and affiliation, and a pitch from an unattributable site
+        reads as spam. A named individual is not a weakness here — for early-stage software a person
+        is generally trusted more than an anonymous 'we'."
+      sms_10dlc: "SETTLED. docs/deliverability-options-3-and-5.md could not choose a route because it
+        did not know whether Relay had an EIN. It does not, so **Sole Proprietor is the only
+        available route** — one 10DLC number, low throughput, lifetime three-use OTP limit. The
+        Standard brand route requires a Tax ID and is closed. That doc's open question can now be
+        answered rather than carried."
+      stripe: "ratified.stripe-merchant-name left the shared 'Relay/ReportBridge/LearningAI365'
+        header as-is 'for the G1 flight'. That flight is cancelled, so the stated reason has expired
+        — but with no entity, separating the merchant name means a second personal Stripe account
+        rather than a clean corporate one. Not urgent while volume is zero; re-decide if a real
+        customer ever remarks on it."
+    boundary: "⚠️ Naming Steve as Relay's operator is fine and is the point. It must NOT pull in any
+      employment detail — the employer-anonymity rule (feedback_no_employer_references) is unchanged
+      and applies with full force to any bio written for an outlet."
+
   - id: j9-5-7-dropped
     date: 2026-08-16
     owner: steve

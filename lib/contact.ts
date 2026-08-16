@@ -61,3 +61,39 @@ export const CONTACT_MAILTO = `mailto:${CONTACT_EMAIL}`;
  * variable is present, so the copy cannot drift away from what actually sends.
  */
 export const SENDER_EMAIL: (typeof ROUTED_ADDRESSES)[number] = 'relay@relaystandby.com';
+
+/**
+ * WHO OPERATES RELAY. One definition, for the same reason the address above has
+ * one — it goes on the Terms, the Privacy page and the About page, and three
+ * copies of a person's name is three places to get it wrong.
+ *
+ * 🔴 THE TERMS NAMED NOBODY UNTIL 2026-08-16. A contract a paying customer
+ * enters said "Relay is early-stage software" and "provided as-is" without ever
+ * saying by whom. That was survivable while the plan was paid advertising, where
+ * nobody checks; it stopped being survivable when the plan became op-eds in AARP
+ * and caregiver.com, because an editor needs an attributable author and a reader
+ * being asked for their family's passwords needs a counterparty to judge.
+ * Found by the readiness assessment: docs/product-readiness-assessment-2026-08-16.md.
+ *
+ * There is NO company and NO EIN — Relay is operated by an individual, ratified
+ * as `relay-operator-is-an-individual`. That is stated plainly rather than
+ * dressed up as a "we", and it also settles the 10DLC route: Sole Proprietor is
+ * the only one available without a Tax ID.
+ *
+ * ⚠️ NAMING HIM IS THE POINT; HIS EMPLOYMENT IS NOT. The employer-anonymity rule
+ * binds every public surface and every bio supplied to an outlet. Nothing about
+ * where he works belongs on this site, in a byline, or in a pitch.
+ */
+export const OPERATOR_NAME = 'Steve Harlow';
+
+/**
+ * Supplied by Steve 2026-08-16 for the About page, as the credential an editor
+ * checks before attributing a byline.
+ *
+ * ⚠️ FLAGGED WHEN IT WAS ADDED, AND THE FLAG STANDS: this connects Relay to a
+ * profile that names an employer, one hop from a public page. It is here because
+ * Steve provided it for this purpose knowing the anonymity rule exists, not
+ * because the rule was overlooked. Removing it is deleting this constant and the
+ * one link that uses it.
+ */
+export const OPERATOR_PROFILE_URL = 'https://www.linkedin.com/in/stevengharlow/';

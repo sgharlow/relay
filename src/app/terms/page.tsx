@@ -21,7 +21,7 @@
  * Feature: relay-g1-wtp
  */
 
-import { CONTACT_EMAIL, CONTACT_MAILTO } from '../../../lib/contact';
+import { CONTACT_EMAIL, CONTACT_MAILTO, OPERATOR_NAME } from '../../../lib/contact';
 import { GUARANTEE_LABEL, PRICE_YEARLY_LABEL, REFUND_POLICY } from '../../../lib/offer';
 
 export const metadata = {
@@ -242,11 +242,29 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-t5 font-semibold text-ink">Contact</h2>
+          {/*
+            WHO YOU ARE CONTRACTING WITH. Added 2026-08-16 — until then this
+            document bound a paying customer to nobody at all. It said "Relay is
+            early-stage software" and "provided as-is" without ever naming the
+            party providing it, which is a defect in a contract regardless of
+            audience, and the first thing a reader checks before handing over a
+            family's credentials. Found by
+            docs/product-readiness-assessment-2026-08-16.md.
+          */}
+          <h2 className="text-t5 font-semibold text-ink">Who provides Relay, and how to reach him</h2>
+          <p className="mt-2">
+            Relay is provided by <strong>{OPERATOR_NAME}</strong>, an individual — there is no
+            company. These terms are an agreement between you and him.
+          </p>
           <p className="mt-2">
             <a className="text-ink underline" href={CONTACT_MAILTO}>
               {CONTACT_EMAIL}
+            </a>{' '}
+            — read by a person. More at{' '}
+            <a className="text-ink underline" href="/about">
+              about
             </a>
+            .
           </p>
         </section>
 
