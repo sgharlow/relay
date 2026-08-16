@@ -1,5 +1,59 @@
 # G1 lane 1 — Google Ads search intent
 
+> # 🔴 MEASURED 2026-08-16, BEFORE ANY SPEND: THE DEMAND IS NOT THERE.
+>
+> Keyword Planner, US, English, Aug 2025 – Jul 2026. Run in the existing account (990-960-7101) as
+> **research only** — no campaign built there, nothing spent anywhere.
+>
+> | Seed | Avg. monthly searches |
+> |---|---|
+> | `share passwords with family` | **10 – 100** |
+> | `emergency access password manager` | **0 – 10** |
+> | `access my parents bank account` | **0 – 10** |
+> | `manage elderly parents finances` | **0 – 10** |
+> | `what happens to my accounts if i am incapacitated` | **0 – 10** |
+>
+> Google generated only **21 keyword ideas** from all five seeds. **Ten of the sixteen ideas are
+> Netflix password sharing**, and the three largest (100–1K each) are declining **−90% YoY**. The
+> genuinely on-wedge remainder is six terms at 10–100/month: `handling elderly parents finances how
+> to`, `managing elderly finances` (CPC $3.03–$8.61), `managing finances for elderly parents`,
+> `managing parents finances`, `lastpass emergency`, `family sharing passwords`.
+>
+> **Excluding Netflix: ~330 searches/month at midpoint, ~600 at the absolute ceiling** — much of it
+> informational rather than buying intent.
+>
+> **Two findings that matter more than the totals.**
+>
+> 1. **The words do not mean what we mean by them.** Google's semantic neighbourhood for "share
+>    passwords with family" is *keeping a streaming account alive*. That is who the bid competes
+>    with and, worse, who it reaches.
+> 2. **N ≥ 100 is arithmetically out of reach inside the window.** At ~330 searches/month, on
+>    phrase/exact, with partial impression share and informational-query CTR, this is plausibly
+>    10–30 clicks/month. N=100 needs 3–10 months. The gate hard-stops **2026-10-02**.
+>
+> **The pre-set cancel criterion is met.** It was written before the number was seen: *"Run those
+> keyword clusters through Keyword Planner. If US monthly volume across the caregiver and
+> emergency-access sets is under a few hundred, cancel the campaign."*
+>
+> ### This is the third instrument to fail, and they agree
+>
+> | Instrument | Result | Cost to learn |
+> |---|---|---|
+> | Reddit community targeting | the caregiver audience is not in the targetable index at all | $0 |
+> | Reddit keyword targeting | does not narrow — 251.2m–314.1m under US-only scoping | $0 |
+> | Google search intent | the demand is not in search — ~330/mo, mostly Netflix | $0 |
+>
+> Three channels, three mechanisms, one conclusion: **there is no self-identifying, addressable
+> population searching for this, and no ad platform will sell access to it by inference either.**
+> That is evidence about the WEDGE, not about the channels — and it is exactly what the
+> `demand gate before horizontal build` rule in the global CLAUDE.md exists to surface before money
+> moves. It cost $0 instead of the ratified $250.
+>
+> **Everything below this banner was written before the measurement and is retained as the plan
+> that would have run.** The copy, negatives and settings in `lib/g1/google-lane.ts` remain correct
+> and tested; they are simply pointed at a market that is not there. Do not execute the sitting
+> section without a decision from Steve first.
+
 > Replaces the Reddit lane, retired 2026-08-16. Decision and evidence:
 > `PROJECT.yaml` `ratified.g1-lane-1-is-google-search-intent`.
 >
