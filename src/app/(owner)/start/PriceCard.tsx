@@ -30,6 +30,21 @@ function priceUsd(): number {
 
 export default function PriceCard() {
   const [delivered, setDelivered] = useState<boolean | null>(null);
+  /*
+    The button waits on a Stripe round-trip — commonly a second or more — before
+    the browser navigates. Until this it said nothing while that happened, and a
+    button that does not acknowledge a press gets pressed again. That was not
+    only a poor moment; every extra press emitted the G1 gate numerator again
+    (see lib/analytics/lane-b.ts) and opened another Checkout Session.
+
+    `busy` is deliberately never cleared. Both outcomes of `onIntent` navigate
+    away, so the only state after a successful press is "leaving" — and
+    re-enabling the button during that window would re-open exactly the gap
+    this closes. The sibling intent surface, InterestForm on
+    /caregivers/interest, has guarded its submit this way all along; this is the
+    one that takes money and did not.
+  */
+  const [busy, setBusy] = useState(false);
   const price = priceUsd();
 
   useEffect(() => {
@@ -40,6 +55,9 @@ export default function PriceCard() {
   }, [price]);
 
   async function onIntent() {
+    if (busy) return;
+    setBusy(true);
+
     // Try real checkout first. It 503s until Stripe is configured, and the interest
     // page is the fallback. That ordering matters: the button says "Keep my vault —
     // $119/yr", and sending someone who wants to pay to a waitlist when checkout
@@ -91,9 +109,11 @@ export default function PriceCard() {
         <button
           type="button"
           onClick={onIntent}
-          style={{ ...buttonPrimary, width: '100%', marginTop: 'var(--s6)' }}
+          disabled={busy}
+          aria-busy={busy}
+          style={{ ...buttonPrimary, width: '100%', marginTop: 'var(--s6)', opacity: busy ? 0.6 : 1 }}
         >
-          Keep my vault — ${price}/yr
+          {busy ? 'Taking you to checkout…' : `Keep my vault — $${price}/yr`}
         </button>
 
         <p style={{ ...meta, marginTop: 'var(--s3)', textAlign: 'center' }}>

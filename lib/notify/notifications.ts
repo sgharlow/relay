@@ -25,6 +25,17 @@ import { getOwnerLabel } from '../people/owner-label';
 import { classifyOrFailOpen, type VerifierNoticeClass } from './verifier-notice-class';
 import { article, Article } from '../text/article';
 import { isReversibleTrigger } from '../release/state-machine';
+import { writeAuditEntry } from '../audit/audit-service';
+import { reportServerError } from '../ops/error-reporter';
+
+/**
+ * The audit action recording that a release opened and nobody could be told.
+ *
+ * Exported so the test that proves it, and anyone reading the trail later, both
+ * name the same string — a literal repeated in two places is a literal that
+ * eventually disagrees with itself.
+ */
+export const RELEASE_NOTICE_UNDELIVERED_ACTION = 'release_notice_undelivered';
 
 /**
  * The origin every emailed link is built on.
@@ -210,7 +221,101 @@ export async function notifyRecipientsOfRelease(params: {
       );
     }),
   );
-  return results.filter(Boolean).length;
+
+  const reached = results.filter(Boolean).length;
+
+  /*
+    🔴 THE RELEASE OPENED AND NOBODY COULD BE TOLD, and until now that produced
+    no record anywhere.
+
+    Both release paths call this function and discard what it returns —
+    `runHeartbeatSweep` with `.catch(() => undefined)` and the quorum path with
+    `.catch(() => {})`. That is correct as far as it goes: a mail failure must
+    never roll back a committed transition. But it meant the count was computed
+    and thrown away, so the one case this product exists to prevent left no
+    trace: `release_state` says `released`, the recipient never heard, the owner
+    never heard, and `/circle` shows `unknown` — which its own module header is
+    at pains to say means "we have not heard", never "fine".
+
+    `sweepSilentVerifiers` does not cover this. It watches releases WAITING on
+    confirmations; this is a release that already opened. Between them the
+    before-state was watched and the after-state was not.
+
+    THE CHECK LIVES HERE RATHER THAN AT THE TWO CALL SITES for the reason the
+    rest of this codebase gives: a guard at the call site is a guard the next
+    call site forgets, and there are already two. It is also the only place both
+    numbers exist — the caller receives `reached` alone, and `0` on its own
+    cannot tell "every send failed" from "nobody was scoped to this trigger".
+
+    ⚠️ WHICH IS THE DISTINCTION THAT DECIDES WHETHER THIS IS NOISE. A release
+    with no recipients configured returns 0 and is NOT a delivery failure — it is
+    a configuration fact, and alarming on it would fire on every demo account
+    with an unscoped trigger. Only `recipients existed AND none was reached` is
+    reported, which is a state that should essentially never occur and therefore
+    cannot flood the channel it uses.
+  */
+  if (recipients.rows.length > 0 && reached === 0) {
+    await reportUndeliveredRelease({
+      ownerId: params.ownerId,
+      releaseStateId: params.releaseStateId,
+      triggerType: params.triggerType,
+      caseId,
+      recipientCount: recipients.rows.length,
+    });
+  }
+
+  return reached;
+}
+
+/**
+ * Records — durably, and to a human — that a release opened with nobody reached.
+ *
+ * TWO CHANNELS, because either alone is a shape this repo has already been
+ * caught by. The audit entry is the durable half: it survives the process, it
+ * sits in the owner's own trail beside the release it belongs to, and it is
+ * queryable later. The ops alert is the half that means somebody LEARNS —
+ * "reporting is not monitoring", and in the emergency case the owner is by
+ * hypothesis the person who cannot check their audit log.
+ *
+ * `reportServerError` is reused rather than a second alerting path built beside
+ * it. It already refuses to throw, already dedups per signature per window, and
+ * is already gated to production by `alertEnvironmentLabel` — and a second
+ * definition of "how this project alerts" is exactly how two copies drift.
+ *
+ * ⚠️ IT CANNOT THROW. The release is COMMITTED before this runs. An exception
+ * here would propagate into the release path, where the callers' `.catch()`
+ * would swallow it — turning a recorded delivery failure into an unrecorded one
+ * and achieving the opposite of the point.
+ */
+async function reportUndeliveredRelease(params: {
+  ownerId: string;
+  releaseStateId: string;
+  triggerType: string;
+  caseId: string;
+  recipientCount: number;
+}): Promise<void> {
+  const { ownerId, releaseStateId, triggerType, caseId, recipientCount } = params;
+  const summary =
+    `Release ${caseId} opened but NONE of its ${recipientCount} recipient(s) could be ` +
+    `notified. The access is open and the people it was opened for have not been told.`;
+
+  try {
+    await writeAuditEntry(ownerId, {
+      action: RELEASE_NOTICE_UNDELIVERED_ACTION,
+      actor: 'system',
+      entity: 'release_state',
+      entityId: releaseStateId,
+      detail: { triggerType, caseId, recipientCount, reached: 0 },
+    });
+  } catch (err) {
+    process.stderr.write(`[notify] could not record undelivered release ${caseId}: ${String(err)}\n`);
+  }
+
+  try {
+    await reportServerError(new Error(summary), { path: '/release/notify' });
+  } catch (err) {
+    process.stderr.write(`[notify] could not alert on undelivered release ${caseId}: ${String(err)}\n`);
+  }
 }
 
 export interface VerifierContact {

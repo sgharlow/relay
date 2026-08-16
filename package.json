@@ -23,7 +23,8 @@
     "verify:funnel": "npx tsx scripts/verify-funnel.ts",
     "verify:stepup": "npx tsx --env-file=.env.local scripts/e2e-stepup.ts",
     "verify:multiowner": "npx tsx --env-file=.env.local scripts/e2e-multiowner.ts",
-    "verify:ui": "npx tsx --env-file=.env.local scripts/e2e-ui.ts"
+    "verify:ui": "npx tsx --env-file=.env.local scripts/e2e-ui.ts",
+    "verify:roles": "npx tsx --env-file=.env.local scripts/verify-roles.ts"
   },
   "dependencies": {
     "@aws-sdk/client-kms": "3.1072.0",

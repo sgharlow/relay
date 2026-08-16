@@ -132,3 +132,42 @@ export function intentProps(search: string, channel: string): { src: string; cta
     cta: position ? position : 'unknown',
   };
 }
+
+/**
+ * Has this session already emitted this G1 event?
+ *
+ * 🔴 THE GATE IS SPECIFIED IN VISITORS AND THE INSTRUMENT COUNTED PAGE VIEWS.
+ * `PROJECT.yaml` reads "N >= 100 qualified visitors" and
+ * docs/g1-wtp-test-design.md "≥ 2% click-to-intent at a real price point,
+ * N ≥ 100 qualified visitors". Both trackers fired on every MOUNT, so one person
+ * reloading, pressing back, or reopening a page counted again.
+ *
+ * The two sides inflate on different actions, which is why this is not a wash:
+ * reloading /caregivers inflates the DENOMINATOR (biasing toward a false kill),
+ * and reloading /caregivers/interest inflates the NUMERATOR (biasing toward a
+ * false SHIP). The conversion page is the one a visitor is likelier to return
+ * to, and a false ship is the error that spends money.
+ *
+ * SESSION-SCOPED, matching `CHANNEL_STORAGE_KEY` beside it — attribution should
+ * not outlive the visit, and neither should a conversion. A genuinely new visit
+ * is a new session and counts again, which is correct.
+ *
+ * ⚠️ FAILS OPEN, deliberately. Private mode and blocked storage throw here, and
+ * the choice is between possibly counting a visitor twice and certainly not
+ * counting them at all. Silently dropping conversions biases toward a false
+ * kill and is invisible; the duplicate at least leaves a trace. `recallChannel`
+ * above makes the same trade for the same reason.
+ */
+export function firstTimeThisSession(key: string): boolean {
+  try {
+    if (window.sessionStorage.getItem(key)) return false;
+    window.sessionStorage.setItem(key, '1');
+    return true;
+  } catch {
+    return true;
+  }
+}
+
+/** Session keys for the two ratio events. Distinct, so one cannot suppress the other. */
+export const QUALIFIED_ONCE_KEY = 'relay.g1.qualified.sent';
+export const INTENT_ONCE_KEY = 'relay.g1.intent.sent';

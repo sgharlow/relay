@@ -54,6 +54,32 @@ underpowered read is likelier to land under 0.5% than over 2%.
 - **Kill:** < 0.5% after 100+ qualified → park D2C; B2B2C-only or archive.
 - Between 0.5% and 2%: iterate copy/channel once, re-run; a second sub-2% read counts toward kill.
 
+### Amendment 2026-08-16 — the instrument now counts what these thresholds say
+
+Both thresholds above are written in **visitors** ("N ≥ 100 qualified visitors"), and until this
+date the instrument counted **page views**: `QualifiedTracker` and `IntentTracker` each fired on
+every mount, so one person reloading, pressing back, or reopening a tab counted again.
+
+That is not a wash between the two sides, because they inflate on different actions:
+
+| Action | Inflates | Bias |
+|---|---|---|
+| Reload `/caregivers` | denominator | toward a false **kill** |
+| Reload `/caregivers/interest` | numerator | toward a false **ship** |
+| Double-click the price CTA (Lane B) | numerator | toward a false **ship** |
+
+The conversion page is the one a visitor is likelier to return to, and a false ship is the error
+that spends money. Both events are now emitted **once per browser session** (session-scoped, like
+the channel attribution beside them — a genuinely new visit is a new session and counts again), and
+the Lane-B price CTA emits once per page load however many times it is pressed.
+
+⚠️ It fails **open**: where `sessionStorage` is unavailable the event still fires, because
+possibly counting a visitor twice beats certainly not counting them at all — silently dropping
+conversions biases toward a false kill and is invisible.
+
+⚠️ **Nothing measured before this date is comparable**, which costs nothing: the flight had not
+started. Do not blend any pre-2026-08-16 reading into the N this gate is decided on.
+
 ## The instrument (what the branch contains)
 
 - **`/caregivers`** — landing that leads with REVERSIBILITY ("emergency access that closes
