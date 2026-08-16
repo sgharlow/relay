@@ -77,6 +77,12 @@ happens is not recoverable later.
 Fill one row per day. Numbers come from Vercel Analytics → Events and a `caregiver_leads`
 count; do not carry a number forward from the previous row.
 
+**`npm run flight:snapshot`** prints the row ready to paste — the lead count, which channels the
+leads came from, and **the notes quoted**, which verdict line 4 expects to carry the decision on a
+directional read. It leaves the two analytics cells marked for the human reading the dashboard, on
+purpose: a second path to N would be a second definition of the number this gate turns on. It is
+read-only and connects as `relay_dev`, which cannot write `caregiver_leads`.
+
 | Day | Date | Spend to date | Qualified (N) | Lane-A intents | Lane-B intents | Leads | Lane-A ratio | Notes |
 |---|---|---|---|---|---|---|---|---|
 | 1 | | | | | | | | |

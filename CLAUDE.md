@@ -66,6 +66,11 @@ npm run verify:schema  # do both DSQL regions have the tables the migrations dec
 npm run verify:funnel  # is the G1 ad instrument alive? Drives a real browser against
                        # production under src=qa (gate-excluded), writes nothing.
                        # Run it daily during an ad flight — see docs/g1-ad-creatives.md.
+npm run flight:snapshot # the G1 flight's daily read AND the sitting sheet's pre-flight
+                       # line 3. Prints the snapshot row + the lead notes (verdict line
+                       # 4), and EXITS 1 if caregiver_leads is not empty before the
+                       # window opens. Read-only; runs as relay_dev, which cannot write
+                       # that table. NEEDS .env.local, no server.
 
 npx vitest --run lib/db/occ.test.ts          # run a single test file
 npx vitest --run -t "OCC retry"              # run tests matching a name

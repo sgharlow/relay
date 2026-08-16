@@ -20,7 +20,12 @@
 |---|---|---|
 | 1 | `npm run verify:funnel` | `all 7 checks passed — the instrument is alive` |
 | 2 | `npm test` | green |
-| 3 | live `caregiver_leads` count | **0 rows** — the flight starts from zero or N is contaminated from day one |
+| 3 | `npm run flight:snapshot` | `✓ window not started and caregiver_leads is empty` — **exit 0.** The flight starts from zero or N is contaminated from day one |
+
+> Line 3 was a sentence until 2026-08-16 and is now a command that **exits 1** if the table is not
+> empty before the window opens. It is read-only and connects as `relay_dev`, the one role that
+> cannot write `caregiver_leads` — so the pre-flight check physically cannot contaminate the thing
+> it is checking. It is the same command you run daily once the flight is live.
 
 If line 1 fails, **stop.** A lane measured by a dead instrument reads as no demand.
 
@@ -63,7 +68,11 @@ If line 1 fails, **stop.** A lane measured by a dead instrument reads as no dema
 2. On approval: **one** verification click (part 2), confirm the landing URL carries
    `?src=reddit-ads`, and record it as a known offset in `g1-flight-log.md`. One person, once — it
    permanently injects one event.
-3. Then daily: `npm run verify:funnel` first, then the snapshot table.
+3. Then daily: `npm run verify:funnel` first, then `npm run flight:snapshot` — it prints the
+   snapshot row ready to paste, and the lead notes, which the ratified directional read expects to
+   carry the verdict. The two analytics cells (N and the intents) still come from the Vercel
+   dashboard by hand, deliberately: a second path to the denominator would be a second definition
+   of the measurement.
 
 ## The clock
 
