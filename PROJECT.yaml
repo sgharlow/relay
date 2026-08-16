@@ -559,6 +559,54 @@ ratified:
       destination src is a declared lane, because under an allow-list a typo there reads
       as zero demand rather than as a typo."
 
+  - id: g1-lane-1-is-google-search-intent
+    date: 2026-08-16
+    owner: steve
+    decision: "Reddit is retired as lane 1. Lane 1 becomes Google Ads SEARCH INTENT.
+      `reddit-ads` removed from GATE_LANES the same day; `google-ads` added."
+    supersedes: "docs/g1-ad-creatives.md's Reddit lane and screens 7-13 of
+      docs/g1-sitting-sheet.md, both of which are marked NOT EXECUTABLE in place rather
+      than deleted, because the evidence is the point."
+    finding: "Established live in Ads Manager during the sitting, against a real ad
+      account, with nothing submitted and nothing spent. Reddit sells no caregiver
+      targeting. `dementia` and `Alzheimers` are refused outright on ToS — correct, since
+      a subreddit defined by a diagnosis identifies people by inferred medical status,
+      a restricted category and the same principle as the §1a copy rule. The other three
+      are simply ABSENT from the targetable index: `AgingParents`, `CaregiverSupport` and
+      `caregiv` all return No Search Results, while `personalfinance` returns
+      r/personalfinance 21.8M in the same field, so it is the index and not the tooling.
+      `eldercare` offers only r/CircleOfCaregivers at 245 users."
+    fallback_tested_and_failed: "Keyword targeting, against a threshold Steve set BEFORE
+      the number was visible: 'if it stays in the hundreds of millions, keyword targeting
+      is not targeting and we stop there rather than spend.' With Personal Finance removed,
+      keywords cut to nine caregiving terms, no communities and location United States, the
+      audience estimate read 251.2m-314.1m — slightly HIGHER than the 248.3m-310.4m
+      baseline that had included Personal Finance and 25 broad keywords, and far exceeding
+      Reddit's US user base while scoped to the US. Either the estimator ignores targeting
+      or the targeting does not narrow delivery; neither permits predicting or verifying
+      who receives the ad."
+    rationale: "Search intent matches a QUERY rather than inferring an attribute about a
+      person, so the policy wall that closed Reddit does not exist there — and the wedge's
+      defining moment is a situation, not a demographic. Somebody typing 'how do I access
+      my mother's bank account while she is in hospital' has declared the exact need.
+      Intent traffic also converts better than interest traffic, which matters on a gate
+      already ratified as a directional read."
+    unchanged: "the thresholds, the $250 ceiling, the 4-week window, the N>=100 stop, the
+      directional-read constraint, both lane definitions, the landing page and the whole
+      instrument. verify:funnel, flight:snapshot and the funnel events are channel-agnostic
+      and needed no change."
+    still_to_build: "a Google lane plan to replace docs/g1-sitting-sheet.md — keyword set,
+      match types, negative keywords, budget shape, and the ad copy re-fitted to Google's
+      character limits (R1 is written for Reddit's free-form body, which has no equivalent
+      there). Google's own healthcare/health-adjacent copy policies must be read from the
+      primary source before drafting, not from memory."
+    watch: "⚠️ Meta is unlikely to be a quicker substitute — it removed most health and
+      caregiving detailed-targeting options in 2022, so lane 2 may hit the same wall. Test
+      that BEFORE investing in the image assets (D6), not after."
+    note: "⚠️ Do NOT reuse report-bridge's Google Ads account (990-960-7101). Separate
+      product, separate measurement, and the portfolio rule against sharing per-product
+      billing surfaces applies."
+
 # Per-journey build state — THE one authoritative record, added 2026-08-13.
 #
 # WHY IT MOVED HERE. docs/user-journeys.md carried per-journey state in three

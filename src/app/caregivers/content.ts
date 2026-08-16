@@ -210,8 +210,23 @@ const NON_QUALIFYING_SRCS: readonly string[] = [...SHOWCASE_SRCS, ...QA_SRCS, 'b
  * the ad carrying it, and it must not collide with any exclusion set above —
  * `content.test.ts` asserts that intersection is empty, so a lane that is also
  * a QA or showcase value fails the build rather than quietly counting us.
+ *
+ * ⚠️ `reddit-ads` WAS HERE AND WAS REMOVED 2026-08-16, the same day the
+ * allow-list shipped — which is the first time this mechanism did the job it
+ * was built for. Reddit sells no caregiver targeting: `dementia` and
+ * `Alzheimers` are refused on ToS as health-condition targeting, and
+ * r/AgingParents, r/CaregiverSupport and r/eldercare are simply absent from the
+ * targetable index while r/personalfinance resolves instantly in the same
+ * field. Keyword targeting was tested as the fallback and returned an audience
+ * estimate of 251.2m–314.1m under US-only scoping, failing a threshold set
+ * before the number was seen. Evidence table: `docs/g1-ad-creatives.md`.
+ *
+ * The lane is closed, but an UNLAUNCHED campaign draft still exists in the ad
+ * account. Under a deny-list its traffic would have counted the moment anybody
+ * pressed the wrong button; removing the string is what makes that impossible
+ * rather than merely unlikely.
  */
-export const GATE_LANES = ['reddit-ads', 'meta-ads'] as const;
+export const GATE_LANES = ['google-ads', 'meta-ads'] as const;
 
 /**
  * True when a src counts toward the G1 gate ratio.

@@ -54,6 +54,24 @@ dashboard discipline; do not re-derive it by eye. The exclusion sets below are n
 rather than load-bearing, and are kept as a second lock and as the record of why each value is
 not audience.
 
+> ### 🔴 LANE 1 CHANGED THE SAME DAY — Reddit out, Google search intent in (2026-08-16)
+>
+> `GATE_LANES` is now **`google-ads`, `meta-ads`**. `reddit-ads` was removed hours after the
+> allow-list shipped, which is the first time the mechanism earned itself: **an unlaunched Reddit
+> campaign draft still exists in the ad account**, and under the deny-list it replaced, its traffic
+> would have counted toward N the instant anybody pressed the wrong button.
+>
+> **Why Reddit closed.** It sells no caregiver targeting. `dementia` and `Alzheimers` are refused
+> on ToS as health-condition targeting; `AgingParents`, `CaregiverSupport` and `caregiv` return
+> *No Search Results* while `personalfinance` returns r/personalfinance 21.8M in the same field.
+> Keyword targeting was tested as the fallback and failed a threshold set before the number was
+> seen — 251.2m–314.1m under US-only scoping. Full evidence: `docs/g1-ad-creatives.md` §Targeting;
+> decision: `PROJECT.yaml` `ratified.g1-lane-1-is-google-search-intent`.
+>
+> **Nothing measured is invalidated, because nothing was measured.** No ad ever served, no money
+> was spent, the window never opened and `caregiver_leads` is at 0. The thresholds, the window, the
+> N≥100 stop and the ratios above are all untouched — only the channel that fills them changed.
+
 | Excluded set | Values | Why |
 |---|---|---|
 | untagged | `direct`, empty | not attributable to a caregiver-targeted channel |

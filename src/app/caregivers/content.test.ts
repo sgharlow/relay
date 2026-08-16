@@ -61,8 +61,8 @@ describe('G1 caregiver WTP instrument', () => {
     }
     expect(isGateQualifyingSrc('direct')).toBe(false);
     expect(isGateQualifyingSrc('')).toBe(false);
-    // Real caregiver channels still qualify.
-    expect(isGateQualifyingSrc('reddit-ads')).toBe(true);
+    // The declared paid lanes still qualify.
+    expect(isGateQualifyingSrc('google-ads')).toBe(true);
     expect(isGateQualifyingSrc('meta-ads')).toBe(true);
   });
 
@@ -161,11 +161,28 @@ describe('G1 caregiver WTP instrument', () => {
     }
   });
 
-  it('the sitting sheet destination is a declared lane', () => {
-    // docs/g1-sitting-sheet.md screen 12 sends traffic to ?src=reddit-ads and
-    // calls it "the whole measurement". Under an allow-list a mismatch between
-    // that URL and this list reads as zero demand rather than as a typo.
-    expect(isGateQualifyingSrc('reddit-ads')).toBe(true);
+  it('the closed Reddit lane no longer counts', () => {
+    /*
+      Removed 2026-08-16, hours after the allow-list shipped the same day, and
+      the first time this mechanism earned itself. Reddit sells no targeting:
+      dementia/Alzheimers refused on ToS as health-condition targeting, and
+      r/AgingParents, r/CaregiverSupport and r/eldercare absent from the index
+      while r/personalfinance resolves in the same field. Keyword targeting
+      failed its own pre-set threshold at 251.2m-314.1m under US-only scoping.
+
+      An UNLAUNCHED draft still sits in the ad account. Under the deny-list this
+      replaced, its traffic would have counted the instant anybody pressed the
+      wrong button. This is the assertion that makes that impossible.
+    */
+    expect(isGateQualifyingSrc('reddit-ads')).toBe(false);
+  });
+
+  it('every declared lane is one somebody can actually buy', () => {
+    // The lesson of the Reddit lane: a lane named in this list but unsellable on
+    // the platform is a lane that reads as zero demand. Each entry here has a
+    // channel behind it — google-ads (search intent, lane 1 from 2026-08-16),
+    // meta-ads (lane 2, ratified, not yet built).
+    expect(GATE_LANES).toEqual(['google-ads', 'meta-ads']);
   });
 
   it('names the real competitive frames, not strawmen', () => {
@@ -294,7 +311,7 @@ describe('G1 secondary product lane', () => {
 
   it('product-lane traffic is still a qualified visitor — it lands on the same landing page', () => {
     // The denominator is unchanged: caregiver_qualified fires on /caregivers for
-    // every tagged visitor, whichever CTA they subsequently take.
-    expect(isGateQualifyingSrc('reddit-ads')).toBe(true);
+    // every tagged visitor from a declared lane, whichever CTA they take next.
+    expect(isGateQualifyingSrc('google-ads')).toBe(true);
   });
 });
