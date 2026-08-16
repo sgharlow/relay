@@ -447,5 +447,112 @@
       "npm run verify:live under relay_dev, then P3 Vercel cutover — the named gate, unrun since the privilege split",
       "J9 steps 5-7 — the last gap in the journey the product calls its differentiator"
     ]
+  },
+  "sprint5": {
+    "scope": "next most critical work for relay; explicitly nothing crossing into domo-ssrs or report-bridge",
+    "branch": "sprint/2026-08-16-1",
+    "iterationsUsed": 5,
+    "iterationCap": 5,
+    "backlogSource": [
+      ".claude/sprint-state.json -> sprint4 deferred/nextTop3/debt",
+      "repo survey across the seven axes"
+    ],
+    "backlogInferred": false,
+    "verdict": "Two of the five came from the survey rather than the queue, and they are the two that mattered most: a release could open with nobody reached, and the G1 gate could be inflated three different ways. Neither was on any list.",
+    "baseline": {
+      "start": "2421 passed, 1 skipped",
+      "end": "2443 passed, 1 skipped",
+      "newlySkipped": 0,
+      "schema": "green both regions (25 tables)",
+      "roles": "green both regions (new this sprint)",
+      "liveWalks": "50/50 under relay_dev (17 stepup + 14 multiowner + 19 ui)"
+    },
+    "shipped": [
+      {
+        "id": "I1",
+        "commit": "07b383f",
+        "axis": "security",
+        "title": "the live site is a database superuser",
+        "evidence": "relay-runtime-policy grants dsql:DbConnectAdmin and DSQL_ROLE is unset in production, so every request runs as admin with DDL rights. Migration 033 creates relay_app: full DML on all 25 tables, caregiver_leads the ONLY difference from relay_dev, no DDL, IAM binding confirmed in sys.iam_pg_role_mappings. verify:roles proven to fail in both directions.",
+        "unmet": "AC4 — nobody has connected AS relay_app; the credential lives only in Vercel. Step 4 of the cutover runbook."
+      },
+      {
+        "id": "I2",
+        "commit": "0c0a05a",
+        "axis": "correctness",
+        "title": "a release could open with nobody reached, and leave no trace",
+        "evidence": "Both release paths discard the reached-count. Guard placed at the seam because it is the only place both numbers exist. Pinned from both sides: removing it fails the catastrophic case, relaxing it to reached===0 fails the no-recipients case."
+      },
+      {
+        "id": "I3",
+        "commit": "9623742",
+        "axis": "correctness",
+        "title": "verify:live under the least-privilege role — the named gate, run",
+        "evidence": "50 assertions against production as relay_dev, zero privilege failures. Row counts identical before and after. This is the evidence I1 could not produce for itself: relay_app holds strictly more privilege than relay_dev."
+      },
+      {
+        "id": "I4",
+        "commit": "4232365",
+        "axis": "correctness",
+        "title": "double-clicking the checkout button counted twice",
+        "evidence": "Every press emitted intent_clicked AND caregiver_intent and opened another Checkout Session. Memoised promise, not a boolean — a flag set after the await is too late for the in-flight second press. Removing the memo fails 3 tests. Rendered label pinned too."
+      },
+      {
+        "id": "I5",
+        "commit": "cb0e9cb",
+        "axis": "correctness",
+        "title": "the gate is specified in visitors; the instrument counted views",
+        "evidence": "Both trackers fired per mount. Reloading /caregivers inflates the denominator (false kill); reloading /caregivers/interest inflates the numerator (false ship). Now once per session, fails open. Wiring asserted, not just the helper — all three wiring tests fail when the trackers are reverted."
+      }
+    ],
+    "blocked": [
+      {
+        "id": "P3/P4",
+        "owner": "steve",
+        "category": "decision needed (production environment + IAM)",
+        "need": "set DSQL_ROLE=relay_app in Vercel Production, redeploy, watch the first authenticated request, then remove dsql:DbConnectAdmin from relay-runtime-policy",
+        "cost": "~15 minutes",
+        "runbook": "docs/least-privilege-cutover.md",
+        "note": "Everything in the repo is done and inert until the variable is set. verify:live under the tighter role already removed the \"will the app still work\" question."
+      }
+    ],
+    "deferred": [
+      {
+        "id": "J9-5-7",
+        "score": 3,
+        "note": "deferred a SECOND time, deliberately — wtp_evidence still none. Drop it or build it after the flight; do not carry it a third time."
+      },
+      {
+        "id": "scrollable-regions-css",
+        "score": 2,
+        "note": "raw CSS and overflow-y still need the rendered audit"
+      },
+      {
+        "id": "email_send_attempts-retention",
+        "score": 2,
+        "note": "one row per outbound message forever"
+      },
+      {
+        "id": "DMARC-RUA",
+        "note": "Steve's; DNS; unchanged"
+      },
+      {
+        "id": "step-8",
+        "note": "Steve's; ad sitting was parked to 2026-08-16"
+      }
+    ],
+    "debtCreated": [
+      "verify:roles is not in CI — CI holds no cluster credentials, same as verify:schema and verify:live",
+      "the I5 session guard is per browser session, so one visitor converting on two devices counts twice — correct for a rate, noted so nobody reads it as unique people",
+      "RELEASE_NOTICE_UNDELIVERED_ACTION renders as a raw action string in /audit; there is no action->label map there today"
+    ],
+    "debtClosed": [
+      "sprint4's verify:schema-probes-SELECT-not-INSERT — verify:roles checks INSERT/UPDATE/DELETE across all 25 tables for both roles"
+    ],
+    "nextTop3": [
+      "Do the cutover, then watch one request — the only remaining step of an otherwise complete security fix, ~15 minutes",
+      "Watch writerProven flip false -> true; sprint 4's switch is deployed and still untested in production because every e2e walk uses reserved domains that are refused at the send seam",
+      "J9 steps 5-7 — twice deferred; build it if G1 produces numbers, drop it if it does not"
+    ]
   }
 }
