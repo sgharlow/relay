@@ -112,32 +112,38 @@ export function freePlanHeadline(freeItems: number): string {
  * moment the need appears. That moment is a SITUATION, not a demographic, which
  * is the whole reason search fits this product better than interest targeting.
  */
+/*
+  ⚠️ REPLACED 2026-08-16 WITH TERMS THAT MEASURABLY EXIST.
+
+  The first draft of this list was written from the wedge as we describe it, and
+  Keyword Planner then reported FOUR of the five seeds at 0–10 searches per month
+  in the US. Those were invented phrasings — plausible, well-formed, and typed by
+  almost nobody. Bidding on a keyword with no volume is not a cheap experiment,
+  it is a campaign that never serves.
+
+  Every term below carries its measured US volume (Aug 2025 – Jul 2026). The two
+  clusters are the only ones with any volume at all, and both are small. See the
+  banner at the top of docs/g1-google-lane.md for what that means for the gate:
+  the honest total is ~330/month at midpoint, and N ≥ 100 is out of reach inside
+  the window. The list is kept correct so that IF this lane ever runs it bids on
+  language people actually use, not language we invented.
+*/
 export const KEYWORD_THEMES = [
   {
-    theme: 'access a parent’s accounts in an emergency',
+    theme: 'managing an ageing parent’s money — the only cluster with real volume',
     keywords: [
-      '"how to access my parents bank account"',
-      '"access parents accounts emergency"',
-      '"parent in hospital cannot access accounts"',
-      '"mom in hospital bank account access"',
-      '"help managing elderly parents accounts"',
+      '"handling elderly parents finances how to"', // 10–100/mo
+      '"managing elderly finances"', //                10–100/mo, CPC $3.03–$8.61
+      '"managing finances for elderly parents"', //    10–100/mo
+      '"managing parents finances"', //                10–100/mo
     ],
   },
   {
-    theme: 'sharing credentials with family, safely',
+    theme: 'sharing credentials with family — small, and semantically contested',
     keywords: [
-      '"share passwords with family securely"',
-      '"emergency access to passwords"',
-      '"password manager emergency access"',
-      '"give family access to accounts"',
-    ],
-  },
-  {
-    theme: 'planning for being unreachable — NOT for dying',
-    keywords: [
-      '"what happens to my accounts if i am incapacitated"',
-      '"emergency access plan for my accounts"',
-      '"who can access my accounts if i am in hospital"',
+      '"share passwords with family"', //  10–100/mo — the strongest single term
+      '"family sharing passwords"', //     10–100/mo
+      '"lastpass emergency"', //           10–100/mo — competitor emergency-access intent
     ],
   },
 ] as const;
@@ -178,7 +184,27 @@ export const NEGATIVE_KEYWORDS = [
   // 4 — facility shoppers, who look adjacent and are not this product
   'nursing home cost', 'assisted living cost', 'care home near me',
   // 5 — freeloaders on a paid-intent test
-  'free', 'freeware', 'open source', 'diy',
+  'free', 'freeware', 'open source', 'diy', 'github', 'download',
+  /*
+    6 — ENTERPRISE INFOSEC. Added 2026-08-16 after Google's own onboarding
+    auto-classified this business as "Network Security", which would have dropped
+    Relay into the VPN / firewall / antivirus / SOC auction: B2B IT, $15–40 CPCs,
+    and no overlap whatsoever with a daughter managing her father's accounts. The
+    mis-classification was corrected at the source, and these are the belt to that
+    braces — the same word that fooled Google's classifier can appear in a query.
+  */
+  'vpn', 'firewall', 'antivirus', 'ransomware', 'pentest', 'penetration testing',
+  'soc 2', 'enterprise', 'for business',
+  /*
+    7 — MEDICAL ALERT DEVICES. Google's onboarding ALSO guessed "Medical Alarms"
+    and "Hospice & Home Nursing Care" from the landing page, which is a direct
+    warning about the neighbourhood this copy reads into. Relay is software; a
+    click from someone shopping for a fall-detection pendant is a wasted click and
+    a confused visitor.
+  */
+  'life alert', 'fall detection', 'medical alert', 'panic button', 'hospice',
+  // 8 — professional services, adjacent to the estate exclusion above
+  'attorney', 'lawyer', 'law firm', 'life insurance', 'notary',
 ] as const;
 
 /**
