@@ -40,6 +40,25 @@ Verify any of this yourself with `npm run verify:roles` (read-only, both regions
 one. A lead captured by the live site from a stranger **is** the G1 measurement; a lead submitted
 from a laptop — and `.env.local` points at production — is the opposite of the thing being measured.
 
+## What `verify:live` proved, 2026-08-16
+
+The three live walks were run against production **as `relay_dev`** — the least-privilege identity —
+and all passed: **50 assertions, 17 + 14 + 19, zero privilege failures.**
+
+That matters for this cutover more than for an ordinary release. `has_table_privilege` says what the
+catalogue believes; these walks say what the *application* actually needs, exercised through the real
+HTTP surface: signup, TOTP, step-up elevation and revocation, account export, recovery-code issue,
+account closure, standby claiming, two owners firing emergencies, the contact picker, and the owner
+UI at 390px. Not one of them hit a `permission denied`.
+
+**`relay_app` holds strictly more privilege than `relay_dev`** — identical on all 25 tables, plus
+write on `caregiver_leads`. So a walk that passes under the tighter role is strong evidence the
+looser one is sufficient. It is not proof of the handshake (see step 4), but it removes the other
+question: whether the grants are *enough* to run the product. They are.
+
+Row counts before and after were identical (`users=1`, everything else 0), so the walks left nothing
+behind — worth checking, because an early run of the multi-owner walk once left four accounts.
+
 ## The cutover
 
 1. **Before.** Run `npm run verify:roles` and `npm run verify:schema`. Both must be green in both
