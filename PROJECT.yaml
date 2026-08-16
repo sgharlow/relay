@@ -559,6 +559,46 @@ ratified:
       destination src is a declared lane, because under an allow-list a typo there reads
       as zero demand rather than as a typo."
 
+  - id: g1-editorial-over-paid
+    date: 2026-08-16
+    owner: steve
+    decision: "Write opinion pieces for AARP and comparable elder-care communities that publish
+      this kind of article, and treat editorial as a HIGHER PRIORITY than paid advertising.
+      Paid lanes are not cancelled — they are demoted, unlaunched and unfunded, behind this."
+    plan: docs/g1-editorial-lane.md
+    supersedes: "the ordering in ratified.g1-lane-1-is-google-search-intent, taken hours earlier
+      the same day. That decision was correct on the information available; Keyword Planner then
+      supplied information that was not available, and this is the response to it."
+    rationale: "Three paid instruments were tested on 2026-08-16 and all three failed, at a total
+      cost of $0: Reddit community targeting (the caregiver communities are not in the targetable
+      index), Reddit keyword targeting (does not narrow — 251.2m-314.1m under US-only), and Google
+      search intent (~330 searches/month on-wedge, with 10 of 16 keyword ideas returning Netflix
+      password sharing). The common thread is not three bad channels but one fact about the market:
+      there is no self-identifying, addressable population searching for this, and no platform will
+      sell access to it by inference either.
+      That fact kills HARVESTING and points at CREATING. Search advertising captures demand that
+      already exists and the measurement says almost none does — but the people exist and are
+      reading AARP and Next Avenue right now, about this exact problem, in words that are not our
+      words. The gap is not reach; it is that nobody has a name for what they need until somebody
+      describes it. An article does that and an ad cannot.
+      Also consistent with project-founder-direction-2026-07-26, whose KPI is audience, not revenue."
+    constraints_carried: "§1a third person; estate stays out (gates.g2-counsel-opinion.declined
+      withdrew it permanently, so the death-and-inheritance piece must not be written however well
+      it would place); no medical claims; commercial interest disclosed on every placement."
+    known_risk: "⚠️ Most of these outlets do not run vendor-written promotional pieces, and
+      pitching one as though they do gets a founder permanently blocked. The realistic shape is
+      contributed expertise where the product is at most a byline. Reading each outlet's own
+      contributor guidelines is step 1 of the plan and gates everything after it — the 2026-07-05
+      portfolio rule about auditing a GTM channel's rules BEFORE ratifying it."
+    measurement: "Each placement carries ?src=ed-<outlet>, and because GATE_LANES is an allow-list
+      the src must be declared there IN THE SAME COMMIT the placement goes live, or the article runs
+      and N stays at zero. Editorial is recorded as its own segment rather than blended into the
+      paid headline ratio — g1-flight-log.md already computes per-lane ratios."
+    unknown_and_stated: "Volume. One placement may deliver more qualified readers than the whole
+      $250 paid flight would have, or forty. This is not known. What IS known is that the paid
+      alternative was measured and cannot reach N>=100 inside the window at all, so the comparison
+      is against something that does not work."
+
   - id: g1-lane-1-is-google-search-intent
     date: 2026-08-16
     owner: steve

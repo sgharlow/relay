@@ -211,6 +211,14 @@ const NON_QUALIFYING_SRCS: readonly string[] = [...SHOWCASE_SRCS, ...QA_SRCS, 'b
  * `content.test.ts` asserts that intersection is empty, so a lane that is also
  * a QA or showcase value fails the build rather than quietly counting us.
  *
+ * 📝 EDITORIAL LANES USE `ed-<outlet>` — e.g. `ed-nextavenue`, `ed-aarp`. Ratified
+ * 2026-08-16 as the PRIORITY over paid (`ratified.g1-editorial-over-paid`,
+ * plan in `docs/g1-editorial-lane.md`), after three paid instruments measured
+ * that this audience cannot be bought. None is listed below yet, deliberately:
+ * a lane for an article that has not been placed is a lane that reads as zero
+ * demand and teaches nobody anything. The src is added here in the same commit
+ * the placement goes live, and not before.
+ *
  * ⚠️ `reddit-ads` WAS HERE AND WAS REMOVED 2026-08-16, the same day the
  * allow-list shipped — which is the first time this mechanism did the job it
  * was built for. Reddit sells no caregiver targeting: `dementia` and

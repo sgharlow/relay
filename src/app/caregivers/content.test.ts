@@ -177,6 +177,25 @@ describe('G1 caregiver WTP instrument', () => {
     expect(isGateQualifyingSrc('reddit-ads')).toBe(false);
   });
 
+  it('an undeclared editorial src counts toward nothing — the allow-list is the point', () => {
+    /*
+      Editorial is the ratified PRIORITY lane as of 2026-08-16
+      (ratified.g1-editorial-over-paid, docs/g1-editorial-lane.md), after three
+      paid instruments measured that this audience cannot be bought.
+
+      Placements use ed-<outlet>. None is declared yet, deliberately — a lane for
+      an article nobody has placed is a lane that reads as zero demand. This test
+      pins the consequence rather than the intention: until the src is added to
+      GATE_LANES in the same commit the placement goes live, the article can run,
+      readers can click, and N will stay at zero. That is the failure this
+      allow-list makes LOUD instead of silent, and it is worth an assertion
+      because it is the one step easy to forget between writing a piece and
+      publishing it.
+    */
+    expect(isGateQualifyingSrc('ed-nextavenue')).toBe(false);
+    expect(isGateQualifyingSrc('ed-aarp')).toBe(false);
+  });
+
   it('every declared lane is one somebody can actually buy', () => {
     // The lesson of the Reddit lane: a lane named in this list but unsellable on
     // the platform is a lane that reads as zero demand. Each entry here has a
