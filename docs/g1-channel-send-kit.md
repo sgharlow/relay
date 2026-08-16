@@ -1,3 +1,16 @@
+> # ⛔ RETIRED 2026-08-16 — SUPERSEDED BY `docs/g1-editorial-lane.md`
+>
+> The $250 ceiling, the lane split and the send plan are all withdrawn with paid advertising
+> (`PROJECT.yaml` `ratified.retire-paid-advertising`). No money was ever spent against them.
+>
+> ⚠️ **ONE FINDING HERE OUTLIVED THE PLAN AND NOW GOVERNS THE REPLACEMENT.** The 2026-07-03
+> channel-rules audit recorded, from live sources, that *"every organic channel ratified in
+> g1-wtp-test-design.md decision #3 prohibits product promotion"*. That is the single most
+> important input to the op-ed plan: contributed editorial is a different thing from promotion and
+> is often welcome where promotion is banned — but the distinction is the outlet's to make, not
+> ours. Reading each outlet's own contributor guidelines before pitching is step 1 of the new plan
+> because of this paragraph.
+
 # G1 qualified-traffic plan + send kit (v2 — RATIFIED by Steve 2026-07-03, $250 budget ceiling)
 
 > Channel-rules audit run 2026-07-03 (live: subreddit rules JSON + AgingCare policy pages).

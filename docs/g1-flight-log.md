@@ -1,3 +1,15 @@
+> # ⛔ THE FLIGHT NEVER FLEW. Closed 2026-08-16 with every row empty.
+>
+> Paid advertising was abandoned before a single ad served (`PROJECT.yaml`
+> `ratified.retire-paid-advertising`). No money was spent, the window never opened, `caregiver_leads`
+> finished at **0**, and no `caregiver_qualified` event was ever emitted by a paid visitor.
+>
+> **Nothing in this log is a measurement of demand.** It is the record of an instrument that was
+> built, verified alive, and then found to have no traffic it could legitimately buy. The
+> N-counting rules, the exclusion sets and the five-line verdict template are all retained and
+> still correct — the replacement lane in `docs/g1-editorial-lane.md` reports into this same
+> structure, and its per-lane ratio (#4) is how editorial gets read separately.
+
 # G1 flight log — the record the verdict is written from
 
 > Closes item 9 of `g1-launch-checklist.md` ("log window start date + N-counting rules").

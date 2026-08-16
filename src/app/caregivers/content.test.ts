@@ -61,9 +61,11 @@ describe('G1 caregiver WTP instrument', () => {
     }
     expect(isGateQualifyingSrc('direct')).toBe(false);
     expect(isGateQualifyingSrc('')).toBe(false);
-    // The declared paid lanes still qualify.
-    expect(isGateQualifyingSrc('google-ads')).toBe(true);
-    expect(isGateQualifyingSrc('meta-ads')).toBe(true);
+    // ⛔ 2026-08-16: paid is retired and no editorial placement exists, so NO lane
+    // qualifies today. The retired paid srcs are asserted dead rather than absent.
+    expect(isGateQualifyingSrc('google-ads')).toBe(false);
+    expect(isGateQualifyingSrc('meta-ads')).toBe(false);
+    expect(isGateQualifyingSrc('reddit-ads')).toBe(false);
   });
 
   it('QA traffic is EXCLUDED from the gate, so verifying the instrument cannot move it', () => {
@@ -196,12 +198,24 @@ describe('G1 caregiver WTP instrument', () => {
     expect(isGateQualifyingSrc('ed-aarp')).toBe(false);
   });
 
-  it('every declared lane is one somebody can actually buy', () => {
-    // The lesson of the Reddit lane: a lane named in this list but unsellable on
-    // the platform is a lane that reads as zero demand. Each entry here has a
-    // channel behind it — google-ads (search intent, lane 1 from 2026-08-16),
-    // meta-ads (lane 2, ratified, not yet built).
-    expect(GATE_LANES).toEqual(['google-ads', 'meta-ads']);
+  it('no lane is live — paid is retired and no placement exists yet', () => {
+    /*
+      ⛔ EMPTY ON PURPOSE (ratified.retire-paid-advertising, 2026-08-16). Three
+      instruments were measured and all three failed: Reddit sells no caregiver
+      community targeting, Reddit keyword targeting does not narrow, and Google
+      search carries ~330 on-wedge searches a month.
+
+      An empty allow-list means N can never leave zero. That is the honest state
+      of the world rather than a bug — no channel is live — and it is the loud
+      failure by design: whoever publishes the first op-ed and sees zero lands
+      here, and the fix is one string added in the same commit as the placement.
+
+      This assertion is exact rather than a length check, so REVIVING a lane is a
+      deliberate edit to a test that states why the list is empty, not a silent
+      append nobody reviews.
+    */
+    expect(GATE_LANES).toEqual([]);
+    expect(isGateQualifyingSrc('anything-at-all')).toBe(false);
   });
 
   it('names the real competitive frames, not strawmen', () => {
@@ -329,8 +343,11 @@ describe('G1 secondary product lane', () => {
   });
 
   it('product-lane traffic is still a qualified visitor — it lands on the same landing page', () => {
-    // The denominator is unchanged: caregiver_qualified fires on /caregivers for
-    // every tagged visitor from a declared lane, whichever CTA they take next.
-    expect(isGateQualifyingSrc('google-ads')).toBe(true);
+    // The denominator mechanism is unchanged and channel-agnostic: caregiver_qualified
+    // fires on /caregivers for every visitor from a DECLARED lane, whichever CTA they
+    // take next. With paid retired there is no declared lane today, so this asserts the
+    // mechanism against a hypothetical editorial src rather than a dead paid one.
+    expect(isGateQualifyingSrc('ed-caregiverdotcom')).toBe(false); // undeclared → excluded
+    expect(GATE_LANES).toEqual([]); // ...because nothing is declared yet
   });
 });

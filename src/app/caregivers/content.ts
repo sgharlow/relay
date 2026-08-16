@@ -234,7 +234,22 @@ const NON_QUALIFYING_SRCS: readonly string[] = [...SHOWCASE_SRCS, ...QA_SRCS, 'b
  * pressed the wrong button; removing the string is what makes that impossible
  * rather than merely unlikely.
  */
-export const GATE_LANES = ['google-ads', 'meta-ads'] as const;
+/*
+  ⛔ EMPTY ON PURPOSE, 2026-08-16. Paid advertising is retired
+  (`ratified.retire-paid-advertising`) and no editorial placement exists yet, so
+  there is currently NO lane whose traffic counts toward N.
+
+  An empty allow-list means `isGateQualifyingSrc` returns false for everything and
+  N can never leave zero. That is the honest state of the world — no channel is
+  live — and it is deliberately the LOUD failure rather than the quiet one: the
+  first person to publish a placement and see zero will find this comment, and the
+  fix is one string added in the same commit as the placement.
+
+  `google-ads` and `meta-ads` were removed here, and `reddit-ads` earlier the same
+  day. Reviving any of them is re-adding the string; the plans and tests are all
+  retained.
+*/
+export const GATE_LANES: readonly string[] = [];
 
 /**
  * True when a src counts toward the G1 gate ratio.

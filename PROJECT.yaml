@@ -59,6 +59,19 @@ derived:
 # Corrected chain: G1 WTP -> G3 B2B2C pilot LOI -> G4 billing MVP -> G5 audited
 # crypto. G3-G5 enter this file as gates once G1 passes.
 #
+# 🔄 AMENDED 2026-08-16 — G3 NOW RUNS IN PARALLEL WITH G1, NOT AFTER IT.
+# ratified.retire-paid-advertising abandons paid channels and makes op-eds the
+# route to visibility. G1's own kill branch already pointed at "B2B2C-only", and
+# the paid instrument proved unrunnable rather than run-and-failed, so waiting
+# for a G1 verdict before starting B2B2C conversations would be waiting on a
+# measurement whose new timeline nobody can yet predict.
+#
+# The two are also mutually reinforcing rather than merely concurrent: a published
+# op-ed is the standing that gets a benefits broker or credit-union product lead to
+# take the meeting, and that meeting is G3. ⚠️ They remain SEPARATE measurements —
+# earned awareness is not distribution, and reporting one as the other is how a
+# gate stops meaning anything.
+#
 # ⚠️ G2 IS CLOSED, NOT SATISFIED, AND G3 INHERITS THAT. The B2B2C route was also
 # the gate's own kill condition ("adverse opinion -> B2B2C-through-regulated-
 # partners only"), and a regulated partner's diligence asks the questions the
@@ -86,6 +99,46 @@ gates:
     kill: "< 0.5% after 100+ qualified -> park D2C; B2B2C-only or archive  # ratified 2026-07-01"
     owner: steve
     due: 2026-10-02
+    # 🔴 THE INSTRUMENT IS RETIRED AND THE NUMBERS ABOVE NO LONGER MEAN WHAT THEY SAY.
+    # Left standing rather than edited because they are the ratified record of what was
+    # decided on 2026-07-01, and overwriting a ratified threshold in place is the drift
+    # this file exists to prevent. Read this block before acting on any figure above it.
+    instrument_retired:
+      date: 2026-08-16
+      by: steve
+      what: "The metric above is a PAID-TRAFFIC test: N >= 100 qualified visitors BOUGHT through
+        ratified channels. Paid advertising is abandoned (ratified.retire-paid-advertising), so
+        this instrument cannot be run at all. Not 'was run and failed' — could not be run."
+      why_it_could_not_run: "Three channels measured on 2026-08-16 at $0: Reddit sells no caregiver
+        community targeting (the communities are absent from the targetable index), Reddit keyword
+        targeting does not narrow (251.2m-314.1m under US-only), and Google search carries only
+        ~330 on-wedge searches/month with ten of sixteen keyword ideas returning Netflix password
+        sharing. No ad ever served and no money was spent."
+      status: "OPEN, re-instrumented — NOT met, NOT killed, NOT expired. The question is unchanged:
+        will caregivers pay, at a real price, having seen the number. Only the way of putting that
+        question to them has changed."
+      new_instrument: "Editorial. Op-eds on caregiver and elder-care platforms (caregiver.com,
+        AARP, Next Avenue and comparable), each placement carrying its own ed-<outlet> src.
+        Plan: docs/g1-editorial-lane.md."
+      # ⚠️ THE OPEN TASK NOBODY SHOULD SKIP.
+      thresholds_do_not_transfer: "2% click-to-intent and N >= 100 were calibrated against BOUGHT
+        CLICKS. An editorial reader arrives having read a whole article about the problem and is a
+        different population with a different expected conversion rate — plausibly much higher per
+        visitor and far lower in volume. Carrying 2% across and pretending it means the same thing
+        would be a fabricated gate. RE-DERIVING the threshold and N for the editorial instrument is
+        an OPEN TASK owned by Steve, and it must be done BEFORE the first placement goes live so the
+        number cannot be reverse-engineered from whichever result appears."
+      due_date_status: "2026-10-02 was derived backwards from an ad-serving date that will never
+        happen (submit ~08-26, serve ~08-28, 4-week window, one rejection cycle of slack). It is
+        therefore MEANINGLESS as written and must be re-derived from the editorial pitch-to-
+        publication timeline, which is slower and far less predictable than buying clicks. Not
+        silently moved here — moving a gate date is a decision with a record, and this one is
+        Steve's to make once the first outlet responds."
+      kill_branch_note: "The kill condition above already routed to 'park D2C; B2B2C-only or
+        archive'. That is the direction now being taken, but arrived at differently: the test proved
+        UNRUNNABLE rather than run-and-failed. ⚠️ An unbuyable channel is not evidence of low
+        willingness to pay. Do not record this as a D2C kill — it is a channel finding, and the
+        editorial instrument exists precisely to ask the demand question a different way."
     # `moved:` is a LIST as of the second move. It was a single mapping, and a
     # second move would have had to overwrite the first -- destroying the record
     # the rule below exists to create. Newest LAST; the date above always equals
@@ -558,6 +611,58 @@ ratified:
       that carries it. Pinned by content.test.ts, including that the sitting sheet's
       destination src is a declared lane, because under an allow-list a typo there reads
       as zero demand rather than as a typo."
+
+  - id: retire-paid-advertising
+    date: 2026-08-16
+    owner: steve
+    decision: "ABANDON paid advertising as a channel for this product, permanently for now. Focus
+      on B2B2C, reached through op-eds on caregiver and elder-care platforms — caregiver.com, AARP
+      and comparable outlets. Every roadmap item carrying the advertising angle is retired; the
+      op-ed programme is ramped up in its place."
+    plan: docs/g1-editorial-lane.md
+    supersedes: "ratified.g1-lane-1-is-google-search-intent, ratified.g1-google-lane-cancelled
+      (which cancelled one lane; this retires the whole channel), and the paid halves of
+      docs/g1-ad-creatives.md, g1-sitting-sheet.md, g1-channel-send-kit.md and step 8 of
+      g1-launch-checklist.md — all four banner-retired in the same commit rather than deleted."
+    evidence: "Three instruments measured on 2026-08-16, total cost $0.
+      (1) Reddit community targeting — the caregiver communities are not in the targetable index at
+          all. dementia and Alzheimers refused on ToS as health-condition targeting; AgingParents,
+          CaregiverSupport and the partial 'caregiv' return No Search Results while personalfinance
+          returns r/personalfinance 21.8M in the same field.
+      (2) Reddit keyword targeting — does not narrow. 251.2m-314.1m estimated audience under
+          US-only scoping with nine caregiving keywords, HIGHER than the 248.3m baseline that had
+          included Personal Finance and 25 broad terms.
+      (3) Google search intent — the demand is not there. ~330 on-wedge searches/month, and ten of
+          the sixteen keyword ideas Google generated were Netflix password sharing, three of them
+          declining 90% year on year."
+    the_inference: "Not three bad channels — one fact. There is no self-identifying, addressable
+      population searching for this, and no platform will sell access to it by inference either.
+      Paid search HARVESTS existing demand and the measurement says almost none exists; paid social
+      requires an attribute the platforms will not sell. Both roads are closed for this wedge.
+      ⚠️ This does NOT prove low willingness to pay. It proves the channel does not exist. Those are
+      different findings and conflating them would archive a product on the wrong evidence."
+    why_op_eds: "The people plainly exist — they are reading AARP, caregiver.com and Next Avenue
+      right now, about this exact problem, in words that are not our words. The gap is not reach,
+      it is that nobody has a name for what they need until somebody describes it. An article does
+      that and an ad cannot. Editorial also compounds: a placement keeps working, builds the
+      standing a B2B2C conversation requires, and costs attention rather than money — which suits a
+      project whose ratified KPI is audience rather than revenue
+      (project-founder-direction-2026-07-26)."
+    b2b2c_linkage: "Steve's framing pairs op-eds WITH B2B2C, and the pairing is the point: published
+      thought leadership is the credential that gets a benefits broker or a credit-union product
+      lead to take the meeting. Recorded precisely so the gates stay honest — op-eds are an EARNED
+      AWARENESS channel, and B2B2C (gate G3) is a DISTRIBUTION model. The first supplies standing
+      for the second. They are not the same measurement and must not be reported as one."
+    chain_change: "G3 (B2B2C pilot LOI) moves from 'after G1' to RUNNING IN PARALLEL with G1's
+      re-instrumented form. G1's own kill branch already routed to 'B2B2C-only or archive', so this
+      is the disposition the gate itself specified — arrived at because the test proved unrunnable
+      rather than because it ran and failed. That distinction is recorded on the gate."
+    money: "$0 spent, on either platform, at any point. Reddit draft unlaunched; Google account
+      668-681-8891 dormant with no payment method. Both spend-$500-get-$500 credits were confirmable
+      only at a payment step that was never reached, so neither was accepted."
+    revisit: "if an op-ed placement produces measurable click-through and the wedge turns out to
+      have a searchable vocabulary after all — the retired lane docs and lib/g1/google-lane.ts are
+      retained, tested and ready, and reviving is adding one src to GATE_LANES."
 
   - id: g1-google-lane-cancelled
     date: 2026-08-16

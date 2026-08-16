@@ -1,3 +1,13 @@
+> # ⛔ RETIRED 2026-08-16 — there is no sitting. SUPERSEDED BY `docs/g1-editorial-lane.md`
+>
+> Paid advertising is abandoned (`PROJECT.yaml` `ratified.retire-paid-advertising`). The Reddit lane
+> this sheet transcribes was found unbuyable on 2026-08-16 — the caregiver communities are not in
+> Reddit's targetable index at all — and the Google lane that briefly replaced it was cancelled
+> after Keyword Planner measured ~330 on-wedge searches a month.
+>
+> **Do not execute any row below.** The three pre-flight commands at the top remain correct and are
+> still worth running before any editorial placement goes live; everything after them is dead.
+
 # The sitting — Reddit lane 1, one page
 
 **Owner:** Steve types, Claude reads each screen back. **Date: \_\_\_\_\_\_\_\_\_\_** (fill it in)

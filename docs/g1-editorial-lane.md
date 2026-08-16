@@ -56,14 +56,45 @@ Ordered by fit, not by reach.
 
 | Outlet | Why it fits | Contributed content? |
 |---|---|---|
+| **caregiver.com** (*Today's Caregiver*) | named by Steve; a caregiver-first publication that has run contributed expertise for years | yes — check current guidelines |
 | **Next Avenue** (PBS) | explicitly publishes contributed pieces on ageing; the closest editorial match to the wedge | yes — check current guidelines |
-| **AARP** — Family Caregiving | the audience by definition; highest authority | mostly staff-written — expect to be a *source*, not a byline |
+| **AARP** — Family Caregiving | named by Steve; the audience by definition and the highest authority | mostly staff-written — expect to be a *source*, not a byline |
 | **AgingCare.com** | runs an expert-contributor programme | yes |
 | **DailyCaring** | practical how-to for family caregivers | yes |
 | **The Caregiver Space** | community-first, receptive to first-person and practical pieces | yes |
 | **Family Caregiver Alliance** | resource-oriented, high trust | check |
 | **Senior Planet** (OATS/AARP) | explicitly about older adults and technology — the best topical fit of all | yes |
 | Area Agencies on Aging newsletters | local, unglamorous, and read by exactly the right people | usually |
+
+### 🔴 The July audit already warned about this, and it governs the whole plan
+
+`g1-channel-send-kit.md` recorded on 2026-07-03, from live sources: *"every organic channel
+ratified in g1-wtp-test-design.md decision #3 **prohibits product promotion**."*
+
+That finding did not die with the paid plan — it is the single most important input to this one.
+**Contributed editorial is a different thing from promotion**, and is frequently welcome exactly
+where promotion is banned. But **the distinction is the outlet's to make, not ours**, and getting
+it wrong does not cost a rejected pitch — it costs the relationship, permanently, with the only
+audience this product has. That is why reading each outlet's own contributor guidelines is step 1
+below and gates everything after it.
+
+## How this ladders into B2B2C
+
+Steve's ruling pairs op-eds **with** B2B2C, and the pairing is the mechanism, not a coincidence.
+
+A benefits broker, a credit-union product lead or an EAP director does not take a meeting because a
+product exists. They take it because someone has publicly articulated a problem their members have
+and is visibly credible on it. **A published piece in AARP or caregiver.com is that credential.**
+It converts a cold approach into a warm one, and it does so durably — the article keeps working
+long after an ad would have stopped.
+
+So the sequence is: *publish → be findable and citable → approach partners from standing → G3 pilot
+LOI.* `PROJECT.yaml` has been amended so **G3 now runs in parallel** with G1's re-instrumented
+form rather than waiting behind it.
+
+⚠️ **They remain two separate measurements and must never be reported as one.** Editorial is
+earned awareness; B2B2C is distribution. An op-ed that gets read is not a partner that ships, and
+blending them into one number is how a gate stops meaning anything.
 
 ## The four angles
 

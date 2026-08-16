@@ -1,3 +1,14 @@
+> # ⛔ STEP 8 IS RETIRED, NOT OUTSTANDING — 2026-08-16
+>
+> Steps 0–9 of this checklist are done and stay done: the instrument, the destination, the
+> deliverability work, the refund stance, the account-enumeration fix. **Only step 8, "Launch paid
+> lanes", is affected — and it is now RETIRED rather than pending.** Paid advertising is abandoned
+> (`PROJECT.yaml` `ratified.retire-paid-advertising`). Its replacement is
+> `docs/g1-editorial-lane.md`.
+>
+> This matters for how the checklist reads: it is **complete**, not stalled at 8 of 9. A reader
+> scanning for the open item will otherwise keep finding one that no longer exists.
+
 # G1 post-verdict merge → deploy → launch checklist
 
 > Written 2026-07-04 (session PRD Story 3, in-lock prep). Executable ONLY after the
@@ -222,7 +233,14 @@ Re-run all four checks at merge time if the branch has moved past `af4ddf3`.
       keeps routing to a human — Stripe's portal cancels without refunding and nothing in the
       codebase issues a refund, so refunds are **issued by hand in the Stripe dashboard**.
 
-- [ ] **8. Launch paid lanes** per `g1-channel-send-kit.md` (ratified budget ceiling; `src`
+- [~] **8. Launch paid lanes — ⛔ RETIRED 2026-08-16, not outstanding.** Paid advertising is
+      abandoned (`PROJECT.yaml` `ratified.retire-paid-advertising`); the replacement is
+      `docs/g1-editorial-lane.md`. Three instruments were measured and all three failed at a
+      cost of $0: Reddit sells no caregiver community targeting, Reddit keyword targeting does
+      not narrow (251.2m–314.1m under US-only), and Google search carries ~330 on-wedge searches
+      a month with ten of sixteen keyword ideas returning Netflix password sharing. **No ad ever
+      served and no money was spent.** Original text follows.
+      ORIGINAL: per `g1-channel-send-kit.md` (ratified budget ceiling; `src`
   
       values per lane). Organic participation stays Steve-voice-only per the channel-rules audit.
       **Paste-ready one-sitting walkthrough for both lanes: `docs/g1-ad-creatives.md`**, revised

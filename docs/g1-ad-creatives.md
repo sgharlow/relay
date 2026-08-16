@@ -1,3 +1,13 @@
+> # ⛔ RETIRED 2026-08-16 — SUPERSEDED BY `docs/g1-editorial-lane.md`
+>
+> **Paid advertising is abandoned as a channel for this product.** Steve's ruling, 2026-08-16, after
+> three instruments were measured and all three failed at a cost of $0. Record and reasoning:
+> `PROJECT.yaml` `ratified.retire-paid-advertising`.
+>
+> Nothing in this file should be executed. It is retained because the *creative reasoning* — §1a
+> compliance, the reversibility lead, the price-forward rule, the character-count discipline — is
+> sound and transfers directly to editorial. The **channel** is what died, not the argument.
+
 # G1 ad creatives + flight runbook — paste-ready (drafted 2026-08-07, revised 2026-08-10)
 
 > **Revision 2026-08-10 — read this before using an earlier printout.** The plan was complete on

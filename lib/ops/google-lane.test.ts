@@ -79,17 +79,26 @@ describe('the ads fit the fields Google actually gives us', () => {
 });
 
 describe('the destination carries the measurement', () => {
-  it('the final URL is tagged with a src that the gate actually counts', () => {
+  it('the final URL still carries a src — but the lane is RETIRED, so it counts nothing', () => {
     /*
-      The single highest-cost silent failure available in this lane. Under the
-      allow-list shipped 2026-08-16 an untagged or misspelled src reads as
-      `direct` and counts toward nothing — so the ad serves, the clicks land, the
-      page renders, and N stays at zero while the money leaves. Indistinguishable
-      from a product nobody wants, on a gate that kills below 0.5%.
+      ⛔ CHANGED 2026-08-16 when paid advertising was retired
+      (ratified.retire-paid-advertising). This assertion used to read "a src that
+      the gate actually counts", and flipping it is the honest edit rather than
+      deleting the test.
+
+      The URL is still well-formed and still tagged — that part of the plan was
+      correct and is worth keeping pinned, because reviving this lane means adding
+      one string to GATE_LANES and the URL must already be right when that happens.
+      What changed is that `google-ads` is no longer a declared lane, so the src
+      resolves to "counts toward nothing". Both halves are asserted so a future
+      revival has to move BOTH deliberately.
     */
     const src = new URL(FINAL_URL).searchParams.get('src');
-    expect(src, `no src on ${FINAL_URL}`).toBeTruthy();
-    expect(isGateQualifyingSrc(src as string), `src="${src}" does not count toward N`).toBe(true);
+    expect(src, `no src on ${FINAL_URL}`).toBe('google-ads');
+    expect(
+      isGateQualifyingSrc(src as string),
+      'google-ads is retired; if this is true again the lane was revived — check that was intended',
+    ).toBe(false);
   });
 
   it('points at the landing page, not the interest page', () => {
