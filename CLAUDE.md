@@ -215,8 +215,9 @@ in no diff, test run or build. It re-measures the thing itself — both regions,
 that `relay_app` (the live site, IAM `relay-runtime`) has full DML including `caregiver_leads`, that
 `relay_dev` (a laptop) can read that table and not write it, that neither holds DDL, and that each is
 bound to exactly one IAM principal. Proven to fail in both directions by planting a widened
-`relay_dev` and a starved `relay_app`. ⚠️ **Production still runs as `admin`** — the cutover is one
-Vercel variable and has not been made: `docs/least-privilege-cutover.md`.
+`relay_dev` and a starved `relay_app`. ✅ **Cutover DONE 2026-08-16**: production connects as `relay_app`, and `dsql:DbConnectAdmin` has been
+stripped from `relay-runtime-policy` (v2; v1 retained as rollback), so the live site can no longer
+obtain database admin by permission rather than by configuration. `docs/least-privilege-cutover.md`.
 
 Accessibility is a fifth: `node scripts/a11y-audit.mjs` with `A11Y_OWNER_EMAIL` set to an account
 that exists (`scripts/disposable-owner.ts create` makes one). CI covers the signed-out half only —

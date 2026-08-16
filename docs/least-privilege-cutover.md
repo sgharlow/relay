@@ -1,11 +1,57 @@
 # Pointing production at `relay_app`
 
-**Status: phases 0–3 done, phase 4 outstanding. The cutover itself is one environment variable and has not been made.**
+> ## ✅ DONE — 2026-08-16, approved by Steve. All five phases complete.
+>
+> `DSQL_ROLE=relay_app` is set in Vercel (Production scope only), the app has been redeployed and
+> observed serving as that role, and `dsql:DbConnectAdmin` has been removed from
+> `relay-runtime-policy` (now at **v2**; **v1 is retained** and is the rollback).
+>
+> **relaystandby.com can no longer obtain database admin.** Not by configuration — by permission.
+> Even with `DSQL_ROLE` unset, the runtime credential can only mint a `dsql:DbConnect` token, and
+> such a token cannot authenticate as `admin` however the client asks.
+>
+> The rest of this document is kept as the record of what was done and why, and as the procedure if
+> the roles are ever rebuilt. Read "How it was proven" before trusting any of it again.
 
-Until it is, every request served by relaystandby.com runs against Aurora DSQL as `admin`, with
-authority to `CREATE`, `ALTER` and `DROP` every table in the product. Nothing in the application
-wants that — it reads and writes rows, and migrations are deliberately a sysadmin act. The rights
-are simply there, unused, waiting for an injection bug or a leaked key to make them matter.
+**What was true until 2026-08-16:** every request served by relaystandby.com ran against Aurora DSQL
+as `admin`, with authority to `CREATE`, `ALTER` and `DROP` every table in the product. Nothing in the
+application wants that — it reads and writes rows, and migrations are deliberately a sysadmin act.
+The rights were simply there, unused, waiting for an injection bug or a leaked key to make them
+matter.
+
+## How it was proven
+
+**A 200 from a database-reading endpoint proves nothing about WHICH role connected** — `admin` would
+have answered identically, so a green page after the cutover would have been exactly the kind of
+signal this project keeps being caught by. The decisive test was privilege, not availability:
+
+| Step | Result |
+|---|---|
+| Baseline probe of `/api/health/delivery-webhook` | 200 |
+| `REVOKE SELECT ON email_delivery_events FROM relay_app` — that role **only** | production went **500** |
+| `GRANT` restored | back to 200 within seconds |
+
+Production broke when a privilege was taken from `relay_app` alone. It could only have broken if it
+was connecting as `relay_app`. (The one 500 immediately after the restore was a warm connection
+holding the revoked state; it cleared on its own.)
+
+**Then the function, not just the connection.** `verify:stepup` was run twice against
+`https://relaystandby.com` — once after the cutover and again after the IAM strip — **17/17 both
+times**: signup (INSERT), export (SELECT), step-up elevation and server-side revocation (UPDATE),
+recovery-code issue (INSERT), account closure (DELETE). Row counts unchanged afterwards.
+
+**And the sysadmin path still works**, which is what makes the strip safe: migrations run from
+`.env.admin` as `autospecai`, a different principal. Confirmed after the strip —
+`current_user=admin`, `CREATE=true`. `relay_dev` on the same check: `CREATE=false`.
+
+## Rollback
+
+| To undo | Do this |
+|---|---|
+| The IAM strip | Set `relay-runtime-policy` back to **v1** (retained, not deleted) |
+| The role cutover | Remove `DSQL_ROLE` from Vercel Production and redeploy |
+
+Neither requires touching the database. The roles can sit unused indefinitely.
 
 ## Why it is one variable
 
@@ -71,10 +117,18 @@ behind — worth checking, because an early run of the multi-owner walk once lef
    binding is confirmed in `sys.iam_pg_role_mappings` — but the credential that authenticates as it
    lives in Vercel and deliberately not on any laptop, so the handshake itself is untested. The first
    authenticated request after the cutover is the proof. Watch for `permission denied` or an auth
-   failure in the Vercel logs, then exercise a real read and a real write:
-   - open `/vault` on a signed-in account (read)
-   - submit the form at `/caregivers/interest` (write to the measurement table — the privilege that
-     differs from `relay_dev`, so it is the one worth exercising deliberately)
+   failure in the Vercel logs, then exercise a real read and a real write.
+
+   🔴 **DO NOT submit `/caregivers/interest` to test the write.** An earlier draft of this step said
+   to, because it writes the one table whose privilege differs from `relay_dev`. That is exactly why
+   it must not be used: a submission from production is indistinguishable from a real one, so the
+   test would write a fabricated row into `caregiver_leads` — the G1 measurement, whose entire worth
+   is that it is arms-length. The wall this whole document builds exists to make that impossible
+   from a laptop; doing it deliberately from production defeats the purpose.
+
+   Use `E2E_BASE=https://relaystandby.com npm run verify:stepup` instead. It exercises INSERT,
+   SELECT, UPDATE and DELETE through the deployed app on a disposable account, on a reserved domain
+   that sends no mail, and deletes it again — which is what was actually run.
 5. **Rollback** is removing the variable and redeploying. Nothing has to be undone in the database;
    the role can sit unused indefinitely.
 
