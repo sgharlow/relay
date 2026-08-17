@@ -23,6 +23,12 @@ export interface DashboardItem {
   owner_set_root?: boolean | null;
   importance_score: number;
   depends_on_item_id: string | null;
+  /**
+   * The owner's plain-language note for their recipient. Non-secret metadata,
+   * so it belongs on the dashboard projection — the owner has to be able to see
+   * what they wrote in order to change it.
+   */
+  backup_note?: string | null;
 }
 
 export const CATEGORY_LABELS: Record<string, string> = {

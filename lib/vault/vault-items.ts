@@ -39,7 +39,7 @@ const URL_MAX = 2048;
  * on it. Generous, because the field's job is a plain-language explanation and a
  * cramped limit would push people back to writing nothing.
  */
-const BACKUP_NOTE_MAX = 2000;
+export const BACKUP_NOTE_MAX = 2000;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -489,6 +489,46 @@ export async function setOwnerRootOverride(
         WHERE id = $2 AND owner_id = $3
        RETURNING ${METADATA_COLUMNS}`,
       [value, id, ownerId],
+    ),
+  );
+  if (result.rowCount === 0 || result.rows.length === 0) return null;
+  return toMetadata(result.rows[0]);
+}
+
+/**
+ * Sets the recipient-facing note on an EXISTING item, without the secret.
+ *
+ * 🔴 WITHOUT THIS, THE NOTE WAS ONLY EVER AVAILABLE TO NEW ITEMS. It was added
+ * to the create form on 2026-08-17, but the only other write path is
+ * `updateItem`, which requires a re-encrypted `ciphertext` — the edit form says
+ * so plainly: "Relay cannot show you the old one, it cannot read it." So adding
+ * a note to something already in the vault meant retyping the password, and
+ * every item an owner already had stayed permanently gapped. The fix would have
+ * helped nobody who had already built a vault, which is everybody.
+ *
+ * Metadata-only, exactly like `setOwnerRootOverride` above: same table, same
+ * owner scoping, no crypto involved, because the note is not secret.
+ *
+ * ⚠️ ASSIGNS RATHER THAN COALESCES, AND THAT IS THE POINT. `updateItem` uses
+ * COALESCE throughout so a caller sending only a blob changes nothing else —
+ * correct there, but it makes a note impossible to remove. Here the value is
+ * always meant, so `null` genuinely clears it. An owner who wrote a note about
+ * where something is kept and then moved it needs to be able to take that
+ * sentence back.
+ */
+export async function setItemNote(
+  ownerId: string,
+  id: string,
+  note: string | null,
+): Promise<VaultItemMetadata | null> {
+  const result = await withOccRetry(() =>
+    query<Record<string, unknown>>(
+      `UPDATE vault_items
+          SET backup_note = $1,
+              updated_at = now()
+        WHERE id = $2 AND owner_id = $3
+       RETURNING ${METADATA_COLUMNS}`,
+      [note, id, ownerId],
     ),
   );
   if (result.rowCount === 0 || result.rows.length === 0) return null;

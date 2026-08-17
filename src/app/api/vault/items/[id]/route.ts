@@ -18,6 +18,8 @@ import { assertOwns, IntegrityError } from '../../../../../../lib/db/integrity';
 import {
   updateItem,
   setOwnerRootOverride,
+  setItemNote,
+  BACKUP_NOTE_MAX,
   deleteItem,
   validateUpdateInput,
   ValidationError,
@@ -139,14 +141,76 @@ export async function PATCH(req: NextRequest, { params }: Ctx): Promise<NextResp
 
   const raw = await readJson(req);
   if (isResponse(raw)) return raw;
-  const body = (raw ?? {}) as { owner_set_root?: boolean | null };
+  const body = (raw ?? {}) as { owner_set_root?: boolean | null; backup_note?: string | null };
 
-  if (!('owner_set_root' in body)) {
+  /*
+    TWO metadata fields now, and the handler takes EXACTLY ONE per call.
+
+    `backup_note` was added 2026-08-17. The only other write path, `updateItem`,
+    demands a re-encrypted ciphertext — so before this, putting a note on an item
+    that already existed meant retyping its password, and every item already in
+    every vault stayed permanently gapped.
+
+    One-at-a-time rather than a general patch because each writes a DIFFERENT
+    audit action, and an entry that cannot say which decision an owner made is
+    not much of an audit entry. The previous contract is unchanged: a caller
+    sending `owner_set_root` behaves exactly as it did.
+  */
+  const hasRoot = 'owner_set_root' in body;
+  const hasNote = 'backup_note' in body;
+
+  if (hasRoot === hasNote) {
     return NextResponse.json(
-      { error: 'ValidationError', message: 'owner_set_root is required' },
+      {
+        error: 'ValidationError',
+        message: hasRoot
+          ? 'Send owner_set_root or backup_note, not both'
+          : 'owner_set_root or backup_note is required',
+      },
       { status: 400 },
     );
   }
+
+  const itemId = (await params).id;
+
+  if (hasNote) {
+    const note = body.backup_note;
+    if (note !== null && typeof note !== 'string') {
+      return NextResponse.json(
+        { error: 'ValidationError', message: 'backup_note must be a string or null' },
+        { status: 400 },
+      );
+    }
+    // Same bound and the same whitespace rule as create, so a value accepted on
+    // one path is not refused on the other.
+    if (typeof note === 'string' && note.length > BACKUP_NOTE_MAX) {
+      return NextResponse.json(
+        { error: 'ValidationError', message: `backup_note must be ≤ ${BACKUP_NOTE_MAX} characters` },
+        { status: 400 },
+      );
+    }
+    const trimmed = typeof note === 'string' ? note.trim() : null;
+    const updatedNote = await setItemNote(auth.ownerId, itemId, trimmed && trimmed.length > 0 ? trimmed : null);
+    if (!updatedNote) {
+      return NextResponse.json({ error: 'NotFound', message: 'No such item' }, { status: 404 });
+    }
+    /*
+      Audited, but WITHOUT the text. The note is not secret, yet the audit log is
+      append-only and hash-chained — a sentence written there can never be taken
+      back, which would defeat the whole reason clearing a note is supported.
+      Recording that it changed, and whether it now exists, is what the log is
+      for.
+    */
+    await writeAuditEntry(auth.ownerId, {
+      actor: `owner:${auth.ownerId}`,
+      action: 'vault_item_note_updated',
+      entity: 'vault_item',
+      entityId: itemId,
+      detail: { present: Boolean(trimmed && trimmed.length > 0) },
+    });
+    return NextResponse.json(updatedNote);
+  }
+
   const value = body.owner_set_root;
   if (value !== null && typeof value !== 'boolean') {
     return NextResponse.json(
@@ -155,7 +219,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx): Promise<NextResp
     );
   }
 
-  const updated = await setOwnerRootOverride(auth.ownerId, (await params).id, value);
+  const updated = await setOwnerRootOverride(auth.ownerId, itemId, value);
   if (!updated) {
     return NextResponse.json({ error: 'NotFound', message: 'No such item' }, { status: 404 });
   }
@@ -166,7 +230,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx): Promise<NextResp
     actor: `owner:${auth.ownerId}`,
     action: 'vault_item_classification_overridden',
     entity: 'vault_item',
-    entityId: (await params).id,
+    entityId: itemId,
     detail: { owner_set_root: value },
   });
 

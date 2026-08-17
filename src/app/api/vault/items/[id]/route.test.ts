@@ -24,20 +24,24 @@ vi.mock('../../../../../../lib/vault/vault-items', async (importOriginal) => {
     getItemForOwner: vi.fn(),
     updateItem: vi.fn(),
     deleteItem: vi.fn(),
+    setItemNote: vi.fn(),
+    setOwnerRootOverride: vi.fn(),
   };
 });
 
 import { getOwnerSession } from '../../../../../../lib/auth/session';
 import { assertOwns, IntegrityError } from '../../../../../../lib/db/integrity';
-import { updateItem, deleteItem } from '../../../../../../lib/vault/vault-items';
+import { updateItem, deleteItem, setItemNote, setOwnerRootOverride } from '../../../../../../lib/vault/vault-items';
 import { writeAuditEntry } from '../../../../../../lib/audit/audit-service';
-import { PUT, DELETE } from './route';
+import { PUT, DELETE, PATCH } from './route';
 
 const mockSession = vi.mocked(getOwnerSession);
 const mockAssertOwns = vi.mocked(assertOwns);
 const mockUpdate = vi.mocked(updateItem);
 const mockDelete = vi.mocked(deleteItem);
 const mockAudit = vi.mocked(writeAuditEntry);
+const mockSetNote = vi.mocked(setItemNote);
+const mockSetRoot = vi.mocked(setOwnerRootOverride);
 
 const ctx = { params: Promise.resolve({ id: 'item-1' }) };
 function makeReq(body?: unknown) {
@@ -106,5 +110,80 @@ describe('DELETE /api/vault/items/[id]', () => {
     expect(res.status).toBe(200);
     expect(mockDelete).toHaveBeenCalledWith('owner-1', 'item-1');
     expect(mockAudit.mock.calls[0][1].action).toBe('vault_item_deleted');
+  });
+});
+
+/**
+ * 🔴 THE NOTE WAS ONLY AVAILABLE TO NEW ITEMS until this handler took it.
+ *
+ * `backup_note` reached the create form on 2026-08-17, but the only other write
+ * path — PUT — demands a re-encrypted ciphertext, because that form replaces the
+ * secret rather than editing it. So putting a note on something already in the
+ * vault meant retyping its password, and `detectGaps` went on flagging every
+ * pre-existing item with advice its owner still could not act on.
+ */
+describe('PATCH /api/vault/items/[id] — metadata without the secret', () => {
+  it('sets a note with no ciphertext anywhere in the request', async () => {
+    mockSetNote.mockResolvedValue({ id: 'item-1' } as never);
+    const res = await PATCH(makeReq({ backup_note: '  Codes are in the desk drawer.  ' }), ctx);
+    expect(res.status).toBe(200);
+    // Trimmed at the boundary, matching create — one definition of "has a note".
+    expect(mockSetNote).toHaveBeenCalledWith('owner-1', 'item-1', 'Codes are in the desk drawer.');
+  });
+
+  it('clears the note when the box is emptied', async () => {
+    // ASSIGNS rather than COALESCEs, unlike PUT. An owner who wrote down where
+    // something was kept and then moved it must be able to take that back.
+    mockSetNote.mockResolvedValue({ id: 'item-1' } as never);
+    await PATCH(makeReq({ backup_note: '   ' }), ctx);
+    expect(mockSetNote).toHaveBeenCalledWith('owner-1', 'item-1', null);
+  });
+
+  it('audits that the note changed, but never what it says', async () => {
+    /*
+      The audit log is append-only and hash-chained. A sentence written into it
+      can never be taken back — which would defeat the entire reason clearing a
+      note is supported. Record that it changed and whether one now exists.
+    */
+    mockSetNote.mockResolvedValue({ id: 'item-1' } as never);
+    await PATCH(makeReq({ backup_note: 'The spare key is under the third plant pot.' }), ctx);
+    const entry = mockAudit.mock.calls[0][1];
+    expect(entry.action).toBe('vault_item_note_updated');
+    expect(JSON.stringify(entry.detail)).not.toContain('plant pot');
+    expect(entry.detail).toMatchObject({ present: true });
+  });
+
+  it('rejects a note past the bound rather than truncating it', async () => {
+    const res = await PATCH(makeReq({ backup_note: 'x'.repeat(2001) }), ctx);
+    expect(res.status).toBe(400);
+    expect(mockSetNote).not.toHaveBeenCalled();
+  });
+
+  it('404s on an item that is not the owner’s, without saying which', async () => {
+    mockSetNote.mockResolvedValue(null as never);
+    const res = await PATCH(makeReq({ backup_note: 'anything' }), ctx);
+    expect(res.status).toBe(404);
+  });
+
+  it('still accepts owner_set_root exactly as before — the old contract is unchanged', async () => {
+    mockSetRoot.mockResolvedValue({ id: 'item-1' } as never);
+    const res = await PATCH(makeReq({ owner_set_root: true }), ctx);
+    expect(res.status).toBe(200);
+    expect(mockSetRoot).toHaveBeenCalledWith('owner-1', 'item-1', true);
+    expect(mockAudit.mock.calls[0][1].action).toBe('vault_item_classification_overridden');
+  });
+
+  it('refuses both fields at once — each writes a different audit action', async () => {
+    // An audit entry that cannot say which decision the owner made is not much
+    // of an audit entry.
+    const res = await PATCH(makeReq({ owner_set_root: true, backup_note: 'x' }), ctx);
+    expect(res.status).toBe(400);
+    expect(mockSetNote).not.toHaveBeenCalled();
+    expect(mockSetRoot).not.toHaveBeenCalled();
+  });
+
+  it('refuses an empty body', async () => {
+    const res = await PATCH(makeReq({}), ctx);
+    expect(res.status).toBe(400);
   });
 });
