@@ -17,6 +17,7 @@
 
 import { useState } from 'react';
 import { parseCSV, parseCsvText, detectFormat, CSV_FORMATS, CsvError, type CsvFormat, type ParseResult } from '../../../../lib/import/csv-parser';
+import { encodeSecretPayload } from '../../../../lib/crypto/secret-payload';
 import { CryptoService } from '../../../../lib/crypto/crypto-service';
 import { apiSend } from '../_lib/api';
 
@@ -64,8 +65,22 @@ export default function ImportPage() {
       const items = [];
       for (let i = 0; i < parsed.rows.length; i++) {
         const row = parsed.rows[i];
-        // Encrypt username+password as the secret; title = service name.
-        const payload = await svc.encryptForUpload(JSON.stringify({ username: row.username, password: row.password }), {
+        /*
+          🔴 THIS WROTE `JSON.stringify({ username, password })` UNTIL 2026-08-17,
+          and `AccessClient` rendered whatever it decrypted into a `<pre>` — so a
+          recipient of any imported item was shown raw JSON at the worst moment
+          of their life. It also dropped the second factor entirely, on a column
+          the parser was already reading in order to detect the format.
+
+          The envelope is versioned and the decoder still understands both older
+          shapes, permanently: the server cannot read plaintext, so no migration
+          can ever normalise the rows written before today.
+        */
+        const payload = await svc.encryptForUpload(encodeSecretPayload([
+          { kind: 'username', value: row.username ?? '' },
+          { kind: 'password', value: row.password },
+          { kind: 'totp', value: row.totp ?? '' },
+        ]), {
           type: 'login',
           title: row.service_name,
           service_name: row.service_name,
@@ -152,6 +167,13 @@ export default function ImportPage() {
                   <th className="px-3 py-2">Service</th>
                   <th className="px-3 py-2">URL</th>
                   <th className="px-3 py-2">Username</th>
+                  {/*
+                    Shown so the owner can SEE their second factors came across.
+                    Until 2026-08-17 they were silently dropped and the vault
+                    reported itself complete — a fix nobody can observe is
+                    indistinguishable from the bug.
+                  */}
+                  <th className="px-3 py-2">2FA</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-rule">
@@ -160,6 +182,8 @@ export default function ImportPage() {
                     <td className="px-3 py-1.5">{row.service_name}</td>
                     <td className="truncate px-3 py-1.5 text-muted">{row.url ?? '—'}</td>
                     <td className="px-3 py-1.5 text-muted">{row.username ?? '—'}</td>
+                    {/* Never the seed itself — that is the secret. Only whether one is there. */}
+                    <td className="px-3 py-1.5 text-muted">{row.totp ? 'Yes' : '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -194,6 +218,27 @@ export default function ImportPage() {
             <p className="mt-2 text-sage-text">
               We&apos;ve re-checked which of these unlock the others — your vault ranking is up
               to date.
+            </p>
+          ) : null}
+          {/*
+            🔴 SILENCE HERE READ AS SUCCESS. `splitDuplicates` matches an incoming
+            row against items already in the vault on a normalised
+            title + service_name, so re-importing a fresh export — the natural
+            thing to do after turning on two-factor somewhere — skips EVERY row
+            and reports `imported: 0`. Nothing is updated, and until 2026-08-17
+            nothing said the second factor had not come across.
+
+            Deliberately not fixed by making import overwrite existing items:
+            that would turn the importer into a path that can write over stored
+            secrets, which it has never been, and a stale export could quietly
+            replace a good credential with a worse one. Telling the owner what
+            happened is the smaller and more honest change.
+          */}
+          {report.duplicates ? (
+            <p className="mt-2 text-sage-text">
+              The {report.duplicates === 1 ? 'one already in your vault was' : `${report.duplicates} already in your vault were`}{' '}
+              left alone — <strong>including any two-factor codes in this export</strong>. To add a
+              code to an account you already have, open it in your vault and choose Update.
             </p>
           ) : null}
         </div>

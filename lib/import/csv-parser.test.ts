@@ -41,7 +41,9 @@ describe('parseCSV', () => {
     const file = csvFile('Title,Url,Username,Password\nGmail,https://mail.google.com,me@x.com,secret1\n');
     const result = await parseCSV(file, '1password');
     expect(result.rows).toEqual([
-      { service_name: 'Gmail', url: 'https://mail.google.com', username: 'me@x.com', password: 'secret1' },
+      // `totp: null` since 2026-08-17 — an export with no second-factor column
+      // must still parse identically to how it always did.
+      { service_name: 'Gmail', url: 'https://mail.google.com', username: 'me@x.com', password: 'secret1', totp: null },
     ]);
     expect(result.skipped).toEqual([]);
   });
@@ -119,5 +121,63 @@ describe('generic CSV', () => {
 
   it('refuses a file that names a secret but nothing to attach it to', () => {
     expect(detectFormat(['password'])).toBeNull();
+  });
+});
+
+/**
+ * 🔴 THE COLUMN WAS DETECTED AND THEN THROWN AWAY.
+ *
+ * `detectFormat` identifies a LastPass export BY the presence of its `totp`
+ * column — `if (h.has('grouping') || h.has('totp')) return 'lastpass'` — and
+ * `ParsedRow` then carried only service/url/username/password. Every owner who
+ * imported from LastPass, Bitwarden or 1Password silently lost every second
+ * factor they had, while the vault reported itself complete.
+ *
+ * ⚠️ Fixing the parser does NOT recover what past imports dropped. Those owners
+ * must re-import, and they do not know anything is missing — Q5 of the design
+ * QA pass, and a communication decision rather than a technical one.
+ */
+describe('second factors survive the import', () => {
+  it('captures the LastPass totp column it was already using to detect the format', async () => {
+    const file = csvFile('url,username,password,extra,name,grouping,totp\nhttps://x.com,me,pw,,Gmail,,JBSWY3DPEHPK3PXP\n');
+    const result = await parseCSV(file, 'lastpass');
+    expect(result.rows[0].totp).toBe('JBSWY3DPEHPK3PXP');
+  });
+
+  it('captures the Bitwarden login_totp column, which holds a full otpauth URI', async () => {
+    const uri = 'otpauth://totp/Chase:me?secret=JBSWY3DPEHPK3PXP&issuer=Chase';
+    const file = csvFile(`name,login_uri,login_username,login_password,login_totp\nChase,https://chase.com,user,pw,${uri}\n`);
+    const result = await parseCSV(file, 'bitwarden');
+    expect(result.rows[0].totp).toBe(uri);
+  });
+
+  it('captures 1Password one-time passwords', async () => {
+    const file = csvFile('Title,Url,Username,Password,OTPAuth\nGmail,https://mail.google.com,me@x.com,secret1,JBSWY3DPEHPK3PXP\n');
+    const result = await parseCSV(file, '1password');
+    expect(result.rows[0].totp).toBe('JBSWY3DPEHPK3PXP');
+  });
+
+  it('accepts what a person would actually write in their own spreadsheet', async () => {
+    // The generic format exists for the parent with no password manager. It will
+    // not say "otpauth".
+    const file = csvFile('account,username,password,2fa\nBank,me,pw,JBSWY3DPEHPK3PXP\n');
+    const result = await parseCSV(file, 'generic');
+    expect(result.rows[0].totp).toBe('JBSWY3DPEHPK3PXP');
+  });
+
+  it('changes nothing about which rows are accepted', async () => {
+    /*
+      The second factor is strictly optional. A row with an empty totp column is
+      not skipped, and a row that would have been skipped before is still
+      skipped for the same reason — this must not become a new way to lose data.
+    */
+    const file = csvFile('url,username,password,extra,name,grouping,totp\n' +
+      'https://a.com,me,pw,,HasCode,,JBSWY3DPEHPK3PXP\n' +
+      'https://b.com,me,pw2,,NoCode,,\n' +
+      'https://c.com,me,,,NoPassword,,JBSWY3DPEHPK3PXP\n');
+    const result = await parseCSV(file, 'lastpass');
+    expect(result.rows.map((r) => r.service_name)).toEqual(['HasCode', 'NoCode']);
+    expect(result.rows[1].totp).toBeNull();
+    expect(result.skipped).toHaveLength(1);
   });
 });

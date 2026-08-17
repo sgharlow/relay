@@ -239,10 +239,18 @@ Under structured payloads, adding a TOTP to an existing item means the owner's b
 the current payload, merge, and re-encrypt** — otherwise saving one field destroys the password.
 **That is a data-loss path if implemented carelessly.**
 
-The capability exists and is proven (`AccountClient` export unwraps owner items), so this is
-architecturally legitimate. But the sentence above is *literally* true about the server and
-*misleading* about the owner. It has to change, deliberately, as part of this work — not be
-discovered later.
+> **RESOLVED IN PHASE 0 BY NOT DOING IT — and building found the reason.** Decrypt-and-merge needs
+> the item's ciphertext, and there is **no single-item endpoint to fetch it from**: the `GET` on
+> `/api/vault/items/[id]` was retired on 2026-08-13, and `/api/account/export` returns the whole
+> vault behind a step-up. Adding one is a new server surface over ciphertext — a decision that does
+> not belong in a phase whose promise is "no infrastructure risk".
+>
+> So the edit form keeps its existing **replace** semantics, which the product already chose
+> deliberately, and simply replaces *more*: username, password, TOTP and recovery codes are all on
+> screen. Nothing can be silently dropped, because nothing is off-screen. The copy now says
+> *"everything you enter here replaces what is stored, including any fields you leave blank."*
+>
+> **True field-level editing remains open**, and it needs that endpoint first.
 
 ### 🔴 Q3 — BLOCKING. `NULL` secret_kinds must mean "unknown", not "empty"
 
@@ -255,11 +263,44 @@ unusable. Absent and empty are different facts and must stay different in the co
 Raw JSON is being shown to recipients today. Ship the structured reveal as a **bug fix**, on its own,
 regardless of whether the rest of this design is accepted.
 
-### 🟠 Q5 — HIGH. Fixing the importer does not recover what past imports lost
+### 🟡 Q5 — DOWNGRADED BY MEASURING IT. Nobody is affected; the trap is forward-looking
 
-Owners who already imported from LastPass/Bitwarden/1Password lost their TOTP seeds silently. A
-parser fix helps future imports only. Those owners must re-import or re-enter, and **they do not know
-anything is missing.** That is a communication decision, and it is Steve's.
+**I called this blocking twice and it is not. Measuring production is what settled it** — the same
+discipline the portfolio rule demands before quoting any number.
+
+| Measured live, 2026-08-17 | |
+|---|---|
+| Owners | **1** |
+| Vault items | **0** |
+| Import events ever | **1** — 40 items on 2026-08-12 |
+
+Those 40 items no longer exist. **No real owner has lost a second factor, because no real owner has
+an item.** Phase 0 already prevents it happening to the next person.
+
+What survives is a **forward-looking trap**, and it is a different bug from the one I described: if
+an owner imports, later turns on 2FA somewhere, and re-imports a fresh export to pick it up,
+`/api/import` deduplicates against existing items on a normalised `title + service_name`
+(`lib/vault/dedupe.ts`) and **skips every row**, reporting `imported: 0` — which reads like success.
+The problem is a misleading success report, not lost data.
+
+The remediation paragraph below was written when I believed real vaults were affected. It is retained
+because it is still what an owner would face, but it is not urgent.
+
+**I originally wrote "those owners must re-import or re-enter." The re-import half is wrong.**
+`/api/import` deduplicates against *existing vault items* on a normalised `title + service_name`
+(`lib/vault/dedupe.ts`), so re-running the same export skips **every row** as a duplicate. Nothing
+is recovered and the report says `imported: 0`, which reads like success.
+
+That leaves two routes, and neither is good:
+
+| Route | Problem |
+|---|---|
+| Delete the items, then re-import | `cascadeDelete` removes the item's `access_rules` too. The owner silently loses every recipient assignment they had made. **Do not recommend this.** |
+| Edit each item by hand | Works today — but the edit form *replaces*, so they must retype the password as well as adding the seed. Laborious, and error-prone on exactly the accounts that matter most. |
+
+**This makes the single-item ciphertext endpoint more than a nicety.** True field-level editing is
+the remediation path for a data-loss bug that has already happened to real vaults. It should be
+weighed as remediation, not as convenience.
 
 ### 🟠 Q6 — HIGH. A TOTP seed meets the step-up guard's own test, and unwrap is outside its scope
 
@@ -304,11 +345,12 @@ permission, and giving them one would create a new server-side write path over a
 limitation: two recipients can pick the same code and one will fail. The UI must say *"each works
 once — agree between you who uses which."*
 
-### 🟡 Q10 — MEDIUM. The demo must move with the product
+### ⚪ Q10 — WITHDRAWN. The demo has no plaintext format to diverge from
 
-`seed-runner.ts` writes its own payload shape. If it is not updated, the demo shows one format while
-the product produces another — **the exact asymmetry that hid the `backup_note` defect for months**
-(sprint 10, V1).
+**I was wrong about this, and building it is what showed me.** I assumed `seed-runner.ts` wrote its
+own payload shape, by analogy with the `backup_note` defect it *did* mask. It does not: seeded
+ciphertext is a **placeholder, not a real envelope** (`lib/seed/demo-data.ts`), so a demo item can
+never be decrypted and there is no plaintext convention there to keep in step. Nothing to do.
 
 ### 🟡 Q11 — MEDIUM. QR scanning brings a dependency, a permission, and an upload risk
 

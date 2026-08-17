@@ -20,6 +20,7 @@ import {
   type VaultItemType,
 } from '../../../../../lib/domain/enums';
 import { CryptoService } from '../../../../../lib/crypto/crypto-service';
+import { encodeSecretPayload } from '../../../../../lib/crypto/secret-payload';
 
 const inputCls =
   'w-full rounded border border-rule-strong px-2.5 py-1.5 text-t2 focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink';
@@ -34,6 +35,9 @@ export default function NewVaultItemPage() {
     category: '',
     criticality: 'medium',
     secret: '',
+    username: '',
+    totp: '',
+    recovery_codes: '',
     backup_note: '',
   });
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +48,18 @@ export default function NewVaultItemPage() {
     setError(null);
     setBusy(true);
     try {
-      await new CryptoService().saveItem(form.secret, {
+      /*
+        One ciphertext blob, as before — the structure lives INSIDE it, so
+        nothing about KMS, the recipient decrypt path or the release machine
+        changes. `encodeSecretPayload` drops empty fields, so an item with only a
+        password encodes exactly as it always did in substance.
+      */
+      await new CryptoService().saveItem(encodeSecretPayload([
+        { kind: 'username', value: form.username },
+        { kind: 'password', value: form.secret },
+        { kind: 'totp', value: form.totp },
+        { kind: 'recovery_codes', value: form.recovery_codes },
+      ]), {
         type: form.type,
         title: form.title,
         service_name: form.service_name || undefined,
@@ -105,8 +120,53 @@ export default function NewVaultItemPage() {
           <input className={inputCls} type="url" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} placeholder="https://…" />
         </Field>
 
+        <Field label="Username (optional)">
+          <input className={inputCls} value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="The email or name you sign in with" autoComplete="off" />
+        </Field>
+
         <Field label="Secret value">
           <textarea className={`${inputCls} font-mono`} required rows={3} value={form.secret} onChange={(e) => setForm({ ...form, secret: e.target.value })} placeholder="Password, note, or instructions — encrypted before upload" />
+        </Field>
+
+        {/*
+          🔴 A PASSWORD ALONE IS NOT ACCESS, and until 2026-08-17 a password was
+          all this form could take. An owner storing a 2FA-protected account was
+          handing their family a password and a locked door, while the vault
+          reported them covered.
+
+          The seed is stored, and the RECIPIENT'S browser turns it into the live
+          six digits — handing somebody `JBSWY3DPEHPK3PXP` and expecting them to
+          enrol it in an authenticator app during the worst week of their life is
+          not a plan.
+
+          ⚠️ A PASSKEY CANNOT GO HERE, and no field would help. It is bound to a
+          device and cannot be handed over by anyone. For those accounts the only
+          useful thing is the recovery route: name what recovers it, and say so
+          in the note below.
+        */}
+        <Field label="Two-factor code (optional)">
+          <input
+            className={`${inputCls} font-mono`}
+            value={form.totp}
+            onChange={(e) => setForm({ ...form, totp: e.target.value })}
+            placeholder="otpauth://totp/… or the setup key"
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <p className="mt-1 text-t1 text-muted">
+            From your authenticator app&rsquo;s &ldquo;can&rsquo;t scan the code?&rdquo; text. Whoever
+            you name will get the six digits, not this.
+          </p>
+        </Field>
+
+        <Field label="Recovery codes (optional)">
+          <textarea
+            className={`${inputCls} font-mono`}
+            rows={2}
+            value={form.recovery_codes}
+            onChange={(e) => setForm({ ...form, recovery_codes: e.target.value })}
+            placeholder="One per line — the backup codes the service gave you"
+          />
         </Field>
 
         {/*

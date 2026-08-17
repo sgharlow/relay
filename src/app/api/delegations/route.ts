@@ -24,8 +24,22 @@ export async function GET(): Promise<NextResponse> {
 
   const [delegations, people] = await Promise.all([
     query<{ id: string; delegate_user_id: string; status: string; granted_at: string | null }>(
-      `SELECT id, delegate_user_id, status, granted_at
-         FROM delegations WHERE owner_id = $1 AND revoked_at IS NULL`,
+      /*
+        🔴 `consent_artifacts` WAS WRITTEN AND READ BY NOTHING. `recordConsent`
+        inserts the row and links it, and no query anywhere ever selected it
+        back — so the consent screen's own promise, "This is kept as a record. It
+        is what makes handing someone this help legitimate rather than simply
+        convenient," was kept by the database and never by the product. An owner
+        who wrote "signed form in the blue folder" had no way to read it again.
+
+        LEFT JOIN, not JOIN: a pending delegation has no artifact yet, and an
+        inner join would drop exactly the rows the screen exists to act on.
+      */
+      `SELECT d.id, d.delegate_user_id, d.status, d.granted_at,
+              c.method AS consent_method, c.evidence_ref AS consent_evidence_ref
+         FROM delegations d
+         LEFT JOIN consent_artifacts c ON c.id = d.consent_artifact_id
+        WHERE d.owner_id = $1 AND d.revoked_at IS NULL`,
       [auth.ownerId],
     ),
     listPeople(auth.ownerId),

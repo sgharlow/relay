@@ -39,6 +39,22 @@ export interface Delegation {
    */
   name: string | null;
   email: string | null;
+  /**
+   * How consent was given, and where the paper record is kept.
+   *
+   * 🔴 WRITTEN SINCE MIGRATION 009 AND READ BY NOTHING until 2026-08-17.
+   * `recordConsent` inserts a `consent_artifacts` row and links it, and no query
+   * anywhere ever selected it back — so the consent form's own promise, *"This is
+   * kept as a record. It is what makes handing someone this help legitimate
+   * rather than simply convenient,"* was kept by the database and never by the
+   * product. An owner who typed "signed form in the blue folder" could not read
+   * it back, and neither could anyone asking whether the delegation was
+   * legitimate.
+   *
+   * Null while a delegation is still pending — consent has not happened yet.
+   */
+  consent_method?: string | null;
+  consent_evidence_ref?: string | null;
   /** What they have actually done, from the audit chain (J3-R8). */
   activity?: { action: string; ts: string }[];
 }
@@ -63,6 +79,18 @@ export interface Candidate {
 const DELEGATE_ACTION: Record<string, string> = {
   vault_item_created: 'Added something to your vault',
   approval_requested: 'Suggested somebody who would step in',
+};
+
+/**
+ * Past tense, for reading a decision back. `METHODS` below is the question; this
+ * is the answer, and they are worded differently on purpose — "We did it
+ * together, in person" is what you pick, "You did it together, in person" is
+ * what you are later told you picked.
+ */
+const CONSENT_RECORD: Record<string, string> = {
+  in_person: 'You did it together, in person.',
+  paper_upload: 'They signed something on paper.',
+  link: 'They confirmed it themselves, on a device.',
 };
 
 const METHODS = [
@@ -221,6 +249,33 @@ export default function HelperSection({
                       <a href="/audit" className="underline underline-offset-2">record</a> has all of
                       them, in order.
                     </p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {/*
+                🔴 THE RECORD THE CONSENT FORM PROMISES. That form says "This is
+                kept as a record. It is what makes handing someone this help
+                legitimate rather than simply convenient" — and until 2026-08-17
+                the row went into `consent_artifacts` and no query anywhere read
+                it back. The owner was told it mattered, then never shown it.
+
+                Placed beside "What they have done" for the same reason that
+                section sits here: this is the screen where an owner decides
+                whether to keep somebody, so what they agreed to belongs next to
+                what has been done with it.
+              */}
+              {d.status === 'active' && d.consent_method ? (
+                <div className="mt-3">
+                  <p className="text-t2 font-medium text-ink">How you agreed</p>
+                  <p className="mt-1 text-t2 text-ink">
+                    {CONSENT_RECORD[d.consent_method] ?? d.consent_method}
+                    {d.granted_at ? (
+                      <span className="text-muted"> — {new Date(d.granted_at).toLocaleDateString()}</span>
+                    ) : null}
+                  </p>
+                  {d.consent_evidence_ref ? (
+                    <p className="mt-1 text-t2 text-muted">Record kept: {d.consent_evidence_ref}</p>
                   ) : null}
                 </div>
               ) : null}

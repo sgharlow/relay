@@ -730,6 +730,40 @@ ratified:
       proposal. ⚠️ The rule that governs every other date in this file applies to this one: a third
       party moving it is fine, a silent slide is not. Any change gets a dated record and a reason."
 
+  - id: import-never-overwrites-a-vault-item
+    date: 2026-08-16
+    decision: "Re-importing an export EXPLAINS what it skipped. It does not update existing items."
+    why: "Re-import is the natural way to pick up a two-factor code added after the first import, and
+      splitDuplicates matches on a normalised title + service_name — so every row is skipped and the
+      result reads `imported: 0`, which looks like success. The fix is the SENTENCE, not the
+      behaviour: making import update duplicates would turn it into a path that can write over stored
+      vault secrets, which it has never been. A mis-mapped column or a stale export could quietly
+      replace a good credential with a worse one, on the accounts that matter most."
+    scope_measured: "Production on 2026-08-16 held 1 owner and 0 vault items, and the single import
+      event (40 items, 2026-08-12) refers to rows that no longer exist. NOBODY has lost a second
+      factor to this. It was called blocking twice before anyone measured it — that is the error the
+      rule about re-deriving numbers live exists to prevent."
+    enforced_by: lib/ops/import-duplicates-explained.test.ts
+    owner: steve
+
+  - id: no-single-item-ciphertext-endpoint-yet
+    date: 2026-08-16
+    decision: "Field-level editing of a vault item is DEFERRED until a real vault needs it. The edit
+      form keeps its replace-everything semantics and says so."
+    why: "Adding a two-factor code to an existing item means retyping its password, because merging
+      would need the item's ciphertext and there is no single-item endpoint to fetch it from — the
+      GET was retired 2026-08-13 and /api/account/export is the whole vault behind a step-up. Adding
+      one is a NEW SERVER SURFACE handing out ciphertext, needing its own auth, body-limit and
+      step-up decisions. At 1 owner and 0 items nobody is retyping anything, so the surface buys
+      nothing today."
+    revisit_when: "The first real owner has a vault they maintain over time."
+    also_settles: "⚠️ When it IS built, the step-up question comes with it. step-up-guard's own test is
+      'would finding this machine unlocked hand somebody something that OUTLIVES the session?' — and a
+      TOTP seed does, in a way a password does not, because it cannot be rotated by changing a
+      password. /api/kms/unwrap's owner branch is currently OUT OF SCOPE of that guard, which only
+      walks /api/account. Decide it in the same change, not after."
+    owner: steve
+
   - id: relay-operator-is-an-individual
     date: 2026-08-16
     owner: steve
