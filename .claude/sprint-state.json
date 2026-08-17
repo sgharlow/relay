@@ -1025,5 +1025,107 @@
       "The beta cohort — still N=0"
     ],
     "report": "docs/sprint-reports/2026-08-17-sprint-6-vault-wiring.md"
+  },
+  "sprint11": {
+    "scope": "next most critical items",
+    "branch": "sprint/2026-08-17-5",
+    "branchedFrom": "feat/secret-types-phase-0 (UNMERGED) — master carries two live defects that branch fixes, so surveying master would have surveyed a known-wrong tree",
+    "iterationsUsed": 3,
+    "iterationCap": 5,
+    "stoppedBecause": "material queue exhausted, not the cap. Everything remaining is Steve-owned or scores 2.",
+    "backlogSource": [
+      ".claude/sprint-state.json sprint10.deferred",
+      "fresh survey (supplemented, marked)"
+    ],
+    "backlogInferred": false,
+    "verdict": "Two promises the database kept and the product did not, plus a guard so the next one cannot hide.",
+    "baseline": {
+      "start": {
+        "gate": "exit 0",
+        "tests": "2592 passed, 1 skipped",
+        "audit": "0 vulnerabilities"
+      },
+      "end": {
+        "gate": "exit 0",
+        "tests": "2610 passed, 1 skipped",
+        "audit": "0 vulnerabilities"
+      },
+      "newlySkippedTests": 0
+    },
+    "shipped": [
+      {
+        "id": "I1",
+        "commit": "2b95d9c",
+        "axis": "wiring",
+        "title": "consent_artifacts written since migration 009 and read by nothing, while the screen promises the record is kept"
+      },
+      {
+        "id": "I2",
+        "commit": "cc24ee9",
+        "axis": "journeys",
+        "title": "verifier error state was a dead end — worse than the claim one, because a stuck verifier blocks the whole release"
+      },
+      {
+        "id": "I3",
+        "commit": "e10b0ba+ceafdf6",
+        "axis": "completeness",
+        "title": "guard that every declared column is referenced; four vestigial ones allow-listed with reasons"
+      }
+    ],
+    "myOwnFailures": [
+      "a dead-end scanner reported no findings while blind — pinned the closing paren to one indent level; caught only by planting the defect I had just fixed",
+      "a commit landed on a RED gate: chained with ; instead of &&. The failure was a TIMEOUT caused by my own guard reading the source tree three times; memoised in ceafdf6"
+    ],
+    "checkedAndCorrect": [
+      "no other dead-end error states in src/app (scanner fixed and proven)",
+      "intake-agent preserves owner_set_root — the override pattern is sound",
+      "the new consent_method field survives route and client shaping",
+      "the stand-down control is correctly linked from both pending-release emails",
+      "a11y is CI-gated on access-mode pages signed out; the old 0/34 note is stale",
+      "verifier_confirmations.confirmed_at is written by column default, not lost"
+    ],
+    "blocked": [
+      {
+        "id": "IRREPLACEABLE-MANUAL",
+        "owner": "steve",
+        "category": "change outside this repo",
+        "note": "needs owner_set_irreplaceable column; setting irreplaceable directly is overwritten by the next analysis run"
+      }
+    ],
+    "deferred": [
+      {
+        "id": "SECOND-FACTOR-MODEL",
+        "owner": "steve"
+      },
+      {
+        "id": "IRREPLACEABLE-MANUAL",
+        "score": 8,
+        "note": "now blocked"
+      },
+      {
+        "id": "NO-SINGLE-ITEM-CIPHERTEXT-ENDPOINT",
+        "owner": "steve",
+        "note": "ratified 2026-08-16"
+      },
+      {
+        "id": "EMAIL-SEND-ATTEMPTS-RETENTION",
+        "score": 2
+      },
+      {
+        "id": "SCROLLABLE-REGIONS-CSS",
+        "score": 2
+      },
+      {
+        "id": "VERIFY-IAM-IN-CI",
+        "owner": "steve"
+      }
+    ],
+    "debtCreated": [],
+    "nextTop3": [
+      "Decide the two stacked branches — everything is blocked behind that",
+      "IRREPLACEABLE-MANUAL: one migration closes the last owner-override asymmetry",
+      "The beta cohort — five sprints running"
+    ],
+    "report": "docs/sprint-reports/2026-08-17-sprint-7-emergency-paths.md"
   }
 }
