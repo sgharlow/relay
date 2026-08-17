@@ -835,5 +835,95 @@
     ],
     "doneCondition": "No material incremental product work remains identifiable. What is left is a positioning decision, a deploy, and writing. Adding surface before the first reader arrives is the horizontal build the demand gate exists to stop.",
     "report": "docs/sprint-reports/2026-08-16-sprint-3-readiness.md"
+  },
+  "sprint9": {
+    "scope": "next prioritised sprint tasks for Relay",
+    "branch": "sprint/2026-08-17-3",
+    "iterationsUsed": 3,
+    "iterationCap": 5,
+    "stoppedBecause": "the material queue was exhausted, not the cap. Remaining candidates score 2 or need Steve.",
+    "backlogSource": [
+      "repo survey across the seven axes, aimed at: beta invitations are queued — what will the first real invitees hit?"
+    ],
+    "backlogInferred": true,
+    "inferredWhy": "prior deferred lists were written for a paid-ads world retired two days ago; every Steve-court item is deferred",
+    "verdict": "All three defects sit on the claim path, and none was on any list. Aiming the survey at the first invitee is what found them.",
+    "baseline": {
+      "start": {
+        "gate": "exit 0",
+        "tests": "2507 passed, 1 skipped",
+        "audit": "0 vulnerabilities"
+      },
+      "end": {
+        "gate": "exit 0",
+        "tests": "2513 passed, 1 skipped",
+        "audit": "0 vulnerabilities"
+      },
+      "newlySkippedTests": 0
+    },
+    "shipped": [
+      {
+        "id": "I1",
+        "commit": "53ec678",
+        "axis": "correctness",
+        "title": "the claim page pointed invitees at an email never sent",
+        "evidence": "label contradicted the paragraph three lines above and was wrong for the default owner arm. NOT a global replace — /access and /verify keep their email wording because those codes really are emailed; the test asserts that too. Comment-stripping proven not to be a loophole by re-planting the defect."
+      },
+      {
+        "id": "I2",
+        "commit": "d44cac6",
+        "axis": "journeys",
+        "title": "the claim error state was a dead end",
+        "evidence": "hard-priority ladder item 4. Retry control, accurate heading, real mailto. Proven in a browser: reached the error via ?token=, clicked retry, confirmed the form returned."
+      },
+      {
+        "id": "I3",
+        "commit": "c6be204",
+        "axis": "correctness",
+        "title": "Phase 0 counted people who stepped down as claims",
+        "evidence": "error ran in the OPTIMISTIC direction on the metric two shipped security decisions rest on. Fixed at N=0 because the populations cannot be separated retroactively. Predicate proven read-only against synthetic rows: counts claimed-then-resigned, ignores the three lookalikes."
+      }
+    ],
+    "checkedAndCorrect": [
+      "?code= ignored on /claim — deliberate; claimUrl omits the code and the page reads ?token=. A credential in a URL is what the architecture prevents",
+      "the \"step down\" button the invitation promises exists on /standby, and requiring auth first is correct or an interceptor could decline for someone",
+      "delivery-webhook-monitor HAD run — daily at 08:47 UTC, outside the 20 most recent. All five workflows active and green. I was wrong and corrected it",
+      "/demo saying \"Hack the Zero Stack\" is correct in context — it is linked only from /security, which keeps hackathon artefacts deliberately",
+      "/about's no-\"we\" claim is true as scoped to itself"
+    ],
+    "consideredAndRejected": [
+      "legal pages say \"there is no company\" then \"we\" 36 times. In a privacy policy \"we\" denotes the service, not a headcount; rewriting 36 substantive privacy claims for a stylistic point is risk in the worst place for no user benefit."
+    ],
+    "deferred": [
+      {
+        "id": "EMAIL-SEND-ATTEMPTS-RETENTION",
+        "score": 2,
+        "note": "one row per message forever; years from mattering at current volume"
+      },
+      {
+        "id": "SCROLLABLE-REGIONS-CSS",
+        "score": 2,
+        "note": "guard reads utility classes only; rendered a11y audit passes 0 serious/critical"
+      },
+      {
+        "id": "VERIFY-IAM-IN-CI",
+        "note": "CI holds no AWS credentials; closing it means a credential in CI — infra change, Steve"
+      }
+    ],
+    "debtCreated": [],
+    "blocked": [
+      {
+        "id": "DEMO-BADGE",
+        "owner": "steve",
+        "category": "decision needed",
+        "note": "correct today because /demo sits behind /security. If an op-ed or the homepage ever links /demo directly, this morning's /caregivers reasoning applies. Extending that ruling is Steve's."
+      }
+    ],
+    "nextTop3": [
+      "Merge and deploy — all three fixes are on the claim path and beta invitations are queued; shipping after the first cohort is worth much less",
+      "Send the beta list — the path is measurably better than this morning, and Phase 0 has been N=0 since 2026-08-12",
+      "The op-ed rewrite — still the only item nobody else can do"
+    ],
+    "report": "docs/sprint-reports/2026-08-17-sprint-5-claim-path.md"
   }
 }

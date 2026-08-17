@@ -222,8 +222,11 @@ gates:
     due: 2026-12-31
     replaces: g1-caregiver-wtp
     date_ratified: 2026-08-16
-    # ⚠️ THE DATE IS A PROPOSAL UNTIL STEVE CONFIRMS IT. Derived rather than
-    # chosen, and stated so it can be argued with: guidelines + draft ~1 week,
+    # ✅ CONFIRMED BY STEVE 2026-08-16. It began as my derivation and is now his
+    # decision — the distinction matters, because an unconfirmed number on the
+    # only live gate is a number nobody is accountable to. The derivation that
+    # produced it is kept below as the reasoning, not as a caveat:
+    # guidelines + draft ~1 week,
     # pitch ~1 week, editor response 2-4 weeks, publication 2-6 weeks after
     # acceptance = a first placement plausibly mid-October to mid-November, plus
     # time for a reader to arrive and act. 2026-12-31 is the first date that does
@@ -723,9 +726,9 @@ ratified:
     the_bar: "Across 43 portfolio projects over ~24 months, arms-length revenue has been achieved
       exactly zero times. One is not a low bar in this context; it is the bar that has never been
       cleared."
-    date_status: "⚠️ 2026-12-31 is a DERIVED PROPOSAL awaiting Steve's confirmation, not a chosen
-      date. The derivation is on the gate. Confirm or correct it — but do not let it slide
-      silently."
+    date_status: "✅ CONFIRMED by Steve 2026-08-16, as derived. It is now a decision rather than a
+      proposal. ⚠️ The rule that governs every other date in this file applies to this one: a third
+      party moving it is fine, a silent slide is not. Any change gets a dated record and a reason."
 
   - id: relay-operator-is-an-individual
     date: 2026-08-16

@@ -16,6 +16,8 @@ import { useEffect, useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 
+import { CONTACT_EMAIL, CONTACT_MAILTO } from '../../../../lib/contact';
+
 interface Standby {
   itemCount: number;
   categories: Record<string, number>;
@@ -75,10 +77,50 @@ export default function ClaimClient() {
 
   if (state.kind === 'error') {
     return (
+      /*
+        🔴 THIS WAS A DEAD END UNTIL 2026-08-16, on the one path where a dead end
+        costs the most.
+
+        There was no way back. A person who mistyped one character of a code that
+        looks like 4KMPQ-7XR2W landed here with no retry control, no link out, and
+        only the browser back button — which they would have to think of. So they
+        give up, and they do it SILENTLY: a person who abandons sends no signal,
+        so the failure looks identical to nobody wanting it.
+
+        That matters more here than almost anywhere else in the product. Claim
+        conversion is the Phase 0 metric, and two shipped security decisions rest
+        on it — principle 1 is conditional on it, and adaptive minting assumes
+        verifiers reach `confirmed`. Beta invitations are queued to go out to real
+        people, so this would have met the first cohort.
+
+        Clearing the token is all the retry needs: `if (!token)` is evaluated
+        above this branch, so the code form comes straight back with the message
+        still visible in memory of what went wrong.
+
+        The heading no longer says "link" either. Most people arriving here typed
+        a code — the emailed link is deliberately bare, carrying no credential —
+        so "link" described something they never used.
+      */
       <div className="rounded-lg border border-rule-strong bg-paper-raised p-5">
-        <h1 className="text-t7 font-semibold text-ink">We couldn&rsquo;t open that link</h1>
+        <h1 className="text-t7 font-semibold text-ink">We couldn&rsquo;t open that invitation</h1>
         <p className="mt-2 text-ink">{state.message}</p>
-        <p className="mt-3 text-muted">Ask whoever invited you to send a fresh one.</p>
+        <button
+          type="button"
+          onClick={() => {
+            setState({ kind: 'loading' });
+            setToken(null);
+          }}
+          className="mt-4 inline-flex min-h-[44px] w-full items-center justify-center rounded-lg bg-ink px-4 font-medium text-paper"
+        >
+          Try the code again
+        </button>
+        <p className="mt-3 text-muted">
+          If it still will not open, ask whoever invited you to send a fresh one — or email{' '}
+          <a className="underline" href={CONTACT_MAILTO}>
+            {CONTACT_EMAIL}
+          </a>
+          .
+        </p>
       </div>
     );
   }
@@ -170,8 +212,21 @@ function ClaimCodeEntry({ onCode }: { onCode: (c: string) => void }) {
           if (code.trim()) onCode(code.trim());
         }}
       >
+        {/*
+          "Code from your email" until 2026-08-16, which contradicted the
+          paragraph three lines above it and was wrong for the arm the product
+          DEFAULTS to. BETA_INVITE_CHANNEL='owner' sends no email at all —
+          docs/first-invitations.md: "the owner-delivered arm sends no email".
+          Somebody read their code over the phone would look for a message that
+          was never sent, and give up silently.
+
+          It stays neutral because the page cannot know which arm the owner
+          chose, and the body copy above already covers all of them. /access and
+          /verify keep their email wording, because those codes really are
+          emailed under adaptive minting.
+        */}
         <label htmlFor="invite" className="block text-t2 font-medium text-ink">
-          Code from your email
+          Invitation code
         </label>
         <input
           id="invite"
