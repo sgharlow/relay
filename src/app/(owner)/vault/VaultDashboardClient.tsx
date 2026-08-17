@@ -20,6 +20,25 @@ import { ItemControls } from './ItemControls';
 export default function VaultDashboardPage() {
   const [items, setItems] = useState<DashboardItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * 🔴 THE IMPORTANCE ENGINE WAS UNREACHABLE FOR ANY HAND-BUILT VAULT.
+   * `runIntake` is what sets `is_root_credential`, `irreplaceable`,
+   * `recurring_billing`, `importance_score` and `depends_on_item_id` — and
+   * `/api/ai/intake` had exactly one caller, `SeedWizard` on `/start`.
+   *
+   * So an owner who added accounts one at a time through this screen never got
+   * classified. Every item kept `importance_score` 0.5 and `depends_on_item_id`
+   * null, which means `computeReveal` — the J1 "aha" that names the one account
+   * everything else depends on — returned its "add a few more accounts" fallback
+   * permanently, `detectGaps` never raised a CUSTODY_RISK because nothing was
+   * ever marked irreplaceable, and the ordering this page advertises as "most
+   * consequential first" was really "alphabetical, near enough".
+   *
+   * Re-running is safe by design: `runIntake` re-reads the whole vault, and an
+   * owner's explicit root override (`owner_set_root`) survives a re-analysis.
+   */
+  const [analysing, setAnalysing] = useState(false);
+  const [analysis, setAnalysis] = useState<string | null>(null);
 
   // Extracted so ItemControls can re-read after an update or a removal — the
   // ranking is derived from the items, so a changed vault has to re-rank rather
@@ -37,6 +56,47 @@ export default function VaultDashboardPage() {
 
   useEffect(() => {
     void load();
+  }, [load]);
+
+  const analyse = useCallback(async () => {
+    setAnalysing(true);
+    setAnalysis(null);
+    setError(null);
+    try {
+      const res = await fetch('/api/ai/intake', { method: 'POST' });
+      /*
+        The budget refusal is a DIFFERENT event from a failure and has to read
+        like one. /api/ai/intake is metered twice — an in-memory limiter and a
+        rolling 24-hour count in audit_log — and returns 429 with Retry-After.
+        Showing "something went wrong" there would be a lie: nothing went wrong,
+        the owner has simply used today's runs, and their vault is untouched.
+      */
+      if (res.status === 429) {
+        const retry = Number(res.headers.get('Retry-After') ?? 0);
+        const hours = Math.ceil(retry / 3600);
+        setAnalysis(
+          `You have used today's analyses. Your vault is unchanged — try again ${
+            hours > 1 ? `in about ${hours} hours` : 'later today'
+          }.`,
+        );
+        return;
+      }
+      if (!res.ok) throw new Error(`Analysis failed (${res.status})`);
+      const data = (await res.json()) as { scored: number; warnings: string[] };
+      // Re-read rather than patch: the ordering is derived from every item, so a
+      // reclassified vault has to re-rank, exactly as `load` exists to do.
+      await load();
+      setAnalysis(
+        data.scored === 0
+          ? 'Nothing to analyse yet — add an account first.'
+          : `Looked at ${data.scored} item${data.scored === 1 ? '' : 's'} and re-ordered them by what matters most.` +
+            (data.warnings.length > 0 ? ` ${data.warnings.length} could not be scored.` : ''),
+      );
+    } catch (e) {
+      setError(String((e as Error).message ?? e));
+    } finally {
+      setAnalysing(false);
+    }
   }, [load]);
 
   const ranked = items ? rankItems(items) : [];
@@ -57,6 +117,21 @@ export default function VaultDashboardPage() {
           </p>
         </div>
         <div className="flex" style={{ gap: 'var(--s2)' }}>
+          {/*
+            Offered only once there is something to analyse — a button that can
+            only ever report "nothing to analyse yet" is noise on an empty vault,
+            where the dashed empty-state card is already saying what to do.
+          */}
+          {items && items.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => void analyse()}
+              disabled={analysing}
+              style={{ ...buttonQuiet, opacity: analysing ? 0.6 : 1 }}
+            >
+              {analysing ? 'Looking…' : 'Re-order by importance'}
+            </button>
+          ) : null}
           <Link href="/import" style={{ ...buttonQuiet, display: 'inline-flex', alignItems: 'center' }}>
             Import CSV
           </Link>
@@ -67,6 +142,17 @@ export default function VaultDashboardPage() {
       </header>
 
       {error ? <p style={errorText}>{error}</p> : null}
+
+      {/*
+        role="status" rather than "alert": this reports an outcome the owner
+        asked for, including the budget refusal, which is not an error and must
+        not be announced as one.
+      */}
+      {analysis ? (
+        <p role="status" style={{ ...muted, marginBottom: 'var(--s4)' }}>
+          {analysis}
+        </p>
+      ) : null}
 
       {!items && !error ? <p style={muted}>Loading your vault…</p> : null}
 
