@@ -925,5 +925,105 @@
       "The op-ed rewrite — still the only item nobody else can do"
     ],
     "report": "docs/sprint-reports/2026-08-17-sprint-5-claim-path.md"
+  },
+  "sprint10": {
+    "scope": "next most important improvements to get fully in production; investigate passkey/TOTP modelling first",
+    "branch": "sprint/2026-08-17-4",
+    "iterationsUsed": 5,
+    "iterationCap": 5,
+    "stoppedBecause": "iteration cap reached. The queue was NOT exhausted — the second-factor model remains, blocked on Steve.",
+    "backlogSource": [
+      "repo survey, threaded from the named passkey/TOTP investigation"
+    ],
+    "backlogInferred": true,
+    "verdict": "Five defects, one shape: a field or capability the product READS but cannot REACH. Each was found by pulling the previous one's thread.",
+    "baseline": {
+      "start": {
+        "gate": "exit 0",
+        "tests": "2513 passed, 1 skipped",
+        "audit": "0 vulnerabilities"
+      },
+      "end": {
+        "gate": "exit 0",
+        "tests": "2545 passed, 1 skipped",
+        "audit": "0 vulnerabilities"
+      },
+      "newlySkippedTests": 0
+    },
+    "shipped": [
+      {
+        "id": "V1",
+        "commit": "eaddf41",
+        "axis": "wiring",
+        "title": "backup_note was read by detectGaps and written by nothing — every real vault showed 100% of items as gapped, unclearable"
+      },
+      {
+        "id": "V2",
+        "commit": "1df3267",
+        "axis": "wiring",
+        "title": "the note never reached the recipient it was written for; withheld pre-release by allow-list, proven by planting a spread"
+      },
+      {
+        "id": "V3",
+        "commit": "8f0c021",
+        "axis": "completeness",
+        "title": "/api/ai/intake had one caller (onboarding) — hand-built vaults were never classified, so the J1 reveal could never fire"
+      },
+      {
+        "id": "V4",
+        "commit": "633c4ee",
+        "axis": "completeness",
+        "title": "the note was create-only; adding one to an existing item meant retyping the password"
+      },
+      {
+        "id": "V5",
+        "commit": "f9f1ccd",
+        "axis": "security",
+        "title": "pinned the OpenAI payload allow-list — no leak existed, but V1 made a future widening consequential"
+      }
+    ],
+    "correctionsToMyOwnWork": [
+      "claimed five more columns had no write path — wrong, my sweep only scanned vault-items.ts; the intake agent writes them",
+      "claimed the Edit tool committed CRLF — wrong, my check counted lines containing the letter r; the blob has zero CR bytes",
+      "suspected backup_note leaked to OpenAI — wrong, the projection is a correct allow-list; became a guard, not a fix"
+    ],
+    "incident": "a python script truncated lib/access/dashboard.test.ts by opening for write then throwing on encode. Restored from git, 9 tests green, switched to the Edit tool.",
+    "blocked": [],
+    "deferred": [
+      {
+        "id": "SECOND-FACTOR-MODEL",
+        "owner": "steve",
+        "note": "the real answer to the opening question. Needs a migration = sysadmin act. Design in the report §7."
+      },
+      {
+        "id": "IRREPLACEABLE-MANUAL",
+        "score": 8,
+        "note": "mitigated by V3 — only bites an owner who never runs the analysis"
+      },
+      {
+        "id": "EMAIL-SEND-ATTEMPTS-RETENTION",
+        "score": 2
+      },
+      {
+        "id": "SCROLLABLE-REGIONS-CSS",
+        "score": 2
+      },
+      {
+        "id": "VERIFY-IAM-IN-CI",
+        "owner": "steve"
+      }
+    ],
+    "debtCreated": [
+      {
+        "item": "no owner preview of the recipient view of a note",
+        "when": "before a real handover, not before beta"
+      }
+    ],
+    "nextTop3": [
+      "Merge and deploy",
+      "Decide the second-factor model (report §7)",
+      "The beta cohort — still N=0"
+    ],
+    "report": "docs/sprint-reports/2026-08-17-sprint-6-vault-wiring.md"
   }
 }
