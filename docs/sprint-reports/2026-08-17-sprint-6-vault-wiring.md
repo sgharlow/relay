@@ -22,7 +22,9 @@ starting thread and the survey followed it.
 | `npm test` | 2513 passed, 1 skipped | **2545 passed, 1 skipped** |
 | `npm audit --omit=dev` | 0 vulnerabilities | 0 vulnerabilities |
 
-**+32 tests, no newly skipped.** The single skip is the pre-existing beta-paywall case, owned and dated.
+**No newly skipped tests.** The single skip is the pre-existing beta-paywall case, owned and dated.
+The two counts above are a measurement taken at the time, not a live figure — they will drift the
+moment anything lands. For the current count run the command in `PROJECT.yaml` → `derived.test_count`.
 
 ## 3. The answer to the question that started it
 
