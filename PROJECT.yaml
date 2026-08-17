@@ -93,7 +93,12 @@ gates:
       rationale: "Per pre-committed disposition plan (docs/h0-disposition-plan.md, 2026-07-03): a win is distribution ammunition, and every branch runs G1 before any park/archive call. The judges' verdict is evidence about the hackathon, not about the market."
       next: "G1 paid lanes (docs/g1-launch-checklist.md) — the instrument is now live-proven end to end on production (2026-08-07): all six funnel events observed on the wire carrying src attribution. Start G2 counsel outreach the same week (docs/g2-counsel-brief.md)."
       caveat: "G1 has still measured ZERO traffic. N=0 qualified. This gate records the disposition, not demand evidence."
+  # ⛔ SUPERSEDED 2026-08-16 BY gates.g1-arms-length-demand, BELOW.
+  # Retained whole, because it is the ratified record of what was decided on
+  # 2026-07-01 and of an instrument that was built, verified and then found to
+  # have no traffic it could buy. Do not act on any figure in it.
   - id: g1-caregiver-wtp
+    superseded_by: g1-arms-length-demand
     metric: willingness_to_pay_signal (landing + price test on the caregiver wedge, N>=100 qualified visitors)
     target: ">= 2% click-to-intent at a real price point  # ratified by Steve 2026-07-01"
     kill: "< 0.5% after 100+ qualified -> park D2C; B2B2C-only or archive  # ratified 2026-07-01"
@@ -208,6 +213,44 @@ gates:
       stop, which is a reminder that arrives too late to change anything. 09-01 is
       four days after the serving-by date, so the first question it asks is the one
       that matters: did the ad actually go live?"
+  - id: g1-arms-length-demand
+    metric: "ONE arms-length person — not Steve, not a friend doing a favour — who either PAYS, or
+      states in writing that they would pay, at a real price they have seen."
+    target: "1"
+    kill: "zero by the date below -> park D2C consumer acquisition; B2B2C-only or archive"
+    owner: steve
+    due: 2026-12-31
+    replaces: g1-caregiver-wtp
+    date_ratified: 2026-08-16
+    # ⚠️ THE DATE IS A PROPOSAL UNTIL STEVE CONFIRMS IT. Derived rather than
+    # chosen, and stated so it can be argued with: guidelines + draft ~1 week,
+    # pitch ~1 week, editor response 2-4 weeks, publication 2-6 weeks after
+    # acceptance = a first placement plausibly mid-October to mid-November, plus
+    # time for a reader to arrive and act. 2026-12-31 is the first date that does
+    # not require everything to go right. Correct it if you disagree; do not let
+    # it slide silently, which is the failure this whole gate section exists to
+    # prevent.
+    why_this_shape: "The ratio it replaces required a denominator, a calibrated threshold and a
+      channel that would sell us the audience. Two months established that the last of those does
+      not exist, and today's Keyword Planner run established that the demand is not sitting in
+      search either. A gate that cannot be evaluated is worse than no gate.
+      This one needs no denominator, no calibration and no channel. It works identically whether
+      the person arrives from an op-ed, a B2B2C pilot, a beta invitation or a conversation — which
+      matters, because after paid advertising was retired nobody can say in advance which of those
+      will produce the first one."
+    why_one_is_enough: "Across 43 portfolio projects over ~24 months, arms-length revenue has been
+      achieved exactly zero times (2026-07-05 retrospective). The binding question has never been
+      'what conversion rate' — it is whether a single stranger wants this enough to pay. One is not
+      a low bar here; it is the bar that has never been cleared."
+    what_does_not_count: "Steve paying himself (already happened 2026-08-08 and advanced nothing).
+      A friend or family member being polite. A free beta user enjoying it. A verbal 'that sounds
+      useful'. Anything without either money moving or a written statement of intent at a seen
+      price."
+    unchanged: "market.wtp_evidence stays `none` until this is met. The ladder stays `dogfooded` —
+      `customer-used` needs an arms-length user and `revenue-proven` needs arms-length money, which
+      is precisely what this gate now measures."
+    revisit: "at every /daily-priority from 2026-10-01"
+
   - id: g2-counsel-opinion
     metric: legal_opinion_on_fiduciary_custodian_status (RUFADAA/estate access — REQUIRED before any paying estate customer)
     target: "written counsel opinion obtained"
@@ -611,6 +654,50 @@ ratified:
       that carries it. Pinned by content.test.ts, including that the sitting sheet's
       destination src is a declared lane, because under an allow-list a typo there reads
       as zero demand rather than as a typo."
+
+  - id: h0-badge-reframed
+    date: 2026-08-16
+    owner: steve
+    decision: "Keep the award on /caregivers, drop the word 'Hackathon'. WINNER_BADGE becomes
+      'Independently judged — Most Impactful, 2026'."
+    rationale: "The audience changed underneath the string. It was written as distribution
+      ammunition for paid traffic and a technical readership, where 'hackathon winner' is a
+      credential. Editorial now lands caregivers on that page, and to that reader the word carries
+      'weekend project' — on the one page asking them to trust a stranger with their family's
+      accounts.
+      This project had already reached that conclusion once and acted on it: src/app/security/
+      page.tsx moved the Devpost and repo links off the front door because 'on a landing page it
+      frames a credential vault as a weekend project'. The badge was the remaining instance."
+    what_is_preserved: "'Independently judged' states the property that makes an award worth
+      anything — someone outside the project assessed it — without the noun that misreads.
+      Understating a real third-party signal would be its own dishonesty, which is why the award
+      was kept rather than removed. The unabridged fact, event name included, stays on /security
+      and /about where the context is right."
+    pinned: "content.test.ts asserts BOTH halves — that the award survives and that 'hackathon'
+      does not reappear — so a future edit has to move each deliberately."
+
+  - id: g1-demand-gate-replaced
+    date: 2026-08-16
+    owner: steve
+    decision: "Retire the G1 click-to-intent ratio. Replace it with gates.g1-arms-length-demand:
+      ONE arms-length person who pays, or states in writing they would pay, at a price they have
+      seen."
+    rationale: "The ratio needed a denominator, a calibrated threshold and a channel willing to
+      sell us the audience. Two months established the channel does not exist, and the 2026-08-16
+      Keyword Planner run established the demand is not sitting in search either. Its thresholds
+      were calibrated against bought clicks and do not transfer to editorial readers. A gate that
+      cannot be evaluated is worse than no gate — it is how this portfolio accumulates past-due
+      -undecided gates.
+      The replacement needs no denominator, no calibration and no channel, so it works identically
+      whichever route produces the first person — op-ed, B2B2C pilot, beta invitation or
+      conversation. Nobody can say in advance which that will be, and the old gate implicitly bet
+      on one."
+    the_bar: "Across 43 portfolio projects over ~24 months, arms-length revenue has been achieved
+      exactly zero times. One is not a low bar in this context; it is the bar that has never been
+      cleared."
+    date_status: "⚠️ 2026-12-31 is a DERIVED PROPOSAL awaiting Steve's confirmation, not a chosen
+      date. The derivation is on the gate. Confirm or correct it — but do not let it slide
+      silently."
 
   - id: relay-operator-is-an-individual
     date: 2026-08-16

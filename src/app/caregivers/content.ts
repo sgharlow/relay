@@ -74,8 +74,29 @@ export const OG_DESCRIPTION =
 /**
  * H0 win — distribution ammunition, per the disposition plan's WIN branch.
  * Shown on the landing before first send (g1-launch-checklist.md step 3).
+ *
+ * ⚠️ REFRAMED 2026-08-16 (Steve): the word "Hackathon" was removed, the award
+ * was not. `ratified.h0-badge-reframed`.
+ *
+ * The audience changed underneath this string. It was written as ammunition for
+ * paid traffic and a technical readership, where "hackathon winner" is a
+ * credential. Editorial now lands caregivers on this page
+ * (`ratified.retire-paid-advertising`), and to that reader the word carries
+ * "weekend project" — on the one page asking them to trust a stranger with
+ * their family's accounts.
+ *
+ * This project had already reached that conclusion once and acted on it
+ * elsewhere: `src/app/security/page.tsx` moved the Devpost and repo links off
+ * the front door because "on a landing page it frames a credential vault as a
+ * weekend project". The badge was the remaining instance of the same mistake.
+ *
+ * WHAT IS PRESERVED, deliberately: it was independently judged, and saying so
+ * is honest and useful. "Independently judged" states the property that makes
+ * the award worth anything — that someone outside the project assessed it —
+ * without the noun that misreads. The unabridged fact, including the event
+ * name, stays on /security and /about where the context is right.
  */
-export const WINNER_BADGE = 'Winner — Most Impactful, H0 Hackathon 2026';
+export const WINNER_BADGE = 'Independently judged — Most Impactful, 2026';
 
 /**
  * SECONDARY LANE (added 2026-08-07, "run both").

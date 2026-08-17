@@ -319,8 +319,25 @@ describe('landing copy is ad-policy compliant at the destination (§1a)', () => 
 // ---------------------------------------------------------------------------
 
 describe('G1 secondary product lane', () => {
-  it('shows the H0 win — distribution ammunition per the disposition plan', () => {
+  it('shows the award, and does not call it a hackathon', () => {
+    /*
+      REFRAMED 2026-08-16 (ratified.h0-badge-reframed). The award is kept — it
+      was independently judged and saying so is honest. The word "hackathon" is
+      refused HERE, on the landing page, because editorial now lands caregivers
+      on it and to that reader the word reads as "weekend project" on the very
+      page asking them to trust a stranger with their family's accounts.
+
+      /security reached this conclusion first and moved the Devpost and repo
+      links off the front door for the same stated reason. The full fact,
+      event name included, still lives there and on /about.
+
+      Both halves are asserted so a future edit has to move both deliberately:
+      dropping the award loses a real third-party signal, and re-adding
+      "hackathon" reintroduces the framing this decision removed.
+    */
     expect(WINNER_BADGE).toMatch(/Most Impactful/i);
+    expect(WINNER_BADGE).toMatch(/judged/i);
+    expect(WINNER_BADGE, 'the landing page must not call it a hackathon').not.toMatch(/hackathon/i);
   });
 
   it('the secondary CTA does NOT show a price — the priced CTA stays the primary one', () => {
