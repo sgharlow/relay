@@ -92,13 +92,26 @@ function declaredColumns(): Map<string, Set<string>> {
   return columns;
 }
 
-/** All application source, comments stripped so a mention is not a use. */
+/**
+ * All application source, comments stripped so a mention is not a use.
+ *
+ * ⚠️ MEMOISED, AND NOT AS A MICRO-OPTIMISATION. Three tests here need it, and
+ * reading every file under lib/, src/ and scripts/ three times added enough
+ * wall-clock to the suite to tip `recipient-token`'s 100-run property test past
+ * its 5-second limit — a timeout, in an unrelated file, that looked like a
+ * correctness failure. A check is allowed to be thorough; it is not allowed to
+ * make other tests flaky.
+ */
+let sourceCache: string | null = null;
 function applicationSource(): string {
-  return [...walk('lib'), ...walk('src'), ...walk('scripts')]
-    .map((f) => readFileSync(f, 'utf8'))
-    .join('\n')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/\/\/[^\n]*/g, '');
+  if (sourceCache === null) {
+    sourceCache = [...walk('lib'), ...walk('src'), ...walk('scripts')]
+      .map((f) => readFileSync(f, 'utf8'))
+      .join('\n')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/[^\n]*/g, '');
+  }
+  return sourceCache;
 }
 
 describe('every column the schema declares is referenced by the application', () => {
