@@ -263,11 +263,26 @@ unusable. Absent and empty are different facts and must stay different in the co
 Raw JSON is being shown to recipients today. Ship the structured reveal as a **bug fix**, on its own,
 regardless of whether the rest of this design is accepted.
 
-### 🟠 Q5 — HIGH. Fixing the importer does not recover what past imports lost
+### 🔴 Q5 — RAISED TO BLOCKING BY BUILDING IT. There is no easy remediation path
 
-Owners who already imported from LastPass/Bitwarden/1Password lost their TOTP seeds silently. A
-parser fix helps future imports only. Those owners must re-import or re-enter, and **they do not know
-anything is missing.** That is a communication decision, and it is Steve's.
+Owners who already imported from LastPass/Bitwarden/1Password lost their TOTP seeds silently, and
+**they do not know anything is missing.** A parser fix helps future imports only.
+
+**I originally wrote "those owners must re-import or re-enter." The re-import half is wrong.**
+`/api/import` deduplicates against *existing vault items* on a normalised `title + service_name`
+(`lib/vault/dedupe.ts`), so re-running the same export skips **every row** as a duplicate. Nothing
+is recovered and the report says `imported: 0`, which reads like success.
+
+That leaves two routes, and neither is good:
+
+| Route | Problem |
+|---|---|
+| Delete the items, then re-import | `cascadeDelete` removes the item's `access_rules` too. The owner silently loses every recipient assignment they had made. **Do not recommend this.** |
+| Edit each item by hand | Works today — but the edit form *replaces*, so they must retype the password as well as adding the seed. Laborious, and error-prone on exactly the accounts that matter most. |
+
+**This makes the single-item ciphertext endpoint more than a nicety.** True field-level editing is
+the remediation path for a data-loss bug that has already happened to real vaults. It should be
+weighed as remediation, not as convenience.
 
 ### 🟠 Q6 — HIGH. A TOTP seed meets the step-up guard's own test, and unwrap is outside its scope
 
