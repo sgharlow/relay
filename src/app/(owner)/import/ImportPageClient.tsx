@@ -17,6 +17,7 @@
 
 import { useState } from 'react';
 import { parseCSV, parseCsvText, detectFormat, CSV_FORMATS, CsvError, type CsvFormat, type ParseResult } from '../../../../lib/import/csv-parser';
+import { encodeSecretPayload } from '../../../../lib/crypto/secret-payload';
 import { CryptoService } from '../../../../lib/crypto/crypto-service';
 import { apiSend } from '../_lib/api';
 
@@ -64,8 +65,22 @@ export default function ImportPage() {
       const items = [];
       for (let i = 0; i < parsed.rows.length; i++) {
         const row = parsed.rows[i];
-        // Encrypt username+password as the secret; title = service name.
-        const payload = await svc.encryptForUpload(JSON.stringify({ username: row.username, password: row.password }), {
+        /*
+          🔴 THIS WROTE `JSON.stringify({ username, password })` UNTIL 2026-08-17,
+          and `AccessClient` rendered whatever it decrypted into a `<pre>` — so a
+          recipient of any imported item was shown raw JSON at the worst moment
+          of their life. It also dropped the second factor entirely, on a column
+          the parser was already reading in order to detect the format.
+
+          The envelope is versioned and the decoder still understands both older
+          shapes, permanently: the server cannot read plaintext, so no migration
+          can ever normalise the rows written before today.
+        */
+        const payload = await svc.encryptForUpload(encodeSecretPayload([
+          { kind: 'username', value: row.username ?? '' },
+          { kind: 'password', value: row.password },
+          { kind: 'totp', value: row.totp ?? '' },
+        ]), {
           type: 'login',
           title: row.service_name,
           service_name: row.service_name,
@@ -152,6 +167,13 @@ export default function ImportPage() {
                   <th className="px-3 py-2">Service</th>
                   <th className="px-3 py-2">URL</th>
                   <th className="px-3 py-2">Username</th>
+                  {/*
+                    Shown so the owner can SEE their second factors came across.
+                    Until 2026-08-17 they were silently dropped and the vault
+                    reported itself complete — a fix nobody can observe is
+                    indistinguishable from the bug.
+                  */}
+                  <th className="px-3 py-2">2FA</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-rule">
@@ -160,6 +182,8 @@ export default function ImportPage() {
                     <td className="px-3 py-1.5">{row.service_name}</td>
                     <td className="truncate px-3 py-1.5 text-muted">{row.url ?? '—'}</td>
                     <td className="px-3 py-1.5 text-muted">{row.username ?? '—'}</td>
+                    {/* Never the seed itself — that is the secret. Only whether one is there. */}
+                    <td className="px-3 py-1.5 text-muted">{row.totp ? 'Yes' : '—'}</td>
                   </tr>
                 ))}
               </tbody>

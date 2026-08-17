@@ -24,6 +24,19 @@ export interface ParsedRow {
   username: string | null;
   /** Plaintext — stays client-side; encrypted before any upload. */
   password: string;
+  /**
+   * The second factor, as an `otpauth://` URI or a bare base32 seed.
+   *
+   * 🔴 THIS COLUMN WAS DETECTED AND THEN THROWN AWAY. `detectFormat` identifies
+   * a LastPass export BY the presence of its `totp` column — and `ParsedRow`
+   * then carried only service/url/username/password. Every owner who imported
+   * from LastPass, Bitwarden or 1Password silently lost every second factor
+   * they had, while the vault reported itself complete.
+   *
+   * Optional in the strict sense: a row with no TOTP is unaffected, and no row
+   * is accepted or rejected differently because of this field.
+   */
+  totp: string | null;
 }
 
 export interface SkippedRow {
@@ -49,12 +62,15 @@ export class CsvError extends Error {
 const MAX_BYTES = 10 * 1024 * 1024;
 
 // Canonical field → candidate header names per format (lowercased).
-const FORMAT_COLUMNS: Record<CsvFormat, { service_name: string[]; url: string[]; username: string[]; password: string[] }> = {
-  '1password': { service_name: ['title'], url: ['url', 'website'], username: ['username'], password: ['password'] },
-  bitwarden: { service_name: ['name'], url: ['login_uri', 'uri'], username: ['login_username'], password: ['login_password'] },
-  lastpass: { service_name: ['name'], url: ['url'], username: ['username'], password: ['password'] },
-  chrome: { service_name: ['name'], url: ['url'], username: ['username'], password: ['password'] },
-  firefox: { service_name: [], url: ['url'], username: ['username'], password: ['password'] }, // service_name from url host
+const FORMAT_COLUMNS: Record<
+  CsvFormat,
+  { service_name: string[]; url: string[]; username: string[]; password: string[]; totp: string[] }
+> = {
+  '1password': { service_name: ['title'], url: ['url', 'website'], username: ['username'], password: ['password'], totp: ['otpauth', 'one-time password', 'totp'] },
+  bitwarden: { service_name: ['name'], url: ['login_uri', 'uri'], username: ['login_username'], password: ['login_password'], totp: ['login_totp'] },
+  lastpass: { service_name: ['name'], url: ['url'], username: ['username'], password: ['password'], totp: ['totp'] },
+  chrome: { service_name: ['name'], url: ['url'], username: ['username'], password: ['password'], totp: [] },
+  firefox: { service_name: [], url: ['url'], username: ['username'], password: ['password'], totp: [] }, // service_name from url host
   // GENERIC — for the parent who has no password manager at all, which is most
   // people over seventy. Before this, five named exports were supported and the
   // alternative was typing every account by hand; a spreadsheet a daughter fills
@@ -65,6 +81,8 @@ const FORMAT_COLUMNS: Record<CsvFormat, { service_name: string[]; url: string[];
     url: ['url', 'website', 'link', 'address'],
     username: ['username', 'user', 'login', 'email', 'user name'],
     password: ['password', 'pass', 'pin', 'code', 'secret'],
+    // A kitchen-table spreadsheet will not say 'otpauth'. It might say this.
+    totp: ['totp', '2fa', 'two factor', 'authenticator', 'one-time password'],
   },
 };
 
@@ -179,6 +197,7 @@ export async function parseCSV(file: File, format: CsvFormat): Promise<ParseResu
     url: indexOfAny(headers, cols.url),
     username: indexOfAny(headers, cols.username),
     password: indexOfAny(headers, cols.password),
+    totp: indexOfAny(headers, cols.totp),
   };
 
   // Required columns must exist for the declared format.
@@ -212,7 +231,9 @@ export async function parseCSV(file: File, format: CsvFormat): Promise<ParseResu
       continue;
     }
     seen.add(key);
-    rows.push({ service_name, url, username, password });
+    // Optional throughout: a missing or empty column yields null and changes
+    // nothing else about how the row is treated.
+    rows.push({ service_name, url, username, password, totp: get(idx.totp) || null });
   }
 
   return { format, rows, skipped };

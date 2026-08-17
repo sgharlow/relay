@@ -33,6 +33,7 @@
 
 import { useState } from 'react';
 import { CryptoService } from '../../../../lib/crypto/crypto-service';
+import { encodeSecretPayload } from '../../../../lib/crypto/secret-payload';
 import type { DashboardItem } from '../../../../lib/vault/dashboard-view';
 import type { VaultItemType } from '../../../../lib/domain/enums';
 
@@ -48,6 +49,9 @@ export function ItemControls({
   const [mode, setMode] = useState<Mode>('idle');
   const [title, setTitle] = useState(item.title);
   const [secret, setSecret] = useState('');
+  const [username, setUsername] = useState('');
+  const [totp, setTotp] = useState('');
+  const [recoveryCodes, setRecoveryCodes] = useState('');
   const [note, setNote] = useState(item.backup_note ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,6 +81,20 @@ export function ItemControls({
     }
   }
 
+  const fieldLabel: React.CSSProperties = {
+    display: 'block',
+    fontSize: 'var(--t1)',
+    color: 'var(--ink-muted)',
+  };
+  const fieldBox: React.CSSProperties = {
+    marginTop: 'var(--s1)',
+    width: '100%',
+    fontSize: 'var(--t2)',
+    padding: 'var(--s2)',
+    border: '1px solid var(--rule-strong)',
+    borderRadius: 4,
+  };
+
   const quiet: React.CSSProperties = {
     fontFamily: 'var(--font-ui)',
     fontSize: 'var(--t1)',
@@ -91,7 +109,24 @@ export function ItemControls({
     setError(null);
     setBusy(true);
     try {
-      await new CryptoService().updateItemSecret(item.id, secret, {
+      /*
+        REPLACES, and says so — it does not merge. True field-level editing would
+        mean decrypting the current payload here first, and there is no
+        single-item ciphertext endpoint to fetch it from: the GET was retired on
+        2026-08-13, and `/api/account/export` is the whole vault behind a step-up.
+
+        Adding one is a new server surface over ciphertext and belongs to a phase
+        that can carry that decision, not to this one. Replacing everything the
+        owner can see, with the form saying so, is the honest version of what the
+        product already did — and it cannot silently drop a field, because every
+        field is on screen.
+      */
+      await new CryptoService().updateItemSecret(item.id, encodeSecretPayload([
+        { kind: 'username', value: username },
+        { kind: 'password', value: secret },
+        { kind: 'totp', value: totp },
+        { kind: 'recovery_codes', value: recoveryCodes },
+      ]), {
         type: item.type as VaultItemType,
         title: title.trim() || item.title,
         service_name: item.service_name ?? undefined,
@@ -99,6 +134,9 @@ export function ItemControls({
         category: item.category ?? undefined,
       });
       setSecret('');
+      setUsername('');
+      setTotp('');
+      setRecoveryCodes('');
       setMode('idle');
       await onChanged();
     } catch (err) {
@@ -166,7 +204,7 @@ export function ItemControls({
           style={{ display: 'block', fontSize: 'var(--t1)', color: 'var(--ink-muted)' }}
         >
           New value for {item.title}. Relay cannot show you the old one — it cannot read it — so
-          this replaces it.
+          everything you enter here replaces what is stored, including any fields you leave blank.
         </label>
         <textarea
           id={`secret-${item.id}`}
@@ -186,6 +224,33 @@ export function ItemControls({
             borderRadius: 4,
           }}
         />
+        {/*
+          The other three parts of a credential, so "everything you enter here
+          replaces what is stored" is literally true rather than nearly true.
+          Until 2026-08-17 the only thing an item could hold was the password —
+          which meant an owner with a 2FA-protected account was handing their
+          family a password and a locked door.
+        */}
+        <div style={{ display: 'grid', gap: 'var(--s2)', marginTop: 'var(--s2)' }}>
+          <div>
+            <label htmlFor={`user-${item.id}`} style={fieldLabel}>Username</label>
+            <input id={`user-${item.id}`} value={username} onChange={(e) => setUsername(e.target.value)}
+              autoComplete="off" placeholder="Optional" style={fieldBox} />
+          </div>
+          <div>
+            <label htmlFor={`totp-${item.id}`} style={fieldLabel}>Two-factor code</label>
+            <input id={`totp-${item.id}`} value={totp} onChange={(e) => setTotp(e.target.value)}
+              autoComplete="off" spellCheck={false}
+              placeholder="otpauth://totp/… or the setup key"
+              style={{ ...fieldBox, fontFamily: 'var(--font-mono, ui-monospace)' }} />
+          </div>
+          <div>
+            <label htmlFor={`codes-${item.id}`} style={fieldLabel}>Recovery codes</label>
+            <textarea id={`codes-${item.id}`} rows={2} value={recoveryCodes}
+              onChange={(e) => setRecoveryCodes(e.target.value)} placeholder="One per line"
+              style={{ ...fieldBox, fontFamily: 'var(--font-mono, ui-monospace)' }} />
+          </div>
+        </div>
         {error ? (
           <p role="alert" style={{ fontSize: 'var(--t1)', color: 'var(--clay)' }}>
             {error}

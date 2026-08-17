@@ -18,6 +18,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { bucketFor, BUCKET_ORDER, BUCKET_LABELS, type Bucket } from '../../../../lib/ai/buckets';
 import { CryptoService, base64ToBytes, unpackIvCiphertext } from '../../../../lib/crypto/crypto-service';
+import {
+  decodeSecretPayload,
+  recoveryCodesOf,
+  KIND_LABELS,
+  MASKED_KINDS,
+  type SecretField,
+} from '../../../../lib/crypto/secret-payload';
+import { parseOtpauth, generateTotp } from '../../../../lib/crypto/totp';
 import { LimitsNotice, LimitsReminder } from './LimitsNotice';
 
 interface AccessItem {
@@ -60,7 +68,14 @@ export default function AccessClient() {
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [closure, setClosure] = useState<ClosureSummary | null>(null);
-  const [revealed, setRevealed] = useState<Record<string, string>>({});
+  /*
+    A DISCRIMINATED UNION, not a bare string, since 2026-08-17. The failure path
+    used to store its apology in the same slot as the secret — which was harmless
+    while everything was rendered into a `<pre>`, and became wrong the moment the
+    payload started being PARSED: "This one could not be opened just now" would
+    have been decoded and displayed under the label "Password".
+  */
+  const [revealed, setRevealed] = useState<Record<string, { ok: true; plaintext: string } | { ok: false; message: string }>>({});
   // Mirrors data.acknowledgedLimits, so pressing the button reveals the plan
   // immediately rather than waiting on a round trip somebody is standing in.
   const [acknowledged, setAcknowledged] = useState(false);
@@ -200,7 +215,9 @@ export default function AccessClient() {
             | { message?: string; explainable?: boolean }
             | null;
           if (body?.explainable && body.message) {
-            setRevealed((r) => ({ ...r, [item.id]: body.message as string }));
+            // An explainable denial is a message, not a secret — same slot, and
+            // the discriminant is what keeps it from being decoded as one.
+            setRevealed((r) => ({ ...r, [item.id]: { ok: false, message: body.message as string } }));
             return;
           }
           throw new Error('denied');
@@ -208,12 +225,12 @@ export default function AccessClient() {
         const { plaintext_data_key, ciphertext } = (await res.json()) as { plaintext_data_key: string; ciphertext: string };
         const { iv, ciphertext: ct } = unpackIvCiphertext(base64ToBytes(ciphertext));
         const value = await new CryptoService().decryptItem(ct, iv, plaintext_data_key);
-        setRevealed((r) => ({ ...r, [item.id]: value }));
+        setRevealed((r) => ({ ...r, [item.id]: { ok: true, plaintext: value } }));
       } catch {
         // Family words, not developer words — and never a guess that blames the
         // data. If a real item fails here, being told it "may be demo data" is
         // worse than no message at all.
-        setRevealed((r) => ({ ...r, [item.id]: 'This one could not be opened just now. Try again — if it keeps happening, tell us at hello@relaystandby.com so a person can look.' }));
+        setRevealed((r) => ({ ...r, [item.id]: { ok: false, message: 'This one could not be opened just now. Try again — if it keeps happening, tell us at hello@relaystandby.com so a person can look.' } }));
       }
     },
     [token],
@@ -490,9 +507,11 @@ export default function AccessClient() {
                         Reveal
                       </button>
                     </div>
-                    {value !== undefined ? (
-                      <pre className="ml-8 mt-3 whitespace-pre-wrap break-all rounded bg-ink px-3 py-2 text-t2 text-ochre-text">{value}</pre>
-                    ) : null}
+                    {value === undefined ? null : value.ok ? (
+                      <RevealedItem plaintext={value.plaintext} />
+                    ) : (
+                      <p className="ml-8 mt-3 text-t2 text-muted">{value.message}</p>
+                    )}
                   </li>
                 );
               })}
@@ -766,5 +785,195 @@ function ExpiredCodeHelp() {
         given access.
       </p>
     </form>
+  );
+}
+
+/**
+ * What a recipient actually sees when they open an item.
+ *
+ * 🔴 THIS WAS `<pre>{value}</pre>` UNTIL 2026-08-17, and it was already wrong for
+ * every imported item. The CSV import encrypted `JSON.stringify({username,
+ * password})`, so somebody at the worst moment of their life was shown
+ *
+ *     {"username":"steve@example.com","password":"hunter2"}
+ *
+ * The fix needed no migration and touched no stored row: the server cannot read
+ * plaintext, so nothing could have been rewritten anyway. `decodeSecretPayload`
+ * understands that legacy shape, and this renders whatever comes back.
+ */
+function RevealedItem({ plaintext }: { plaintext: string }) {
+  const fields = decodeSecretPayload(plaintext);
+  if (fields.length === 0) return null;
+
+  return (
+    <div className="ml-8 mt-3 space-y-2">
+      {fields.map((field, i) =>
+        field.kind === 'totp' ? (
+          <TotpField key={i} value={field.value} />
+        ) : field.kind === 'recovery_codes' ? (
+          <RecoveryCodesField key={i} codes={recoveryCodesOf([field])} />
+        ) : (
+          <PlainField key={i} field={field} />
+        ),
+      )}
+    </div>
+  );
+}
+
+/** A labelled value, masked if it is the kind of thing shoulder-surfers read. */
+function PlainField({ field }: { field: SecretField }) {
+  const [shown, setShown] = useState(!MASKED_KINDS.has(field.kind));
+  return (
+    <div className="rounded bg-ink px-3 py-2">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-t1 uppercase tracking-wide text-paper opacity-70">
+          {field.label ?? KIND_LABELS[field.kind]}
+        </span>
+        <div className="flex shrink-0 gap-2">
+          {MASKED_KINDS.has(field.kind) ? (
+            <button
+              type="button"
+              onClick={() => setShown((s) => !s)}
+              className="text-t1 text-paper underline opacity-80"
+            >
+              {shown ? 'Hide' : 'Show'}
+            </button>
+          ) : null}
+          <CopyButton value={field.value} />
+        </div>
+      </div>
+      <p className="mt-1 whitespace-pre-wrap break-all font-mono text-t2 text-ochre-text">
+        {shown ? field.value : '•'.repeat(Math.min(field.value.length, 24))}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * The live six-digit code.
+ *
+ * ⚠️ THIS IS THE WHOLE POINT OF STORING A SECOND FACTOR. Handing somebody
+ * `JBSWY3DPEHPK3PXP` is very nearly useless — they are not going to install an
+ * authenticator app and enrol a seed during the worst week of their life. The
+ * six digits, now, with a countdown, is the difference between a plan that works
+ * and one that only looks like it does.
+ *
+ * The seed is already decrypted in this browser; nothing here reaches the
+ * network, and no new dependency is involved.
+ */
+function TotpField({ value }: { value: string }) {
+  const params = parseOtpauth(value);
+  const [code, setCode] = useState<{ code: string; secondsRemaining: number } | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!params) return;
+    let live = true;
+    const tick = () => {
+      generateTotp(params, Date.now())
+        .then((c) => {
+          if (live) setCode(c);
+        })
+        .catch(() => {
+          if (live) setFailed(true);
+        });
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => {
+      live = false;
+      clearInterval(id);
+    };
+    // `value` rather than `params`: parseOtpauth returns a fresh object each
+    // render, which would restart the interval every second.
+  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!params || failed) {
+    /*
+      An unreadable seed still gets shown raw. It is not useful to most people,
+      but somebody technical may be helping — and silently dropping a field the
+      owner deliberately stored would be worse than showing something puzzling.
+    */
+    return <PlainField field={{ kind: 'note', label: 'Two-factor secret', value }} />;
+  }
+
+  return (
+    <div className="rounded bg-ink px-3 py-2">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-t1 uppercase tracking-wide text-paper opacity-70">
+          {KIND_LABELS.totp}
+        </span>
+        {code ? <CopyButton value={code.code} /> : null}
+      </div>
+      {code ? (
+        <>
+          <p className="mt-1 font-mono text-t5 tracking-[0.2em] text-ochre-text">{code.code}</p>
+          <p className="text-t1 text-paper opacity-70">
+            {/*
+              The countdown is not decoration. RFC 6238 is a function of the
+              device clock, and nobody here can check it — a recipient whose
+              laptop is wrong gets codes the service rejects and will blame
+              Relay. Showing the window at least gives the failure a visible
+              cause.
+            */}
+            New code in {code.secondsRemaining}s · type it straight after the password
+          </p>
+        </>
+      ) : (
+        <p className="mt-1 text-t2 text-paper opacity-70">Working it out…</p>
+      )}
+    </div>
+  );
+}
+
+/** One-time codes, with the warning that makes them usable by two people. */
+function RecoveryCodesField({ codes }: { codes: string[] }) {
+  if (codes.length === 0) return null;
+  return (
+    <div className="rounded bg-ink px-3 py-2">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-t1 uppercase tracking-wide text-paper opacity-70">
+          {KIND_LABELS.recovery_codes}
+        </span>
+        <CopyButton value={codes.join('\n')} />
+      </div>
+      <ul className="mt-1 grid grid-cols-2 gap-x-4 font-mono text-t2 text-ochre-text">
+        {codes.map((c, i) => (
+          <li key={i}>{c}</li>
+        ))}
+      </ul>
+      {/*
+        Relay cannot mark one as spent: that would mean this browser re-encrypting
+        the item, and a recipient holds no key-wrapping permission — giving them
+        one would open a server path over a secret. So the only honest control is
+        telling both people. Q9 of the design QA, stated rather than hidden.
+      */}
+      <p className="mt-2 text-t1 text-paper opacity-70">
+        Each of these works once. If more than one of you has access, agree who uses which.
+      </p>
+    </div>
+  );
+}
+
+function CopyButton({ value }: { value: string }) {
+  const [done, setDone] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        void navigator.clipboard
+          ?.writeText(value)
+          .then(() => {
+            setDone(true);
+            setTimeout(() => setDone(false), 1500);
+          })
+          // A browser that refuses the clipboard must not look broken — the value
+          // is on screen and can be typed.
+          .catch(() => {});
+      }}
+      className="text-t1 text-paper underline opacity-80"
+    >
+      {done ? 'Copied' : 'Copy'}
+    </button>
   );
 }
