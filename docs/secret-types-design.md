@@ -263,10 +263,28 @@ unusable. Absent and empty are different facts and must stay different in the co
 Raw JSON is being shown to recipients today. Ship the structured reveal as a **bug fix**, on its own,
 regardless of whether the rest of this design is accepted.
 
-### 🔴 Q5 — RAISED TO BLOCKING BY BUILDING IT. There is no easy remediation path
+### 🟡 Q5 — DOWNGRADED BY MEASURING IT. Nobody is affected; the trap is forward-looking
 
-Owners who already imported from LastPass/Bitwarden/1Password lost their TOTP seeds silently, and
-**they do not know anything is missing.** A parser fix helps future imports only.
+**I called this blocking twice and it is not. Measuring production is what settled it** — the same
+discipline the portfolio rule demands before quoting any number.
+
+| Measured live, 2026-08-17 | |
+|---|---|
+| Owners | **1** |
+| Vault items | **0** |
+| Import events ever | **1** — 40 items on 2026-08-12 |
+
+Those 40 items no longer exist. **No real owner has lost a second factor, because no real owner has
+an item.** Phase 0 already prevents it happening to the next person.
+
+What survives is a **forward-looking trap**, and it is a different bug from the one I described: if
+an owner imports, later turns on 2FA somewhere, and re-imports a fresh export to pick it up,
+`/api/import` deduplicates against existing items on a normalised `title + service_name`
+(`lib/vault/dedupe.ts`) and **skips every row**, reporting `imported: 0` — which reads like success.
+The problem is a misleading success report, not lost data.
+
+The remediation paragraph below was written when I believed real vaults were affected. It is retained
+because it is still what an owner would face, but it is not urgent.
 
 **I originally wrote "those owners must re-import or re-enter." The re-import half is wrong.**
 `/api/import` deduplicates against *existing vault items* on a normalised `title + service_name`

@@ -220,6 +220,27 @@ export default function ImportPage() {
               to date.
             </p>
           ) : null}
+          {/*
+            🔴 SILENCE HERE READ AS SUCCESS. `splitDuplicates` matches an incoming
+            row against items already in the vault on a normalised
+            title + service_name, so re-importing a fresh export — the natural
+            thing to do after turning on two-factor somewhere — skips EVERY row
+            and reports `imported: 0`. Nothing is updated, and until 2026-08-17
+            nothing said the second factor had not come across.
+
+            Deliberately not fixed by making import overwrite existing items:
+            that would turn the importer into a path that can write over stored
+            secrets, which it has never been, and a stale export could quietly
+            replace a good credential with a worse one. Telling the owner what
+            happened is the smaller and more honest change.
+          */}
+          {report.duplicates ? (
+            <p className="mt-2 text-sage-text">
+              The {report.duplicates === 1 ? 'one already in your vault was' : `${report.duplicates} already in your vault were`}{' '}
+              left alone — <strong>including any two-factor codes in this export</strong>. To add a
+              code to an account you already have, open it in your vault and choose Update.
+            </p>
+          ) : null}
         </div>
       ) : null}
     </div>
