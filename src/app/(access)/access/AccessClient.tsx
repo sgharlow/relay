@@ -30,6 +30,12 @@ interface AccessItem {
   scope?: string;
   is_root_credential?: boolean;
   importance_score?: number;
+  /**
+   * The owner's own words about this item. Present only on the RELEASED
+   * dashboard — `toLimited` withholds it while a release is still pending, on
+   * purpose (see lib/access/dashboard.ts).
+   */
+  backup_note?: string | null;
 }
 interface Dashboard {
   state: string;
@@ -460,6 +466,22 @@ export default function AccessClient() {
                           ) : null}
                         </div>
                         <div className="ml-8 text-t2 text-muted">{item.service_name ?? item.type}</div>
+                        {/*
+                          The owner's own note, and the reason the field exists at
+                          all: detectGaps calls it out as "a recipient may not know
+                          where the original is kept or how to recover it". Until
+                          2026-08-17 nothing could write it and nothing showed it.
+
+                          Shown WITHOUT clicking Reveal, deliberately. It is
+                          non-secret metadata, and it is most useful exactly when
+                          the secret turns out not to work — which is the moment a
+                          person is least inclined to go hunting for another
+                          button. Italic because these are a person's words, not
+                          the product's.
+                        */}
+                        {item.backup_note ? (
+                          <p className="ml-8 mt-2 max-w-prose text-t2 italic text-ink">{item.backup_note}</p>
+                        ) : null}
                       </div>
                       <button
                         onClick={() => decrypt(item)}

@@ -71,6 +71,21 @@ export interface AccessItem {
   importance_score?: number;
   depends_on_item_id?: string | null;
   /**
+   * The owner's plain-language note — what this account is for, or how to get in
+   * if the stored password no longer works. Added 2026-08-17, alongside the write
+   * path that had never existed.
+   *
+   * ⚠️ RELEASED VIEW ONLY, AND THAT IS A SECURITY LINE RATHER THAN A PREFERENCE.
+   * `toLimited` (Req 7.3) is an ALLOW-LIST — it builds a fresh object from six
+   * named descriptive fields — so this stays out of the pending view by
+   * construction rather than by anyone remembering. That matters: a note can
+   * legitimately read "recovery codes are in the desk drawer", which is precisely
+   * the sentence that must not be readable before a release has been verified.
+   * `dashboard.test.ts` pins it, so converting `toLimited` to a spread or a
+   * deny-list fails rather than silently leaking.
+   */
+  backup_note?: string | null;
+  /**
    * ISO date this staged item opens, when it is not open yet. Absent means
    * available now. Descriptive only — the gate is `authorizeAndDecryptItem`,
    * which re-derives this rather than trusting anything sent to a client.
@@ -187,7 +202,8 @@ async function fetchScopedItems(
 ): Promise<AccessItem[]> {
   const r = await query<Record<string, unknown>>(
     `SELECT vi.id, vi.title, vi.service_name, vi.url, vi.category, vi.type,
-            vi.is_root_credential, vi.importance_score, vi.depends_on_item_id, ar.scope,
+            vi.is_root_credential, vi.importance_score, vi.depends_on_item_id,
+            vi.backup_note, ar.scope,
             ar.release_after_days
        FROM vault_items vi
        JOIN access_rules ar ON ar.vault_item_id = vi.id
@@ -205,6 +221,7 @@ async function fetchScopedItems(
     is_root_credential: Boolean(row.is_root_credential),
     importance_score: Number(row.importance_score),
     depends_on_item_id: (row.depends_on_item_id as string | null) ?? null,
+    backup_note: (row.backup_note as string | null) ?? null,
     /*
       A staged item is LISTED but marked, rather than hidden. Hiding it would
       tell the person nothing is coming and invite them to conclude the plan is

@@ -143,6 +143,38 @@ describe('getAccessDashboard', () => {
     expect(out.items[0].is_root_credential).toBeUndefined();
   });
 
+  it('carries the owner note to the recipient once released', async () => {
+    // The note exists FOR the recipient — detectGaps' own words are "a recipient
+    // may not know where the original is kept or how to recover it". Until
+    // 2026-08-17 this query selected every column except that one.
+    mockQuery
+      .mockResolvedValueOnce(qResult([rsRow()]))
+      .mockResolvedValueOnce(qResult([{ id: 'a', title: 'Gmail', service_name: 'G', url: null, category: 'communication', type: 'login', is_root_credential: true, importance_score: '0.9', depends_on_item_id: null, backup_note: 'Recovery codes are in the desk drawer.', scope: 'view' }]));
+    const out = await getAccessDashboard('tok');
+    expect(out.released).toBe(true);
+    expect(out.items[0].backup_note).toBe('Recovery codes are in the desk drawer.');
+  });
+
+  it('does NOT carry the note before release — the limited view is an allow-list', async () => {
+    /*
+      THE LEAK THIS PREVENTS. A note can legitimately read "recovery codes are in
+      the desk drawer", which is exactly the sentence that must not be readable
+      before a release has been verified. `toLimited` (Req 7.3) builds a fresh
+      object from six named descriptive fields, so the note stays out BY
+      CONSTRUCTION rather than because somebody remembered to exclude it.
+
+      This test exists so that stays true. Rewriting `toLimited` as a spread with
+      deletions — the natural "tidy-up" — would silently start shipping the note
+      to every pending recipient, and nothing else in the suite would notice.
+    */
+    mockQuery
+      .mockResolvedValueOnce(qResult([rsRow({ state: 'grace' })]))
+      .mockResolvedValueOnce(qResult([{ id: 'a', title: 'Gmail', service_name: 'G', url: null, category: 'communication', type: 'login', is_root_credential: true, importance_score: '0.9', depends_on_item_id: null, backup_note: 'Recovery codes are in the desk drawer.', scope: 'view' }]));
+    const out = await getAccessDashboard('tok');
+    expect(out.released).toBe(false);
+    expect(out.items[0].backup_note).toBeUndefined();
+  });
+
   it('403 on a stale token (version mismatch)', async () => {
     mockVerify.mockResolvedValueOnce({ recipientId: 'r-1', releaseStateId: 'rs-1', version: '2', iat: 0, exp: 9e9 });
     mockQuery.mockResolvedValueOnce(qResult([rsRow({ version: 3 })]));
