@@ -170,8 +170,21 @@ function ClaimCodeEntry({ onCode }: { onCode: (c: string) => void }) {
           if (code.trim()) onCode(code.trim());
         }}
       >
+        {/*
+          "Code from your email" until 2026-08-16, which contradicted the
+          paragraph three lines above it and was wrong for the arm the product
+          DEFAULTS to. BETA_INVITE_CHANNEL='owner' sends no email at all —
+          docs/first-invitations.md: "the owner-delivered arm sends no email".
+          Somebody read their code over the phone would look for a message that
+          was never sent, and give up silently.
+
+          It stays neutral because the page cannot know which arm the owner
+          chose, and the body copy above already covers all of them. /access and
+          /verify keep their email wording, because those codes really are
+          emailed under adaptive minting.
+        */}
         <label htmlFor="invite" className="block text-t2 font-medium text-ink">
-          Code from your email
+          Invitation code
         </label>
         <input
           id="invite"
