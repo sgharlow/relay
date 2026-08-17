@@ -34,6 +34,12 @@ export { VALID_TYPES, VALID_CATEGORIES, VALID_CRITICALITY, type VaultItemType };
 
 const TITLE_MAX = 200;
 const URL_MAX = 2048;
+/**
+ * `backup_note` has no length CHECK in migration 001, so this is the only bound
+ * on it. Generous, because the field's job is a plain-language explanation and a
+ * cramped limit would push people back to writing nothing.
+ */
+const BACKUP_NOTE_MAX = 2000;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -50,6 +56,25 @@ export interface CreateVaultItemInput {
   ciphertext: string; // base64
   wrapped_data_key: string; // base64
   kms_key_id: string;
+  /**
+   * The plain-language note a recipient reads — what this is for, or how to
+   * find the original. Added 2026-08-17.
+   *
+   * 🔴 THE COLUMN EXISTED SINCE MIGRATION 001 AND NOTHING COULD WRITE IT.
+   * `detectGaps` decides `CUSTODY_RISK` and `MISSING_NOTE` from this field, so
+   * with no write path every item in every real vault carried a permanent gap
+   * advising the owner to add a note the product offered no way to add. Only
+   * `lib/seed/seed-runner.ts` set it, which is why the demo vault looked right.
+   * `lib/ops/advice-inputs-writable.test.ts` is the guard.
+   *
+   * ⚠️ NOT SECRET, AND NOT ENCRYPTED. This is in `METADATA_COLUMNS`, so it is
+   * stored as plaintext and it is one of the fields `getVaultMetadata` hands to
+   * the AI agents. The secret itself goes in `ciphertext` and never leaves the
+   * browser unencrypted. The UI has to say so, or people will put passwords
+   * here — and that would put a plaintext secret on a server path, which is the
+   * one thing the architecture exists to prevent.
+   */
+  backup_note: string | null;
 }
 
 /** Non-secret metadata projection (list view + create/update response). */
@@ -99,6 +124,19 @@ export interface UpdateVaultItemInput {
   title?: string;
   service_name?: string | null;
   url?: string | null;
+  /**
+   * Same field as on create, and optional for the same reason as `title`: a
+   * caller sending only a re-encrypted blob keeps its previous behaviour.
+   *
+   * ⚠️ SETTING WORKS, CLEARING DOES NOT — stated rather than hidden. The UPDATE
+   * uses `COALESCE`, matching `title`, `service_name` and `url` exactly, so
+   * omitting the field leaves the stored note alone. The consequence is that an
+   * owner cannot blank a note once written, only replace it. Following the
+   * module's existing pattern beat inventing a second one for a single field;
+   * the limitation is recorded as debt in the sprint report rather than being
+   * quietly shipped.
+   */
+  backup_note?: string;
 }
 
 /** Thrown on validation failure; routes map this to HTTP 400. */
@@ -179,6 +217,15 @@ export function validateCreateInput(body: unknown): CreateVaultItemInput {
     throw new ValidationError('kms_key_id is required', 'kms_key_id');
   }
 
+  // backup_note — optional, bounded. Whitespace-only is stored as NULL rather
+  // than as a note: `hasNote()` already treats " " as absent, so persisting it
+  // would clear the gap on screen while the advice layer still counts it.
+  if (b.backup_note != null) {
+    if (typeof b.backup_note !== 'string' || b.backup_note.length > BACKUP_NOTE_MAX) {
+      throw new ValidationError(`backup_note must be ≤ ${BACKUP_NOTE_MAX} characters`, 'backup_note');
+    }
+  }
+
   return {
     type: b.type as VaultItemType,
     title: b.title as string,
@@ -189,7 +236,21 @@ export function validateCreateInput(body: unknown): CreateVaultItemInput {
     ciphertext: b.ciphertext as string,
     wrapped_data_key: b.wrapped_data_key as string,
     kms_key_id: b.kms_key_id as string,
+    backup_note: normaliseNote(b.backup_note),
   };
+}
+
+/**
+ * Whitespace-only is not a note. `hasNote()` in the advice layer trims before
+ * deciding, so storing "   " would clear nothing while looking like it had —
+ * the owner would type a space, watch the field accept it, and still be told
+ * the item has no note. Normalising at the boundary keeps one definition of
+ * "has a note" instead of two that disagree.
+ */
+function normaliseNote(v: unknown): string | null {
+  if (typeof v !== 'string') return null;
+  const trimmed = v.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 /** Validates an update payload (re-encrypted blob, optionally renamed). */
@@ -214,6 +275,13 @@ export function validateUpdateInput(body: unknown): UpdateVaultItemInput {
   if (b.url != null && (typeof b.url !== 'string' || b.url.length > URL_MAX)) {
     throw new ValidationError(`url must be ≤ ${URL_MAX} characters`, 'url');
   }
+  // Mirrors create, for the reason stated there and above.
+  if (
+    b.backup_note != null &&
+    (typeof b.backup_note !== 'string' || b.backup_note.length > BACKUP_NOTE_MAX)
+  ) {
+    throw new ValidationError(`backup_note must be ≤ ${BACKUP_NOTE_MAX} characters`, 'backup_note');
+  }
 
   return {
     ciphertext: b.ciphertext as string,
@@ -222,6 +290,7 @@ export function validateUpdateInput(body: unknown): UpdateVaultItemInput {
     title: isNonEmptyString(b.title) ? (b.title as string) : undefined,
     service_name: typeof b.service_name === 'string' ? b.service_name : undefined,
     url: typeof b.url === 'string' ? b.url : undefined,
+    backup_note: normaliseNote(b.backup_note) ?? undefined,
   };
 }
 
@@ -293,8 +362,8 @@ export async function createItem(
     query<Record<string, unknown>>(
       `INSERT INTO vault_items
          (owner_id, type, title, service_name, url, category, criticality,
-          ciphertext, wrapped_data_key, kms_key_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          backup_note, ciphertext, wrapped_data_key, kms_key_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING ${METADATA_COLUMNS}`,
       [
         ownerId,
@@ -304,6 +373,7 @@ export async function createItem(
         input.url,
         input.category,
         input.criticality,
+        input.backup_note,
         Buffer.from(input.ciphertext, 'base64'),
         Buffer.from(input.wrapped_data_key, 'base64'),
         input.kms_key_id,
@@ -362,8 +432,9 @@ export async function updateItem(
               title = COALESCE($4, title),
               service_name = COALESCE($5, service_name),
               url = COALESCE($6, url),
+              backup_note = COALESCE($7, backup_note),
               updated_at = now()
-        WHERE id = $7 AND owner_id = $8
+        WHERE id = $8 AND owner_id = $9
        RETURNING ${METADATA_COLUMNS}`,
       [
         Buffer.from(input.ciphertext, 'base64'),
@@ -372,6 +443,7 @@ export async function updateItem(
         input.title ?? null,
         input.service_name ?? null,
         input.url ?? null,
+        input.backup_note ?? null,
         id,
         ownerId,
       ],

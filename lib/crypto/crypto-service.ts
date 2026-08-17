@@ -49,6 +49,17 @@ export interface VaultItemMetadata {
   url?: string;
   category?: string;
   criticality?: string;
+  /**
+   * The plain-language note a recipient reads.
+   *
+   * ⚠️ IT TRAVELS AND IS STORED IN CLEAR, unlike everything else this class
+   * handles. `saveItem`'s first argument is the secret and is encrypted in the
+   * browser; this is metadata and is not. It is deliberately readable, because
+   * `detectGaps` and the AI agents consult it — the note is what tells a
+   * recipient which account this is and how to find the original. The UI has to
+   * name that difference, or somebody will type a password into it.
+   */
+  backup_note?: string;
 }
 
 /** Server-ready encrypted item (metadata + base64 ciphertext/wrapped key). */

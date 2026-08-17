@@ -55,6 +55,20 @@ function validBody(overrides: Record<string, unknown> = {}) {
   };
 }
 
+/** A metadata row shaped like the RETURNING projection, for tests that only care about the call. */
+function metaRow(over: Record<string, unknown> = {}) {
+  return {
+    id: 'item-1', type: 'login', title: 'Gmail', service_name: 'Google',
+    url: null, category: 'communication', criticality: 'high',
+    is_root_credential: false, owner_set_root: null, recurring_billing: false,
+    irreplaceable: false, importance_score: '0.500', depends_on_item_id: null,
+    backup_note: null,
+    created_at: new Date('2026-01-01T00:00:00Z'),
+    updated_at: new Date('2026-01-01T00:00:00Z'),
+    ...over,
+  };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -256,5 +270,77 @@ describe('deleteItem', () => {
     await deleteItem('owner-1', 'item-1');
     expect(mockCascade).toHaveBeenCalledWith('access_rules', 'item-1', 'vault_item_id', 'owner-1');
     expect(order).toEqual(['cascade', 'delete-item']);
+  });
+});
+
+/**
+ * 🔴 THE COLUMN EXISTED SINCE MIGRATION 001 AND NOTHING COULD WRITE IT.
+ *
+ * `detectGaps` decides CUSTODY_RISK and MISSING_NOTE from `backup_note`, so with
+ * no write path every item in every real vault carried a permanent gap telling
+ * the owner to add a note the product gave them no way to add. Only the seed
+ * runner set it, which is why the demo vault looked correct.
+ *
+ * `lib/ops/advice-inputs-writable.test.ts` guards the structure. These cover the
+ * behaviour, including the whitespace case that would have cleared the gap on
+ * screen while the advice layer still counted the item as noteless.
+ */
+describe('backup_note — the note the advice layer reads', () => {
+  it('is accepted on create and persisted', async () => {
+    const input = validateCreateInput(validBody({ backup_note: 'Passport is in the fireproof box.' }));
+    expect(input.backup_note).toBe('Passport is in the fireproof box.');
+
+    mockQuery.mockResolvedValueOnce(qResult([metaRow()]));
+    await createItem('owner-1', input);
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(sql).toContain('backup_note');
+    expect(params).toContain('Passport is in the fireproof box.');
+  });
+
+  it('defaults to null when the caller omits it — existing callers are unaffected', () => {
+    expect(validateCreateInput(validBody()).backup_note).toBeNull();
+  });
+
+  it('treats a whitespace-only note as no note at all', () => {
+    // hasNote() trims before deciding. Storing "   " would look like it cleared
+    // the gap while the advice layer still reported one — two definitions of
+    // "has a note" that disagree.
+    expect(validateCreateInput(validBody({ backup_note: '   \n\t ' })).backup_note).toBeNull();
+    expect(validateUpdateInput({ ciphertext: VALID_B64, wrapped_data_key: VALID_B64, backup_note: '  ' }).backup_note)
+      .toBeUndefined();
+  });
+
+  it('trims a real note rather than storing the surrounding whitespace', () => {
+    expect(validateCreateInput(validBody({ backup_note: '  in the safe  ' })).backup_note).toBe('in the safe');
+  });
+
+  it('rejects a note longer than the bound, on create and on update', () => {
+    const tooLong = 'x'.repeat(2001);
+    expect(() => validateCreateInput(validBody({ backup_note: tooLong }))).toThrow(/backup_note/);
+    expect(() =>
+      validateUpdateInput({ ciphertext: VALID_B64, wrapped_data_key: VALID_B64, backup_note: tooLong }),
+    ).toThrow(/backup_note/);
+  });
+
+  it('rejects a non-string note instead of coercing it', () => {
+    expect(() => validateCreateInput(validBody({ backup_note: 42 }))).toThrow(/backup_note/);
+  });
+
+  it('is settable on update, and an omitted note leaves the stored one alone', async () => {
+    mockQuery.mockResolvedValueOnce(qResult([metaRow()]));
+    await updateItem('owner-1', 'item-1', {
+      ciphertext: VALID_B64,
+      wrapped_data_key: VALID_B64,
+      backup_note: 'Recovery codes are in the desk drawer.',
+    });
+    const [sql, params] = mockQuery.mock.calls[0];
+    // COALESCE, matching title/service_name/url — omitting the field keeps what is there.
+    expect(sql).toContain('backup_note = COALESCE(');
+    expect(params).toContain('Recovery codes are in the desk drawer.');
+
+    mockQuery.mockResolvedValueOnce(qResult([metaRow()]));
+    await updateItem('owner-1', 'item-1', { ciphertext: VALID_B64, wrapped_data_key: VALID_B64 });
+    const [, paramsOmitted] = mockQuery.mock.calls[1];
+    expect(paramsOmitted).toContain(null);
   });
 });

@@ -34,6 +34,7 @@ export default function NewVaultItemPage() {
     category: '',
     criticality: 'medium',
     secret: '',
+    backup_note: '',
   });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -50,6 +51,7 @@ export default function NewVaultItemPage() {
         url: form.url || undefined,
         category: form.category || undefined,
         criticality: form.criticality || undefined,
+        backup_note: form.backup_note || undefined,
       });
       router.push('/vault');
       router.refresh();
@@ -105,6 +107,36 @@ export default function NewVaultItemPage() {
 
         <Field label="Secret value">
           <textarea className={`${inputCls} font-mono`} required rows={3} value={form.secret} onChange={(e) => setForm({ ...form, secret: e.target.value })} placeholder="Password, note, or instructions — encrypted before upload" />
+        </Field>
+
+        {/*
+          🔴 THE VAULT ASKED FOR THIS NOTE AND HAD NOWHERE TO PUT IT. `backup_note`
+          has been in the schema since migration 001 and is what `detectGaps` reads
+          to decide CUSTODY_RISK and MISSING_NOTE — but no form, API or write path
+          ever set it, so every item in every real vault carried a permanent gap
+          telling the owner to add a note they could not add.
+
+          ⚠️ THE "not encrypted" LINE IS LOAD-BEARING, NOT A DISCLAIMER. Every other
+          field on this form that holds anything sensitive goes through the envelope
+          flow. This one does not: it is metadata, stored in clear, and read by the
+          AI agents. Without that sentence directly under a box on a page headed
+          "the secret is encrypted in your browser", people would reasonably type a
+          password into it — which would put a plaintext secret on a server path,
+          the single thing the architecture exists to prevent.
+        */}
+        <Field label="Note for your recipient (optional)">
+          <textarea
+            className={inputCls}
+            rows={2}
+            value={form.backup_note}
+            onChange={(e) => setForm({ ...form, backup_note: e.target.value })}
+            placeholder="e.g. This is the account everything else resets through. Recovery codes are in the desk drawer."
+          />
+          <p className="mt-1 text-t1 text-muted">
+            <strong className="font-semibold">Not encrypted</strong> — unlike the secret above, so
+            never put a password or a code here. Say what the account is for, or how to get in if the
+            password no longer works.
+          </p>
         </Field>
 
         {error ? <p role="alert" className="text-t2 text-clay">{error}</p> : null}
