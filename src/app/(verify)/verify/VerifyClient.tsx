@@ -18,6 +18,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 import { Article } from '../../../../lib/text/article';
+import { CONTACT_EMAIL, CONTACT_MAILTO } from '../../../../lib/contact';
 
 interface Context {
   caseId: string;
@@ -131,10 +132,54 @@ export default function VerifyClient() {
   }
 
   if (error) {
+    /*
+      🔴 A DEAD END UNTIL 2026-08-17, ON THE PATH WHERE A DEAD END COSTS THE
+      MOST. A message, no retry, no link out, no way back — the same defect
+      fixed on /claim on 2026-08-16, still live on the other emergency surface.
+
+      It is worse here than there. A recipient who gives up has not opened
+      their own access. A VERIFIER who gives up has not answered the question
+      that opens it for everybody: quorum never reaches its threshold, the
+      release never advances, and the family waits on a person who is sitting
+      in front of a screen with nothing to press.
+
+      TWO DIFFERENT FAILURES ARRIVE HERE, and only one of them used to be
+      imagined. `load` fails when the code or link is wrong. `decide` fails when
+      the ANSWER could not be recorded — which is the crueller case, because
+      they have already made the decision and a network hiccup takes it away
+      with no way to give it again.
+
+      `ctx` tells them apart. If it is set, the context survived and clearing
+      the error alone puts them back on the decision screen. If it is not, the
+      token goes too, which returns the code form (signed out) or refetches by
+      session (signed in) — `load` depends on both, so either route recovers.
+    */
+    const answering = Boolean(ctx);
     return (
       <div className="rounded-lg border border-rule-strong bg-paper-raised p-6">
-        <h1 className="text-t7 font-semibold">We couldn&rsquo;t open that link</h1>
+        <h1 className="text-t7 font-semibold">
+          {answering ? 'We couldn’t record your answer' : 'We couldn’t open that request'}
+        </h1>
         <p className="mt-3 text-ink">{error}</p>
+        <button
+          type="button"
+          onClick={() => {
+            setError(null);
+            // Only when the context is gone. Clearing it while they are mid
+            // decision would throw away the question they were answering.
+            if (!answering) setToken(null);
+          }}
+          className="mt-4 inline-flex min-h-[44px] w-full items-center justify-center rounded-lg bg-ink px-4 font-medium text-paper"
+        >
+          {answering ? 'Try answering again' : 'Try the code again'}
+        </button>
+        <p className="mt-3 text-muted">
+          If it still will not work, tell whoever asked you &mdash; or email{' '}
+          <a className="underline" href={CONTACT_MAILTO}>
+            {CONTACT_EMAIL}
+          </a>
+          . Someone waiting on this cannot see that you are stuck.
+        </p>
       </div>
     );
   }
