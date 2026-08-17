@@ -655,6 +655,34 @@ ratified:
       destination src is a declared lane, because under an allow-list a typo there reads
       as zero demand rather than as a typo."
 
+  - id: beta-cohort-deferred
+    date: 2026-08-16
+    owner: steve
+    decision: "Defer launching the beta cohort. Deferred with instructions, not dropped."
+    handoff: docs/beta-cohort-handoff.md
+    state: "Everything is built and tested and waiting on ONE input — the list of people (names,
+      emails, recipient-or-verifier, delivery arm). `npm run invite:cohort` creates the cohort,
+      issues every code, captures them and prints a ready-to-send message per person. Dry-run by
+      default. Tier caps are not a constraint: the account is paid, so recipients and verifiers are
+      unlimited."
+    what_stays_manual_on_purpose: "The four-word verification call and sending the owner-delivered
+      arm. Both are load-bearing rather than tedious — see the handoff. Automating either breaks
+      what it protects."
+    cost_of_the_delay: "Phase 0 stays at N=0, and TWO SHIPPED SECURITY DECISIONS rest on that
+      number: principle 1 of the standby architecture is conditional on claim conversion, and
+      adaptive minting assumes verifiers actually reach `confirmed`. Both are live in production
+      against an assumption nobody has measured. That is the real cost, and it is not a marketing
+      cost."
+    also_deferred_same_session:
+      - "gates.g1-arms-length-demand due date 2026-12-31 is a DERIVED PROPOSAL awaiting Steve's
+        confirmation, not a chosen date"
+      - "outlet guidelines research for caregiver.com, Next Avenue, AgingCare and DailyCaring —
+        step 1 of docs/g1-editorial-lane.md, and it gates the first pitch"
+      - "angle 3 draft, queued behind that research by Steve's ruling"
+    revisit: "at the next /daily-priority. ⚠️ Per the Steve's-Court protocol a parked item is
+      re-raised, never silently dropped — and this one has now been ready-and-unstarted since
+      2026-08-12."
+
   - id: h0-badge-reframed
     date: 2026-08-16
     owner: steve
