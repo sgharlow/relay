@@ -562,5 +562,278 @@
       "J9 steps 5-7 — twice deferred; build it if G1 produces numbers, drop it if it does not"
     ],
     "housekeeping": ".relay-dev-key.json deleted 2026-08-16 — it duplicated the credential already in .env.local and nothing read it, so there was nothing to move to 1Password."
+  },
+  "sprint6": {
+    "scope": "relay: live in beta with ads running, testing the hypothesis",
+    "branch": "sprint/2026-08-16-2",
+    "iterationsUsed": 5,
+    "iterationCap": 5,
+    "backlogSource": [
+      ".claude/sprint-state.json -> sprint5 deferred/nextTop3/debt",
+      "docs/ad-assets/PROMPTS.md section 6 (Steve 2026-08-12 scope ruling)",
+      "docs/g1-sitting-sheet.md",
+      "repo survey across the seven axes"
+    ],
+    "backlogInferred": false,
+    "verdict": "Engineering is not the blocker on either half of the scope, and both were re-checked live rather than read from a document. Four of five items are defects in the instruments the flight will be READ through; none was on any list.",
+    "baseline": {
+      "start": {
+        "types": "green",
+        "lint": "green",
+        "build": "green",
+        "tests": "2443 passed, 1 skipped"
+      },
+      "end": {
+        "types": "green",
+        "lint": "green",
+        "build": "green",
+        "tests": "2469 passed, 1 skipped",
+        "schema": "green both regions (25 tables)",
+        "roles": "green both regions",
+        "iam": "green (new this sprint)",
+        "funnel": "7/7 live",
+        "flightSnapshot": "green, 0 leads"
+      },
+      "newlySkippedTests": 0,
+      "notRun": "verify:live - needs a running dev server; no route handler was touched"
+    },
+    "verifiedNotDefects": [
+      "production carries sprint 5 - relay.g1.qualified.sent / intent.sent / channel all present in the deployed chunks, read from relaystandby.com",
+      "the G1 instrument survived sprint 5 touching both trackers - verify:funnel 7/7, both events agree on src. PROJECT.yaml requires this re-probe and it had not been done",
+      "Phase 0 beta instrument runs clean against production and reports N=0 correctly",
+      "caregiver_leads is 0 rows on production - the sitting sheet pre-flight, satisfied today",
+      "blockers to a beta cohort remain none-are-code"
+    ],
+    "shipped": [
+      {
+        "id": "I1",
+        "commit": "b40fb0c",
+        "axis": "correctness",
+        "score": 10,
+        "title": "the ad prompts cited warm hexes and described a dark page",
+        "evidence": "the 08-15 migration swapped hexes and left the English: five blocks read \"on a deep near-black slate surface (#f7f4ee)\". A model reads the sentence. The old guard passed because it was proven by planting a wrong HEX. 3 new assertions, all failing against the shipped text; the dark-ground rule still passes \"a faint darker grid in the background\". Second artifact of the same cause: g1-ad-creatives.md specified \"Amber on near-black, matched to the landing page\".",
+        "unblocks": "D6 - the last two sprints called it \"fully unblocked, prompts correct\" and the prompts were wrong"
+      },
+      {
+        "id": "I2",
+        "commit": "e3138e9",
+        "axis": "correctness",
+        "score": 10,
+        "title": "beta traffic would have biased the gate toward killing the product",
+        "evidence": "PROMPTS.md section 6 pre-committed the remedy and left it unbuilt. A beta recruit is offered the FREE plan, so they land in the denominator and can never reach the priced numerator - one direction only, toward the <0.5% kill. A PREFIX not a list, anchored so reddit-ads-beta still qualifies. Fails against the old resolver.",
+        "honesty": "PREVENTIVE - no beta-tagged link exists today; taken because it is unrecoverable after the first one"
+      },
+      {
+        "id": "I3",
+        "commit": "94c80b6",
+        "axis": "wiring",
+        "score": 8,
+        "title": "the free-plan cap is a live contract restated eleven times, tied to nothing",
+        "evidence": "proven by planting free.items=15 at the SOURCE: both tests fail and name all twelve restatements including three written as the word \"ten\". Two exclusions named in the file - the section 1b overflow audit (rejected drafts) and M3 seed size of 8."
+      },
+      {
+        "id": "I4",
+        "commit": "d0e98e9",
+        "axis": "completeness",
+        "score": 6,
+        "title": "the pre-flight line that had no command, and the daily read",
+        "evidence": "sitting sheet line 3 was a sentence. npm run flight:snapshot prints the row, quotes the notes (verdict line 4, expected to CARRY the directional read), and exits 1 if the table is not empty pre-window. Read-only twice over: SELECTs only, as relay_dev, which cannot write that table. 9 unit tests + live run (exit 0, 0 rows) + refusal proven by planting a row in the real script.",
+        "deliberate": "does NOT print N - a second path to the denominator would be a second definition of the measurement"
+      },
+      {
+        "id": "I5",
+        "commit": "a744914",
+        "axis": "security",
+        "score": 7.5,
+        "title": "the IAM half of the least-privilege wall was watched by nothing",
+        "evidence": "sprint 5 recorded the gap and left it. verify:iam refuses three routes back - literal action, wildcard (dsql:* / *), and INLINE policy (a different API call) - plus NotAction, case-insensitively, on the DEFAULT version only. Asserts the positive half too. Proven both directions against REAL AWS data with no mutation: v1 is the retained rollback and still carries the grant.",
+        "alsoFixed": "CLAUDE.md said production was still on the admin path while its own verify:roles section said the cutover was done"
+      }
+    ],
+    "blocked": [
+      {
+        "id": "step-8",
+        "owner": "steve",
+        "category": "human-send by design",
+        "need": "the ~45 minute sitting - docs/g1-sitting-sheet.md, 13 screens, pure transcription",
+        "note": "PARK EXPIRED - Steve parked it 2026-08-15 to 2026-08-16, which is today. Every engineering precondition re-verified live this morning: destination 200, instrument 7/7, caregiver_leads 0, copy pinned, src values qualifying.",
+        "deadline": "submit by ~2026-08-26 for serving by ~2026-08-28; gate 2026-10-02; slack absorbs exactly one rejection cycle"
+      },
+      {
+        "id": "LEAD-WRITE",
+        "owner": "steve",
+        "category": "decision needed (write to production data)",
+        "need": "authorise one lead submission through the live form plus deletion of the row, or do it at the top of the sitting",
+        "note": "verify:roles confirms relay_app HOLDS INSERT on caregiver_leads in both regions; verify:live ran as relay_dev which by construction cannot exercise that one write. Grant verified, path not. The D1 ruling reserves non-product DB writes to Steve, so Claude can create the row and cannot delete it.",
+        "residualRisk": "low but not zero, and not proven",
+        "cost": "2 minutes"
+      }
+    ],
+    "deferred": [
+      {
+        "id": "D6",
+        "score": 4,
+        "note": "NOW genuinely unblocked - the prompts were wrong until I1. Needs Gemini; blocks only the Meta lane"
+      },
+      {
+        "id": "ALLOWLIST",
+        "score": 7.5,
+        "note": "Steve's call - it changes the gate definition, so deliberately not taken. I2 closed the pre-committed beta case; any unforeseen tagged src still counts. An allow-list fails LOUDLY (a new lane reads zero); the deny-list fails silently and toward the kill."
+      },
+      {
+        "id": "PLACEMENTS",
+        "note": "PROMPTS.md section 6 item 3 - supply the 9:16 crop or restrict to Feed. Steve"
+      },
+      {
+        "id": "J9-5-7",
+        "score": 3,
+        "note": "deferred a THIRD time against sprint 5 explicit instruction not to carry it again - drop it or build it after the flight"
+      },
+      {
+        "id": "DMARC-RUA",
+        "note": "Steve's; DNS; unchanged"
+      },
+      {
+        "id": "scrollable-regions-css",
+        "score": 2
+      },
+      {
+        "id": "email_send_attempts-retention",
+        "score": 2
+      }
+    ],
+    "debtCreated": [
+      "verify:iam is not in CI - CI holds no AWS credentials, same as verify:schema/roles/live",
+      "amber vs ochre word drift fixed in three prompt blocks but deliberately NOT pinned - an inconsistency, not a contradiction",
+      "flight:snapshot leaves the two analytics cells manual on purpose",
+      "@aws-sdk/client-iam added as a devDependency for one script"
+    ],
+    "debtClosed": [
+      "sprint 5's 'the IAM half is not automated' - now npm run verify:iam"
+    ],
+    "nextTop3": [
+      "Do the sitting. The park expired today and every precondition was re-verified live. Ten days to submit-by.",
+      "Settle the allow-list question before traffic exists - a definition change, therefore Steve's, free today and unrecoverable later.",
+      "Prove the lead INSERT at the top of the sitting - two minutes, closes the last unproven link behind verdict lines 3 and 4."
+    ],
+    "report": "docs/sprint-reports/2026-08-16-sprint-2-beta-ads.md"
+  },
+  "sprint7": {
+    "scope": "complete and polished enough for editorial outreach to land",
+    "branch": "sprint/2026-08-16-3",
+    "iterationsUsed": 5,
+    "iterationCap": 5,
+    "backlogSource": [
+      "repo survey against a new lens: what a reader arriving from an AARP/caregiver.com op-ed encounters"
+    ],
+    "backlogInferred": true,
+    "inferredWhy": "the previous deferred queue was written for a paid-ads world retired hours earlier",
+    "verdict": "The product is complete and polished. The gap was that it named nobody — the Terms of Service, a contract a paying customer enters, named no party at all.",
+    "baseline": {
+      "start": {
+        "types": "green",
+        "lint": "green",
+        "build": "green",
+        "tests": "2492 passed, 1 skipped"
+      },
+      "end": {
+        "types": "green",
+        "lint": "green",
+        "build": "green",
+        "tests": "2507 passed, 1 skipped"
+      },
+      "newlySkippedTests": 0
+    },
+    "surveyFoundSound": [
+      "all 10 public pages 200; /continue correctly 307s",
+      "23 internal links crawled from 9 seeds — zero broken",
+      "no console errors on the public surface",
+      "J1-J9 live, J10 withdrawn deliberately",
+      "a11y 0 serious/critical across 34 pages (sprint 4)",
+      "real design system — semantic state palette: sage=closed/safe, ochre=in motion, clay=permanent"
+    ],
+    "theFinding": "One unresolved fact — who operates Relay — blocked four surfaces: the legal pages named no entity, Stripe checkout reads Relay/ReportBridge/LearningAI365 from a shared personal account, 10DLC could not choose a route without knowing about an EIN, and editorial needs an attributable author. The repo had hit it three times without settling it.",
+    "shipped": [
+      {
+        "id": "I1",
+        "commit": "d19f7cb",
+        "axis": "assessment",
+        "title": "readiness assessment — what is sound, what is missing, what is explicitly not worth doing"
+      },
+      {
+        "id": "I3",
+        "commit": "fb5205f",
+        "axis": "documentation",
+        "title": "J9 5-7 dropped by decision after three deferrals",
+        "evidence": "step 4 built 2026-08-08 carries the payoff; filed under a heading that already read \"Known gaps that are NOT defects\""
+      },
+      {
+        "id": "I2",
+        "commit": "d568a4d",
+        "axis": "completeness",
+        "title": "Relay names its operator — /about, /terms, /privacy, footer",
+        "evidence": "operator-named.test.ts 6 assertions; proven by reverting /terms to its exact pre-today wording and by hardcoding the name"
+      },
+      {
+        "id": "I4",
+        "commit": "a7042fc",
+        "axis": "completeness",
+        "title": "press boilerplate composed from the product, not typed",
+        "evidence": "press-kit.test.ts 9 assertions; proven by planting a $99 price, an estate promise and a dead asset path"
+      },
+      {
+        "id": "I5",
+        "commit": "b12f518",
+        "axis": "wiring",
+        "title": "the editorial destination /caregivers now reaches /about",
+        "evidence": "proven by deleting the footer entry"
+      }
+    ],
+    "nameResolved": "436 commits said 'Steve Gharlow', GitHub said 'Steve Harlow'; the LinkedIn slug stevengharlow reconciled it as Steven G. Harlow. Asked rather than guessed — it was going onto a contract.",
+    "blocked": [
+      {
+        "id": "H0-BADGE",
+        "owner": "steve",
+        "category": "decision needed (ratified copy)",
+        "need": "rule on whether \"Winner — Most Impactful, H0 Hackathon 2026\" stays on /caregivers for a caregiver audience",
+        "note": "/security already moved the hackathon artefacts off the front door because \"on a landing page it frames a credential vault as a weekend project\". The badge is the remaining instance. Not changed unilaterally — the copy is pinned by content.test.ts."
+      },
+      {
+        "id": "DEPLOY",
+        "owner": "steve",
+        "category": "decision needed",
+        "need": "merge and deploy sprint/2026-08-16-3",
+        "note": "relaystandby.com still has no /about and its Terms still name nobody. Every finding is true of the branch, not of the site an editor checks today."
+      }
+    ],
+    "deferred": [
+      {
+        "id": "STRIPE-NAME",
+        "score": 4,
+        "note": "ratified.stripe-merchant-name left it 'for the G1 flight' and that flight is cancelled, so the stated reason expired. With no entity, separating means a second personal account. Not urgent at zero volume."
+      },
+      {
+        "id": "10DLC",
+        "score": 3,
+        "note": "now unblocked by relay-operator-is-an-individual — Sole Proprietor is the only route without a Tax ID"
+      },
+      {
+        "id": "PROMPTS-PALETTE",
+        "score": 1,
+        "note": "omits sage/clay; wrong, and in a document retired with advertising"
+      }
+    ],
+    "debtCreated": [
+      "lib/g1/press-kit.ts is a fifth place the price appears — composed and pinned rather than copied, noted so the count stays honest",
+      "/about is prose that will age; nothing tests it stays true, only that it names the operator and routes to a human"
+    ],
+    "correctionMade": "I asserted this morning that the product palette is paper/ink/ochre. It is not — it is semantic, and sage (#4f7a6b) is the RESTING state. Recorded in the assessment rather than quietly fixed.",
+    "nextTop3": [
+      "Deploy — everything is inert until then, and an editor checking today still finds a site that names nobody",
+      "Rule on the hackathon badge before the first pitch, since a piece may point at that page",
+      "Draft angle 3 — the product is ready; the article is now the work"
+    ],
+    "doneCondition": "No material incremental product work remains identifiable. What is left is a positioning decision, a deploy, and writing. Adding surface before the first reader arrives is the horizontal build the demand gate exists to stop.",
+    "report": "docs/sprint-reports/2026-08-16-sprint-3-readiness.md"
   }
 }

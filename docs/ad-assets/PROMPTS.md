@@ -138,6 +138,24 @@ that is not in `globals.css`.
 > `lib/ops/ad-copy.test.ts` fails if any colour in a prompt block is absent from the product, and
 > `lib/ops/og-palette.test.ts` does the same for share cards, so this drift cannot recur silently.
 
+> ### 🔴 "every prompt below has been rewritten accordingly" WAS NOT TRUE — corrected 2026-08-16
+> The 08-15 migration swapped the **hexes** and left the **English**. Five blocks shipped reading,
+> verbatim, *"on a deep near-black slate surface (#f7f4ee)"* — a near-white hex introduced by the
+> words *near-black slate* — plus *"a dark, moody still-life render"*, *"a refined dark-mode data
+> visualisation"*, *"an empty dark slate field"*, *"generous dark margin"* and *"the tiles are dark
+> slate"*. **An image model reads the sentence, not the hex**, so every one of them would have
+> produced a dark plate for a warm, LIGHT landing page: the exact mismatch the ruling above was
+> made to end, arriving through the one door the new check did not cover.
+>
+> The check passed the whole time, because it was proven by planting a wrong **hex** — the half
+> that was already right. `ad-copy.test.ts` now also reads the prose: no light hex described in
+> dark words, no dark ground, and `slate` / `dark mode` / `dark, moody` refused by name. All three
+> were proven by failing against the text that had shipped, not against a fixture.
+>
+> Deliberately still unpinned: three blocks called `#b4703a` **amber** rather than ochre, fixed in
+> the same pass. That is an inconsistency, not a contradiction — a model given `warm amber
+> (#b4703a)` renders `#b4703a` — so it did not earn a guard.
+
 ---
 
 ## 2. The prompts
@@ -195,8 +213,8 @@ Meta may crop for different placements.
 ```
 [Concept A clean prompt, with these changes:]
 Vertical 9:16 composition. The aperture sits in the upper-middle of the frame, its centre about 40%
-down from the top, leaving the lower third as an empty dark field with room for an overlay. The
-amber glow falls downward into that empty space.
+down from the top, leaving the lower third as an empty paper field with room for an overlay. The
+ochre glow falls downward into that empty space.
 ```
 
 **`reddit-r1-1200x628` — wide**
@@ -204,7 +222,7 @@ amber glow falls downward into that empty space.
 ```
 [Concept A clean prompt, with these changes:]
 Wide 1.91:1 landscape composition. The aperture is offset to the right third of the frame and the
-left two thirds are an empty dark slate field, so the amber light reads as travelling leftward
+left two thirds are an empty warm paper field, so the ochre light reads as travelling leftward
 across open space.
 ```
 
@@ -216,7 +234,7 @@ beyond recall*, without ever showing a legible credential.
 **`meta-m2-1080-clean`**
 
 ```
-A dark, moody still-life render, seen from directly above, on a deep near-black slate surface
+A quiet, restrained still-life render, seen from directly above, on a warm off-white paper surface
 (#f7f4ee). At the centre-left lies a small worn paper notebook, open, its pages covered in soft
 indistinct handwriting — deliberately blurred and illegible, suggesting handwritten notes without
 any readable word, letter or number anywhere. Rising from the open page and drifting up and to the
@@ -224,17 +242,17 @@ right are a dozen translucent duplicate copies of that same page, each fainter a
 than the last, scattering outward beyond the edge of the frame like something released that cannot
 be gathered back. The duplicates are edged in muted warm grey (#6b6257); a single warm ochre
 light (#b4703a) rakes across the notebook itself from the left, so the original is warm and the
-escaping copies are cold. Photographic realism, shallow depth of field, sharp on the notebook and
-soft on the furthest copies. Melancholy and quiet, not alarming. No readable text of any kind, no
-numbers, no logos, no people, no hands, no phones, no computers. Square 1:1 composition with
-generous dark margin around the subject.
+escaping copies are cool and grey. Photographic realism, shallow depth of field, sharp on the
+notebook and soft on the furthest copies. Melancholy and quiet, not alarming. No readable text of
+any kind, no numbers, no logos, no people, no hands, no phones, no computers. Square 1:1
+composition with generous empty paper margin around the subject.
 ```
 
 **`meta-m2-1080-text`**
 
 ```
 [the prompt above, then:]
-In the upper right region, over empty dark background and clear of the notebook and the drifting
+In the upper right region, over empty paper background and clear of the notebook and the drifting
 copies, one single line of text in a clean modern geometric sans-serif, deep ink (#1f1b16),
 reading exactly: This cannot be unshared. It is the only text in the image, sits at least 10% in
 from every edge, and is large enough to read on a phone. Spell it exactly as written.
@@ -248,14 +266,15 @@ shows after the seed — so it sets an accurate expectation rather than a promis
 **`meta-m3-1080-clean`**
 
 ```
-A refined dark-mode data visualisation, centred in a square frame on a deep near-black slate
-background (#f7f4ee). One large node glows warm ochre (#b4703a) slightly above centre, with
-a soft halo. Six smaller nodes are arranged in a loose arc below and around it, each a dim
-muted warm grey (#6b6257) with no glow of its own. Six thin luminous lines run from the
-bright node to each of the small ones; the lines are brightest where they leave the amber node and
-fade toward the grey ones, so the direction of dependency is unmistakable — everything hangs off
-the single bright node. The lines are gently curved, not straight. Thin, precise, elegant strokes;
-a faint darker grid is barely visible in the background. The aesthetic is a premium engineering
+A refined light-mode data visualisation, centred in a square frame on a warm off-white paper
+background (#f7f4ee). One large node sits slightly above centre, filled solid warm ochre
+(#b4703a), with a soft ochre halo bleeding a short distance into the paper. Six smaller nodes are
+arranged in a loose arc below and around it, each a flat dim muted warm grey (#6b6257) with no halo
+of its own. Six thin lines run from the ochre node to each of the small ones; each line is
+strongest where it leaves the ochre node and fades toward the grey ones, so the direction of
+dependency is unmistakable — everything hangs off the single ochre node. The lines are gently
+curved, not straight. Thin, precise, elegant strokes; a faint grid, barely a shade deeper than the
+paper, is just visible in the background. The aesthetic is a premium engineering
 dashboard: restrained, technical, calm. No text, no labels, no letters, no numbers, no logos, no
 icons inside the nodes, no people. Square 1:1 composition with generous empty margin.
 ```
@@ -264,7 +283,7 @@ icons inside the nodes, no people. Square 1:1 composition with generous empty ma
 
 ```
 [the prompt above, then:]
-Directly beneath the large amber node, in a clean modern geometric sans-serif, deep ink (#1f1b16),
+Directly beneath the large ochre node, in a clean modern geometric sans-serif, deep ink (#1f1b16),
 a single short label reading exactly: the email account. Below the six grey nodes, in smaller
 muted warm grey (#6b6257) type, one line reading exactly: If this one is locked, the other six do not
 matter. Both lines are horizontally centred, at least 10% in from every edge, and are the only text
@@ -287,10 +306,11 @@ so the image survives a cap change and only the platform text field needs editin
 ```
 A clean interface abstraction on a warm off-white paper background (#f7f4ee), seen
 straight on. A neat grid of ten identical small rounded rectangular tiles, arranged five across and
-two down, centred in a square frame. The tiles are dark slate with a thin border; each glows softly
-from within in warm amber (#b4703a), and they brighten in sequence from the top-left tile to the
-bottom-right so the leftmost are fully lit and the last one or two are only just beginning to
-glow — a set being filled in, one at a time. Below the grid, well separated from it, four small
+two down, centred in a square frame. The tiles are warm paper with a thin deep-ink outline; each
+fills softly from within in warm ochre (#b4703a), and they saturate in sequence from the top-left
+tile to the bottom-right so the leftmost are fully filled and the last one or two are only just
+beginning to take colour — a set being filled in, one at a time. Below the grid, well separated
+from it, four small
 simple abstract person markers stand in a row: minimal geometric silhouettes, no faces, no detail,
 drawn in deep ink (#1f1b16), evenly spaced. Thin elegant lines, generous negative space, a
 premium product-design aesthetic. Nothing is locked, closed, warning-coloured or alarming; the mood
@@ -367,8 +387,15 @@ read. Adding it there means **replacing** a variant, not appending one.
 
 ⚠️ **Before running it, verify three things against the source and not against this file:**
 
-1. `TIER_LIMITS.free` in `lib/billing/entitlements.ts` — the item and recipient caps. Both numbers
-   below are read from there at time of writing and **both have moved before**.
+1. ✅ **Now a test, not a check you have to remember (2026-08-16).** `lib/ops/ad-copy.test.ts`
+   fails if any free-plan cap written into this file or into `g1-ad-creatives.md` disagrees with
+   `TIER_LIMITS.free.items`, and the landing page's own `SECONDARY_CTA_LABEL` is pinned to it too —
+   eleven hand-copies of one live contract, none of which were tied to it. Proven by moving the cap
+   in `entitlements.ts` alone and watching every restatement get named.
+   ⚠️ This item used to read "the item and recipient caps — **both** numbers below are read from
+   there", and the recipient cap appears in no line of F1's copy. Only the item cap is stated, so
+   only the item cap is pinned; if a recipient number is ever added to an ad, extend the test in the
+   same edit.
 2. `TIER_LIMITS.free.canRelease`. It is currently `true` **as a dated beta decision**, and the
    source carries the comment *"FLIP TO false WHEN BETA ENDS."* **No copy below depends on it** —
    deliberately. Never write an ad that promises the free plan will open access in an emergency,

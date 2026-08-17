@@ -151,14 +151,121 @@ export const SHOWCASE_SRCS = ['h0-demo', 'h0-home'] as const;
  */
 export const QA_SRCS = ['qa', 'preflight'] as const;
 
-/** Sources that are tagged but must never reach the gate ratio, for any reason. */
-const NON_QUALIFYING_SRCS: readonly string[] = [...SHOWCASE_SRCS, ...QA_SRCS];
+/**
+ * BETA AND FOUNDING-FAMILY traffic — recruited, and recruited to the FREE plan.
+ *
+ * `docs/ad-assets/PROMPTS.md` §6 (Steve's 2026-08-12 scope ruling) pre-committed this and
+ * named the condition that arms it: "If a beta or founding-family campaign is ever
+ * revived, this becomes a pre-flight blocker again: every tagged non-excluded `src` counts
+ * toward N, free-signup conversions emit no priced numerator, and the ratio would be
+ * biased **down** — toward a false KILL on the gate that decides the product."
+ *
+ * The asymmetry is what makes it worth a rule rather than a note. Somebody invited into the
+ * beta lands in the denominator and can never appear in the priced numerator, because they
+ * were not asked to pay. So this traffic does not merely dilute N, it moves the ratio in
+ * one direction only — toward the <0.5% that kills D2C.
+ *
+ * A PREFIX, not a list, and that is the whole design. A list works only if whoever composes
+ * the next beta link guesses the string this file guessed first, and the cost of guessing
+ * wrong is not recoverable: a `caregiver_leads` row can be deleted, a Vercel Analytics event
+ * cannot. `beta-` holds for tags nobody has invented yet. It is anchored at the start, so a
+ * real lane is never swallowed by it — `reddit-ads-beta` still counts.
+ *
+ * ⚠️ THIS ONLY WORKS IF BETA LINKS CARRY IT. The convention is stated where such a link is
+ * actually composed — `docs/first-invitations.md` — because a rule that lives only in a test
+ * is a rule the person pasting a URL into a text message will never meet.
+ */
+export const BETA_SRC_PREFIX = 'beta-';
 
-/** True when a src counts toward the G1 gate ratio (tagged, caregiver-targeted, not ours). */
+/** Sources that are tagged but must never reach the gate ratio, for any reason. */
+const NON_QUALIFYING_SRCS: readonly string[] = [...SHOWCASE_SRCS, ...QA_SRCS, 'beta'];
+
+/**
+ * THE DECLARED PAID LANES — the only sources that count toward N.
+ *
+ * ⚠️ RATIFIED BY STEVE 2026-08-16: this is an ALLOW-LIST, and it replaced a
+ * deny-list. Recorded in `PROJECT.yaml` `ratified.g1-n-is-an-allow-list`.
+ *
+ * The deny-list counted anything tagged and unlisted, which meant the gate that
+ * decides this product's future treated *any* labelled visitor as caregiver
+ * demand — a newsletter, a launch post, a founding-family link, a src somebody
+ * invented on a Tuesday. All of them arrive without a priced numerator behind
+ * them, so they pushed the ratio one way only: toward the `<0.5%` that kills
+ * D2C.
+ *
+ * The decisive argument is the DIRECTION OF THE FAILURE, not tidiness.
+ *
+ *   - A deny-list fails SILENTLY. Nobody notices a denominator that is slightly
+ *     too big; the ratio just reads worse than the truth, and the verdict is
+ *     written from it.
+ *   - An allow-list fails LOUDLY. Forget to declare a new lane and its traffic
+ *     reads zero, which is impossible to miss on the first day of a flight and
+ *     is fixed by adding one string.
+ *
+ * And it had to be decided before traffic existed: `caregiver_leads` rows can be
+ * deleted, Vercel Analytics events cannot. There is no retroactive version of
+ * this change.
+ *
+ * ADDING A LANE IS DELIBERATE. Put the src here in the same commit that creates
+ * the ad carrying it, and it must not collide with any exclusion set above —
+ * `content.test.ts` asserts that intersection is empty, so a lane that is also
+ * a QA or showcase value fails the build rather than quietly counting us.
+ *
+ * 📝 EDITORIAL LANES USE `ed-<outlet>` — e.g. `ed-nextavenue`, `ed-aarp`. Ratified
+ * 2026-08-16 as the PRIORITY over paid (`ratified.g1-editorial-over-paid`,
+ * plan in `docs/g1-editorial-lane.md`), after three paid instruments measured
+ * that this audience cannot be bought. None is listed below yet, deliberately:
+ * a lane for an article that has not been placed is a lane that reads as zero
+ * demand and teaches nobody anything. The src is added here in the same commit
+ * the placement goes live, and not before.
+ *
+ * ⚠️ `reddit-ads` WAS HERE AND WAS REMOVED 2026-08-16, the same day the
+ * allow-list shipped — which is the first time this mechanism did the job it
+ * was built for. Reddit sells no caregiver targeting: `dementia` and
+ * `Alzheimers` are refused on ToS as health-condition targeting, and
+ * r/AgingParents, r/CaregiverSupport and r/eldercare are simply absent from the
+ * targetable index while r/personalfinance resolves instantly in the same
+ * field. Keyword targeting was tested as the fallback and returned an audience
+ * estimate of 251.2m–314.1m under US-only scoping, failing a threshold set
+ * before the number was seen. Evidence table: `docs/g1-ad-creatives.md`.
+ *
+ * The lane is closed, but an UNLAUNCHED campaign draft still exists in the ad
+ * account. Under a deny-list its traffic would have counted the moment anybody
+ * pressed the wrong button; removing the string is what makes that impossible
+ * rather than merely unlikely.
+ */
+/*
+  ⛔ EMPTY ON PURPOSE, 2026-08-16. Paid advertising is retired
+  (`ratified.retire-paid-advertising`) and no editorial placement exists yet, so
+  there is currently NO lane whose traffic counts toward N.
+
+  An empty allow-list means `isGateQualifyingSrc` returns false for everything and
+  N can never leave zero. That is the honest state of the world — no channel is
+  live — and it is deliberately the LOUD failure rather than the quiet one: the
+  first person to publish a placement and see zero will find this comment, and the
+  fix is one string added in the same commit as the placement.
+
+  `google-ads` and `meta-ads` were removed here, and `reddit-ads` earlier the same
+  day. Reviving any of them is re-adding the string; the plans and tests are all
+  retained.
+*/
+export const GATE_LANES: readonly string[] = [];
+
+/**
+ * True when a src counts toward the G1 gate ratio.
+ *
+ * The exclusion checks run FIRST and are now, strictly speaking, redundant —
+ * nothing in them appears in `GATE_LANES`. They are kept because they are the
+ * only place the reasoning lives, and because they are a second lock on the one
+ * mistake that cannot be undone: if a beta tag or a QA value were ever pasted
+ * into `GATE_LANES`, the allow-list alone would happily count it.
+ */
 export function isGateQualifyingSrc(src: string): boolean {
   const s = src.trim();
   if (!s || s === 'direct') return false;
-  return !NON_QUALIFYING_SRCS.includes(s);
+  if (s.startsWith(BETA_SRC_PREFIX)) return false;
+  if (NON_QUALIFYING_SRCS.includes(s)) return false;
+  return (GATE_LANES as readonly string[]).includes(s);
 }
 
 export const DIFFERENTIATORS = [

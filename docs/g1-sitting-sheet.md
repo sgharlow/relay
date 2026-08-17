@@ -1,3 +1,13 @@
+> # ⛔ RETIRED 2026-08-16 — there is no sitting. SUPERSEDED BY `docs/g1-editorial-lane.md`
+>
+> Paid advertising is abandoned (`PROJECT.yaml` `ratified.retire-paid-advertising`). The Reddit lane
+> this sheet transcribes was found unbuyable on 2026-08-16 — the caregiver communities are not in
+> Reddit's targetable index at all — and the Google lane that briefly replaced it was cancelled
+> after Keyword Planner measured ~330 on-wedge searches a month.
+>
+> **Do not execute any row below.** The three pre-flight commands at the top remain correct and are
+> still worth running before any editorial placement goes live; everything after them is dead.
+
 # The sitting — Reddit lane 1, one page
 
 **Owner:** Steve types, Claude reads each screen back. **Date: \_\_\_\_\_\_\_\_\_\_** (fill it in)
@@ -20,7 +30,12 @@
 |---|---|---|
 | 1 | `npm run verify:funnel` | `all 7 checks passed — the instrument is alive` |
 | 2 | `npm test` | green |
-| 3 | live `caregiver_leads` count | **0 rows** — the flight starts from zero or N is contaminated from day one |
+| 3 | `npm run flight:snapshot` | `✓ window not started and caregiver_leads is empty` — **exit 0.** The flight starts from zero or N is contaminated from day one |
+
+> Line 3 was a sentence until 2026-08-16 and is now a command that **exits 1** if the table is not
+> empty before the window opens. It is read-only and connects as `relay_dev`, the one role that
+> cannot write `caregiver_leads` — so the pre-flight check physically cannot contaminate the thing
+> it is checking. It is the same command you run daily once the flight is live.
 
 If line 1 fails, **stop.** A lane measured by a dead instrument reads as no demand.
 
@@ -36,7 +51,7 @@ If line 1 fails, **stop.** A lane measured by a dead instrument reads as no dema
 | 4 | Brand display name | `Relay` | Steve |
 | 5 | Campaign → Objective | **Traffic** (not Conversions — there is no pixel, and the privacy page says so) | Claude dictates |
 | 6 | Campaign budget | Daily **$25** · **LIFETIME $150** ← the lifetime cap is the structural control | Steve sets, Claude reads back |
-| 7 | Ad group → Targeting | Location **United States**; communities `r/AgingParents`, `r/CaregiverSupport`, `r/Alzheimers`, `r/dementia`, `r/eldercare` | Claude dictates |
+| 7 | Ad group → Targeting | 🔴 **NOT EXECUTABLE — Reddit sells none of these.** Established at the 2026-08-16 sitting; evidence table in `g1-ad-creatives.md` under "Targeting". `dementia`/`Alzheimers` refused on ToS; the other three absent from the index while `personalfinance` resolves fine. The keyword fallback failed its own pre-set threshold at an audience of 251.2m–314.1m. **Do not proceed past this row on Reddit.** | — |
 | 8 | Ad group → Bid | **Automatic** | Claude dictates |
 | 9 | Ad → Format | **Free-form ad** — a standard image/link ad is headline-only and silently drops R1's whole body | Claude dictates |
 | 10 | Ad → Headline / Body | **R1, pasted from `g1-ad-creatives.md`.** Title should read 78 characters | Steve pastes |
@@ -63,7 +78,11 @@ If line 1 fails, **stop.** A lane measured by a dead instrument reads as no dema
 2. On approval: **one** verification click (part 2), confirm the landing URL carries
    `?src=reddit-ads`, and record it as a known offset in `g1-flight-log.md`. One person, once — it
    permanently injects one event.
-3. Then daily: `npm run verify:funnel` first, then the snapshot table.
+3. Then daily: `npm run verify:funnel` first, then `npm run flight:snapshot` — it prints the
+   snapshot row ready to paste, and the lead notes, which the ratified directional read expects to
+   carry the verdict. The two analytics cells (N and the intents) still come from the Vercel
+   dashboard by hand, deliberately: a second path to the denominator would be a second definition
+   of the measurement.
 
 ## The clock
 

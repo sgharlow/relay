@@ -24,7 +24,9 @@
     "verify:stepup": "npx tsx --env-file=.env.local scripts/e2e-stepup.ts",
     "verify:multiowner": "npx tsx --env-file=.env.local scripts/e2e-multiowner.ts",
     "verify:ui": "npx tsx --env-file=.env.local scripts/e2e-ui.ts",
-    "verify:roles": "npx tsx --env-file=.env.local scripts/verify-roles.ts"
+    "verify:roles": "npx tsx --env-file=.env.local scripts/verify-roles.ts",
+    "flight:snapshot": "npx tsx --env-file=.env.local scripts/flight-snapshot.ts",
+    "verify:iam": "npx tsx --env-file=.env.admin scripts/verify-iam.ts"
   },
   "dependencies": {
     "@aws-sdk/client-kms": "3.1072.0",
@@ -45,6 +47,7 @@
     "stripe": "^22.4.0"
   },
   "devDependencies": {
+    "@aws-sdk/client-iam": "^3.1111.0",
     "@types/node": "^20",
     "@types/pg": "8.20.0",
     "@types/qrcode": "^1.5.6",

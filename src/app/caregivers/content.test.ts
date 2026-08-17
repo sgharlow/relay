@@ -16,6 +16,7 @@ import {
   DIFFERENTIATORS,
   HEADLINE,
   intentHref,
+  GATE_LANES,
   isGateQualifyingSrc,
   LANDING_HREF,
   PRICE_YEARLY_USD,
@@ -60,9 +61,11 @@ describe('G1 caregiver WTP instrument', () => {
     }
     expect(isGateQualifyingSrc('direct')).toBe(false);
     expect(isGateQualifyingSrc('')).toBe(false);
-    // Real caregiver channels still qualify.
-    expect(isGateQualifyingSrc('reddit-ads')).toBe(true);
-    expect(isGateQualifyingSrc('meta-ads')).toBe(true);
+    // ⛔ 2026-08-16: paid is retired and no editorial placement exists, so NO lane
+    // qualifies today. The retired paid srcs are asserted dead rather than absent.
+    expect(isGateQualifyingSrc('google-ads')).toBe(false);
+    expect(isGateQualifyingSrc('meta-ads')).toBe(false);
+    expect(isGateQualifyingSrc('reddit-ads')).toBe(false);
   });
 
   it('QA traffic is EXCLUDED from the gate, so verifying the instrument cannot move it', () => {
@@ -82,6 +85,137 @@ describe('G1 caregiver WTP instrument', () => {
     for (const src of QA_SRCS) {
       expect(SHOWCASE_SRCS as readonly string[]).not.toContain(src);
     }
+  });
+
+  /*
+    docs/ad-assets/PROMPTS.md §6, Steve's 2026-08-12 scope ruling, pre-committed
+    this exclusion and the condition that arms it:
+
+      "⚠️ If a beta or founding-family campaign is ever revived, this becomes a
+      pre-flight blocker again: every tagged non-excluded src counts toward N,
+      free-signup conversions emit no priced numerator, and the ratio would be
+      biased DOWN — toward a false KILL on the gate that decides the product. A
+      Vercel Analytics event cannot be deleted, so the exclusion has to exist
+      BEFORE the first such ad, not after."
+
+    A beta recruit is being asked for the free plan, so they arrive in the
+    denominator and can never appear in the priced numerator. Every one of them
+    pushes the ratio toward the <0.5% kill on a gate whose whole question is
+    whether caregivers will PAY.
+
+    It is a PREFIX rather than a list because a list only works if whoever
+    writes the next beta link guesses the same string this file guessed first,
+    and being wrong is unrecoverable in exactly one direction. `beta-` is one
+    rule, it cannot be defeated by an unforeseen suffix, and it reads plainly in
+    a URL Steve is pasting into a message.
+  */
+  it('beta and founding-family traffic is EXCLUDED — it can never reach the priced numerator', () => {
+    expect(isGateQualifyingSrc('beta')).toBe(false);
+    expect(isGateQualifyingSrc('beta-founding')).toBe(false);
+    expect(isGateQualifyingSrc('beta-reddit')).toBe(false);
+    // The suffix is deliberately not enumerated anywhere — that is the point.
+    expect(isGateQualifyingSrc('beta-a-tag-nobody-has-invented-yet')).toBe(false);
+  });
+
+  /*
+    ⚠️ RATIFIED BY STEVE 2026-08-16 — N IS AN ALLOW-LIST.
+
+    It was a deny-list, which counted anything tagged and unlisted: a newsletter,
+    a launch post, a founding-family link, a src somebody invented on a Tuesday.
+    None of those carries a priced numerator, so every one of them pushed the
+    ratio toward the <0.5% that kills D2C — silently, because nobody notices a
+    denominator that is slightly too big.
+
+    The failure direction is the whole argument. Forget to declare a new lane
+    under an allow-list and its traffic reads ZERO on day one of a flight, which
+    is impossible to miss and is fixed by adding one string.
+
+    Decided before traffic existed because there is no retroactive version:
+    caregiver_leads rows can be deleted, Vercel Analytics events cannot.
+  */
+  it('only the declared paid lanes count toward N', () => {
+    for (const lane of GATE_LANES) expect(isGateQualifyingSrc(lane)).toBe(true);
+
+    // The cases the deny-list used to wave through. Each is a real thing
+    // somebody could plausibly tag, and none was ever bought as caregiver reach.
+    for (const stray of [
+      'newsletter',
+      'linkedin',
+      'producthunt',
+      'hn',
+      'friend',
+      'reddit-ads-beta', // a lane-shaped typo is NOT the lane
+      'betamax-forum',
+      'a-tag-somebody-invented-on-a-tuesday',
+    ]) {
+      expect(isGateQualifyingSrc(stray), `${stray} must not count toward N`).toBe(false);
+    }
+  });
+
+  it('a lane can never also be an excluded value', () => {
+    // The allow-list alone would happily count a QA or beta string pasted into
+    // GATE_LANES. This is the second lock, and the reason the exclusion checks
+    // are kept in the resolver rather than deleted as redundant.
+    for (const lane of GATE_LANES) {
+      expect(QA_SRCS as readonly string[], `${lane} is a QA value`).not.toContain(lane);
+      expect(SHOWCASE_SRCS as readonly string[], `${lane} is a showcase value`).not.toContain(lane);
+      expect(lane.startsWith('beta-'), `${lane} is a beta value`).toBe(false);
+    }
+  });
+
+  it('the closed Reddit lane no longer counts', () => {
+    /*
+      Removed 2026-08-16, hours after the allow-list shipped the same day, and
+      the first time this mechanism earned itself. Reddit sells no targeting:
+      dementia/Alzheimers refused on ToS as health-condition targeting, and
+      r/AgingParents, r/CaregiverSupport and r/eldercare absent from the index
+      while r/personalfinance resolves in the same field. Keyword targeting
+      failed its own pre-set threshold at 251.2m-314.1m under US-only scoping.
+
+      An UNLAUNCHED draft still sits in the ad account. Under the deny-list this
+      replaced, its traffic would have counted the instant anybody pressed the
+      wrong button. This is the assertion that makes that impossible.
+    */
+    expect(isGateQualifyingSrc('reddit-ads')).toBe(false);
+  });
+
+  it('an undeclared editorial src counts toward nothing — the allow-list is the point', () => {
+    /*
+      Editorial is the ratified PRIORITY lane as of 2026-08-16
+      (ratified.g1-editorial-over-paid, docs/g1-editorial-lane.md), after three
+      paid instruments measured that this audience cannot be bought.
+
+      Placements use ed-<outlet>. None is declared yet, deliberately — a lane for
+      an article nobody has placed is a lane that reads as zero demand. This test
+      pins the consequence rather than the intention: until the src is added to
+      GATE_LANES in the same commit the placement goes live, the article can run,
+      readers can click, and N will stay at zero. That is the failure this
+      allow-list makes LOUD instead of silent, and it is worth an assertion
+      because it is the one step easy to forget between writing a piece and
+      publishing it.
+    */
+    expect(isGateQualifyingSrc('ed-nextavenue')).toBe(false);
+    expect(isGateQualifyingSrc('ed-aarp')).toBe(false);
+  });
+
+  it('no lane is live — paid is retired and no placement exists yet', () => {
+    /*
+      ⛔ EMPTY ON PURPOSE (ratified.retire-paid-advertising, 2026-08-16). Three
+      instruments were measured and all three failed: Reddit sells no caregiver
+      community targeting, Reddit keyword targeting does not narrow, and Google
+      search carries ~330 on-wedge searches a month.
+
+      An empty allow-list means N can never leave zero. That is the honest state
+      of the world rather than a bug — no channel is live — and it is the loud
+      failure by design: whoever publishes the first op-ed and sees zero lands
+      here, and the fix is one string added in the same commit as the placement.
+
+      This assertion is exact rather than a length check, so REVIVING a lane is a
+      deliberate edit to a test that states why the list is empty, not a silent
+      append nobody reviews.
+    */
+    expect(GATE_LANES).toEqual([]);
+    expect(isGateQualifyingSrc('anything-at-all')).toBe(false);
   });
 
   it('names the real competitive frames, not strawmen', () => {
@@ -209,8 +343,11 @@ describe('G1 secondary product lane', () => {
   });
 
   it('product-lane traffic is still a qualified visitor — it lands on the same landing page', () => {
-    // The denominator is unchanged: caregiver_qualified fires on /caregivers for
-    // every tagged visitor, whichever CTA they subsequently take.
-    expect(isGateQualifyingSrc('reddit-ads')).toBe(true);
+    // The denominator mechanism is unchanged and channel-agnostic: caregiver_qualified
+    // fires on /caregivers for every visitor from a DECLARED lane, whichever CTA they
+    // take next. With paid retired there is no declared lane today, so this asserts the
+    // mechanism against a hypothetical editorial src rather than a dead paid one.
+    expect(isGateQualifyingSrc('ed-caregiverdotcom')).toBe(false); // undeclared → excluded
+    expect(GATE_LANES).toEqual([]); // ...because nothing is declared yet
   });
 });

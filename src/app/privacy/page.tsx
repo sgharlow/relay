@@ -19,7 +19,7 @@
  * Feature: relay-g1-wtp
  */
 
-import { CONTACT_EMAIL, CONTACT_MAILTO } from '../../../lib/contact';
+import { CONTACT_EMAIL, CONTACT_MAILTO, OPERATOR_NAME } from '../../../lib/contact';
 
 export const metadata = {
   title: 'Privacy · Relay',
@@ -229,11 +229,26 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-t5 font-semibold text-ink">Contact</h2>
+          {/*
+            THE DATA CONTROLLER, NAMED. Added 2026-08-16 alongside the same fix
+            in /terms. A privacy notice that never says who holds the data is
+            asking for trust from an anonymous party — see
+            docs/product-readiness-assessment-2026-08-16.md.
+          */}
+          <h2 className="text-t5 font-semibold text-ink">Who holds this data, and how to reach him</h2>
+          <p className="mt-2">
+            Relay is operated by <strong>{OPERATOR_NAME}</strong>, an individual — there is no
+            company. He is responsible for the data described above.
+          </p>
           <p className="mt-2">
             <a className="text-ink underline" href={CONTACT_MAILTO}>
               {CONTACT_EMAIL}
+            </a>{' '}
+            — read by a person. More at{' '}
+            <a className="text-ink underline" href="/about">
+              about
             </a>
+            .
           </p>
         </section>
 

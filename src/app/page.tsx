@@ -216,6 +216,15 @@ export default function Home() {
             <a href="/guide" className="inline-flex min-h-[44px] items-center hover:text-muted">
               Guide
             </a>
+            {/*
+              /about sits FIRST among the trust links, deliberately. It is the
+              one a reader from an op-ed goes looking for — "who is asking me to
+              store my mother's passwords" — and until 2026-08-16 there was no
+              answer to that question anywhere on the site.
+            */}
+            <Link href="/about" className="inline-flex min-h-[44px] items-center hover:text-muted">
+              About
+            </Link>
             <Link href="/security" className="inline-flex min-h-[44px] items-center hover:text-muted">
               Security
             </Link>

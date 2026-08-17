@@ -311,14 +311,26 @@ export default function CaregiversLanding() {
             <span style={{ fontWeight: 600, color: 'var(--ink)' }}>Relay</span> — standby access for the
             people who&apos;ll need it.
           </div>
-          {/* Privacy and Terms are required by Meta and Reddit ad policy, and
-              by anyone deciding whether to trust this with a parent's
-              credentials. min-h-[44px] keeps them tappable on a phone.
-              These measured 4.24:1 on the old dark ground — below AA, on an
-              audience that skews older. Ink-muted on paper is 5.2:1, and the
-              underline means colour is not the only thing marking them. */}
+          {/* These were "required by Meta and Reddit ad policy, and by anyone
+              deciding whether to trust this with a parent's credentials."
+              The ad-policy half expired on 2026-08-16 when paid advertising was
+              retired; the second half is now the ONLY reason they are here, and
+              it is the stronger one.
+
+              🔴 /about ADDED 2026-08-16, and this is the page it matters on.
+              Op-eds land readers HERE, not on the homepage — every editorial
+              link is relaystandby.com/caregivers?src=ed-<outlet>. A reader
+              asking "who is asking me to store my mother's passwords" had no
+              route to an answer from this page, which is the one place the
+              question actually gets asked. It is placed first for that reason.
+
+              min-h-[44px] keeps them tappable on a phone. These measured 4.24:1
+              on the old dark ground — below AA, on an audience that skews older.
+              Ink-muted on paper is 5.2:1, and the underline means colour is not
+              the only thing marking them. */}
           <div className="flex flex-wrap items-center" style={{ columnGap: 'var(--s5, 1.25rem)' }}>
             {[
+              ['/about', 'About'],
               ['/how-it-works', 'How it works'],
               ['/security', 'Security'],
               ['/privacy', 'Privacy'],

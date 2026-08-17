@@ -1,3 +1,13 @@
+> # ⛔ RETIRED 2026-08-16 — SUPERSEDED BY `docs/g1-editorial-lane.md`
+>
+> **Paid advertising is abandoned as a channel for this product.** Steve's ruling, 2026-08-16, after
+> three instruments were measured and all three failed at a cost of $0. Record and reasoning:
+> `PROJECT.yaml` `ratified.retire-paid-advertising`.
+>
+> Nothing in this file should be executed. It is retained because the *creative reasoning* — §1a
+> compliance, the reversibility lead, the price-forward rule, the character-count discipline — is
+> sound and transfers directly to editorial. The **channel** is what died, not the argument.
+
 # G1 ad creatives + flight runbook — paste-ready (drafted 2026-08-07, revised 2026-08-10)
 
 > **Revision 2026-08-10 — read this before using an earlier printout.** The plan was complete on
@@ -439,9 +449,45 @@ Everything below is limited to what is built and live-proven. Nothing here needs
 **Destination:** `https://relaystandby.com/caregivers?src=reddit-ads`
 **Objective:** Traffic · **Format:** **Free-form ad** (the only format that carries body text — §1b)
 **Brand display name:** `Relay` (25-char field) · **CTA button:** `Learn More`
-**Targeting:** audiences of r/AgingParents, r/CaregiverSupport, r/Alzheimers, r/dementia,
-r/eldercare. Interest/community targeting, not subreddit posting — ads are platform-sanctioned and
-do not violate those subs' promotion rules.
+**Targeting:** ~~audiences of r/AgingParents, r/CaregiverSupport, r/Alzheimers, r/dementia,
+r/eldercare~~ — 🔴 **THIS CANNOT BE BOUGHT. Established at the sitting, 2026-08-16.**
+
+> ### 🔴 Reddit does not sell targeting against any caregiver community
+>
+> Attempted live in Ads Manager against a real ad account. `dementia` and `Alzheimers` were
+> **refused outright on ToS** — expected, since a subreddit defined by a diagnosis identifies people
+> by inferred medical status, which is a restricted category (the same principle as §1a). What was
+> *not* expected is that the other three are simply **absent from the targetable index**:
+>
+> | Typed into Community audience | Result |
+> |---|---|
+> | `personalfinance` | r/personalfinance 21.8M · r/FinancialPlanning 985K · r/povertyfinance 2.8M |
+> | `AgingParents` | **No Search Results** |
+> | `CaregiverSupport` | **No Search Results** |
+> | `caregiv` | **No Search Results** |
+> | `eldercare` | r/CircleOfCaregivers — **245 users** · r/politics · r/singapore |
+>
+> The finance query proves the lookup works, so this is the index, not the tooling. The only
+> caregiving community Reddit will sell has 245 members.
+>
+> **Keyword targeting was then tested as the fallback and also failed, on a threshold set before
+> the number was seen** (Steve, 2026-08-16: *"if it stays in the hundreds of millions, keyword
+> targeting is not targeting and we stop there rather than spend"*). With Personal Finance removed,
+> the keyword list cut to nine caregiving terms, no communities and location United States, the
+> audience estimate read **251.2m – 314.1m** — slightly *higher* than the 248.3m–310.4m baseline
+> that had included Personal Finance and twenty-five broad keywords. It also exceeds Reddit's entire
+> US user base while scoped to the US, so the estimator is either ignoring the targeting or the
+> targeting does not narrow delivery. Neither supports spending: we could not predict or verify who
+> received the ad.
+>
+> **What this invalidates.** Screen 7 of `g1-sitting-sheet.md` and row 7 of the walkthrough table
+> below are not executable as written. The lane was designed around five named subreddits and the
+> platform sells none of them — an assumption never checked against the source, which is exactly the
+> failure the 2026-07-05 retrospective rule *"verify the real data/API shape against the source
+> before building"* was adopted to prevent.
+>
+> **Nothing was submitted and nothing spent.** The campaign draft (`G1 caregiver WTP — Reddit lane
+> 1`, Traffic, $25/day) is saved and unlaunched.
 
 ### R1 — the reversibility hook *(lead with this)*
 
@@ -601,7 +647,7 @@ verdict time. Naming: `meta-m1-1080.png`, `meta-m2-1080.png`, `meta-m3-1080.png`
 |---|---|
 | Meta feed (primary) | **1080 × 1080**, 1:1, PNG or JPG |
 | Reddit free-form | **1200 × 628** (1.91:1) or 1080 × 1080 |
-| Colour | Amber on near-black, matched to the landing page so the click-through reads as continuous |
+| Colour | **Warm Archive** — ochre `#b4703a` and deep ink `#1f1b16` on warm paper `#f7f4ee`, matched to the landing page so the click-through reads as continuous. ⚠️ This row read "Amber on near-black" until 2026-08-16, which was the opposite of the destination it claims to match; the palette itself lives in `docs/ad-assets/PROMPTS.md` §1 and `src/app/globals.css`, and is not restated here beyond the three roles |
 | Text in image | Short. The old 20%-text rule is retired, but text-heavy images still get throttled delivery — keep it to one line |
 | Must NOT contain | Stock photos of smiling seniors (the audience is exhausted by them and it reads as insurance marketing); any price other than $119/yr; any testimonial, badge or certification beyond the H0 award |
 | Safe zone | Keep text ≥ 8% from every edge — placements crop differently |

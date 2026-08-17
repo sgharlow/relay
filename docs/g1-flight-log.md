@@ -1,3 +1,15 @@
+> # ⛔ THE FLIGHT NEVER FLEW. Closed 2026-08-16 with every row empty.
+>
+> Paid advertising was abandoned before a single ad served (`PROJECT.yaml`
+> `ratified.retire-paid-advertising`). No money was spent, the window never opened, `caregiver_leads`
+> finished at **0**, and no `caregiver_qualified` event was ever emitted by a paid visitor.
+>
+> **Nothing in this log is a measurement of demand.** It is the record of an instrument that was
+> built, verified alive, and then found to have no traffic it could legitimately buy. The
+> N-counting rules, the exclusion sets and the five-line verdict template are all retained and
+> still correct — the replacement lane in `docs/g1-editorial-lane.md` reports into this same
+> structure, and its per-lane ratio (#4) is how editorial gets read separately.
+
 # G1 flight log — the record the verdict is written from
 
 > Closes item 9 of `g1-launch-checklist.md` ("log window start date + N-counting rules").
@@ -35,17 +47,49 @@
 
 ## What N is, precisely
 
-**N = count of `caregiver_qualified` events whose `src` is gate-qualifying.**
+**N = count of `caregiver_qualified` events whose `src` is a DECLARED PAID LANE.**
 
-A `src` is gate-qualifying when it is tagged, not `direct`, and not in the excluded sets —
-enforced by `isGateQualifyingSrc()` in `src/app/caregivers/content.ts` and pinned by
-`content.test.ts`. It is **not** a matter of dashboard discipline; do not re-derive it by eye.
+> ⚠️ **CHANGED 2026-08-16, ratified by Steve** (`PROJECT.yaml`
+> `ratified.g1-n-is-an-allow-list`). This was *"tagged, not `direct`, and not in the excluded
+> sets"* — a deny-list, which counted anything labelled that nobody had thought to exclude. A
+> newsletter, a launch post, a founding-family link: none carries a priced numerator, so each
+> pushed the ratio one way only, toward the `<0.5%` that kills D2C, **silently**. It is now an
+> allow-list — `GATE_LANES` in `src/app/caregivers/content.ts` — whose failure mode is loud
+> instead: an undeclared lane reads zero on day one, which nobody can miss.
+>
+> Taken before any traffic existed because there is no retroactive version. **Thresholds, the
+> window, the N≥100 stop and both lane definitions are untouched;** this narrows who enters the
+> denominator, not what the gate asks.
+
+Enforced by `isGateQualifyingSrc()` and pinned by `content.test.ts`. It is **not** a matter of
+dashboard discipline; do not re-derive it by eye. The exclusion sets below are now redundant
+rather than load-bearing, and are kept as a second lock and as the record of why each value is
+not audience.
+
+> ### 🔴 LANE 1 CHANGED THE SAME DAY — Reddit out, Google search intent in (2026-08-16)
+>
+> `GATE_LANES` is now **`google-ads`, `meta-ads`**. `reddit-ads` was removed hours after the
+> allow-list shipped, which is the first time the mechanism earned itself: **an unlaunched Reddit
+> campaign draft still exists in the ad account**, and under the deny-list it replaced, its traffic
+> would have counted toward N the instant anybody pressed the wrong button.
+>
+> **Why Reddit closed.** It sells no caregiver targeting. `dementia` and `Alzheimers` are refused
+> on ToS as health-condition targeting; `AgingParents`, `CaregiverSupport` and `caregiv` return
+> *No Search Results* while `personalfinance` returns r/personalfinance 21.8M in the same field.
+> Keyword targeting was tested as the fallback and failed a threshold set before the number was
+> seen — 251.2m–314.1m under US-only scoping. Full evidence: `docs/g1-ad-creatives.md` §Targeting;
+> decision: `PROJECT.yaml` `ratified.g1-lane-1-is-google-search-intent`.
+>
+> **Nothing measured is invalidated, because nothing was measured.** No ad ever served, no money
+> was spent, the window never opened and `caregiver_leads` is at 0. The thresholds, the window, the
+> N≥100 stop and the ratios above are all untouched — only the channel that fills them changed.
 
 | Excluded set | Values | Why |
 |---|---|---|
 | untagged | `direct`, empty | not attributable to a caregiver-targeted channel |
 | `SHOWCASE_SRCS` | `h0-demo`, `h0-home` | real humans, wrong audience — H0-win traffic. Read as a separate secondary segment ("did the tech audience contain caregivers?") |
 | `QA_SRCS` | `qa`, `preflight` | **us.** Instrument verification, not demand |
+| beta | `beta`, and anything starting `beta-` | **recruited, and recruited to the FREE plan.** They land in the denominator and can never reach the priced numerator, so they bias the ratio one way only — toward the `<0.5%` kill. A prefix rather than a list, so a tag nobody has invented yet is still covered. Added 2026-08-16 per `PROMPTS.md` §6, which pre-committed it as a pre-flight blocker the moment beta recruitment revived |
 
 Both sides of the ratio resolve `src` through the same session-parked channel
 (`qualifiedProps` / `intentProps`), so a visitor counts under one label on both sides.
@@ -70,11 +114,44 @@ happens is not recoverable later.
 |---|---|---|---|---|
 | 2026-08-10 | 1 × `caregiver_intent` | `visual-check` | **No** | Pre-flight audit walk. Emitted because a stale channel was parked in the QA browser profile — the asymmetry fixed the same day. Not a lane value, so it filters out of every lane read; recorded because it is in the dashboard. |
 | _(fill)_ | 1 × `caregiver_qualified` | `reddit-ads` | **Yes — subtract 1** | Part-2 verification click (`g1-ad-creatives.md`). Deliberately no intent, so it biases the ratio DOWN, never up. |
+| 2026-08-16 | 1 × `caregiver_leads` row (**no analytics event**) | `qa` | **No** | 🔴 **DELETE BEFORE THE WINDOW OPENS — Steve, sysadmin.** The capture proof below. It affects verdict line 3 (the lead COUNT), not N. `npm run flight:snapshot` exits 1 until it is gone, so it cannot be forgotten. |
+
+### ✅ 2026-08-16 — the demand-capture write, proven under the production role
+
+The last unproven link in the path that produces verdict lines 3 and 4. `verify:roles` confirmed
+`relay_app` **holds** `INSERT` on `caregiver_leads` in both regions, but `verify:live` runs as
+`relay_dev`, which by construction cannot exercise that one write — so the grant was verified and
+the path was not. A grant read from a catalog is not a row written by an application.
+
+One submission through the live API on production, `src=qa` (gate-excluded, so no analytics event
+was emitted and the ratio cannot be touched):
+
+| | |
+|---|---|
+| `POST /api/caregivers/interest` | **200** `{"ok":true}` |
+| Row in `caregiver_leads` | present — `src=qa`, `cta=capture-proof` |
+| `notified` | **true** — Resend accepted the notification, so **both** legs of the deliberately-paired capture work |
+| Guard behaviour | `flight:snapshot` went from exit 0 to **exit 1**, naming the row |
+
+🔴 **Outstanding, and it is a sysadmin act:** the row must be deleted before the first ad serves.
+
+```sql
+DELETE FROM caregiver_leads WHERE email = 'g1-capture-proof@example.com';
+```
+
+Run it from `.env.admin`. `relay_dev` cannot — `caregiver_leads` is the one table it may read and
+not write, which is the same property that made this proof necessary.
 
 ## Daily snapshot
 
 Fill one row per day. Numbers come from Vercel Analytics → Events and a `caregiver_leads`
 count; do not carry a number forward from the previous row.
+
+**`npm run flight:snapshot`** prints the row ready to paste — the lead count, which channels the
+leads came from, and **the notes quoted**, which verdict line 4 expects to carry the decision on a
+directional read. It leaves the two analytics cells marked for the human reading the dashboard, on
+purpose: a second path to N would be a second definition of the number this gate turns on. It is
+read-only and connects as `relay_dev`, which cannot write `caregiver_leads`.
 
 | Day | Date | Spend to date | Qualified (N) | Lane-A intents | Lane-B intents | Leads | Lane-A ratio | Notes |
 |---|---|---|---|---|---|---|---|---|

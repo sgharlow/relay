@@ -38,7 +38,8 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 
-import { PRICE_YEARLY_USD } from '../../src/app/caregivers/content';
+import { PRICE_YEARLY_USD, SECONDARY_CTA_LABEL } from '../../src/app/caregivers/content';
+import { TIER_LIMITS } from '../billing/entitlements';
 import { GUARANTEE_LABEL } from '../offer';
 
 const DOC = 'docs/g1-ad-creatives.md';
@@ -261,6 +262,197 @@ describe('the image palette is really taken from the product', () => {
         `nowhere in globals.css, icon.svg or opengraph-image.tsx: ${invented.join(', ')}. ` +
         `An ad generated from an invented colour cannot match the page it lands on.`,
     ).toEqual([]);
+  });
+
+  /*
+    ⚠️ THE HEX CHECK ABOVE PASSED ON PROMPTS THAT WOULD HAVE PRODUCED DARK ADS.
+
+    The 2026-08-15 migration to Warm Archive swapped the hexes and left the
+    ENGLISH alone, so five blocks shipped reading, verbatim, "on a deep
+    near-black slate surface (#f7f4ee)" — a near-white hex introduced by the
+    words "near-black slate". The guard above reads `#f7f4ee` and is satisfied.
+    An image model reads the sentence, and the sentence wins: it would have
+    rendered a dark, moody plate for a warm, LIGHT landing page — the exact
+    mismatch `ratified.d5` was decided to end, arriving through the one door the
+    new check did not cover.
+
+    That is this repo's recurring shape (`feedback-my-own-check-measured-the-
+    wrong-thing`): the guard was proven by planting a wrong HEX, which is the
+    half that was already right. These three assertions read the prose, because
+    the prose is what the model obeys.
+
+    They are deliberately narrow. Ink IS near-black and ochre IS warm — "deep
+    ink-dark brushed metal (#1f1b16)" and "near-black ink (#1f1b16)" are correct
+    descriptions of dark SUBJECTS on a light ground, and both must keep passing.
+    What cannot be true of any current creative is a dark GROUND.
+  */
+  const blocks = [...prompts.matchAll(/```[\s\S]*?```/g)].map((m) => m[0]);
+
+  /** Every Warm Archive colour that is LIGHT. A dark word in their sentence is a contradiction. */
+  const LIGHT_HEXES = ['#f7f4ee', '#fffdf9', '#efeae0', '#f6ead9'];
+  const DARK_WORD = /\b(dark|darker|darkest|near-black|charcoal|slate|midnight|navy)\b/i;
+  /** What a prompt calls the surface the subject sits on. */
+  const GROUND_NOUN = /\b(background|backdrop|ground|field|surface|margin|plate|backdrop)\b/gi;
+
+  it('no sentence describes a light colour in dark words', () => {
+    const contradictions: string[] = [];
+    for (const block of blocks) {
+      for (const sentence of block.split(/(?<=\.)\s+/)) {
+        if (!LIGHT_HEXES.some((h) => sentence.toLowerCase().includes(h))) continue;
+        const dark = sentence.match(DARK_WORD);
+        if (dark) contradictions.push(`"${dark[0]}" beside a light hex — ${sentence.trim()}`);
+      }
+    }
+    expect(
+      contradictions,
+      `A prompt cites a LIGHT Warm Archive colour in a sentence that calls it dark. The hex ` +
+        `check passes and the generated image is still wrong, because the model reads the ` +
+        `words:\n\n${contradictions.join('\n\n')}`,
+    ).toEqual([]);
+  });
+
+  it('no prompt sets a dark ground', () => {
+    const grounds: string[] = [];
+    for (const block of blocks) {
+      for (const m of block.matchAll(GROUND_NOUN)) {
+        // The three words immediately before the noun are what qualify it.
+        const before = block.slice(Math.max(0, m.index - 40), m.index).split(/\s+/).slice(-3);
+        if (before.some((w) => DARK_WORD.test(w))) {
+          grounds.push(`"${before.join(' ')} ${m[0]}"`);
+        }
+      }
+    }
+    expect(
+      grounds,
+      `The ground of every current creative is warm paper (#f7f4ee) — that is what "match the ` +
+        `destination" means. These prompts set a dark one: ${grounds.join(', ')}. Note that a ` +
+        `DARKER element ON paper is fine and passes ("a faint darker grid … in the background"); ` +
+        `what fails is dark qualifying the ground itself.`,
+    ).toEqual([]);
+  });
+
+  it('no prompt uses the retired direction by name', () => {
+    /*
+      `slate` is the retired palette's own name — this file says so twice, in
+      red: "not the retired slate", "The slate in these prompts was never an art
+      direction — it was un-migrated legacy." Nothing in Warm Archive is slate.
+
+      `dark mode` and `dark, moody` are whole-image directions rather than a
+      single colour, so they survive any hex swap. The brand HAS a sanctioned
+      dark (relay-mark-inverse.svg) and no current creative uses it; if one ever
+      does, it cites that file and this list is what gets amended, deliberately.
+    */
+    const retired = [/\bslate\b/i, /\bdark[- ]mode\b/i, /\bdark,\s*moody\b/i];
+    const used: string[] = [];
+    for (const block of blocks) {
+      for (const pattern of retired) {
+        const hit = block.match(pattern);
+        if (hit) used.push(hit[0]);
+      }
+    }
+    expect(
+      used,
+      `A prompt block names the retired slate-and-amber direction: ${used.join(', ')}. ` +
+        `PROMPTS.md's own correction note calls it "un-migrated legacy from before the Warm ` +
+        `Archive system existed".`,
+    ).toEqual([]);
+  });
+});
+
+/*
+  THE FREE-PLAN CAP IS A LIVE CONTRACT RESTATED ELEVEN TIMES, AND NOTHING TIED
+  ANY OF THEM TO IT.
+
+  `TIER_LIMITS.free.items` is the number the product actually enforces —
+  assertWithinItemCap refuses the import and says "The free plan holds N items".
+  That number is hand-copied into six places in `g1-ad-creatives.md`, four in
+  `PROMPTS.md` §3, and into `SECONDARY_CTA_LABEL`, which is the landing page the
+  ads point at.
+
+  Both documents already know this is a hazard and both answered it with a
+  convention. PROMPTS.md §3: "verify three things against the source and not
+  against this file — TIER_LIMITS.free ... Both numbers below are read from
+  there at time of writing and BOTH HAVE MOVED BEFORE." §0 of the same file
+  refuses to bake a cap into a PNG because "the caps are a live contract".
+  A convention is what you write when a structure is unavailable; here one is
+  available, and this is it — the same treatment `$119` already gets above.
+
+  What makes this worth a test rather than a note is the direction of the
+  damage. Recipients moved 1 -> 4 once already. If items moves, a running ad
+  promises a number the product refuses, the visitor meets the refusal at
+  import time, and nothing anywhere notices — the ad keeps serving.
+
+  TWO EXCLUSIONS, both deliberate and both narrow:
+
+  1. Lines carrying ❌ are the §1b overflow audit — a table of drafts that were
+     REJECTED, recorded with their measured character counts. Editing a number
+     inside a discarded string would falsify the record of why it was discarded.
+  2. M3's "the 8 accounts a family would need first" is a suggested SEED SIZE,
+     not a cap. It is the reason this check cannot simply assert that every
+     number beside "accounts" is the cap, and it is named here rather than
+     dodged by a looser regex, so a future reader can see the exception is one
+     line long.
+*/
+describe('the free-plan cap in the ads is the one the product enforces', () => {
+  const CAP = TIER_LIMITS.free.items;
+
+  const WORD_NUMBERS: Record<string, number> = {
+    one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7,
+    eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, fifteen: 15, twenty: 20,
+  };
+
+  /** A seed-size suggestion, not an entitlement. The only non-cap count in either file. */
+  const NOT_A_CAP = /the 8 accounts a family would need first/;
+
+  const CLAIM = /\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty)[ -](accounts|items)\b/gi;
+
+  function claimsIn(label: string, text: string): { where: string; stated: number; phrase: string }[] {
+    const out: { where: string; stated: number; phrase: string }[] = [];
+    text.split(/\r?\n/).forEach((line, i) => {
+      if (line.includes('❌')) return; // the overflow audit — records of rejected drafts
+      if (NOT_A_CAP.test(line)) return;
+      for (const m of line.matchAll(CLAIM)) {
+        const raw = m[1].toLowerCase();
+        out.push({
+          where: `${label}:${i + 1}`,
+          stated: /^\d+$/.test(raw) ? Number(raw) : WORD_NUMBERS[raw],
+          phrase: m[0],
+        });
+      }
+    });
+    return out;
+  }
+
+  it('every free-plan cap written into ad copy matches TIER_LIMITS.free.items', () => {
+    const claims = [
+      ...claimsIn(DOC, md),
+      ...claimsIn('docs/ad-assets/PROMPTS.md', readFileSync('docs/ad-assets/PROMPTS.md', 'utf8')),
+    ];
+
+    // Vacuity guard: if the phrasing changes so nothing matches, this check has
+    // quietly stopped checking. The claims are numerous and are not going away.
+    expect(claims.length, 'no free-plan cap claims found — has the matcher gone blind?').toBeGreaterThan(5);
+
+    const wrong = claims.filter((c) => c.stated !== CAP);
+    expect(
+      wrong,
+      `TIER_LIMITS.free.items is ${CAP}, and the product says so to the visitor's face ` +
+        `("The free plan holds ${CAP} items"). These ad claims say something else: ` +
+        `${wrong.map((c) => `${c.where} "${c.phrase}"`).join(', ')}. A running ad promising a ` +
+        `cap the product refuses is discovered by the customer, at import time.`,
+    ).toEqual([]);
+  });
+
+  it('the landing page the ads point at states the same cap', () => {
+    /*
+      PROMPTS.md §6 open item 2: "F1 states the free on-ramp in the ad; the
+      destination should confirm it, or the click bounces on a promise the page
+      does not repeat." It does confirm it — this pins that it keeps doing so,
+      and with the right number.
+    */
+    const m = SECONDARY_CTA_LABEL.match(CLAIM);
+    expect(m, `SECONDARY_CTA_LABEL no longer states the free cap: "${SECONDARY_CTA_LABEL}"`).not.toBeNull();
+    expect(SECONDARY_CTA_LABEL).toContain(`${CAP} items`);
   });
 });
 

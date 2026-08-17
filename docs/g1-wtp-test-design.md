@@ -1,3 +1,19 @@
+> # ⚠️ THE QUESTION SURVIVES; THE INSTRUMENT DOES NOT — 2026-08-16
+>
+> This design specifies a **paid-traffic** WTP test: N ≥ 100 qualified visitors bought through
+> ratified channels, measured as click-to-intent against a price. Paid advertising is abandoned
+> (`PROJECT.yaml` `ratified.retire-paid-advertising`), so **the instrument described here cannot be
+> run** — not because it is wrong, but because no channel will sell the audience it needs.
+>
+> **What still stands:** the question (will caregivers pay, at a real price, having seen the
+> number), the exclusion logic, the ratio definitions and the amendment about directional reads.
+>
+> ⚠️ **What does NOT transfer: the thresholds.** 2% click-to-intent and N ≥ 100 were calibrated
+> against *bought clicks*. Editorial readers arrive having read a whole article about the problem
+> and are a different population with a different expected conversion rate. Re-deriving those
+> numbers for the new instrument is an open task, recorded on the gate itself — do not carry 2%
+> across and pretend it means the same thing.
+
 # G1 caregiver WTP test — design (FULLY RATIFIED by Steve 2026-07-03)
 
 > Instrument built 2026-07-03 on branch `exp/g1-caregiver-landing` (Story R2/R3, in-lock relay

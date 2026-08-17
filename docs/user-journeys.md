@@ -160,8 +160,24 @@ asserts the count so it cannot drift.
   control now sits beside the interval field, and names what it stood down rather than only
   confirming a button worked. The reversal is also reachable from the trigger card. What remains
   under J5 is retention, not the control.
-- **J9 steps 5–7** — reversal receipt, re-arm confirmation, thank-you-the-recipient — remain
-  unbuilt. Step 4 now carries the emotional weight these were meant to share.
+- ~~**J9 steps 5–7** — reversal receipt, re-arm confirmation, thank-you-the-recipient — remain
+  unbuilt.~~ **DROPPED 2026-08-16, by decision rather than by deferral.** Recorded in `PROJECT.yaml`
+  `ratified.j9-5-7-dropped`.
+
+  The sentence that followed them here was always the answer: *"Step 4 now carries the emotional
+  weight these were meant to share."* Step 4, the graceful close, was **built 2026-08-08 and
+  live-proven** — a recipient whose access has closed sees what the vault did on their behalf,
+  which items they opened, that the unopened ones are on the owner's record, and a thank-you. The
+  payoff moment of the product's differentiator exists and works.
+
+  5–7 were therefore never gaps in an incomplete journey; they were enhancements to a complete one,
+  and this section says so in its own heading — *"Known gaps that are NOT defects"*. They were
+  deferred in sprints 4 and 5, and sprint 5 wrote **"do not carry it a third time"**. It was carried
+  a third time. Deciding it is what stops a fourth.
+
+  Reopening is legitimate if a real user completing a stand-down reports the close feeling abrupt.
+  That is a signal from a person, not a backlog item, and nothing in the architecture makes it
+  harder to add later than it is today.
 - **J4's invitation email path** and **J8's ephemeral-reveal refinements** are untouched.
 
 ---
