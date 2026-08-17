@@ -85,3 +85,35 @@ describe('the invitation surface is delivery-arm neutral', () => {
     }
   });
 });
+
+describe('the claim error state is not a dead end', () => {
+  /*
+    🔴 IT WAS ONE UNTIL 2026-08-16, on the path where a dead end costs most.
+    A person who mistyped one character of a code shaped like 4KMPQ-7XR2W got a
+    message, no retry control, no link out, and the browser back button — which
+    they had to think of. They give up SILENTLY: an abandoner sends no signal, so
+    the failure is indistinguishable from nobody wanting it.
+
+    Hard-priority ladder item 4 in the sprint rules — "a user journey that dead
+    -ends" — which is why it jumped a higher-scored copy item.
+  */
+  const src = () => readFileSync(CLAIM, 'utf8');
+
+  it('offers a way back to the code form', () => {
+    const s = src();
+    expect(s, 'the error branch needs a control that clears the token').toMatch(/setToken\(null\)/);
+    expect(s, 'and it has to be labelled for a person, not a developer').toMatch(/Try the code again/i);
+  });
+
+  it('gives a human to contact, as a link rather than prose', () => {
+    // "or ask us." was plain text with nothing to click.
+    expect(src()).toMatch(/CONTACT_MAILTO/);
+  });
+
+  it('does not call it a link — most people arriving here typed a code', () => {
+    // The emailed invitation is deliberately bare and carries no credential, so
+    // "we couldn't open that link" described something they never used.
+    const withoutComments = src().replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    expect(withoutComments).not.toMatch(/couldn&rsquo;t open that link/i);
+  });
+});
