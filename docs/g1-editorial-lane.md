@@ -148,9 +148,19 @@ npx tsx -e "import('./lib/g1/press-kit').then(k => console.log(k.boilerplate(), 
 
 ## Sequence
 
-1. **Read the contributor guidelines** for Next Avenue, Senior Planet, AgingCare and DailyCaring.
-   Record what each accepts, from whom, and their disclosure rules. *This is the gate on everything
-   below.*
+1. ~~**Read the contributor guidelines** for Next Avenue, Senior Planet, AgingCare and
+   DailyCaring.~~ ✅ **DONE 2026-08-16 — `docs/g1-outlet-dossier.md`**, read from the primary
+   sources. It changed the plan:
+   - **caregiver.com is the first target** — open door, named contact, 500–1500 words, and angle 3
+     fits its stated topics of practical solutions, eldercare and preparedness.
+   - **Next Avenue is CLOSED.** *"Next Avenue is not accepting pitches for new stories."* It was
+     ranked second by fit in this file; it is not available. Removed.
+   - **AgingCare publishes no submission route** at all — a relationship play, not a submission.
+   - **DailyCaring's route is unverified** — its guest page 404s. Confirm before emailing.
+   - 🔴 **AARP: *"If you send us a pitch that is plagiarized or A.I.-generated, your email address
+     will be blacklisted and blocked."*** Permanent, and attached to the address rather than the
+     pitch. AARP also wants links to recent writing samples and *"rarely uses unsolicited ideas"* —
+     so it is a **second-round target after a first byline exists**, not the opening move.
 2. Draft angle 3 first — it is the most useful to a reader and the least promotional.
 3. Pitch two outlets. Do not mass-pitch; these are relationships.
 4. On acceptance: declare the `ed-` src in `GATE_LANES`, publish, and log the placement.
