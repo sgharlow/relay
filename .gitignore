@@ -70,3 +70,9 @@ e2e-*.png
 # Sysadmin profile pointer for migrations. Holds NO secrets (AWS_PROFILE only),
 # but never commit it regardless.
 .env.admin
+
+# Beta cohort input and the issued claim codes. REAL PEOPLE and LIVE CREDENTIALS —
+# the codes are readable exactly once at issue, so .relay-cohort-codes.json is the
+# only copy. Never commit either. See scripts/invite-cohort.ts.
+.relay-cohort.json
+.relay-cohort-codes.json
