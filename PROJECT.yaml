@@ -326,6 +326,73 @@ gates:
         asking for estate/inheritance specifically; (c) G1 passing, at which point
         there is revenue to fund the opinion and a reason to want it. Until one of
         those, this stays closed and does not reappear at /daily-priority."
+  # ⚠️ PROPOSED 2026-08-18 BY CLAUDE — NOT RATIFIED, NOT IN FORCE.
+  #
+  # Why it exists at all: the amendment at the top of this section ratified on
+  # 2026-08-16 that G3 RUNS IN PARALLEL with G1 rather than after it. Two days
+  # later `gates:` still held only G1 and the closed G2, and the whole B2B2C half
+  # of the strategy lived in prose — a comment above, ratified.retire-paid-
+  # advertising's `chain_change`, and g1-arms-length-demand's list of routes that
+  # might produce the first person. Prose is not a schedule. This section's own
+  # header says what that costs: 'A dead precondition does not stop work; it stops
+  # work being SCHEDULED, silently, which is worse.' A ratified lane with no gate
+  # is the same defect arrived at from the other direction, and the reassessment
+  # of 2026-08-18 found it by reading this file against its own amendment.
+  #
+  # 🔴 EVERY NUMBER BELOW IS A DERIVATION FOR STEVE TO ACCEPT, CHANGE OR REJECT,
+  # exactly as g1-arms-length-demand's date began before he confirmed it. Record
+  # the ruling in place when it is made. Do not leave it standing as a draft: a
+  # proposed gate nobody rules on is indistinguishable from the silence it was
+  # written to end.
+  - id: g3-b2b2c-pilot-loi
+    status: "PROPOSED — awaiting Steve's ratification. Drafted 2026-08-18."
+    metric: "signed pilot agreement or letter of intent from ONE distribution partner — a benefits
+      broker, credit union, employer benefits provider or wealth manager — to put Relay in front of
+      their members, employees or clients."
+    target: "1"
+    kill: "zero partner MEETINGS taken by the date below -> the B2B2C branch that G1's own kill
+      condition routes to is closed as well, and the disposition becomes an explicit park-or-archive
+      decision recorded here."
+    owner: steve
+    due: 2026-11-30
+    leading_indicator: "meetings taken, logged as they happen. ⚠️ Note what the kill is measured on:
+      MEETINGS, not LOIs. Whether an interested partner signs inside a window is their procurement
+      calendar's answer, not evidence about Relay. Being unable to get a meeting at all IS evidence,
+      and it is the finding this gate can honestly own."
+    why_the_date: "DERIVED, NOT AGREED. It is the last date that still leaves the parallel claim
+      true: G1's editorial instrument plausibly produces a first placement mid-October to mid-
+      November (g1-arms-length-demand's own derivation), and a lane that only starts once that
+      lands is sequential in everything but name. 11-30 sits before G1's 12-31 so the two verdicts
+      arrive close enough to be read together. Move it with a `moved:` block and a reason, exactly
+      as G1 was moved twice — never silently.
+      ⚠️ The date binds the RECORD, not Steve. If this is still unratified on 2026-11-30,
+      lib/ops/gates.test.ts fails the suite and forces the decision. That is the intended
+      behaviour of proposing a gate rather than leaving the lane in prose."
+    why_it_is_separate_from_g1: "ratified.retire-paid-advertising states it and it is worth
+      restating where it can be acted on: op-eds are an EARNED AWARENESS channel and B2B2C is a
+      DISTRIBUTION model. The first supplies the standing that gets the second a meeting. They are
+      two measurements and reporting one as the other is how a gate stops meaning anything. A
+      published byline is not a pilot; a pilot conversation that came from a byline still counts
+      here, not there."
+    inherits_from_g2: "G2 is CLOSED, NOT SATISFIED, and this gate starts from 'no legal opinion
+      exists'. A regulated partner's diligence asks the questions the opinion would have answered
+      (docs/g2-counsel-brief.md Q1, Q3, Q11), and 'we did not look' is a worse answer than an
+      adverse opinion. This is not a reason to delay the conversation — g2's own `revisit:` trigger
+      (a) is exactly this conversation happening, and counsel then gets funded out of a real
+      opportunity rather than ahead of one. Go in knowing the questions are coming."
+    what_does_not_count: "a friendly introductory call with no discussion of putting Relay in front
+      of their people. An advisor, a mentor or an investor. A partner who wants the estate product,
+      which was narrowed out permanently. And — the employer-anonymity rule applies with full force
+      — nothing routed through the day job, in either direction.
+      ⚠️ It also does not count toward g1-arms-length-demand. A partner signing a pilot is a
+      DISTRIBUTION signal; that gate wants a PERSON who pays or says in writing they would. If a
+      pilot later produces such a person, they count there, on their own evidence."
+    first_targets: "OPEN — Steve's to name. Two specific organisations, not two categories: the
+      dossier work on outlets showed that a named contact and a published route are what turn a
+      plan into an action, and the same is true here."
+    ratify_by: "2026-09-01, the date G1's own revisit begins, so both lanes come up in the same
+      /daily-priority rather than one being remembered and the other not."
+    revisit: "at every /daily-priority from 2026-09-01, alongside g1-arms-length-demand."
 
 market:
   competitors_doc: docs/COMPETITORS.md   # authored 2026-07-01; PRICES RE-VERIFIED 2026-08-18
