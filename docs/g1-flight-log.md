@@ -276,3 +276,27 @@ because each one would have distorted the number this file exists to produce.
 All three landed with tsc + lint + build clean and the suite green. Derive the count with
 `PROJECT.yaml: derived.test_count` — a number written here would be wrong within a week, which
 is the whole reason that field exists.
+
+---
+
+## Editorial pre-flight — PASSED 2026-08-18, before any placement exists
+
+`docs/g1-editorial-lane.md` §Sequence step 5 requires both instrument checks before the first
+editorial piece goes live. Run today, on the branch, against production. **This is the same
+structure the paid flight used** — the banner at the top of this file says the editorial lane
+reports in here, and this is the first entry that does.
+
+| Command | Exit | What it observed |
+|---|---|---|
+| `npm run verify:funnel` | **0** | 7/7. `caregiver_qualified {"src":"qa"}` → priced CTA → `caregiver_intent {"src":"qa","cta":"hero"}`; both events agree on `src`, so the ratio is computable. Structural guard held: the script asked `isGateQualifyingSrc` and confirmed `qa` is gate-excluded before driving. |
+| `npm run flight:snapshot` | **0** | Connected as `relay_dev`, SELECT only. Window not started, `caregiver_leads` **0 rows** — the editorial lane starts from zero, as it must. |
+
+⚠️ **Which lane each proof covers, because they are not the same click.** Today's run exercised the
+**hero** CTA (`cta=hero`) into `/caregivers/interest` — Lane A. The **Stripe branch** (`cta=start`,
+Lane B) was live-proven separately on 2026-08-14, recorded in *Step 5* above. Both lanes have now
+fired a real `caregiver_intent` in a real browser; neither proof substitutes for the other, and a
+future reader wanting "is the numerator alive" needs both entries rather than whichever is nearer.
+
+**What this does NOT establish.** Nothing about demand. `caregiver_leads` is 0 and no editorial
+traffic exists yet. It establishes only that the instrument reports correctly on the day the first
+placement lands, which is the one thing that cannot be checked retroactively.
