@@ -50,13 +50,33 @@ pulling in opposite directions:
 Cumulative-across-placements is deliberate: the unit being judged is the *instrument* (editorial),
 not any single outlet. Per-outlet reads stay in the flight log for channel selection.
 
-## Pre-flight requirement — the numerator must be live-proven first
+## Pre-flight requirement — ✅ SATISFIED 2026-08-18, both lanes
 
-`caregiver_intent`'s Stripe branch is pinned by `lane-b.test.ts` but has never fired on a real
-click (MEMORY: "Lane-B numerator NOT live-proven"). Before the first placement goes live, run the
-corrected two-part verification from the flight log: part 1 gate-safe (`QA_SRCS`), part 2 exactly
-one recorded real click. An instrument that has never emitted its numerator measures nothing, and
-discovering that after publication would burn the placement.
+> 🔴 **CORRECTED 2026-08-18, and the correction is left visible rather than tidied away.**
+> This section originally read *"`caregiver_intent`'s Stripe branch is pinned by `lane-b.test.ts`
+> but has never fired on a real click"*, citing MEMORY. **That was false when written.** The
+> flight log had recorded the Lane-B live proof four days earlier, and I quoted a memory note
+> instead of deriving it from the log of record — the exact drift this repo's own rules exist to
+> prevent, committed inside a document asking for ratification. Had it stood, it would have sent
+> Steve to re-run a proof already in hand, and cast doubt on an instrument that is working.
+> `lib/ops/editorial-preflight-claims.test.ts` now fails if this claim ever returns.
+
+Both lanes have fired a real `caregiver_intent` in a real browser. They are **different clicks**,
+and neither proof substitutes for the other:
+
+| Lane | Click | Proven | Recorded in |
+|---|---|---|---|
+| **Lane B** | price card → Stripe (`cta=start`, session came back `cs_live_…`) | 2026-08-14 | `g1-flight-log.md` → *Step 5* |
+| **Lane A** | hero CTA → `/caregivers/interest` (`cta=hero`) | **2026-08-18** | `g1-flight-log.md` → *Editorial pre-flight* |
+
+The 2026-08-18 run also confirmed the denominator and the guard: `caregiver_qualified {"src":"qa"}`
+fired, both events agreed on `src` so the ratio is computable, and `verify:funnel` refused to drive
+until `isGateQualifyingSrc` confirmed `qa` was excluded. `flight:snapshot` read `caregiver_leads` at
+**0 rows** — the editorial lane starts from zero.
+
+**So nothing is outstanding here before the first placement.** Re-run `npm run verify:funnel` on the
+day a piece actually publishes — it is cheap, and the risk it covers is that the instrument dies
+between now and then, not that it is dead today.
 
 ## What ratification looks like
 
