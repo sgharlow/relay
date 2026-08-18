@@ -372,6 +372,17 @@ async function main(): Promise<void> {
     const irr = await owner.patch(`/api/vault/items/${photosId}`, { owner_set_irreplaceable: true });
     check('the owner marks the photos irreplaceable (034)', irr.status === 200, `HTTP ${irr.status}`);
 
+    /*
+      Declared on the item that HOLDS a code, deliberately (035, wired
+      2026-08-18). It demonstrates the control in its answered state while
+      leaving the standing statement's arithmetic intact — the plan still works,
+      because the second factor is stored. Declaring it on the password-only
+      bank item would also be true, and would make every owner screenshot argue
+      about a blocked item rather than show the feature.
+    */
+    const factors = await owner.patch(`/api/vault/items/${emailId}`, { factors_required: ['totp'] });
+    check('the owner says the email account also asks for a code (035)', factors.status === 200, `HTTP ${factors.status}`);
+
     // ── 3. The circle: Sarah stands by, Dr Patel verifies ─────────────────
     const rec = await owner.post('/api/recipients', {
       name: 'Sarah Chen', email: sarah.email, relationship: 'child', phone: null, role: 'recipient',

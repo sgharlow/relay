@@ -45,24 +45,24 @@
 
 <h1>Relay — Functional Use Cases</h1>
 <p class="sub">Test evidence for beta readiness. Every screenshot below was produced against the
-<b>production database</b> (Aurora DSQL, both regions) — most in the 2026-08-17 reshoot, driven by
+<b>production database</b> (Aurora DSQL, both regions) — most in the 2026-08-18 reshoot, driven by
 <code>scripts/capture-screens.ts</code> against the production cluster; the remainder from the
 2026-08-12/13 production walks whose screens have not changed since.</p>
 
 <div class="meta">
-  <div><b>Build</b> <code>master</code> @ <code>e50a68a</code> + the 2026-08-17 working set (secret
-    types Phase&nbsp;0, owner-set irreplaceable, backup notes). Re-derive before trusting: the
+  <div><b>Build</b> <code>sprint/2026-08-18-1</code> @ <code>f9beccb</code> — secret types Phase&nbsp;0 and
+    Phase&nbsp;1, owner-set irreplaceable, backup notes. Re-derive before trusting: the
     commands live in <code>PROJECT.yaml → derived</code>.</div>
-  <div><b>Suite</b> 2656 passed / 1 skipped across 240 files (2026-08-17) · typecheck, lint and build clean</div>
+  <div><b>Suite</b> 2671 passed / 1 skipped across 242 files (2026-08-18) · typecheck, lint and build clean</div>
   <div><b>Environment</b> Production data — Vercel, Aurora DSQL (us-east-1 / us-west-2), AWS KMS</div>
   <div><b>Method</b> One purpose-built circle, staged through the product&rsquo;s own APIs and walked
-    <b>end to end in sequence</b> rather than screen by screen. The 2026-08-17 reshoot
-    (<code>scripts/capture-screens.ts</code>, 16/16 assertions) built the Chen circle — a structured
+    <b>end to end in sequence</b> rather than screen by screen. The 2026-08-18 reshoot
+    (<code>scripts/capture-screens.ts</code>, 17/17 assertions) built the Chen circle — a structured
     secret with a live TOTP seed, a claimed and confirmed recipient, a claimed and confirmed
     verifier, an active helper with a recorded consent — fired a real emergency, had the verifier
     confirm it, opened the plan, pressed Reveal, and checked back in. Each screenshot is the state
     the previous action produced. The four release walks (<code>npm run verify:live</code>) passed
-    70/70 the same day, and the claim path was additionally verified in a real browser against
+    70/70 on 2026-08-17, and the claim path was additionally verified in a real browser against
     relaystandby.com itself.</div>
   <div><b>Data handling</b> All fixtures deleted afterwards; production returned to its baseline
     accounts with zero orphaned rows.</div>
@@ -109,6 +109,7 @@
     <tr><td>UC-35</td><td>Judge the product without an account</td><td>Visitor</td><td class="pass">Pass</td></tr>
     <tr><td>UC-36</td><td>Store more than a password — and have it open usable</td><td>Owner &amp; recipient</td><td class="pass">Pass</td></tr>
     <tr><td>UC-37</td><td>Say what cannot be replaced, and leave a note</td><td>Owner</td><td class="pass">Pass</td></tr>
+    <tr><td>UC-38</td><td>Say whether an account also asks for a code</td><td>Owner</td><td class="pass">Pass</td></tr>
   </tbody>
 </table>
 
@@ -595,9 +596,22 @@
   <div class="row"><span class="k">Actor</span><span>Owner</span></div>
   <div class="row"><span class="k">Goal</span><span>Tell the product — and the person who will step in — two things only the owner knows: which items are irreplaceable, and what a stranger to the account would need to know to use it.</span></div>
   <div class="row"><span class="k">Expected</span><span>Two owner overrides on every vault item (migration&nbsp;034 + backup notes, 2026-08-17): &ldquo;Cannot be replaced?&rdquo; marks an item whose loss is permanent — a photo archive, not a streaming login — and a plain-language note travels with the item to whoever opens it. The vault&rsquo;s &ldquo;Worth a second look&rdquo; box turns these into custody-risk advice: an irreplaceable item with no backup note is called out by name.</span></div>
-  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Both set through the product&rsquo;s API against the production cluster (2026-08-17); the vault rendered the &ldquo;Cannot be replaced&rdquo; state and the custody-risk call-out (&ldquo;This item is irreplaceable and has no backup note&hellip;&rdquo;), and the note reached the recipient&rsquo;s access view. ⏳ One honest caveat: the deeper three-state reachability rule (&ldquo;usable / blocked / unknown&rdquo; per secret kind) is written and tested but inert until migration&nbsp;035 is applied — until then preparedness counts an access rule as reachability, exactly as before.</span></div>
+  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Both set through the product&rsquo;s API against the production cluster (2026-08-17); the vault rendered the &ldquo;Cannot be replaced&rdquo; state and the custody-risk call-out (&ldquo;This item is irreplaceable and has no backup note&hellip;&rdquo;), and the note reached the recipient&rsquo;s access view. ✅ <b>The caveat printed here on 2026-08-17 — that the three-state reachability rule was written but inert — no longer applies:</b> migration&nbsp;035 was applied to both regions on 2026-08-18 and the columns were wired the same day. See UC-38.</span></div>
 </div>
 <figure><img src="../public/guide/screens/uc01-owner-vault.png" alt="Vault with custody risk"><figcaption>UC-37 — the owner&rsquo;s own knowledge, recorded where the plan can use it.</figcaption></figure>
+</section>
+
+<!-- UC-38 -->
+<section class="uc">
+<h2>UC-38 — Say whether an account also asks for a code</h2>
+<div class="card">
+  <div class="row"><span class="k">Actor</span><span>Owner</span></div>
+  <div class="row"><span class="k">Goal</span><span>Stop the product overstating. A password for an account protected by two-factor is a locked door, and the standing statement used to count it as a way in.</span></div>
+  <div class="row"><span class="k">Expected</span><span>Two declarations the server cannot make for itself. The <b>browser</b> records what it just encrypted (<code>secret_kinds</code>) — it is the only party that can, since the server never sees plaintext. The <b>owner</b> records what the account demands at the door (<code>factors_required</code>), through a control on each vault row that cycles <i>Needs a code?</i> → <i>Needs a code</i> → <i>Password is enough</i> → unasked. Three states throughout, and <i>never asked</i> is not <i>demands nothing</i>: an undeclared vault must read exactly as it did before the feature existed, because telling every owner on the same afternoon that their finished plan is unfinished would destroy the signal permanently.</span></div>
+  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Live-proven 10/10 against the production cluster (<code>npm run verify:factors</code>, 2026-08-18): the browser&rsquo;s declaration stored and returned by a read, the owner&rsquo;s answer round-tripped, an unrecognised factor refused <code>400</code> rather than silently narrowed, the answer revocable back to never-asked — and the measurement that matters, <b>an item counted reachable before the declaration and not after it</b>. A defect was found and fixed while wiring: an untouched two-factor box had been declaring that the item held a code, which would have restored the original falsehood inside its own fix.</span></div>
+  <div class="row"><span class="k">Limits</span><span>Stated rather than implied. It asks about <b>authenticator codes only</b> — the one demand a vault can actually satisfy, since a stored seed or recovery codes answer it while an SMS message or a hardware key cannot be put in a vault at all. Existing items read <i>unknown</i> until re-saved: the server cannot read ciphertext, so nothing can ever backfill what an item holds.</span></div>
+</div>
+<figure><img src="../public/guide/screens/uc01-owner-vault.png" alt="The declaration control"><figcaption>UC-38 — &ldquo;Needs a code&rdquo; answered on the email account, unasked on the rest. The plan still works because the code is stored.</figcaption></figure>
 </section>
 
 <!-- Not evidenced -->
