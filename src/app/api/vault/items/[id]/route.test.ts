@@ -26,12 +26,13 @@ vi.mock('../../../../../../lib/vault/vault-items', async (importOriginal) => {
     deleteItem: vi.fn(),
     setItemNote: vi.fn(),
     setOwnerRootOverride: vi.fn(),
+    setOwnerIrreplaceableOverride: vi.fn(),
   };
 });
 
 import { getOwnerSession } from '../../../../../../lib/auth/session';
 import { assertOwns, IntegrityError } from '../../../../../../lib/db/integrity';
-import { updateItem, deleteItem, setItemNote, setOwnerRootOverride } from '../../../../../../lib/vault/vault-items';
+import { updateItem, deleteItem, setItemNote, setOwnerRootOverride, setOwnerIrreplaceableOverride } from '../../../../../../lib/vault/vault-items';
 import { writeAuditEntry } from '../../../../../../lib/audit/audit-service';
 import { PUT, DELETE, PATCH } from './route';
 
@@ -42,6 +43,7 @@ const mockDelete = vi.mocked(deleteItem);
 const mockAudit = vi.mocked(writeAuditEntry);
 const mockSetNote = vi.mocked(setItemNote);
 const mockSetRoot = vi.mocked(setOwnerRootOverride);
+const mockSetIrreplaceable = vi.mocked(setOwnerIrreplaceableOverride);
 
 const ctx = { params: Promise.resolve({ id: 'item-1' }) };
 function makeReq(body?: unknown) {
@@ -185,5 +187,57 @@ describe('PATCH /api/vault/items/[id] — metadata without the secret', () => {
   it('refuses an empty body', async () => {
     const res = await PATCH(makeReq({}), ctx);
     expect(res.status).toBe(400);
+  });
+});
+
+/**
+ * 🔴 THE OWNER COULD OVERRULE THE AGENT ABOUT ROOT CREDENTIALS AND NOT ABOUT
+ * WHAT IS IRREPLACEABLE — the higher-consequence of the two. `irreplaceable` is
+ * what raises a CUSTODY_RISK: a deed, a will, a passport. Only the intake agent
+ * ever set it, from the title alone, and an owner who knew better had no way to
+ * say so. Migration 034 added owner_set_irreplaceable; this is the endpoint.
+ */
+describe('PATCH — the owner overrides what is irreplaceable', () => {
+  it('records the override', async () => {
+    mockSetIrreplaceable.mockResolvedValue({ id: 'item-1' } as never);
+    const res = await PATCH(makeReq({ owner_set_irreplaceable: true }), ctx);
+    expect(res.status).toBe(200);
+    expect(mockSetIrreplaceable).toHaveBeenCalledWith('owner-1', 'item-1', true);
+  });
+
+  it('null hands the decision back to the agent', async () => {
+    // The third state. An owner who ticks this by mistake must be able to undo
+    // it, not merely flip it to false — false is itself an opinion.
+    mockSetIrreplaceable.mockResolvedValue({ id: 'item-1' } as never);
+    await PATCH(makeReq({ owner_set_irreplaceable: null }), ctx);
+    expect(mockSetIrreplaceable).toHaveBeenCalledWith('owner-1', 'item-1', null);
+  });
+
+  it('rejects a non-boolean instead of coercing it', async () => {
+    const res = await PATCH(makeReq({ owner_set_irreplaceable: 'yes' }), ctx);
+    expect(res.status).toBe(400);
+    expect(mockSetIrreplaceable).not.toHaveBeenCalled();
+  });
+
+  it('audits the decision', async () => {
+    mockSetIrreplaceable.mockResolvedValue({ id: 'item-1' } as never);
+    await PATCH(makeReq({ owner_set_irreplaceable: true }), ctx);
+    expect(mockAudit.mock.calls[0][1]).toMatchObject({
+      action: 'vault_item_classification_overridden',
+      detail: { owner_set_irreplaceable: true },
+    });
+  });
+
+  it('still takes exactly one field, now that there are three', async () => {
+    /*
+      The guard was `hasRoot === hasNote` — a two-field pair that would have
+      silently accepted two at once the moment a third existed. Each field writes
+      a different audit action, and an entry that cannot say which decision the
+      owner made is not much of an audit entry.
+    */
+    const res = await PATCH(makeReq({ owner_set_root: true, owner_set_irreplaceable: true }), ctx);
+    expect(res.status).toBe(400);
+    expect(mockSetIrreplaceable).not.toHaveBeenCalled();
+    expect(mockSetRoot).not.toHaveBeenCalled();
   });
 });

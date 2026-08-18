@@ -1,0 +1,36 @@
+-- Requirement 12: an owner must be able to say what is irreplaceable.
+--
+-- 🔴 THE OWNER COULD OVERRULE THE AGENT ABOUT ROOT CREDENTIALS AND NOT ABOUT
+-- THIS, WHICH IS THE HIGHER-CONSEQUENCE OF THE TWO. `irreplaceable` is what
+-- `detectGaps` reads to raise a CUSTODY_RISK — the gap type covering the things
+-- that cannot be regenerated from a login: a deed, a will, a passport. Only the
+-- intake agent ever set it, from the title alone, and an owner who knew better
+-- had no way to say so. If the agent judged a passport replaceable, the custody
+-- risk was never raised and nothing on any screen hinted that a judgement had
+-- been made at all.
+--
+-- WHY THIS COULD NOT BE DONE WITHOUT A COLUMN. Writing `irreplaceable` directly
+-- would have been silently undone: `intake-agent.ts` sets it unconditionally on
+-- every run, so the owner's correction would survive exactly until the next
+-- analysis. That is the precise bug migration 028 was written to prevent for
+-- `is_root_credential`, and this is the same shape.
+--
+-- NULLABLE BOOLEAN, THREE STATES, MIRRORING 028 EXACTLY: the owner has said
+-- yes, the owner has said no, or the owner has never said. NULL is the last of
+-- those and is what every existing row gets, so this migration cannot change
+-- the meaning of any item already stored. Aurora DSQL cannot add a NOT NULL
+-- column anyway — see the note on verifier_confirmations.confirmed_at.
+--
+-- `irreplaceable` stays the single column everything READS. detectGaps, the
+-- custody-risk count and the gap ranking are untouched; this records what the
+-- owner SAID, and the intake agent stops overruling it.
+--
+-- Aurora DSQL: ADD COLUMN is supported; no default is set, so there is no table
+-- rewrite and existing rows read NULL. No index — it is only ever read
+-- alongside the row it belongs to.
+--
+-- ROLLBACK: additive and inert until code reads it. Reverting means shipping
+-- the code that reads it, not touching the database; the column can be left in
+-- place indefinitely at zero cost. Dropping it would be its own migration.
+
+ALTER TABLE vault_items ADD COLUMN IF NOT EXISTS owner_set_irreplaceable BOOLEAN;

@@ -252,3 +252,77 @@ describe('an owner override survives re-analysis (Req 11.8)', () => {
     expect(out.results[0].is_root_credential).toBe(true);
   });
 });
+
+/**
+ * The same guarantee for the flag with the worse failure mode.
+ *
+ * 🔴 `irreplaceable` IS WHAT RAISES A CUSTODY_RISK — the gap type covering the
+ * things that cannot be regenerated from a login: a deed, a will, a passport.
+ * Until migration 034 the model decided it alone, on every run, from the title.
+ * An owner who corrected it had nowhere to record the correction, and writing
+ * `irreplaceable` directly would have lasted exactly until the next analysis.
+ *
+ * The failure is silent in the dangerous direction: an item wrongly marked
+ * replaceable simply never produces a warning, so nobody learns the judgement
+ * was ever made.
+ */
+describe('an owner override of irreplaceable survives re-analysis (migration 034)', () => {
+  it('keeps the owner YES when the model says no', async () => {
+    mockMeta.mockResolvedValue([
+      meta({ id: 'passport', title: 'Passport', irreplaceable: true, owner_set_irreplaceable: true }),
+    ]);
+    const classify = vi.fn(async (): Promise<RawClassification[]> => [
+      { id: 'passport', is_root_credential: false, recurring_billing: false, irreplaceable: false, importance_score: 0.3, depends_on_title: null },
+    ]);
+
+    const out = await runIntake('owner-1', { classify });
+
+    expect(out.results[0].irreplaceable).toBe(true);
+    // Written, not merely returned — irreplaceable is the third parameter.
+    expect((mockQuery.mock.calls[0][1] as unknown[])[2]).toBe(true);
+  });
+
+  it('keeps the owner NO when the model says yes', async () => {
+    mockMeta.mockResolvedValue([
+      meta({ id: 'photos', title: 'Photo backup', irreplaceable: false, owner_set_irreplaceable: false }),
+    ]);
+    const classify = vi.fn(async (): Promise<RawClassification[]> => [
+      { id: 'photos', is_root_credential: false, recurring_billing: false, irreplaceable: true, importance_score: 0.8, depends_on_title: null },
+    ]);
+
+    const out = await runIntake('owner-1', { classify });
+
+    expect(out.results[0].irreplaceable).toBe(false);
+  });
+
+  it('still lets the model decide when the owner has never said', async () => {
+    // Every item predating migration 034 reads NULL, so nothing changes for them.
+    mockMeta.mockResolvedValue([meta({ id: 'y', title: 'Y', owner_set_irreplaceable: null })]);
+    const classify = vi.fn(async (): Promise<RawClassification[]> => [
+      { id: 'y', is_root_credential: false, recurring_billing: false, irreplaceable: true, importance_score: 0.5, depends_on_title: null },
+    ]);
+
+    const out = await runIntake('owner-1', { classify });
+
+    expect(out.results[0].irreplaceable).toBe(true);
+  });
+
+  it('the two overrides are independent — one does not carry the other', async () => {
+    /*
+      Both are nullable booleans read with `== null`, and a copy-paste that
+      pointed the second at owner_set_root would pass every test above. This is
+      the one that would catch it.
+    */
+    mockMeta.mockResolvedValue([
+      meta({ id: 'z', title: 'Z', owner_set_root: true, owner_set_irreplaceable: false }),
+    ]);
+    const classify = vi.fn(async (): Promise<RawClassification[]> => [
+      { id: 'z', is_root_credential: false, recurring_billing: false, irreplaceable: true, importance_score: 0.5, depends_on_title: null },
+    ]);
+
+    const out = await runIntake('owner-1', { classify });
+
+    expect(out.results[0].is_root_credential).toBe(true);
+    expect(out.results[0].irreplaceable).toBe(false);
+  });
+});
