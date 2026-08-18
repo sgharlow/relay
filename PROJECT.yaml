@@ -1074,7 +1074,28 @@ cross_cutting:
   CC9: { name: "dead-man's switch on the scheduler", status: live,
          evidence: ".github/workflows/scheduler-monitor.yml, both transitions proven 2026-08-08" }
   CC8: { name: "accessibility as a functional requirement", status: live,
-         evidence: "RE-MEASURED 2026-08-17 after the Phase 0 screens landed:
+         evidence: "RE-MEASURED 2026-08-18, after the secret-kinds declaration control landed:
+           0 serious/critical across 36 pages - 18 signed-out, plus 9 owner-mode screens at
+           BOTH 1280 and 390. Measured against a PRODUCTION build served on :3100, which is
+           the shape CI uses, so it is comparable with the records below rather than a dev
+           server reading.
+           WHY IT WAS RE-RUN. The 08-17 record predates S2, which put the owner's
+           `Needs a code?` control on every vault row (src/app/(owner)/vault/ItemControls.tsx).
+           That is a new interactive control on /vault - a page this audit ALREADY covered -
+           so the ROUTE was in scope while the CONTROL had never been seen by any
+           accessibility pass. That is precisely the recurrence the 08-17 note below warns
+           about, one day later: coverage of a page is not coverage of what was added to it.
+           TWO THINGS CHECKED RATHER THAN ASSUMED, because either would have made 0/36 a
+           false green: (1) the control renders in the DEFAULT idle state - it is a plain
+           button beside Add note / Update / Remove, not behind a disclosure, so axe saw it
+           without any interaction; (2) scripts/disposable-owner.ts seeds three vault items,
+           and an empty vault renders no ItemControls at all - the audit would have reported
+           a clean /vault having never rendered the thing being audited.
+           CORRECTION to the line below: it reads `12 signed-out plus 9 owner-mode at BOTH
+           1280 and 390`, which does not sum to 36. The signed-out count is 18. The total
+           was right and the split was not.
+           ---- prior record, 2026-08-17 ----
+           RE-MEASURED 2026-08-17 after the Phase 0 screens landed:
            0 serious/critical across 36 PAGES - 12 signed-out plus 9 owner-mode
            at BOTH 1280 and 390. The page count rose because `/vault/new` was
            added to OWNER_PAGES: it is the form an owner types a secret INTO and
@@ -1236,6 +1257,13 @@ deferred:
       run. It shipped 2026-08-17 as a standalone and its own sprint report filed that
       as debt while opening no item for it. That reduces what must be remembered. It
       does NOT close this."
+    chain_live_proven: "2026-08-18. The five-walk chain was RUN, not just declared - `npm run
+      verify:live` exit 0 against the production cluster, with `verify:factors` executing INSIDE
+      the chain (reveal 20/20, factors 15/15 observed; the earlier three are proven by the `&&`
+      reaching them). Every disposable account cleaned up, HTTP 200 on each close.
+      Recorded because the change that added the fifth walk was itself only proven in parts - the
+      guard test, and the walk standing alone - which is the same wired-not-live-proven gap this
+      file keeps catching. A gate whose composite has never executed is a gate on paper."
     why_it_is_still_out_of_ci: "Unchanged and still correct: `.env.local` points at
       production because Relay has no dev database, and a job writing to customers'
       data to check a pull request is not a gate, it is a hazard - the rows it forgot
