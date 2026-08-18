@@ -59,7 +59,7 @@ npm run test:watch     # vitest watch mode
 npm run test:coverage  # vitest --coverage (v8; thresholds 80/80/70/80 lines/fn/branches/stmts)
 
 npm run gate           # types + lint + test + build. No database, no server. CI runs this.
-npm run verify:live    # the four E2E walks. NEEDS .env.local AND `npm run dev` running.
+npm run verify:live    # the five E2E walks. NEEDS .env.local AND `npm run dev` running.
 npm run verify:reveal  # the fourth walk, alone: an owner stores a structured secret with a
                        # TOTP seed, a recipient claims, a verifier confirms, and Reveal is
                        # pressed. Asserts the plaintext returns byte for byte as LABELLED
@@ -68,7 +68,8 @@ npm run verify:reveal  # the fourth walk, alone: an owner stores a structured se
                        # decodes (every item imported before 2026-08-17 is stored that way and
                        # can never be rewritten). Run it after ANY change to secret-payload.ts,
                        # AccessClient or the KMS path.
-npm run verify:factors # the migration-035 columns, through the real stack: the browser
+npm run verify:factors # the fifth walk, alone. The migration-035 columns through the real
+                       # stack, rather than through mocks: the browser
                        # declares what it encrypted (`secret_kinds`), a read returns it, the
                        # owner declares what the account demands (`factors_required`), and a
                        # password stored behind a coded door stops counting as reachable.
@@ -211,9 +212,9 @@ These cut across multiple files and are easy to break. Preserve them.
 ## Two gates, and why only one of them is in CI
 
 `npm run gate` is types + lint + test + build. It needs no credentials and no server, so CI runs it
-on every push. **`npm run verify:live` is the other half**: three walks that drive the running app —
-`e2e-stepup` (17 assertions over HTTP), `e2e-multiowner` (14), `e2e-ui` (19, in a real browser).
-Start `npm run dev` first.
+on every push. **`npm run verify:live` is the other half**: five walks that drive the running app —
+`e2e-stepup` (17 assertions over HTTP), `e2e-multiowner` (14), `e2e-ui` (19, in a real browser),
+`e2e-reveal` (20) and `e2e-factors` (15). Start `npm run dev` first.
 
 **It is deliberately NOT in CI.** These walks create and delete real accounts, and `.env.local`
 points at the **production** cluster because Relay has no dev database. A job doing that on every
@@ -236,6 +237,16 @@ DSQL, release, KMS unwrap, decrypt — and asserts the plaintext comes back byte
 fields, with a six-digit code that matches one computed independently from the same seed. It also
 decodes a LEGACY `{"username":…,"password":…}` item, because every item imported before Phase 0 is
 stored in that shape permanently and the server can never rewrite it.
+
+**`verify:factors` is the fifth, folded into the chain on 2026-08-18 — the day after it was
+written as a standalone.** Its own sprint report filed that standalone status as debt and opened
+no item for it: it "needs `.env.local` and a running server like the others, so it inherits the
+same 'somebody must remember' weakness". The same day supplied the argument against leaving it
+there. D1's fail-closed boundary — `secret_kinds` required on every vault write — broke
+`e2e-multiowner` and `e2e-ui`, and `gate` was green throughout, because a unit suite cannot see a
+real write path. `verify:factors` is the walk that proves the migration-035 columns are not
+inert, which makes it exactly the walk that a change to those columns breaks. A gate somebody has
+to remember is a gate on the days they remember.
 
 **`npm run verify:schema` is a third, and the cheapest.** `migrate.ts` applies one named file and
 tracks nothing, so which migrations have reached which cluster was never recorded anywhere. On

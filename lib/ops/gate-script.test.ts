@@ -73,23 +73,29 @@ describe('the single-command gate', () => {
  *
  * The honest resolution is not to smuggle it into CI. It is to make it ONE
  * command a person runs deliberately before a release, so "run the E2E walks"
- * stops being four things somebody has to remember, and to say plainly here
+ * stops being five things somebody has to remember, and to say plainly here
  * why the pipeline does not do it. Closing this properly needs a separate test
  * cluster, which is an infrastructure change with a cost attached and is
  * Steve's call, not a thing to arrange quietly inside a test file.
  */
 describe('the live-verification gate', () => {
-  it('exists and chains all four walks', () => {
+  it('exists and chains all five walks', () => {
     const live = pkg.scripts['verify:live'];
     expect(live, 'npm run verify:live is gone').toBeTruthy();
-    for (const step of ['verify:stepup', 'verify:multiowner', 'verify:ui', 'verify:reveal']) {
+    for (const step of [
+      'verify:stepup',
+      'verify:multiowner',
+      'verify:ui',
+      'verify:reveal',
+      'verify:factors',
+    ]) {
       expect(live, `${step} dropped out of the live gate`).toContain(step);
     }
   });
 
   it('stops at the first failure, for the same reason `gate` does', () => {
     expect(pkg.scripts['verify:live']).not.toContain(';');
-    expect(pkg.scripts['verify:live'].split('&&').length).toBe(4);
+    expect(pkg.scripts['verify:live'].split('&&').length).toBe(5);
   });
 
   it('each step points at the real harness', () => {
@@ -104,6 +110,20 @@ describe('the live-verification gate', () => {
       it, because none of them reveals anything.
     */
     expect(pkg.scripts['verify:reveal']).toContain('scripts/e2e-reveal.ts');
+    /*
+      Added to the chain 2026-08-18, having shipped 2026-08-18 as a FIFTH walk
+      nobody was told to run. Its own sprint report filed that as debt and
+      opened no item: "it needs `.env.local` and a running server like the
+      others, so it inherits the same 'somebody must remember' weakness".
+      The same day supplied the argument against leaving it there. D1's
+      fail-closed boundary (secret_kinds required on every vault write) broke
+      e2e-multiowner and e2e-ui, and `gate` stayed green throughout, because
+      the unit suite cannot see a real write path. A walk that proves the
+      035 columns are not inert is exactly the walk that a change to those
+      columns would break, so it belongs where a release runs it rather than
+      where a person remembers it.
+    */
+    expect(pkg.scripts['verify:factors']).toContain('scripts/e2e-factors.ts');
   });
 
   /*
