@@ -999,7 +999,17 @@ ratified:
 # `walked` is the date the journey was last exercised end to end against
 # PRODUCTION, not the date something was merged.
 journeys:
-  evidence: "docs/user-journeys.md — re-sweep table, 2026-08-13"
+  evidence: "docs/user-journeys.md — re-sweep table, 2026-08-13 (the WALK record).
+    Step-level build state is a separate question and has its own section in the same file,
+    'Step-level build state — 2026-08-17, evidence-backed', checked against master @ e50a68a.
+    ⚠️ THE TWO ANSWER DIFFERENT QUESTIONS and neither substitutes for the other: the register
+    says what EXISTS, the sweep says what was WALKED. Sixty-eight steps read [GAP] while the
+    sweep read PASS for the journey containing them, which is how a product can be both fully
+    walked and undocumentable at the same time.
+    ⚠️ The walk below is 2026-08-13 and ~120 commits old. Six user-facing surfaces have shipped
+    since (structured reveal, TOTP entry, the irreplaceable control, consent readback, verifier
+    error recovery, import duplicate explanation). The verdicts stand for the journeys; the
+    screens under them have moved."
   J1:  { name: "Worry to proof to commitment",  status: live, walked: 2026-08-13 }
   J2:  { name: "Cold-start defeat",             status: live, walked: 2026-08-13 }
   J3:  { name: "Assisted setup for a parent",   status: live, walked: 2026-08-12 }
@@ -1010,7 +1020,32 @@ journeys:
   J8:  { name: "Hands on the account",          status: live, walked: 2026-08-13,
          caveat: "the decrypt round-trip was NOT re-proven on this walk — that
            fixture's ciphertext is placeholder bytes. That half stands on the
-           2026-08-08 walk and the 2026-08-13 item-update walk." }
+           2026-08-08 walk and the 2026-08-13 item-update walk.
+           🔴 SHARPENED 2026-08-17: THE SCREEN THAT WALK PROVED NO LONGER
+           EXISTS. Secret-types Phase 0 replaced `<pre>{value}</pre>` with
+           labelled fields, a masked password and a generated TOTP code (223
+           lines of AccessClient.tsx). Unit tests cover encode/decode and the
+           RFC 6238 vectors; verify:live's browser walk covers the step-up
+           dialog and the owner picker ONLY, by its own header. So the product's
+           most valuable moment - a grieving person pressing Reveal - has no
+           end-to-end evidence against the build now deployed.
+           scripts/e2e-reveal.ts is the named fix.
+           ✅ CLOSED 2026-08-17 — scripts/e2e-reveal.ts, 20/20 against production.
+           The whole chain: an owner stores username + password + TOTP seed +
+           recovery codes, a recipient claims, a verifier claims AND IS
+           CONFIRMED, the release opens, Reveal returns the password byte for
+           byte as four labelled fields, and the seed yields a six-digit code
+           equal to one computed independently (772750 == 772750). A LEGACY
+           {\"username\",\"password\"} item decodes to labelled fields with no
+           JSON brace left in any value - the shape every item imported before
+           Phase 0 is stored in, permanently, because the server cannot rewrite
+           what it cannot read.
+           It found two things no unit test could: the release sits in GRACE
+           until quorum advances, and a verifier the owner has not CONFIRMED
+           answers 200 with `not_counted` while the tally stands still (§4.3).
+           The first draft asserted only the status code and reported quorum met
+           over a 0/1 tally - the same green-signal-measuring-the-wrong-thing
+           this repo keeps catching, caught this time by the walk itself." }
   J9:  { name: "Standing down",                 status: live, walked: 2026-08-13 }
   # WAS `gated` ON g2-counsel-opinion. Changed to `withdrawn` 2026-08-14: that
   # gate was declined, so this is not a journey waiting on a condition — it is a
@@ -1032,7 +1067,16 @@ cross_cutting:
   CC9: { name: "dead-man's switch on the scheduler", status: live,
          evidence: ".github/workflows/scheduler-monitor.yml, both transitions proven 2026-08-08" }
   CC8: { name: "accessibility as a functional requirement", status: live,
-         evidence: "RE-MEASURED 2026-08-15 AFTER THE TYPE-SCALE MIGRATION: 0
+         evidence: "RE-MEASURED 2026-08-17 after the Phase 0 screens landed:
+           0 serious/critical across 36 PAGES - 12 signed-out plus 9 owner-mode
+           at BOTH 1280 and 390. The page count rose because `/vault/new` was
+           added to OWNER_PAGES: it is the form an owner types a secret INTO and
+           it had just gained four fields (username, TOTP, recovery codes), and
+           no accessibility pass had ever seen it. A screen that only appears
+           when you press 'add' is exactly the kind that falls out of a
+           hand-maintained list.
+           ---- prior record, 2026-08-15 ----
+           "RE-MEASURED 2026-08-15 AFTER THE TYPE-SCALE MIGRATION: 0
            serious/critical across 34 pages — 18 signed-out, and all 8 owner-mode
            screens at BOTH 1280 and 390. That is the fuller number; the 21 below
            is the 2026-08-13 run and is superseded. Owner mode had silently
@@ -1127,7 +1171,40 @@ cross_cutting:
 # Seven items were carried here at the start of the day; all seven are closed
 # below, four from the 2026-08-14 audit and three opened and shut on 08-15. The
 # next honest entry belongs here and not in a new file.
-deferred: []
+#
+# REOPENED 2026-08-17. One item, and it is a SEQUENCING state rather than a
+# defect: the code is written, tested and deliberately not wired, because wiring
+# it before the migration lands is the exact failure 029 was written to prevent.
+deferred:
+  - id: secret-types-phase-1-wiring
+    what: "assessPreparedness reads three usability states instead of two, and
+      lib/vault/usability.ts implements the rule. Nothing SELECTs the two new
+      columns yet, so the deployed behaviour is UNCHANGED - every item reads
+      `unknown`, which suppresses the new clause entirely (pinned by the test
+      named 'leaves an all-unchecked vault exactly as it was before this
+      existed')."
+    blocked_on: "migration 035_secret_kinds_and_factors.sql, BOTH REGIONS. A
+      migration is a sysadmin act under the D1 ruling, so it is Steve's to run:
+        npx tsx --env-file=.env.admin db/migrations/migrate.ts 035_secret_kinds_and_factors.sql
+        DSQL_USE_SECONDARY=true npx tsx --env-file=.env.admin db/migrations/migrate.ts 035_secret_kinds_and_factors.sql
+        npm run verify:schema"
+    then: "add both columns to the vault SELECT, have the browser declare
+      secret_kinds on save (secretKindsOf already computes it), and add the
+      owner's 'does this account need a code as well?' control following the
+      owner_set_* precedent. Phase 2 - AI inference of factors_required - stays
+      advisory and is not in scope."
+    why_it_matters: "until then assessPreparedness still defines reachable as
+      'an access rule exists', so an owner storing the password for a
+      2FA-protected account is told Sarah could reach it. Sarah receives a
+      password and a locked door."
+    ends_when: "the migration is applied and the reads are wired, or Steve rules
+      that preparedness keeps its current definition and the on-screen claim is
+      reworded to match - either closes it, forgetting does not."
+    opened: 2026-08-17
+    # NOTE: `npm run verify:schema` is RED until 035 is applied, and that is the
+    # check working rather than failing. It could not have told you this before
+    # 2026-08-17 - it compared table names only, so a migration that adds a
+    # column was invisible to it (028 and 034 both are).
   # ── CLOSED 2026-08-15, production-bar pass iteration 1 ────────────────────
   #
   # Both security deferrals are closed, together, because they were the same

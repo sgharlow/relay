@@ -182,7 +182,159 @@ asserts the count so it cannot drift.
 
 ---
 
+## ✅ Step-level build state — 2026-08-17, evidence-backed
+
+> **This section supersedes every inline `[BUILT]` / `[GAP]` / `[P2]` tag below it.** Those tags are
+> as-of-authoring (2026-08-06) and the note that follows this one says so, then declines to retag on
+> the grounds that "a wrong tag here is worse than a dated one". That was the right call at the time
+> and it left a real hole: **at step granularity there was no trustworthy answer to "is this built?"**
+> — which is precisely the question asked of a product about to be released. Sixty-eight steps read
+> `[GAP]` while the sweep table at the top of this file read PASS for the journey containing them.
+>
+> **Method.** Every row below was checked against `master` @ `e50a68a` and names the file that
+> settles it. Rows that could not be settled by reading the code say so rather than guessing — the
+> objection above is honoured, not overruled. This is a *code* register: it says what exists, not
+> that it was walked. The sweep table above is the walk record, and the two answer different
+> questions.
+
+### J1 — Worry → proof → commitment
+
+| Step | 08-06 tag | Today | Evidence |
+|---|---|---|---|
+| 3 Free starter vault, passkey or TOTP, no card | `[GAP]` | **BUILT** | self-serve signup with per-user TOTP; passkeys via `webauthn_credentials` + `auth_challenges` (029) |
+| 4 Prompted 8-item caregiver seed | `[GAP]` | **BUILT** | `lib/seed/caregiver-checklist.ts`, `src/app/(owner)/start/SeedWizard.tsx` |
+| 5 Legible zero-knowledge moment | reveal `[GAP]` | **BUILT** | `SeedWizard.tsx` renders the ciphertext leaving the browser |
+| 6 Risk-graph reveal | framing `[GAP]` | **BUILT** | `lib/ai/prioritize-agent.ts` `detectGaps`, `lib/vault/dashboard-view.ts` |
+| 7 Paywall at peak value, free-tier caps | `[GAP]` | **BUILT** | `lib/billing/entitlements.ts` — caps enforced server-side |
+| 8 Checkout → entitlement → wizard | `[P2]` billing | **BUILT** | live-mode Stripe, charged end to end 2026-08-08 (`PROJECT.yaml monetization_path`) |
+
+### J2 — Cold-start defeat
+
+| Step | 08-06 tag | Today | Evidence |
+|---|---|---|---|
+| 1 Three import lanes | CSV `[BUILT]` | **CSV built; document + email lanes OPEN** | `lib/import/csv-parser.ts`. The other two lanes do not exist |
+| 6 Review by exception, owner override persisting across re-analysis | `[GAP]` | **override BUILT; the by-exception SCREEN open** | `owner_set_root` (028) and `owner_set_irreplaceable` (034) both survive re-analysis — `lib/ai/intake-agent.ts`. No screen yet surfaces *only* the exceptions |
+| 8 Top-three gap framing | framing `[GAP]` | **engine built; framing OPEN** | `detectGaps` ranks by consequence; nothing renders "close the top three" |
+| 9 Explicit continuity-ready state | `[GAP]` | **OPEN** | no `continuityReady` concept anywhere in `lib/` or `src/` |
+
+### J3 — Assisted setup for a parent
+
+The journey header still reads *"`[GAP]` — entirely net-new. No delegation concept exists in the
+schema."* **That sentence is the most out-of-date line in this document**: the whole delegation model
+shipped in sprints 1–4 and was walked on production on 2026-08-12.
+
+| Step | 08-06 tag | Today | Evidence |
+|---|---|---|---|
+| 1 "I'm setting this up for someone else" | `[GAP]` | **BUILT** | delegation creation, `lib/people/delegate-workspace.ts` |
+| 2 Consent invitation incl. a printable path | `[GAP]` | **BUILT** | the paper path — walked 2026-08-08, "a parent without a smartphone is not a blocker" |
+| 3 Consent recorded as a first-class artifact | `[GAP]` | **BUILT, and now readable** | `consent_artifacts` (009); surfaced on the approvals screen 2026-08-17 (`HelperSection.tsx`) after being write-only for eight days |
+| 4 Parent enrols an authenticator | `[GAP]` | **BUILT** | per-user TOTP at claim |
+| 5 Delegate scopes, server-enforced | `[GAP]` | **BUILT** | scope enforcement at `/api/kms/unwrap`; J3-R11 is the requirement |
+| 6 Delegate runs J2 on the parent's vault | `[GAP]` | **BUILT** | `lib/people/delegate-workspace.ts` |
+| 7 Parent approval queue | `[GAP]` | **BUILT** | `lib/people/approvals.ts`, `src/app/(owner)/approvals/` |
+| 8 Monthly "what was done on your behalf" digest | `[GAP]` | **OPEN** | nothing schedules it |
+
+### J4 — Building the circle of trust
+
+| Step | 08-06 tag | Today | Evidence |
+|---|---|---|---|
+| 1 One person, many roles | `[GAP]` (unification) | **BUILT** | unified people list, `lib/people/` |
+| 2 Auto-proposed policies | `[GAP]` | **BUILT** | `lib/rules/policy-proposals.ts` |
+| 3 Approve/edit in bulk → `access_rules` | `[GAP]` | **BUILT** | policies materialise as a diff |
+| 4 Coverage matrix | `[GAP]` | **BUILT** | `lib/rules/coverage.ts`, `src/app/(owner)/circle/CircleClient.tsx` |
+| 6 N-of-M with proposed defaults | defaults `[GAP]` | **BUILT** | validation, storage and defaults |
+| 7 Recipients claim in calm, standby view | `[GAP]` / KYC `[P2]` | **BUILT except KYC** | the hybrid+6 standby account; `/claim` live. Identity verification stays `[P2]` |
+| 8 Verifiers claim with no account | `[GAP]` | **BUILT** | `/verify` surface |
+| 9 Explicit circle-complete state | `[GAP]` | **BUILT** | `lib/rules/coverage.ts` + `/api/circle` |
+
+⚠️ **Invitations are owner-delivered by design.** `BETA_INVITE_CHANNEL = 'owner'` (`lib/people/invite.ts`)
+sends no email — the owner reads the claim code out. Step 7 is built; its *delivery* is deliberately manual.
+
+### J5 — The living habit
+
+| Step | 08-06 tag | Today | Evidence |
+|---|---|---|---|
+| 1 Passive liveness on ordinary actions | derivation `[GAP]` | **BUILT** | `lib/release/liveness.ts` on the main write paths |
+| 2 Per-trigger cadence | partial | **BUILT** | `lib/release/heartbeat.ts` |
+| 3 Escalation ladder before any transition | `[GAP]` | **OPEN for J5's own case; BUILT for two adjacent ones** | `lib/release/escalation.ts` escalates when the OWNER goes quiet on a challenge (window lapses → verifiers asked) and `lib/release/silence-sweep.ts` + `quiet-channel.ts` when the VERIFIER channel goes quiet. What does not exist is a reminder ladder to the owner **before** `runHeartbeatSweep` advances ARMED → PENDING: an overdue owner is escalated by the transition itself |
+| 4 Quarterly continuity review | `[GAP]` | **OPEN** | no occurrence of "quarterly" in the codebase |
+| 5 Life-event prompts | `[GAP]` | **OPEN** | — |
+| 6 Renewal as a value receipt | `[GAP]` | **OPEN** | — |
+
+**J5 is the journey with the most genuinely open surface.** Its shipped half is the half that
+matters — the switch cannot fire on a living owner — but the retention half is not built.
+
+### J6 — Someone requests access · J7 — The verifier's moment
+
+Both journey headers still read `[GAP]` **for the entire surface** (J6: *"no recipient-initiated
+request path exists today"*; J7: *"there is no verifier UI at all"*). Both are wrong: the surfaces
+shipped in sprints 3–4 and were walked on production on 2026-08-13.
+
+| Step | Today | Evidence |
+|---|---|---|
+| J6 1–6 | **BUILT** | access requests, owner-challenge-first, velocity limits, circle notification; walked 2026-08-13 |
+| J7 1–8 | **BUILT** | verifier decision surface with Confirm / Deny / I don't know, halt on unreachable threshold, closure message |
+| J7 error state | **BUILT 2026-08-17** | a bad code or a failed submit used to be a dead end; `lib/ops/emergency-paths-have-a-way-back.test.ts` now holds both surfaces shut |
+
+### J8 — Hands on the account · PRIMARY DEMAND
+
+| Step | 08-06 tag | Today | Evidence |
+|---|---|---|---|
+| 1 Opens on mobile, already authenticated | mobile `[P2]` | **BUILT except native** | claimed standby account; audited at a 390 viewport |
+| 3 Precomputed triage plan, dependency-ordered | `[GAP]` | **BUILT** | `lib/ai/buckets.ts` (Do today / This week / Within 30 days), `lib/ai/dependency-order.ts`, rendered in `AccessClient.tsx` |
+| 4 The top card is one action | `[GAP]` | **PARTIAL** | steps are numbered across the plan; there is no single-next-action card |
+| 5 Reveal → KMS unwrap → plaintext, ephemeral | `[BUILT]` + ephemeral `[GAP]` | **reveal BUILT and restructured 2026-08-17; ephemeral OPEN** | labelled fields, masked password, live TOTP code (`lib/crypto/secret-payload.ts`, `lib/crypto/totp.ts`). Nothing expires the rendered value |
+| 6 Completion checkboxes, shared progress | `[GAP]` | **OPEN** | no per-step progress anywhere |
+| 9 Time-boxed session | `[BUILT]` + `[GAP]` | **BUILT** | session epoch + step-up |
+
+🔴 **Step 5 is built and has no end-to-end proof against the code that now serves it.** The reveal
+screen was rewritten on 2026-08-17; the last live proof of the decrypt round-trip is 2026-08-08,
+against the `<pre>{value}</pre>` renderer that no longer exists. `PROJECT.yaml → journeys → J8`
+already carries the caveat. This is the single most valuable moment in the product.
+
+### J9 — Standing down
+
+| Step | 08-06 tag | Today | Evidence |
+|---|---|---|---|
+| 1 Owner checks in or cancels | web `[BUILT]` | **BUILT (web)** | other channels open, and that is a channel question, not a journey gap |
+| 4 Recipient sees a graceful close | `[GAP]` | **BUILT** | `lib/access/closure.ts`, 2026-08-08 |
+| 5 Reversal receipt | receipt `[GAP]` | **DROPPED** | `ratified.j9-5-7-dropped`, 2026-08-16 — enhancements to a complete journey |
+| 6 Re-arm confirmation | `[GAP]` | **DROPPED** | same ruling |
+| 7 Thank the recipient | `[GAP]` | **DROPPED** | same ruling |
+
+### J10 — The permanent handoff
+
+**WITHDRAWN, not open.** Every `[GAP]` and `[P2]` in the J10 section describes a journey the product
+no longer offers: `g2-counsel-opinion` was declined, `POST /api/rules` answers 400 for
+`trigger_type: estate`, and `lib/ops/gates.test.ts` fails if the list widens while that decision
+stands. Do not read those tags as a backlog.
+
+### What is genuinely open, in one list
+
+Everything above that is not BUILT, DROPPED or WITHDRAWN:
+
+1. **J5 retention** — the owner-reminder ladder before a heartbeat transition (the other two
+   escalation cases are built), quarterly review, life-event prompts, renewal receipt.
+2. **J2** — the by-exception review screen, top-three framing, continuity-ready state, and the
+   document + email ingestion lanes.
+3. **J8** — single-next-action card, ephemeral reveal, shared progress.
+4. **J3** — the monthly delegate digest.
+5. **KYC at claim** — `[P2]`, needs a vendor.
+6. **Second factors** — an account that demands a code is not modelled end to end. Phase 0 shipped
+   2026-08-17 (a recipient can now be handed a live TOTP code); Phase 1 — `secret_kinds` and
+   `factors_required`, migration `035` — is written and **awaiting the migration**, without which
+   `assessPreparedness` still cannot tell an owner that a plan does not work.
+
+None of these is a broken journey. Every journey the product *claims* completes end to end; this is
+the list of what it does not claim.
+
+---
+
 ## ⚠️ Build state — updated 2026-08-07
+
+> ⛔ **SUPERSEDED FOR STEP-LEVEL STATE BY THE SECTION IMMEDIATELY ABOVE (2026-08-17).** What
+> follows remains the accurate record of the 2026-08-07 position and of why the inline tags were
+> deliberately left dated. Where the two differ, the newer wins.
 
 **The inline `[BUILT]` / `[GAP]` / `[P2]` tags below are as-of-authoring (2026-08-06) and are now
 partly stale.** They are deliberately NOT rewritten in place: retagging 74 requirements by hand

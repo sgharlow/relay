@@ -79,23 +79,31 @@ describe('the single-command gate', () => {
  * Steve's call, not a thing to arrange quietly inside a test file.
  */
 describe('the live-verification gate', () => {
-  it('exists and chains all three walks', () => {
+  it('exists and chains all four walks', () => {
     const live = pkg.scripts['verify:live'];
     expect(live, 'npm run verify:live is gone').toBeTruthy();
-    for (const step of ['verify:stepup', 'verify:multiowner', 'verify:ui']) {
+    for (const step of ['verify:stepup', 'verify:multiowner', 'verify:ui', 'verify:reveal']) {
       expect(live, `${step} dropped out of the live gate`).toContain(step);
     }
   });
 
   it('stops at the first failure, for the same reason `gate` does', () => {
     expect(pkg.scripts['verify:live']).not.toContain(';');
-    expect(pkg.scripts['verify:live'].split('&&').length).toBe(3);
+    expect(pkg.scripts['verify:live'].split('&&').length).toBe(4);
   });
 
   it('each step points at the real harness', () => {
     expect(pkg.scripts['verify:stepup']).toContain('scripts/e2e-stepup.ts');
     expect(pkg.scripts['verify:multiowner']).toContain('scripts/e2e-multiowner.ts');
     expect(pkg.scripts['verify:ui']).toContain('scripts/e2e-ui.ts');
+    /*
+      The walk that proves the moment the product exists for. Added 2026-08-17
+      because J8's evidence had gone stale in the most expensive way available:
+      the last live proof of the decrypt round trip was 2026-08-08 and it proved
+      a screen that Phase 0 then replaced. Three green walks said nothing about
+      it, because none of them reveals anything.
+    */
+    expect(pkg.scripts['verify:reveal']).toContain('scripts/e2e-reveal.ts');
   });
 
   /*

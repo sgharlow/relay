@@ -1,0 +1,88 @@
+-- Phase 1 of docs/secret-types-design.md §4.2 — the two columns that let the
+-- product stop telling owners something untrue.
+--
+-- 🔴 THE FALSEHOOD. `assessPreparedness` defines *reachable* as "an access rule
+-- exists", and nothing more. So an owner who stores the password for a
+-- 2FA-protected account is told "Sarah could reach all 3 of the things that
+-- matter." Sarah receives a password and a locked door. That sentence is the
+-- one number the product asks an owner to act on, and it was wrong in the
+-- direction that costs the most: a plan that looks finished never gets revisited.
+--
+-- The server cannot fix this by looking harder. It cannot read the ciphertext —
+-- that is the architecture, not an oversight — so it has no way to know what an
+-- item holds, and no way to know what the account demands. Both facts have to be
+-- declared to it, and neither is a secret.
+--
+--   secret_kinds     what the BLOB holds        — client-declared, written by the
+--                                                 browser that just encrypted it
+--   factors_required what the ACCOUNT demands   — owner-declared (AI inference is
+--                                                 Phase 2, advisory, and subject to
+--                                                 the owner_set_* override precedent)
+--
+-- TEXT holding a sorted comma-joined list, NOT TEXT[]. No array column exists
+-- anywhere in this schema, and one helper (`lib/vault/usability.ts`) parses both.
+-- One authoritative definition, per the portfolio rule on cross-boundary contracts.
+--
+-- IS `secret_kinds` A ZERO-KNOWLEDGE LEAK? It tells the server "this item has a
+-- TOTP". That is metadata of exactly the grade already exposed — `type`,
+-- `category`, `is_root_credential`, `service_name`, `url` — it reveals no value,
+-- and it is NECESSARY in order to tell an owner their plan does not work. A
+-- deliberate, bounded trade-off, stated rather than smuggled. Neither column
+-- goes to the LLM: `getVaultMetadata` is the only permitted accessor inside
+-- /api/ai/* and it selects an explicit column list.
+--
+-- 🔴 NULL MEANS UNKNOWN. NOT "NONE". This is Q1 and Q3 of the design's QA pass
+-- and it is the single most likely thing to be got wrong later:
+--
+--   * Read NULL as "demands nothing" and the product keeps lying, now with
+--     machinery behind it.
+--   * Read NULL as "demands something" and every owner is alarmed about every
+--     item on the same afternoon, including the many logins that genuinely have
+--     no second factor. A false alarm at that scale destroys the signal
+--     permanently — it is not recoverable by fixing it next week.
+--
+-- So the code has THREE states, `usable | blocked | unknown`, and
+-- `lib/vault/usability.test.ts` pins absent apart from empty in both columns.
+-- Every row this migration touches gets NULL, which reads as `unknown`, which
+-- changes NOTHING an owner currently sees — by design, and asserted by a test
+-- named "leaves an all-unchecked vault exactly as it was before this existed".
+--
+-- THERE IS NO BACKFILL, AND THERE NEVER CAN BE. The server cannot read the
+-- ciphertext, so it cannot know what an existing item holds. `secret_kinds` is
+-- populated opportunistically — the next time an owner writes an item, the
+-- browser declares it. Never forced, never bulk. An item last touched in 2026
+-- and never edited again stays `unknown` forever, and `unknown` is the honest
+-- answer for it.
+--
+-- Aurora DSQL: ADD COLUMN is supported; no default is set, so there is no table
+-- rewrite and existing rows read NULL. DSQL cannot add a NOT NULL column anyway.
+-- No index: both are read alongside the row they belong to, never filtered on.
+--
+-- ⚠️ APPLY THIS TO BOTH REGIONS BEFORE DEPLOYING THE CODE THAT SELECTS THESE
+-- COLUMNS. Failover is an env switch (`DSQL_USE_SECONDARY`), so a migration
+-- applied to one region only stays invisible until the day somebody flips it —
+-- which is by definition a day something has already gone wrong. `npm run
+-- verify:schema` now checks columns as well as tables, so it will catch this
+-- one; it could not have caught 028 or 034.
+--
+--   npx tsx --env-file=.env.admin db/migrations/migrate.ts 035_secret_kinds_and_factors.sql
+--   DSQL_PRIMARY_ENDPOINT=<the DSQL_SECONDARY_ENDPOINT value from .env.admin> \
+--     npx tsx --env-file=.env.admin db/migrations/migrate.ts 035_secret_kinds_and_factors.sql
+--   npm run verify:schema
+--
+-- ⚠️ The second command names the SECONDARY endpoint explicitly because
+-- migrate.ts reads only DSQL_PRIMARY_ENDPOINT — it does not honour
+-- DSQL_USE_SECONDARY (that switch lives in lib/db/connection.ts, which this
+-- script does not use). An earlier draft of this header suggested
+-- `DSQL_USE_SECONDARY=true`, which would have silently applied the migration
+-- to the primary twice and left the secondary bare — the precise one-region
+-- failure this file warns about above. Shell env wins over --env-file, which
+-- is what makes the override work.
+--
+-- ROLLBACK: additive and inert. Nothing selects these columns until the code
+-- that reads them ships, so reverting means not deploying that code — not
+-- touching the database. The columns can be left in place indefinitely at zero
+-- cost. Dropping them would be its own migration.
+
+ALTER TABLE vault_items ADD COLUMN IF NOT EXISTS secret_kinds TEXT;
+ALTER TABLE vault_items ADD COLUMN IF NOT EXISTS factors_required TEXT;

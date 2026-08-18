@@ -59,10 +59,21 @@ npm run test:watch     # vitest watch mode
 npm run test:coverage  # vitest --coverage (v8; thresholds 80/80/70/80 lines/fn/branches/stmts)
 
 npm run gate           # types + lint + test + build. No database, no server. CI runs this.
-npm run verify:live    # the three E2E walks. NEEDS .env.local AND `npm run dev` running.
-npm run verify:schema  # do both DSQL regions have the tables the migrations declare?
-                       # Read-only (SELECT on pg_tables). NEEDS .env.local, no server.
-                       # Run it FIRST after applying a migration, and before a release.
+npm run verify:live    # the four E2E walks. NEEDS .env.local AND `npm run dev` running.
+npm run verify:reveal  # the fourth walk, alone: an owner stores a structured secret with a
+                       # TOTP seed, a recipient claims, a verifier confirms, and Reveal is
+                       # pressed. Asserts the plaintext returns byte for byte as LABELLED
+                       # fields, that the seed yields a six-digit code matching one computed
+                       # independently, and that a LEGACY {"username","password"} item still
+                       # decodes (every item imported before 2026-08-17 is stored that way and
+                       # can never be rewritten). Run it after ANY change to secret-payload.ts,
+                       # AccessClient or the KMS path.
+npm run verify:schema  # do both DSQL regions have the tables AND COLUMNS the migrations
+                       # declare? Read-only (SELECT on pg_tables + information_schema).
+                       # NEEDS .env.local, no server. Run it FIRST after applying a
+                       # migration, and before a release. Columns since 2026-08-17: it
+                       # compared table names only, so 028 and 034 — whose entire content
+                       # is an ADD COLUMN — passed it while unapplied.
 npm run verify:funnel  # is the G1 ad instrument alive? Drives a real browser against
                        # production under src=qa (gate-excluded), writes nothing.
                        # Run it daily during an ad flight — see docs/g1-ad-creatives.md.
@@ -206,6 +217,17 @@ So it is one command a person runs before a release. Each walk asserts the layer
 the server refusing correctly, and the screen a person actually meets. The UI walk exists because
 the HTTP ones passed while the picker was laying itself out sideways on a phone.
 
+**`verify:reveal` is the fourth, added 2026-08-17, and it covers the moment the product exists for.**
+J8 is the primary demand journey and its evidence had gone stale in the most expensive way
+available: the last live proof of the decrypt round trip was 2026-08-08, and it proved a screen that
+secret-types Phase 0 then replaced — `<pre>{value}</pre>` became labelled fields, a masked password
+and a generated TOTP code. The other three walks were green throughout and said nothing about it,
+because none of them reveals anything. This one runs the whole chain — in-browser AES-GCM, KMS wrap,
+DSQL, release, KMS unwrap, decrypt — and asserts the plaintext comes back byte for byte, as labelled
+fields, with a six-digit code that matches one computed independently from the same seed. It also
+decodes a LEGACY `{"username":…,"password":…}` item, because every item imported before Phase 0 is
+stored in that shape permanently and the server can never rewrite it.
+
 **`npm run verify:schema` is a third, and the cheapest.** `migrate.ts` applies one named file and
 tracks nothing, so which migrations have reached which cluster was never recorded anywhere. On
 2026-08-15 that produced its first alert: `auth_challenges` was absent for four minutes while
@@ -214,6 +236,13 @@ as a production failure from a laptop. This compares what the migrations declare
 cluster has — **both regions**, because failover here is an env switch (`DSQL_USE_SECONDARY`) and a
 migration applied to only one region stays invisible until the day somebody flips it. Read-only, so
 it is safe against production, which is the only place worth running it.
+
+**Columns too, since 2026-08-17, and that is now the likelier half.** It compared `pg_tables` and
+nothing else, so a migration whose entire content is `ALTER TABLE vault_items ADD COLUMN ...` passed
+while being entirely unapplied — 028 and 034 are both exactly that shape, and both carry the owner's
+own overrides. The table was present, so the answer was OK; the column was not, and the first report
+would have been a runtime error on whoever pressed Save. Proven in both directions: clean against
+both regions with all 31 added columns present, and failing in both regions on a planted column.
 
 It also asks whether each declared table is **readable by the identity you are connecting as**,
 because presence is not usability. Migration 030 granted the least-privilege role

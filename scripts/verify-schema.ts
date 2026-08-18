@@ -1,6 +1,6 @@
 /**
- * scripts/verify-schema.ts — does the cluster actually have the tables the
- * migrations say it does? Both regions, read-only.
+ * scripts/verify-schema.ts — does the cluster actually have the tables AND the
+ * columns the migrations say it does? Both regions, read-only.
  *
  *   npx tsx --env-file=.env.local scripts/verify-schema.ts     (npm run verify:schema)
  *
@@ -34,6 +34,15 @@
  * pg_tables. It creates nothing, alters nothing and drops nothing — it is safe
  * to run against production, which is the only place worth running it.
  *
+ * 🔴 COLUMNS TOO, SINCE 2026-08-17, AND THAT IS NOW THE LIKELIER HALF. Until
+ * then this compared `pg_tables` and nothing else, so a migration that only
+ * added a column to an existing table passed the check while being entirely
+ * unapplied — 028 and 034 are both exactly that shape, and both carry the
+ * owner's own overrides. The table was present, so the answer was OK; the
+ * column was not, and the first report would have been a runtime error on
+ * whoever pressed Save. A check that measures something adjacent to the
+ * question is this repo's most-repeated defect, and this was one.
+ *
  * It is NOT in CI, for the reason verify:live is not: CI has no cluster
  * credentials. It is a command a person runs before a release, and the one to
  * run FIRST after applying a migration.
@@ -47,7 +56,13 @@ import path from 'node:path';
 import { Client } from 'pg';
 import { DsqlSigner } from '@aws-sdk/dsql-signer';
 
-import { declaredTables, compareSchema } from '../lib/db/schema-manifest';
+import {
+  declaredTables,
+  compareSchema,
+  declaredColumns,
+  compareColumns,
+  type DeclaredColumn,
+} from '../lib/db/schema-manifest';
 import { dsqlIdentity } from '../lib/db/connection';
 
 const MIGRATIONS_DIR = path.resolve(__dirname, '..', 'db', 'migrations');
@@ -62,10 +77,16 @@ interface LiveSchema {
   tables: string[];
   /** Declared tables the CONNECTED identity cannot read. See the note below. */
   unreadable: string[];
+  /** Columns present on the tables the migrations add columns to. */
+  columns: DeclaredColumn[];
 }
 
 /** Reads the tables a cluster actually has, and which of them we may read. */
-async function liveTables(endpoint: string, declared: string[]): Promise<LiveSchema> {
+async function liveTables(
+  endpoint: string,
+  declared: string[],
+  declaredCols: readonly DeclaredColumn[],
+): Promise<LiveSchema> {
   const match = endpoint.match(/\.dsql\.([a-z0-9-]+)\.on\.aws$/i);
   const region = match ? match[1] : (process.env.AWS_REGION ?? 'us-east-1');
   const signer = new DsqlSigner({ hostname: endpoint, region });
@@ -137,7 +158,36 @@ async function liveTables(endpoint: string, declared: string[]): Promise<LiveSch
       }
     }
 
-    return { tables, unreadable };
+    /*
+      🔴 A TABLE CAN BE PRESENT AND MISSING THE COLUMN THE DEPLOY NEEDS. That is
+      the gap this check had until 2026-08-17: it compared `pg_tables` and
+      nothing else, so a migration whose whole content is
+      `ALTER TABLE vault_items ADD COLUMN owner_set_irreplaceable BOOLEAN` was
+      invisible to it. The table was already there, so the check said OK; the
+      column was not, and the first thing to notice would have been the vault
+      write path throwing at whoever pressed Save. Most migrations here now add
+      columns rather than tables, so this is the likelier half of the class.
+
+      ONE QUERY PER TABLE, not one scan of `information_schema.columns`. The
+      unfiltered scan terminated the connection on this cluster when it was
+      tried; the filtered form is also cheaper and touches only the handful of
+      tables a migration has ever altered.
+
+      READ-ONLY, like everything else here: `information_schema` is a view over
+      the catalog.
+    */
+    const columns: DeclaredColumn[] = [];
+    for (const table of [...new Set(declaredCols.map((c) => c.table))]) {
+      if (!tables.includes(table)) continue; // absent table is already reported, louder
+      const found = await client.query<{ column_name: string }>(
+        `SELECT column_name FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = $1`,
+        [table],
+      );
+      for (const row of found.rows) columns.push({ table, column: row.column_name.toLowerCase() });
+    }
+
+    return { tables, unreadable, columns };
   } finally {
     await client.end();
   }
@@ -145,9 +195,14 @@ async function liveTables(endpoint: string, declared: string[]): Promise<LiveSch
 
 async function main(): Promise<void> {
   const files = readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith('.sql'));
-  const declared = declaredTables(files.map((f) => readFileSync(path.join(MIGRATIONS_DIR, f), 'utf8')));
+  const sources = files.map((f) => readFileSync(path.join(MIGRATIONS_DIR, f), 'utf8'));
+  const declared = declaredTables(sources);
+  const declaredCols = declaredColumns(sources);
 
-  console.log(`[schema] ${files.length} migration files declare ${declared.length} tables.`);
+  console.log(
+    `[schema] ${files.length} migration files declare ${declared.length} tables ` +
+      `and add ${declaredCols.length} columns.`,
+  );
 
   const targets: Target[] = [
     { label: 'primary   (us-east-1)', endpoint: process.env.DSQL_PRIMARY_ENDPOINT },
@@ -167,7 +222,7 @@ async function main(): Promise<void> {
 
     let live: LiveSchema;
     try {
-      live = await liveTables(endpoint, declared);
+      live = await liveTables(endpoint, declared, declaredCols);
     } catch (err) {
       // A region we could not reach is an unknown, not a pass.
       console.error(`[schema] ${label}: UNREACHABLE — ${(err as Error).message}`);
@@ -188,6 +243,20 @@ async function main(): Promise<void> {
       failed = true;
     } else {
       console.log(`[schema] ${label}: ✓ all ${declared.length} declared tables present.`);
+    }
+
+    const columnDrift = compareColumns(declaredCols, live.columns);
+    if (columnDrift.missing.length > 0) {
+      console.error(
+        `[schema] ${label}: ✗ ${columnDrift.missing.length} column(s) added by a migration but ABSENT:\n` +
+          columnDrift.missing.map((c) => `           - ${c.table}.${c.column}`).join('\n') +
+          `\n           The TABLE is present, which is why the check above passed. The code that reads\n` +
+          `           this column will throw at runtime on the first write that touches it.\n` +
+          `             npx tsx --env-file=.env.admin db/migrations/migrate.ts <NNN_name>.sql`,
+      );
+      failed = true;
+    } else if (declaredCols.length > 0) {
+      console.log(`[schema] ${label}: ✓ all ${declaredCols.length} added columns present.`);
     }
 
     if (live.unreadable.length > 0) {

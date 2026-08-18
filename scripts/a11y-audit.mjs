@@ -56,6 +56,15 @@ const BASE = process.env.A11Y_BASE || 'http://localhost:3100';
 /** Owner mode — dense, 16px floor, behind a session. */
 const OWNER_PAGES = [
   '/vault',
+  /*
+    ADDED 2026-08-17, and its absence is why it is worth a comment. This is the
+    form an owner types a secret INTO, and secret-types Phase 0 gave it four new
+    fields the same day - username, TOTP, recovery codes - none of which any
+    accessibility pass had ever seen. The list above was written when the page
+    held one textarea. A screen that only appears when you press "add" is
+    exactly the kind that falls out of a hand-maintained list.
+  */
+  '/vault/new',
   '/circle',
   '/rules',
   '/triggers',
