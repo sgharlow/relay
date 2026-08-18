@@ -45,6 +45,9 @@ function validBody(overrides: Record<string, unknown> = {}) {
     ciphertext: VALID_B64,
     wrapped_data_key: VALID_B64,
     kms_key_id: 'cmk-1',
+    // Derived in the browser by encryptForUpload on every real write; required
+    // at the boundary since 035 Phase 1 was hardened.
+    secret_kinds: 'password',
     ...overrides,
   };
 }

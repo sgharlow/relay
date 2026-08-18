@@ -98,9 +98,26 @@ describe('PUT /api/vault/items/[id]', () => {
   it('replaces the payload, audits, and returns the updated metadata', async () => {
     mockAssertOwns.mockResolvedValueOnce(undefined);
     mockUpdate.mockResolvedValueOnce({ id: 'item-1', title: 'A' } as never);
-    const res = await PUT(makeReq({ ciphertext: VALID_B64, wrapped_data_key: VALID_B64 }), ctx);
+    const res = await PUT(
+      makeReq({ ciphertext: VALID_B64, wrapped_data_key: VALID_B64, secret_kinds: 'password,totp' }),
+      ctx,
+    );
     expect(res.status).toBe(200);
     expect(mockAudit.mock.calls[0][1].action).toBe('vault_item_updated');
+  });
+
+  it('400 and no write when a valid-looking payload carries no declaration (fail closed)', async () => {
+    /*
+      🔴 THE UPDATE-PATH DEFECT, PINNED AT THE ROUTE. A re-encrypt whose payload
+      omits secret_kinds is exactly what left a stale declaration standing over a
+      new blob — an item reading `usable` on a factor it no longer held. The
+      boundary now refuses it: a well-formed base64 body without a declaration is
+      a 400, and nothing is written.
+    */
+    mockAssertOwns.mockResolvedValueOnce(undefined);
+    const res = await PUT(makeReq({ ciphertext: VALID_B64, wrapped_data_key: VALID_B64 }), ctx);
+    expect(res.status).toBe(400);
+    expect(mockUpdate).not.toHaveBeenCalled();
   });
 });
 

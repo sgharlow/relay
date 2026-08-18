@@ -212,6 +212,76 @@ async function main(): Promise<void> {
       reverted.items.find((i) => i.id === itemId)?.factors_required == null,
       'factors_required=null',
     );
+
+    /*
+      🔴 THE UPDATE-PATH DEFECT, PROVEN FIXED END TO END — the reason this was a
+      merge blocker rather than next-sprint debt. Create an item that HOLDS a
+      code and demands one (usable), then re-encrypt it with the code removed —
+      exactly what an owner does editing a TOTP seed away. Before the fix, the
+      update path never rewrote secret_kinds, so the declaration stayed
+      `password,totp` over a blob that no longer held it and the item kept
+      reading `usable` on a code it could not produce. Now the declaration is
+      derived at the choke point on every encrypt, so the re-encrypt refreshes
+      it and the item correctly becomes unreachable.
+    */
+    const svc2 = new CryptoService(fetchAs());
+    const withCode = await svc2.encryptForUpload(
+      encodeSecretPayload([
+        { kind: 'username', value: 'edit.me@fastmail.test' },
+        { kind: 'password', value: 'first-password-77' },
+        { kind: 'totp', value: 'otpauth://totp/Fastmail:edit?secret=JBSWY3DPEHPK3PXP&issuer=Fastmail' },
+      ]),
+      { type: 'login', title: 'Editable email', service_name: 'Fastmail', category: 'communication', criticality: 'critical' } as never,
+    );
+    const editable = await post('/api/vault/items', withCode);
+    const editId = String((editable.body as { id?: string }).id);
+    check('the derived declaration includes totp on create', (withCode as { secret_kinds?: string }).secret_kinds === 'password,totp,username', String((withCode as { secret_kinds?: string }).secret_kinds));
+
+    await post('/api/rules', { recipient_id: recipientId, vault_item_id: editId, trigger_type: 'emergency', scope: 'view', reversible: true });
+    await patch(`/api/vault/items/${editId}`, { factors_required: ['totp'] });
+
+    const beforeEdit = (await call('/api/vault/items')).body as { items: ListItem[] };
+    const bEdit = assessPreparedness({ items: beforeEdit.items, ruledItemIds: [itemId, editId], verifierCount: 1 });
+
+    // Re-encrypt WITHOUT the code — the edit-away. PUT re-derives.
+    const withoutCode = await svc2.encryptForUpload(
+      encodeSecretPayload([
+        { kind: 'username', value: 'edit.me@fastmail.test' },
+        { kind: 'password', value: 'rotated-password-88' },
+      ]),
+      { type: 'login', title: 'Editable email', service_name: 'Fastmail', category: 'communication', criticality: 'critical' } as never,
+    );
+    const put = await call(`/api/vault/items/${editId}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(withoutCode),
+    });
+    check('the re-encrypt is accepted', put.status === 200, `HTTP ${put.status}`);
+
+    const afterEdit = (await call('/api/vault/items')).body as { items: ListItem[] };
+    const editedItem = afterEdit.items.find((i) => i.id === editId);
+    check(
+      'the declaration REFRESHED on re-encrypt — no longer claims a code it dropped',
+      editedItem?.secret_kinds === 'password,username',
+      `secret_kinds=${JSON.stringify(editedItem?.secret_kinds)}`,
+    );
+
+    const aEdit = assessPreparedness({ items: afterEdit.items, ruledItemIds: [itemId, editId], verifierCount: 1 });
+    check(
+      '🔴 THE MERGE BLOCKER: editing a code away makes the item unreachable, not a stale usable',
+      bEdit.reachable > aEdit.reachable,
+      `reachable ${bEdit.reachable} -> ${aEdit.reachable} (the edited item dropped out)`,
+    );
+
+    /*
+      And the boundary refuses a raw write with no declaration — the fail-closed
+      half. A well-formed base64 payload that skipped the service is rejected.
+    */
+    const raw = await post('/api/vault/items', {
+      type: 'login', title: 'Bypass', ciphertext: 'AAAA', wrapped_data_key: 'AAAA',
+      kms_key_id: 'arn:aws:kms:us-east-1:1:key/abc',
+    });
+    check('a write that skips the crypto boundary is refused (fail closed)', raw.status === 400, `HTTP ${raw.status}`);
   } finally {
     if (secret) {
       await post('/api/account/step-up', { totpCode: generateTotpCodeFor(secret) });

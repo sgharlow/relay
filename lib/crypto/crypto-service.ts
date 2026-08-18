@@ -24,6 +24,8 @@
  * Requirements: 2.1, 2.2, 2.3, 2.7
  */
 
+import { secretKindsOf, decodeSecretPayload } from './secret-payload';
+
 // ---------------------------------------------------------------------------
 // Errors + types
 // ---------------------------------------------------------------------------
@@ -243,11 +245,43 @@ export class CryptoService {
     }
 
     const packed = packIvCiphertext(encrypted.iv, encrypted.ciphertext);
+
+    /*
+      🔴 secret_kinds IS DERIVED HERE, FROM THE PLAINTEXT, AND ANY CALLER VALUE
+      IS IGNORED. This is the structural fix for the defect that Phase 1 shipped
+      with: `secret_kinds` describes the ciphertext, exactly ONE function
+      produces ciphertext, and this is it — so declaring it anywhere else is a
+      convention every one of five call sites has to remember, and update and
+      the two onboarding paths did not. Worse than forgetting: `updateItem`
+      re-encrypts the blob without touching `secret_kinds`, so an owner who
+      edits a TOTP seed away leaves the OLD declaration standing over a blob
+      that no longer holds it — an item reads `usable` on a demand it can no
+      longer meet, which is the exact falsehood 035 exists to end, restored by
+      a stale declaration. Deriving it from the plaintext at the one moment the
+      plaintext is in hand makes that unreachable: a re-encrypt re-derives.
+
+      It CANNOT manufacture a false `usable`. `decodeSecretPayload` never throws
+      and falls back to a bare `password` for any shape it does not recognise
+      (a note, a helper-entered string, a legacy blob). `password` satisfies
+      nothing in `usability.ts`'s SATISFIED_BY, so a mis-derivation can only
+      ever produce `blocked` or `unknown` — never invent a factor. The error
+      direction is conservative by construction.
+
+      An empty string (nothing worth encrypting) declares '' — "holds nothing
+      recognised", an answer — not null. Null means never-declared and is only
+      reachable by a write that does NOT pass through here; the route layer
+      refuses that for new writes (fail-closed), see the vault item routes.
+    */
+    const secret_kinds = secretKindsOf(decodeSecretPayload(plaintext));
+
     return {
       ciphertext: bytesToBase64(packed),
       wrapped_data_key: wrap.wrapped_data_key,
       kms_key_id: wrap.kms_key_id,
       ...metadata,
+      // After the spread, so a caller cannot override the derived value — the
+      // whole point is that this is not the caller's to set.
+      secret_kinds,
     };
   }
 

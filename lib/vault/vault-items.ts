@@ -50,10 +50,12 @@ export const BACKUP_NOTE_MAX = 2000;
 export interface CreateVaultItemInput {
   /**
    * What the blob holds, declared by the browser that encrypted it (035).
-   * Sorted-comma-joined; `null` = not declared, `''` = declared as holding
-   * nothing recognised. Keep those apart — `usability.ts` depends on it.
+   * Sorted-comma-joined. REQUIRED after validation: `validateCreateInput`
+   * derives it via `requireSecretKinds` and refuses a write that omits it, so
+   * a persisted new item always carries a declaration. `''` means "holds
+   * nothing recognised"; only pre-035 historical rows are null in the column.
    */
-  secret_kinds?: string | null;
+  secret_kinds: string;
   type: VaultItemType;
   title: string;
   service_name: string | null;
@@ -174,6 +176,21 @@ export interface UpdateVaultItemInput {
    * quietly shipped.
    */
   backup_note?: string;
+  /**
+   * What the RE-ENCRYPTED blob holds (035). REQUIRED, unlike everything else on
+   * this interface — and NOT COALESCE'd in the UPDATE.
+   *
+   * 🔴 THIS IS THE FIELD WHOSE ABSENCE WAS THE WORST HALF OF THE PHASE-1 GAP.
+   * Every other field here is optional-and-COALESCE'd so a caller sending only
+   * a blob keeps the rest. `secret_kinds` cannot follow that pattern: the blob
+   * has CHANGED, so keeping the previous declaration means describing the new
+   * ciphertext with the old one. An owner who edits a TOTP seed away would
+   * leave `secret_kinds` claiming `totp` over a blob that no longer holds it,
+   * and the item would read `usable` on a factor it cannot meet. So a re-encrypt
+   * MUST refresh the declaration, which is why this is required and assigned
+   * rather than COALESCE'd, and why the value is derived at the choke point.
+   */
+  secret_kinds: string;
 }
 
 /** Thrown on validation failure; routes map this to HTTP 400. */
@@ -263,23 +280,6 @@ export function validateCreateInput(body: unknown): CreateVaultItemInput {
     }
   }
 
-  /*
-    secret_kinds — optional, and the ONE field here the browser knows and the
-    server cannot. It says what the blob it just encrypted holds. Unrecognised
-    entries are DROPPED rather than rejected, matching `parseKindList`: this
-    column is written by a browser that is not always the same build as the
-    server, and refusing the whole save because a newer client named a kind this
-    build has not heard of would break saving to fix a label.
-  */
-  const kinds =
-    b.secret_kinds == null
-      ? null
-      : typeof b.secret_kinds === 'string'
-        ? parseKindList(b.secret_kinds)
-        : (() => {
-            throw new ValidationError('secret_kinds must be a string or null', 'secret_kinds');
-          })();
-
   return {
     type: b.type as VaultItemType,
     title: b.title as string,
@@ -291,10 +291,55 @@ export function validateCreateInput(body: unknown): CreateVaultItemInput {
     wrapped_data_key: b.wrapped_data_key as string,
     kms_key_id: b.kms_key_id as string,
     backup_note: normaliseNote(b.backup_note),
-    // Sorted-comma-joined, so one value has one spelling. `[]` stays `''` —
-    // a client declaring "nothing in here" is not the same as never declaring.
-    secret_kinds: kinds === null ? null : kinds.join(','),
+    // 🔴 REQUIRED, not optional — this is the fail-closed half of the wall.
+    secret_kinds: requireSecretKinds(b.secret_kinds),
   };
+}
+
+/**
+ * The boundary that makes a forgotten declaration IMPOSSIBLE rather than
+ * merely discouraged.
+ *
+ * 🔴 WHY THIS REFUSES ABSENCE. `secret_kinds` describes the ciphertext, and
+ * every legitimate write derives it at the one place ciphertext is made —
+ * `CryptoService.encryptForUpload`, which always emits a string (empty when
+ * there is nothing to declare, never absent). So a write that reaches this
+ * function WITHOUT the field did not pass through that boundary: it is a
+ * hand-rolled fetch, an old client, or a future path that forgot. Phase 1
+ * shipped exactly that gap on three of five write paths, and the update path's
+ * version was not merely honest-but-empty — it left a STALE declaration
+ * standing over a re-encrypted blob, so an item read `usable` on a factor it
+ * no longer held. Accepting a null here would let that back in silently. Both
+ * halves of the wall are needed: derive-at-the-choke-point so the value is
+ * always right, and refuse-at-the-boundary so a path that skips the choke
+ * point fails loudly instead of writing null.
+ *
+ * ⚠️ NOT the same policy as an UNKNOWN KIND. A kind this build has not heard of
+ * is DROPPED, not rejected, because the browser may be a newer build than the
+ * server and breaking every save to fix a label would be its own outage
+ * (`parseKindList`'s rule). Absence is different in kind: it means the write
+ * never declared at all, which no current client does and no future one should.
+ *
+ * The three-state distinction the column keeps — null (never declared) vs ''
+ * (declared as holding nothing) vs a value — still lives at the DATA layer:
+ * historical rows written before 035 are null and read as `unknown`. This
+ * function governs only NEW writes, where null is not a state anyone should be
+ * able to create.
+ */
+function requireSecretKinds(value: unknown): string {
+  if (typeof value !== 'string') {
+    throw new ValidationError(
+      'secret_kinds is required on every write. It is derived in the browser from the ' +
+        'plaintext being encrypted; a write without it did not pass through the crypto ' +
+        'boundary (CryptoService.encryptForUpload) and would leave the item unusable-check ' +
+        'blind. Route the write through it rather than posting a raw payload.',
+      'secret_kinds',
+    );
+  }
+  // Parsed, so unknown kinds drop and the stored form is sorted-comma-joined —
+  // one value, one spelling. An empty declaration ('') survives as '', which is
+  // "holds nothing recognised", a real answer distinct from never-declared.
+  return (parseKindList(value) ?? []).join(',');
 }
 
 /**
@@ -348,6 +393,9 @@ export function validateUpdateInput(body: unknown): UpdateVaultItemInput {
     service_name: typeof b.service_name === 'string' ? b.service_name : undefined,
     url: typeof b.url === 'string' ? b.url : undefined,
     backup_note: normaliseNote(b.backup_note) ?? undefined,
+    // Required and refreshed on every update — the re-encrypted blob has a new
+    // truth to tell. Same boundary function as create, so one rule governs both.
+    secret_kinds: requireSecretKinds(b.secret_kinds),
   };
 }
 
@@ -444,7 +492,7 @@ export async function createItem(
         input.category,
         input.criticality,
         input.backup_note,
-        input.secret_kinds ?? null,
+        input.secret_kinds,
         Buffer.from(input.ciphertext, 'base64'),
         Buffer.from(input.wrapped_data_key, 'base64'),
         input.kms_key_id,
@@ -496,6 +544,11 @@ export async function updateItem(
     query<Record<string, unknown>>(
       // COALESCE throughout: an omitted field keeps what is there, so a caller
       // that sends only a blob behaves exactly as it did before renaming existed.
+      // secret_kinds is ASSIGNED, not COALESCE'd, and that difference is the fix:
+      // the blob just changed, so its declaration must change with it. Every
+      // other field here is COALESCE'd because omitting it means "leave it"; a
+      // re-encrypt can never mean "leave the old declaration", because the thing
+      // it described no longer exists.
       `UPDATE vault_items
           SET ciphertext = $1,
               wrapped_data_key = $2,
@@ -504,8 +557,9 @@ export async function updateItem(
               service_name = COALESCE($5, service_name),
               url = COALESCE($6, url),
               backup_note = COALESCE($7, backup_note),
+              secret_kinds = $8,
               updated_at = now()
-        WHERE id = $8 AND owner_id = $9
+        WHERE id = $9 AND owner_id = $10
        RETURNING ${METADATA_COLUMNS}`,
       [
         Buffer.from(input.ciphertext, 'base64'),
@@ -515,6 +569,7 @@ export async function updateItem(
         input.service_name ?? null,
         input.url ?? null,
         input.backup_note ?? null,
+        input.secret_kinds,
         id,
         ownerId,
       ],

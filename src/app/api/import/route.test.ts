@@ -32,7 +32,10 @@ function makeReq(body: unknown) {
 }
 const VALID_B64 = 'AAAA';
 function item(over: Record<string, unknown> = {}) {
-  return { type: 'login', title: 'Gmail', ciphertext: VALID_B64, wrapped_data_key: VALID_B64, kms_key_id: 'cmk', ...over };
+  // secret_kinds is derived per row by encryptForUpload in the import client and
+  // required at the boundary since 035 Phase 1 was hardened — an imported login
+  // holds a password, and may hold a TOTP the CSV carried.
+  return { type: 'login', title: 'Gmail', ciphertext: VALID_B64, wrapped_data_key: VALID_B64, kms_key_id: 'cmk', secret_kinds: 'password', ...over };
 }
 
 beforeEach(() => {

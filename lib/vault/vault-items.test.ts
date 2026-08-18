@@ -51,6 +51,7 @@ function validBody(overrides: Record<string, unknown> = {}) {
     ciphertext: VALID_B64,
     wrapped_data_key: VALID_B64,
     kms_key_id: 'cmk-1',
+    secret_kinds: 'password',
     ...overrides,
   };
 }
@@ -116,8 +117,8 @@ describe('validateCreateInput', () => {
 
 describe('validateUpdateInput', () => {
   it('requires base64 ciphertext + wrapped_data_key', () => {
-    expect(() => validateUpdateInput({ ciphertext: VALID_B64, wrapped_data_key: VALID_B64 })).not.toThrow();
-    expect(() => validateUpdateInput({ ciphertext: 'bad!', wrapped_data_key: VALID_B64 })).toThrow(ValidationError);
+    expect(() => validateUpdateInput({ ciphertext: VALID_B64, wrapped_data_key: VALID_B64, secret_kinds: 'password' })).not.toThrow();
+    expect(() => validateUpdateInput({ ciphertext: 'bad!', wrapped_data_key: VALID_B64, secret_kinds: 'password' })).toThrow(ValidationError);
   });
 });
 
@@ -189,6 +190,10 @@ describe('Property 3: vault item metadata round-trip', () => {
             ciphertext: VALID_B64,
             wrapped_data_key: VALID_B64,
             kms_key_id: 'cmk-1',
+            // Required on every write since 035 Phase 1 was hardened — the blob
+            // always declares what it holds. A realistic value; this property is
+            // about the metadata round-trip, not the declaration.
+            secret_kinds: 'password',
           });
           const out = await createItem('owner-1', input);
 
@@ -251,7 +256,7 @@ describe('getItemForOwner', () => {
 describe('updateItem', () => {
   it('returns null when no owner-scoped row is updated', async () => {
     mockQuery.mockResolvedValueOnce(qResult([]));
-    const r = await updateItem('owner-1', 'x', { ciphertext: VALID_B64, wrapped_data_key: VALID_B64 });
+    const r = await updateItem('owner-1', 'x', { ciphertext: VALID_B64, wrapped_data_key: VALID_B64, secret_kinds: 'password' });
     expect(r).toBeNull();
   });
 });
@@ -306,7 +311,7 @@ describe('backup_note — the note the advice layer reads', () => {
     // the gap while the advice layer still reported one — two definitions of
     // "has a note" that disagree.
     expect(validateCreateInput(validBody({ backup_note: '   \n\t ' })).backup_note).toBeNull();
-    expect(validateUpdateInput({ ciphertext: VALID_B64, wrapped_data_key: VALID_B64, backup_note: '  ' }).backup_note)
+    expect(validateUpdateInput({ ciphertext: VALID_B64, wrapped_data_key: VALID_B64, secret_kinds: 'password', backup_note: '  ' }).backup_note)
       .toBeUndefined();
   });
 
@@ -318,7 +323,7 @@ describe('backup_note — the note the advice layer reads', () => {
     const tooLong = 'x'.repeat(2001);
     expect(() => validateCreateInput(validBody({ backup_note: tooLong }))).toThrow(/backup_note/);
     expect(() =>
-      validateUpdateInput({ ciphertext: VALID_B64, wrapped_data_key: VALID_B64, backup_note: tooLong }),
+      validateUpdateInput({ ciphertext: VALID_B64, wrapped_data_key: VALID_B64, secret_kinds: 'password', backup_note: tooLong }),
     ).toThrow(/backup_note/);
   });
 
@@ -332,6 +337,7 @@ describe('backup_note — the note the advice layer reads', () => {
       ciphertext: VALID_B64,
       wrapped_data_key: VALID_B64,
       backup_note: 'Recovery codes are in the desk drawer.',
+      secret_kinds: 'password',
     });
     const [sql, params] = mockQuery.mock.calls[0];
     // COALESCE, matching title/service_name/url — omitting the field keeps what is there.
@@ -339,7 +345,7 @@ describe('backup_note — the note the advice layer reads', () => {
     expect(params).toContain('Recovery codes are in the desk drawer.');
 
     mockQuery.mockResolvedValueOnce(qResult([metaRow()]));
-    await updateItem('owner-1', 'item-1', { ciphertext: VALID_B64, wrapped_data_key: VALID_B64 });
+    await updateItem('owner-1', 'item-1', { ciphertext: VALID_B64, wrapped_data_key: VALID_B64, secret_kinds: 'password' });
     const [, paramsOmitted] = mockQuery.mock.calls[1];
     expect(paramsOmitted).toContain(null);
   });

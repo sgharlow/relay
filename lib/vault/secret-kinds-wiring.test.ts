@@ -42,42 +42,76 @@ describe('the write path — a client can declare what the blob holds', () => {
     );
   });
 
-  it('keeps NEVER-DECLARED apart from DECLARED-AS-EMPTY', () => {
+  it('REFUSES a write that carries no declaration — fail closed at the boundary', () => {
     /*
-      The whole three-state design rests on this one distinction. `null` means
-      no client ever said, and reads as `unknown`; `''` means a client said the
-      blob holds nothing recognised, which is an answer. Collapse them and the
-      product either keeps lying or alarms every owner at once.
+      🔴 THE OTHER HALF OF THE PHASE-1 FIX. Deriving at the choke point makes the
+      value right for every write that passes through it; this makes a write that
+      SKIPS it fail loudly instead of silently persisting null. A hand-rolled
+      fetch, an old client, or a future path that forgot all arrive here without
+      the field, and all are refused. Before this, three of five write paths
+      skipped the declaration and the worst of them (update) left a STALE one
+      standing over a re-encrypted blob.
     */
-    expect(validateCreateInput(createBody()).secret_kinds, 'absent must stay null').toBeNull();
+    expect(() => validateCreateInput(createBody()), 'absent must be rejected').toThrow(
+      /secret_kinds is required/,
+    );
     expect(
-      validateCreateInput(createBody({ secret_kinds: '' })).secret_kinds,
-      'an explicit empty declaration must survive as empty, not become null',
-    ).toBe('');
+      () => validateCreateInput(createBody({ secret_kinds: null })),
+      'null is not a legal input on a new write — only historical rows are null',
+    ).toThrow(/secret_kinds is required/);
+  });
+
+  it('keeps DECLARED-AS-EMPTY distinct from a value — the answer survives', () => {
+    /*
+      The three-state distinction (never-declared / declared-empty / declared-
+      value) still matters, but never-declared is no longer reachable by a WRITE
+      — it is the state of pre-035 historical rows only, and usability.test.ts
+      pins how the DATA layer reads it. At the write boundary the live
+      distinction is empty vs value: `''` means "holds nothing recognised", an
+      answer, and must not be confused with a populated declaration.
+    */
+    expect(validateCreateInput(createBody({ secret_kinds: '' })).secret_kinds).toBe('');
+    expect(validateCreateInput(createBody({ secret_kinds: 'totp,password' })).secret_kinds).toBe(
+      'password,totp',
+    );
   });
 
   it('drops a kind it does not recognise rather than refusing the save', () => {
-    // The browser is not always the same build as the server. Refusing the
-    // whole save because a newer client named an unknown kind would break
-    // saving in order to fix a label.
+    // Absence is refused (above); an unknown KIND is dropped. Different policies
+    // for different problems: the browser may be a newer build than the server,
+    // so breaking every save to fix a label would be its own outage. An empty
+    // result after dropping is still a valid declaration, not an absent one.
     expect(validateCreateInput(createBody({ secret_kinds: 'password,quantum_rune' })).secret_kinds).toBe(
       'password',
     );
   });
 
-  it('what the browser sends is derived from the fields it just encrypted', () => {
+  it('the declaration is derived at the CHOKE POINT, not at any call site', () => {
     /*
-      Not a style point. If the declaration were built from form state rather
-      than from the encoded array, an empty TOTP box could still declare `totp`
-      — and the item would read `usable` while holding no second factor, which
-      is the original falsehood wearing the fix's clothes.
+      🔴 THIS TEST REPLACES ONE THAT GREPPED `NewVaultItemClient` FOR
+      `secret_kinds: secretKindsOf(...)`. That call-site derivation was the
+      Phase-1 shape and it was the bug: it lived on ONE of five write paths, so
+      the other four wrote nothing. The fix moved the derivation into the single
+      function that produces ciphertext — `encryptForUpload` — from the plaintext
+      it is about to encrypt, so every path gets it for free and no call site can
+      forget or disagree. So the assertion inverts: the derivation must be at the
+      choke point, and the call site must NOT pass it.
     */
-    const src = SRC('src/app/(owner)/vault/new/NewVaultItemClient.tsx');
-    expect(src, 'the new-item form does not declare secret_kinds at all').toMatch(/secret_kinds:\s*secretKindsOf\(/);
-    expect(src, 'it must declare from the same array it encodes').toMatch(
-      /encodeSecretPayload\(fields\)/,
-    );
-    // And the helper honours the same empty-field rule the encoder does.
+    const service = SRC('lib/crypto/crypto-service.ts');
+    expect(
+      service,
+      'encryptForUpload must derive secret_kinds from the plaintext it encrypts',
+    ).toMatch(/secret_kinds\s*=\s*secretKindsOf\(decodeSecretPayload\(plaintext\)\)/);
+
+    const form = SRC('src/app/(owner)/vault/new/NewVaultItemClient.tsx');
+    expect(
+      /secret_kinds:/.test(form),
+      'the new-item form passes secret_kinds — it must not; a caller value is ignored and would be a second definition',
+    ).toBe(false);
+
+    // The derivation honours the same empty-field rule the encoder does: an
+    // untouched TOTP box declares no `totp`, which is what keeps a code-less
+    // blob from reading `usable` on a code it does not hold.
     expect(secretKindsOf([{ kind: 'password', value: 'x' }, { kind: 'totp', value: '' }])).toBe(
       'password',
     );
