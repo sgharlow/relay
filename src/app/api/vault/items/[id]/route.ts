@@ -18,6 +18,7 @@ import { assertOwns, IntegrityError } from '../../../../../../lib/db/integrity';
 import {
   updateItem,
   setOwnerRootOverride,
+  setOwnerIrreplaceableOverride,
   setItemNote,
   BACKUP_NOTE_MAX,
   deleteItem,
@@ -141,7 +142,11 @@ export async function PATCH(req: NextRequest, { params }: Ctx): Promise<NextResp
 
   const raw = await readJson(req);
   if (isResponse(raw)) return raw;
-  const body = (raw ?? {}) as { owner_set_root?: boolean | null; backup_note?: string | null };
+  const body = (raw ?? {}) as {
+    owner_set_root?: boolean | null;
+    owner_set_irreplaceable?: boolean | null;
+    backup_note?: string | null;
+  };
 
   /*
     TWO metadata fields now, and the handler takes EXACTLY ONE per call.
@@ -156,20 +161,32 @@ export async function PATCH(req: NextRequest, { params }: Ctx): Promise<NextResp
     not much of an audit entry. The previous contract is unchanged: a caller
     sending `owner_set_root` behaves exactly as it did.
   */
-  const hasRoot = 'owner_set_root' in body;
-  const hasNote = 'backup_note' in body;
+  const FIELDS = ['owner_set_root', 'owner_set_irreplaceable', 'backup_note'] as const;
+  const present = FIELDS.filter((f) => f in body);
 
-  if (hasRoot === hasNote) {
+  /*
+    EXACTLY ONE PER CALL. Each writes a different audit action, and an entry that
+    cannot say which decision an owner made is not much of an audit entry.
+    Generalised from a two-field pair on 2026-08-17 when owner_set_irreplaceable
+    arrived; a hardcoded `hasA === hasB` would have quietly accepted two fields
+    at once the moment a third existed.
+  */
+  if (present.length !== 1) {
     return NextResponse.json(
       {
         error: 'ValidationError',
-        message: hasRoot
-          ? 'Send owner_set_root or backup_note, not both'
-          : 'owner_set_root or backup_note is required',
+        message:
+          present.length === 0
+            ? `One of ${FIELDS.join(', ')} is required`
+            : `Send only one of ${FIELDS.join(', ')} — received ${present.join(', ')}`,
       },
       { status: 400 },
     );
   }
+  // No `hasRoot`: it is the fall-through, and naming a branch nothing reads is
+  // how an unused variable becomes a stale claim about the control flow.
+  const hasNote = present[0] === 'backup_note';
+  const hasIrreplaceable = present[0] === 'owner_set_irreplaceable';
 
   const itemId = (await params).id;
 
@@ -209,6 +226,31 @@ export async function PATCH(req: NextRequest, { params }: Ctx): Promise<NextResp
       detail: { present: Boolean(trimmed && trimmed.length > 0) },
     });
     return NextResponse.json(updatedNote);
+  }
+
+  if (hasIrreplaceable) {
+    const v = body.owner_set_irreplaceable;
+    if (v !== null && typeof v !== 'boolean') {
+      return NextResponse.json(
+        { error: 'ValidationError', message: 'owner_set_irreplaceable must be true, false or null' },
+        { status: 400 },
+      );
+    }
+    const updatedIrr = await setOwnerIrreplaceableOverride(auth.ownerId, itemId, v ?? null);
+    if (!updatedIrr) {
+      return NextResponse.json({ error: 'NotFound', message: 'No such item' }, { status: 404 });
+    }
+    // Audited for the same reason the root override is: this one decides
+    // whether a CUSTODY_RISK is ever raised for something that cannot be
+    // regenerated from a login.
+    await writeAuditEntry(auth.ownerId, {
+      actor: `owner:${auth.ownerId}`,
+      action: 'vault_item_classification_overridden',
+      entity: 'vault_item',
+      entityId: itemId,
+      detail: { owner_set_irreplaceable: v ?? null },
+    });
+    return NextResponse.json(updatedIrr);
   }
 
   const value = body.owner_set_root;

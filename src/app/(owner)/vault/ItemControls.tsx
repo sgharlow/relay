@@ -380,6 +380,34 @@ export function ItemControls({
     possible, or an owner who ticks it by accident has permanently overruled the
     agent with no way back.
   */
+  /**
+   * The owner's answer to "could this be replaced?" — migration 034.
+   *
+   * 🔴 THEY COULD OVERRULE THE AGENT ABOUT ROOT CREDENTIALS AND NOT ABOUT THIS,
+   * which is the higher-consequence of the two. `irreplaceable` is what raises a
+   * CUSTODY_RISK — a deed, a will, a passport — and only the intake agent could
+   * ever set it, from the title alone. If it judged a passport replaceable, the
+   * warning was never raised and nothing on this screen hinted a judgement had
+   * been made at all.
+   */
+  async function setIrreplaceable(value: boolean | null) {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/vault/items/${item.id}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ owner_set_irreplaceable: value }),
+      });
+      if (!res.ok) throw new Error('Could not save that.');
+      await onChanged();
+    } catch (e) {
+      setError(String((e as Error).message));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function setRoot(value: boolean | null) {
     setBusy(true);
     setError(null);
@@ -399,6 +427,7 @@ export function ItemControls({
   }
 
   const ownerSaid = item.owner_set_root;
+  const ownerSaidIrreplaceable = item.owner_set_irreplaceable;
 
   return (
     <div style={{ display: 'flex', gap: 'var(--s1)', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -432,6 +461,29 @@ export function ItemControls({
         edits a sentence it can. Putting them on the same form would mean asking
         for a password in order to fix a typo.
       */}
+      {/*
+        Third state matters as much as the first two, so the cycle is
+        yes -> cleared, exactly like the root control beside it: an owner who
+        ticks this by mistake must be able to hand the decision back to the
+        agent rather than being stuck having overruled it.
+      */}
+      <button
+        onClick={() => setIrreplaceable(ownerSaidIrreplaceable === true ? null : true)}
+        disabled={busy}
+        title={
+          ownerSaidIrreplaceable === true
+            ? 'You marked this as impossible to replace. Click to let Relay decide again.'
+            : 'Mark this as impossible to replace — a deed, a will, a passport. It will be flagged if nobody can reach it.'
+        }
+        style={{
+          ...quiet,
+          color: ownerSaidIrreplaceable === true ? 'var(--clay)' : 'var(--ink-muted)',
+          border: ownerSaidIrreplaceable === true ? '1px solid var(--clay)' : '1px solid transparent',
+          borderRadius: 4,
+        }}
+      >
+        {ownerSaidIrreplaceable === true ? 'Cannot be replaced' : 'Cannot be replaced?'}
+      </button>
       <button onClick={() => setMode('noting')} style={{ ...quiet, color: 'var(--ink-muted)' }}>
         {item.backup_note ? 'Edit note' : 'Add note'}
       </button>

@@ -21,6 +21,10 @@ export interface DashboardItem {
   is_root_credential: boolean;
   /** The owner's own answer, or null if they have never given one (Req 11.8). */
   owner_set_root?: boolean | null;
+  /** The same, for replaceability — migration 034. Drives CUSTODY_RISK. */
+  owner_set_irreplaceable?: boolean | null;
+  /** What the agent (or the owner's override) concluded. */
+  irreplaceable?: boolean;
   importance_score: number;
   depends_on_item_id: string | null;
   /**

@@ -156,7 +156,18 @@ export async function runIntake(ownerId: string, opts: IntakeOptions = {}): Prom
           // fixtures omit it entirely.
           item.owner_set_root == null ? Boolean(c.is_root_credential) : item.owner_set_root,
         recurring_billing: Boolean(c.recurring_billing),
-        irreplaceable: Boolean(c.irreplaceable),
+        /*
+          The same rule, for the higher-consequence flag. `irreplaceable` is what
+          raises a CUSTODY_RISK — a deed, a will, a passport — and until
+          migration 034 the model decided it alone, on every run, from the title.
+          An owner correcting it would have watched the correction disappear at
+          the next analysis, which is why the override needed its own column
+          rather than a direct write.
+        */
+        irreplaceable:
+          item.owner_set_irreplaceable == null
+            ? Boolean(c.irreplaceable)
+            : item.owner_set_irreplaceable,
         depends_on_item_id: resolveDepends(c.depends_on_title, titleToId, item.id),
         defaulted: false,
       };

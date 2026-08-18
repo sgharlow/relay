@@ -89,6 +89,17 @@ export interface VaultItemMetadata {
   is_root_credential: boolean;
   /** The owner's own answer, or null if they have never given one (Req 11.8). */
   owner_set_root?: boolean | null;
+  /**
+   * The owner's own answer to "could this be replaced?" — migration 034.
+   *
+   * Same three states and the same reason as `owner_set_root` above: yes, no,
+   * or never asked. It exists because `irreplaceable` is what raises a
+   * CUSTODY_RISK — the gap covering a deed, a will, a passport — and until now
+   * only the intake agent could set it, from the title alone. An owner who knew
+   * better had no way to say so, and writing `irreplaceable` directly would have
+   * lasted exactly until the next analysis run.
+   */
+  owner_set_irreplaceable?: boolean | null;
   recurring_billing: boolean;
   irreplaceable: boolean;
   importance_score: number;
@@ -300,7 +311,7 @@ export function validateUpdateInput(body: unknown): UpdateVaultItemInput {
 
 const METADATA_COLUMNS =
   'id, type, title, service_name, url, category, criticality, ' +
-  'is_root_credential, owner_set_root, recurring_billing, irreplaceable, importance_score, ' +
+  'is_root_credential, owner_set_root, recurring_billing, irreplaceable, owner_set_irreplaceable, importance_score, ' +
   'depends_on_item_id, backup_note, created_at, updated_at';
 
 function toMetadata(row: Record<string, unknown>): VaultItemMetadata {
@@ -313,6 +324,10 @@ function toMetadata(row: Record<string, unknown>): VaultItemMetadata {
     category: (row.category as string | null) ?? null,
     criticality: (row.criticality as string | null) ?? null,
     is_root_credential: Boolean(row.is_root_credential),
+    owner_set_irreplaceable:
+      row.owner_set_irreplaceable === null || row.owner_set_irreplaceable === undefined
+        ? null
+        : Boolean(row.owner_set_irreplaceable),
     owner_set_root:
       row.owner_set_root === null || row.owner_set_root === undefined
         ? null
@@ -485,6 +500,44 @@ export async function setOwnerRootOverride(
       `UPDATE vault_items
           SET owner_set_root = $1,
               is_root_credential = COALESCE($1, is_root_credential),
+              updated_at = now()
+        WHERE id = $2 AND owner_id = $3
+       RETURNING ${METADATA_COLUMNS}`,
+      [value, id, ownerId],
+    ),
+  );
+  if (result.rowCount === 0 || result.rows.length === 0) return null;
+  return toMetadata(result.rows[0]);
+}
+
+/**
+ * Records the OWNER's own answer to "could this be replaced?" — migration 034.
+ *
+ * 🔴 THE OWNER COULD OVERRULE THE AGENT ABOUT ROOT CREDENTIALS AND NOT ABOUT
+ * THIS, which is the higher-consequence of the two. `irreplaceable` is what
+ * `detectGaps` reads to raise a CUSTODY_RISK — the gap type covering the things
+ * that cannot be regenerated from a login: a deed, a will, a passport. Only the
+ * intake agent ever set it, from the title alone. If it judged a passport
+ * replaceable, the custody risk was never raised and nothing on any screen
+ * hinted that a judgement had been made at all.
+ *
+ * Writes BOTH columns for exactly the reason `setOwnerRootOverride` does:
+ * `owner_set_irreplaceable` is the record of what they said, `irreplaceable` is
+ * what the rest of the product reads. Only the first, and the override is inert
+ * until the next agent run; only the second, and the next run undoes it.
+ *
+ * `null` clears the override and hands the decision back to the agent.
+ */
+export async function setOwnerIrreplaceableOverride(
+  ownerId: string,
+  id: string,
+  value: boolean | null,
+): Promise<VaultItemMetadata | null> {
+  const result = await withOccRetry(() =>
+    query<Record<string, unknown>>(
+      `UPDATE vault_items
+          SET owner_set_irreplaceable = $1,
+              irreplaceable = COALESCE($1, irreplaceable),
               updated_at = now()
         WHERE id = $2 AND owner_id = $3
        RETURNING ${METADATA_COLUMNS}`,
