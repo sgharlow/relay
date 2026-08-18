@@ -6,16 +6,22 @@
 >
 > **Everything below is quoted from the outlet's own page unless marked otherwise.** Where a page
 > could not be reached, that is recorded as unverified rather than filled in from a search summary.
+>
+> ✅ **RE-CHECKED LIVE 2026-08-18, before any pitch is sent.** caregiver.com is unchanged and
+> gained one requirement this file had missed. **DailyCaring's route is now verified ABSENT rather
+> than unverified** — see its section, which is the one substantive change. Nothing else moved.
 
 ## Summary
 
 | Outlet | Status | First choice? |
 |---|---|---|
-| **caregiver.com** (*Today's Caregiver*) | ✅ **OPEN**, clear guidelines, named contact | **Yes — pitch first** |
-| **DailyCaring** | ⚠️ open but route **unverified** | Second, after confirming the address |
+| **caregiver.com** (*Today's Caregiver*) | ✅ **OPEN**, clear guidelines, named contact — re-verified 2026-08-18 | **Yes — pitch first** |
+| **DailyCaring** | ❌ **no published route** (verified 2026-08-18) | No — same class as AgingCare |
 | **AARP The Magazine** | ✅ open, but a high bar and a hard hazard | Later — see the blacklist warning |
 | **Next Avenue** | ❌ **CLOSED** | No |
 | **AgingCare** | ⚠️ no published route | No — relationship play only |
+| **Senior Planet** | ⚠️ **never assessed** — site unreadable to a fetch (2026-08-18) | No — and it is an AARP property |
+| **The Caregiver Space** | ⚠️ **never assessed** — 403 to a fetch (2026-08-18) | Unknown |
 
 ---
 
@@ -29,8 +35,13 @@ The outlet Steve named, and the one with the clearest open door.
 | How to submit | *"Please send us your articles and poems in a word document as an attachment to your email."* — to **nancy@caregiver.com** |
 | Topics | includes **practical solutions**, **eldercare** and **preparedness** — angle 3 sits squarely in all three |
 | Bio | *"Please include a short bio about the author."* |
+| 🆕 Also required | *"Include name address and current telephone number and email address with all
+submissions."* — **found on the 2026-08-18 re-check; this file had missed it.** A submission without
+a postal address and phone number is incomplete by their own rules. |
 | Payment | *"No fees will be paid for any submissions for publication unless specific arrangements are made in writing."* |
-| Rights | they send a release form on acceptance; the author retains copyright |
+| Rights | *"The author, photographer or artist will retain the copyright to the article unless
+specific arrangements are made in writing."* On acceptance the publisher requests a signed release
+allowing publication *"in any of our publications and reprints"* |
 
 ⚠️ **The guidelines say nothing either way about contributors who run a business in the space, and
 nothing about promotional content.** That silence is not permission — it means the judgement is
@@ -41,26 +52,41 @@ the interest.
 
 ---
 
-## DailyCaring — open, but the route could not be verified
+## DailyCaring — ❌ NO PUBLISHED ROUTE. Verified 2026-08-18; do not pitch it.
 
-Its guidelines are the most useful of any outlet here **and I could not confirm them from a live
-page.** The content below comes from a search index; the two obvious URLs are dead:
-`/partner-with-us-dailycaring` now redirects to Contact Us, and `/write-for-us/` returns 404.
+> **Status changed 2026-08-18 from "unverified" to "absent".** The 08-16 entry said the route
+> could not be confirmed and set "confirm the address" as step 2 of the plan. That step has now
+> been run, and the answer is that there is nothing to confirm: **`guest@dailycaring.com` appears
+> on no live DailyCaring page.**
 
-Reported rules — **treat as unverified**:
+Four URLs checked directly, not through a summary:
 
-- *"Guest articles must NOT be advertisements for your company, product, or service"*
-- written by established experts in their field
-- practical advice for families caring for older adults
-- a brief bio with a link back, **50 words or less**, at the end
-- submit to **guest@dailycaring.com**, subject line *"DailyCaring guest article"*
-- distributed in their daily email newsletter as well as the site
+| URL | Result 2026-08-18 |
+|---|---|
+| `/write-for-us/` | **HTTP 404** — unchanged from 08-16 |
+| `/partner-with-us-dailycaring/` | serves the **Contact Us** page. No contributor content, no guidelines, no submission address |
+| `/contact-us/` | general form only. One address, **`hello@dailycaring.com`**. No mention of guest articles or contributors |
+| `/contribute-guest-article-dailycaring/` | is their **Advertising Disclosure** page — not a contribution page, despite the slug |
 
-⚠️ **Do not email `guest@dailycaring.com` on the strength of this file.** Confirm it via their
-Contact Us form first. An email to a dead address is a silently lost pitch.
+🔴 **The trap this file was written to avoid, caught in the act.** A search index still returns
+`/partner-with-us-dailycaring/` under the title *"Become a Guest Contributor"* and still surfaces
+the old guidelines text — bio under 50 words, the advertisement rule, `guest@dailycaring.com`. The
+**live page at that exact URL is Contact Us.** The index is serving a cached title and body for a
+page whose content is gone. Anyone re-researching this from search results alone will rediscover
+the same dead address and believe they confirmed it. That is why the table above records URLs and
+what each one actually returned.
 
-**Even unverified, the advertisement rule is the most useful sentence in this dossier** — it states
-plainly the standard every outlet here is applying silently.
+**Consequence for the plan: DailyCaring moves out of the pitch list** and into the same class as
+AgingCare — a door that is not there rather than one that is shut. Reaching it would mean asking
+`hello@dailycaring.com` whether they still take guest contributions at all, which is a cold
+relationship approach, not a submission, and is not worth spending before a first byline exists.
+
+**The advertisement rule survives its source, and should be kept.** *"Guest articles must NOT be
+advertisements for your company, product, or service"* can no longer be cited to a live DailyCaring
+page, so **do not quote it as theirs in anything outward-facing.** Keep it as the internal standard
+it has been all along: it states plainly what every outlet here applies silently, and
+`docs/oped-angle-3-draft.md` already shapes the bio around it. Its authority is that it is right,
+not that DailyCaring published it.
 
 ---
 
@@ -115,6 +141,41 @@ first byline exists.
 
 ---
 
+## 🔴 The two outlets step 1 named and this dossier never covered
+
+> Found on the 2026-08-18 re-check. `g1-editorial-lane.md` step 1 reads *"Read the contributor
+> guidelines for Next Avenue, **Senior Planet**, AgingCare and DailyCaring"* and is marked ✅ DONE
+> against this file — **but this file never assessed Senior Planet.** It covered caregiver.com and
+> AARP instead, which were the more useful reads, and nobody noticed the swap. A step marked done
+> against a deliverable that does not contain it is the shape this repo's claim discipline exists
+> to catch, so it is recorded rather than quietly back-filled.
+
+### Senior Planet — unassessed, and it may be an AARP property
+
+`g1-editorial-lane.md` calls it *"the best topical fit of all"*, which makes the gap worth
+closing — and it could **not** be closed today:
+
+- `seniorplanet.org/contact/` and `/articles/calling-all-authors` both return **only a page title**
+  to a fetch. The site renders client-side, so its body is invisible to the method used for every
+  other outlet here. **Nothing about its submission policy is verified in either direction.**
+- A domain-scoped search surfaced no *"write for us"* or contributor-guidelines page, and only
+  **`membership@seniorplanet.org`** — a membership address, not an editorial one.
+- ⚠️ **Its own page titles read "Senior Planet from AARP".** If it is an AARP property, assume
+  the AARP hazard above — *"if you send us a pitch that is plagiarized or A.I.-generated, your
+  email address will be blacklisted and blocked"* — travels with the organisation, not just the
+  magazine. **Do not treat Senior Planet as a low-risk warm-up for AARP.** It may be AARP.
+
+To assess it properly needs a real browser (the a11y harness already drives one) or a human
+looking at the page. Not worth doing before caregiver.com has been pitched.
+
+### The Caregiver Space — unassessed, blocked
+
+`thecaregiverspace.org/write-for-us/` answers **HTTP 403** to an automated fetch. That is a bot
+block rather than a missing page, so the route may well exist and be perfectly open. Unknown, and
+recorded as unknown — a human opening that URL in a browser would settle it in seconds.
+
+---
+
 ## How the drafting has to work
 
 The AARP sentence changes the shape of this, and it is worth taking seriously across all four
@@ -135,7 +196,18 @@ The parts I can supply without that risk:
 
 1. **caregiver.com first.** Open door, named contact, 500–1500 words, and angle 3 fits their stated
    topics. This is the realistic first placement.
-2. **Confirm DailyCaring's route** through their contact form before pitching it. Second target.
+2. ✅ ~~**Confirm DailyCaring's route** through their contact form before pitching it. Second
+   target.~~ **DONE 2026-08-18 — there is no route.** Dropped from the pitch list; see its section.
+   **This leaves caregiver.com as the only outlet with an open door and a named contact**, which
+   raises the stakes on getting that one submission right rather than fast.
 3. **AARP after a first byline exists**, not before.
 4. **Drop Next Avenue.** Closed.
 5. **Leave AgingCare** unless a direct contact appears.
+6. 🆕 **Senior Planet and The Caregiver Space are unassessed**, and both need a browser rather than
+   a fetch. Worth doing only if caregiver.com says no — and read the AARP warning above before
+   touching Senior Planet.
+
+> ⚠️ **The net effect of the 2026-08-18 re-check: the pitch list is ONE outlet, not two.**
+> `g1-editorial-lane.md` step 3 says *"pitch two outlets"*; DailyCaring was the second and it has
+> no route. Everything the editorial instrument measures now depends on a single submission to
+> caregiver.com, which argues for getting it right rather than getting it out.

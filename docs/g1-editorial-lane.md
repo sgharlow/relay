@@ -60,7 +60,7 @@ Ordered by fit, not by reach.
 | **Next Avenue** (PBS) | explicitly publishes contributed pieces on ageing; the closest editorial match to the wedge | yes — check current guidelines |
 | **AARP** — Family Caregiving | named by Steve; the audience by definition and the highest authority | mostly staff-written — expect to be a *source*, not a byline |
 | **AgingCare.com** | runs an expert-contributor programme | yes |
-| **DailyCaring** | practical how-to for family caregivers | yes |
+| ~~**DailyCaring**~~ | ~~practical how-to for family caregivers~~ | ❌ **no published route — verified 2026-08-18** |
 | **The Caregiver Space** | community-first, receptive to first-person and practical pieces | yes |
 | **Family Caregiver Alliance** | resource-oriented, high trust | check |
 | **Senior Planet** (OATS/AARP) | explicitly about older adults and technology — the best topical fit of all | yes |
@@ -163,13 +163,24 @@ npx tsx -e "import('./lib/g1/press-kit').then(k => console.log(k.boilerplate(), 
    - **Next Avenue is CLOSED.** *"Next Avenue is not accepting pitches for new stories."* It was
      ranked second by fit in this file; it is not available. Removed.
    - **AgingCare publishes no submission route** at all — a relationship play, not a submission.
-   - **DailyCaring's route is unverified** — its guest page 404s. Confirm before emailing.
+   - ~~**DailyCaring's route is unverified** — its guest page 404s. Confirm before emailing.~~
+     ✅ **CONFIRMED 2026-08-18: there is no route.** `guest@dailycaring.com` appears on no live
+     page; `/write-for-us/` 404s, `/partner-with-us-dailycaring/` now serves Contact Us, and the
+     search index still shows the old contributor title over a page whose content is gone.
+     Dropped from the pitch list.
+   - 🔴 **This step named Senior Planet and the dossier never assessed it.** Caught 2026-08-18.
+     It could not be assessed then either — the site renders client-side and returns only a title
+     to a fetch — and ⚠️ its own page titles read **"Senior Planet from AARP"**, so the AARP
+     blacklist hazard below may travel with it. It is not a low-risk warm-up for AARP.
    - 🔴 **AARP: *"If you send us a pitch that is plagiarized or A.I.-generated, your email address
      will be blacklisted and blocked."*** Permanent, and attached to the address rather than the
      pitch. AARP also wants links to recent writing samples and *"rarely uses unsolicited ideas"* —
      so it is a **second-round target after a first byline exists**, not the opening move.
 2. Draft angle 3 first — it is the most useful to a reader and the least promotional.
-3. Pitch two outlets. Do not mass-pitch; these are relationships.
+3. ~~Pitch two outlets.~~ ⚠️ **Pitch ONE: caregiver.com.** Revised 2026-08-18 — DailyCaring was
+   the intended second and has no route, and the two remaining candidates are unassessed. Do not
+   mass-pitch; these are relationships. **The whole editorial instrument now rests on a single
+   submission**, which argues for getting it right rather than getting it out.
 4. On acceptance: declare the `ed-` src in `GATE_LANES`, publish, and log the placement.
 5. Run `npm run verify:funnel` and `npm run flight:snapshot` before the first piece goes live —
    the instrument checks are channel-agnostic and still apply.
