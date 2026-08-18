@@ -143,8 +143,23 @@ because losing the recovery path means losing everything downstream.</p>
     start &mdash; it is parsed and encrypted in your browser, and you see exactly what is about to
     be added before anything is written. Rows you already have are skipped rather than duplicated,
     and the count of skips is reported: a silent skip would have you believe credentials went
-    missing.</li>
+    missing. If your export carries two-factor codes, they come along too.</li>
+  <li><b>A password is often not enough on its own.</b> If an account asks you for a six-digit code
+    from your phone, store that too: the entry form has a place for the code setup (the long
+    &ldquo;secret key&rdquo; the account showed you when you turned codes on) and for backup codes.
+    When the day comes, the person stepping in is shown a working six-digit code &mdash; not a
+    puzzle.</li>
+  <li><b>Two things only you can tell it.</b> On any item you can leave a short note in your own
+    words &mdash; <i>&ldquo;the paper statements are in the fire safe&rdquo;</i> &mdash; which
+    travels with the item to whoever opens it. And you can mark an item <b>Cannot be replaced</b>
+    &mdash; the photo archive, not the streaming login &mdash; so the advice under your vault
+    treats losing it as seriously as you do.</li>
 </ul>
+
+<figure><img loading="lazy" decoding="async" src="/guide/screens/uc37-owner-vault-new.png" alt="Adding an item"><figcaption>Adding an item:
+labelled fields, including the second factor. The secret fields are encrypted in your browser
+before they are sent; the note deliberately is not — it has to be readable to be advice — and the
+form says so, which is why it also says never to put a password there.</figcaption></figure>
 
 <div class="note"><b>The free plan holds ten items, four people who can receive access, and four
 who can confirm an emergency.</b> Those are separate counts, so naming somebody to confirm never
@@ -670,6 +685,17 @@ cannot be undone &mdash; and that is not available to customers yet. See Part 6.
 account signs in as themselves; someone who never accepted receives a single-use code that lasts 24
 hours. In both cases, decryption happens in their browser — Relay itself still cannot read the
 items.</p>
+
+<p>Before any item is shown, the plan opens with its limits — what this access is, what it is not,
+and what to do first if you have died — and the person acknowledges them. Then each item is opened
+only when they press <b>Reveal</b>, and what appears is built to be <i>used</i> at the worst
+moment: the username in the open, the password masked until they choose to show it, and — if you
+stored the second factor — a working six-digit code counting down, with the instruction to type it
+straight after the password. Your note, if you left one, is right there with it.</p>
+
+<figure class="phone"><img loading="lazy" decoding="async" src="/guide/screens/uc38-recipient-reveal-phone.png" alt="The reveal">
+<figcaption>What your recipient actually sees: labelled fields, a masked password, and a live
+code. Work top to bottom — the most consequential items come first.</figcaption></figure>
 
 <figure class="phone"><img loading="lazy" decoding="async" src="/guide/screens/uc11-access-code-phone.png" alt="Recipient code entry">
 <figcaption>The recipient's way in when they never accepted a standby account. <b>My code has

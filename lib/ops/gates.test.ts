@@ -265,6 +265,36 @@ describe('gates', () => {
       ).toEqual([]);
     });
 
+    /*
+      🔴 THE THIRD DOOR — served metadata. opengraph-image.tsx scrubbed the
+      share card on 2026-08-14 and /caregivers overrides its own og copy, but
+      the root layout's SITE_DESCRIPTION — inherited by every page that does
+      not override metadata, and the string link unfurlers and search snippets
+      actually display — still read "permanent estate handoff" until
+      2026-08-17, found by probing the live /demo page. The §19 guards checked
+      the demo items and the page prose; nothing read what the <head> declares.
+
+      The literal is extracted the same way `selectable()` extracts the enum:
+      a regex over the assignment, so comments about estate (like the one now
+      sitting above the constant) cannot trip it.
+    */
+    it('the inherited page metadata does not offer estate', () => {
+      const g2 = gates().find((g) => g.id === 'g2-counsel-opinion');
+      if (g2?.disposition === 'met') return; // an opinion exists; offering is now a decision
+
+      const layout = readFileSync('src/app/layout.tsx', 'utf8');
+      const m = /SITE_DESCRIPTION\s*=\s*(["'`])([\s\S]*?)\1/.exec(layout);
+      expect(m, 'src/app/layout.tsx no longer declares SITE_DESCRIPTION as a single ' +
+        'string literal — move this guard to wherever the inherited og/twitter ' +
+        'description now lives; every non-overriding page serves it').toBeTruthy();
+      expect(
+        /estate|executor/i.test(m![2]),
+        `The site-wide metadata description — inherited by every page without its ` +
+          `own metadata, shown by every link unfurler — offers estate while ` +
+          `g2-counsel-opinion is ${g2?.disposition ?? 'missing'}: “${m![2]}”`,
+      ).toBe(false);
+    });
+
     it('the code records the disposition instead of promising a door', () => {
       const g2 = gates().find((g) => g.id === 'g2-counsel-opinion');
       if (g2?.disposition !== 'declined') return;

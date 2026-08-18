@@ -44,18 +44,26 @@
 <body>
 
 <h1>Relay — Functional Use Cases</h1>
-<p class="sub">Test evidence for beta readiness. Every screenshot below was captured from
-<b>production</b> (relaystandby.com) during the walkthrough, not from a local build or a mock.</p>
+<p class="sub">Test evidence for beta readiness. Every screenshot below was produced against the
+<b>production database</b> (Aurora DSQL, both regions) — most in the 2026-08-17 reshoot, driven by
+<code>scripts/capture-screens.ts</code> against the production cluster; the remainder from the
+2026-08-12/13 production walks whose screens have not changed since.</p>
 
 <div class="meta">
-  <div><b>Build</b> <code>master</code> @ <code>e875347</code></div>
-  <div><b>Suite</b> 1547 passed / 1 skipped across 152 files · typecheck, lint and build clean</div>
-  <div><b>Environment</b> Production — Vercel, Aurora DSQL (us-east-1 / us-west-2), AWS KMS</div>
-  <div><b>Method</b> One purpose-built circle, walked <b>end to end in sequence</b> rather than
-    screen by screen: an owner with a name set, a verified partner who can sign in, an aunt marked
-    emergency-code-only, a verified doctor, and a verifier who never accepted. The release below was
-    genuinely started, genuinely confirmed, genuinely opened and genuinely reversed — each screenshot
-    is the state the previous action produced.</div>
+  <div><b>Build</b> <code>master</code> @ <code>e50a68a</code> + the 2026-08-17 working set (secret
+    types Phase&nbsp;0, owner-set irreplaceable, backup notes). Re-derive before trusting: the
+    commands live in <code>PROJECT.yaml → derived</code>.</div>
+  <div><b>Suite</b> 2656 passed / 1 skipped across 240 files (2026-08-17) · typecheck, lint and build clean</div>
+  <div><b>Environment</b> Production data — Vercel, Aurora DSQL (us-east-1 / us-west-2), AWS KMS</div>
+  <div><b>Method</b> One purpose-built circle, staged through the product&rsquo;s own APIs and walked
+    <b>end to end in sequence</b> rather than screen by screen. The 2026-08-17 reshoot
+    (<code>scripts/capture-screens.ts</code>, 16/16 assertions) built the Chen circle — a structured
+    secret with a live TOTP seed, a claimed and confirmed recipient, a claimed and confirmed
+    verifier, an active helper with a recorded consent — fired a real emergency, had the verifier
+    confirm it, opened the plan, pressed Reveal, and checked back in. Each screenshot is the state
+    the previous action produced. The four release walks (<code>npm run verify:live</code>) passed
+    70/70 the same day, and the claim path was additionally verified in a real browser against
+    relaystandby.com itself.</div>
   <div><b>Data handling</b> All fixtures deleted afterwards; production returned to its baseline
     accounts with zero orphaned rows.</div>
 </div>
@@ -99,6 +107,8 @@
     <tr><td>UC-33</td><td>Know how many ways back in you have left</td><td>Owner</td><td class="pass">Pass</td></tr>
     <tr><td>UC-34</td><td>Meet a page that is missing, or one that broke</td><td>Anyone</td><td class="pass">Pass</td></tr>
     <tr><td>UC-35</td><td>Judge the product without an account</td><td>Visitor</td><td class="pass">Pass</td></tr>
+    <tr><td>UC-36</td><td>Store more than a password — and have it open usable</td><td>Owner &amp; recipient</td><td class="pass">Pass</td></tr>
+    <tr><td>UC-37</td><td>Say what cannot be replaced, and leave a note</td><td>Owner</td><td class="pass">Pass</td></tr>
   </tbody>
 </table>
 
@@ -117,7 +127,7 @@
   <div class="row"><span class="k">Actor</span><span>Owner</span></div>
   <div class="row"><span class="k">Goal</span><span>Answer one question without reading anything: if something happened tomorrow, would this work?</span></div>
   <div class="row"><span class="k">Expected</span><span>A standing statement on every screen. Green only when the plan can actually run; when not, the single fastest next action, not a list of everything imperfect.</span></div>
-  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Reads &ldquo;could reach both of the things that matter&rdquo; — counting only items that matter and only verifiers who can actually act. A non-fatal gap (&ldquo;a second person who can confirm&rdquo;) is stated without turning the headline red.</span></div>
+  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Reads &ldquo;could reach all 4 of the things that matter&rdquo;, naming the confirmed recipient — counting only items that matter and only people who can actually act. A non-fatal gap (&ldquo;a second person who can confirm&rdquo;) is stated without turning the headline red. Since 2026-08-17 the &ldquo;Worth a second look&rdquo; box below the vault adds custody-risk advice — see UC-37.</span></div>
 </div>
 <figure><img src="../public/guide/screens/uc01-owner-vault.png" alt="Vault"><figcaption>UC-01 — the vault, most consequential first, under the standing statement.</figcaption></figure>
 </section>
@@ -177,9 +187,9 @@
   <div class="row"><span class="k">Actor</span><span>Owner</span></div>
   <div class="row"><span class="k">Goal</span><span>Make the delegation legitimate rather than merely convenient.</span></div>
   <div class="row"><span class="k">Expected</span><span>Nothing activates until consent is recorded (J3-R2). In-person and paper are offered as <i>peers</i> of the link, because the person being delegated for is the least likely to own a smartphone (J3-R3).</span></div>
-  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Created pending → recorded in person with an evidence note → active. The link option is worded to discourage an owner recording a consent the other person never gave.</span></div>
+  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Created pending → recorded in person with an evidence note → active. The link option is worded to discourage an owner recording a consent the other person never gave. <b>Since 2026-08-17 the record is also read back:</b> the helper&rsquo;s card shows how the agreement was made and the note kept (&ldquo;You did it together, in person — Record kept: &hellip;&rdquo;) beside the control that stops them — the evidence next to the decision it informs. Before that the consent was written and displayed by nothing.</span></div>
 </div>
-<figure><img src="../public/guide/screens/uc16-owner-helper-active.png" alt="Helper active"><figcaption>UC-06 — active only after the record exists.</figcaption></figure>
+<figure><img src="../public/guide/screens/uc16-owner-helper-active.png" alt="Helper active"><figcaption>UC-06 — active only after the record exists, and the record is visible beside &ldquo;Stop them helping&rdquo;.</figcaption></figure>
 </section>
 
 <!-- UC-07 -->
@@ -189,9 +199,9 @@
   <div class="row"><span class="k">Actor</span><span>Named contact</span></div>
   <div class="row"><span class="k">Goal</span><span>Be recognisable later, without being handed anything now.</span></div>
   <div class="row"><span class="k">Expected</span><span>A typed code, never a link that signs you in. Accepting opens nothing.</span></div>
-  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Copy no longer assumes the code arrived by email — delivery is owner-brokered by design.</span></div>
+  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Copy no longer assumes the code arrived by email — delivery is owner-brokered by design. <b>Hardened 2026-08-17:</b> the page now fires the claim exactly once (an effect re-run cannot double-spend the single-use code) and confirms a session actually exists before moving on — NextAuth reports a CSRF-refused claim as success, and the only thing that can tell a minted session from a refused one is the session endpoint. On a transient failure the code is unspent and the offered retry genuinely works. The claim path itself was re-verified in a real browser against relaystandby.com: code redeemed, session minted, standby dashboard resolved.</span></div>
 </div>
-<figure class="phone"><img src="../public/guide/screens/uc08-claim-phone.png" alt="Claim"><figcaption>UC-07 — accepting.</figcaption></figure>
+<figure class="phone"><img src="../public/guide/screens/uc08-claim-phone.png" alt="Claim"><figcaption>UC-07 — accepting. The bare code form is the normal path: the emailed link carries no credential.</figcaption></figure>
 </section>
 
 <!-- UC-08 -->
@@ -285,8 +295,9 @@
   <div class="row"><span class="k">Actor</span><span>Recipient</span></div>
   <div class="row"><span class="k">Goal</span><span>Reach the accounts that were assigned, in a usable order.</span></div>
   <div class="row"><span class="k">Expected</span><span>Ordered by consequence. Decryption happens in the browser. A contact who accepted signs in as themselves — <b>no token in the URL</b>.</span></div>
-  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Opened from a session with a clean URL; three items in priority order, each revealed only on request.</span></div>
+  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Opened from a session with a clean URL; items in priority order, each revealed only on request. The plan opens behind an acknowledgment — &ldquo;what this is, and what it is not&rdquo;, including what to do if the owner has died — accepted before any item is shown. Reveal itself is evidenced separately in UC-36: since secret types Phase&nbsp;0 it renders labelled fields, not a wall of text.</span></div>
 </div>
+<figure class="phone"><img src="../public/guide/screens/access-limits-phone.png" alt="Access limits"><figcaption>UC-15 — the limits come first, and are acknowledged.</figcaption></figure>
 <figure class="phone"><img src="../public/guide/screens/uc22-recipient-access-open.png" alt="Access"><figcaption>UC-15 — access, open. Nothing secret was emailed to reach this screen.</figcaption></figure>
 </section>
 
@@ -321,7 +332,7 @@
   <div class="row"><span class="k">Actor</span><span>Verifier</span></div>
   <div class="row"><span class="k">Goal</span><span>Answer even though the message never arrived or the code expired.</span></div>
   <div class="row"><span class="k">Expected</span><span>Self-service, because the owner may be the person in hospital. Sends to the address on file, never to one typed in.</span></div>
-  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> &ldquo;My code has expired, or never arrived&rdquo; opens the form. What is sent depends on how the person is set up, so the wording promises what they need rather than &ldquo;a code&rdquo;.</span></div>
+  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> &ldquo;My code has expired, or never arrived&rdquo; opens the form. What is sent depends on how the person is set up, so the wording promises what they need rather than &ldquo;a code&rdquo;. <b>Since 2026-08-17 the error state is no longer a dead end:</b> a bad code returns to the code form to try again, and a decision submit that fails on a network hiccup returns to the decision screen with the decision intact — the crueller case, because they had already answered. A structural guard (<code>emergency-paths-have-a-way-back</code>) covers both emergency surfaces so the next dead end cannot be fixed on one alone.</span></div>
 </div>
 <figure class="phone"><img src="../public/guide/screens/uc24-verify-code.png" alt="Verify code"><figcaption>UC-18 — code entry, with recovery.</figcaption></figure>
 </section>
@@ -357,9 +368,10 @@
   <div class="row"><span class="k">Actor</span><span>Visitor, and people who never signed up</span></div>
   <div class="row"><span class="k">Goal</span><span>Understand the product, and — if somebody named you — find out what that means for you.</span></div>
   <div class="row"><span class="k">Expected</span><span>Terms and Privacy each address the population that did not sign up and was merely named.</span></div>
-  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Both live, both carrying those sections. Counsel review under <code>g2-counsel-opinion</code> remains outstanding and this does not substitute for it.</span></div>
+  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Both live, both carrying those sections. <b>Since 2026-08-16 the operator is named:</b> <code>/about</code> exists, and the landing, terms and privacy pages say who runs Relay and how to reach a person. <b>Fixed 2026-08-17:</b> the site-wide link-preview metadata still offered &ldquo;permanent estate handoff&rdquo; — a capability withdrawn 2026-08-14 and disclaimed by <code>/terms</code>; the share image and <code>/caregivers</code> had each been scrubbed, and the inherited <code>&lt;head&gt;</code> description was the third door. A guard now reads the served literal. Counsel review was declined under <code>g2-counsel-opinion</code>; these pages do not substitute for legal advice and say so.</span></div>
 </div>
 <figure><img src="../public/guide/screens/uc12-landing.png" alt="Landing"><figcaption>UC-21 — relaystandby.com</figcaption></figure>
+<figure><img src="../public/guide/screens/about.png" alt="About"><figcaption>UC-21 — /about: who operates Relay, said plainly.</figcaption></figure>
 </section>
 
 <!-- UC-22 -->
@@ -441,9 +453,9 @@
   <div class="row"><span class="k">Actor</span><span>Owner</span></div>
   <div class="row"><span class="k">Goal</span><span>Start from what already exists rather than typing it all again.</span></div>
   <div class="row"><span class="k">Expected</span><span>Parsed and encrypted <b>entirely in the browser</b>. A preview before anything is written, and the importance engine re-run afterwards so nothing lands silently uncovered.</span></div>
-  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> A three-row LastPass export previewed and imported on production; all three appeared in the vault. <b>The preview shows service, URL and username and no passwords</b> — the one screen where a shoulder-surfer would see the whole file at once.</span></div>
+  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> A LastPass export previewed and imported against the production cluster; every row appeared in the vault. <b>The preview shows service, URL and username and no passwords</b> — the one screen where a shoulder-surfer would see the whole file at once. <b>Since 2026-08-17 duplicates are explained, not just skipped:</b> re-importing the same file reports &ldquo;Imported 0 items, and left 2 already in your vault untouched — including any two-factor codes in this export&rdquo; and says how to add a code to an item that already exists, so an owner who counted rows is not left believing items went missing. The import also carries the second factor: a TOTP column is preserved rather than silently dropped, and each imported item is stored as labelled fields.</span></div>
 </div>
-<figure><img src="../public/guide/screens/uc33-owner-import.png" alt="Import"><figcaption>UC-28 — import, after the run.</figcaption></figure>
+<figure><img src="../public/guide/screens/uc33-owner-import.png" alt="Import"><figcaption>UC-28 — a repeat import: nothing lost, and the untouched duplicates named.</figcaption></figure>
 </section>
 
 <!-- UC-29 -->
@@ -563,6 +575,31 @@
 <figure><img src="../public/guide/screens/public-demo.png" alt="The guided demo"><figcaption>UC-35 &mdash; relaystandby.com/demo, after the retarget. Sam (spouse) on <code>emergency</code>, Alex (daughter) on <code>caregiver</code>, and nothing on offer that is not for sale.</figcaption></figure>
 </section>
 
+<!-- UC-36 -->
+<section class="uc">
+<h2>UC-36 — Store more than a password, and have it open usable</h2>
+<div class="card">
+  <div class="row"><span class="k">Actor</span><span>Owner (storing) and recipient (opening)</span></div>
+  <div class="row"><span class="k">Goal</span><span>An account protected by two-factor is only reachable if the person stepping in gets the second factor too — a password alone is a locked door with the key photographed.</span></div>
+  <div class="row"><span class="k">Expected</span><span>Secret types Phase&nbsp;0 (2026-08-17): the entry form takes username, password, a TOTP seed and recovery codes as separate labelled fields, encrypted in the browser as one envelope. At Reveal the recipient sees labelled fields — the password masked with Show/Copy, the TOTP seed rendered as a <b>live six-digit code with its countdown</b> (&ldquo;type it straight after the password&rdquo;), and recovery codes with a plain warning that each works once. Items imported before Phase&nbsp;0 are stored as <code>{username, password}</code> permanently — the server cannot read plaintext, so no migration can rewrite them — and must decode forever.</span></div>
+  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Walked end to end on the production cluster (2026-08-17): a structured secret with a real TOTP seed stored through the browser&rsquo;s own crypto path, released through a genuine emergency with a verifier&rsquo;s counted confirmation, and revealed as labelled fields with a six-digit code equal to one computed independently from the same seed. <code>npm run verify:reveal</code> pins the whole chain — including the legacy shape — at 20/20, and runs as the fourth walk of <code>verify:live</code>.</span></div>
+</div>
+<figure><img src="../public/guide/screens/uc37-owner-vault-new.png" alt="Structured entry"><figcaption>UC-36 — storing: labelled fields, including the second factor, encrypted in the browser.</figcaption></figure>
+<figure class="phone"><img src="../public/guide/screens/uc38-recipient-reveal-phone.png" alt="Reveal"><figcaption>UC-36 — opening: the moment the product exists for, rendered usable at 2am.</figcaption></figure>
+</section>
+
+<!-- UC-37 -->
+<section class="uc">
+<h2>UC-37 — Say what cannot be replaced, and leave a note</h2>
+<div class="card">
+  <div class="row"><span class="k">Actor</span><span>Owner</span></div>
+  <div class="row"><span class="k">Goal</span><span>Tell the product — and the person who will step in — two things only the owner knows: which items are irreplaceable, and what a stranger to the account would need to know to use it.</span></div>
+  <div class="row"><span class="k">Expected</span><span>Two owner overrides on every vault item (migration&nbsp;034 + backup notes, 2026-08-17): &ldquo;Cannot be replaced?&rdquo; marks an item whose loss is permanent — a photo archive, not a streaming login — and a plain-language note travels with the item to whoever opens it. The vault&rsquo;s &ldquo;Worth a second look&rdquo; box turns these into custody-risk advice: an irreplaceable item with no backup note is called out by name.</span></div>
+  <div class="row"><span class="k">Verified</span><span><span class="pass">Pass.</span> Both set through the product&rsquo;s API against the production cluster (2026-08-17); the vault rendered the &ldquo;Cannot be replaced&rdquo; state and the custody-risk call-out (&ldquo;This item is irreplaceable and has no backup note&hellip;&rdquo;), and the note reached the recipient&rsquo;s access view. ⏳ One honest caveat: the deeper three-state reachability rule (&ldquo;usable / blocked / unknown&rdquo; per secret kind) is written and tested but inert until migration&nbsp;035 is applied — until then preparedness counts an access rule as reachability, exactly as before.</span></div>
+</div>
+<figure><img src="../public/guide/screens/uc01-owner-vault.png" alt="Vault with custody risk"><figcaption>UC-37 — the owner&rsquo;s own knowledge, recorded where the plan can use it.</figcaption></figure>
+</section>
+
 <!-- Not evidenced -->
 <section class="uc">
 <h2>Stated coverage limits</h2>
@@ -575,7 +612,7 @@
     <tr><td>A helper actually helping</td><td>✅ <b>Built and walked 2026-08-12</b> — UC-24 to UC-27. Was the one journey this document could not evidence.</td></tr>
     <tr><td>Policy proposals</td><td>✅ <b>Resolved by removal 2026-08-12.</b> <code>policies:propose</code> was granted to every helper, offered by nothing, and could not be applied on approval — an owner could be told a suggestion was granted and have nothing change. Dropped rather than built, because a policy joins an item to a recipient and a helper can see neither: building it honestly would mean showing them the owner's circle. An unappliable approval can now no longer be approved at all, only rejected.</td></tr>
     <tr><td>Helper import</td><td><code>import:run</code> is granted and there is no helper-facing import screen. Additive once wanted.</td></tr>
-    <tr><td>Estate release</td><td>Deliberately unreachable — <code>estate</code> is excluded from user-selectable triggers pending <code>g2-counsel-opinion</code>.</td></tr>
+    <tr><td>Estate release</td><td>Withdrawn, permanently — <code>g2-counsel-opinion</code> was <b>declined</b> (2026-08-14), so the condition that would have opened estate can never be met. <code>estate</code> is excluded from user-selectable triggers and guards in <code>gates.test.ts</code> keep it, and every page&rsquo;s metadata, that way.</td></tr>
   </tbody>
 </table>
 </section>

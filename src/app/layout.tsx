@@ -62,8 +62,17 @@ const newsreader = localFont({
  * wrong domain.
  */
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://relaystandby.com";
+/*
+ * No estate language here. This description is inherited by every page that
+ * does not override metadata, so it is what link unfurlers and search snippets
+ * show for most of the site. It read "permanent estate handoff" until
+ * 2026-08-17 — a capability withdrawn on 2026-08-14 (g2-counsel-opinion
+ * declined) and disclaimed by /terms. opengraph-image.tsx and /caregivers had
+ * each scrubbed their own surface; this was the third door, and the widest.
+ * lib/ops/gates.test.ts now reads this literal and fails if estate returns.
+ */
 const SITE_DESCRIPTION =
-  "Living-continuity vault — reversible emergency access, permanent estate handoff.";
+  "Living-continuity vault — reversible emergency access for the people who'll need it.";
 
 export const metadata: Metadata = {
   // metadataBase makes the opengraph-image URL absolute, which link unfurlers require.

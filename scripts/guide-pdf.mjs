@@ -54,8 +54,17 @@ await page.goto(`${BASE}/guide`, { waitUntil: 'networkidle' });
 // Every <img> decoded before printing. `networkidle` says the requests finished;
 // it does not say the bitmaps are ready to paint, and a PDF captured a beat too
 // early loses images with no error anywhere.
+//
+// 🔴 LAZY IMAGES FIRST, or this waits forever. The guide's images carry
+// `loading="lazy"`, and Chromium defers a lazy image that never approaches the
+// viewport — including its `decode()` promise, which simply never settles for
+// an image whose fetch has not been triggered. A print run never scrolls, so
+// from 2026-08-17 (Playwright's bundled Chromium of that week) this script hung
+// on the await below with no output and no error. Flipping every image to
+// eager before decoding starts the fetches the print needs anyway.
 const decoded = await page.evaluate(async () => {
   const imgs = [...document.images];
+  for (const i of imgs) i.loading = 'eager';
   await Promise.all(imgs.map((i) => (i.complete ? null : i.decode().catch(() => null))));
   return { total: imgs.length, broken: imgs.filter((i) => !i.naturalWidth).length };
 });

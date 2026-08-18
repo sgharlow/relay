@@ -12,7 +12,7 @@
  * Requirements: J4-R9, J4-R10, J4-R11, J4-R12
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 
@@ -33,8 +33,22 @@ export default function ClaimClient() {
     { kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'verifier' } | { kind: 'recipient'; standby: Standby }
   >({ kind: 'loading' });
 
+  /*
+    🔴 THE CLAIM MUST FIRE EXACTLY ONCE PER CODE, and an effect cannot promise
+    that on its own: React StrictMode double-invokes effects in development, and
+    the two racing signIn() calls desynchronised NextAuth's CSRF double-submit —
+    the first POST was refused, the second was aborted by the first's navigation
+    AFTER the server had already spent the single-use code. The claimant landed
+    on /standby signed out, holding a code that now answers "already been used".
+    Found 2026-08-17 by screenshotting this page; production single-fires, so
+    the ref is cheap insurance there and correctness in every dev walk.
+  */
+  const claimStarted = useRef<string | null>(null);
+
   useEffect(() => {
     if (!token) return; // Show the code form instead.
+    if (claimStarted.current === token) return;
+    claimStarted.current = token;
 
     // Phase 0 middle-of-funnel marker, before anything can fail. Fire-and-forget:
     // a measurement must never be able to stop somebody claiming.
@@ -48,15 +62,38 @@ export default function ClaimClient() {
     // they could never sign into. Redeeming the single-use code is the one-time
     // authentication, and the session it mints is the device binding.
     signIn('standby-claim', { token, redirect: false })
-      .then((res) => {
+      .then(async (res) => {
         // `ok` explicitly, not merely "no error". A falsy or partial result --
         // seen on 2026-08-12 when a TLS-interception proxy mangled the callback
         // -- must not read as success and send someone to a dashboard for a
         // claim that never happened.
         if (!res || res.error || res.ok !== true) {
+          // Released so "Try the code again" can actually try again — the ref
+          // exists to stop the AUTOMATIC double-fire, never a person's retry.
+          claimStarted.current = null;
           setState({
             kind: 'error',
             message: 'That code is not valid, or it has already been used.',
+          });
+          return;
+        }
+        /*
+          🔴 `ok: true` IS NOT A SESSION. NextAuth answers a CSRF-refused
+          credentials callback with a redirect to `signin?csrf=true` — no error
+          parameter, so signIn() reports ok on a claim that minted nothing, and
+          the 2026-08-12 guard above passes it. The only thing that can tell a
+          minted session from a refused one is the session endpoint, so ask it
+          before navigating. On a genuine CSRF flake the code is unspent — the
+          retry this error state offers actually works.
+        */
+        const session = await fetch('/api/auth/session', { cache: 'no-store' })
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null);
+        if (!session?.user) {
+          claimStarted.current = null; // A retry is legitimate: nothing was spent.
+          setState({
+            kind: 'error',
+            message: 'That did not go through. Nothing is wrong with your code — try it again.',
           });
           return;
         }
@@ -68,7 +105,10 @@ export default function ClaimClient() {
         // eslint-disable-next-line @next/next/no-location-assign-relative-destination
         window.location.href = '/standby';
       })
-      .catch(() => setState({ kind: 'error', message: 'Something went wrong. Try again.' }));
+      .catch(() => {
+        claimStarted.current = null;
+        setState({ kind: 'error', message: 'Something went wrong. Try again.' });
+      });
   }, [token]);
 
   if (!token) return <ClaimCodeEntry onCode={setToken} />;

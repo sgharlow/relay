@@ -117,3 +117,53 @@ describe('the claim error state is not a dead end', () => {
     expect(withoutComments).not.toMatch(/couldn&rsquo;t open that link/i);
   });
 });
+
+describe('the claim fires once, and success means a session', () => {
+  /*
+    🔴 TWO WAYS THIS PAGE STRANDED A CLAIMANT, found 2026-08-17 by
+    screenshotting it rather than walking its assertions.
+
+    ONE: React StrictMode double-invokes the claim effect, the racing pair
+    desynchronised NextAuth's CSRF double-submit, and the browser navigated on
+    the refused attempt while the aborted one spent the single-use code
+    server-side. The claimant reached /standby signed out holding a code that
+    now answers "already been used". Development-only in origin, but the ref
+    that fixes it is correctness anywhere an effect can run twice.
+
+    TWO: NextAuth answers a CSRF-refused credentials callback with a redirect
+    to `signin?csrf=true` — no `error` search-param, so `signIn()` reports
+    `ok: true` for a claim that minted NOTHING, and the 2026-08-12 "must not
+    read as success" guard passes it. Only the session endpoint can tell a
+    minted session from a refused one, so the client must ask it before
+    navigating. Production single-fires today; this pins the behaviour that
+    keeps a transient CSRF flake from silently reporting success.
+  */
+  const CLAIM_SRC = 'src/app/(access)/claim/ClaimClient.tsx';
+  const src = () =>
+    readFileSync(CLAIM_SRC, 'utf8')
+      .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/[^\n]*/g, '');
+
+  it('guards the auto-claim behind a ref so an effect re-run cannot double-spend', () => {
+    const s = src();
+    expect(s, 'the in-flight ref is gone — StrictMode will double-fire signIn again').toMatch(
+      /claimStarted\.current\s*===\s*token\)\s*return/,
+    );
+  });
+
+  it('verifies a session exists before navigating to /standby', () => {
+    const s = src();
+    const navigatesAt = s.indexOf("window.location.href = '/standby'");
+    const checksAt = s.indexOf("fetch('/api/auth/session'");
+    expect(checksAt, 'nothing consults /api/auth/session — signIn ok:true is not a session').toBeGreaterThan(-1);
+    expect(
+      navigatesAt,
+      'the /standby navigation must come AFTER the session check, or a refused claim reads as success',
+    ).toBeGreaterThan(checksAt);
+  });
+
+  it('a failed session check releases the ref, so the offered retry is real', () => {
+    expect(src()).toMatch(/claimStarted\.current = null/);
+  });
+});

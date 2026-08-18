@@ -2502,3 +2502,71 @@ never the thing between the product and its first user, and that is still the
 truest sentence in this file.
 
 Ended at Steve's direction after eight commits against a five-iteration brief.
+
+---
+
+## 31. Beta-preparedness reassessment — 2026-08-17 (late), full sweep + document reshoot
+
+Scope set by Steve: full reassessment for beta — UI, functionality, all use cases, security
+(passkeys/MFA), demo cleanliness — then regenerate the use-case PDF and user manual with fresh
+screenshots and mine the manual for broken UX. Everything below was re-measured this pass, not
+quoted: gate exit 0 (2656 passed / 1 skipped, 240 files), `npm audit --omit=dev` 0 vulnerabilities,
+**`verify:live` 70/70**, `verify:roles` and `verify:iam` both walls intact, `verify:schema` RED on
+exactly migration 035's two columns in both regions (the check working; Steve still owes the
+migration), 13 public pages 200 with all 7 security headers, a11y 0 serious/critical across 36
+pages (this morning's run; nothing structural changed since).
+
+### Three defects found, all fixed and guarded
+
+**F1 — the site-wide metadata still sold estate.** `layout.tsx`'s `SITE_DESCRIPTION` — inherited
+by every page without its own metadata, the string every link unfurler and search snippet shows —
+read "permanent estate handoff". The share image was scrubbed 2026-08-14 and `/caregivers`
+overrides its own og copy; the inherited `<head>` was the third door, found by probing the served
+`/demo` HTML. Fixed; `gates.test.ts` now extracts the literal and fails while g2 is declined
+(proven to fail on the planted defect). **Not live until deployed.**
+
+**F2 — the claim page could report success while stranding the claimant.** Found by
+*photographing* `/claim`, not by walking its assertions: in dev, StrictMode double-fires the claim
+effect, the racing pair desynchronises NextAuth's CSRF double-submit, and the browser navigates on
+the refused attempt while the aborted one spends the single-use code — "You are signed out",
+permanently, on the conversion path. Production single-fires (verified in a real browser against
+relaystandby.com: code redeemed, session minted, `/api/standby` 200) — but the client-side hole is
+real everywhere: NextAuth answers a CSRF-refused credentials callback with `signin?csrf=true`,
+which carries no `error` param, so `signIn()` reports `ok: true` for a claim that minted nothing
+and the 2026-08-12 "must not read as success" guard passes it. ClaimClient now fires the claim
+exactly once behind a ref and confirms a session exists before navigating; on failure the code is
+unspent and the offered retry is real. Pinned by three tests in `claim-copy.test.ts`.
+
+**F3 — `guide-pdf.mjs` hung forever.** Chromium defers a `loading="lazy"` image that never nears
+the viewport — including its `decode()` promise — and a print run never scrolls, so the script's
+decode gate waited on promises that cannot settle. Eager-flip before decode; diagnosed by stage
+timing (goto 654ms, decode never).
+
+### The reshoot is a script now
+
+`scripts/capture-screens.ts` stages the Chen circle through the product's own APIs — structured
+secret with a live TOTP seed, claimed+confirmed recipient AND verifier, active helper with a
+recorded consent, a real emergency, a counted confirmation, Reveal, check-in — 16/16 assertions,
+unconditional cleanup plus a stamp-scoped purge backstop, cluster verified clean after every run.
+Both documents are now fully derived: `use-cases-pdf.mjs` prints `docs/Relay-Use-Cases.pdf` (42
+images) and `guide-pdf.mjs` prints the manual (28 images), refreshed for secret types Phase 0,
+irreplaceable/backup notes, the consent record, import duplicates, the operator pages and the
+access-limits acknowledgment. Use cases UC-36 (store more than a password → open usable) and
+UC-37 (irreplaceable + note) added — 37 documented, all passing; the estate coverage line now says
+*declined*, not *pending*.
+
+### The auth surface, stated once
+
+Passkeys are first-class (sign-in button, owners and contacts, single-use server-burned
+challenges), owner sign-in is email+TOTP, contacts claim with single-use codes and hold
+break-glass as the way back, recovery codes cover the lost-authenticator case, sensitive actions
+re-authenticate through the step-up window, and revocation is immediate via session epochs. Each
+of those is live-proven by a walk that ran today. Nothing modern is missing for this audience; SMS
+OTP stays out deliberately.
+
+### What this pass did not change
+
+Migration 035 (Steve's, both regions, then `verify:schema`), the deliberately-out-of-CI status of
+`verify:live`, and the demand side: `demand_signal: none`. The tree is UNCOMMITTED — this pass's
+fixes, the reshoot, and the 8-17 session's files all await a commit, and F1/F2 protect nobody
+until deployed.
