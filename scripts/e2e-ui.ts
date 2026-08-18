@@ -303,6 +303,11 @@ async function main(): Promise<void> {
         ciphertext: 'AAAAAAAAAAAAAAAAAAAAAA==',
         wrapped_data_key: 'AAAAAAAAAAAA',
         kms_key_id: 'e2e-placeholder',
+        // Required at the write boundary since 035 Phase 1 was hardened. A real
+        // write derives this in encryptForUpload; this walk uses a placeholder blob
+        // it never decrypts, so it declares directly — which is exactly the contract
+        // the boundary enforces for a hand-built payload.
+        secret_kinds: 'password',
       });
       const rec = await o.post('/api/recipients', {
         name: 'Shared contact',

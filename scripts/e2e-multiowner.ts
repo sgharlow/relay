@@ -150,6 +150,11 @@ async function prepareOwner(o: Actor, contactEmail: string): Promise<string> {
     ciphertext: 'AAAAAAAAAAAAAAAAAAAAAA==',
     wrapped_data_key: 'AAAAAAAAAAAA',
     kms_key_id: 'e2e-placeholder',
+    // Required at the write boundary since 035 Phase 1 was hardened. A real
+    // write derives this in encryptForUpload; this walk uses a placeholder blob
+    // it never decrypts, so it declares directly — which is exactly the contract
+    // the boundary enforces for a hand-built payload.
+    secret_kinds: 'password',
   });
   if (item.status !== 201 && item.status !== 200) throw new Error(`${o.label} item ${item.status} ${JSON.stringify(item.body)}`);
 
