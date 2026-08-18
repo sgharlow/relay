@@ -1083,7 +1083,7 @@ cross_cutting:
            when you press 'add' is exactly the kind that falls out of a
            hand-maintained list.
            ---- prior record, 2026-08-15 ----
-           "RE-MEASURED 2026-08-15 AFTER THE TYPE-SCALE MIGRATION: 0
+           \"RE-MEASURED 2026-08-15 AFTER THE TYPE-SCALE MIGRATION: 0
            serious/critical across 34 pages — 18 signed-out, and all 8 owner-mode
            screens at BOTH 1280 and 390. That is the fuller number; the 21 below
            is the 2026-08-13 run and is superseded. Owner mode had silently
@@ -1179,39 +1179,136 @@ cross_cutting:
 # below, four from the 2026-08-14 audit and three opened and shut on 08-15. The
 # next honest entry belongs here and not in a new file.
 #
-# REOPENED 2026-08-17. One item, and it is a SEQUENCING state rather than a
-# defect: the code is written, tested and deliberately not wired, because wiring
-# it before the migration lands is the exact failure 029 was written to prevent.
+# REOPENED 2026-08-17 with one item; that item CLOSED 2026-08-18 and is kept as a
+# comment below the live list, in this file's usual shape. THREE items are open in
+# its place, and none of them is the thing it was blocked on. The migration landed;
+# what is left is that the feature it bought is opt-in-by-discovery (D3), was cut
+# to one question on purpose (D2), and the gate that proved it still cannot run in
+# CI (D4). Written out as entries rather than left in a sprint report, because a
+# sprint report is the record of a day and this file is what the next session reads.
 deferred:
-  - id: secret-types-phase-1-wiring
-    what: "assessPreparedness reads three usability states instead of two, and
-      lib/vault/usability.ts implements the rule. Nothing SELECTs the two new
-      columns yet, so the deployed behaviour is UNCHANGED - every item reads
-      `unknown`, which suppresses the new clause entirely (pinned by the test
-      named 'leaves an all-unchecked vault exactly as it was before this
-      existed')."
-    blocked_on: "migration 035_secret_kinds_and_factors.sql, BOTH REGIONS. A
-      migration is a sysadmin act under the D1 ruling, so it is Steve's to run:
-        npx tsx --env-file=.env.admin db/migrations/migrate.ts 035_secret_kinds_and_factors.sql
-        DSQL_USE_SECONDARY=true npx tsx --env-file=.env.admin db/migrations/migrate.ts 035_secret_kinds_and_factors.sql
-        npm run verify:schema"
-    then: "add both columns to the vault SELECT, have the browser declare
-      secret_kinds on save (secretKindsOf already computes it), and add the
-      owner's 'does this account need a code as well?' control following the
-      owner_set_* precedent. Phase 2 - AI inference of factors_required - stays
-      advisory and is not in scope."
-    why_it_matters: "until then assessPreparedness still defines reachable as
-      'an access rule exists', so an owner storing the password for a
-      2FA-protected account is told Sarah could reach it. Sarah receives a
-      password and a locked door."
-    ends_when: "the migration is applied and the reads are wired, or Steve rules
-      that preparedness keeps its current definition and the on-screen claim is
-      reworded to match - either closes it, forgetting does not."
-    opened: 2026-08-17
-    # NOTE: `npm run verify:schema` is RED until 035 is applied, and that is the
-    # check working rather than failing. It could not have told you this before
-    # 2026-08-17 - it compared table names only, so a migration that adds a
-    # column was invisible to it (028 and 034 both are).
+  - id: secret-kinds-declaration-is-opt-in-by-discovery      # "D3"
+    owner: claude
+    opened: 2026-08-18
+    what: "The owner's 'does this account need a code as well?' control is LIVE on the
+      vault row, and nothing anywhere ASKS the question. It is reachable only by an
+      owner already looking at the item they would have had to doubt first."
+    why_it_matters: "assessPreparedness can now say the true thing - that a password
+      stored behind a coded door means Sarah receives a password and a locked door -
+      but only for an item somebody declared. Every item created before 2026-08-18
+      reads `unknown`, which SUPPRESSES the clause entirely. So for every plan that
+      already exists the on-screen sentence is exactly as wrong as it was before the
+      migration, and the owners whose plans are wrong are the least likely to go
+      looking. The measurement the migration was for does not exist until this does."
+    structural_note: "It cannot be backfilled, ever. The server cannot read ciphertext,
+      so nothing but a re-save through the browser can declare what an item holds.
+      This is not a migration somebody can run later; it is a question that has to be
+      asked. Stated in the use-case doc's limits as well."
+    then: "prompt on the items that matter rather than waiting to be found. Scored 4.5
+      and named the #1 recommendation of the 2026-08-18 sprint that shipped the wiring."
+    ends_when: "owners are ASKED rather than found, or Steve rules that preparedness
+      keeps its current definition and the on-screen claim is reworded to match -
+      either closes it, forgetting does not."
+
+  - id: requirable-factors-beyond-the-authenticator-code     # "D2"
+    owner: claude
+    opened: 2026-08-18
+    what: "`factors_required` accepts the authenticator-code question ALONE. sms, email,
+      passkey, hardware_key and security_questions are defined and not collectable."
+    why_the_cut_was_deliberate: "S2 was larger than L taken whole, so the thinnest
+      end-to-end slice was taken: the one demand a vault can actually satisfy, because
+      a stored seed or a set of recovery codes answers it. An SMS, a passkey and a
+      hardware key cannot be put in a vault at all, so asking about them would gather
+      answers the product can do nothing with."
+    sequencing: "AFTER D3, and the ordering is the point rather than an accident.
+      Building five more questions before there is evidence that owners answer the
+      first one is the more expensive mistake."
+    ends_when: "D3 produces evidence owners answer at all, or the remaining factors are
+      ruled permanently out of scope and the enum says so."
+
+  - id: verify-live-cannot-enter-ci                          # "D4"
+    owner: steve            # infrastructure spend - explicitly not a Claude item
+    opened: 2026-08-18
+    what: "The release gate is a chain of live walks a PERSON has to remember to run,
+      against the PRODUCTION cluster, creating and deleting real accounts as it goes."
+    narrowed_2026-08-18: "`verify:factors` was folded into `verify:live`, so the chain
+      is one command covering five walks rather than four plus one nobody was told to
+      run. It shipped 2026-08-17 as a standalone and its own sprint report filed that
+      as debt while opening no item for it. That reduces what must be remembered. It
+      does NOT close this."
+    why_it_is_still_out_of_ci: "Unchanged and still correct: `.env.local` points at
+      production because Relay has no dev database, and a job writing to customers'
+      data to check a pull request is not a gate, it is a hazard - the rows it forgot
+      would be the ones nobody was watching. An early multi-owner run left four behind,
+      which is the argument rather than a hypothetical."
+    the_argument_for_closing_it: "2026-08-18 supplied a clean one. D1's fail-closed
+      boundary - `secret_kinds` required on every vault write - broke e2e-multiowner
+      and e2e-ui, and `npm run gate` was GREEN throughout, because a unit suite cannot
+      see a real write path. Only a deliberate manual re-run caught it. The half of the
+      release gate that catches this class of regression is the half nothing schedules."
+    blocked_on: "a separate test cluster. Infrastructure with a cost attached, Steve's
+      call, and not a thing to arrange quietly inside a test file."
+
+  # ── CLOSED 2026-08-18, the day after it was opened ────────────────────────
+  #
+  #   secret-types-phase-1-wiring — the entry said the columns were inert, that
+  #     nothing SELECTed them, that `verify:schema` was RED, and that it was
+  #     blocked on migration 035 in both regions being Steve's to run. ALL FOUR
+  #     were true when written on 2026-08-17 and ALL FOUR stopped being true on
+  #     the morning of 2026-08-18. Steve applied 035 to both regions,
+  #     `verify:schema` is green, and S2 (`f9beccb`) wired the reads and writes.
+  #
+  #     LIVE-PROVEN rather than merely wired: `npm run verify:factors` against the
+  #     production cluster — declaration stored and returned by a read, the
+  #     owner's answer round-tripped, an unrecognised factor refused 400 rather
+  #     than silently narrowed, the answer revocable, and the measurement that
+  #     matters, reachable 1 -> 0 on the declaration.
+  #
+  #     SCOPE CUT, recorded as a cut rather than as completion: the
+  #     authenticator-code question alone. The remainder is D2 above.
+  #
+  #     🔴 THE DEFECT FOUND WHILE WIRING, which is the whole argument for wiring
+  #     tests. `secretKindsOf` listed every kind it was HANDED, while
+  #     `encodeSecretPayload` drops empty ones — so an untouched two-factor box
+  #     declared `totp` over a blob holding none, and an account declared to need
+  #     a code would have read `usable` while holding nothing: the original
+  #     falsehood restored inside its own fix. Both now share one `isKept`
+  #     predicate.
+  #
+  #     🔴 AND THE MISCOUNT, which is the lesson worth more than the feature.
+  #     The sprint report first filed the remaining write paths as benign debt —
+  #     "of three write paths only create declares `secret_kinds` ... nothing is
+  #     misreported". Wrong twice. It was 1-of-FIVE, not 1-of-three (import,
+  #     in-place update and both onboarding flows all missed it); and the update
+  #     path was not honest-but-empty — `updateItem` re-encrypted in place and
+  #     never rewrote `secret_kinds`, so editing a TOTP seed AWAY left
+  #     `password,totp` standing over a blob that no longer held it. The item
+  #     kept reading `usable` for a code it could not produce. That is a
+  #     MISREPORT and strictly worse than the original falsehood, because
+  #     `unknown` prompts a question while a stale `usable` asserts a false
+  #     answer.
+  #
+  #     Reclassified from deferred debt to part of S2's definition of done and
+  #     fixed before merge (`a5b91be`) in three structural layers — derive at the
+  #     choke point, fail closed at the boundary, and an enumerating guard —
+  #     live-proven 15/15. No user was ever exposed: the branch had not been
+  #     deployed, so production still predated Phase 1 and no corrupt row existed.
+  #     I had just spent an iteration on this feature and written a test I called
+  #     a "wiring" test, and still enumerated the call sites wrong by two. A guard
+  #     that checks one call site is a guard on that call site;
+  #     lib/ops/secret-kinds-on-every-write.test.ts enumerates every producer.
+  #
+  #     ⚠️ AND IT BROKE THE RELEASE GATE ON THE WAY THROUGH. The new boundary
+  #     made e2e-multiowner and e2e-ui answer 400, because both hand-build a
+  #     placeholder vault POST with no declaration — the boundary working exactly
+  #     as designed, and a regression of the release gate all the same. Fixed in
+  #     `e349f88`; all walks re-run green against production. family-arc.ts and
+  #     seed-runner use raw INSERT and bypass the validator, which is honest for a
+  #     fixture. The rule that generalises: any path that POSTs a raw vault item
+  #     rather than going through `encryptForUpload` must carry `secret_kinds`.
+  #
+  #     ⚠️ WHAT IT DID NOT BUY. Nothing above moves `demand_signal`, which is
+  #     still `none`. It fixed a sentence owners see. D3 is what makes owners see it.
   # ── CLOSED 2026-08-15, production-bar pass iteration 1 ────────────────────
   #
   # Both security deferrals are closed, together, because they were the same
