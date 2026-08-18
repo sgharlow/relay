@@ -127,6 +127,13 @@ whole article about the problem. But it is a **different** signal, so record it 
 `g1-flight-log.md` already computes per-lane ratios (ratio #4). Do not blend editorial and paid into
 one headline number without saying so.
 
+**The editorial thresholds are drafted and await ratification:**
+`docs/g1-editorial-threshold-proposal.md` (2026-08-18) proposes pass ≥ 6% at N ≥ 50 cumulative,
+kill < 2% at N ≥ 150, no-read floor below N = 50 — with the reasoning for each number. Per the gate
+block in `PROJECT.yaml`, **Steve must ratify (or amend) it BEFORE the first placement goes live**,
+so the number cannot be reverse-engineered from whichever result appears. Until ratified, no `ed-*`
+src may be declared in `GATE_LANES`.
+
 ## What to send an outlet
 
 The boilerplate lives in **`lib/g1/press-kit.ts`** and is composed from the product's own values —

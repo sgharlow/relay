@@ -184,3 +184,26 @@ articles must NOT be advertisements for your company, product, or service."*
 - **Verify the recovery-contact feature names** against each major provider's current settings
   before submission — provider UIs move, and the draft deliberately avoids naming specific menu
   paths for that reason. If the final version names any, they get checked that week.
+
+---
+
+## Send checklist — caregiver.com (staged 2026-08-18, co-pilot)
+
+Everything below the first two rows is done or verified; the first two are yours and cannot be
+delegated.
+
+| # | Step | Owner | State |
+|---|---|---|---|
+| 1 | **Voice pass** on the draft above — make the sentences yours. The facts/structure are verified true; the phrasing is scaffold. AARP's blacklist rule is why this is non-negotiable, and caregiver.com deserves the same standard. | **Steve** | ⏳ |
+| 2 | **Cover email** — short, yours, discloses the commercial interest plainly ("I build a product in this space; the piece recommends a free feature of the reader's existing email provider, and my product appears nowhere in it"). | **Steve** | ⏳ |
+| 3 | Word count inside 500–1500 | — | ✅ body is 991 words; room to grow in the voice pass |
+| 4 | Product mentions: 0 in body, none by name in bio | — | ✅ measured (table above) |
+| 5 | No estate/death vocabulary; no employer reference; hackathon omitted | — | ✅ measured |
+| 6 | Bio (short, required) | — | ✅ drafted above; if the outlet links it, the link is `relaystandby.com/caregivers?src=ed-caregiver-com` — never untagged, never another src |
+| 7 | Submission mechanics | — | ✅ per `g1-outlet-dossier.md`: **Word document as an email attachment to nancy@caregiver.com**, bio included; they send a release form on acceptance and the author keeps copyright; no payment |
+| 8 | Editorial thresholds ratified BEFORE the placement goes live | **Steve** | ⏳ proposal drafted: `g1-editorial-threshold-proposal.md` — ratify or amend; needed before the `ed-caregiver-com` src can be declared in `GATE_LANES`, not before pitching |
+| 9 | Lane-B numerator live-proven before the placement goes live | — | ⏳ flight-log two-part check (gate-safe QA + one recorded real click); can run any day before publication |
+| 10 | If the final text names any provider's recovery-contact feature, verify the name against that provider's current settings that week | — | ⏳ only if the voice pass adds names; the draft deliberately avoids them |
+
+When steps 1–2 are done, hand the final text back and the Word document gets produced from it —
+derived, not retyped.
