@@ -328,7 +328,14 @@ gates:
         those, this stays closed and does not reappear at /daily-priority."
 
 market:
-  competitors_doc: docs/COMPETITORS.md   # authored 2026-07-01 (Everplans $99/yr = the price anchor; GoodTrust/Trustworthy; free platform features = the awareness rival) — stale at 60 days
+  competitors_doc: docs/COMPETITORS.md   # authored 2026-07-01; PRICES RE-VERIFIED 2026-08-18
+    # against each vendor's own pricing page, so the 60-day staleness clock restarts there.
+    # Everplans holds at $99.99/yr (free tier is 3 items, not ~10) and is distributed via VSP at
+    # $27/yr. The anchor that MOVED: Trustworthy is now tiered and its entry paid tier is
+    # $10/mo billed annually = $120/yr — within a dollar of Relay's $119, so the nearest
+    # competitor price is no longer $99.99. GoodTrust renews at $39/yr but has pivoted into
+    # wills/trusts/directives, which g2-counsel-opinion withdrew Relay from permanently: a
+    # different product, not a price floor.
   g1_instrument_verified: "2026-08-07 — all six funnel events observed on the wire against
     production, each carrying src attribution: caregiver_qualified, seed_started, seed_completed,
     reveal_viewed, price_viewed, intent_clicked. Two bugs were found and fixed by this check
