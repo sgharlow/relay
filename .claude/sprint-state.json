@@ -2,11 +2,11 @@
   "sprint": "2026-08-18",
   "branch": "sprint/2026-08-18-1",
   "baseCommit": "aaae3d18222571fa4326837c245e60bc04afccff",
-  "iterationsUsed": 5,
+  "iterationsUsed": 6,
   "iterationCap": 5,
-  "stoppedBecause": "queue exhausted and iteration cap reached simultaneously; all 5 items shipped, 0 blocked",
+  "stoppedBecause": "5 planned items shipped; a 6th follow-on iteration fixed D1 (secret_kinds on every write path) after the post-sprint review reclassified it from deferred debt to an S2 merge blocker",
   "backlogSource": [
-    "explicitly named in the sprint invocation — the Claude-side list from the preceding reassessment"
+    "explicitly named in the sprint invocation \u2014 the Claude-side list from the preceding reassessment"
   ],
   "backlogInferred": false,
   "todoWriteAvailable": false,
@@ -24,7 +24,7 @@
       "types": "green",
       "lint": "green",
       "build": "green",
-      "tests": "2671 passed, 1 skipped (242 files)",
+      "tests": "2678 passed, 1 skipped (243 files)",
       "security": "npm audit --omit=dev: 0 vulnerabilities",
       "schema": "verify:schema green, both regions"
     }
@@ -76,17 +76,20 @@
       "status": "shipped",
       "commit": "830ddfd",
       "proof": "four vendor pricing pages fetched 2026-08-18 and cited inline"
+    },
+    {
+      "id": "D1",
+      "title": "secret_kinds on every write path (3-layer structural fix)",
+      "axis": "wiring",
+      "score": 12,
+      "status": "shipped",
+      "commit": "a5b91be",
+      "proof": "secret-kinds-on-every-write.test.ts (3 planted violations proven to fail) + verify:factors 15/15 live incl. the update edit-away scenario",
+      "note": "was filed as deferred debt D1; review found the update path misreports (stale usable), branch undeployed so fixed before merge"
     }
   ],
   "blocked": [],
   "deferred": [
-    {
-      "id": "D1",
-      "title": "Declare secret_kinds on the import and update write paths",
-      "axis": "wiring",
-      "score": 12,
-      "why": "only create declares it today; editing an existing item to add a two-factor code leaves it unknown"
-    },
     {
       "id": "D3",
       "title": "Prompt owners to declare on the items that matter",
@@ -106,7 +109,7 @@
       "title": "Test cluster so verify:live can enter CI",
       "axis": "correctness",
       "score": 3.3,
-      "why": "infrastructure spend — Steve's decision, not a Claude item"
+      "why": "infrastructure spend \u2014 Steve's decision, not a Claude item"
     }
   ],
   "demandUnchanged": "demand_signal remains none; g1-arms-length-demand due 2026-12-31 waits on Steve's voice pass and cover email, not on code"
