@@ -91,9 +91,24 @@ export const MASKED_KINDS: ReadonlySet<SecretKind> = new Set<SecretKind>([
  * a `password` whose value is '' would otherwise render as a blank labelled row
  * and read as "the password is empty" rather than "there isn't one".
  */
+/**
+ * Does this field survive into the envelope?
+ *
+ * 🔴 ONE DEFINITION, BECAUSE TWO DISAGREED. `encodeSecretPayload` has always
+ * dropped empty fields; `secretKindsOf` listed every kind it was handed. So an
+ * owner who left the TOTP box untouched produced a blob holding no TOTP and a
+ * declaration saying it held one — and an account declared to need a code would
+ * then read `usable` while holding nothing. That is the exact falsehood
+ * migration 035 exists to end, arriving by the back door of its own fix.
+ * Caught by `secret-kinds-wiring.test.ts` while wiring the column.
+ */
+function isKept(f: SecretField): boolean {
+  return KINDS.has(f.kind) && typeof f.value === 'string' && f.value.trim().length > 0;
+}
+
 export function encodeSecretPayload(fields: SecretField[]): string {
   const kept = fields
-    .filter((f) => KINDS.has(f.kind) && typeof f.value === 'string' && f.value.trim().length > 0)
+    .filter(isKept)
     .map((f) => ({ kind: f.kind, ...(f.label ? { label: f.label } : {}), value: f.value }));
   const envelope: Envelope = { relay: 1, fields: kept };
   return JSON.stringify(envelope);
@@ -188,16 +203,18 @@ export function valueOf(fields: SecretField[], kind: SecretKind): string | null 
 }
 
 /**
- * The sorted, comma-joined list of kinds present — the value destined for the
- * `secret_kinds` metadata column in phase 1.
+ * The sorted, comma-joined list of kinds the ENVELOPE WILL ACTUALLY HOLD — the
+ * value written to `secret_kinds` (migration 035, wired 2026-08-18).
  *
- * ⚠️ NOT WRITTEN ANYWHERE YET, deliberately. The column does not exist; adding
- * it is a migration and therefore a sysadmin act. This is here so that the
- * definition of "what kinds does this item hold" lives with the payload rather
- * than being re-derived by whoever wires the column later. Distinguishing an
- * ABSENT value from an EMPTY one is Q3 of the design's QA pass and belongs to
- * that work, not to this function.
+ * ⚠️ IT MUST AGREE WITH `encodeSecretPayload`, WHICH IS WHY BOTH CALL `isKept`.
+ * Its earlier form listed every kind it was handed and left the absent-vs-empty
+ * question to "whoever wires the column later". Wiring it revealed why that
+ * could not be deferred: an untouched TOTP box declared `totp` on a blob
+ * containing none, so an account declared to need a code read `usable` while
+ * holding nothing — the original falsehood, restored by its own fix. A
+ * declaration that describes something other than the blob is worse than no
+ * declaration, because `unknown` at least prompts a question.
  */
 export function secretKindsOf(fields: SecretField[]): string {
-  return [...new Set(fields.map((f) => f.kind))].sort().join(',');
+  return [...new Set(fields.filter(isKept).map((f) => f.kind))].sort().join(',');
 }

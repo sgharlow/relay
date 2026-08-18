@@ -29,6 +29,7 @@ import {
   VALID_CRITICALITY,
   type VaultItemType,
 } from '../domain/enums';
+import { parseKindList, serialiseFactorList } from './usability';
 
 export { VALID_TYPES, VALID_CATEGORIES, VALID_CRITICALITY, type VaultItemType };
 
@@ -47,6 +48,12 @@ export const BACKUP_NOTE_MAX = 2000;
 
 /** Raw create payload from POST /api/vault/items (base64 crypto fields). */
 export interface CreateVaultItemInput {
+  /**
+   * What the blob holds, declared by the browser that encrypted it (035).
+   * Sorted-comma-joined; `null` = not declared, `''` = declared as holding
+   * nothing recognised. Keep those apart — `usability.ts` depends on it.
+   */
+  secret_kinds?: string | null;
   type: VaultItemType;
   title: string;
   service_name: string | null;
@@ -105,6 +112,25 @@ export interface VaultItemMetadata {
   importance_score: number;
   depends_on_item_id: string | null;
   backup_note: string | null;
+  /**
+   * What the BLOB holds — client-declared, written by the browser that just
+   * encrypted it (migration 035). `null` means no client has ever declared,
+   * which `usability.ts` reads as `unknown` and NOT as "holds nothing".
+   *
+   * ⚠️ NEVER BACKFILLABLE. The server cannot read the ciphertext, so it cannot
+   * know what an existing item holds; this is populated opportunistically the
+   * next time an owner writes an item. An item last touched before 2026-08-18
+   * and never edited again stays `unknown` forever, and `unknown` is the honest
+   * answer for it.
+   */
+  secret_kinds?: string | null;
+  /**
+   * What the ACCOUNT demands at the door — owner-declared (migration 035).
+   * `null` means nobody has ever asked. Same three states as `owner_set_root`
+   * and `owner_set_irreplaceable`, and the same reason: the owner knows
+   * something the server cannot infer.
+   */
+  factors_required?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -237,6 +263,23 @@ export function validateCreateInput(body: unknown): CreateVaultItemInput {
     }
   }
 
+  /*
+    secret_kinds — optional, and the ONE field here the browser knows and the
+    server cannot. It says what the blob it just encrypted holds. Unrecognised
+    entries are DROPPED rather than rejected, matching `parseKindList`: this
+    column is written by a browser that is not always the same build as the
+    server, and refusing the whole save because a newer client named a kind this
+    build has not heard of would break saving to fix a label.
+  */
+  const kinds =
+    b.secret_kinds == null
+      ? null
+      : typeof b.secret_kinds === 'string'
+        ? parseKindList(b.secret_kinds)
+        : (() => {
+            throw new ValidationError('secret_kinds must be a string or null', 'secret_kinds');
+          })();
+
   return {
     type: b.type as VaultItemType,
     title: b.title as string,
@@ -248,6 +291,9 @@ export function validateCreateInput(body: unknown): CreateVaultItemInput {
     wrapped_data_key: b.wrapped_data_key as string,
     kms_key_id: b.kms_key_id as string,
     backup_note: normaliseNote(b.backup_note),
+    // Sorted-comma-joined, so one value has one spelling. `[]` stays `''` —
+    // a client declaring "nothing in here" is not the same as never declaring.
+    secret_kinds: kinds === null ? null : kinds.join(','),
   };
 }
 
@@ -312,7 +358,7 @@ export function validateUpdateInput(body: unknown): UpdateVaultItemInput {
 const METADATA_COLUMNS =
   'id, type, title, service_name, url, category, criticality, ' +
   'is_root_credential, owner_set_root, recurring_billing, irreplaceable, owner_set_irreplaceable, importance_score, ' +
-  'depends_on_item_id, backup_note, created_at, updated_at';
+  'depends_on_item_id, backup_note, secret_kinds, factors_required, created_at, updated_at';
 
 function toMetadata(row: Record<string, unknown>): VaultItemMetadata {
   return {
@@ -337,6 +383,15 @@ function toMetadata(row: Record<string, unknown>): VaultItemMetadata {
     importance_score: Number(row.importance_score),
     depends_on_item_id: (row.depends_on_item_id as string | null) ?? null,
     backup_note: (row.backup_note as string | null) ?? null,
+    /*
+      `?? null` COLLAPSES undefined INTO null, and that is correct HERE while
+      being wrong inside usability.ts. A column missing from a projection and a
+      column that is SQL NULL both mean "this read cannot tell you" — the
+      distinction usability.ts guards (absent vs empty) is between null and '',
+      and '' survives this untouched.
+    */
+    secret_kinds: (row.secret_kinds as string | null) ?? null,
+    factors_required: (row.factors_required as string | null) ?? null,
     created_at: stringifyTs(row.created_at),
     updated_at: stringifyTs(row.updated_at),
   };
@@ -377,8 +432,8 @@ export async function createItem(
     query<Record<string, unknown>>(
       `INSERT INTO vault_items
          (owner_id, type, title, service_name, url, category, criticality,
-          backup_note, ciphertext, wrapped_data_key, kms_key_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          backup_note, secret_kinds, ciphertext, wrapped_data_key, kms_key_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING ${METADATA_COLUMNS}`,
       [
         ownerId,
@@ -389,6 +444,7 @@ export async function createItem(
         input.category,
         input.criticality,
         input.backup_note,
+        input.secret_kinds ?? null,
         Buffer.from(input.ciphertext, 'base64'),
         Buffer.from(input.wrapped_data_key, 'base64'),
         input.kms_key_id,
@@ -538,6 +594,47 @@ export async function setOwnerIrreplaceableOverride(
       `UPDATE vault_items
           SET owner_set_irreplaceable = $1,
               irreplaceable = COALESCE($1, irreplaceable),
+              updated_at = now()
+        WHERE id = $2 AND owner_id = $3
+       RETURNING ${METADATA_COLUMNS}`,
+      [value, id, ownerId],
+    ),
+  );
+  if (result.rowCount === 0 || result.rows.length === 0) return null;
+  return toMetadata(result.rows[0]);
+}
+
+/**
+ * Records what the ACCOUNT demands at the door — the owner's answer to a
+ * question the server cannot infer (migration 035).
+ *
+ * 🔴 THE FALSEHOOD THIS EXISTS TO END. `assessPreparedness` defined *reachable*
+ * as "an access rule exists", so an owner who stored the password for a
+ * 2FA-protected account was told their recipient could reach it. They receive a
+ * password and a locked door, and the sentence that told them otherwise is the
+ * one number the product asks them to act on.
+ *
+ * ⚠️ THREE STATES, AND `null` IS NOT `''`. `null` = nobody has asked, which
+ * reads as `unknown` and changes nothing on screen. `''` = the owner said this
+ * account demands nothing beyond the secret, which is a real answer and makes
+ * the item `usable`. Collapsing them would either keep the lie (null read as
+ * "demands nothing") or alarm every owner about every item on the same
+ * afternoon (null read as "demands something") — Q1/Q3 of the design, and the
+ * second one destroys the signal permanently rather than temporarily.
+ *
+ * ASSIGNS RATHER THAN COALESCES, like `setItemNote` and for the same reason:
+ * the value is always meant, so an owner can take an answer back.
+ */
+export async function setFactorsRequired(
+  ownerId: string,
+  id: string,
+  factors: readonly string[] | null,
+): Promise<VaultItemMetadata | null> {
+  const value = factors === null ? null : serialiseFactorList(factors);
+  const result = await withOccRetry(() =>
+    query<Record<string, unknown>>(
+      `UPDATE vault_items
+          SET factors_required = $1,
               updated_at = now()
         WHERE id = $2 AND owner_id = $3
        RETURNING ${METADATA_COLUMNS}`,

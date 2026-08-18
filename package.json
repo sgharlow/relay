@@ -28,7 +28,8 @@
     "verify:roles": "npx tsx --env-file=.env.local scripts/verify-roles.ts",
     "flight:snapshot": "npx tsx --env-file=.env.local scripts/flight-snapshot.ts",
     "verify:iam": "npx tsx --env-file=.env.admin scripts/verify-iam.ts",
-    "invite:cohort": "npx tsx --env-file=.env.local scripts/invite-cohort.ts"
+    "invite:cohort": "npx tsx --env-file=.env.local scripts/invite-cohort.ts",
+    "verify:factors": "npx tsx --env-file=.env.local scripts/e2e-factors.ts"
   },
   "dependencies": {
     "@aws-sdk/client-kms": "3.1072.0",

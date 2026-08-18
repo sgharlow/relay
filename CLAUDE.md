@@ -68,6 +68,15 @@ npm run verify:reveal  # the fourth walk, alone: an owner stores a structured se
                        # decodes (every item imported before 2026-08-17 is stored that way and
                        # can never be rewritten). Run it after ANY change to secret-payload.ts,
                        # AccessClient or the KMS path.
+npm run verify:factors # the migration-035 columns, through the real stack: the browser
+                       # declares what it encrypted (`secret_kinds`), a read returns it, the
+                       # owner declares what the account demands (`factors_required`), and a
+                       # password stored behind a coded door stops counting as reachable.
+                       # NEEDS .env.local AND `npm run dev`. Creates one owner on a reserved
+                       # domain and closes it. Run after ANY change to preparedness.ts,
+                       # usability.ts, secret-payload.ts or the vault read path — the columns
+                       # shipped fully unit-tested and completely INERT for a day, because no
+                       # SELECT returned them and no client wrote them.
 npm run verify:schema  # do both DSQL regions have the tables AND COLUMNS the migrations
                        # declare? Read-only (SELECT on pg_tables + information_schema).
                        # NEEDS .env.local, no server. Run it FIRST after applying a

@@ -60,6 +60,21 @@ export interface VaultItemMetadata {
    * name that difference, or somebody will type a password into it.
    */
   backup_note?: string;
+  /**
+   * What the ciphertext holds — kinds only, never values (migration 035).
+   *
+   * 🔴 THIS IS THE ONE FACT ONLY THE BROWSER HAS. The server cannot read the
+   * blob, by design, so it can never work out that an item holds a password but
+   * no second factor — and without that it cannot tell an owner their recipient
+   * would meet a locked door. Declared here, at the one moment the plaintext is
+   * in hand, because there is no later opportunity: nothing can backfill it.
+   *
+   * Metadata grade, deliberately bounded: `secretKindsOf` emits kind NAMES
+   * (`password,totp`) and never a value, which is the same grade already
+   * exposed by `type`, `category` and `service_name`. It is excluded from the
+   * AI accessor for the same reason those are curated — see `metadata-query`.
+   */
+  secret_kinds?: string;
 }
 
 /** Server-ready encrypted item (metadata + base64 ciphertext/wrapped key). */

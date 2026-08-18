@@ -20,11 +20,13 @@ import {
   setOwnerRootOverride,
   setOwnerIrreplaceableOverride,
   setItemNote,
+  setFactorsRequired,
   BACKUP_NOTE_MAX,
   deleteItem,
   validateUpdateInput,
   ValidationError,
 } from '../../../../../../lib/vault/vault-items';
+import { REQUIRABLE_FACTORS } from '../../../../../../lib/vault/usability';
 import { writeAuditEntry } from '../../../../../../lib/audit/audit-service';
 import { recordDeliberateActivity } from '../../../../../../lib/release/liveness';
 import { readJson, isResponse, VAULT_MAX_JSON_BYTES } from '../../../../../../lib/http/owner-route';
@@ -146,6 +148,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx): Promise<NextResp
     owner_set_root?: boolean | null;
     owner_set_irreplaceable?: boolean | null;
     backup_note?: string | null;
+    factors_required?: string[] | null;
   };
 
   /*
@@ -161,7 +164,12 @@ export async function PATCH(req: NextRequest, { params }: Ctx): Promise<NextResp
     not much of an audit entry. The previous contract is unchanged: a caller
     sending `owner_set_root` behaves exactly as it did.
   */
-  const FIELDS = ['owner_set_root', 'owner_set_irreplaceable', 'backup_note'] as const;
+  const FIELDS = [
+    'owner_set_root',
+    'owner_set_irreplaceable',
+    'backup_note',
+    'factors_required',
+  ] as const;
   const present = FIELDS.filter((f) => f in body);
 
   /*
@@ -187,8 +195,59 @@ export async function PATCH(req: NextRequest, { params }: Ctx): Promise<NextResp
   // how an unused variable becomes a stale claim about the control flow.
   const hasNote = present[0] === 'backup_note';
   const hasIrreplaceable = present[0] === 'owner_set_irreplaceable';
+  const hasFactors = present[0] === 'factors_required';
 
   const itemId = (await params).id;
+
+  if (hasFactors) {
+    const f = body.factors_required;
+    /*
+      REJECTS an unknown factor rather than dropping it — the opposite of
+      `secret_kinds` on the create path, deliberately. That column is written by
+      a browser which may be a newer build than the server, so dropping keeps
+      saving working. THIS one is a human answering a question in our own UI: an
+      unrecognised value means the caller and the server disagree about what was
+      asked, and silently storing a narrower answer than the owner gave is how
+      an item ends up counted `usable` on a demand nobody recorded.
+    */
+    if (f !== null && !Array.isArray(f)) {
+      return NextResponse.json(
+        { error: 'ValidationError', message: 'factors_required must be an array or null' },
+        { status: 400 },
+      );
+    }
+    if (Array.isArray(f)) {
+      const unknown = f.filter((x) => !REQUIRABLE_FACTORS.includes(x as never));
+      if (unknown.length) {
+        return NextResponse.json(
+          {
+            error: 'ValidationError',
+            message: `factors_required must contain only: ${REQUIRABLE_FACTORS.join(', ')}`,
+          },
+          { status: 400 },
+        );
+      }
+    }
+    const updatedFactors = await setFactorsRequired(auth.ownerId, itemId, f ?? null);
+    if (!updatedFactors) {
+      return NextResponse.json({ error: 'NotFound', message: 'No such item' }, { status: 404 });
+    }
+    /*
+      The DETAIL matters here in a way it does not for the note. This answer
+      decides whether the product tells an owner their plan works, so the log
+      has to be able to say what they declared and when — including the
+      difference between "needs nothing" (an answer) and taking the answer back
+      (null), which is exactly the distinction the column keeps.
+    */
+    await writeAuditEntry(auth.ownerId, {
+      actor: `owner:${auth.ownerId}`,
+      action: 'vault_item_factors_declared',
+      entity: 'vault_item',
+      entityId: itemId,
+      detail: { factors_required: f ?? null },
+    });
+    return NextResponse.json(updatedFactors);
+  }
 
   if (hasNote) {
     const note = body.backup_note;

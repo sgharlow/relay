@@ -20,7 +20,11 @@ import {
   type VaultItemType,
 } from '../../../../../lib/domain/enums';
 import { CryptoService } from '../../../../../lib/crypto/crypto-service';
-import { encodeSecretPayload } from '../../../../../lib/crypto/secret-payload';
+import {
+  encodeSecretPayload,
+  secretKindsOf,
+  type SecretField,
+} from '../../../../../lib/crypto/secret-payload';
 
 const inputCls =
   'w-full rounded border border-rule-strong px-2.5 py-1.5 text-t2 focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink';
@@ -54,12 +58,13 @@ export default function NewVaultItemPage() {
         changes. `encodeSecretPayload` drops empty fields, so an item with only a
         password encodes exactly as it always did in substance.
       */
-      await new CryptoService().saveItem(encodeSecretPayload([
+      const fields: SecretField[] = [
         { kind: 'username', value: form.username },
         { kind: 'password', value: form.secret },
         { kind: 'totp', value: form.totp },
         { kind: 'recovery_codes', value: form.recovery_codes },
-      ]), {
+      ];
+      await new CryptoService().saveItem(encodeSecretPayload(fields), {
         type: form.type,
         title: form.title,
         service_name: form.service_name || undefined,
@@ -67,6 +72,17 @@ export default function NewVaultItemPage() {
         category: form.category || undefined,
         criticality: form.criticality || undefined,
         backup_note: form.backup_note || undefined,
+        /*
+          Declared from the SAME array that was just encrypted, not from the
+          form state, so the two cannot disagree. `secretKindsOf` applies the
+          same empty-field rule `encodeSecretPayload` does — an untouched TOTP
+          box yields no `totp` kind, which is the honest answer and the one that
+          makes the "needs a code but holds none" verdict correct.
+
+          This is the only moment it can be captured. The server cannot read the
+          blob, so an item saved without it stays `unknown` forever.
+        */
+        secret_kinds: secretKindsOf(fields),
       });
       router.push('/vault');
       router.refresh();

@@ -33,6 +33,17 @@ export interface DashboardItem {
    * what they wrote in order to change it.
    */
   backup_note?: string | null;
+  /**
+   * What the blob holds (browser-declared) and what the account demands
+   * (owner-declared) — migration 035. Both belong on this projection because
+   * `assessPreparedness` reads them to decide whether an item is genuinely
+   * reachable, and the owner needs to see and change their own answer.
+   *
+   * Optional, and `null` is meaningful: never-declared reads as `unknown`,
+   * which deliberately changes nothing on screen. See `usability.ts`.
+   */
+  secret_kinds?: string | null;
+  factors_required?: string | null;
 }
 
 export const CATEGORY_LABELS: Record<string, string> = {

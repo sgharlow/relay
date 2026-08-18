@@ -35,6 +35,7 @@ import { useState } from 'react';
 import { CryptoService } from '../../../../lib/crypto/crypto-service';
 import { encodeSecretPayload } from '../../../../lib/crypto/secret-payload';
 import type { DashboardItem } from '../../../../lib/vault/dashboard-view';
+import { parseFactorList } from '../../../../lib/vault/usability';
 import type { VaultItemType } from '../../../../lib/domain/enums';
 
 type Mode = 'idle' | 'editing' | 'noting' | 'confirming-delete';
@@ -408,6 +409,45 @@ export function ItemControls({
     }
   }
 
+  /**
+   * "Does this account also ask for a code?" — the owner's answer to what the
+   * ACCOUNT demands, which the server cannot infer and the browser cannot
+   * either. Until it is answered, `assessPreparedness` counts an item as
+   * reachable whenever an access rule exists, so an owner storing only the
+   * password for a 2FA account is told their recipient could reach it. They
+   * receive a password and a locked door.
+   *
+   * ⚠️ THREE STATES, AND THE THIRD IS NOT A NEUTRAL DEFAULT. `null` means
+   * nobody has asked — it changes nothing on screen, deliberately, because
+   * reading it as "demands nothing" keeps the lie and reading it as "demands
+   * something" alarms every owner about every item on one afternoon, which
+   * destroys the signal permanently rather than temporarily (design Q1/Q3).
+   *
+   * ONE FACTOR, NOT SIX. `REQUIRABLE_FACTORS` has six members; this control
+   * asks about `totp` alone, because that is the demand an owner can actually
+   * satisfy from a vault — recovery codes and a stored seed both answer it. An
+   * SMS code or a hardware key cannot be put in a vault at all, so asking about
+   * them here would collect an answer the product can do nothing with. The
+   * fuller declaration is queued as its own item.
+   */
+  async function setNeedsCode(value: string[] | null) {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/vault/items/${item.id}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ factors_required: value }),
+      });
+      if (!res.ok) throw new Error('Could not save that.');
+      await onChanged();
+    } catch (e) {
+      setError(String((e as Error).message));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function setRoot(value: boolean | null) {
     setBusy(true);
     setError(null);
@@ -428,6 +468,12 @@ export function ItemControls({
 
   const ownerSaid = item.owner_set_root;
   const ownerSaidIrreplaceable = item.owner_set_irreplaceable;
+  /*
+    `null` (never asked) is kept apart from `[]` (asked, answered "nothing").
+    `parseFactorList` is the one definition of that split — reimplementing the
+    parse here would be a second one, which is how the two drift.
+  */
+  const needsCode = parseFactorList(item.factors_required ?? null);
 
   return (
     <div style={{ display: 'flex', gap: 'var(--s1)', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -483,6 +529,39 @@ export function ItemControls({
         }}
       >
         {ownerSaidIrreplaceable === true ? 'Cannot be replaced' : 'Cannot be replaced?'}
+      </button>
+      {/*
+        Cycles ask → needs a code → needs nothing → ask, so every state is
+        reachable and revocable from one control, matching the two overrides
+        beside it. Ochre, not clay: declaring a demand is a fact about the
+        account, not something irreversible.
+      */}
+      <button
+        onClick={() =>
+          setNeedsCode(needsCode === null ? ['totp'] : needsCode.includes('totp') ? [] : null)
+        }
+        disabled={busy}
+        title={
+          needsCode === null
+            ? 'Say whether this account asks for a code as well as a password. Until you do, Relay cannot tell whether anyone could really get in.'
+            : needsCode.includes('totp')
+              ? 'You said this account asks for a code. Click to say it does not.'
+              : 'You said a password is enough here. Click to stop answering.'
+        }
+        style={{
+          ...quiet,
+          color: needsCode?.includes('totp') ? 'var(--ochre)' : 'var(--ink-muted)',
+          border: needsCode?.includes('totp')
+            ? '1px solid var(--ochre)'
+            : '1px solid transparent',
+          borderRadius: 4,
+        }}
+      >
+        {needsCode === null
+          ? 'Needs a code?'
+          : needsCode.includes('totp')
+            ? 'Needs a code'
+            : 'Password is enough'}
       </button>
       <button onClick={() => setMode('noting')} style={{ ...quiet, color: 'var(--ink-muted)' }}>
         {item.backup_note ? 'Edit note' : 'Add note'}
