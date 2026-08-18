@@ -61,9 +61,9 @@ Ordered by fit, not by reach.
 | **AARP** — Family Caregiving | named by Steve; the audience by definition and the highest authority | mostly staff-written — expect to be a *source*, not a byline |
 | **AgingCare.com** | runs an expert-contributor programme | yes |
 | ~~**DailyCaring**~~ | ~~practical how-to for family caregivers~~ | ❌ **no published route — verified 2026-08-18** |
-| **The Caregiver Space** | community-first, receptive to first-person and practical pieces | yes |
+| 🔴 **The Caregiver Space** | community-first, receptive to first-person and practical pieces | ✅ **YES — open, full author guidelines, browser-verified 2026-08-18. Now the SECOND target.** ⚠️ no pitches: the submission is the finished piece |
 | **Family Caregiver Alliance** | resource-oriented, high trust | check |
-| **Senior Planet** (OATS/AARP) | explicitly about older adults and technology — the best topical fit of all | yes |
+| ~~**Senior Planet** (OATS/AARP)~~ | ~~explicitly about older adults and technology — the best topical fit of all~~ | ❌ **no contributor route — browser-verified 2026-08-18. And it IS an AARP property** |
 | Area Agencies on Aging newsletters | local, unglamorous, and read by exactly the right people | usually |
 
 ### 🔴 The July audit already warned about this, and it governs the whole plan
@@ -169,18 +169,30 @@ npx tsx -e "import('./lib/g1/press-kit').then(k => console.log(k.boilerplate(), 
      search index still shows the old contributor title over a page whose content is gone.
      Dropped from the pitch list.
    - 🔴 **This step named Senior Planet and the dossier never assessed it.** Caught 2026-08-18.
-     It could not be assessed then either — the site renders client-side and returns only a title
-     to a fetch — and ⚠️ its own page titles read **"Senior Planet from AARP"**, so the AARP
-     blacklist hazard below may travel with it. It is not a low-risk warm-up for AARP.
+     ✅ **RESOLVED the same day in a real browser: Senior Planet has NO contributor route.** The one
+     promising page, `/articles/calling-all-authors`, is a **2021 event listing** recruiting older
+     adults who have already published books for an Author Panel — not a call for contributed
+     articles. No submission route anywhere on the site; only `info@` and `membership@`.
+     ⚠️ And every page title confirms **"Senior Planet from AARP"** — it IS an AARP property, so
+     the blacklist hazard below applies to it. It is not a low-risk warm-up for AARP.
+   - ✅ 🆕 **The Caregiver Space is OPEN, and it replaces DailyCaring as the second target.**
+     `/write-for-us/` 404s — wrong URL. The real page is
+     `https://thecaregiverspace.org/author-guidelines/`, submissions go through their site contact
+     form, and they run a standing "Guest Author" byline. ⚠️ ***"We don't review pitches"*** — the
+     submission is the finished article, so there is no cheap probe. Their stated bar is the same
+     one every outlet here applies silently, written down: *"we do not publish marketing fluff."*
    - 🔴 **AARP: *"If you send us a pitch that is plagiarized or A.I.-generated, your email address
      will be blacklisted and blocked."*** Permanent, and attached to the address rather than the
      pitch. AARP also wants links to recent writing samples and *"rarely uses unsolicited ideas"* —
      so it is a **second-round target after a first byline exists**, not the opening move.
 2. Draft angle 3 first — it is the most useful to a reader and the least promotional.
-3. ~~Pitch two outlets.~~ ⚠️ **Pitch ONE: caregiver.com.** Revised 2026-08-18 — DailyCaring was
-   the intended second and has no route, and the two remaining candidates are unassessed. Do not
-   mass-pitch; these are relationships. **The whole editorial instrument now rests on a single
-   submission**, which argues for getting it right rather than getting it out.
+3. **Pitch two outlets — and they are not the two this file started with.** Revised twice on
+   2026-08-18: DailyCaring is out (no route), **The Caregiver Space is in**. Do not mass-pitch;
+   these are relationships. They want opposite things, so sequence deliberately:
+   **(a) caregiver.com** — Word attachment, named editor (`nancy@caregiver.com`), 500–1500 words,
+   plus name/address/phone/email. The cheaper first try.
+   **(b) The Caregiver Space** — web contact form, no pitch reviewed, journalistic standard, bio
+   with links at the end. A piece written for (a) is most of what (b) needs.
 4. On acceptance: declare the `ed-` src in `GATE_LANES`, publish, and log the placement.
 5. Run `npm run verify:funnel` and `npm run flight:snapshot` before the first piece goes live —
    the instrument checks are channel-agnostic and still apply.

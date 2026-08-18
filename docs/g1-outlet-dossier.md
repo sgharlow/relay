@@ -7,6 +7,12 @@
 > **Everything below is quoted from the outlet's own page unless marked otherwise.** Where a page
 > could not be reached, that is recorded as unverified rather than filled in from a search summary.
 >
+> ✅ **SECOND PASS 2026-08-18, in a real browser.** The two outlets recorded below as
+> unassessable were read with Playwright, and both resolved — in opposite directions.
+> **The Caregiver Space is OPEN and its guidelines are the most detailed of any outlet here**
+> (`/write-for-us/` was simply the wrong URL). **Senior Planet has no contributor route at all.**
+> The pitch list is back to TWO. See their sections.
+>
 > ✅ **RE-CHECKED LIVE 2026-08-18, before any pitch is sent.** caregiver.com is unchanged and
 > gained one requirement this file had missed. **DailyCaring's route is now verified ABSENT rather
 > than unverified** — see its section, which is the one substantive change. Nothing else moved.
@@ -20,8 +26,8 @@
 | **AARP The Magazine** | ✅ open, but a high bar and a hard hazard | Later — see the blacklist warning |
 | **Next Avenue** | ❌ **CLOSED** | No |
 | **AgingCare** | ⚠️ no published route | No — relationship play only |
-| **Senior Planet** | ⚠️ **never assessed** — site unreadable to a fetch (2026-08-18) | No — and it is an AARP property |
-| **The Caregiver Space** | ⚠️ **never assessed** — 403 to a fetch (2026-08-18) | Unknown |
+| **Senior Planet** | ❌ **no contributor route** (browser-verified 2026-08-18) | No — and it IS an AARP property |
+| 🔴 **The Caregiver Space** | ✅ **OPEN** — full author guidelines (browser-verified 2026-08-18) | **Yes — pitch second** |
 
 ---
 
@@ -141,38 +147,65 @@ first byline exists.
 
 ---
 
-## 🔴 The two outlets step 1 named and this dossier never covered
+## ✅ RESOLVED 2026-08-18 (second pass) — the two outlets this dossier had never covered
 
-> Found on the 2026-08-18 re-check. `g1-editorial-lane.md` step 1 reads *"Read the contributor
-> guidelines for Next Avenue, **Senior Planet**, AgingCare and DailyCaring"* and is marked ✅ DONE
-> against this file — **but this file never assessed Senior Planet.** It covered caregiver.com and
-> AARP instead, which were the more useful reads, and nobody noticed the swap. A step marked done
-> against a deliverable that does not contain it is the shape this repo's claim discipline exists
-> to catch, so it is recorded rather than quietly back-filled.
+> First pass recorded both as unassessable: seniorplanet.org returns only a `<title>` to a fetch
+> (client-rendered) and thecaregiverspace.org answered 403. **Both were limits of the METHOD, not of
+> the outlets** — a real browser read each of them in seconds. Recorded because "unverified" was the
+> right label at the time and the wrong place to stop.
+>
+> Also caught on the first pass and still true: `g1-editorial-lane.md` step 1 is marked ✅ DONE
+> against this dossier while naming **Senior Planet**, which this dossier had never assessed. It
+> covered caregiver.com and AARP instead, and nobody noticed the swap.
 
-### Senior Planet — unassessed, and it may be an AARP property
+### 🔴 The Caregiver Space — OPEN, and the guidelines are the most detailed here
 
-`g1-editorial-lane.md` calls it *"the best topical fit of all"*, which makes the gap worth
-closing — and it could **not** be closed today:
+**`/write-for-us/` was the wrong URL** — it is a genuine 404 in a browser too, so that finding
+stands; it just was not the route. The real page is linked from their own footer:
 
-- `seniorplanet.org/contact/` and `/articles/calling-all-authors` both return **only a page title**
-  to a fetch. The site renders client-side, so its body is invisible to the method used for every
-  other outlet here. **Nothing about its submission policy is verified in either direction.**
-- A domain-scoped search surfaced no *"write for us"* or contributor-guidelines page, and only
-  **`membership@seniorplanet.org`** — a membership address, not an editorial one.
-- ⚠️ **Its own page titles read "Senior Planet from AARP".** If it is an AARP property, assume
-  the AARP hazard above — *"if you send us a pitch that is plagiarized or A.I.-generated, your
-  email address will be blacklisted and blocked"* — travels with the organisation, not just the
-  magazine. **Do not treat Senior Planet as a low-risk warm-up for AARP.** It may be AARP.
+**`https://thecaregiverspace.org/author-guidelines/`** (their footer links `/library/author-guidelines/`,
+which redirects there). They also run a standing **"Guest Author"** byline archive, so contributed
+work is routine rather than exceptional.
 
-To assess it properly needs a real browser (the a11y harness already drives one) or a human
-looking at the page. Not worth doing before caregiver.com has been pitched.
+| | |
+|---|---|
+| Who may submit | *"We invite anyone with care work experience to share their story."* Explicitly includes a **subject-matter-expert** lane: *"If you're looking to promote yourself as a thought leader, please read the guidelines carefully."* |
+| 🔴 How it works | ***"We don't review pitches."*** **You submit the finished piece, not a pitch.** This is procedurally different from caregiver.com and AARP and it changes the order of work. |
+| How to submit | through **the contact form on their website** if you are not a member (also the route for anonymous or pseudonymous publication). Community members submit through WordPress straight into the publication queue. **No email address is published.** |
+| Standard | *"We expect pieces from subject matter experts to conform to journalistic writing standards."* |
+| ⚠️ Hard no | *"We do not publish marketing fluff or basic overviews of caregiving topics. If you send 'X tips for self care!' your pitch will be rejected."* |
+| ⚠️ Hard no | *"If your main concern is whether or not 'do follow' links are included in our posts, please do not submit your piece to us."* |
+| Payment | *"We do not accept paid submissions."* |
+| Bio | at the end of the post; **may include links to your website and social accounts**, and a headshot or an image of your latest book |
+| Rights | *"You must own the copyright to any works you submit."* |
+| Images | every post publishes with at least one graphic — supply one you have rights to, or say what you would like |
+| Audience wants | *"Real people… Relevance… Practical information"* — beyond-the-basics and immediately useful; *"We don't need someone to tell us how stressed out, isolated, or broke we are."* |
 
-### The Caregiver Space — unassessed, blocked
+**Why this is a good fit for angle 3, and a caution.** Their stated standard is the same one every
+other outlet here applies silently, only written down: problem-first, useful, not an advert. Angle 3
+was already built that way. The caution is the flip side of "we don't review pitches" — **there is no
+cheap probe.** The first thing they see is the whole piece, so the drafting rule below applies with
+full force: it must be Steve's own writing, not a draft of mine sent as-is.
 
-`thecaregiverspace.org/write-for-us/` answers **HTTP 403** to an automated fetch. That is a bot
-block rather than a missing page, so the route may well exist and be perfectly open. Unknown, and
-recorded as unknown — a human opening that URL in a browser would settle it in seconds.
+### Senior Planet — ❌ no contributor route, and it IS an AARP property
+
+Read in a browser: the home page, `/about`, and the one page a search index made look promising.
+
+- **`/articles/calling-all-authors` is not a contributor call.** It recruits older adults *who have
+  already published books* for an **Author Panel event** — *"Senior Planet is seeking authors who
+  have had their work published as an older adult to join our upcoming Author Panel event on April
+  20 at 1:30pm EST… We are not accepting self-published applicants at this time."* Its comments date
+  from **April 2021**. It is a years-old event listing, and nothing to do with contributed articles.
+- **No submission route exists anywhere else on the site.** Zero links or body text matching
+  write-for-us / submit / submission / contribute / pitch / guest across the home page and `/about`.
+- The only addresses are **`info@seniorplanet.org`** and **`membership@seniorplanet.org`** — general
+  and membership contacts, not editorial.
+- ⚠️ **Confirmed in the browser: every page title ends "— Senior Planet from AARP".** It is an AARP
+  property. Treat the AARP hazard as applying to it: *"if you send us a pitch that is plagiarized or
+  A.I.-generated, your email address will be blacklisted and blocked."*
+
+**Same class as AgingCare — a door that is not there.** `g1-editorial-lane.md` calls it *"the best
+topical fit of all"*; that judgement was about audience and remains true, and it is not a route.
 
 ---
 
@@ -196,18 +229,23 @@ The parts I can supply without that risk:
 
 1. **caregiver.com first.** Open door, named contact, 500–1500 words, and angle 3 fits their stated
    topics. This is the realistic first placement.
-2. ✅ ~~**Confirm DailyCaring's route** through their contact form before pitching it. Second
-   target.~~ **DONE 2026-08-18 — there is no route.** Dropped from the pitch list; see its section.
-   **This leaves caregiver.com as the only outlet with an open door and a named contact**, which
-   raises the stakes on getting that one submission right rather than fast.
-3. **AARP after a first byline exists**, not before.
-4. **Drop Next Avenue.** Closed.
-5. **Leave AgingCare** unless a direct contact appears.
-6. 🆕 **Senior Planet and The Caregiver Space are unassessed**, and both need a browser rather than
-   a fetch. Worth doing only if caregiver.com says no — and read the AARP warning above before
-   touching Senior Planet.
+2. 🔴 **The Caregiver Space second** — the replacement for DailyCaring, and a better one.
+   `https://thecaregiverspace.org/author-guidelines/`, via their site contact form.
+   ⚠️ **They do not review pitches: the submission IS the finished piece.** So this one costs a
+   complete draft before it can be tried at all, and there is no cheap probe to run first.
+3. ✅ ~~**Confirm DailyCaring's route** through their contact form before pitching it.~~
+   **DONE 2026-08-18 — there is no route.** Dropped; see its section.
+4. **AARP after a first byline exists**, not before.
+5. **Drop Next Avenue.** Closed.
+6. **Leave AgingCare** unless a direct contact appears.
+7. ✅ ~~Senior Planet and The Caregiver Space are unassessed.~~ **DONE 2026-08-18 in a browser.**
+   The Caregiver Space is open (now step 2). **Senior Planet has no contributor route** and is an
+   AARP property — do not treat it as a low-risk warm-up for AARP.
 
-> ⚠️ **The net effect of the 2026-08-18 re-check: the pitch list is ONE outlet, not two.**
-> `g1-editorial-lane.md` step 3 says *"pitch two outlets"*; DailyCaring was the second and it has
-> no route. Everything the editorial instrument measures now depends on a single submission to
-> caregiver.com, which argues for getting it right rather than getting it out.
+> ✅ **Net effect of the two 2026-08-18 passes: the pitch list is TWO outlets, and neither is the
+> one this file started with.** DailyCaring is out; The Caregiver Space is in. `g1-editorial-lane.md`
+> step 3 asks for two, and there are two — but they want opposite things from Steve:
+> **caregiver.com takes a Word attachment to a named editor and will read a shorter piece
+> (500–1500 words); The Caregiver Space takes the finished article through a web form and will not
+> look at a pitch.** Sequence accordingly: caregiver.com is the cheaper first try, and a piece
+> written for it is most of what the second one needs.
