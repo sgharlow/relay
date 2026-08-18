@@ -14,6 +14,14 @@
  *   node scripts/guide-pdf.mjs            # needs a server on :3100
  *   GUIDE_BASE=https://relaystandby.com node scripts/guide-pdf.mjs
  *
+ * ⚠️ THAT SERVER MUST BE `next start`, NOT `next dev`. This script waits for
+ * `networkidle`, and a dev server holds an open HMR connection that never goes
+ * idle — so pointed at :3000 it hangs with no output and no error, which looks
+ * exactly like the lazy-image bug fixed below and is a different cause. Build
+ * first, then serve:  npx next build && npx next start -p 3100
+ * (Recorded here because it cost two hung runs on 2026-08-18, and because the
+ * commit that first wrote it down lost the sentence to shell substitution.)
+ *
  * IT PRINTS THE SERVED PAGE, not the file, because the guide's images are
  * root-absolute (`/guide/screens/...`). Opening index.html over file:// would
  * resolve those against the filesystem root and produce a PDF of a document
