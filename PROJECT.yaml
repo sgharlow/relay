@@ -387,9 +387,29 @@ gates:
       ⚠️ It also does not count toward g1-arms-length-demand. A partner signing a pilot is a
       DISTRIBUTION signal; that gate wants a PERSON who pays or says in writing they would. If a
       pilot later produces such a person, they count there, on their own evidence."
-    first_targets: "OPEN — Steve's to name. Two specific organisations, not two categories: the
-      dossier work on outlets showed that a named contact and a published route are what turn a
-      plan into an action, and the same is true here."
+    # ⚠️ The dossier path below is deliberately on ONE line and must stay that way.
+    # It was first written wrapped across two — `docs/g3-partner-` / `dossier.md` — and
+    # the consequence was not cosmetic: the path existed nowhere in the file as a
+    # contiguous string, so `grep` could not find it and lib/ops/gates.test.ts's
+    # "every document a gate points at exists" check silently matched nothing. A guard
+    # that cannot see its subject passes, which is the shape of green this repo keeps
+    # catching. Found by planting a rename and watching the suite stay green.
+    dossier: docs/g3-partner-dossier.md
+    first_targets: "STILL Steve's to name — but no longer from a blank page. The dossier above
+      (2026-08-18) ranks nine candidates, each route checked against the organisation's
+      own site, in the shape the outlet dossier proved out. Recommended order: **Homethrive**
+      (has publicly integrated two partners' capabilities in 2026 — demonstrated yes, not a guess),
+      then **Wellthy**, with the **National Alliance for Caregiving Innovation Collaborative** run
+      in parallel because it is the only candidate with a named human and no known fee.
+      ⚠️ TWO FINDINGS THAT CHANGE THIS GATE'S OWN TEXT, both argued in the dossier:
+      (1) three of the four categories named in `metric:` are FINANCIAL, inherited from a Relay
+      that had an estate product. Estate was narrowed out permanently on 2026-08-14, so
+      `wealth manager` is now the weakest of the four and probably belongs deleted; the
+      best-aligned partners are employer caregiver-benefit platforms, whose coordinators already
+      sit with a family in the week Relay is for.
+      (2) Caregiver Action Network — the obvious name — is a PAID tiered sponsorship, so it is
+      ruled OUT for now under the demand-gate rule, on the same reasoning that declined counsel:
+      no marketing spend before one arms-length person. Recorded so it is not re-proposed."
     ratify_by: "2026-09-01, the date G1's own revisit begins, so both lanes come up in the same
       /daily-priority rather than one being remembered and the other not."
     revisit: "at every /daily-priority from 2026-09-01, alongside g1-arms-length-demand."

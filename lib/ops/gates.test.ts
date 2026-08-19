@@ -22,7 +22,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { TIER_LIMITS } from '../billing/entitlements';
 
@@ -190,6 +190,33 @@ describe('gates', () => {
           '     g1-caregiver-wtp moved its `due:` twice.\n' +
           '  3. Rejected — record a `declined:` block. The lane closes, and that is a result.\n\n' +
           'What this exists to prevent is the fourth option, which is nothing at all.'
+        : 'ok',
+    ).toEqual([]);
+  });
+
+  /**
+   * A gate that names a document must still be able to find it.
+   *
+   * The failure this prevents is dull and common: research gets done, lands in a
+   * file, the file is never referenced from the thing it was for, and the next
+   * session starts the same work from a blank page. `g1-outlet-dossier.md`
+   * avoided it by being cited from the lane doc; this does the same for the
+   * partner dossier, mechanically.
+   */
+  it('every document a gate points at exists', () => {
+    const missing: string[] = [];
+    for (const gate of gates()) {
+      for (const [, path] of gate.block.matchAll(/`?(docs\/[a-z0-9-]+\.md)`?/g)) {
+        if (!existsSync(path)) missing.push(`${gate.id} -> ${path}`);
+      }
+    }
+    expect(
+      missing,
+      missing.length
+        ? 'A gate cites a document that is not in the repo:\n' +
+          missing.map((m) => `  ${m}`).join('\n') +
+          '\n\nEither the file was renamed and the gate was not updated, or it was never ' +
+          'committed. Both leave the gate pointing at nothing.'
         : 'ok',
     ).toEqual([]);
   });
