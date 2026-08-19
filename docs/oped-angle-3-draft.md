@@ -187,23 +187,44 @@ articles must NOT be advertisements for your company, product, or service."*
 
 ---
 
-## Send checklist — caregiver.com (staged 2026-08-18, co-pilot)
+## Send checklist — caregiver.com (staged 2026-08-18, co-pilot · **planned send 2026-08-19**)
 
 Everything below the first two rows is done or verified; the first two are yours and cannot be
-delegated.
+delegated. **Steve set the date on 2026-08-18: the voice pass and cover email are planned for
+2026-08-19**, which is what turns this checklist from a standing intention into a dated one.
 
 | # | Step | Owner | State |
 |---|---|---|---|
-| 1 | **Voice pass** on the draft above — make the sentences yours. The facts/structure are verified true; the phrasing is scaffold. AARP's blacklist rule is why this is non-negotiable, and caregiver.com deserves the same standard. | **Steve** | ⏳ |
-| 2 | **Cover email** — short, yours, discloses the commercial interest plainly ("I build a product in this space; the piece recommends a free feature of the reader's existing email provider, and my product appears nowhere in it"). | **Steve** | ⏳ |
+| 1 | **Voice pass** on the draft above — make the sentences yours. The facts/structure are verified true; the phrasing is scaffold. AARP's blacklist rule is why this is non-negotiable, and caregiver.com deserves the same standard. | **Steve** | ⏳ **planned 2026-08-19** |
+| 2 | **Cover email** — short, yours, discloses the commercial interest plainly ("I build a product in this space; the piece recommends a free feature of the reader's existing email provider, and my product appears nowhere in it"). | **Steve** | ⏳ **planned 2026-08-19** |
 | 3 | Word count inside 500–1500 | — | ✅ body is 991 words; room to grow in the voice pass |
 | 4 | Product mentions: 0 in body, none by name in bio | — | ✅ measured (table above) |
 | 5 | No estate/death vocabulary; no employer reference; hackathon omitted | — | ✅ measured |
 | 6 | Bio (short, required) | — | ✅ drafted above; if the outlet links it, the link is `relaystandby.com/caregivers?src=ed-caregiver-com` — never untagged, never another src |
 | 7 | Submission mechanics | — | ✅ per `g1-outlet-dossier.md`: **Word document as an email attachment to nancy@caregiver.com**, bio included; they send a release form on acceptance and the author keeps copyright; no payment |
+| 7a | 🆕 **Contact block — name, postal address, current telephone number and email, included WITH the submission.** Their words: *"Include name address and current telephone number and email address with all submissions."* A submission without it is incomplete by the outlet's own rules. **This checklist had 10 rows and none of them was this one** — the requirement was found on the 2026-08-18 dossier re-check and never propagated here, which is the whole reason a dossier finding has to land in the doc somebody actually works from. | — | ✅ supplied by Steve 2026-08-18; values live in **`.relay-submitter.json`** at the repo root — **gitignored, and they stay that way** (see below). Paste it under the bio in the Word document |
 | 8 | Editorial thresholds ratified BEFORE the placement goes live | **Steve** | ⏳ proposal drafted: `g1-editorial-threshold-proposal.md` — ratify or amend; needed before the `ed-caregiver-com` src can be declared in `GATE_LANES`, not before pitching |
 | 9 | Lane-B numerator live-proven before the placement goes live | — | ⏳ flight-log two-part check (gate-safe QA + one recorded real click); can run any day before publication |
 | 10 | If the final text names any provider's recovery-contact feature, verify the name against that provider's current settings that week | — | ⏳ only if the voice pass adds names; the draft deliberately avoids them |
 
 When steps 1–2 are done, hand the final text back and the Word document gets produced from it —
-derived, not retyped.
+derived, not retyped. The contact block from row 7a goes in at the same time, read from the file
+rather than retyped for the same reason.
+
+### 🔴 Why the contact details are not written in this document
+
+**`github.com/sgharlow/relay` is a PUBLIC repository.** A home address and a personal telephone
+number committed here are published to the world and are permanent in the history — not fixed by a
+later edit, only by rewriting history on a public repo. Steve supplied them so the submission would
+be complete, not so they would be indexed.
+
+So they follow the precedent this repo already set for real people's data (`.relay-cohort.json`):
+the values live in a **gitignored** file, `.relay-submitter.json`, and every document names the
+**path**, never the values. `lib/ops/submitter-details-stay-out-of-the-repo.test.ts` makes that
+structural rather than a convention — it reads the file when present and fails the suite if any of
+those values appears in a tracked file, so `git add -A` cannot quietly publish them. The .gitignore
+comments in this repo record three separate occasions where a file that labelled itself
+"not committed" reached a commit anyway; a convention was not enough then either.
+
+If the file is missing on the machine doing the send (it is deliberately not in the repo, so a
+fresh clone will not have it), rewrite it by hand — the shape is in the test's failure message.

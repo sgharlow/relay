@@ -76,3 +76,11 @@ e2e-*.png
 # only copy. Never commit either. See scripts/invite-cohort.ts.
 .relay-cohort.json
 .relay-cohort-codes.json
+
+# The submitter's own contact details, required with every editorial submission
+# (caregiver.com: "Include name address and current telephone number and email
+# address with all submissions"). A REAL HOME ADDRESS AND PHONE NUMBER in a
+# PUBLIC repository, permanent in history the moment it lands — so it lives here
+# for the same reason .relay-cohort.json does, and docs reference the path, never
+# the values. Written by hand; see docs/oped-angle-3-draft.md's send checklist.
+.relay-submitter.json

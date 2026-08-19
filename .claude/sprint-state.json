@@ -1,116 +1,70 @@
 {
-  "sprint": "2026-08-18",
-  "branch": "sprint/2026-08-18-1",
-  "baseCommit": "aaae3d18222571fa4326837c245e60bc04afccff",
-  "iterationsUsed": 6,
-  "iterationCap": 5,
-  "stoppedBecause": "5 planned items shipped; a 6th follow-on iteration fixed D1 (secret_kinds on every write path) after the post-sprint review reclassified it from deferred debt to an S2 merge blocker",
-  "backlogSource": [
-    "explicitly named in the sprint invocation \u2014 the Claude-side list from the preceding reassessment"
-  ],
-  "backlogInferred": false,
-  "todoWriteAvailable": false,
-  "report": "docs/sprint-reports/2026-08-18-sprint.md",
+  "sprint": "2026-08-19-1",
+  "branch": "sprint/2026-08-19-1",
+  "worktree": "C:/Users/sghar/CascadeProjects/relay-sprint-2026-08-19-1",
+  "started_utc": "2026-08-19T03:50:46Z",
+  "backlog_source": "explicit — the invocation named the Claude list produced in this session (itself derived from PROJECT.yaml deferred:, docs/sprint-reports/2026-08-18-sprint.md and docs/g1-outlet-dossier.md), plus five pieces of Steve guidance applied to the Steve list",
   "baseline": {
-    "start": {
-      "types": "green",
-      "lint": "green",
-      "build": "green",
-      "tests": "2656 passed, 1 skipped (240 files)",
-      "security": "npm audit --omit=dev: 0 vulnerabilities",
-      "schema": "verify:schema green, both regions"
-    },
-    "end": {
-      "types": "green",
-      "lint": "green",
-      "build": "green",
-      "tests": "2678 passed, 1 skipped (243 files)",
-      "security": "npm audit --omit=dev: 0 vulnerabilities",
-      "schema": "verify:schema green, both regions"
-    }
+    "types": "green",
+    "lint": "green",
+    "tests": "green — 248 files, 2719 passed, 1 skipped",
+    "build": "green",
+    "command": "npm run gate",
+    "note": "first run failed on gate:build only, because the node_modules junction used for worktree isolation is rejected by Turbopack ('Symlink [project]/node_modules is invalid, it points out of the filesystem root'). Replaced with a real npm ci in the worktree; the failure was an isolation artefact, not a repo defect."
   },
-  "items": [
-    {
-      "id": "S3",
-      "title": "Editorial pre-flight run and recorded",
-      "axis": "correctness",
-      "score": 10,
-      "status": "shipped",
-      "commit": "8c9f41e",
-      "proof": "verify:funnel 7/7 exit 0 against production; flight:snapshot exit 0, caregiver_leads 0 rows"
-    },
+  "iterations_used": 0,
+  "iterations_max": 5,
+  "queue": [
     {
       "id": "S1",
-      "title": "Threshold proposal claimed a prerequisite the log said was met",
-      "axis": "correctness",
+      "title": "caregiver.com submission packet complete by the outlet's own rules, and dated for 2026-08-19",
+      "axis": "documentation",
+      "weight": 2,
+      "blast": 2,
+      "effort": 1,
       "score": 4,
-      "status": "shipped",
-      "commit": "b1b83ee",
-      "proof": "lib/ops/editorial-preflight-claims.test.ts, red-green verified by planting the original sentence"
+      "status": "queued",
+      "why_first": "named first in the invocation and carries an explicit date (8/19). It is the critical path to g1-arms-length-demand, the only live gate."
     },
     {
       "id": "S2",
-      "title": "Secret-types Phase 1 wired (authenticator-code slice)",
+      "title": "Decision records and their guards — threshold ratification deferred to 11/30, cohort deferred 4 days, ratify_by guarded, GATE_LANES ordering guarded, stale journey line corrected, D2 hold recorded",
       "axis": "correctness",
+      "weight": 5,
+      "blast": 2,
+      "effort": 2,
       "score": 5,
-      "status": "shipped",
-      "commit": "f9beccb",
-      "proof": "secret-kinds-wiring.test.ts 11 cases + verify:factors 10/10 live against the production cluster; reachable 1 -> 0",
-      "scopeCut": "totp only; sms/email/passkey/hardware_key/security_questions deferred as D2"
+      "status": "queued"
     },
     {
-      "id": "S5",
-      "title": "Both documents reshot against the wired product",
-      "axis": "documentation",
+      "id": "S3",
+      "title": "Prioritised partner/endorser organisation list, to fill gates.g3-b2b2c-pilot-loi.first_targets",
+      "axis": "completeness",
+      "weight": 4,
+      "blast": 2,
+      "effort": 2,
       "score": 4,
-      "status": "shipped",
-      "commit": "0ef0df5",
-      "addendum": "4b8b89b",
-      "proof": "capture-screens.ts 17/17 cluster clean; use-cases PDF 43 images, manual 28"
+      "status": "queued"
     },
     {
       "id": "S4",
-      "title": "Competitor prices re-verified from primary sources",
-      "axis": "documentation",
-      "score": 2,
-      "status": "shipped",
-      "commit": "830ddfd",
-      "proof": "four vendor pricing pages fetched 2026-08-18 and cited inline"
-    },
-    {
-      "id": "D1",
-      "title": "secret_kinds on every write path (3-layer structural fix)",
-      "axis": "wiring",
-      "score": 12,
-      "status": "shipped",
-      "commit": "a5b91be",
-      "proof": "secret-kinds-on-every-write.test.ts (3 planted violations proven to fail) + verify:factors 15/15 live incl. the update edit-away scenario",
-      "note": "was filed as deferred debt D1; review found the update path misreports (stale usable), branch undeployed so fixed before merge"
-    }
-  ],
-  "blocked": [],
-  "deferred": [
-    {
-      "id": "D3",
-      "title": "Prompt owners to declare on the items that matter",
-      "axis": "journeys",
-      "score": 4.5,
-      "why": "the control is discoverable only by someone already looking at a vault row"
-    },
-    {
-      "id": "D2",
-      "title": "The remaining requirable factors as a full declaration",
-      "axis": "completeness",
-      "score": 4,
-      "why": "S2's deliberate cut; worth doing after evidence that owners answer at all"
-    },
-    {
-      "id": "D4",
-      "title": "Test cluster so verify:live can enter CI",
+      "title": "Count the abandoned disposable accounts — the gap D4 named and nothing in the repo does",
       "axis": "correctness",
-      "score": 3.3,
-      "why": "infrastructure spend \u2014 Steve's decision, not a Claude item"
+      "weight": 5,
+      "blast": 2,
+      "effort": 2,
+      "score": 5,
+      "status": "queued"
+    },
+    {
+      "id": "S5",
+      "title": "Staleness dead-man on verify:live — the half of the release gate nothing schedules",
+      "axis": "correctness",
+      "weight": 5,
+      "blast": 2,
+      "effort": 2,
+      "score": 5,
+      "status": "queued"
     }
-  ],
-  "demandUnchanged": "demand_signal remains none; g1-arms-length-demand due 2026-12-31 waits on Steve's voice pass and cover email, not on code"
+  ]
 }
