@@ -17,7 +17,9 @@ import {
   HEADLINE,
   intentHref,
   GATE_LANES,
+  isExcludedSrc,
   isGateQualifyingSrc,
+  PLANNED_EDITORIAL_SRCS,
   LANDING_HREF,
   PRICE_YEARLY_USD,
   QA_SRCS,
@@ -216,6 +218,73 @@ describe('G1 caregiver WTP instrument', () => {
     */
     expect(GATE_LANES).toEqual([]);
     expect(isGateQualifyingSrc('anything-at-all')).toBe(false);
+  });
+
+  /*
+    ⚠️ THE ONE STEP BETWEEN WRITING A PIECE AND MEASURING IT.
+
+    Everything above pins the state of the world today: no lane is declared, so
+    nothing counts. That is deliberate and loud. But the tests that make it loud
+    all assert on ABSENCE, and `a lane can never also be an excluded value`
+    iterates GATE_LANES — which is empty, so it currently proves nothing at all.
+    The first string ever added to that list would be the first string no test
+    had ever seen, added on the day of a placement, in a commit written once.
+
+    A Vercel Analytics event cannot be deleted. So the strings are rehearsed
+    here, before the hurry, and what is rehearsed is exactly the edit that will
+    be made: move one entry from PLANNED_EDITORIAL_SRCS into GATE_LANES.
+  */
+  it('a staged editorial src trips no exclusion — moving it into GATE_LANES is enough', () => {
+    for (const src of PLANNED_EDITORIAL_SRCS) {
+      // It must not be caught by any exclusion, or declaring it would silently
+      // do nothing — the deny-list failure mode, arriving through the back door.
+      expect(QA_SRCS as readonly string[], `${src} is a QA value`).not.toContain(src);
+      expect(SHOWCASE_SRCS as readonly string[], `${src} is a showcase value`).not.toContain(src);
+      expect(src.startsWith('beta-'), `${src} is swallowed by the beta prefix`).toBe(false);
+      expect(src, `${src} must not be 'direct'`).not.toBe('direct');
+      expect(src.trim(), `${src} has surrounding whitespace`).toBe(src);
+
+      // The convention is ratified: placements use ed-<outlet>.
+      expect(src.startsWith('ed-'), `${src} does not follow ed-<outlet>`).toBe(true);
+
+      // THE POSITIVE CASE, stated positively. `isGateQualifyingSrc` is
+      // `not excluded AND declared`, so on an undeclared src it returns false
+      // either way and proves nothing about whether declaring would work.
+      // `isExcludedSrc` isolates the half that is not about declaration: false
+      // here means list membership is the ONLY remaining term, so moving this
+      // string into GATE_LANES is sufficient — which is the edit being rehearsed.
+      expect(isExcludedSrc(src), `${src} is excluded, so declaring it would do nothing`).toBe(false);
+    }
+  });
+
+  it('a staged src survives both link builders unchanged — the tag a reader clicks is the tag we count', () => {
+    /*
+      `intentHref` URL-encodes (it has to: `r/CaregiverSupport` was a real lane
+      shape). A src that encodes to something else would be recorded under one
+      spelling on the landing page and another on the intent page, and the ratio
+      is defined as the two agreeing. Hyphens and lower-case ASCII survive; a dot
+      or a slash would not. This is why the slugs are `ed-caregiver-com` and not
+      `ed-caregiver.com`.
+    */
+    for (const src of PLANNED_EDITORIAL_SRCS) {
+      expect(caregiversHref(src)).toBe(`${LANDING_HREF}?src=${src}`);
+      expect(intentHref(src)).toBe(`${CTA_HREF}?src=${src}`);
+      expect(encodeURIComponent(src), `${src} is not URL-safe as written`).toBe(src);
+    }
+  });
+
+  it('staging is not declaring — PLANNED_EDITORIAL_SRCS counts nothing on its own', () => {
+    /*
+      The allow-list exists so that counting is a deliberate act. A staged list
+      that quietly counted would reintroduce the deny-list this replaced, with
+      an extra step. `isGateQualifyingSrc` must not read it, and the two lists
+      must not overlap while no placement is live.
+    */
+    for (const src of PLANNED_EDITORIAL_SRCS) {
+      expect(isGateQualifyingSrc(src)).toBe(false);
+      expect(GATE_LANES as readonly string[]).not.toContain(src);
+    }
+    expect(PLANNED_EDITORIAL_SRCS.length).toBeGreaterThan(0);
   });
 
   it('names the real competitive frames, not strawmen', () => {

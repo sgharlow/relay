@@ -273,6 +273,39 @@ const NON_QUALIFYING_SRCS: readonly string[] = [...SHOWCASE_SRCS, ...QA_SRCS, 'b
 export const GATE_LANES: readonly string[] = [];
 
 /**
+ * THE PLACEMENTS THAT ARE BEING PITCHED, STAGED — not counted, not a commitment.
+ *
+ * WHY THIS EXISTS. `GATE_LANES` is empty on purpose and the fix at placement
+ * time is "one string added in the same commit as the placement". That step is
+ * written ONCE, in a hurry, on the day an article goes live — and it cannot be
+ * re-run, because a Vercel Analytics event cannot be deleted. Every test above
+ * pins the CURRENT state (nothing qualifies) and the EXCLUSIONS. Nothing proved
+ * that the string somebody will actually paste is a string that works.
+ *
+ * So the strings are written down before the hurry, and `content.test.ts`
+ * proves of each one that it trips no exclusion, that it round-trips through
+ * `caregiversHref`/`intentHref` unchanged, and that moving it into GATE_LANES
+ * is SUFFICIENT to make it qualify. The placement commit is then a move between
+ * two lists whose outcome is already tested, not a new string nobody has run.
+ *
+ * ⚠️ THESE ARE DERIVED, NOT RATIFIED. The `ed-<outlet>` convention is ratified
+ * (`ratified.g1-editorial-over-paid`) and the two outlets are the pitch list
+ * that survived the 2026-08-18 browser re-verification
+ * (`docs/g1-outlet-dossier.md`) — caregiver.com first, The Caregiver Space
+ * second. The exact slugs are mine; rename them freely. What must NOT happen is
+ * a placement carrying a src that was never in either list.
+ *
+ * ⚠️ MEMBERSHIP HERE COUNTS NOTHING. `isGateQualifyingSrc` does not read this
+ * list, and a test asserts that. Staging a lane and declaring a lane stay two
+ * separate acts, because the whole point of the allow-list is that counting is
+ * deliberate.
+ */
+export const PLANNED_EDITORIAL_SRCS: readonly string[] = [
+  'ed-caregiver-com',       // caregiver.com (Today's Caregiver) — pitch first
+  'ed-thecaregiverspace',   // The Caregiver Space — the submission IS the finished piece
+];
+
+/**
  * True when a src counts toward the G1 gate ratio.
  *
  * The exclusion checks run FIRST and are now, strictly speaking, redundant —
@@ -281,11 +314,34 @@ export const GATE_LANES: readonly string[] = [];
  * mistake that cannot be undone: if a beta tag or a QA value were ever pasted
  * into `GATE_LANES`, the allow-list alone would happily count it.
  */
+/**
+ * The exclusion half of the rule, on its own.
+ *
+ * WHY IT IS SEPARATE (2026-08-18). `isGateQualifyingSrc` answers "does this
+ * count today", which is `not excluded AND declared`. Both halves being false
+ * gives the same answer, so that function alone cannot distinguish "this src is
+ * forbidden" from "this src has simply not been declared yet" — and the second
+ * is the state EVERY editorial src is in until the day of its placement.
+ *
+ * That distinction is the one worth testing before the placement commit: if a
+ * staged src trips no exclusion, then adding it to GATE_LANES is provably
+ * sufficient to make it count, because list membership is the only other term.
+ * Splitting the predicate is what lets that be asserted positively instead of
+ * inferred from two negatives.
+ *
+ * Still ONE definition — `isGateQualifyingSrc` calls this rather than repeating
+ * it, so the exclusions cannot drift between the two.
+ */
+export function isExcludedSrc(src: string): boolean {
+  const s = src.trim();
+  if (!s || s === 'direct') return true;
+  if (s.startsWith(BETA_SRC_PREFIX)) return true;
+  return NON_QUALIFYING_SRCS.includes(s);
+}
+
 export function isGateQualifyingSrc(src: string): boolean {
   const s = src.trim();
-  if (!s || s === 'direct') return false;
-  if (s.startsWith(BETA_SRC_PREFIX)) return false;
-  if (NON_QUALIFYING_SRCS.includes(s)) return false;
+  if (isExcludedSrc(s)) return false;
   return (GATE_LANES as readonly string[]).includes(s);
 }
 
