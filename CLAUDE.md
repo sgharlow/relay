@@ -91,6 +91,16 @@ npm run verify:iam     # the OTHER half of the least-privilege wall — can the 
                        # principal still obtain a DSQL ADMIN token? Reads the live policy,
                        # managed AND inline, wildcards included. verify:roles cannot see
                        # this. Read-only; NEEDS .env.admin (an identity that can read IAM).
+npm run verify:orphans # what did the walks leave behind on PRODUCTION? Counts every
+                       # account on a reserved domain (.test/.invalid/.localhost),
+                       # reports each one's rows, and EXITS 1 if any is older than
+                       # 24h (`-- --hours N` to change it). READ-ONLY — it never
+                       # deletes; closing an account is deleteAccount()'s job,
+                       # which cancels billing first and repairs standby roles in
+                       # OTHER owners' rosters. An account holding a subscription
+                       # or standing by for someone else is reported HELD, never
+                       # sweepable. NEEDS .env.local, no server. Run it after
+                       # verify:live, and on any day a walk was interrupted.
 npm run flight:snapshot # the G1 flight's daily read AND the sitting sheet's pre-flight
                        # line 3. Prints the snapshot row + the lead notes (verdict line
                        # 4), and EXITS 1 if caregiver_leads is not empty before the
@@ -237,6 +247,17 @@ pull request would be writing to customers' data to check a diff — and the row
 the ones nobody was watching (an early run of the multi-owner walk left four behind; that is the
 argument, not a hypothetical). Closing this properly needs a separate test cluster: an
 infrastructure change with a cost, and Steve's call.
+
+**`npm run verify:orphans` is the half of that problem a test cluster would NOT solve**, added
+2026-08-19. Four more abandoned accounts were found on production on 2026-08-18 — not by the walks,
+by looking, after an unrelated question, the oldest a day old. **Every run that created them
+reported success**, because a walk that dies mid-way and a fixture script with no close step both
+leave rows and say nothing. A separate cluster makes the walks *safe*; it does not make an
+abandoned row *visible*, and nothing here was counting. This counts: reserved-domain accounts, their
+rows, and a non-zero exit when any is older than a day, so the check can be watched rather than
+remembered. It reports and never deletes — an account holding a subscription, or standing by in
+another owner's roster, is HELD, because "a disposable-looking account holding live billing" is a
+recorded trap in this portfolio and this schema has no foreign keys to catch a careless purge.
 
 So it is one command a person runs before a release. Each walk asserts the layer the others cannot:
 the server refusing correctly, and the screen a person actually meets. The UI walk exists because

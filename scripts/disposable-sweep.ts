@@ -1,0 +1,193 @@
+/**
+ * scripts/disposable-sweep.ts — count the throwaway accounts the walks left behind.
+ *
+ *   npx tsx --env-file=.env.local scripts/disposable-sweep.ts        (npm run verify:orphans)
+ *   npx tsx --env-file=.env.local scripts/disposable-sweep.ts --hours 72
+ *
+ * WHY THIS EXISTS, in D4's own words (`PROJECT.yaml → deferred →
+ * verify-live-cannot-enter-ci`): *"a separate test cluster would make the walks
+ * safe, but it would NOT make an abandoned row visible. A count of disposable
+ * accounts older than a day, checked somewhere, is a smaller and more useful
+ * thing than the cluster — and nothing in this repo does it."*
+ *
+ * Four accounts were found on production on 2026-08-18 by looking, after an
+ * unrelated question. Every run that created them reported success. That is the
+ * failure mode: not a walk that fails loudly, but a walk that dies mid-way or a
+ * fixture script with no close step, leaving rows and saying nothing.
+ *
+ * READ-ONLY. The only statements are SELECTs. It reports and it exits non-zero;
+ * it never deletes. The deletion path is the product's own cascade —
+ * `deleteAccount()` cancels billing FIRST and then repairs standby roles held in
+ * other owners' rosters, rows a `WHERE owner_id = $1` never touches — and this
+ * schema has no FK constraints, so a hand-written DELETE here would corrupt
+ * quietly. An account carrying a subscription row or standing by for somebody
+ * else is reported as HELD and never as sweepable.
+ *
+ * EXIT CODE IS THE POINT. 1 when anything stale exists, so this can be wired to
+ * something that watches. A sweep whose only output is prose is a sweep nobody
+ * notices going quiet — the exact shape of the bug it was written for.
+ *
+ * NOT IN CI, for the reason verify:schema and verify:live are not: CI holds no
+ * cluster credentials. NEEDS .env.local, no server.
+ *
+ * Feature: relay-h0-mvp
+ * Requirements: D4 (the countable half)
+ */
+
+import { Client } from 'pg';
+import { DsqlSigner } from '@aws-sdk/dsql-signer';
+
+import { dsqlIdentity } from '../lib/db/connection';
+import {
+  RESERVED_TLDS,
+  judge,
+  staleCount,
+  formatSweepReport,
+  type DisposableRow,
+} from '../lib/ops/disposable-accounts';
+
+/**
+ * Every table an owner's rows live in, as `deleteAccount()`'s cascade knows them.
+ * Reported per account so a purge is an informed act rather than a leap.
+ */
+const OWNED_TABLES = [
+  'vault_items',
+  'recipients',
+  'verifiers',
+  'access_rules',
+  'release_state',
+  'invitations',
+  'audit_log',
+] as const;
+
+function hoursArg(): number {
+  const i = process.argv.indexOf('--hours');
+  if (i === -1) return 24;
+  const n = Number(process.argv[i + 1]);
+  if (!Number.isFinite(n) || n <= 0) throw new Error(`--hours needs a positive number, got ${process.argv[i + 1]}`);
+  return n;
+}
+
+/** Same connection shape as flight-snapshot: one region, failover switch honoured. */
+async function connect(): Promise<Client> {
+  const useSecondary = process.env.DSQL_USE_SECONDARY === 'true';
+  const endpoint = useSecondary
+    ? process.env.DSQL_SECONDARY_ENDPOINT
+    : process.env.DSQL_PRIMARY_ENDPOINT;
+  if (!endpoint) {
+    throw new Error(
+      `${useSecondary ? 'DSQL_SECONDARY_ENDPOINT' : 'DSQL_PRIMARY_ENDPOINT'} is not set — ` +
+        'run with --env-file=.env.local',
+    );
+  }
+
+  const match = endpoint.match(/\.dsql\.([a-z0-9-]+)\.on\.aws$/i);
+  const region = match ? match[1] : (process.env.AWS_REGION ?? 'us-east-1');
+  const signer = new DsqlSigner({ hostname: endpoint, region });
+  const { user, admin } = dsqlIdentity();
+
+  const client = new Client({
+    host: endpoint,
+    port: parseInt(process.env.DSQL_PORT ?? '5432', 10),
+    database: process.env.DSQL_DATABASE ?? 'postgres',
+    user,
+    password: () => (admin ? signer.getDbConnectAdminAuthToken() : signer.getDbConnectAuthToken()),
+    ssl: { rejectUnauthorized: process.env.DSQL_SSL_REJECT_UNAUTHORIZED !== 'false' },
+    connectionTimeoutMillis: 10_000,
+    query_timeout: 30_000,
+  });
+  await client.connect();
+  return client;
+}
+
+async function main(): Promise<void> {
+  const maxAgeHours = hoursArg();
+  const client = await connect();
+
+  try {
+    /*
+      The reserved-domain filter is done in SQL so the sweep never pulls real
+      users' addresses across the wire to discard them locally. `LIKE` per TLD
+      rather than a regex: DSQL is PostgreSQL-compatible but this stays plainly
+      readable, and the list is three entries long.
+    */
+    const likes = RESERVED_TLDS.map((_, i) => `email LIKE $${i + 1}`).join(' OR ');
+    const params = RESERVED_TLDS.map((tld) => `%.${tld}`);
+
+    const users = await client.query<{ id: string; email: string; created_at: Date }>(
+      `SELECT id, email, created_at FROM users WHERE ${likes} ORDER BY created_at`,
+      params,
+    );
+
+    const rows: DisposableRow[] = [];
+    for (const u of users.rows) {
+      const counts: Record<string, number> = {};
+      for (const table of OWNED_TABLES) {
+        const r = await client.query<{ n: string }>(
+          `SELECT count(*)::text AS n FROM ${table} WHERE owner_id = $1`,
+          [u.id],
+        );
+        counts[table] = Number(r.rows[0]?.n ?? 0);
+      }
+
+      const sub = await client.query<{ n: string }>(
+        'SELECT count(*)::text AS n FROM subscriptions WHERE owner_id = $1',
+        [u.id],
+      );
+
+      /*
+        The role held in SOMEBODY ELSE'S roster. This is the check the 2026-08-12
+        production incident exists for: after deleting a standby contact's
+        account, the other owner's roster still read `standby_state = 'claimed'`
+        pointing at a user id that no longer existed — a covered circle, a quiet
+        readiness banner, and nobody there on the day.
+
+        ⚠️ THE SHAPE OF THIS QUERY IS COPIED FROM `deleteAccount()` ON PURPOSE
+        and must stay that way: same two tables, same `claimed_user_id` column,
+        same UNION ALL. That function is the authority on what a standby role IS,
+        and a sweep that recognised a different set than the cascade repairs
+        would report an account safe that deleting would in fact orphan.
+        `disposable-sweep-matches-the-cascade.test.ts` fails if the two diverge.
+
+        (The first draft of this file asked for `standby_user_id`, which exists in
+        no migration and in no query — the column is `claimed_user_id`. It would
+        have thrown on the first real run, which is exactly the wired-not-live-
+        proven gap this repo keeps catching.)
+      */
+      const standby = await client.query<{ n: string }>(
+        `SELECT count(*)::text AS n FROM recipients WHERE claimed_user_id = $1
+         UNION ALL
+         SELECT count(*)::text AS n FROM verifiers  WHERE claimed_user_id = $1`,
+        [u.id],
+      );
+      const standbyElsewhere = standby.rows.reduce((a, r) => a + Number(r.n ?? 0), 0);
+
+      rows.push({
+        id: u.id,
+        email: u.email,
+        created_at: u.created_at,
+        rows: counts,
+        has_subscription: Number(sub.rows[0]?.n ?? 0) > 0,
+        standby_roles_elsewhere: standbyElsewhere,
+      });
+    }
+
+    const now = new Date();
+    const judged = judge(rows, now, maxAgeHours);
+    console.log(formatSweepReport(judged, now, maxAgeHours));
+
+    const stale = staleCount(judged);
+    if (stale > 0) {
+      console.log('');
+      console.log(`FAIL: ${stale} disposable account(s) older than ${maxAgeHours}h are still on the cluster.`);
+      process.exitCode = 1;
+    }
+  } finally {
+    await client.end();
+  }
+}
+
+main().catch((err) => {
+  console.error(err instanceof Error ? err.message : err);
+  process.exitCode = 1;
+});
