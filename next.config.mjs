@@ -257,6 +257,7 @@ const nextConfig = {
         broken images.
       */
       { source: '/guide/beta', destination: '/guide/beta/index.html' },
+      { source: '/guide/beta/setup', destination: '/guide/beta/setup/index.html' },
       /*
         Browsers probe /favicon.ico by convention even when the document links an
         icon, and Next's app-router convention file is `icon.svg` — so every page

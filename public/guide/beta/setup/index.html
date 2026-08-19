@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Relay — Beta Setup Sheet</title>
+<style>
+  @page { size: A4; margin: 16mm 14mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: #211d18; line-height: 1.55; font-size: 10.5pt; margin: 0;
+  }
+  h1 { font-size: 24pt; margin: 0 0 6pt; letter-spacing: -0.02em; }
+  h2 { font-size: 15pt; margin: 0 0 3pt; letter-spacing: -0.01em; }
+  h3 { font-size: 11.5pt; margin: 15pt 0 4pt; }
+  .sub { color: #6b6257; font-size: 10.5pt; margin: 0 0 16pt; }
+  .part { page-break-before: always; border-top: 3px solid #211d18; padding-top: 10pt; margin-top: 0; }
+  .part:first-of-type { page-break-before: auto; }
+  .part-label { font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.1em; color: #a8722c; margin: 0 0 4pt; }
+  .why { background: #f6f3ee; border-left: 3px solid #a8722c; padding: 8pt 12pt; margin: 8pt 0 12pt; font-size: 10pt; }
+  .why b { color: #211d18; }
+  table { width: 100%; border-collapse: collapse; font-size: 9.5pt; margin: 8pt 0 14pt; }
+  th, td { text-align: left; padding: 5pt 6pt; border-bottom: 1px solid #e4ded4; vertical-align: top; }
+  th { background: #f6f3ee; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.04em; color: #6b6257; }
+  ol, ul { margin: 5pt 0 5pt 17pt; padding: 0; }
+  li { margin-bottom: 4pt; }
+  .note { background: #fdf6ea; border: 1px solid #e8d9b8; border-radius: 6px; padding: 9pt 11pt; font-size: 9.5pt; margin: 10pt 0; }
+  .warn { background: #fbeceb; border: 1px solid #e8c4c0; border-radius: 6px; padding: 9pt 11pt; font-size: 9.5pt; margin: 10pt 0; }
+  .never { background: #f2f4f2; border: 1px solid #cfd8cf; border-radius: 6px; padding: 9pt 11pt; font-size: 9.5pt; margin: 10pt 0; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 9pt; background: #f6f3ee; padding: 1pt 3pt; border-radius: 3px; }
+  pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 8.5pt; background: #f6f3ee;
+    border: 1px solid #e4ded4; border-radius: 4px; padding: 8pt 10pt; overflow-x: auto; margin: 6pt 0 10pt; line-height: 1.45; }
+  .lead { font-size: 11.5pt; line-height: 1.6; }
+  .card { border: 1.5px solid #211d18; border-radius: 6px; padding: 11pt 13pt; margin: 0 0 11pt;
+    page-break-inside: avoid; }
+  .card h4 { margin: 0 0 8pt; font-size: 11pt; }
+  .card .row { display: flex; gap: 10pt; margin-bottom: 7pt; font-size: 9.5pt; }
+  .card .lbl { width: 92pt; color: #6b6257; flex: none; }
+  .fill { flex: 1; border-bottom: 1px dotted #8a8076; min-height: 15pt; }
+  .codebox { border: 1px dashed #a8722c; border-radius: 4px; background: #fdfbf7;
+    padding: 11pt 12pt; margin: 7pt 0 4pt; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13pt; letter-spacing: 0.12em; color: #a8722c; text-align: center; }
+  .codehint { font-size: 8pt; color: #6b6257; text-align: center; margin: 0 0 4pt; }
+  .check { font-size: 9.5pt; color: #443c33; margin-top: 8pt; }
+  .check span { display: inline-block; width: 11pt; height: 11pt; border: 1.2px solid #6b6257;
+    border-radius: 2px; margin-right: 5pt; vertical-align: -1px; }
+  .tear { border: 1.5px dashed #8a8076; border-radius: 6px; padding: 12pt 14pt; margin: 10pt 0; }
+</style>
+</head>
+<body>
+
+<h1>Relay — Beta Setup Sheet</h1>
+<p class="sub">Getting five testers into their own accounts. Companion to the Beta Test Guide.
+Written 2026-08-19.</p>
+
+<p class="lead">Short answer to the question that prompted this: <b>there is no beta code, and you
+do not need one.</b> Signing up at relaystandby.com is open to anyone — no invitation, no allowlist,
+no waiting list. A tester can have their own working account in about two minutes without anything
+from you.</p>
+
+<p>What you <i>do</i> hand out is a different thing, and the difference is worth getting straight
+before you send anything, because sending the wrong one produces a confusing evening.</p>
+
+<div class="why">
+<b>Two kinds of account, and they are not the same.</b> A <b>claim code</b> puts someone into
+<i>your</i> circle as a recipient or verifier — it is about your plan, not about giving them Relay.
+An <b>owner account</b> is theirs, holds their own vault, and needs no code from anybody. Most
+testers should end up with both, and the product has a button that walks them from one to the other.
+</div>
+
+
+<!-- ============================================================ -->
+<h2 class="part">Part A — The two accounts</h2>
+<p class="part-label">Read this once and the rest is mechanical</p>
+
+<table>
+<tr><th></th><th>Standby account</th><th>Their own owner account</th></tr>
+<tr><td><b>What it is</b></td><td>Their place in <i>your</i> circle — the thing that lets them be
+recognised on the day, as a recipient or a verifier</td><td>Their own Relay: their vault, their
+people, their rules</td></tr>
+<tr><td><b>How they get it</b></td><td><b>You</b> issue a claim code and hand it to them</td>
+<td><b>They</b> sign up at relaystandby.com. Nothing needed from you</td></tr>
+<tr><td><b>Where</b></td><td><code>relaystandby.com/claim</code> — type the code in</td>
+<td><code>relaystandby.com</code> → Start, or <code>/start</code></td></tr>
+<tr><td><b>Costs</b></td><td>Nothing, ever. It holds nothing of theirs</td><td>Nothing during beta —
+see Part B</td></tr>
+<tr><td><b>What it tests</b></td><td><b>Do people actually accept when asked?</b> The number the
+whole design rests on, currently zero</td><td><b>Does setup make sense to a stranger?</b> The
+thing only a person who did not build it can answer</td></tr>
+</table>
+
+<h3>The bridge between them is already in the product</h3>
+<p>Once someone has claimed and is standing by for you, their dashboard shows a panel headed
+<i>"Who would step in for you?"</i> with a <b>Start your own plan</b> button. It takes them to the
+same signup everyone else uses.</p>
+
+<p><b>That is the sequence I would use for this cohort</b>, and it is worth doing in that order for a
+reason beyond convenience: it puts each tester through the invitation experience first — the one we
+most need measured — and then lets them convert themselves, which is a real conversion path we would
+like to know works.</p>
+
+<div class="note">
+<b>Nobody has to do the second half.</b> A verifier who only ever claims and answers one question is
+a perfectly good tester and gives us the Phase 0 number. Starting their own plan is the bonus round,
+and it is the part that produces the sharpest feedback about onboarding.
+</div>
+
+
+<!-- ============================================================ -->
+<h2 class="part">Part B — "Can I get a code to enable the beta?"</h2>
+<p class="part-label">No — and here is what exists instead</p>
+
+<p>There is no beta gate to unlock. Signup is open to the public today: no invite code, no
+allowlist, nothing to enable. The only thing standing between a tester and an account is the
+authenticator-app step.</p>
+
+<h3>What a free account already gets, during the beta</h3>
+<table>
+<tr><th>Limit</th><th>Free tier</th><th>Enough for testing?</th></tr>
+<tr><td>Vault items</td><td>10</td><td>Yes — the guide asks for three or four</td></tr>
+<tr><td>Recipients</td><td>4</td><td>Yes</td></tr>
+<tr><td>Verifiers</td><td>4</td><td>Yes — quorums here run at one or two</td></tr>
+<tr><td><b>Can actually release</b></td><td><b>Yes</b></td><td><b>Yes — this is the important one</b></td></tr>
+</table>
+
+<div class="why">
+<b>Releasing is deliberately switched on for free accounts during the beta.</b> Payment works and is
+live, but enforcing it now would mean the beta could not exercise the one thing the product exists
+for. It is a dated decision that gets reviewed from 2026-10-01, not an oversight — so testers get
+the full experience without anyone paying anything, and nothing they do is a purchase.
+</div>
+
+<h3>The one real lever, if a tester wants to go further</h3>
+<p>If somebody gets enthusiastic and hits the ten-item cap, there is a by-hand grant that lifts every
+limit for them:</p>
+
+<pre>npx tsx --env-file=.env.local scripts/grant-founding-tier.ts &lt;their-email&gt;
+
+# and to undo it
+npx tsx --env-file=.env.local scripts/grant-founding-tier.ts &lt;their-email&gt; --revoke</pre>
+
+<p>It marks the grant as given rather than bought, writes it to their audit log, and refuses to touch
+anyone who has actually paid. <b>Use it only if someone asks</b> — hitting a limit and telling you
+about it is itself a useful finding, and pre-emptively lifting caps hides it.</p>
+
+<div class="never">
+<b>Why the comp is marked.</b> The one number this whole project is waiting for is somebody at arm's
+length choosing to pay. A hand-granted account sits in the same table as a real subscription and
+would be indistinguishable from one — so it is stamped twice, and a granted plan can never be
+mistaken later for evidence that somebody wanted this enough to buy it.
+</div>
+
+
+<!-- ============================================================ -->
+<h2 class="part">Part C — Your run sheet</h2>
+<p class="part-label">Steve · about twenty minutes for five people</p>
+
+<ol>
+<li><b>List the cohort.</b> Create <code>.relay-cohort.json</code> in the repo root — it is
+gitignored, because it holds real people's names and addresses. Doug is already in it.
+<pre>[
+  { "name": "Doug Fish", "email": "…", "type": "recipient",
+    "role": "recipient", "arm": "owner" },
+  { "name": "…",         "email": "…", "type": "verifier",  "arm": "owner" },
+  { "name": "…",         "email": "…", "type": "verifier",  "arm": "email" }
+]</pre>
+<b>Mix the two arms deliberately.</b> <code>owner</code> means you deliver the code yourself;
+<code>email</code> means Relay sends it. Comparing those two is the entire point of the exercise —
+if everyone gets the same arm we learn nothing about which one works.</li>
+
+<li><b>Dry run.</b> <code>npm run invite:cohort</code> creates nothing and lists who it would create.
+Read the list.</li>
+
+<li><b>Sign in at relaystandby.com and copy your session cookie</b>, then
+<code>export RELAY_OWNER_COOKIE=…</code>. The script needs it and stores it nowhere.</li>
+
+<li><b>Commit.</b> <code>npm run invite:cohort -- --commit</code>. It creates each person, issues
+every code, captures them to <code>.relay-cohort-codes.json</code> (also gitignored) and prints a
+ready-to-send message per person.</li>
+
+<li><b>Write each code onto its card</b> in Part D, or just keep the file open — whichever suits.</li>
+
+<li><b>Deliver the owner-arm codes yourself.</b> Text, call, or hand over. Do not email those.</li>
+
+<li><b>Make the four-word call to each person once they have claimed.</b> People → the person →
+Verified? <b>Until you do, their answer counts for nothing</b> and every test in the guide will
+quietly fail to open anything.</li>
+
+<li><b>Check the numbers</b> with
+<code>npx tsx --env-file=.env.local scripts/phase0-report.ts</code> — issued, opened, claimed, per
+arm. That table is the actual output of this round.</li>
+</ol>
+
+<div class="warn">
+<b>Each claim code is readable exactly once.</b> Only a hash is stored, so if you lose it the
+invitation has to be cancelled and reissued. The script exists mostly to stop that happening —
+it captures every code at the moment of issue, and that file is the only copy.
+</div>
+
+
+<!-- ============================================================ -->
+<h2 class="part">Part D — Tester cards</h2>
+<p class="part-label">One per person · fill in the code, then hand over or read out</p>
+
+<div class="warn">
+<b>The codes are deliberately not printed here.</b> Three reasons, and any one of them is enough:
+they do not exist until you run the script; each is readable only once, so a printed copy would be
+the only copy; and this document lives in a public repository, where a claim code is a live
+credential that would let a stranger take somebody's place in your circle. <b>Write them in by hand,
+or keep <code>.relay-cohort-codes.json</code> open beside you.</b>
+</div>
+
+<div class="card">
+<h4>Doug Fish — recipient</h4>
+<div class="row"><div class="lbl">Email</div><div class="fill"></div></div>
+<div class="row"><div class="lbl">Delivery arm</div><div class="fill">owner (you tell him)</div></div>
+<p class="codehint">claim code — write it here</p>
+<div class="codebox">&nbsp;</div>
+<p class="codehint">they enter it at <b>relaystandby.com/claim</b></p>
+<div class="check"><span></span>code delivered &nbsp;&nbsp; <span></span>claimed &nbsp;&nbsp;
+<span></span><b>four-word call made</b></div>
+</div>
+
+<div class="card">
+<h4>Tester 2 — verifier</h4>
+<div class="row"><div class="lbl">Name</div><div class="fill"></div></div>
+<div class="row"><div class="lbl">Email</div><div class="fill"></div></div>
+<div class="row"><div class="lbl">Delivery arm</div><div class="fill"></div></div>
+<p class="codehint">claim code — write it here</p>
+<div class="codebox">&nbsp;</div>
+<p class="codehint">they enter it at <b>relaystandby.com/claim</b></p>
+<div class="check"><span></span>code delivered &nbsp;&nbsp; <span></span>claimed &nbsp;&nbsp;
+<span></span><b>four-word call made</b></div>
+</div>
+
+<div class="card">
+<h4>Tester 3 — verifier</h4>
+<div class="row"><div class="lbl">Name</div><div class="fill"></div></div>
+<div class="row"><div class="lbl">Email</div><div class="fill"></div></div>
+<div class="row"><div class="lbl">Delivery arm</div><div class="fill"></div></div>
+<p class="codehint">claim code — write it here</p>
+<div class="codebox">&nbsp;</div>
+<p class="codehint">they enter it at <b>relaystandby.com/claim</b></p>
+<div class="check"><span></span>code delivered &nbsp;&nbsp; <span></span>claimed &nbsp;&nbsp;
+<span></span><b>four-word call made</b></div>
+</div>
+
+<div class="card">
+<h4>Tester 4 — <span style="font-weight:400">recipient or verifier</span></h4>
+<div class="row"><div class="lbl">Name</div><div class="fill"></div></div>
+<div class="row"><div class="lbl">Email</div><div class="fill"></div></div>
+<div class="row"><div class="lbl">Delivery arm</div><div class="fill"></div></div>
+<p class="codehint">claim code — write it here</p>
+<div class="codebox">&nbsp;</div>
+<p class="codehint">they enter it at <b>relaystandby.com/claim</b></p>
+<div class="check"><span></span>code delivered &nbsp;&nbsp; <span></span>claimed &nbsp;&nbsp;
+<span></span><b>four-word call made</b></div>
+</div>
+
+<div class="card">
+<h4>Tester 5 — <span style="font-weight:400">spare</span></h4>
+<div class="row"><div class="lbl">Name</div><div class="fill"></div></div>
+<div class="row"><div class="lbl">Email</div><div class="fill"></div></div>
+<div class="row"><div class="lbl">Delivery arm</div><div class="fill"></div></div>
+<p class="codehint">claim code — write it here</p>
+<div class="codebox">&nbsp;</div>
+<p class="codehint">they enter it at <b>relaystandby.com/claim</b></p>
+<div class="check"><span></span>code delivered &nbsp;&nbsp; <span></span>claimed &nbsp;&nbsp;
+<span></span><b>four-word call made</b></div>
+</div>
+
+
+<!-- ============================================================ -->
+<h2 class="part">Part E — Hand this bit to each tester</h2>
+<p class="part-label">Everything they need, in one page</p>
+
+<div class="tear">
+<h3 style="margin-top:0">Getting started with Relay — two minutes</h3>
+
+<p><b>1. Take the place I have saved for you.</b> Go to <b>relaystandby.com/claim</b> and type in the
+short code I gave you. That is it — you now have a free account. It holds nothing of yours and costs
+nothing, ever.</p>
+
+<p><b>2. Set up a passkey when it offers.</b> Face, fingerprint or your device PIN. It means a new
+phone will not lock you out and there is no code to keep track of.</p>
+
+<p><b>3. Expect a phone call from me.</b> I will read out four words. Check they match the four on
+your screen. Thirty seconds, and it is the step that makes your answer count for anything later.</p>
+
+<p><b>4. Optional, and the most useful thing you could do:</b> on your standby screen there is a
+panel headed <i>"Who would step in for you?"</i> with a <b>Start your own plan</b> button. Press it
+and set Relay up for yourself. You do not need anything from me — no code, no invitation, no
+payment. Everything is free during the beta, including the part that actually opens access.</p>
+
+<p style="margin-bottom:0"><b>Then tell me what was confusing.</b> That is genuinely the job. If a
+screen did not make sense, or a word was jargon, or you were not sure what you had just agreed to —
+that is the finding, and being blunt about it helps far more than being kind about it.</p>
+</div>
+
+<div class="note">
+<b>A note on links.</b> Relay never sends a message that signs you in by clicking. You always type a
+short code into a page you went to yourself. If you get something claiming to be Relay with a
+"click here to access" link in it, it is not from us — and telling me you got one is a genuinely
+useful thing to report.
+</div>
+
+<h3>If someone is on Outlook, Hotmail, Live or MSN</h3>
+<p>Warn them in advance that Relay's mail often lands in junk there. It is a known, measured problem
+and it is not their mail client being broken. Ask them to look, and to tell you where it landed —
+that is data we cannot get any other way.</p>
+
+
+<!-- ============================================================ -->
+<h2 class="part">Part F — Quick reference</h2>
+<p class="part-label">Commands, in one place</p>
+
+<table>
+<tr><th>Want to…</th><th>Do this</th></tr>
+<tr><td>See who the cohort would create</td><td><code>npm run invite:cohort</code></td></tr>
+<tr><td>Actually create them and get the codes</td><td><code>npm run invite:cohort -- --commit</code></td></tr>
+<tr><td>See how many claimed, per arm</td><td><code>npx tsx --env-file=.env.local scripts/phase0-report.ts</code></td></tr>
+<tr><td>Lift every limit for one tester</td><td><code>npx tsx --env-file=.env.local scripts/grant-founding-tier.ts &lt;email&gt;</code></td></tr>
+<tr><td>Undo that</td><td>…same, with <code>--revoke</code></td></tr>
+<tr><td>Check nothing was left behind afterwards</td><td><code>npm run verify:orphans</code></td></tr>
+</table>
+
+<h3>Where things live</h3>
+<table>
+<tr><td><code>.relay-cohort.json</code></td><td>who to invite — you write this. Gitignored: real names and addresses</td></tr>
+<tr><td><code>.relay-cohort-codes.json</code></td><td>the issued codes — the script writes this, and it is the <b>only</b> copy. Gitignored</td></tr>
+<tr><td><code>docs/Relay-Beta-Test-Guide.pdf</code></td><td>the 23-page guide: what to test and what to report</td></tr>
+<tr><td><code>relaystandby.com/help</code></td><td>the full user guide, for anyone who wants more detail on a screen</td></tr>
+</table>
+
+<div class="never">
+<b>The one thing to get right, restated because it is the one that will cost you an evening:</b> make
+the four-word call to every verifier before you run any of the tests. An unverified verifier can
+press Confirm, the screen will thank them, and the release will not open — with nothing anywhere
+saying why.
+</div>
+
+</body>
+</html>
