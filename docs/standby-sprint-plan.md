@@ -1,5 +1,11 @@
 # Standby — sprint execution plan
 
+> ✅ **Sprints A–E SHIPPED (A on 2026-08-11 as a defect fix; C–E landed 2026-08-14, recorded in
+> `PROJECT.yaml → gates.g1-caregiver-wtp.moved`). ⏳ Sprint F (Phase 4 artifacts) remains and is
+> post-G1 by this plan's own gate discipline — it is scheduled as Sprint 5 item 5.2 of
+> `ROADMAP.md` (2026-08-19), whose entry event satisfies that gate.** This file stays the
+> authoritative *detail* for Sprint F's content; the roadmap sequences it and does not restate it.
+
 How the code moves from what is built today to `docs/standby-architecture.md` (**hybrid+6**)
 without breaking production on the way.
 

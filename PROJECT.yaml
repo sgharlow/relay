@@ -4,10 +4,21 @@
 
 name: relay
 
-# No standalone ROADMAP exists — the forward/commercial roadmap lives in the Build Spec §16–27
-# (the richest strategy doc in the portfolio, per the 2026-07-01 audit; its gap is operational
-# sequencing, which the gates below supply).
+# The forward/commercial STRATEGY lives in the Build Spec §16–27 (the richest strategy doc in
+# the portfolio, per the 2026-07-01 audit). Its gap was operational sequencing, supplied partly
+# by the gates below and — since 2026-08-19 — by ROADMAP.md, which inventories the remaining
+# work to production and organises it into sprints. (This comment read "No standalone ROADMAP
+# exists" until that date; the sentence was true when written and is corrected in the same
+# commit that made it false.)
 authoritative_plan: specs/Relay_H0_Build_Spec_v2.md
+
+# The operational roadmap: the full remaining-work inventory sequenced into sprints — calendar
+# sprints for the demand lane and ops cadence, event-gated sprints for everything the demand
+# gate holds back. SUBSIDIARY to authoritative_plan for strategy and to this file for gates,
+# dates and volatile facts; where it and this file disagree, THIS FILE WINS and the roadmap has
+# a defect. Recorded here because a plan that is not discoverable from this file is a plan the
+# next session will not find.
+operational_roadmap: ROADMAP.md
 
 # Ratified architecture direction as of 2026-08-11. Subsidiary to the Build Spec above, which stays
 # authoritative for strategy; this is authoritative for HOW release access is delivered. It removes

@@ -1,5 +1,10 @@
 # Relay — 4-Sprint Delivery Plan
 
+> ✅ **COMPLETE — all four sprints shipped and deployed (2026-08-07; see the note at the head of
+> the checkboxes). This plan is a historical record, not a source of pending work.** The forward
+> plan is `ROADMAP.md` (operational sequencing, added 2026-08-19); strategy stays with
+> `specs/Relay_H0_Build_Spec_v2.md`; gates and volatile facts stay in `PROJECT.yaml`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Deliver a complete, sellable caregiver loop — a buyer can subscribe, build a parent's vault as a consented delegate, designate a verified circle, request access in an emergency, have a verifier confirm or deny it, and get scoped access that closes itself.
