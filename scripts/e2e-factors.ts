@@ -19,7 +19,6 @@
 import { encodeSecretPayload, secretKindsOf, type SecretField } from '../lib/crypto/secret-payload';
 import { generateTotpCodeFor } from '../lib/auth/totp';
 import { CryptoService } from '../lib/crypto/crypto-service';
-import { assessPreparedness } from '../lib/vault/preparedness';
 import { closeAllPools } from '../lib/db/connection';
 
 const BASE = process.env.E2E_BASE || 'http://localhost:3000';
@@ -90,26 +89,40 @@ interface ListItem {
   title: string;
   criticality: string | null;
   is_root_credential: boolean;
-  /*
-    Optional on the WIRE, required when handed to `assessPreparedness` — the
-    list API may be older than this script. `?? null` at the call site is the
-    seam between the two, and it is written out rather than inferred because
-    the day these were optional on the rule's own input, a caller forgot to
-    select them and the whole rule went inert on the banner (2026-08-18).
-  */
   secret_kinds?: string | null;
   factors_required?: string | null;
   depends_on_item_id?: string | null;
 }
 
-/** The shape the rule demands, from the shape the API returns. */
-function forPreparedness(items: ListItem[]) {
-  return items.map((i) => ({
-    ...i,
-    secret_kinds: i.secret_kinds ?? null,
-    factors_required: i.factors_required ?? null,
-    depends_on_item_id: i.depends_on_item_id ?? null,
-  }));
+/**
+ * What the PRODUCT says, read from the endpoint the owner's screen reads.
+ *
+ * 🔴 THIS WALK USED TO IMPORT `assessPreparedness` AND COMPUTE THIS ITSELF, and
+ * that is why it was green through the whole of 2026-08-18 while the rule it
+ * exists to prove was inert in production. `assessReadiness` neither selected
+ * the three usability columns nor passed them on, so every item reached the
+ * rule as `unknown` — and this script could not see it, because it fetched rows
+ * itself and did the arithmetic itself. It proved the function twice and the
+ * path zero times.
+ *
+ * Reading `/api/readiness` spans the SQL projection, the row mapping, the rule
+ * and the JSON payload in one assertion: the same composition the banner reads.
+ */
+interface ProductPreparedness {
+  reachable: number;
+  mattering: number;
+  unasked: number;
+  undeclared: number;
+  unaskedItems: { id: string; title: string }[];
+  blocked: string[];
+}
+
+async function preparednessFromProduct(): Promise<ProductPreparedness> {
+  const res = await call('/api/readiness');
+  if (res.status !== 200) throw new Error(`/api/readiness -> HTTP ${res.status}`);
+  const p = (res.body as { preparedness?: ProductPreparedness }).preparedness;
+  if (!p) throw new Error('/api/readiness returned no preparedness block');
+  return p;
 }
 
 async function main(): Promise<void> {
@@ -189,12 +202,13 @@ async function main(): Promise<void> {
       trigger_type: 'emergency', scope: 'view', reversible: true,
     });
 
-    const before = assessPreparedness({
-      items: forPreparedness(afterCreate.items),
-      ruledItemIds: [itemId],
-      verifierCount: 1,
-    });
+    const before = await preparednessFromProduct();
     check('before the owner answers, the item counts as reachable', before.reachable === 1, `reachable=${before.reachable}`);
+    check(
+      'and the product names it as one nobody has been asked about',
+      before.unasked === 1 && before.unaskedItems.some((i) => i.id === itemId),
+      `unasked=${before.unasked} named=${JSON.stringify(before.unaskedItems.map((i) => i.title))}`,
+    );
 
     // The owner answers: this account asks for a code as well.
     const declaredRes = await patch(`/api/vault/items/${itemId}`, { factors_required: ['totp'] });
@@ -211,15 +225,23 @@ async function main(): Promise<void> {
       `factors_required=${JSON.stringify(declaredItem?.factors_required)}`,
     );
 
-    const after = assessPreparedness({
-      items: forPreparedness(afterDeclare.items),
-      ruledItemIds: [itemId],
-      verifierCount: 1,
-    });
+    /*
+      🔴 THE DISCRIMINATING ASSERTION, and the one the old shape could not make.
+      If the usability columns ever stop reaching the rule again, the declaration
+      above is invisible here: the item stays reachable and stays "unasked", and
+      every unit test still passes. Read from the product, this is the line that
+      goes red.
+    */
+    const after = await preparednessFromProduct();
     check(
       '🔴 THE POINT: a password behind a coded door is no longer counted reachable',
       after.reachable === 0,
       `reachable ${before.reachable} -> ${after.reachable}`,
+    );
+    check(
+      'and the answered item stops being one nobody has been asked about',
+      after.unasked === 0 && !after.unaskedItems.some((i) => i.id === itemId),
+      `unasked=${after.unasked}`,
     );
 
     // And the owner can take the answer back.
@@ -258,8 +280,7 @@ async function main(): Promise<void> {
     await post('/api/rules', { recipient_id: recipientId, vault_item_id: editId, trigger_type: 'emergency', scope: 'view', reversible: true });
     await patch(`/api/vault/items/${editId}`, { factors_required: ['totp'] });
 
-    const beforeEdit = (await call('/api/vault/items')).body as { items: ListItem[] };
-    const bEdit = assessPreparedness({ items: forPreparedness(beforeEdit.items), ruledItemIds: [itemId, editId], verifierCount: 1 });
+    const bEdit = await preparednessFromProduct();
 
     // Re-encrypt WITHOUT the code — the edit-away. PUT re-derives.
     const withoutCode = await svc2.encryptForUpload(
@@ -284,7 +305,7 @@ async function main(): Promise<void> {
       `secret_kinds=${JSON.stringify(editedItem?.secret_kinds)}`,
     );
 
-    const aEdit = assessPreparedness({ items: forPreparedness(afterEdit.items), ruledItemIds: [itemId, editId], verifierCount: 1 });
+    const aEdit = await preparednessFromProduct();
     check(
       '🔴 THE MERGE BLOCKER: editing a code away makes the item unreachable, not a stale usable',
       bEdit.reachable > aEdit.reachable,

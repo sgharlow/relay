@@ -23,6 +23,7 @@
  */
 
 import { query } from '../db/connection';
+import { selected } from '../db/row';
 import { assessPreparedness, type Preparedness } from './preparedness';
 import { assessCircle, type CircleAssessment } from './circle-readiness';
 import { readStandbyState } from '../people/standby-state';
@@ -354,9 +355,17 @@ export async function assessReadiness(ownerId: string): Promise<Readiness> {
       // one effect. Widening the SELECT alone would have fixed nothing, which
       // is why the input type now demands these rather than tolerating their
       // absence: one of the two omissions would have survived the other's fix.
-      secret_kinds: r.secret_kinds,
-      factors_required: r.factors_required,
-      depends_on_item_id: r.depends_on_item_id,
+      /*
+        Read through `selected` rather than off the row, so that if this
+        projection ever loses them again the read FAILS instead of quietly
+        reporting `unknown` — which is what it did for a day, rendered as a
+        sentence about the owner. The two omissions that caused it were here and
+        in the query above; this is the half that cannot be fixed by looking at
+        the SQL alone.
+      */
+      secret_kinds: selected<string>(r, 'secret_kinds'),
+      factors_required: selected<string>(r, 'factors_required'),
+      depends_on_item_id: selected<string>(r, 'depends_on_item_id'),
     })),
     ruledItemIds: ruleRows.rows.map((r) => r.vault_item_id),
     /**

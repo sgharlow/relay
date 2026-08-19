@@ -17,19 +17,7 @@ vi.mock('../db/integrity', () => ({ cascadeDelete: vi.fn(async () => undefined) 
 
 import { query } from '../db/connection';
 import { cascadeDelete } from '../db/integrity';
-import {
-  validateCreateInput,
-  validateUpdateInput,
-  createItem,
-  listItems,
-  getItemForOwner,
-  updateItem,
-  deleteItem,
-  ValidationError,
-  VALID_TYPES,
-  VALID_CATEGORIES,
-  VALID_CRITICALITY,
-} from './vault-items';
+import { validateCreateInput, validateUpdateInput, createItem, listItems, getItemForOwner, updateItem, deleteItem, ValidationError, VALID_TYPES, VALID_CATEGORIES, VALID_CRITICALITY, METADATA_COLUMNS } from './vault-items';
 
 const mockQuery = vi.mocked(query);
 const mockCascade = vi.mocked(cascadeDelete);
@@ -62,8 +50,9 @@ function metaRow(over: Record<string, unknown> = {}) {
     id: 'item-1', type: 'login', title: 'Gmail', service_name: 'Google',
     url: null, category: 'communication', criticality: 'high',
     is_root_credential: false, owner_set_root: null, recurring_billing: false,
-    irreplaceable: false, importance_score: '0.500', depends_on_item_id: null,
-    backup_note: null,
+    irreplaceable: false, owner_set_irreplaceable: null,
+    importance_score: '0.500', depends_on_item_id: null,
+    backup_note: null, secret_kinds: null, factors_required: null,
     created_at: new Date('2026-01-01T00:00:00Z'),
     updated_at: new Date('2026-01-01T00:00:00Z'),
     ...over,
@@ -164,8 +153,10 @@ describe('Property 3: vault item metadata round-trip', () => {
           // INSERT ... RETURNING echoes the inserted values back as a row.
           mockQuery.mockImplementation(async (_sql: string, params?: unknown[]) => {
             const p = params ?? [];
+            // Through `metaRow` rather than hand-listed, so this row carries
+            // every column the projection returns and cannot drift from it.
             return qResult([
-              {
+              metaRow({
                 id: 'generated-id',
                 type: p[1],
                 title: p[2],
@@ -173,15 +164,7 @@ describe('Property 3: vault item metadata round-trip', () => {
                 url: p[4],
                 category: p[5],
                 criticality: p[6],
-                is_root_credential: false,
-                recurring_billing: false,
-                irreplaceable: false,
-                importance_score: '0.500',
-                depends_on_item_id: null,
-                backup_note: null,
-                created_at: new Date('2026-01-01T00:00:00Z'),
-                updated_at: new Date('2026-01-01T00:00:00Z'),
-              },
+              }),
             ]);
           });
 
@@ -219,7 +202,7 @@ describe('Property 3: vault item metadata round-trip', () => {
 describe('listItems', () => {
   it('returns metadata projections and never selects ciphertext', async () => {
     mockQuery.mockResolvedValueOnce(
-      qResult([{ id: 'a', type: 'login', title: 'A', importance_score: '0.9', is_root_credential: true }]),
+      qResult([metaRow({ id: 'a', type: 'login', title: 'A', importance_score: '0.9', is_root_credential: true })]),
     );
     const items = await listItems('owner-1');
     expect(items[0].id).toBe('a');
@@ -233,13 +216,15 @@ describe('listItems', () => {
 describe('getItemForOwner', () => {
   it('returns base64 ciphertext for an owned row', async () => {
     mockQuery.mockResolvedValueOnce(
+      // The metadata projection PLUS the ciphertext columns — which is what
+      // this query actually selects (METADATA_COLUMNS, ciphertext, ...).
       qResult([
-        {
+        metaRow({
           id: 'a', type: 'login', title: 'A', importance_score: '0.5',
           ciphertext: Buffer.from([1, 2, 3]),
           wrapped_data_key: Buffer.from([4, 5]),
           kms_key_id: 'cmk-1',
-        },
+        }),
       ]),
     );
     const item = await getItemForOwner('owner-1', 'a');
@@ -348,5 +333,26 @@ describe('backup_note — the note the advice layer reads', () => {
     await updateItem('owner-1', 'item-1', { ciphertext: VALID_B64, wrapped_data_key: VALID_B64, secret_kinds: 'password' });
     const [, paramsOmitted] = mockQuery.mock.calls[1];
     expect(paramsOmitted).toContain(null);
+  });
+});
+
+describe('the fixture is held to the projection it claims to be', () => {
+  /*
+    🔴 IT WAS NOT, AND NOTHING SAID SO. `metaRow` is documented as "shaped like
+    the RETURNING projection" and was missing owner_set_irreplaceable,
+    secret_kinds and factors_required — so every test using it exercised
+    `toMetadata` against a row the product never returns. A mapper tested on a
+    narrower shape than production supplies cannot see a dropped column, which
+    is the defect this repo spent 2026-08-18 on.
+
+    Equality, not a subset, in both directions: a column added to the projection
+    and not to the fixture leaves the tests blind to it, and a key in the fixture
+    that the projection does not return is a test asserting something the
+    product cannot produce.
+  */
+  it('metaRow has exactly the columns METADATA_COLUMNS returns', () => {
+    const projected = METADATA_COLUMNS.split(',').map((c) => c.trim()).filter(Boolean).sort();
+    const fixture = Object.keys(metaRow()).sort();
+    expect(fixture).toEqual(projected);
   });
 });

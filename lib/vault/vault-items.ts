@@ -29,6 +29,7 @@ import {
   VALID_CRITICALITY,
   type VaultItemType,
 } from '../domain/enums';
+import { selected } from '../db/row';
 import { parseKindList, serialiseFactorList } from './usability';
 
 export { VALID_TYPES, VALID_CATEGORIES, VALID_CRITICALITY, type VaultItemType };
@@ -403,7 +404,13 @@ export function validateUpdateInput(body: unknown): UpdateVaultItemInput {
 // SQL projections + row mapping
 // ---------------------------------------------------------------------------
 
-const METADATA_COLUMNS =
+/**
+ * The metadata projection, named once and shared by every query that feeds
+ * `toMetadata`. Exported so a test fixture can be held to it: a stub row that
+ * drifts from this list is a stub pretending the projection is narrower than it
+ * is, which is how a mapper gets tested against a shape the product never sees.
+ */
+export const METADATA_COLUMNS =
   'id, type, title, service_name, url, category, criticality, ' +
   'is_root_credential, owner_set_root, recurring_billing, irreplaceable, owner_set_irreplaceable, importance_score, ' +
   'depends_on_item_id, backup_note, secret_kinds, factors_required, created_at, updated_at';
@@ -418,31 +425,41 @@ function toMetadata(row: Record<string, unknown>): VaultItemMetadata {
     category: (row.category as string | null) ?? null,
     criticality: (row.criticality as string | null) ?? null,
     is_root_credential: Boolean(row.is_root_credential),
-    owner_set_irreplaceable:
-      row.owner_set_irreplaceable === null || row.owner_set_irreplaceable === undefined
-        ? null
-        : Boolean(row.owner_set_irreplaceable),
-    owner_set_root:
-      row.owner_set_root === null || row.owner_set_root === undefined
-        ? null
-        : Boolean(row.owner_set_root),
+    /*
+      The owner's own overrides, where `null` means "has not said" and drives a
+      badge — so an absent column would render as an answer the owner never
+      gave. `selected` refuses that read rather than guessing; see its header.
+    */
+    owner_set_irreplaceable: boolOrNull(selected(row, 'owner_set_irreplaceable')),
+    owner_set_root: boolOrNull(selected(row, 'owner_set_root')),
     recurring_billing: Boolean(row.recurring_billing),
     irreplaceable: Boolean(row.irreplaceable),
     importance_score: Number(row.importance_score),
-    depends_on_item_id: (row.depends_on_item_id as string | null) ?? null,
+    depends_on_item_id: selected<string>(row, 'depends_on_item_id'),
     backup_note: (row.backup_note as string | null) ?? null,
     /*
-      `?? null` COLLAPSES undefined INTO null, and that is correct HERE while
-      being wrong inside usability.ts. A column missing from a projection and a
-      column that is SQL NULL both mean "this read cannot tell you" — the
-      distinction usability.ts guards (absent vs empty) is between null and '',
-      and '' survives this untouched.
+      🔴 THIS COMMENT USED TO ARGUE THE OPPOSITE, and the argument was wrong in
+      a way that cost a day. It read: "`?? null` COLLAPSES undefined INTO null,
+      and that is correct HERE ... a column missing from a projection and a
+      column that is SQL NULL both mean 'this read cannot tell you'."
+      They do not mean the same thing one layer later. `null` here becomes
+      `unknown` in usability.ts, which becomes "nobody has checked" on screen —
+      a statement about the OWNER. A missing column is a statement about the
+      QUERY. On 2026-08-18 the second was rendered as the first for a day, with
+      2,696 tests green. `selected` keeps them apart at the moment they diverge;
+      `''` versus `null` still survives untouched, which is the other
+      distinction usability.ts turns on.
     */
-    secret_kinds: (row.secret_kinds as string | null) ?? null,
-    factors_required: (row.factors_required as string | null) ?? null,
+    secret_kinds: selected<string>(row, 'secret_kinds'),
+    factors_required: selected<string>(row, 'factors_required'),
     created_at: stringifyTs(row.created_at),
     updated_at: stringifyTs(row.updated_at),
   };
+}
+
+/** `null` stays null; anything else is the owner's yes or no. */
+function boolOrNull(v: unknown): boolean | null {
+  return v === null ? null : Boolean(v);
 }
 
 function stringifyTs(v: unknown): string {

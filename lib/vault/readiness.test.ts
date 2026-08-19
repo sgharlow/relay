@@ -28,7 +28,22 @@ function setup(o: {
   rules?: number;
   verifiers?: number;
   states?: Array<{ trigger_type: string; required_confirmations: number }>;
-  itemRows?: Array<{ id: string; title: string; criticality: string | null; is_root_credential: boolean }>;
+  /*
+    The usability columns are part of this shape as of 2026-08-18, and their
+    presence is the point. A fixture that omits them is a fixture pretending the
+    projection is narrower than it is — which is precisely the state the real
+    query was in while these tests were green. `selected` now refuses the read,
+    so the stub has to look like the row the product actually fetches.
+  */
+  itemRows?: Array<{
+    id: string;
+    title: string;
+    criticality: string | null;
+    is_root_credential: boolean;
+    secret_kinds?: string | null;
+    factors_required?: string | null;
+    depends_on_item_id?: string | null;
+  }>;
   ruledItemIds?: string[];
   recipientNames?: string[];
   /**
@@ -47,7 +62,17 @@ function setup(o: {
     .mockResolvedValueOnce(n(o.rules ?? 1))
     .mockResolvedValueOnce(n(o.verifiers ?? 1))
     .mockResolvedValueOnce({ rows: o.states ?? [{ trigger_type: 'emergency', required_confirmations: 1 }], rowCount: 1 } as never)
-    .mockResolvedValueOnce({ rows: o.itemRows ?? [], rowCount: 0 } as never)
+    .mockResolvedValueOnce({
+      // Columns absent from a fixture are supplied as NULL — an answer the data
+      // can really give — rather than left off, which would mean "not selected".
+      rows: (o.itemRows ?? []).map((r) => ({
+        secret_kinds: null,
+        factors_required: null,
+        depends_on_item_id: null,
+        ...r,
+      })),
+      rowCount: 0,
+    } as never)
     .mockResolvedValueOnce({ rows: (o.ruledItemIds ?? []).map((id) => ({ vault_item_id: id })), rowCount: 0 } as never)
     .mockResolvedValueOnce({ rows: (o.recipientNames ?? ['Sarah Chen']).map((name) => ({ name })), rowCount: 1 } as never)
     .mockResolvedValueOnce({
