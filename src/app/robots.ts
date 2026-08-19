@@ -38,6 +38,16 @@ export default function robots(): MetadataRoute.Robots {
         '/access',
         '/verify',
         '/caregivers/interest',
+        /*
+          The beta-test guide. Unlisted rather than secret — it contains nothing
+          the public repo does not — but it is written for five named people, it
+          says "this is a beta and has not earned your most important secrets
+          yet", and that sentence indexed against the product's own domain would
+          be read by strangers as the product's public self-description. The page
+          also carries its own noindex meta, for the reason stated at the top of
+          this file: robots.txt is advisory.
+        */
+        '/guide/beta',
         '/standby',
         '/helping',
         '/claim',

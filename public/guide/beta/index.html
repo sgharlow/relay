@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Unlisted. Linked from nowhere in the app, excluded in robots.ts, and
+     noindexed here as well — robots.txt is advisory, and a disallowed page can
+     still be indexed from an external link if it is never crawled to see this
+     header. Same both-belts reasoning as /caregivers/interest. -->
+<meta name="robots" content="noindex,nofollow">
+<title>Relay — Beta Test Guide</title>
+<style>
+  @page { size: A4; margin: 16mm 14mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: #211d18; line-height: 1.55; font-size: 10.5pt; margin: 0;
+  }
+  h1 { font-size: 24pt; margin: 0 0 6pt; letter-spacing: -0.02em; }
+  h2 { font-size: 15pt; margin: 0 0 3pt; letter-spacing: -0.01em; }
+  h3 { font-size: 11.5pt; margin: 15pt 0 4pt; }
+  h4 { font-size: 10.5pt; margin: 12pt 0 3pt; }
+  .sub { color: #6b6257; font-size: 10.5pt; margin: 0 0 16pt; }
+  .part { page-break-before: always; border-top: 3px solid #211d18; padding-top: 10pt; margin-top: 0; }
+  .part:first-of-type { page-break-before: auto; }
+  .part-label { font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.1em; color: #a8722c; margin: 0 0 4pt; }
+  .who { font-size: 9pt; color: #6b6257; margin: 0 0 8pt; }
+  .why { background: #f6f3ee; border-left: 3px solid #a8722c; padding: 8pt 12pt; margin: 8pt 0 12pt; font-size: 10pt; }
+  .why b { color: #211d18; }
+  table { width: 100%; border-collapse: collapse; font-size: 9.5pt; margin: 8pt 0 14pt; }
+  th, td { text-align: left; padding: 5pt 6pt; border-bottom: 1px solid #e4ded4; vertical-align: top; }
+  th { background: #f6f3ee; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.04em; color: #6b6257; }
+  ol, ul { margin: 5pt 0 5pt 17pt; padding: 0; }
+  li { margin-bottom: 3pt; }
+  figure { margin: 10pt 0 0; page-break-inside: avoid; text-align: center; }
+  figure img { max-width: 100%; max-height: 210mm; width: auto; height: auto;
+    border: 1px solid #cfc7ba; border-radius: 4px; }
+  figcaption { font-size: 8.5pt; color: #6b6257; margin-top: 4pt; text-align: left; }
+  .phone img { max-width: 52%; }
+  .note { background: #fdf6ea; border: 1px solid #e8d9b8; border-radius: 6px; padding: 9pt 11pt; font-size: 9.5pt; margin: 10pt 0; }
+  .warn { background: #fbeceb; border: 1px solid #e8c4c0; border-radius: 6px; padding: 9pt 11pt; font-size: 9.5pt; margin: 10pt 0; }
+  .never { background: #f2f4f2; border: 1px solid #cfd8cf; border-radius: 6px; padding: 9pt 11pt; font-size: 9.5pt; margin: 10pt 0; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 9pt; background: #f6f3ee; padding: 1pt 3pt; border-radius: 3px; }
+  .lead { font-size: 11.5pt; line-height: 1.6; }
+  .test { page-break-inside: avoid; border: 1px solid #cfc7ba; border-radius: 6px; padding: 10pt 12pt; margin: 12pt 0; }
+  .test h4 { margin-top: 0; }
+  .tag { display: inline-block; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.06em;
+    background: #211d18; color: #fff; padding: 1pt 6pt; border-radius: 3px; margin-right: 6pt; vertical-align: 2px; }
+  .tag.slow { background: #a8722c; }
+  .expect { background: #f6f3ee; padding: 7pt 10pt; border-radius: 4px; margin: 7pt 0 0; font-size: 9.5pt; }
+  .record { border-left: 3px solid #6b6257; padding: 4pt 0 4pt 10pt; margin: 8pt 0 0; font-size: 9.5pt; color: #443c33; }
+  .toc td { border-bottom: none; padding: 2pt 6pt; }
+</style>
+</head>
+<body>
+
+<h1>Relay — Beta Test Guide</h1>
+<p class="sub">How to use Relay as a real person would, what to try deliberately, and what to tell
+us afterwards. Written 2026-08-19 for the first beta cohort.</p>
+
+<p class="lead">Relay is live software holding real things for real people. It has been built and
+tested end to end by the person who wrote it — which is the problem this round is meant to fix.
+<b>Nobody outside the project has ever used it.</b> That is the single gap between where Relay is
+now and a product anyone can honestly say works.</p>
+
+<p>You are one of about five people who will change that. This guide walks you through setting it
+up, tells you exactly which things to try, and — most usefully — tells you what we need to hear
+back. <b>Confusion is the finding.</b> If a screen does not make sense, that is not you failing the
+test; that is the test working.</p>
+
+<div class="why">
+<b>What we are actually measuring.</b> Two things, and neither is "did it crash".
+<b>(1) Does the setup make sense to somebody who did not build it?</b> Every instruction here was
+written by the author, so every place you hesitate is a place the product is unclear.
+<b>(2) Do the people who get named actually accept?</b> That number — how many invited people claim
+their standby account, and how long it takes them — is the one measurement the whole design rests
+on, and it is currently zero because nobody has been asked.
+</div>
+
+<h3>Who is doing what</h3>
+<table>
+<tr><th>Role</th><th>Who</th><th>What you do</th></tr>
+<tr><td><b>Owner</b></td><td>Steve</td><td>Sets everything up, names people, fires the test emergencies, stands them down.</td></tr>
+<tr><td><b>Recipient</b></td><td>Doug, and any tester who wants the fullest experience</td><td>Someone who would <i>receive</i> access. Claims a standby account, waits, and on the test day opens what was set aside.</td></tr>
+<tr><td><b>Verifier</b></td><td>2–3 other testers</td><td>Someone who <i>confirms it is real</i>. Answers one question and never sees anything inside the vault.</td></tr>
+</table>
+
+<p>One person can hold both roles, and the product supports that deliberately — but for a first
+round it is cleaner if each tester holds one, so we learn what each experience is like on its own.</p>
+
+<div class="warn">
+<b>🔴 This is production, not a sandbox.</b> There is one Relay and you are using it. Real emails
+are sent, real accounts are created, and anything you type into the vault is really encrypted and
+really stored. It is also all deletable — there is a working "close my account" that removes
+everything — but nothing you do here is pretend. <b>See §0.3 for what to put in the vault.</b>
+</div>
+
+<h3>What is in this guide</h3>
+<table class="toc">
+<tr><td><b>Part 0</b></td><td>Before you start — ground rules, what to expect, what not to report</td></tr>
+<tr><td><b>Part 1</b></td><td>Owner setup (Steve) — the seven steps, in order, and the one that breaks everything if skipped</td></tr>
+<tr><td><b>Part 2</b></td><td>Standby setup (everyone else) — claiming your account, in about two minutes</td></tr>
+<tr><td><b>Part 3</b></td><td>The tests — eight scenarios, who runs each, what should happen</td></tr>
+<tr><td><b>Part 4</b></td><td>What to tell us — the questions that matter, and how to send them</td></tr>
+<tr><td><b>Part 5</b></td><td>Known limits — things that are deliberate, so you do not report them as faults</td></tr>
+</table>
+
+
+<!-- ============================================================ -->
+<h2 class="part">Part 0 — Before you start</h2>
+<p class="part-label">Ground rules · fifteen minutes of reading that saves an afternoon</p>
+
+<h3>0.1 — Everything happens at relaystandby.com</h3>
+<p>There is no app to install. Everything is a web page, and it works on a phone. If you are a
+recipient or verifier, <b>use your phone for at least part of the test</b> — the emergency case is
+a phone case, and the screens are built for it, so that is where problems will show up.</p>
+
+<div class="note">
+<b>Relay never sends a link that signs you in.</b> Ever. You get a short code and you type it into a
+page you navigated to yourself. If you ever receive a message with a "click here to access" link
+claiming to be Relay, it is not from us — and telling us you got one <i>is</i> a useful finding.
+</div>
+
+<h3>0.2 — Email will probably land in your junk folder</h3>
+<p>This is a known, measured problem and one of the things we would like this round to help settle.
+Relay's mail authenticates perfectly and still gets filed as junk by Microsoft — Outlook.com,
+Hotmail, Live and MSN addresses are the worst affected. Gmail is generally fine.</p>
+
+<ul>
+<li><b>Check your junk/spam folder before saying "nothing arrived".</b></li>
+<li><b>Do tell us where it landed</b> — inbox or junk, and which mail provider you use. That is real
+data we cannot get any other way.</li>
+<li>If it landed in junk, <b>please do not mark it "not junk" yet</b> — tell us first. We are trying
+to measure the filter's default behaviour, and training it changes what we can observe.</li>
+</ul>
+
+<h3>0.3 — What to actually put in the vault</h3>
+<p>Only Steve does this part, but everyone should know the answer, because it shapes what the test
+proves.</p>
+
+<table>
+<tr><th>Use</th><th>Why</th></tr>
+<tr><td><b>One real account you genuinely control and would not miss</b> — a streaming service, a
+loyalty card, a spare email account</td><td>The reveal test is only meaningful if what comes out the
+other end actually works. Ideally one with two-factor turned on, so the code-generation half gets
+exercised too.</td></tr>
+<tr><td><b>Two or three realistic but invented entries</b> — "Main bank", "House insurance", a note
+with instructions</td><td>They render the same screens as real ones and make the vault look like a
+real vault, which is what we are testing the feel of.</td></tr>
+</table>
+
+<div class="warn">
+<b>Do not put in anything you would be hurt by losing control of.</b> Not your primary email, not
+your actual bank, not anything financial that matters. Relay's encryption is real — plaintext never
+leaves the browser and the server genuinely cannot read it — but this is a beta with five users and
+one operator, and the sensible posture for a beta is that it has not earned your most important
+secrets yet. That will change; today it has not.
+</div>
+
+<h3>0.4 — How long things take</h3>
+<p>Some steps are instant and some genuinely are not, by design. Knowing which is which stops you
+waiting for something that already happened, or reporting a bug that is a deliberate delay.</p>
+
+<table>
+<tr><th>Step</th><th>How long</th><th>Notes</th></tr>
+<tr><td>Signing up, claiming, adding items</td><td>Instant</td><td></td></tr>
+<tr><td>Owner fires an emergency → verifiers are asked</td><td>Instant</td><td>Email send is best-effort; see §0.2</td></tr>
+<tr><td>Verifier confirms → access opens</td><td><b>Instant</b></td><td>For emergency, travel, caregiver and business there is no waiting period. Quorum is met, access opens.</td></tr>
+<tr><td>Owner checks in → access closes</td><td>Instant</td><td></td></tr>
+<tr><td>Recipient asks → the owner gets first refusal</td><td><b>2 hours</b> (emergency)<br>4 h travel/business · 6 h caregiver</td><td>Deliberate. The owner is asked before anyone else is bothered. Only when the window runs out are verifiers contacted — see T4.</td></tr>
+<tr><td>Owner stops checking in → the plan arms itself</td><td><b>At least a full day</b></td><td>The shortest check-in interval you can set is one day, and the checker runs hourly. This is the slow test; see T7.</td></tr>
+</table>
+
+
+<!-- ============================================================ -->
+<h2 class="part">Part 1 — Owner setup</h2>
+<p class="part-label">Steve · about forty minutes, once</p>
+
+<p>Seven steps. Do them in order — several depend on the one before. <b>Step 6 is the one that
+silently breaks the whole test if you skip it</b>, so it has its own warning.</p>
+
+<h3>1.1 — Sign up, and keep the recovery codes</h3>
+<p>Go to <code>relaystandby.com</code> and create an account. You will set up an authenticator app
+(the six-digit code kind) — that is the only way back in, so it is not optional.</p>
+
+<figure><img src="/guide/screens/uc25-signup.png" alt="The sign-up screen">
+<figcaption>Sign-up. The authenticator step comes immediately after; do not close the tab until it
+is finished.</figcaption></figure>
+
+<div class="warn">
+<b>Write the recovery codes down on paper.</b> They are shown once. If you lose your phone and have
+no recovery codes, there is no support desk that can let you back in — that is a property of the
+design, not an oversight. Testing the recovery path is <b>T8</b>, and it needs those codes.
+</div>
+
+<h3>1.2 — Put a few things in the vault</h3>
+<p>Add three or four items per §0.3. Each item can hold a username, a password, a two-factor seed
+and recovery codes as separate labelled fields — use at least one item with all four, because that
+is the item that proves the most on the day.</p>
+
+<figure><img src="/guide/screens/uc37-owner-vault-new.png" alt="Adding a vault item">
+<figcaption>Adding an item. The fields are separate on purpose — the person who receives this later
+gets labelled fields, not a wall of text.</figcaption></figure>
+
+<h3>1.3 — Name the people</h3>
+<p>On the People screen, add each tester. Two different jobs, and confusing them is how a plan ends
+up doing nothing:</p>
+<ul>
+<li><b>Recipients</b> receive access to items you assign them, and only after a release opens.</li>
+<li><b>Verifiers</b> answer one question — is this genuine? — and never receive access to anything.</li>
+</ul>
+<p>For this round: Doug as a recipient, and two or three others as verifiers.</p>
+
+<figure><img src="/guide/screens/uc02-owner-circle.png" alt="The People screen">
+<figcaption>The People screen. Each person's line says what is still <i>missing</i>, not merely what
+state they are in — that is the list to work down.</figcaption></figure>
+
+<h3>1.4 — Issue each person a claim code</h3>
+<p>Open a person's panel and issue their invitation. You will get a short code.</p>
+
+<div class="warn">
+<b>The code is readable exactly once.</b> Only a hash is kept. If you close the panel before copying
+it, the invitation has to be cancelled and reissued. Copy it somewhere before you close anything.
+</div>
+
+<p>There is a script that does the whole cohort in one go and captures every code —
+<code>npm run invite:cohort</code>, dry-run by default. It also prints a ready-to-send message per
+person. Using it is the recommended path for a cohort of five.</p>
+
+<h3>1.5 — Deliver the codes yourself</h3>
+<p>Text them, read them out on a call, hand them over. <b>Do not email the code</b> for the people
+you are testing the owner-delivered arm with — half the point of the round is comparing "Steve told
+me" against "Relay emailed me", and doing both to one person destroys that comparison.</p>
+
+<h3>1.6 — 🔴 Make the four-word call. Do not skip this.</h3>
+<p class="who">After each person claims, before any test</p>
+
+<p>Once someone accepts, Relay derives four words from their account. You call them — an actual
+phone call — and check the four words on your screen match the four words on theirs. Then you mark
+them verified.</p>
+
+<figure><img src="/guide/screens/verify-call-owner.png" alt="The owner's side of the verification call">
+<figcaption>Your side of the call.</figcaption></figure>
+<figure><img src="/guide/screens/verify-call-contact.png" alt="The contact's side of the verification call">
+<figcaption>Their side. The words must match. If they do not, something is wrong and the person
+should not be marked verified.</figcaption></figure>
+
+<div class="warn">
+<b>If you skip this, the test will fail in a way that looks like a bug and is not.</b> An unverified
+verifier can press Confirm, and the screen will accept it — but their answer <b>does not count
+toward the quorum</b>, so the release stays stuck and access never opens. Nothing dramatic happens;
+it just quietly does not work. This is deliberate: it is what stops somebody who intercepted an
+invitation from being able to vouch for an emergency. <b>Every verifier must be verified by phone
+before T1 through T5 will do anything.</b>
+</div>
+
+<h3>1.7 — Decide who can reach what, and set the trigger</h3>
+<p>On the Rules screen, connect people to items: which recipient gets which things, under which
+condition. Then on the Triggers screen, set how many verifiers have to agree.</p>
+
+<p><b>For this round, set the emergency trigger to require 1 confirmation.</b> It is the default,
+and it keeps the first test simple — one verifier answers and access opens. Raise it to 2 later for
+T5 if you want to see the quorum arithmetic work.</p>
+
+<figure><img src="/guide/screens/uc03-owner-rules.png" alt="The Rules screen">
+<figcaption>Rules: who can reach what, under which condition.</figcaption></figure>
+<figure><img src="/guide/screens/uc04-owner-triggers.png" alt="The Triggers screen">
+<figcaption>Triggers: how many verifiers must agree, per condition.</figcaption></figure>
+
+<div class="note">
+<b>Before you start the tests, check the readiness banner.</b> The product tells you whether your
+plan would actually work — whether the people you named have accepted, whether anything is set
+aside, whether a quorum is achievable. If it says something is missing, believe it. It is usually
+right and it is the fastest debugging tool in the product.
+</div>
+
+
+<!-- ============================================================ -->
+<h2 class="part">Part 2 — Standby setup</h2>
+<p class="part-label">Doug and the verifiers · about two minutes</p>
+
+<p>This is the part we are watching most closely, because it is the part a real person has to get
+through with no help. <b>Please note how long it takes you and anything that made you pause</b> —
+even for a second, even if you worked it out.</p>
+
+<h3>2.1 — You will be given a short code</h3>
+<p>Steve will send or read you a code. Go to the address he gives you and type the code in. There
+is no link to click, and that is deliberate — Relay never sends a sign-in link, so anything that
+looks like one is not from us.</p>
+
+<figure class="phone"><img src="/guide/screens/uc08-claim-phone.png" alt="The claim screen on a phone">
+<figcaption>Claiming, on a phone. This is the screen we most want your reaction to.</figcaption></figure>
+
+<h3>2.2 — What you have just done, and what you have not</h3>
+<p>You now have a free account that holds nothing of yours. It exists so that on a bad day you can
+simply sign in as yourself, rather than being emailed a code you have never seen before while trying
+to make a decision about someone you love.</p>
+
+<p>Accepting <b>does not</b> open anything, does not give you access to Steve's vault, and does not
+commit you to anything. There is a control for stepping down at any time, and using it is a
+perfectly good test result.</p>
+
+<h3>2.3 — Set up a passkey if you are offered one</h3>
+<p>Worth doing — it is what lets you get back in on a new phone without anyone reissuing anything.
+It is also a thing we would like tested on more than one kind of device.</p>
+
+<h3>2.4 — Expect a phone call from Steve</h3>
+<p>He will read four words. Check they match the four on your screen and tell him. It takes thirty
+seconds and it is the step that makes your answer count for anything later.</p>
+
+<figure class="phone"><img src="/guide/screens/uc07-standby-dashboard.png" alt="The standby dashboard">
+<figcaption>Standing by. Most days this screen says the most valuable thing it can say: nothing is
+open and there is nothing to do.</figcaption></figure>
+
+<div class="record">
+<b>Record for Part 4:</b> how long the claim took, whether the email (if you got one) was in your
+inbox or junk, what mail provider you use, and the first moment you were unsure what to do.
+</div>
+
+
+<!-- ============================================================ -->
+<h2 class="part">Part 3 — The tests</h2>
+<p class="part-label">Eight scenarios · run T1 first, the rest in any order</p>
+
+<p>Each test says who runs it, what to do, and what should happen. <b>If what happens differs from
+"what should happen", that is the finding</b> — write down what you saw and roughly when.</p>
+
+<div class="test">
+<h4><span class="tag">T1</span> The whole thing, end to end</h4>
+<p class="who">Everyone · start here · about 15 minutes</p>
+<p>The one test that matters most, because it is the product's actual purpose.</p>
+<ol>
+<li><b>Steve</b> fires an emergency from the Triggers screen and confirms it.</li>
+<li><b>Verifier</b> gets asked one question and answers yes. (Check junk — §0.2.)</li>
+<li><b>Doug</b> opens his standby screen and finds access is open.</li>
+<li><b>Doug</b> presses Reveal and reads what was set aside — then <b>actually tries the credential</b>
+on the real service, if it was a real one.</li>
+<li><b>Steve</b> checks in, which closes it again.</li>
+<li><b>Doug</b> refreshes and confirms it is shut.</li>
+</ol>
+<div class="expect"><b>Should happen:</b> access opens the moment the verifier answers — no waiting
+period. Doug sees labelled fields (username, password, and a live six-digit code if that item had
+two-factor), not a blob of text. When Steve checks in, Doug's access closes and the screen says so.
+<b>The credential should actually work on the real service.</b></div>
+<div class="record"><b>Record:</b> did the verifier's email arrive, and where? Was it obvious to Doug
+that something had opened? Did the revealed detail actually let him in?</div>
+</div>
+
+<figure class="phone"><img src="/guide/screens/uc38-recipient-reveal-phone.png" alt="The reveal screen on a phone">
+<figcaption>T1, step 4 — what Doug should see. Labelled fields, password masked until asked for, and
+a live two-factor code if the item had one.</figcaption></figure>
+
+<div class="test">
+<h4><span class="tag">T2</span> Doug asks, and Steve is fine</h4>
+<p class="who">Doug, then Steve · 5 minutes</p>
+<ol>
+<li><b>Doug</b> uses "ask them to open it" on his standby screen and gives a reason.</li>
+<li><b>Steve</b> gets asked first, and answers <b>"I'm fine"</b>.</li>
+<li><b>Doug</b> sees the outcome.</li>
+</ol>
+<div class="expect"><b>Should happen:</b> nothing opens, no verifier is ever contacted, and Doug is
+told plainly. This is the false-alarm path and it exists so that the verifiers do not get bothered
+for nothing — a verification network that gets pinged constantly stops answering.</div>
+<div class="record"><b>Record:</b> was Doug's ask easy to find? Did the refusal feel clear or curt?</div>
+</div>
+
+<div class="test">
+<h4><span class="tag">T3</span> Doug asks, and Steve says yes</h4>
+<p class="who">Doug, then Steve · 5 minutes</p>
+<p>Same as T2, but Steve <b>approves</b> instead.</p>
+<div class="expect"><b>Should happen:</b> access opens immediately, with no verifier involved at all.
+The reasoning: if the owner is sitting right there agreeing, asking three other people to vote on it
+is absurd. Steve should then check in to close it.</div>
+</div>
+
+<div class="test">
+<h4><span class="tag">T4</span> A verifier says no</h4>
+<p class="who">Steve and one verifier · 5 minutes</p>
+<ol>
+<li><b>Steve</b> fires an emergency.</li>
+<li><b>The verifier</b> answers <b>no</b> — or abstains, if offered.</li>
+</ol>
+<div class="expect"><b>Should happen:</b> nothing opens. The refusal is recorded and Steve can see
+it. A "no" should be as easy to give as a "yes" — if declining felt awkward or hidden, say so,
+because a verifier who feels pressured to agree is a broken safeguard.</div>
+</div>
+
+<div class="test">
+<h4><span class="tag">T5</span> Two verifiers required</h4>
+<p class="who">Steve and two verifiers · 10 minutes</p>
+<p>Steve raises the emergency trigger to require <b>2</b> confirmations, then fires it. One verifier
+answers yes.</p>
+<div class="expect"><b>Should happen:</b> nothing opens on one answer — the tally shows 1 of 2. When
+the second verifier answers, access opens. If it opens on the first answer, that is a serious
+finding and worth an immediate message.</div>
+</div>
+
+<div class="test">
+<h4><span class="tag">T6</span> Standing down, and stepping away</h4>
+<p class="who">Anyone · 5 minutes</p>
+<p>A verifier or recipient uses the control to step down from Steve's circle.</p>
+<div class="expect"><b>Should happen:</b> it works without a fight, Steve is told, and his readiness
+banner now says the plan is short a person. Saying no should be genuinely easy — that is a
+deliberate property, and if it felt like a dark pattern we want to know.</div>
+</div>
+
+<div class="test">
+<h4><span class="tag slow">T7</span> The slow one — Steve stops checking in</h4>
+<p class="who">Steve · needs at least a full day of doing nothing</p>
+<p>Set the check-in interval to its minimum (one day) and then simply do not check in. Leave it
+alone and get on with your life.</p>
+<div class="expect"><b>Should happen:</b> after the interval passes, the plan arms itself and the
+people you named are asked — without you doing anything. The checker runs hourly, so expect it
+within an hour of the interval elapsing rather than to the second. <b>This is the test that proves
+the product works when the owner cannot act</b>, which is the entire premise, so it is worth the
+wait even though it is dull.</div>
+<div class="record"><b>Record:</b> did it fire at roughly the right time? Was the warning you got
+beforehand (if any) enough notice?</div>
+</div>
+
+<div class="test">
+<h4><span class="tag">T8</span> Losing your phone</h4>
+<p class="who">Steve, and one other tester if willing · 10 minutes</p>
+<p>Sign out, then get back in using a <b>recovery code</b> instead of the authenticator — pretend
+the phone is gone. Do this while you still have the codes in front of you.</p>
+<div class="expect"><b>Should happen:</b> you get back in, and the code you used is spent and cannot
+be reused. The count of remaining codes should visibly drop.</div>
+<div class="warn" style="margin-top:8pt"><b>Do not test this by actually destroying your access.</b>
+If you have no recovery codes, skip T8 and say so — there is no way back and we would rather have a
+tester than a data point.</div>
+</div>
+
+<figure><img src="/guide/screens/uc05-owner-audit.png" alt="The audit log">
+<figcaption>After the tests, the audit log should read as a plain account of everything that
+happened. If it does not match what you remember doing, that is worth reporting.</figcaption></figure>
+
+
+<!-- ============================================================ -->
+<h2 class="part">Part 4 — What to tell us</h2>
+<p class="part-label">Everyone · fifteen minutes at the end</p>
+
+<p>This is the part that makes the whole exercise worth doing. Rough notes are fine — bullet points
+in an email are perfect. Send to <code>hello@relaystandby.com</code>, or use the form on
+<code>relaystandby.com/help</code>, or just tell Steve.</p>
+
+<h3>The five questions we most need answered</h3>
+<ol>
+<li><b>Where did you first hesitate?</b> The exact screen or sentence where you were not sure what
+to do. Even if you worked it out in five seconds. <i>Especially</i> then.</li>
+<li><b>Did you understand what you were agreeing to</b> when you claimed your account? In your own
+words, what does being a recipient or a verifier mean?</li>
+<li><b>Would you have accepted this from someone who was not Steve?</b> If a friend sent you this
+out of the blue, would you have done it, ignored it, or assumed it was a scam?</li>
+<li><b>Did anything feel untrustworthy?</b> Wording, design, a request that felt like too much. This
+is a product asking people to hand over their family's accounts; anything that made you uneasy is a
+finding, not a nitpick.</li>
+<li><b>Would you use this for real?</b> Honestly. And if not, what is the specific thing that would
+have to be true first? A "no, because…" is more useful to us than a polite yes.</li>
+</ol>
+
+<h3>Also worth a line each, if you noticed</h3>
+<ul>
+<li>Where the emails landed — inbox or junk — and which provider you use.</li>
+<li>Roughly how long claiming took you, from opening the message to being done.</li>
+<li>Anything that looked broken on your phone specifically.</li>
+<li>Any word or phrase that struck you as jargon.</li>
+<li>Anything that took more taps than it should have.</li>
+</ul>
+
+<div class="why">
+<b>Please do not soften it.</b> The most expensive outcome of this round would be five people being
+polite about something they would never actually use. Steve has been building this alone for months
+and is too close to it to see what is confusing — that is the entire reason you are here. A blunt
+"I had no idea what this screen wanted" is the most valuable sentence you can send.
+</div>
+
+
+<!-- ============================================================ -->
+<h2 class="part">Part 5 — Known limits</h2>
+<p class="part-label">Deliberate · please do not report these as faults</p>
+
+<table>
+<tr><th>What you will notice</th><th>Why</th></tr>
+<tr><td><b>Email often lands in junk</b>, especially Outlook/Hotmail/Live</td><td>Known and measured.
+Mail authenticates correctly and Microsoft files it as junk anyway. Being worked. Tell us where it
+landed, but it is not news that it happened.</td></tr>
+<tr><td><b>Nothing about wills, probate or inheritance</b></td><td>Removed from the product on
+purpose. Relay covers the situation where someone is unreachable and may come back. The permanent
+handoff after death was deliberately taken out and is not coming back in this form.</td></tr>
+<tr><td><b>No text messages</b></td><td>Not built yet. Everything is email plus the codes Steve hands
+over himself. Text-message alerts need a carrier registration with a multi-week lead time, which has
+not been started.</td></tr>
+<tr><td><b>No mobile app</b></td><td>By design for now. It is a web page that works on a phone.</td></tr>
+<tr><td><b>It does not cost you anything</b></td><td>Payment works and is live, but the paywall is off
+during the beta, so everything is available to everyone.</td></tr>
+<tr><td><b>You cannot edit one field of a vault item</b> — changing a password means re-entering the
+whole item</td><td>Known and deliberate for now. It exists as a limitation because with a handful of
+items nobody is retyping much; if it annoys you during testing, <b>say so</b>, because that is
+exactly the evidence that would change it.</td></tr>
+<tr><td><b>The owner has to phone each person</b></td><td>Not laziness — the four-word call is the
+only step that proves the person who accepted is the person Steve meant. Everything else reduces to
+trusting an email inbox, which is the thing most likely to be compromised in the exact scenario the
+product exists for.</td></tr>
+</table>
+
+<h3>If you get stuck</h3>
+<ul>
+<li><b>The full user guide</b> is at <code>relaystandby.com/help</code> — it covers every screen in
+much more detail than this document.</li>
+<li><b>Nothing you can press will destroy Steve's data.</b> Releases are reversible; he checks in and
+they close. Explore freely — poking at things is the job.</li>
+<li><b>If something looks properly broken</b>, note the time and roughly what you had just done. That
+is enough to find it in the logs afterwards.</li>
+</ul>
+
+<div class="never">
+<b>Finally, the thing that is easy to forget:</b> you are not testing whether the software runs. It
+runs — that has been checked to death by machines. You are testing whether it makes sense to a human
+being who did not build it, and whether the promise it makes is one you would actually rely on. Only
+you can answer that, and nobody has yet.
+</div>
+
+<p style="margin-top:18pt; color:#6b6257; font-size:9.5pt;">Thank you — genuinely. Five people
+spending an hour on this is worth more to Relay than any amount of further building.</p>
+
+</body>
+</html>

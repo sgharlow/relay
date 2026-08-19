@@ -247,6 +247,17 @@ const nextConfig = {
     return [
       { source: '/guide', destination: '/guide/index.html' },
       /*
+        The beta-test guide, same mechanism and the same reason — a directory
+        does not resolve to its index.html, so without this the page 404s and
+        the PDF generator prints nothing. Unlisted rather than secret: disallowed
+        in robots.ts, noindexed in its own <head>, and linked from nowhere in the
+        app. It exists as a served page because scripts/guide-pdf.mjs prints the
+        SERVED document — the guide's images are root-absolute, and printing from
+        file:// resolves them against the filesystem root and produces a PDF of
+        broken images.
+      */
+      { source: '/guide/beta', destination: '/guide/beta/index.html' },
+      /*
         Browsers probe /favicon.ico by convention even when the document links an
         icon, and Next's app-router convention file is `icon.svg` — so every page
         load was producing a 404. Harmless in itself; the cost is that a log full

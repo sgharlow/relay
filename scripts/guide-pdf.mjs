@@ -44,7 +44,29 @@ const PLAYWRIGHT =
 const { chromium } = await import(PLAYWRIGHT);
 
 const BASE = process.env.GUIDE_BASE || 'http://localhost:3100';
-const OUT = 'public/guide/relay-guide.pdf';
+
+/*
+  Which document, and where the PDF lands. Defaulted to the user's guide so
+  `node scripts/guide-pdf.mjs` behaves exactly as it always has; parameterised
+  2026-08-19 so the beta-test guide could be printed by the SAME script rather
+  than a copied one. Every hard-won lesson in the header above — eager images,
+  networkidle vs `next dev`, printing the served page rather than the file,
+  failing on a 404 asset — applies to any guide, and a second copy of this file
+  would be a second place for those lessons to rot.
+
+    GUIDE_PATH=/guide/beta GUIDE_OUT=docs/Relay-Beta-Test-Guide.pdf node scripts/guide-pdf.mjs
+
+  ⚠️ RUN THAT FROM POWERSHELL, NOT GIT BASH. MSYS rewrites any argument that
+  looks like a Unix absolute path into a Windows one, so `GUIDE_PATH=/guide/beta`
+  arrives as `C:/Program Files/Git/guide/beta` and Playwright fails with
+  "Cannot navigate to invalid URL" against a nonsense address. Setting
+  MSYS_NO_PATHCONV is NOT the fix — the portfolio note on it records that
+  exporting it globally breaks this script's own node paths. PowerShell:
+
+    $env:GUIDE_PATH='/guide/beta'; $env:GUIDE_OUT='docs/Relay-Beta-Test-Guide.pdf'; node scripts/guide-pdf.mjs
+*/
+const PATH = process.env.GUIDE_PATH || '/guide';
+const OUT = process.env.GUIDE_OUT || 'public/guide/relay-guide.pdf';
 
 const browser = await chromium.launch();
 const page = await browser.newPage();
@@ -57,7 +79,7 @@ page.on('response', (r) => {
   }
 });
 
-await page.goto(`${BASE}/guide`, { waitUntil: 'networkidle' });
+await page.goto(`${BASE}${PATH}`, { waitUntil: 'networkidle' });
 
 // Every <img> decoded before printing. `networkidle` says the requests finished;
 // it does not say the bitmaps are ready to paint, and a PDF captured a beat too
