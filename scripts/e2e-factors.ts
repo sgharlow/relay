@@ -90,8 +90,26 @@ interface ListItem {
   title: string;
   criticality: string | null;
   is_root_credential: boolean;
+  /*
+    Optional on the WIRE, required when handed to `assessPreparedness` — the
+    list API may be older than this script. `?? null` at the call site is the
+    seam between the two, and it is written out rather than inferred because
+    the day these were optional on the rule's own input, a caller forgot to
+    select them and the whole rule went inert on the banner (2026-08-18).
+  */
   secret_kinds?: string | null;
   factors_required?: string | null;
+  depends_on_item_id?: string | null;
+}
+
+/** The shape the rule demands, from the shape the API returns. */
+function forPreparedness(items: ListItem[]) {
+  return items.map((i) => ({
+    ...i,
+    secret_kinds: i.secret_kinds ?? null,
+    factors_required: i.factors_required ?? null,
+    depends_on_item_id: i.depends_on_item_id ?? null,
+  }));
 }
 
 async function main(): Promise<void> {
@@ -172,7 +190,7 @@ async function main(): Promise<void> {
     });
 
     const before = assessPreparedness({
-      items: afterCreate.items,
+      items: forPreparedness(afterCreate.items),
       ruledItemIds: [itemId],
       verifierCount: 1,
     });
@@ -194,7 +212,7 @@ async function main(): Promise<void> {
     );
 
     const after = assessPreparedness({
-      items: afterDeclare.items,
+      items: forPreparedness(afterDeclare.items),
       ruledItemIds: [itemId],
       verifierCount: 1,
     });
@@ -241,7 +259,7 @@ async function main(): Promise<void> {
     await patch(`/api/vault/items/${editId}`, { factors_required: ['totp'] });
 
     const beforeEdit = (await call('/api/vault/items')).body as { items: ListItem[] };
-    const bEdit = assessPreparedness({ items: beforeEdit.items, ruledItemIds: [itemId, editId], verifierCount: 1 });
+    const bEdit = assessPreparedness({ items: forPreparedness(beforeEdit.items), ruledItemIds: [itemId, editId], verifierCount: 1 });
 
     // Re-encrypt WITHOUT the code — the edit-away. PUT re-derives.
     const withoutCode = await svc2.encryptForUpload(
@@ -266,7 +284,7 @@ async function main(): Promise<void> {
       `secret_kinds=${JSON.stringify(editedItem?.secret_kinds)}`,
     );
 
-    const aEdit = assessPreparedness({ items: afterEdit.items, ruledItemIds: [itemId, editId], verifierCount: 1 });
+    const aEdit = assessPreparedness({ items: forPreparedness(afterEdit.items), ruledItemIds: [itemId, editId], verifierCount: 1 });
     check(
       '🔴 THE MERGE BLOCKER: editing a code away makes the item unreachable, not a stale usable',
       bEdit.reachable > aEdit.reachable,

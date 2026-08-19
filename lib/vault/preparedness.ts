@@ -21,31 +21,49 @@
  * Requirements: J4-R13, CC9
  */
 
-import { itemUsability } from './usability';
+import { itemUsability, unknownCause } from './usability';
 
 export interface PreparednessInput {
   /**
    * Every vault item, with the fields that decide whether it matters and
    * whether anyone could actually use it.
    *
-   * The three usability fields are OPTIONAL, and that is deliberate: the
-   * columns behind them arrive in a migration, and a caller compiled against a
-   * cluster that has not had it yet must keep working. Absent reads as
-   * `unknown`, never as "demands nothing" — see `usability.ts`.
+   * 🔴 THE THREE USABILITY FIELDS WERE OPTIONAL AND THAT COST THE WHOLE RULE.
+   * The reasoning was sound — the columns arrive in a migration, and a caller
+   * compiled against a cluster without it must keep working — but the tolerance
+   * was applied to the wrong half. `assessReadiness` selected vault items
+   * WITHOUT those columns, it compiled, and from the day migration 035 shipped
+   * every item reaching this function from the banner read `unknown`:
+   * `checkingStarted` was permanently false and the second-factor correction
+   * never fired on the one surface that renders the sentence. Nothing was red.
+   * The unit tests supply the columns themselves, and so does `verify:factors`,
+   * so both proved the rule through a path the product does not use.
+   *
+   * The tolerance belongs to the VALUE, which may be `null`, not to the KEY,
+   * which a caller has to think about. Writing `null` down is a decision;
+   * omitting a column is an accident, and now it is a build failure.
+   * Absent still reads as `unknown`, never as "demands nothing" — see
+   * `usability.ts`.
    */
   items: {
     id: string;
     title: string;
     criticality: string | null;
     is_root_credential: boolean;
-    secret_kinds?: string | null;
-    factors_required?: string | null;
-    depends_on_item_id?: string | null;
+    secret_kinds: string | null;
+    factors_required: string | null;
+    depends_on_item_id: string | null;
   }[];
   /** vault_item_id for every access rule that exists. */
   ruledItemIds: string[];
   /** How many people could confirm an emergency is real. */
   verifierCount: number;
+}
+
+/** An item the owner can act on, so a prompt can name it and address it. */
+export interface NamedItem {
+  id: string;
+  title: string;
 }
 
 export interface Preparedness {
@@ -57,8 +75,20 @@ export interface Preparedness {
   unreachable: string[];
   /** Titles of items a recipient could open and still not get into. Capped alike. */
   blocked: string[];
-  /** How many reachable items nobody has checked for a second factor. */
-  unchecked: number;
+  /**
+   * The unchecked items, split by WHY — because the two causes have two
+   * different remedies and one number could not carry both. See `unknownCause`.
+   */
+  /** Nobody has said what the account demands. One tap answers it. */
+  unasked: number;
+  /** The owner said it demands a code; what the entry holds was never declared. */
+  undeclared: number;
+  /** Known on both counts, and the route it recovers through is itself unknown. */
+  unresolved: number;
+  /** The unasked items by name, so the owner can answer them where they stand. */
+  unaskedItems: NamedItem[];
+  /** The undeclared items by name — these need a re-save, not an answer. */
+  undeclaredItems: NamedItem[];
   /** Whether ANY item in this vault has ever been declared. See the sentence. */
   checkingStarted: boolean;
   /** Structural gaps that are not about a specific item. */
@@ -96,11 +126,23 @@ export function assessPreparedness(input: PreparednessInput): Preparedness {
   const usabilityOf = new Map(
     usabilityInput.map((i) => [i.id, itemUsability(i, usabilityInput)] as const),
   );
+  const byId = new Map(usabilityInput.map((i) => [i.id, i] as const));
 
   const openable = mattering.filter((i) => ruled.has(i.id));
   const blockedItems = openable.filter((i) => usabilityOf.get(i.id) === 'blocked');
-  const uncheckedItems = openable.filter((i) => usabilityOf.get(i.id) === 'unknown');
   const reachable = openable.length - blockedItems.length;
+
+  /*
+    The unchecked items, split by cause. The three buckets are exhaustive by
+    construction — `unknownCause` returns one of three and every unknown item
+    goes through it — which is the property that stops an item falling silently
+    out of both the sentence and the prompt.
+  */
+  const uncheckedItems = openable.filter((i) => usabilityOf.get(i.id) === 'unknown');
+  const byCause = new Map(uncheckedItems.map((i) => [i.id, unknownCause(byId.get(i.id)!)] as const));
+  const withCause = (cause: string) => uncheckedItems.filter((i) => byCause.get(i.id) === cause);
+  const unaskedItems = withCause('unasked');
+  const undeclaredItems = withCause('undeclared');
 
   /*
     🔴 WHY AN UNCHECKED VAULT IS LEFT ALONE. Until the migration lands and a
@@ -130,7 +172,11 @@ export function assessPreparedness(input: PreparednessInput): Preparedness {
     mattering: mattering.length,
     unreachable: unreachableItems.slice(0, NAME_LIMIT).map((i) => i.title),
     blocked: blockedItems.slice(0, NAME_LIMIT).map((i) => i.title),
-    unchecked: uncheckedItems.length,
+    unasked: unaskedItems.length,
+    undeclared: undeclaredItems.length,
+    unresolved: uncheckedItems.length - unaskedItems.length - undeclaredItems.length,
+    unaskedItems: unaskedItems.slice(0, NAME_LIMIT).map((i) => ({ id: i.id, title: i.title })),
+    undeclaredItems: undeclaredItems.slice(0, NAME_LIMIT).map((i) => ({ id: i.id, title: i.title })),
     checkingStarted,
     gaps,
     ready:
@@ -156,11 +202,11 @@ export function preparednessSentence(p: Preparedness, whoLabel: string): string 
  * do not know yet".
  */
 function withUncheckedClause(sentence: string, p: Preparedness): string {
-  if (!p.checkingStarted || p.unchecked === 0) return sentence;
+  if (!p.checkingStarted || p.unasked === 0) return sentence;
   const stem = sentence.replace(/\.$/, '');
-  return p.unchecked === 1
+  return p.unasked === 1
     ? `${stem} — though nobody has checked whether one of them needs a code as well.`
-    : `${stem} — though nobody has checked whether ${p.unchecked} of them need a code as well.`;
+    : `${stem} — though nobody has checked whether ${p.unasked} of them need a code as well.`;
 }
 
 function baseSentence(p: Preparedness, whoLabel: string): string {
@@ -203,4 +249,28 @@ export function missingClause(p: Preparedness): string {
   if (parts.length === 0) return '';
   if (parts.length === 1) return `Missing: ${parts[0]}.`;
   return `Missing: ${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}.`;
+}
+
+/**
+ * The second half of the honest answer, as its own line.
+ *
+ * Deliberately NOT appended to `preparednessSentence`. The unasked clause is a
+ * question the owner can answer where they stand; this one is a different act
+ * on different items, and running the two together produces a sentence nobody
+ * finishes reading. The banner renders them as separate lines for the same
+ * reason `missingClause` already is one.
+ *
+ * ⚠️ IT NAMES THE ONLY REMEDY THERE IS. Relay cannot read the entry, and an
+ * update replaces the payload rather than editing it, so re-saving the item is
+ * not one option among several — it is the single act that records what an item
+ * holds. Saying "check this item" instead would send the owner looking for a
+ * control that does not exist.
+ */
+export function undeclaredClause(p: Preparedness): string {
+  if (p.undeclared === 0) return '';
+  return p.undeclared === 1
+    ? 'You said one of them needs a code as well, and Relay cannot see whether your entry holds it — ' +
+        'open it and save it again to say.'
+    : `You said ${p.undeclared} of them need a code as well, and Relay cannot see whether your entry holds it — ` +
+        'open each one and save it again to say.';
 }

@@ -95,6 +95,20 @@ async function signIn(email: string, secret: string): Promise<void> {
   });
 }
 
+/*
+  🔴 EVERY SETUP CALL IS CHECKED SINCE 2026-08-18, AND THAT IS THE WHOLE LESSON.
+  This script fired POSTs and read none of the responses, so when the vault
+  create contract gained a required field and two closed enums drifted, it went
+  on printing an email address and a secret while creating an owner with NOTHING
+  in it. The accessibility audit then ran against empty states across 36 pages
+  and reported "clean" — a green about screens nobody was looking at.
+*/
+function expect2xx(what: string, res: { status: number; body: unknown }): void {
+  if (res.status >= 200 && res.status < 300) return;
+  throw new Error(`fixture ${what} refused: HTTP ${res.status} ${JSON.stringify(res.body)} — ` +
+    'an audit against an empty account is a green that means nothing');
+}
+
 async function create(): Promise<void> {
   const email = assertUndeliverable(`relay-a11y-${Date.now()}@relay.test`);
 
@@ -118,25 +132,85 @@ async function create(): Promise<void> {
     account is never decrypted, only LOOKED at, and axe reads the accessibility
     tree rather than the plaintext.
   */
+  const itemIds: string[] = [];
   for (const item of [
-    { title: 'Primary email', type: 'account', service_name: 'Fastmail', category: 'email' },
+    // ⚠️ `category` is a closed enum (see the create route's validator). This
+    // list carried 'email' and 'insurance', which are not in it — a second
+    // reason every create here was refused 400.
+    { title: 'Primary email', type: 'account', service_name: 'Fastmail', category: 'communication' },
     { title: 'Main bank', type: 'account', service_name: 'Chase', category: 'finance' },
-    { title: 'House insurance', type: 'document', service_name: 'Aviva', category: 'insurance' },
+    { title: 'House insurance', type: 'document', service_name: 'Aviva', category: 'personal' },
   ]) {
-    await call(
+    /*
+      🔴 `secret_kinds` IS REQUIRED ON EVERY WRITE since D1 (2026-08-18) — the
+      fail-closed boundary that stops a blob claiming a factor it does not hold.
+      This script did not send it, so every create here has been refused 400 and
+      THE ACCESSIBILITY AUDIT HAS BEEN RUNNING AGAINST AN EMPTY VAULT: `/vault`,
+      the readiness banner and every populated list rendered their empty states,
+      and the run still printed "clean". Found 2026-08-18 by asking what the
+      audited owner's readiness payload actually contained.
+
+      `password` is what this placeholder stands for. The ciphertext is not a
+      real payload and is never decrypted — the declaration describes the entry
+      this fixture is pretending to be, and the boundary's point is that it must
+      be stated rather than assumed.
+    */
+    const made = await call(
       '/api/vault/items',
-      json({ ...item, ciphertext: 'AAAAAAAAAAAAAAAAAAAAAA==', wrapped_data_key: 'AAAAAAAAAAAA', kms_key_id: 'audit-placeholder' }),
+      json({
+        ...item,
+        ciphertext: 'AAAAAAAAAAAAAAAAAAAAAA==',
+        wrapped_data_key: 'AAAAAAAAAAAA',
+        kms_key_id: 'audit-placeholder',
+        secret_kinds: 'password',
+      }),
     );
+    if (made.status !== 201 && made.status !== 200) {
+      throw new Error(`fixture item "${item.title}" refused: HTTP ${made.status} ${JSON.stringify(made.body)} — ` +
+        'an audit against an empty vault is a green that means nothing');
+    }
+    const id = (made.body as { id?: string }).id;
+    if (id) itemIds.push(id);
   }
 
-  await call(
+  const recipient = await call(
     '/api/recipients',
-    json({ name: 'Sam Rivera', email: assertUndeliverable('sam@relay.test'), relationship: 'family' }),
+    json({
+      name: 'Sam Rivera',
+      email: assertUndeliverable('sam@relay.test'),
+      // `relationship` is a closed enum like `category` above — 'family' is not
+      // in it. Another silent 400 this script never looked at.
+      relationship: 'family_other',
+      phone: null,
+      role: 'recipient',
+    }),
   );
-  await call(
+  expect2xx('recipient', recipient);
+
+  /*
+    🔴 ACCESS RULES, ADDED 2026-08-18, AND WITHOUT THEM THIS FIXTURE COULD NOT
+    AUDIT THE SCREEN IT EXISTS FOR. Items and a named contact with NO RULE is a
+    state no real owner stays in, and it is the one state where the readiness
+    banner renders almost nothing: `assessPreparedness` only reports on items
+    something can actually reach, so the preparedness card — the block on EVERY
+    owner screen, and now the place where the second-factor question is asked —
+    was empty in every audited page. The audit was green about a component it
+    had never seen populated.
+  */
+  const recipientId = (recipient.body as { id?: string }).id;
+  if (!recipientId) throw new Error('fixture recipient has no id — the rules below would create nothing');
+  for (const vaultItemId of itemIds) {
+    const rule = await call(
+      '/api/rules',
+      json({ recipient_id: recipientId, vault_item_id: vaultItemId, trigger_type: 'emergency', scope: 'view', reversible: true }),
+    );
+    expect2xx('access rule', rule);
+  }
+  const verifier = await call(
     '/api/verifiers',
     json({ name: 'Dr Ade Okafor', email: assertUndeliverable('ade@relay.test') }),
   );
+  expect2xx('verifier', verifier);
 
   console.log(`EMAIL ${email}`);
   console.log(`SECRET ${secret}`);

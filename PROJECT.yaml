@@ -1278,6 +1278,64 @@ deferred:
   - id: secret-kinds-declaration-is-opt-in-by-discovery      # "D3"
     owner: claude
     opened: 2026-08-18
+    closed:
+      date: 2026-08-18
+      what_shipped: "The readiness banner ASKS. Under the preparedness sentence it names up to two
+        items that matter, have an access rule and have never been asked about, each with both
+        answers as one tap — `Needs a code` and `Password is enough`, offered with equal weight
+        because a prompt that only ever offers the alarming answer teaches an owner it is an
+        accusation. Answering re-reads readiness, so the sentence moves in the same breath."
+      the_second_state: "`unchecked` was one number over two situations with two different
+        remedies, and splitting it was part of the work rather than a refinement of it. `unasked`
+        is a question one tap answers. `undeclared` is an item the owner HAS answered where no
+        client ever declared what the entry holds — every item created before 2026-08-18 — and NO
+        tap can resolve it: the server cannot read ciphertext and an update replaces the payload,
+        so re-saving the item is the only act that records what it holds. It gets a sentence
+        saying exactly that, and no button, because a button there could not work.
+        A third bucket, `unresolved`, is counted so the three sum to the old total — an item that
+        falls out of both the sentence and the prompt is the silent falsehood this rule exists to
+        remove."
+      # 🔴 THE DEFECT THE PROMPT FOUND, WHICH WAS NOT THE PROMPT.
+      found_while_verifying: "assessReadiness selected `id, title, criticality,
+        is_root_credential` from vault_items and dropped the three usability columns AGAIN in its
+        own projection — two independent omissions, so fixing either alone would have changed
+        nothing. They were optional on `PreparednessInput`, so it compiled. Every item reached the
+        rule as `unknown`, `checkingStarted` was permanently false, and THE ENTIRE MIGRATION-035
+        CORRECTION WAS INERT ON THE BANNER from the day it shipped — the one surface that renders
+        the sentence. Nothing was red: the unit tests supply the columns themselves, and so does
+        `verify:factors`, so both proved the rule through a path the product does not use. It took
+        rendering the prompt and watching it ask about an item that had just been answered.
+        Fixed, and made structural: the columns are REQUIRED on that input now, so a caller that
+        forgets them fails the build. The tolerance belongs to the value, which may be null, not
+        to the key, which a caller has to think about."
+      also_found: "`scripts/disposable-owner.ts` — the fixture the accessibility audit runs
+        against — fired POSTs and read none of the responses. The vault create contract gained a
+        required `secret_kinds` (D1) and two closed enums had drifted, so every item creation had
+        been refused 400 in silence: THE AUDIT WAS SWEEPING 36 EMPTY PAGES AND REPORTING THEM
+        CLEAN. It now checks every setup call and creates the access rules that make a banner
+        render at all, since an owner with items and no rules is a state no real owner stays in."
+      proof: "`verify:live` five-walk chain exit 0 (measured directly, not through a pipe);
+        `verify:factors` 15/15 twice; `npm run gate` exit 0; axe 0 serious/critical across 36
+        pages WITH the prompt on screen — re-run after proving the earlier sweep had seen nothing;
+        and the behaviour watched in a browser against the production cluster: two items prompted,
+        one answered, the sentence moving from `could reach both of the things that matter —
+        though nobody has checked whether 2 of them need a code as well` to `could reach 1 of the
+        2 things that matter — though nobody has checked whether one of them needs a code as
+        well`, with `Missing: a code for Checking account` appearing and the answered item leaving
+        the prompt. Disposable account closed, HTTP 200."
+      guards: "lib/ops/the-question-is-asked.test.ts — the banner names the unasked items, offers
+        BOTH answers, says what to do about the undeclared ones, every write path goes through one
+        `setFactorsRequired`, and the readiness query selects the columns the rule reads. Plus a
+        type-level `@ts-expect-error` test that fails the build if omitting those columns ever
+        compiles again. All red-green verified by breaking what they guard."
+      what_it_does_not_do: "The vault row's own control does not re-render when the banner is
+        answered on the same screen — the list is a separate component with its own fetch, so the
+        row still reads `Needs a code?` until the page is reloaded. The sentence is authoritative
+        and correct; the row is stale. Left rather than wired together, because a cross-component
+        refresh is a new pattern in this codebase and this is a cosmetic disagreement, not a wrong
+        number. Worth fixing if anyone reports it."
+    superseded_note: "The entry below is what was open. Kept whole rather than deleted."
+
     what: "The owner's 'does this account need a code as well?' control is LIVE on the
       vault row, and nothing anywhere ASKS the question. It is reachable only by an
       owner already looking at the item they would have had to doubt first."

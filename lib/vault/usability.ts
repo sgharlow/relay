@@ -150,6 +150,33 @@ export function itemUsability(
 }
 
 /**
+ * WHY an item reads `unknown` — three causes with three different remedies.
+ *
+ * 🔴 THE COUNT THAT HID THE DIFFERENCE. `assessPreparedness` had one number for
+ * every unknown item, and the two common causes are not the same problem:
+ *
+ *   `unasked`     — nobody has said what the account demands. One tap answers it.
+ *   `undeclared`  — the owner HAS said it demands a code, and no client ever
+ *                   declared what the entry holds. Every item created before
+ *                   2026-08-18 is here, and NO tap can fix it: the server cannot
+ *                   read ciphertext, so only the owner re-saving the item through
+ *                   the browser records what it holds.
+ *   `unresolved`  — both are known, and the route it recovers through is itself
+ *                   unknown. The remedy is on that other item, which is prompted
+ *                   on its own row.
+ *
+ * Only meaningful for an item `itemUsability` has already called `unknown`; the
+ * order of the checks mirrors that function's own, so the two cannot disagree.
+ */
+export type UnknownCause = 'unasked' | 'undeclared' | 'unresolved';
+
+export function unknownCause(item: UsabilityItem): UnknownCause {
+  if (parseFactorList(item.factors_required) === null) return 'unasked';
+  if (parseKindList(item.secret_kinds) === null) return 'undeclared';
+  return 'unresolved';
+}
+
+/**
  * Follows `depends_on_item_id` to whatever recovers this item.
  *
  * ⚠️ CYCLE-GUARDED, and not defensively. That column is app-enforced, not a

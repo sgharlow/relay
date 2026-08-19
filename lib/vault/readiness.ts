@@ -98,8 +98,28 @@ export async function assessReadiness(ownerId: string): Promise<Readiness> {
       [ownerId],
     ),
     // Metadata only — never ciphertext (CC2).
-    query<{ id: string; title: string; criticality: string | null; is_root_credential: boolean }>(
-      `SELECT id, title, criticality, is_root_credential FROM vault_items WHERE owner_id = $1
+    /*
+      🔴 THE USABILITY COLUMNS WERE MISSING HERE UNTIL 2026-08-18, AND THAT MADE
+      MIGRATION 035 INERT ON THE BANNER. `assessPreparedness` reads
+      `secret_kinds`, `factors_required` and `depends_on_item_id`; this query did
+      not select them, they were optional on its input, so every item arrived
+      `unknown`, `checkingStarted` was permanently false, and an owner storing a
+      password for an account that demands a code was still told their recipient
+      could reach it. `secret_kinds` names what the blob HOLDS, not what it is —
+      that is metadata, so CC2 is untouched.
+    */
+    query<{
+      id: string;
+      title: string;
+      criticality: string | null;
+      is_root_credential: boolean;
+      secret_kinds: string | null;
+      factors_required: string | null;
+      depends_on_item_id: string | null;
+    }>(
+      `SELECT id, title, criticality, is_root_credential,
+              secret_kinds, factors_required, depends_on_item_id
+         FROM vault_items WHERE owner_id = $1
         ORDER BY is_root_credential DESC, importance_score DESC, title ASC`,
       [ownerId],
     ),
@@ -330,6 +350,13 @@ export async function assessReadiness(ownerId: string): Promise<Readiness> {
       title: r.title,
       criticality: r.criticality,
       is_root_credential: Boolean(r.is_root_credential),
+      // Dropped HERE as well as in the query above — two independent places,
+      // one effect. Widening the SELECT alone would have fixed nothing, which
+      // is why the input type now demands these rather than tolerating their
+      // absence: one of the two omissions would have survived the other's fix.
+      secret_kinds: r.secret_kinds,
+      factors_required: r.factors_required,
+      depends_on_item_id: r.depends_on_item_id,
     })),
     ruledItemIds: ruleRows.rows.map((r) => r.vault_item_id),
     /**

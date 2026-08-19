@@ -17,13 +17,15 @@
  */
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import {
   preparednessSentence,
   missingClause,
+  undeclaredClause,
   type Preparedness,
 } from '../../../../lib/vault/preparedness';
+import { setFactorsRequired } from '../../../../lib/vault/declare-factors';
 
 interface Blocker {
   code: string;
@@ -46,13 +48,50 @@ interface Readiness {
 
 export default function ReadinessBanner() {
   const [data, setData] = useState<Readiness | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [answerError, setAnswerError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetch('/api/readiness')
+  /*
+    Extracted so answering the prompt below can re-read it. The sentence and the
+    prompt are the same measurement, so an answer that did not move the sentence
+    would look exactly like an answer that failed to save.
+  */
+  const load = useCallback(() => {
+    return fetch('/api/readiness')
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => setData(d ?? null))
       .catch(() => setData(null));
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  /**
+   * 🔴 THE POINT OF D3. The control that records this has existed on the vault
+   * row since 2026-08-18 and nothing ASKED — so it was reachable only by an
+   * owner already looking at the item they would have had to doubt first, and
+   * every item created before that date reads `unknown`, which suppresses the
+   * qualifier on the sentence above. For every plan that already existed, the
+   * headline claim stayed exactly as wrong as it was before the column shipped.
+   *
+   * Both answers are offered with equal weight. A prompt that only ever offers
+   * the alarming answer teaches the owner it is an accusation, and "a password
+   * is enough" is the answer most items will get — it is also the one that
+   * turns an unknown into a usable item rather than into more doubt.
+   */
+  async function answer(itemId: string, needsCode: boolean) {
+    setBusy(true);
+    setAnswerError(null);
+    try {
+      await setFactorsRequired(itemId, needsCode ? ['totp'] : []);
+      await load();
+    } catch (e) {
+      setAnswerError(String((e as Error).message));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const blockers = data?.blockers ?? null;
 
@@ -62,6 +101,7 @@ export default function ReadinessBanner() {
   const setup = (blockers ?? []).filter((b) => !b.fatal);
   const p = data.preparedness;
   const missing = missingClause(p);
+  const undeclared = undeclaredClause(p);
 
   /**
    * STRUCTURAL GUARD, added 2026-08-12 alongside the fix to what `ready`
@@ -102,6 +142,89 @@ export default function ReadinessBanner() {
         {missing ? (
           <p style={{ fontSize: 'var(--t2)', lineHeight: 1.55, color: 'var(--ink-muted)', marginTop: 'var(--s1)' }}>
             {missing}
+          </p>
+        ) : null}
+        {/*
+          The question, asked where the claim it corrects is made. Named items
+          rather than a count, because "2 of them" is not something an owner can
+          act on without first going to find out which two — which is the
+          having-to-find-it problem this prompt exists to remove.
+
+          Capped at two by `assessPreparedness` (NAME_LIMIT): a list of nine is
+          not a prompt, it is a wall. Answering one reveals the next.
+        */}
+        {p.unaskedItems.length > 0 ? (
+          <ul style={{ listStyle: 'none', padding: 0, margin: 'var(--s2) 0 0' }} className="space-y-1">
+            {p.unaskedItems.map((it) => (
+              <li
+                key={it.id}
+                className="flex flex-wrap items-center"
+                style={{ gap: 'var(--s2)', fontSize: 'var(--t2)', color: 'var(--ink)' }}
+              >
+                <span style={{ fontWeight: 500 }}>{it.title}</span>
+                {/*
+                  Both controls carry a real box — 24x24 minimum, WCAG 2.5.8,
+                  the same rule the "Go" link below was corrected for on
+                  2026-08-12. A quiet text button inside a banner is the easiest
+                  place in this product to reintroduce that defect.
+                */}
+                <button
+                  type="button"
+                  onClick={() => answer(it.id, true)}
+                  disabled={busy}
+                  aria-label={`${it.title} asks for a code as well as a password`}
+                  className="inline-block min-h-[24px] px-2 py-0.5"
+                  style={{
+                    fontSize: 'var(--t1)',
+                    borderRadius: 4,
+                    border: '1px solid var(--ochre)',
+                    color: 'var(--ochre-text)',
+                    background: 'transparent',
+                    cursor: busy ? 'default' : 'pointer',
+                  }}
+                >
+                  Needs a code
+                </button>
+                <button
+                  type="button"
+                  onClick={() => answer(it.id, false)}
+                  disabled={busy}
+                  aria-label={`A password is enough for ${it.title}`}
+                  className="inline-block min-h-[24px] px-2 py-0.5"
+                  style={{
+                    fontSize: 'var(--t1)',
+                    borderRadius: 4,
+                    border: '1px solid var(--rule-strong)',
+                    color: 'var(--ink)',
+                    background: 'transparent',
+                    cursor: busy ? 'default' : 'pointer',
+                  }}
+                >
+                  Password is enough
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {/*
+          The other half, and it is NOT a question. These are items the owner has
+          already answered, where no client ever declared what the entry holds —
+          which is every item created before 2026-08-18. No tap can resolve them:
+          Relay cannot read the entry, and an update replaces the payload rather
+          than editing it, so re-saving the item is the only act that records
+          what it holds. A button here would be one that cannot work.
+        */}
+        {undeclared ? (
+          <p style={{ fontSize: 'var(--t2)', lineHeight: 1.55, color: 'var(--ink-muted)', marginTop: 'var(--s2)' }}>
+            {undeclared}{' '}
+            <Link href="/vault" className="inline-block min-h-[24px] px-1 py-0.5 font-medium underline">
+              Open your vault
+            </Link>
+          </p>
+        ) : null}
+        {answerError ? (
+          <p role="alert" style={{ fontSize: 'var(--t1)', color: 'var(--clay)', marginTop: 'var(--s1)' }}>
+            {answerError}
           </p>
         ) : null}
       </div>

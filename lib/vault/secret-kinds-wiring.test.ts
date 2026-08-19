@@ -141,7 +141,14 @@ describe('the read path — a read returns what a write stored', () => {
 });
 
 describe('the acceptance criterion — the sentence stops overstating', () => {
-  const base = { id: 'email', title: 'Primary email', criticality: 'critical', is_root_credential: false };
+  const base = {
+    id: 'email',
+    title: 'Primary email',
+    criticality: 'critical',
+    is_root_credential: false,
+    // Required since 2026-08-18 — see the note on PreparednessInput.
+    depends_on_item_id: null,
+  };
 
   it('an account declared to need a code, holding only a password, is NOT reachable', () => {
     const p = assessPreparedness({
@@ -189,7 +196,18 @@ describe('the acceptance criterion — the sentence stops overstating', () => {
       the way this signal is destroyed permanently rather than temporarily.
     */
     const p = assessPreparedness({
-      items: [{ ...base }, { id: 'bank', title: 'Bank', criticality: 'critical', is_root_credential: false }],
+      items: [
+        { ...base, secret_kinds: null, factors_required: null },
+        {
+          id: 'bank',
+          title: 'Bank',
+          criticality: 'critical',
+          is_root_credential: false,
+          secret_kinds: null,
+          factors_required: null,
+          depends_on_item_id: null,
+        },
+      ],
       ruledItemIds: ['email', 'bank'],
       verifierCount: 1,
     });

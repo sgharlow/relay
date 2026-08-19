@@ -36,6 +36,7 @@ import { CryptoService } from '../../../../lib/crypto/crypto-service';
 import { encodeSecretPayload } from '../../../../lib/crypto/secret-payload';
 import type { DashboardItem } from '../../../../lib/vault/dashboard-view';
 import { parseFactorList } from '../../../../lib/vault/usability';
+import { setFactorsRequired, type DeclarableFactor } from '../../../../lib/vault/declare-factors';
 import type { VaultItemType } from '../../../../lib/domain/enums';
 
 type Mode = 'idle' | 'editing' | 'noting' | 'confirming-delete';
@@ -430,16 +431,14 @@ export function ItemControls({
    * them here would collect an answer the product can do nothing with. The
    * fuller declaration is queued as its own item.
    */
-  async function setNeedsCode(value: string[] | null) {
+  async function setNeedsCode(value: DeclarableFactor[] | null) {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`/api/vault/items/${item.id}`, {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ factors_required: value }),
-      });
-      if (!res.ok) throw new Error('Could not save that.');
+      // The save itself lives in `declare-factors` — the banner's prompt asks
+      // the same question and must record it identically. See that module's
+      // note on why `[]` and `null` are not interchangeable.
+      await setFactorsRequired(item.id, value);
       await onChanged();
     } catch (e) {
       setError(String((e as Error).message));
