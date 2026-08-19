@@ -1425,6 +1425,25 @@ deferred:
       data to check a pull request is not a gate, it is a hazard - the rows it forgot
       would be the ones nobody was watching. An early multi-owner run left four behind,
       which is the argument rather than a hypothetical."
+    it_happened_again_2026-08-18: "FOUR MORE were found on the production cluster, and not by
+      the walks - by looking, after an unrelated question. `relay-a11y-1787097733392`,
+      `relay-a11y-1787097708673`, `relay-d3shot-1787096967689` (2 vault items, 1 verifier,
+      4 audit entries) and `relay-stepup-e2e-1787031095368`, the oldest from 2026-08-17. Every
+      run that made them REPORTED success; a walk that dies mid-way, or a fixture script that
+      never had a close step, leaves rows and says nothing.
+      ⚠️ THIS IS THE SAME ARGUMENT A SECOND TIME, which is what makes it worth writing down:
+      the hazard is not that a CI job would be careless, it is that NOTHING COUNTS THE ROWS.
+      Purged 2026-08-18 through `deleteAccount()` - the product's own cascade, never a
+      hand-written DELETE, because this schema has no FK constraints and that function IS the
+      integrity layer. Each was checked first for a subscription and for standby roles in other
+      owners' rosters (all zero) - a disposable-looking account holding live billing is the
+      recorded trap. Verified after: zero `.test` owners remain and zero leftover rows across
+      vault_items, recipients, verifiers, access_rules, release_state, invitations and
+      subscriptions.
+      🔑 THE REAL GAP IT EXPOSES: a separate test cluster would make the walks safe, but it would
+      NOT make an abandoned row visible. A count of disposable accounts older than a day, checked
+      somewhere, is a smaller and more useful thing than the cluster - and nothing in this repo
+      does it."
     the_argument_for_closing_it: "2026-08-18 supplied a clean one. D1's fail-closed
       boundary - `secret_kinds` required on every vault write - broke e2e-multiowner
       and e2e-ui, and `npm run gate` was GREEN throughout, because a unit suite cannot

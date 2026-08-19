@@ -214,7 +214,14 @@ These cut across multiple files and are easy to break. Preserve them.
 `npm run gate` is types + lint + test + build. It needs no credentials and no server, so CI runs it
 on every push. **`npm run verify:live` is the other half**: five walks that drive the running app —
 `e2e-stepup` (17 assertions over HTTP), `e2e-multiowner` (14), `e2e-ui` (19, in a real browser),
-`e2e-reveal` (20) and `e2e-factors` (15). Start `npm run dev` first.
+`e2e-reveal` (20) and `e2e-factors` (17). Start `npm run dev` first.
+
+> ⚠️ Those five counts are the volatile-number trap this repo's own rules name, and one of
+> them had already sprung it: `e2e-factors` read **15** until 2026-08-18, when the walk was
+> run and printed 17. The walk had grown and the line had not. **Each walk prints its own
+> count on every run — read it there, not here.** The numbers are kept only so a wildly
+> different total is noticeable; a difference of one or two means this line is stale, not
+> that something is broken.
 
 **It is deliberately NOT in CI.** These walks create and delete real accounts, and `.env.local`
 points at the **production** cluster because Relay has no dev database. A job doing that on every
