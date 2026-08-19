@@ -12,7 +12,7 @@
     "command": "npm run gate",
     "note": "first run failed on gate:build only, because the node_modules junction used for worktree isolation is rejected by Turbopack ('Symlink [project]/node_modules is invalid, it points out of the filesystem root'). Replaced with a real npm ci in the worktree; the failure was an isolation artefact, not a repo defect."
   },
-  "iterations_used": 0,
+  "iterations_used": 5,
   "iterations_max": 5,
   "queue": [
     {
@@ -23,8 +23,9 @@
       "blast": 2,
       "effort": 1,
       "score": 4,
-      "status": "queued",
-      "why_first": "named first in the invocation and carries an explicit date (8/19). It is the critical path to g1-arms-length-demand, the only live gate."
+      "status": "shipped",
+      "why_first": "named first in the invocation and carries an explicit date (8/19). It is the critical path to g1-arms-length-demand, the only live gate.",
+      "commit": "0e029d0"
     },
     {
       "id": "S2",
@@ -34,7 +35,8 @@
       "blast": 2,
       "effort": 2,
       "score": 5,
-      "status": "queued"
+      "status": "shipped",
+      "commit": "39cb3b3"
     },
     {
       "id": "S3",
@@ -44,7 +46,8 @@
       "blast": 2,
       "effort": 2,
       "score": 4,
-      "status": "queued"
+      "status": "shipped",
+      "commit": "a271689"
     },
     {
       "id": "S4",
@@ -54,7 +57,8 @@
       "blast": 2,
       "effort": 2,
       "score": 5,
-      "status": "queued"
+      "status": "shipped",
+      "commit": "3272945"
     },
     {
       "id": "S5",
@@ -64,7 +68,22 @@
       "blast": 2,
       "effort": 2,
       "score": 5,
-      "status": "queued"
+      "status": "shipped",
+      "commit": "ff28278"
     }
+  ],
+  "ended_utc": "2026-08-19T04:32:14.602Z",
+  "outcome": "complete — queue exhausted, 5 of 5 iterations used, 0 blocked",
+  "baseline_end": {
+    "types": "green",
+    "lint": "green",
+    "tests": "green — 252 files, 2760 passed, 1 skipped",
+    "build": "green",
+    "gate": "exit 0",
+    "utc_run": "exit 0"
+  },
+  "report": "docs/sprint-reports/2026-08-19-sprint.md",
+  "not_live_proven": [
+    "scripts/disposable-sweep.ts (verify:orphans) has never run against the cluster — the worktree has no .env.local by design"
   ]
 }
