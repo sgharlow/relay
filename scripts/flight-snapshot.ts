@@ -46,7 +46,7 @@ import { Client } from 'pg';
 import { DsqlSigner } from '@aws-sdk/dsql-signer';
 
 import { dsqlIdentity } from '../lib/db/connection';
-import { windowStarted, preFlightVerdict, formatSnapshotRow } from '../lib/g1/flight-snapshot';
+import { windowStarted, preFlightVerdict, formatSnapshotRow, snapshotDate } from '../lib/g1/flight-snapshot';
 import { isGateQualifyingSrc } from '../src/app/caregivers/content';
 
 const FLIGHT_LOG = path.resolve(__dirname, '..', 'docs', 'g1-flight-log.md');
@@ -119,7 +119,7 @@ async function main(): Promise<void> {
     await client.end();
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = snapshotDate(new Date());
 
   console.log(`  window          ${open ? 'OPEN' : 'not started'}  (docs/g1-flight-log.md)`);
   console.log(`  caregiver_leads ${leads.length} row(s)\n`);

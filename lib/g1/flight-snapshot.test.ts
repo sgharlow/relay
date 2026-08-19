@@ -10,7 +10,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 
-import { windowStarted, preFlightVerdict, formatSnapshotRow } from './flight-snapshot';
+import { windowStarted, preFlightVerdict, formatSnapshotRow, snapshotDate } from './flight-snapshot';
 
 describe('reading whether the G1 window has opened', () => {
   it('the real flight log is parsed, not just a fixture', () => {
@@ -74,5 +74,34 @@ describe('the daily row', () => {
 
   it('says so plainly when no lead has arrived yet', () => {
     expect(formatSnapshotRow({ date: '2026-08-29', leads: 0, qualifiedLeadSrcs: [] })).toContain('—');
+  });
+});
+
+describe('snapshotDate — the daily row is stamped in the local day of the sitting', () => {
+  /*
+    🔴 REGRESSION FOUND 2026-08-18 BY RUNNING THE COMMAND, not by reading it.
+    `npm run flight:snapshot` at 18:07 local (UTC-07:00) printed a row dated
+    2026-08-19. The script used `new Date().toISOString().slice(0,10)` — UTC —
+    and the sitting sheet schedules the sitting in the EVENING, so the normal
+    path filed every row a day ahead on the log of record for the gate.
+  */
+  it('uses the local calendar day, not UTC', () => {
+    // 2026-08-18 18:07 at UTC-07:00 == 2026-08-19 01:07 UTC. The old code said
+    // the 19th; the sitting happened on the 18th.
+    const eveningSitting = new Date(2026, 7, 18, 18, 7, 0);
+    expect(snapshotDate(eveningSitting)).toBe('2026-08-18');
+    expect(snapshotDate(eveningSitting)).not.toBe(
+      eveningSitting.toISOString().slice(0, 10),
+    );
+  });
+
+  it('pads month and day so the rows sort as text', () => {
+    expect(snapshotDate(new Date(2026, 0, 5, 9, 0, 0))).toBe('2026-01-05');
+    expect(snapshotDate(new Date(2026, 11, 31, 23, 59, 0))).toBe('2026-12-31');
+  });
+
+  it('a midnight sitting still belongs to the day it happened on', () => {
+    expect(snapshotDate(new Date(2026, 7, 18, 0, 0, 0))).toBe('2026-08-18');
+    expect(snapshotDate(new Date(2026, 7, 18, 23, 59, 59))).toBe('2026-08-18');
   });
 });

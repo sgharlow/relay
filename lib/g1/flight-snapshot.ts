@@ -89,6 +89,36 @@ export function preFlightVerdict(args: { windowStarted: boolean; leads: number }
   };
 }
 
+/**
+ * The date to stamp on today's snapshot row — the SITTING's local day.
+ *
+ * 🔴 IT WAS UTC, AND THAT IS WRONG FOR THIS PARTICULAR NUMBER. The script read
+ * `new Date().toISOString().slice(0, 10)`. Run at 18:07 on 2026-08-18 in
+ * UTC-07:00 it printed `2026-08-19` — tomorrow's row, for a sitting that
+ * happened today. `docs/g1-sitting-sheet.md` puts the sitting in the evening,
+ * so this was not an edge case: it was the normal path, and every evening
+ * sitting from 17:00 local onward would have been filed a day ahead.
+ *
+ * The consequence is not cosmetic. The flight log's table is one row per DAY of
+ * a four-week window and the verdict is read off it. A misdated row can collide
+ * with the next day's, leave a gap that reads as a missed sitting, and shifts
+ * "day N of the window" — on the log of record for the gate that decides this
+ * product.
+ *
+ * ⚠️ THE LEAD TIMESTAMPS STAY UTC, deliberately. They are instants, and an
+ * instant printed in local time is ambiguous about which clock produced it.
+ * This is not an instant — it is the answer to "which day of my flight is
+ * this?", which is asked and answered in the sitter's own day. Two different
+ * questions, two different renderings, stated here so the next reader does not
+ * "fix" the inconsistency by making them agree.
+ */
+export function snapshotDate(now: Date): string {
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 /** The daily row, in the column order `docs/g1-flight-log.md` uses. */
 export function formatSnapshotRow(row: SnapshotRow): string {
   const srcs = row.qualifiedLeadSrcs.length ? row.qualifiedLeadSrcs.join(', ') : '—';
