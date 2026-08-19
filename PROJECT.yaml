@@ -1535,6 +1535,36 @@ deferred:
       release gate that catches this class of regression is the half nothing schedules."
     blocked_on: "a separate test cluster. Infrastructure with a cost attached, Steve's
       call, and not a thing to arrange quietly inside a test file."
+    # ⚠️ STILL OPEN. Two of this item's SYMPTOMS are now covered; its CAUSE is not,
+    # and the distinction is the whole point of leaving it open rather than closing it
+    # on a partial win.
+    partially_mitigated:
+      date: 2026-08-19
+      what_shipped: "`npm run verify:orphans` (the counting half) and a staleness dead-man on
+        `verify:live` (the remembering half). This entry's own text said of the first — 'a count
+        of disposable accounts older than a day, checked somewhere, is a smaller and more useful
+        thing than the cluster - and nothing in this repo does it.' Something in this repo does it
+        now, and the sentence above is left standing because it is the reasoning that produced it."
+      live_proven: "2026-08-19, every path against the production cluster rather than in parts:
+        an empty cluster reported as empty; a real orphan FOUND (a failed `disposable-owner
+        create` left an account behind while exiting 1 — this item's exact failure mode,
+        reproduced by accident within minutes of the tool existing); the row census returning real
+        counts across all seven tables; and the alarm path firing with exit 1 under `--hours
+        0.001`. Cleaned up afterwards through the product's own cascade; final sweep reads zero."
+      what_is_NOT_covered: "the cause. The walks still write to the PRODUCTION cluster because
+        Relay has no dev database, and no count makes that safe — it only makes the residue
+        visible. `verify:live` is still not in CI and still must not be. The cluster remains
+        Steve's call."
+      # 🔴 THE FINDING THAT JUSTIFIES THIS ENTRY EXISTING AT ALL.
+      and_the_first_run_found_a_bug: "Both new scripts invoked a bare `tsx`, which is not a
+        declared dependency here — every other script entry uses `npx tsx`. `verify:orphans`
+        simply failed; `verify:stamp` is the LAST link of `verify:live`, so the chain would have
+        run all five walks against production and then died at the final step leaving no stamp —
+        and the freshness dead-man would have read that as 'the walks never ran', on the day they
+        had. A wasted production run and a lying monitor, from a missing three-character prefix,
+        invisible to types, lint, tests and build. Fixed with a guard (`gate-script.test.ts`).
+        Recorded here because it is the cleanest evidence this file has for its own claim ladder:
+        wired is not live-proven, and the gap between them was one `npx`."
 
   # ── CLOSED 2026-08-18, the day after it was opened ────────────────────────
   #
