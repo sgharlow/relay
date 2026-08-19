@@ -30,8 +30,8 @@
     "verify:iam": "npx tsx --env-file=.env.admin scripts/verify-iam.ts",
     "invite:cohort": "npx tsx --env-file=.env.local scripts/invite-cohort.ts",
     "verify:factors": "npx tsx --env-file=.env.local scripts/e2e-factors.ts",
-    "verify:orphans": "tsx --env-file=.env.local scripts/disposable-sweep.ts",
-    "verify:stamp": "tsx scripts/stamp-verify-live.ts"
+    "verify:orphans": "npx tsx --env-file=.env.local scripts/disposable-sweep.ts",
+    "verify:stamp": "npx tsx scripts/stamp-verify-live.ts"
   },
   "dependencies": {
     "@aws-sdk/client-kms": "3.1072.0",

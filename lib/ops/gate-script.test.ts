@@ -165,3 +165,64 @@ describe('the live-verification gate', () => {
     expect(pkg.scripts.gate).not.toContain('verify:');
   });
 });
+
+/**
+ * Every script that runs TypeScript must go through `npx`.
+ *
+ * 🔴 THE DEFECT THIS WAS WRITTEN FOR, found on 2026-08-19 by running the thing
+ * rather than by reading it. `tsx` is NOT a declared dependency of this repo —
+ * it is not in `dependencies`, not in `devDependencies`, and not in
+ * `node_modules/.bin`. Every one of the eleven existing script entries fetches it
+ * with `npx tsx`. Two new entries added the previous day used a bare `tsx`, and
+ * both failed instantly:
+ *
+ *     'tsx' is not recognized as an internal or external command
+ *
+ * `verify:orphans` was merely broken. `verify:stamp` was worse: it is the LAST
+ * link of `verify:live`, so the chain would have run all five walks — creating
+ * and deleting real accounts on the production cluster — and then died at the
+ * final step, leaving no stamp. The freshness dead-man would then have reported
+ * that the walks had not run, on the day they had.
+ *
+ * Nothing in `gate` could see this: a string in package.json is not type-checked,
+ * not linted, and not executed by any test. This check is the cheapest thing that
+ * can.
+ *
+ * If `tsx` is ever added as a real devDependency, this guard should be replaced
+ * rather than deleted — the invariant then becomes "declared or npx'd", not
+ * "always npx".
+ */
+describe('scripts that run TypeScript can actually start', () => {
+  it('tsx is invoked through npx, because it is not a declared dependency', () => {
+    const declared =
+      (pkg as { dependencies?: Record<string, string>; devDependencies?: Record<string, string> })
+        .dependencies?.tsx ??
+      (pkg as { devDependencies?: Record<string, string> }).devDependencies?.tsx;
+
+    if (declared) {
+      /*
+        The invariant changed rather than vanished. Left as a live branch so the
+        day somebody declares tsx, this test says so instead of silently passing.
+      */
+      expect(declared, 'tsx is now declared — replace this guard with one that checks the version').toBeTruthy();
+      return;
+    }
+
+    const bare = Object.entries(pkg.scripts)
+      .filter(([, cmd]) => /(^|&&\s*)tsx\s/.test(cmd))
+      .map(([name, cmd]) => `${name}: ${cmd}`);
+
+    expect(
+      bare,
+      bare.length
+        ? 'These scripts invoke a bare `tsx`, which is not installed — they fail with ' +
+          '"\'tsx\' is not recognized" the moment anyone runs them:\n' +
+          bare.map((b) => `  ${b}`).join('\n') +
+          '\n\nUse `npx tsx`, as every other script in this file does. This matters most for ' +
+          'verify:stamp: it is the last link of verify:live, so a broken invocation wastes the ' +
+          'entire chain — five walks writing to the production cluster — and then leaves no ' +
+          'stamp, which the freshness dead-man reads as "the walks never ran".'
+        : 'ok',
+    ).toEqual([]);
+  });
+});
