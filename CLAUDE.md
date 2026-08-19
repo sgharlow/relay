@@ -91,6 +91,14 @@ npm run verify:iam     # the OTHER half of the least-privilege wall — can the 
                        # principal still obtain a DSQL ADMIN token? Reads the live policy,
                        # managed AND inline, wildcards included. verify:roles cannot see
                        # this. Read-only; NEEDS .env.admin (an identity that can read IAM).
+npm run verify:stamp   # the last link in verify:live, not run by hand. Appends one
+                       # line to docs/verify-live-runs.jsonl recording that the
+                       # chain completed, and against which commit. It runs only
+                       # after all five walks exit 0, so the stamp is a side effect
+                       # of success rather than a claim of it — and its ABSENCE is
+                       # what lib/ops/verify-live-freshness.test.ts alarms on.
+                       # Needs no credentials. Commit the log line with the work
+                       # that run covered.
 npm run verify:orphans # what did the walks leave behind on PRODUCTION? Counts every
                        # account on a reserved domain (.test/.invalid/.localhost),
                        # reports each one's rows, and EXITS 1 if any is older than
@@ -247,6 +255,20 @@ pull request would be writing to customers' data to check a diff — and the row
 the ones nobody was watching (an early run of the multi-owner walk left four behind; that is the
 argument, not a hypothetical). Closing this properly needs a separate test cluster: an
 infrastructure change with a cost, and Steve's call.
+
+**And since 2026-08-19 it has a dead-man, because "one command a person runs" was the whole
+weakness.** The chain ends with `npm run verify:stamp`, which appends a line to
+`docs/verify-live-runs.jsonl` — so a stamp exists only if all five walks exited 0.
+`lib/ops/verify-live-freshness.test.ts` then fails the suite when the newest stamp ages past 14
+days. That is deliberate: this test is designed to go red on a date with no code change, exactly as
+`gates.test.ts` is, and when it fires it is reporting that the live walks have stopped rather than
+that something is broken. The portfolio rule it implements is that a check whose success signal is a
+side effect must have its ABSENCE monitored — a job that never runs produces no failure to alert on,
+and every previous attempt here was a note asking somebody to remember. A corrupt or future-dated
+log reads as `unreadable`, never as fresh and never as "never run": those are different findings
+with different fixes, and collapsing them is how a monitor lies. Exactly one line in that file was
+written by hand (the 2026-08-18 chain run, backfilled with its evidence cited); every line after it
+is script-written.
 
 **`npm run verify:orphans` is the half of that problem a test cluster would NOT solve**, added
 2026-08-19. Four more abandoned accounts were found on production on 2026-08-18 — not by the walks,

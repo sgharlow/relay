@@ -94,8 +94,37 @@ describe('the live-verification gate', () => {
   });
 
   it('stops at the first failure, for the same reason `gate` does', () => {
-    expect(pkg.scripts['verify:live']).not.toContain(';');
-    expect(pkg.scripts['verify:live'].split('&&').length).toBe(5);
+    const live = pkg.scripts['verify:live'];
+    expect(live).not.toContain(';');
+
+    /*
+      Every link is `&&`-joined, so one failure stops the chain. The count was
+      pinned at 5 until 2026-08-19, when `verify:stamp` became a sixth link — so
+      it is now derived from the steps present rather than hardcoded. A literal
+      would have to be edited by whoever adds a walk, which is the moment they
+      are least likely to think about it.
+    */
+    const steps = [...live.matchAll(/npm run (verify:[a-z-]+)/g)].map((m) => m[1]);
+    expect(live.split('&&').length, 'a step is joined by something other than &&').toBe(steps.length);
+    expect(steps.length, 'the live chain lost a step').toBeGreaterThanOrEqual(6);
+  });
+
+  /**
+   * 🔴 THE ORDERING IS LOad-BEARING, not cosmetic.
+   *
+   * `verify:stamp` writes the line that `lib/ops/verify-live-freshness.test.ts`
+   * treats as proof the walks ran. If it were reordered ahead of a walk, or
+   * joined with `;`, it would record a completed run for a chain that then
+   * failed — a stamp asserting success it did not witness, which is worse than
+   * no stamp at all, because the dead-man would go quiet on the strength of it.
+   */
+  it('the stamp is the LAST link, so it can only witness a chain that passed', () => {
+    const steps = [...pkg.scripts['verify:live'].matchAll(/npm run (verify:[a-z-]+)/g)].map((m) => m[1]);
+    expect(
+      steps[steps.length - 1],
+      'verify:stamp is not last in verify:live. Anywhere else it records a run that had not ' +
+        'finished — and the freshness dead-man would then read a stamp nothing earned.',
+    ).toBe('verify:stamp');
   });
 
   it('each step points at the real harness', () => {

@@ -61,6 +61,19 @@ const MAY_IMPORT: Array<{ prefix: string; because: string }> = [
   { prefix: 'lib/auth/verifier-token', because: 'mints the token an emailed link carries' },
   { prefix: 'lib/auth/session-epoch', because: 'forges the cookie a signed-in browser holds' },
   { prefix: 'lib/db/connection', because: 'fixture teardown and direct-state checks' },
+  /*
+    The stamp is in the chain but is not a walk: it asserts nothing about the
+    product, it records that the walks before it exited 0. It imports the log's
+    PATH and its TYPE — no claim, nothing computed — and importing them beats
+    spelling the path twice, which is the drift this repo bans elsewhere. It is
+    listed here rather than exempted from walkFiles(), because "everything in
+    the verify:live chain is held to the walk rules" is the safer default: an
+    exemption is a hole somebody later walks through.
+  */
+  {
+    prefix: 'lib/ops/verify-live-freshness',
+    because: 'the run log\'s path and record type — the stamp computes no answer about the product',
+  },
 ];
 
 describe('the release walks assert the product, not their own arithmetic', () => {

@@ -18,7 +18,7 @@
     "gate:lint": "eslint . --max-warnings=0",
     "gate:test": "vitest --run",
     "gate:build": "next build",
-    "verify:live": "npm run verify:stepup && npm run verify:multiowner && npm run verify:ui && npm run verify:reveal && npm run verify:factors",
+    "verify:live": "npm run verify:stepup && npm run verify:multiowner && npm run verify:ui && npm run verify:reveal && npm run verify:factors && npm run verify:stamp",
     "verify:schema": "npx tsx --env-file=.env.local scripts/verify-schema.ts",
     "verify:funnel": "npx tsx scripts/verify-funnel.ts",
     "verify:stepup": "npx tsx --env-file=.env.local scripts/e2e-stepup.ts",
@@ -30,7 +30,8 @@
     "verify:iam": "npx tsx --env-file=.env.admin scripts/verify-iam.ts",
     "invite:cohort": "npx tsx --env-file=.env.local scripts/invite-cohort.ts",
     "verify:factors": "npx tsx --env-file=.env.local scripts/e2e-factors.ts",
-    "verify:orphans": "tsx --env-file=.env.local scripts/disposable-sweep.ts"
+    "verify:orphans": "tsx --env-file=.env.local scripts/disposable-sweep.ts",
+    "verify:stamp": "tsx scripts/stamp-verify-live.ts"
   },
   "dependencies": {
     "@aws-sdk/client-kms": "3.1072.0",
