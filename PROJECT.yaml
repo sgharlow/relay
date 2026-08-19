@@ -1328,12 +1328,43 @@ deferred:
         `setFactorsRequired`, and the readiness query selects the columns the rule reads. Plus a
         type-level `@ts-expect-error` test that fails the build if omitting those columns ever
         compiles again. All red-green verified by breaking what they guard."
-      what_it_does_not_do: "The vault row's own control does not re-render when the banner is
-        answered on the same screen — the list is a separate component with its own fetch, so the
-        row still reads `Needs a code?` until the page is reloaded. The sentence is authoritative
-        and correct; the row is stale. Left rather than wired together, because a cross-component
+      what_it_does_not_do: "SUPERSEDED — CLOSED 2026-08-18 (later the same day). Kept verbatim
+        because the fix found the note itself was wrong, and about the half that mattered.
+        It read: \"The vault row's own control does not re-render when the banner is answered on
+        the same screen — the list is a separate component with its own fetch, so the row still
+        reads `Needs a code?` until the page is reloaded. The sentence is authoritative and
+        correct; the row is stale. Left rather than wired together, because a cross-component
         refresh is a new pattern in this codebase and this is a cosmetic disagreement, not a wrong
-        number. Worth fixing if anyone reports it."
+        number. Worth fixing if anyone reports it.\""
+      residual_closed:
+        date: 2026-08-18
+        # 🔴 IT WAS RECORDED AS ONE DIRECTION AND IS ACTUALLY TWO, which is what
+        # turned it from cosmetic into a wrong number on the authoritative surface.
+        the_note_was_wrong: "`ReadinessBanner` lives in `(owner)/layout.tsx` and `VaultDashboardClient`
+          is the page; each refreshes only itself. The boundary breaks SYMMETRICALLY. Answering on
+          the ROW left the BANNER — the surface this file called authoritative and correct — showing
+          a preparedness sentence the owner had already superseded. `could reach 2 of the 3 things
+          that matter` stayed on screen after the answer that made it 1 of 3. Only the banner→row
+          direction was recorded, so the worse half was the undocumented half."
+        fix: "One announcement from the seam both write paths already share (`setFactorsRequired` in
+          lib/vault/declare-factors.ts), fired only AFTER the save succeeds; both surfaces subscribe.
+          Put there rather than in each caller so a THIRD place to answer inherits it without its
+          author knowing the other surfaces exist — the same reasoning that created that module.
+          An EventTarget owned by the module, NOT `window`: vitest runs this repo with
+          `environment: 'node'` and there is no jsdom dependency, so a window-based bus could only
+          be written behind a `typeof window === 'undefined'` guard — under which every test of it
+          passes by taking the branch that does nothing. That is the guard-on-the-wrong-gate shape
+          this repo keeps finding, so the bus under test is the bus that ships."
+        proof: "Live browser walk against the running app on a seeded disposable owner, BOTH
+          directions: banner answer → unanswered rows 3 → 2 with no reload; row answer → the
+          sentence moved `2 of the 3` → `1 of the 3` and the banner prompts 2 → 1, with no reload.
+          ⚠️ NEGATIVE CONTROL RUN: with the announcement removed the same walk fails both
+          assertions (3 → 3, prompts 2 → 2), so the walk sees the defect rather than passing on
+          a fixture. Nine unit tests in declare-factors.test.ts, each red-green verified by
+          breaking what it guards — announce-before-the-ok-check, a no-op unsubscribe, an event
+          rename, and removing the announcement entirely."
+        disposable_accounts: "Two owners created on `.test` (RFC 6761 reserved, refused at the send
+          seam) and both closed, HTTP 200."
     superseded_note: "The entry below is what was open. Kept whole rather than deleted."
 
     what: "The owner's 'does this account need a code as well?' control is LIVE on the

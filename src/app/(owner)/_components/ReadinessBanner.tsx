@@ -25,7 +25,7 @@ import {
   undeclaredClause,
   type Preparedness,
 } from '../../../../lib/vault/preparedness';
-import { setFactorsRequired } from '../../../../lib/vault/declare-factors';
+import { onFactorsDeclared, setFactorsRequired } from '../../../../lib/vault/declare-factors';
 
 interface Blocker {
   code: string;
@@ -66,6 +66,15 @@ export default function ReadinessBanner() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  /*
+    The vault row carries the same control, and it lives on a page that is a
+    sibling of this layout — no shared provider, no shared state. Without this
+    the sentence above kept its pre-answer wording after an owner answered on
+    the row, which is the worse half of the defect: the surface this component's
+    own comments call authoritative would be the stale one.
+  */
+  useEffect(() => onFactorsDeclared(() => void load()), [load]);
 
   /**
    * 🔴 THE POINT OF D3. The control that records this has existed on the vault

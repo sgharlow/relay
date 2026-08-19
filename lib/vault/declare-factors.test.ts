@@ -13,7 +13,7 @@
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
-import { setFactorsRequired } from './declare-factors';
+import { FACTORS_DECLARED_EVENT, onFactorsDeclared, setFactorsRequired } from './declare-factors';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -61,5 +61,93 @@ describe('setFactorsRequired', () => {
     stubFetch({ ok: false });
 
     await expect(setFactorsRequired('item-7', ['totp'])).rejects.toThrow('Could not save that.');
+  });
+});
+
+describe('the two surfaces are told, so neither is left stale', () => {
+  /*
+    🔴 THE DEFECT THIS CLOSES. `ReadinessBanner` (owner layout) and
+    `VaultDashboardClient` (the vault page) both read this answer and both
+    refresh only themselves. Answering in one left the other showing the old
+    state until a reload — in the row-to-banner direction that meant the
+    preparedness SENTENCE, the surface this codebase calls authoritative, kept
+    a claim the owner had already superseded.
+
+    The announcement fires from the seam rather than from each caller, so a
+    third place to answer inherits it without its author knowing the other
+    surfaces exist.
+  */
+  function listen(): { count: () => number; stop: () => void } {
+    let n = 0;
+    const stop = onFactorsDeclared(() => {
+      n += 1;
+    });
+    return { count: () => n, stop };
+  }
+
+  it('announces a successful declaration', async () => {
+    stubFetch({ ok: true });
+    const l = listen();
+
+    await setFactorsRequired('item-7', ['totp']);
+
+    expect(l.count()).toBe(1);
+    l.stop();
+  });
+
+  it('says NOTHING when the save failed', async () => {
+    /*
+      Announcing a failed save would refresh both surfaces into re-rendering the
+      SAME unchanged state, which is indistinguishable on screen from the answer
+      having been recorded. The error path must stay silent.
+    */
+    stubFetch({ ok: false });
+    const l = listen();
+
+    await expect(setFactorsRequired('item-7', ['totp'])).rejects.toThrow('Could not save that.');
+
+    expect(l.count()).toBe(0);
+    l.stop();
+  });
+
+  it('withdrawing an answer is announced too — it changes both surfaces as much as giving one', () => {
+    return (async () => {
+      stubFetch({ ok: true });
+      const l = listen();
+
+      await setFactorsRequired('item-7', null);
+
+      expect(l.count()).toBe(1);
+      l.stop();
+    })();
+  });
+
+  it('unsubscribing actually stops delivery — the effect cleanup has to work', async () => {
+    stubFetch({ ok: true });
+    const l = listen();
+    l.stop();
+
+    await setFactorsRequired('item-7', []);
+
+    expect(l.count()).toBe(0);
+  });
+
+  it('every subscriber hears it, not just the first', async () => {
+    stubFetch({ ok: true });
+    const a = listen();
+    const b = listen();
+
+    await setFactorsRequired('item-7', ['totp']);
+
+    expect(a.count()).toBe(1);
+    expect(b.count()).toBe(1);
+    a.stop();
+    b.stop();
+  });
+
+  it('the event name is stable — both listeners bind to this exact string', () => {
+    // A rename that missed one subscriber would restore the stale surface
+    // silently, with every test above still green.
+    expect(FACTORS_DECLARED_EVENT).toBe('relay:factors-declared');
   });
 });

@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { gatesCount, type DashboardItem } from '../../../../lib/vault/dashboard-view';
 import { rankItems, reasonFor } from '../../../../lib/vault/reason';
 import { buttonPrimary, buttonQuiet, card, errorText, h1, meta, muted } from '../_lib/ui';
+import { onFactorsDeclared } from '../../../../lib/vault/declare-factors';
 import { ItemControls } from './ItemControls';
 
 export default function VaultDashboardPage() {
@@ -57,6 +58,15 @@ export default function VaultDashboardPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  /*
+    The readiness banner in the owner layout carries the same "does this account
+    ask for a code as well?" question, and answering it there used to leave
+    every row here showing `Needs a code?` for an item that had just been
+    answered. The banner is not in this tree, so the announcement comes through
+    the write seam both controls already share.
+  */
+  useEffect(() => onFactorsDeclared(() => void load()), [load]);
 
   const analyse = useCallback(async () => {
     setAnalysing(true);
