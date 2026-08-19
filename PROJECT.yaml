@@ -1055,6 +1055,55 @@ ratified:
       product, separate measurement, and the portfolio rule against sharing per-product
       billing surfaces applies."
 
+  - id: g1-editorial-thresholds-deferred
+    date: 2026-08-18
+    owner: steve
+    decision: "Do NOT ratify the editorial thresholds now. Leave
+      docs/g1-editorial-threshold-proposal.md as a DRAFT and revisit it on 2026-11-30."
+    what_stays_draft: "pass >= 6% click-to-intent among ed-* qualified visitors judged at N >= 50,
+      kill < 2% after N >= 150 cumulative, no read below N = 50. Numbers unchanged — this decision
+      is about WHEN they become binding, not about what they are."
+    rationale: "Steve's call. The numbers were derived against a population that does not exist
+      yet: zero editorial visitors have ever arrived, so every figure in the proposal is a prior
+      rather than a measurement. 11-30 sits after the first placement plausibly lands
+      (mid-October to mid-November per gates.g1-arms-length-demand's own derivation) and a month
+      before that gate falls due, so the ratification happens with at least some real traffic
+      shape in view rather than none."
+    # 🔴 THE CONFLICT THIS DECISION CREATES, NAMED RATHER THAN LEFT TO BE DISCOVERED.
+    conflict: "The proposal's own reason for existing is that the thresholds must be on record
+      BEFORE the first placement goes live — 'so the number cannot be reverse-engineered from
+      whichever result appears' (gates.g1-caregiver-wtp.instrument_retired.thresholds_do_not_
+      transfer, the open task this defers). Deferring to 11-30 does NOT suspend that rule, and a
+      placement landing in October would collide with it head-on: whoever ratified afterwards
+      would be choosing a number while already able to see the result it judges.
+      ⚠️ The two are only compatible under one reading, and it is the reading taken here: a
+      threshold may be deferred, but a LANE may not be declared without one."
+    how_the_conflict_is_resolved: "Structurally, at the moment it matters, rather than by
+      remembering. lib/ops/editorial-preflight-claims.test.ts fails the suite if any `ed-*` src
+      enters GATE_LANES while this decision stands unratified. Nothing about pitching is blocked —
+      pitching is not a placement — and the guard bites only on the one commit that would start
+      counting editorial traffic toward the gate. On that day there are exactly two honest moves:
+      ratify the thresholds in the same commit, or record a decision here that says why not."
+    supersedes: "the open task's 'must be done BEFORE the first placement goes live' as a
+      SCHEDULE. It survives intact as an ORDERING, which is the part that protects the number."
+    revisit: 2026-11-30
+
+  - id: beta-cohort-deferred-four-days
+    date: 2026-08-18
+    owner: steve
+    decision: "Defer the beta cohort a further four days, to 2026-08-23."
+    extends: beta-cohort-deferred
+    state_at_deferral: "`.relay-cohort.json` exists at the repo root with ONE person in it,
+      written 2026-08-18 and never run: no `.relay-cohort-codes.json` was produced, so
+      `invite:cohort --commit` has not been executed and no invitation was issued. Phase 0
+      remains at N = 0, where it has been since 2026-08-12. Recorded because a staged-but-unsent
+      cohort file reads exactly like a sent one to anybody who does not check for the codes file."
+    unchanged: "everything in beta-cohort-deferred, including its cost_of_the_delay — two shipped
+      security decisions still rest on a claim-conversion number nobody has measured. Four more
+      days does not change that argument, and the argument is why this entry exists rather than
+      the date quietly moving."
+    revisit: 2026-08-23
+
 # Per-journey build state — THE one authoritative record, added 2026-08-13.
 #
 # WHY IT MOVED HERE. docs/user-journeys.md carried per-journey state in three
@@ -1402,6 +1451,21 @@ deferred:
       first one is the more expensive mistake."
     ends_when: "D3 produces evidence owners answer at all, or the remaining factors are
       ruled permanently out of scope and the enum says so."
+    held:
+      date: 2026-08-18
+      by: claude
+      state: "HELD, not queued. D3 — the condition this item's own `sequencing:` waits on —
+        CLOSED the same day this was opened, which reads at a glance like the block clearing.
+        It does not. D3 shipped the QUESTION; what D2 waits on is the ANSWER, and the prompt
+        went live hours ago with zero owners having seen it."
+      why_it_is_written_down: "An item whose blocker has just closed looks like the next thing
+        to build, and this one is explicitly the opposite: `sequencing:` above says building
+        five more questions before there is evidence owners answer the first is 'the more
+        expensive mistake'. Left unmarked, the next session reads a closed dependency and a
+        ready item. This says: the dependency closed, the evidence did not arrive with it."
+      resumes_when: "a non-zero count of owners have answered the authenticator-code question in
+        production — the measurement `verify:factors` already reports (reachable 1 -> 0 on the
+        declaration). Not a date: a number."
 
   - id: verify-live-cannot-enter-ci                          # "D4"
     owner: steve            # infrastructure spend - explicitly not a Claude item

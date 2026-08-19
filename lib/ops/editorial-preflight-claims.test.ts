@@ -31,6 +31,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { GATE_LANES, PLANNED_EDITORIAL_SRCS } from '../../src/app/caregivers/content';
 
 const PROPOSAL = 'docs/g1-editorial-threshold-proposal.md';
 const FLIGHT_LOG = 'docs/g1-flight-log.md';
@@ -91,5 +92,103 @@ describe('the editorial proposal agrees with the flight log about the instrument
     // stand in for the other — the distinction the flight log spells out.
     expect(voice, 'the proposal does not distinguish the two lanes').toMatch(/Lane A/);
     expect(voice, 'the proposal does not distinguish the two lanes').toMatch(/Lane B/);
+  });
+});
+
+/**
+ * The ordering that survives the deferral.
+ *
+ * Steve deferred RATIFYING the editorial thresholds to 2026-11-30
+ * (`PROJECT.yaml → ratified.g1-editorial-thresholds-deferred`). The rule those
+ * thresholds exist under is older and is not what was deferred: the numbers must
+ * be on record BEFORE the first placement goes live, *"so the number cannot be
+ * reverse-engineered from whichever result appears"*.
+ *
+ * 🔴 THOSE TWO COLLIDE IF A PLACEMENT LANDS FIRST, which the gate's own
+ * derivation says is plausible in October. Whoever ratified afterwards would be
+ * choosing a threshold with the result already visible — which is not a
+ * threshold, it is a rationalisation.
+ *
+ * So the deferral is honoured and the ordering is enforced at the one commit
+ * where it can be violated: the commit that moves a slug out of
+ * `PLANNED_EDITORIAL_SRCS` into `GATE_LANES` and starts counting. Nothing about
+ * PITCHING is blocked here — a pitch is not a placement, and this stays green
+ * through every outreach step.
+ *
+ * Two honest ways to make this green on the day it bites: ratify the thresholds
+ * in the same commit as the placement, or record a decision in PROJECT.yaml
+ * saying why the lane counts without them. Deleting the guard is the third way
+ * and is why this comment is long.
+ */
+describe('a lane cannot be declared before the number that judges it', () => {
+  const PROJECT = read('PROJECT.yaml');
+
+  /** True while the thresholds are recorded as deferred rather than ratified. */
+  function thresholdsAreDeferred(): boolean {
+    const block = /- id: g1-editorial-thresholds-deferred\n([\s\S]*?)(?=\n  - id: |\n[a-z_#][a-z_]*:)/.exec(PROJECT)?.[1];
+    if (!block) return false; // the decision is gone — either ratified or removed; see the test below
+    return /revisit:\s*2026-11-30/.test(block);
+  }
+
+  it('the deferral decision is still recorded, with its conflict named', () => {
+    const block = /- id: g1-editorial-thresholds-deferred\n([\s\S]*?)(?=\n  - id: |\n[a-z_#][a-z_]*:)/.exec(PROJECT)?.[1];
+
+    if (!block) {
+      /*
+        The decision can legitimately disappear — by being superseded when the
+        thresholds are actually ratified. What must not happen is it vanishing
+        while GATE_LANES is still empty and no ratification exists anywhere,
+        which would leave the ordering unguarded and unrecorded at once.
+      */
+      expect(
+        /g1-editorial-thresholds/.test(PROJECT),
+        'ratified.g1-editorial-thresholds-deferred has been removed from PROJECT.yaml and ' +
+          'nothing about editorial thresholds replaced it. If they were ratified, record that ' +
+          'decision; if the deferral was reversed, record that. A deletion says neither.',
+      ).toBe(true);
+      return;
+    }
+
+    expect(block, 'the deferral no longer names an owner').toMatch(/owner:\s*steve/);
+    expect(block, 'the deferral no longer carries a revisit date').toMatch(/revisit:\s*\d{4}-\d{2}-\d{2}/);
+    expect(
+      /conflict:/.test(block),
+      'the `conflict:` block is gone. It is the part that says deferring the NUMBER does not ' +
+        'suspend the ORDERING — without it the next reader sees only a postponement.',
+    ).toBe(true);
+  });
+
+  it('no ed-* src is counted while the thresholds stand unratified', () => {
+    if (!thresholdsAreDeferred()) return; // ratified or superseded — the ordering is satisfied
+
+    const declared = GATE_LANES.filter((src) => src.startsWith('ed-'));
+
+    expect(
+      declared,
+      declared.length
+        ? 'An editorial lane is DECLARED and counting, while ' +
+          'PROJECT.yaml → ratified.g1-editorial-thresholds-deferred still defers the numbers ' +
+          `that judge it to 2026-11-30:\n${declared.map((s) => `  ${s}`).join('\n')}\n\n` +
+          'This is the reverse-engineering the thresholds exist to prevent — the result becomes ' +
+          'visible before the bar is set. Two honest fixes:\n' +
+          '  1. Ratify the thresholds in this same commit (move the numbers from ' +
+          '     docs/g1-editorial-threshold-proposal.md into PROJECT.yaml as a gate).\n' +
+          '  2. Record a decision in PROJECT.yaml saying why this lane counts without them.\n\n' +
+          'Staging a slug in PLANNED_EDITORIAL_SRCS is NOT blocked and never was — pitching, ' +
+          'drafting and submitting all stay green. Only counting is gated.'
+        : 'ok',
+    ).toEqual([]);
+  });
+
+  it('the staged slugs are still staged, so the guard has something to guard', () => {
+    /*
+      A positive control. If PLANNED_EDITORIAL_SRCS were emptied, the check above
+      would pass forever by having nothing to find — the shape of green that this
+      repo keeps catching.
+    */
+    expect(
+      PLANNED_EDITORIAL_SRCS.filter((s) => s.startsWith('ed-')).length,
+      'no ed-* slug is staged any more, so the ordering guard above can never fire',
+    ).toBeGreaterThan(0);
   });
 });

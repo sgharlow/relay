@@ -320,10 +320,21 @@ Everything above that is not BUILT, DROPPED or WITHDRAWN:
 3. **J8** — single-next-action card, ephemeral reveal, shared progress.
 4. **J3** — the monthly delegate digest.
 5. **KYC at claim** — `[P2]`, needs a vendor.
-6. **Second factors** — an account that demands a code is not modelled end to end. Phase 0 shipped
+6. ~~**Second factors** — an account that demands a code is not modelled end to end. Phase 0 shipped
    2026-08-17 (a recipient can now be handed a live TOTP code); Phase 1 — `secret_kinds` and
    `factors_required`, migration `035` — is written and **awaiting the migration**, without which
-   `assessPreparedness` still cannot tell an owner that a plan does not work.
+   `assessPreparedness` still cannot tell an owner that a plan does not work.~~
+   ✅ **CLOSED 2026-08-18, and every clause above stopped being true on one morning.** Steve applied
+   migration `035` to both regions, `verify:schema` went green, and Phase 1 was wired and
+   live-proven the same day (`f9beccb`, `a5b91be`): the browser declares what it encrypted, a read
+   returns it, the owner declares what the account demands, and a password behind a coded door
+   stops counting as reachable. `assessPreparedness` **can** now tell an owner a plan does not
+   work, and the readiness banner asks the question rather than waiting to be found (`14ae222`).
+   **Two things remain, and neither is this item.** The declaration covers the
+   authenticator-code question ALONE — sms, email, passkey, hardware_key and security_questions are
+   defined and not collectable (`PROJECT.yaml → deferred → D2`, deliberately HELD until owners are
+   observed answering the first question). And items created before 2026-08-18 stay `unknown`
+   permanently unless re-saved, because the server cannot read ciphertext to backfill them.
 
 None of these is a broken journey. Every journey the product *claims* completes end to end; this is
 the list of what it does not claim.

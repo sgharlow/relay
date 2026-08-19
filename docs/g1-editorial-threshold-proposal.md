@@ -1,4 +1,20 @@
-# Editorial-instrument thresholds — PROPOSAL, awaiting Steve's ratification
+# Editorial-instrument thresholds — PROPOSAL, deferred to 2026-11-30
+
+> 🗓️ **RULED 2026-08-18 BY STEVE: DO NOT RATIFY YET. Revisit 2026-11-30.** The numbers below are
+> unchanged — the decision is about *when they become binding*, not about what they are. Recorded
+> in `PROJECT.yaml → ratified.g1-editorial-thresholds-deferred`, which is authoritative; this
+> banner points at it rather than restating its reasoning.
+>
+> ⚠️ **THE ORDERING IS NOT DEFERRED WITH THE NUMBER, and this is the part to read before acting.**
+> The rule this document exists under is that the thresholds must be on record *before the first
+> placement goes live* — otherwise the bar gets set with the result already visible, which is not a
+> bar. A placement plausibly lands in October, ahead of 11-30. So the two are reconciled the only
+> way that keeps both: **a threshold may be deferred; a lane may not be declared without one.**
+> `lib/ops/editorial-preflight-claims.test.ts` fails the suite if any `ed-*` src enters
+> `GATE_LANES` while this deferral stands. **Nothing about pitching is blocked** — pitching is not
+> a placement, and every outreach step stays green. On the day a piece publishes there are exactly
+> two honest moves: ratify these numbers in the same commit, or record why the lane counts without
+> them.
 
 > **Status: DRAFT — not ratified, not in force.** Written 2026-08-18 to close the open task
 > `PROJECT.yaml → gates.g1-caregiver-wtp.instrument_retired.thresholds_do_not_transfer`:

@@ -63,6 +63,10 @@ interface Gate {
   id: string;
   due: string | null;
   disposition: Disposition;
+  /** Drafted, not agreed — carries `status: PROPOSED` and owes a ratification. */
+  proposed: boolean;
+  /** The date a PROPOSED gate owes an answer by. Earlier than `due` by design. */
+  ratifyBy: string | null;
   /** The recorded block body, so a declined gate can be held to its own terms. */
   block: string;
 }
@@ -87,6 +91,17 @@ function gates(): Gate[] {
       const due = /^\s{4}due:\s*(\d{4}-\d{2}-\d{2})/m.exec(block)?.[1] ?? null;
 
       /*
+        A PROPOSED gate is a draft: real metric, real target, real owner, and
+        nobody has said yes. `ratify_by:` is the date that draft owes an answer,
+        and it is EARLIER than `due:` on purpose — g3-b2b2c-pilot-loi is proposed
+        with ratify_by 2026-09-01 and due 2026-11-30, so a three-month window
+        existed in which the lane was neither ratified nor overdue and nothing
+        would have said a word. `due:` was the only date read here.
+      */
+      const proposed = /^\s{4}status:\s*["']?PROPOSED/m.test(block);
+      const ratifyBy = /^\s{4}ratify_by:\s*["']?(\d{4}-\d{2}-\d{2})/m.exec(block)?.[1] ?? null;
+
+      /*
         `met:` and `declined:` are both outcomes and both stop the clock — one
         says the condition was satisfied, the other says it will never be
         pursued. `moved:` is deliberately NOT an outcome: moving a date with a
@@ -99,7 +114,7 @@ function gates(): Gate[] {
           ? 'declined'
           : 'open';
 
-      return { id, due, disposition, block };
+      return { id, due, disposition, proposed, ratifyBy, block };
     });
 }
 
@@ -134,6 +149,68 @@ describe('gates', () => {
           'What this exists to prevent is the fourth option, which is nothing at all.'
         : 'ok',
     ).toEqual([]);
+  });
+
+  /**
+   * The same rule one level up: a gate that was never AGREED cannot slide either.
+   *
+   * 🔴 THE GAP THIS CLOSES, found 2026-08-18 by reading the file against itself.
+   * `g3-b2b2c-pilot-loi` was drafted with `status: PROPOSED`, `ratify_by:
+   * 2026-09-01` and `due: 2026-11-30`, and its own text claims the enforcement:
+   * *"If this is still unratified on 2026-11-30, lib/ops/gates.test.ts fails the
+   * suite and forces the decision."* True — but only on 11-30, because `due:`
+   * was the only date this file read. The ratify-by it also declares bought
+   * nothing, and a PROPOSED gate could sit unanswered for three months with
+   * every check green.
+   *
+   * That is the section header's own complaint arrived at from the other side:
+   * "A dead precondition does not stop work; it stops work being SCHEDULED,
+   * silently, which is worse." A proposal nobody rules on is indistinguishable
+   * from the silence it was written to end.
+   *
+   * Green again by: removing `status: PROPOSED` when it is ratified, moving
+   * `ratify_by:` with a reason, or recording `declined:`.
+   */
+  it('no PROPOSED gate is past its ratify_by without being ratified', () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const unratified = gates().filter(
+      (g) => g.proposed && g.ratifyBy && g.ratifyBy < today && g.disposition === 'open',
+    );
+
+    expect(
+      unratified.map((g) => `${g.id} (ratify_by ${g.ratifyBy})`),
+      unratified.length
+        ? 'These gates are still marked PROPOSED past the date they said they would be ' +
+          'ruled on:\n' +
+          unratified.map((g) => `  ${g.id} — ratify_by ${g.ratifyBy}`).join('\n') +
+          '\n\nA proposed gate is a lane with no schedule. Three honest fixes:\n' +
+          '  1. Ratified — delete the `status: PROPOSED` line. The gate is now live and its ' +
+          '     `due:` date takes over.\n' +
+          '  2. Not yet — move `ratify_by:` and say who moved it and why, the way ' +
+          '     g1-caregiver-wtp moved its `due:` twice.\n' +
+          '  3. Rejected — record a `declined:` block. The lane closes, and that is a result.\n\n' +
+          'What this exists to prevent is the fourth option, which is nothing at all.'
+        : 'ok',
+    ).toEqual([]);
+  });
+
+  /**
+   * The positive control for the check above. Without a PROPOSED gate carrying a
+   * ratify_by, that filter is empty for a reason that has nothing to do with
+   * anybody having decided anything — and it would keep passing after the field
+   * was renamed, misspelt, or dropped from the file entirely.
+   */
+  it('the parser can still see a PROPOSED gate and its ratify_by', () => {
+    const proposals = gates().filter((g) => g.proposed);
+    if (!proposals.length) return; // nothing proposed right now — legitimately nothing to see
+
+    for (const p of proposals) {
+      expect(
+        p.ratifyBy,
+        `${p.id} is PROPOSED but declares no ratify_by, so nothing dates the decision. ` +
+          'Add one, or do not mark it proposed.',
+      ).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    }
   });
 
   /**
