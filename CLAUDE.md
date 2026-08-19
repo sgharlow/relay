@@ -223,6 +223,14 @@ on every push. **`npm run verify:live` is the other half**: five walks that driv
 > different total is noticeable; a difference of one or two means this line is stale, not
 > that something is broken.
 
+> ⚠️ **A LOCAL GREEN IS NOT A CI GREEN FOR ANYTHING THAT READS A CLOCK.** CI runs in
+> **UTC**; this laptop does not. On 2026-08-18 a `snapshotDate` test asserted that the
+> local rendering DIFFERS from the UTC one — true at UTC-07:00, false in UTC, where the
+> two coincide by definition — so `npm run gate` passed here and CI failed on master.
+> Run **`TZ=UTC npx vitest run`** before pushing anything that touches dates. Note the
+> deeper half: in UTC that regression cannot be observed AT ALL, so a date rule needs a
+> structural guard as well as a behavioural one.
+
 **It is deliberately NOT in CI.** These walks create and delete real accounts, and `.env.local`
 points at the **production** cluster because Relay has no dev database. A job doing that on every
 pull request would be writing to customers' data to check a diff — and the rows it forgot would be

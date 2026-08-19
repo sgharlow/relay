@@ -9,6 +9,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { windowStarted, preFlightVerdict, formatSnapshotRow, snapshotDate } from './flight-snapshot';
 
@@ -87,12 +88,53 @@ describe('snapshotDate — the daily row is stamped in the local day of the sitt
   */
   it('uses the local calendar day, not UTC', () => {
     // 2026-08-18 18:07 at UTC-07:00 == 2026-08-19 01:07 UTC. The old code said
-    // the 19th; the sitting happened on the 18th.
+    // the 19th; the sitting happened on the 18th. Constructed from local
+    // components, so this expectation holds in every timezone.
     const eveningSitting = new Date(2026, 7, 18, 18, 7, 0);
     expect(snapshotDate(eveningSitting)).toBe('2026-08-18');
-    expect(snapshotDate(eveningSitting)).not.toBe(
-      eveningSitting.toISOString().slice(0, 10),
-    );
+  });
+
+  /*
+    🔴 THIS ASSERTION FAILED IN CI AND PASSED ON THE AUTHOR'S MACHINE, which is
+    the shape it was written to catch, one level up.
+
+    It read `expect(snapshotDate(d)).not.toBe(d.toISOString().slice(0, 10))` —
+    local must differ from UTC. That is only TRUE off UTC. The author's machine
+    is UTC-07:00 so it passed there; GitHub Actions runs in UTC, where the two
+    renderings are identical by definition and the assertion is false. The local
+    gate could not see it, because a gate run in one timezone cannot observe a
+    timezone assumption.
+
+    On a UTC machine NO test can witness this regression: the bug is precisely
+    "UTC day and local day disagree", and on UTC they never do. So the
+    differential assertion runs only where the difference exists, and the
+    structural one below carries the regression everywhere else. Stated rather
+    than quietly deleted, because "we cannot observe it here" is a fact about
+    the environment that the next reader needs.
+  */
+  it('differs from the UTC rendering wherever the two can differ', () => {
+    const eveningSitting = new Date(2026, 7, 18, 18, 7, 0);
+    if (eveningSitting.getTimezoneOffset() === 0) return; // UTC: nothing to observe
+    expect(snapshotDate(eveningSitting)).not.toBe(eveningSitting.toISOString().slice(0, 10));
+  });
+
+  it('reads local calendar components rather than an ISO instant — in any timezone', () => {
+    /*
+      The half that always runs. Reverting to `toISOString().slice(0, 10)` is
+      invisible to every behavioural test above when the suite runs in UTC, so
+      the reversion is caught structurally instead: this function's own source
+      may not reach for an ISO instant.
+    */
+    const source = readFileSync(join(process.cwd(), 'lib/g1/flight-snapshot.ts'), 'utf8');
+    const fn = /export function snapshotDate[\s\S]*?\n}/.exec(source)?.[0] ?? '';
+
+    expect(fn, 'snapshotDate not found — this guard has gone blind').not.toBe('');
+    expect(
+      fn.includes('toISOString'),
+      'snapshotDate renders an ISO instant again. In UTC that is indistinguishable from correct, ' +
+        'and every evening sitting west of Greenwich lands on tomorrow row of the flight log.',
+    ).toBe(false);
+    expect(fn).toMatch(/getFullYear[\s\S]*getMonth[\s\S]*getDate/);
   });
 
   it('pads month and day so the rows sort as text', () => {
