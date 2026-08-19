@@ -431,6 +431,146 @@ async function main(): Promise<void> {
       'going back re-offers both people',
       /Two people need you/i.test(await cPage.locator('body').innerText()),
     );
+
+    // =====================================================================
+    // PART 3 — the preparedness sentence, which only a browser can see
+    // =====================================================================
+    /*
+      🔴 THE LAST UNASSERTED HOP. `/api/readiness` is now read by verify:factors,
+      so the SQL projection, the row mapping and the rule are covered as far as
+      the payload. The SENTENCE is assembled client-side by
+      `preparednessSentence(p, whoLabel)` inside ReadinessBanner, so nothing over
+      HTTP can see it — and that stretch has real failure modes with no red
+      anywhere: the banner does `.catch(() => setData(null))` and then
+      `if (!data) return null`, so a failed fetch renders NOTHING, silently. The
+      prompt's own guard (`p.unaskedItems.length > 0`) is the same shape.
+
+      Two people hand-ran a browser check for this behaviour on 2026-08-18 — one
+      for D3, one for the cross-surface refresh — and neither left anything that
+      runs again. This is that check, kept.
+
+      ⚠️ IT ASSERTS THAT THE WORDS MOVE, NOT WHICH WORDS. Pinning the copy would
+      couple the release chain to sentences that are allowed to change, and
+      re-deriving the number here would be the walk recomputing the answer —
+      the exact mistake verify:factors was just corrected for. What must be true
+      is that an answer changes the claim on screen.
+    */
+    const kin = undeliverable(`relay-ui-kin-${stamp}@relay.test`);
+    const kinRes = await owner.post('/api/recipients', {
+      name: 'Sam Rivera', email: kin, relationship: 'child', phone: null, role: 'recipient',
+    });
+    const kinId = String((kinRes.body as { id: string }).id);
+
+    for (const title of ['Primary email', 'Main bank']) {
+      const made = await owner.post('/api/vault/items', {
+        title, type: 'account', service_name: title, category: 'communication',
+        ciphertext: 'AAAAAAAAAAAAAAAAAAAAAA==', wrapped_data_key: 'AAAAAAAAAAAA',
+        kms_key_id: 'e2e-placeholder',
+        // A password and nothing else — the shape the question is about.
+        secret_kinds: 'password',
+      });
+      await owner.post('/api/rules', {
+        recipient_id: kinId, vault_item_id: String((made.body as { id: string }).id),
+        trigger_type: 'emergency', scope: 'view', reversible: true,
+      });
+    }
+
+    /** The standing claim, read off the screen rather than recomputed. */
+    const sentence = async (): Promise<string> =>
+      (/If something happened tomorrow[^.]*\./.exec(await page.locator('body').innerText()) ?? [''])[0];
+
+    /*
+      Every one of these sentences opens with the same twelve words, so a detail
+      string that truncates shows two identical halves and tells the next reader
+      nothing about what moved. Report the part that differs.
+    */
+    const said = (s: string): string => (/could reach (.*)$/.exec(s) ?? [, s])[1] ?? s;
+
+    /*
+      ⚠️ A FIXED SLEEP MADE THIS CHECK FLAKY, AND A FLAKY ASSERTION IN THE
+      RELEASE CHAIN IS WORSE THAN NO ASSERTION — it teaches whoever runs it to
+      discount red. `/api/readiness` runs about ten queries against DSQL, so the
+      refresh after an answer sometimes lands well after two and a half seconds:
+      one run sampled the pre-answer render and reported a defect that was not
+      there. Poll for the change instead, with a bound. What is being asserted
+      is that the screen agrees EVENTUALLY, not that it agrees within an
+      arbitrary sleep; a change that never arrives still fails, which is the
+      thing worth failing on.
+    */
+    async function waitForChange(read: () => Promise<string>, from: string, ms = 20_000): Promise<string> {
+      const deadline = Date.now() + ms;
+      let now = from;
+      while (Date.now() < deadline) {
+        now = await read();
+        if (now !== from) return now;
+        await page.waitForTimeout(500);
+      }
+      return now;
+    }
+
+    /** The same, for a count that should settle on a value. */
+    async function waitForCount(read: () => Promise<number>, want: number, ms = 20_000): Promise<number> {
+      const deadline = Date.now() + ms;
+      let n = await read();
+      while (Date.now() < deadline && n !== want) {
+        await page.waitForTimeout(500);
+        n = await read();
+      }
+      return n;
+    }
+
+    const asks = () => page.getByRole('button', { name: /asks for a code as well as a password/i });
+
+    await page.goto(`${BASE}/vault`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(2000);
+
+    const first = await sentence();
+    check('the preparedness sentence renders at all', first.length > 0, said(first));
+    check(
+      'and the owner is ASKED about the items nobody has answered for',
+      (await asks().count()) === 2,
+      `${await asks().count()} prompted`,
+    );
+
+    // ── Answering in the BANNER moves the sentence above it ───────────────
+    await page.getByRole('button', { name: /A password is enough for Primary email/i }).click();
+    const afterBanner = await waitForChange(sentence, first);
+    check(
+      'answering in the banner changes the claim the banner makes',
+      afterBanner !== first && afterBanner.length > 0,
+      `${said(first)} -> ${said(afterBanner)}`,
+    );
+    const promptedAfterBanner = await waitForCount(() => asks().count(), 1);
+    check(
+      'and the answered item stops being asked about',
+      promptedAfterBanner === 1,
+      `${promptedAfterBanner} still prompted`,
+    );
+
+    // ── Answering on the ROW moves it too, with no reload ─────────────────
+    /*
+      The other direction, and the worse one: the row and the banner are
+      siblings in different trees, so before the announcement landed, answering
+      here left the sentence — the surface this repo calls authoritative —
+      stating a preparedness the owner had just superseded. No `goto` below on
+      purpose; a reload would hide exactly the defect this asserts.
+    */
+    const rowControl = page.getByRole('button', { name: /^Needs a code\?$/ });
+    check('the remaining item still offers the question on its row', (await rowControl.count()) === 1);
+
+    await rowControl.first().click();
+    const afterRow = await waitForChange(sentence, afterBanner);
+    check(
+      'answering on the row moves the sentence without a reload',
+      afterRow !== afterBanner && afterRow.length > 0,
+      `${said(afterBanner)} -> ${said(afterRow)}`,
+    );
+    const promptedAfterRow = await waitForCount(() => asks().count(), 0);
+    check(
+      'and nothing is left to ask about',
+      promptedAfterRow === 0,
+      `${promptedAfterRow} still prompted`,
+    );
   } finally {
     await browser.close().catch(() => {});
     console.log('');

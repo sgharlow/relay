@@ -213,7 +213,7 @@ These cut across multiple files and are easy to break. Preserve them.
 
 `npm run gate` is types + lint + test + build. It needs no credentials and no server, so CI runs it
 on every push. **`npm run verify:live` is the other half**: five walks that drive the running app —
-`e2e-stepup` (17 assertions over HTTP), `e2e-multiowner` (14), `e2e-ui` (19, in a real browser),
+`e2e-stepup` (17 assertions over HTTP), `e2e-multiowner` (14), `e2e-ui` (26, in a real browser),
 `e2e-reveal` (20) and `e2e-factors` (17). Start `npm run dev` first.
 
 > ⚠️ Those five counts are the volatile-number trap this repo's own rules name, and one of
