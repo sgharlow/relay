@@ -256,6 +256,28 @@ export default function TermsPage() {
             Relay is provided by <strong>{OPERATOR_NAME}</strong>, an individual — there is no
             company. These terms are an agreement between you and him.
           </p>
+          {/*
+            THE CONSEQUENCE OF THE LINE ABOVE, stated where it is contractual rather than left for
+            a reader to work out. Added 2026-08-20 (PROJECT.yaml deferred relays-own-continuity-is-unstated).
+            A product about what happens when somebody cannot act owes its own answer to that
+            question, and the honest one is uncomfortable: one operator, no successor, and a
+            stopped service releases nothing to anybody. What makes it publishable rather than
+            alarming is that the remedy is real, self-serve and needs nothing from him.
+          */}
+          <p className="mt-2">
+            <strong>There is no successor and no escrow.</strong> If Relay stops being operated, the
+            service stops, and a stopped service cannot release access to anyone you named. Your
+            content is not at risk — vault items are encrypted in your browser and he cannot read
+            them — but the service that would open them would be gone. <strong>Export your vault
+            from Account</strong>; it decrypts in your browser and writes a file you keep, and it is
+            the only copy that survives Relay ending. A deliberate wind-down would be announced with
+            time to do that, which is an intention rather than a guarantee, because a guarantee
+            would need someone other than him to enforce it. See{' '}
+            <a className="text-ink underline" href="/about">
+              /about
+            </a>
+            .
+          </p>
           <p className="mt-2">
             <a className="text-ink underline" href={CONTACT_MAILTO}>
               {CONTACT_EMAIL}

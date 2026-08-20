@@ -104,6 +104,42 @@ export default function AboutPage() {
       </section>
 
       <section className="mx-auto max-w-3xl px-6 py-10" style={{ borderTop: '1px solid var(--rule)' }}>
+        <h2 className="font-serif text-t6 font-semibold text-ink">
+          What happens to Relay if something happens to me
+        </h2>
+        <p className="mt-3 text-t3 leading-relaxed text-ink">
+          This product is about the day somebody cannot act. It would be a poor answer to that
+          question to avoid it about myself, so: Relay is run by one person, and there is no
+          company behind me, no co-founder, and no arrangement with anybody to take it over.
+        </p>
+        <p className="mt-3 text-t3 leading-relaxed text-ink">
+          If I stopped — and the bills stopped being paid — the service would stop with me.{' '}
+          <strong>A stopped service cannot release anything to anyone.</strong> Nobody you have
+          named would be given access, because the thing that gives them access is the thing that
+          is gone. I would rather write that plainly than let it be discovered.
+        </p>
+        <p className="mt-3 text-t3 leading-relaxed text-ink">
+          What is not at risk is your <strong>content</strong>. Vault items are encrypted in your
+          browser, and I could not read them on my best day. So the failure above is a loss of
+          service, not a leak — and the same design means I could not hand your vault to a
+          successor even if there were one.
+        </p>
+        <p className="mt-3 text-t3 leading-relaxed text-ink">
+          <strong>The thing you can do about it takes one click and needs nothing from me.</strong>{' '}
+          Under Account there is an export. It decrypts your whole vault in your own browser and
+          writes it to a file you keep. Do it once and you are holding a copy that outlives Relay,
+          me, and your subscription. If you only ever act on one sentence from this page, that is
+          the one.
+        </p>
+        <p className="mt-3 text-t2 leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
+          If Relay is ever wound down deliberately rather than abruptly, you will hear it from this
+          address with time to export. That is an intention, and I am not dressing it up as a
+          guarantee — a guarantee would need somebody other than me to enforce it, and there is
+          nobody.
+        </p>
+      </section>
+
+      <section className="mx-auto max-w-3xl px-6 py-10" style={{ borderTop: '1px solid var(--rule)' }}>
         <h2 className="font-serif text-t6 font-semibold text-ink">Reaching a human</h2>
         <p className="mt-3 text-t3 leading-relaxed text-ink">
           <a href={CONTACT_MAILTO} className="underline underline-offset-2">

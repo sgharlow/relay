@@ -1897,6 +1897,26 @@ deferred:
     ends_when: "/about and /terms answer it plainly, WITHOUT promising an escrow or a wind-down period
       that does not exist, and the sentence is pinned the way operator-named.test.ts pins the
       operator."
+    closed:
+      date: 2026-08-20
+      what_shipped: "/about gains 'What happens to Relay if something happens to me' and /terms
+        carries the contractual half. Three answers: the service stopping means NOBODY is released
+        to — 'a stopped service cannot release anything to anyone', which is the sharpest
+        consequence and the one a reassuring rewrite would drop; the CONTENT is not at risk because
+        vault items are encrypted in the owner's browser; and the remedy is the existing self-serve
+        export, which needs nothing from the operator and produces a copy that outlives Relay."
+      scoped_deliberately: "The 'cannot read' claim is scoped to CONTENT rather than written as 'I
+        can never read anything'. /privacy now discloses that the owner's own sign-in authenticator
+        secret IS stored readably (B9), and an unqualified claim here would contradict the page next
+        door. Two pages, one answer."
+      what_it_refuses_to_say: "No successor, no escrow, no trustee, no indefinite preservation. Those
+        are the four comforting sentences available and none of them is true. The wind-down notice
+        is marked as an INTENTION rather than a guarantee, because a guarantee would need somebody
+        other than the operator to enforce it and there is nobody."
+      guard: "lib/ops/operator-continuity.test.ts pins the three answers AND the four refusals.
+        Proven by planting both directions: softening 'a stopped service cannot release anything to
+        anyone' into 'your plan would be safe with us' (1 red), and adding an escrow promise (2
+        red). type-scale and raw-color stayed green — the new copy uses tokens only."
 
   - id: the-rate-limiters-justification-cites-a-cancelled-flight    # "D6"
     owner: claude
