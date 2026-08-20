@@ -9,10 +9,53 @@
  * get through. It is not a security boundary and must never be the only defence
  * on anything that costs money or grants access.
  *
- * It is deployed here because the alternative for the G1 window is a shared
- * store, and adding infrastructure to a working system for a $250 ad test is
- * the wrong trade. If lead spam actually materialises, that is the documented
- * problem that would justify the upgrade.
+ * ⛔ THE PARAGRAPH THAT STOOD HERE JUSTIFIED THIS MODULE BY A FLIGHT THAT WAS
+ * CANCELLED. It read: *"It is deployed here because the alternative for the G1
+ * window is a shared store, and adding infrastructure to a working system for a
+ * $250 ad test is the wrong trade. If lead spam actually materialises, that is
+ * the documented problem that would justify the upgrade."*
+ *
+ * Paid advertising was retired permanently on 2026-08-16
+ * (`ratified.retire-paid-advertising`, `ratified.g1-google-lane-cancelled`), so
+ * the trade it describes is against a thing that no longer exists and the
+ * trigger it names — lead spam during an ad flight — can never fire. A
+ * justification resting on a dead premise is the drift this repo keeps
+ * catching, so it is quoted above rather than deleted and replaced below.
+ *
+ * ── THE STANCE, RE-DERIVED 2026-08-20 ──────────────────────────────────────
+ *
+ * Unchanged: this is not a security boundary, and it must never be the only
+ * defence on anything that costs money or grants access. What changed is the
+ * answer to *what should be*, and it is not "buy a shared store".
+ *
+ * 🔑 THIS CODEBASE HAS ALREADY SOLVED DURABLE METERING TWICE, WITH STORAGE IT
+ * ALREADY OWNS — which is the fact that decides the question:
+ *
+ *   lib/notify/invite-budget.ts   counts `audit_log` rows per owner per day.
+ *                                 No new table, no new service.
+ *   lib/auth/signin-attempts.ts   an append-only table counted by a predicate
+ *                                 (migration 036). The front door's budget.
+ *
+ * So the choice was never "per-instance memory or new infrastructure". It is
+ * "per-instance memory, or the durable pattern already in the repository,
+ * applied to the endpoints that earn it". The second costs a query per request
+ * on the path it guards, which is why it is applied endpoint by endpoint on
+ * evidence rather than wholesale.
+ *
+ * ⚠️ AND THE MOST SECURITY-CRITICAL USER OF THIS MODULE IS ALREADY BACKED BY A
+ * ROW. Owner sign-in leans on `signin-throttle.ts`, whose per-address budget is
+ * durable since 2026-08-20; only its per-SOURCE bound still lives here. The
+ * argument for a shared store was strongest for exactly that case, and it has
+ * already been answered without one.
+ *
+ * WHAT IS STILL ONLY IN MEMORY, and what that is worth:
+ * the unauthenticated endpoints — signup, the lead form, support, the resend
+ * paths, the report sinks. A distributed flood across instances gets through
+ * every one of them. The full endpoint-by-endpoint reckoning, including which
+ * ones would actually cost something and which are merely noisy, is
+ * `docs/rate-limit-stance-2026-08-20.md`, and it is a DECISION for Steve rather
+ * than a change taken here: a shared store is infrastructure and needs the
+ * 5-gate policy.
  *
  * Feature: relay-g1-wtp
  */

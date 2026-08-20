@@ -2079,6 +2079,42 @@ deferred:
     ends_when: "the stance is re-derived against the world that exists, the header is corrected, and a
       recommendation with a cost reaches Steve. ⚠️ A shared store is infrastructure: proposing is in
       scope, adding it is not."
+    closed:
+      date: 2026-08-20
+      what_shipped: "docs/rate-limit-stance-2026-08-20.md — the re-derivation, both tables of call
+        sites, three costed options, and a recommendation. The header in lib/http/rate-limit.ts now
+        QUOTES the dead justification rather than deleting it, and points at the doc."
+      # 🔑 THE FINDING THAT DECIDED IT, and it was not about cost.
+      the_pattern_already_exists: "This codebase has solved durable metering THREE times with
+        storage it already owns, and none of them bought a shared store: invite-budget.ts counts
+        audit_log rows per owner per day; signin-attempts.ts is an append-only table with a window
+        predicate (036); recipient-code/verifier-code carry failed_attempts on the code's own row.
+        So the choice was never 'memory or new infrastructure' — it is 'memory, or the pattern
+        already here, applied to the endpoints that earn it'. And the case that was always
+        strongest for a shared store — authentication — was answered without one on 2026-08-20."
+      recommendation: "OPTION A: leave it, extend the existing durable pattern endpoint-by-endpoint
+        on evidence. Option B (durable counters on caregivers/interest and auth/signup) when the
+        first stranger arrives — with its own objection recorded, that a per-IP durable counter
+        makes the database do work for whoever is hammering it, which invite-budget avoids by being
+        per-OWNER. Option C (Upstash Redis) recorded as recommended AGAINST so it is not
+        re-proposed as the obvious answer."
+      # ⚠️ TWO PREMISES IN THE ITEM ITSELF WERE WRONG, corrected rather than dropped.
+      corrections_to_this_entry: "(1) It named /api/ai/intake and /api/stripe/checkout as 'paid
+        third-party calls behind PUBLIC endpoints'. Both are AUTHENTICATED and key per owner — a
+        burst bound on somebody already signed in, not a boundary against the public. The genuinely
+        public money-spending endpoints are the ones that send EMAIL. (2) 'real users, free standby
+        accounts' as a reason the exposure grew: demand_signal is still none, so that is an argument
+        for readiness rather than for spend."
+      guard: "lib/ops/rate-limit-stance.test.ts derives the endpoint list from the code — every
+        route calling rateLimit() must appear in the doc. ⚠️ IT FAILED ON ITS OWN DOCUMENT
+        IMMEDIATELY: the first draft tabulated the nine PUBLIC endpoints and left six authenticated
+        ones in prose, so a doc claiming to be exhaustive understated the surface by six. Second
+        table added. Proven again by planting a new rate-limited route."
+      also_recorded: "/api/auth/signup's 10/hour ceiling is ALSO the release gate's ceiling — one
+        verify:live chain is exactly ten signups. A rate limit tuned for strangers is currently the
+        constraint on our own release process; if it is ever raised, raise it for a reason about
+        strangers."
+
 
   - id: unit-economics-are-unmodelled                         # "D7"
     owner: claude
