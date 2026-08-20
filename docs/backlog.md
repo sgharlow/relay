@@ -569,7 +569,18 @@ OpenAI; `/api/stripe/checkout` reaches Stripe) and one that is now an authentica
 
 ---
 
-# Sprint 4 — The EncryptionContext change *(stretch — read the gate first)*
+# ◐ Sprint 4 — The EncryptionContext change — DESIGN COMPLETE 2026-08-20
+
+> Ran on branch `sprint/2026-08-20-4` (from `sprint/2026-08-20-3`), 0 blocked.
+> Report: `docs/sprint-reports/2026-08-20-sprint-4.md`.
+>
+> **The gate held: S4-3 was NOT built.** S4-1, S4-2 and S4-5 shipped; S4-4 is specified inside the
+> design because it must call signatures S4-3 has not created. The output is what the gate asked
+> for — a plan someone can execute with credentials at their elbow.
+>
+> ⛔ **Lifting the gate is Steve's.** `docs/encryption-context-design.md` and
+> `docs/encryption-context-rollout.md` are what to read first.
+
 
 **Theme:** the deepest security item, in its own sprint because it is the one where a mistake is
 unrecoverable.
@@ -598,11 +609,11 @@ execute with credentials at their elbow — not a merged crypto change nobody ha
 
 | # | Item | Effort |
 |---|---|---|
-| S4-1 | The compatibility rule, written first: how a legacy blob is recognised, and the proof that it still decodes. Nothing else starts until this is settled | S |
-| S4-2 | `db/migrations/037_*.sql` authored, not applied — the per-row marker recording which wrapping era a key belongs to | S |
-| S4-3 | The wrap/unwrap change itself, behind that marker, with `KeyId` named on Decrypt as the second half of the same fix | M |
-| S4-4 | The live-proof script: a walk that wraps with context, unwraps it, **and** unwraps a legacy blob, in one run against the real CMK. This is what "done" means for S4-3, and it cannot run here | S |
-| S4-5 | Roll-forward and roll-back notes: what a half-deployed state looks like in each direction, and which one is safe | S |
+| ✅ S4-1 | SHIPPED `35f4242` — The compatibility rule, written first: how a legacy blob is recognised, and the proof that it still decodes. Nothing else starts until this is settled | S |
+| ✅ S4-2 | SHIPPED `99924c1` — `db/migrations/037_kms_context_era.sql` authored, not applied — the per-row marker recording which wrapping era a key belongs to | S |
+| ⛔ S4-3 | **NOT DONE — gated.** The wrap/unwrap change itself, behind that marker, with `KeyId` named on Decrypt as the second half of the same fix | M |
+| 📋 S4-4 | SPECIFIED in the design §4, not written — it must call signatures S4-3 has not created. The live-proof script: a walk that wraps with context, unwraps it, **and** unwraps a legacy blob, in one run against the real CMK. This is what "done" means for S4-3, and it cannot run here | S |
+| ✅ S4-5 | SHIPPED `a75ac83` — Roll-forward and roll-back notes: what a half-deployed state looks like in each direction, and which one is safe | S |
 
 **Post-merge, and non-negotiable:** S4-4 run from the main checkout against production, plus
 `npm run verify:reveal` — the walk that exists precisely because the product's most valuable moment
