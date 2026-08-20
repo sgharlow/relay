@@ -16,6 +16,110 @@
  */
 const LEGACY_HOST = 'relay-three-henna.vercel.app';
 
+/*
+  ── THE CONTENT SECURITY POLICY, IN TWO VERSIONS ──────────────────────────────
+
+  🔴 WHY THE ORIGINAL SEQUENCE CHANGED ON 2026-08-20. The plan was to observe
+  report-only traffic and then decide. That plan could not execute: reports went
+  to stderr and nowhere else, and Vercel runtime log retention measured about 24
+  HOURS — a 7-day query and a 24-hour query returned identical counts, and
+  /api/csp-report did not appear among the 29 retained request paths at all. The
+  evidence expired before anyone could read it, so "wait for evidence" had become
+  "wait forever" while the header cost bytes on every response.
+
+  ⚠️ AND THE COST OF WAITING WAS UNDERSTATED. The note this replaced said that
+  enforcing while 'unsafe-inline' remains "would buy very little". For a product
+  that decrypts vault plaintext IN THE BROWSER, the threat is not a script
+  running — it is a script SENDING WHAT IT FOUND somewhere. 'unsafe-inline'
+  concedes the first; connect-src, img-src and default-src close the second:
+
+    fetch / XHR / WebSocket / sendBeacon to an attacker host  -> connect-src
+    image beacon, new Image().src = evil + secret             -> img-src
+    form POST to an attacker                                  -> form-action
+    pulling in further attacker script                        -> default-src
+
+  What remains is navigation (location = evil + secret), which CSP cannot stop
+  and which is visible to the person sitting there. So enforcing converts SILENT
+  background exfiltration into "the attacker must navigate you away in front of
+  you". That is most of the practical protection, and it needed no middleware.
+
+  Measured before switching on, because "it should be fine" is not a measurement:
+  ZERO client fetch() to an external URL, ZERO third-party scripts or embeds,
+  Stripe is a redirect rather than an embed, and @vercel/analytics posts
+  same-origin. The app already behaved as if the policy were enforcing.
+
+  The two versions differ in exactly one directive — script-src — and share one
+  definition, because two copies of a policy is two things to drift.
+*/
+const CSP_SHARED = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  // data: covers the locally-generated TOTP enrolment QR, which is encoded
+  // in-process precisely so the secret never reaches a third party.
+  "img-src 'self' data: blob:",
+  "font-src 'self' data:",
+  // Stripe checkout is a REDIRECT, not an embed, so no frame-src for it.
+  "connect-src 'self' https://vitals.vercel-insights.com",
+];
+
+const CSP_REPORTING = ['report-uri /api/csp-report', 'report-to csp'];
+
+/*
+  ⚠️ A CSP ERROR YOU WILL SEE IN `npm run dev`, WHICH MUST NOT BE "FIXED" HERE.
+
+    Loading the script 'https://va.vercel-scripts.com/v1/script.debug.js'
+    violates the following Content Security Policy directive: "script-src ..."
+
+  @vercel/analytics loads its script from an EXTERNAL origin in development and
+  from `/_vercel/insights/script.js` — SAME-ORIGIN — in production. Verified both
+  ways on 2026-08-20: the package's own bundle contains both URLs, and
+  relaystandby.com's served HTML contains no reference to va.vercel-scripts.com.
+
+  So the obvious fix — adding va.vercel-scripts.com to script-src — would
+  permanently widen PRODUCTION's policy to admit an external script origin that
+  production never loads, in order to silence a console line in dev. That trades
+  the actual protection for a tidier local console. Analytics simply does not
+  report from `npm run dev`, which costs nothing.
+
+  ⚠️ Note also that this violation was found by LOADING PAGES IN A BROWSER, not
+  by reading the source: the script is injected at runtime by a package, so it
+  appears in no grep for `<script>` or `fetch(`. The measurement that said "zero
+  third-party scripts" was source-based and was wrong. Anything that changes
+  these directives needs a browser, not a search.
+*/
+
+/**
+ * What is actually blocked today.
+ *
+ * 'unsafe-inline' and 'unsafe-eval' remain because Next's bootstrap emits inline
+ * scripts and removing them without nonces would blank the app. They are the
+ * concession that makes this deployable now; everything else is real.
+ */
+const CSP_ENFORCED = [
+  ...CSP_SHARED,
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  ...CSP_REPORTING,
+].join('; ');
+
+/**
+ * The next rung, observed only — and now with somewhere to be observed.
+ *
+ * Identical except that script-src drops both escapes. Every report this
+ * generates is a concrete answer to "what would break if we did the nonce work",
+ * which is the one CSP question here that genuinely needs evidence rather than
+ * argument. Reports land in `csp_reports` (migration 038) carrying `disposition`
+ * so enforce-vs-report is never guessed at.
+ *
+ * ⚠️ Expect this to report on every page load at first: Next's own bootstrap is
+ * exactly what it refuses. That is the measurement, not a fault — the question is
+ * whether anything OTHER than Next's bootstrap appears.
+ */
+const CSP_REPORT_ONLY = [...CSP_SHARED, "script-src 'self'", ...CSP_REPORTING].join('; ');
+
 /**
  * Response headers, applied to every route.
  *
@@ -25,14 +129,15 @@ const LEGACY_HOST = 'relay-three-henna.vercel.app';
  * a browser will do with that page are not decoration; they are the second half
  * of the design.
  *
- * DELIBERATELY THE FOUR THAT CANNOT BREAK A PAGE. Content-Security-Policy is
- * the one that matters most and it is NOT here, because an enforcing policy
- * needs nonces for Next's inline bootstrap scripts, which needs a Node-runtime
- * middleware on the path of every request — the change lib/http/owner-route.ts
- * already declined to make for passive liveness. It ships next, report-only
- * first, once a real beta has said what it actually violates. Shipping these
- * four now buys most of the clickjacking and downgrade protection at no risk of
- * blanking a screen for somebody mid-emergency.
+ * It began as DELIBERATELY THE FOUR THAT CANNOT BREAK A PAGE, with
+ * Content-Security-Policy held back because an enforcing policy needs nonces for
+ * Next's inline bootstrap scripts, which needs Node-runtime middleware on every
+ * request — the change lib/http/owner-route.ts already declined to make. The
+ * plan was: ship report-only, watch real traffic, decide on evidence.
+ *
+ * ✅ 2026-08-20: the full policy is now ENFORCED, and the nonce question moved to
+ * a stricter report-only header. See CSP_ENFORCED below for why that sequence
+ * changed.
  */
 const SECURITY_HEADERS = [
   /*
@@ -120,34 +225,26 @@ const SECURITY_HEADERS = [
   */
   {
     key: 'Content-Security-Policy',
-    value: [
-      "base-uri 'self'",
-      "object-src 'none'",
-      "frame-ancestors 'none'",
-      "form-action 'self'",
-    ].join('; '),
+    value: CSP_ENFORCED,
   },
 
   /*
-    CONTENT-SECURITY-POLICY, IN REPORT-ONLY MODE — the second half of the
-    client-side-encryption design, arriving carefully.
+    REPORT-ONLY, NOW POINTED AT THE NEXT RUNG RATHER THAN AT THIS ONE.
 
-    This product decrypts vault plaintext IN THE BROWSER. CSP is the control
-    that decides what an injected script may do with what is sitting in that
-    page's memory, so it matters here more than on almost any other site. It is
-    also the header most able to blank a screen for somebody mid-emergency,
-    which is why this ships REPORT-ONLY: the browser evaluates the policy,
-    reports what it would have blocked to /api/csp-report, and renders the page
-    regardless. Report-only cannot break a page by construction.
+    Until 2026-08-20 this header carried the SAME policy as the enforcing one,
+    which meant it could only ever report things that were already permitted —
+    it was observing a question nobody was asking. It now carries script-src
+    without 'unsafe-inline'/'unsafe-eval', so every report is a concrete answer
+    to the one CSP question here that genuinely needs evidence: what would break
+    if the nonce/middleware work were done.
 
-    'unsafe-inline' and 'unsafe-eval' in script-src are what make this
-    report-only rather than enforcing. Next's bootstrap emits inline scripts, so
-    an enforcing policy needs per-request nonces, which needs Node-runtime
-    middleware on the path of every request — the change owner-route.ts already
-    declined to make for passive liveness. Enforcing with those two directives
-    still present would buy very little; enforcing without them, today, would
-    break the app. So the honest sequence is: observe real traffic, remove what
-    nothing needs, then take the middleware decision on evidence.
+    Report-only still cannot break a page by construction, which is why the
+    stricter version is safe to ship the moment the safer version is enforced.
+
+    ⚠️ Reports now PERSIST (migration 038, lib/ops/csp-report-store.ts). Before
+    this they went to stderr, and Vercel keeps runtime logs about a day — so the
+    observation period that justified this header could never conclude. A
+    report-only header whose reports expire is a header that informs nothing.
 
     frame-ancestors IS meaningful even here — it duplicates X-Frame-Options
     above, which is deliberate: the header is what older browsers honour, and
@@ -155,23 +252,7 @@ const SECURITY_HEADERS = [
   */
   {
     key: 'Content-Security-Policy-Report-Only',
-    value: [
-      "default-src 'self'",
-      "base-uri 'self'",
-      "object-src 'none'",
-      "frame-ancestors 'none'",
-      "form-action 'self'",
-      // Stripe checkout is a REDIRECT, not an embed, so no frame-src for it.
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-      "style-src 'self' 'unsafe-inline'",
-      // data: covers the locally-generated TOTP enrolment QR, which is encoded
-      // in-process precisely so the secret never reaches a third party.
-      "img-src 'self' data: blob:",
-      "font-src 'self' data:",
-      "connect-src 'self' https://vitals.vercel-insights.com",
-      'report-uri /api/csp-report',
-      'report-to csp',
-    ].join('; '),
+    value: CSP_REPORT_ONLY,
   },
 
   /*

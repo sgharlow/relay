@@ -154,17 +154,32 @@ describe('security headers', () => {
     applied to four directives it does not describe.
   */
   describe('Content-Security-Policy', () => {
-    /** Directives that can stop a page rendering. None may be enforced yet. */
-    const CAN_BLANK_A_PAGE = [
-      'default-src',
-      'script-src',
-      'style-src',
-      'img-src',
-      'connect-src',
-      'font-src',
-      'media-src',
-      'worker-src',
-    ];
+    /**
+     * The escapes that keep the app renderable.
+     *
+     * 🔴 THE DANGER INVERTED ON 2026-08-20. Until then the risk was somebody
+     * ENFORCING a directive that blanks the page, and the guard below refused
+     * every such directive. The full policy is now enforced deliberately, so
+     * that guard would be refusing the decision it was written to protect.
+     *
+     * The remaining danger is the opposite one, and it is sharper: removing
+     * `'unsafe-inline'`/`'unsafe-eval'` from the ENFORCING script-src. Next's
+     * bootstrap emits inline scripts, so doing that without per-request nonces
+     * from Node-runtime middleware white-screens the whole product for everyone,
+     * including somebody mid-emergency. It is a one-word deletion and it looks
+     * like tightening security.
+     */
+    const KEEPS_THE_APP_RENDERABLE = ["'unsafe-inline'", "'unsafe-eval'"];
+
+    /**
+     * Why enforcing was worth it, expressed as directives.
+     *
+     * This product decrypts plaintext in the browser, so the threat is
+     * exfiltration rather than execution. These are the directives that close
+     * the silent channels; losing one would quietly undo the reason the policy
+     * was enforced at all.
+     */
+    const CLOSES_AN_EXFIL_CHANNEL = ['default-src', 'connect-src', 'img-src', 'form-action'];
 
     it('enforces the directives that cannot break a page', async () => {
       const v = (await headerMap())['Content-Security-Policy'];
@@ -180,29 +195,73 @@ describe('security headers', () => {
     });
 
     /*
-      🔴 THE GUARD THAT MATTERS MORE THAN THE ONE ABOVE. Adding a directive to
-      the enforcing header is a one-word change that can white-screen the whole
-      product for everyone, including somebody mid-emergency. The nonce decision
-      has to be taken deliberately, with middleware, on evidence — not by
-      someone tidying two headers into one.
+      🔴 THE GUARD THAT MATTERS MORE THAN THE ONE ABOVE, and it now points the
+      other way. Removing an escape from the ENFORCING script-src is a one-word
+      deletion that white-screens the product for everyone — and it reads as
+      tightening security, so it is exactly the kind of change that sails
+      through review. The nonce decision has to be taken deliberately, with
+      middleware, on evidence from the report-only header below.
     */
-    it('never enforces a directive that could blank a screen', async () => {
+    it('keeps the escapes that stop the enforcing policy blanking the app', async () => {
       const v = (await headerMap())['Content-Security-Policy'] ?? '';
-      for (const directive of CAN_BLANK_A_PAGE) {
+      const scriptSrc = v.split(';').map((d) => d.trim()).find((d) => d.startsWith('script-src'));
+      expect(scriptSrc, 'the enforcing policy has no script-src at all').toBeDefined();
+
+      for (const escape of KEEPS_THE_APP_RENDERABLE) {
         expect(
-          v,
-          `${directive} is ENFORCING. Next emits inline scripts, so this needs ` +
-            'per-request nonces from Node-runtime middleware first — read the ' +
-            'note in next.config.mjs before shipping this.',
-        ).not.toContain(directive);
+          scriptSrc,
+          `the enforcing script-src no longer allows ${escape}. Next's bootstrap emits ` +
+            'inline scripts, so this white-screens the product unless per-request nonces ' +
+            'from Node-runtime middleware landed in the same change. If they did, delete ' +
+            'this assertion deliberately and say so — do not let it pass by accident.',
+        ).toContain(escape);
       }
     });
 
-    it('keeps the script directives under observation rather than enforcement', async () => {
-      const ro = (await headerMap())['Content-Security-Policy-Report-Only'];
-      expect(ro).toBeDefined();
-      expect(ro).toContain('script-src');
-      expect(ro).toContain('default-src');
+    it('enforces the directives that close a silent exfiltration channel', async () => {
+      /*
+        The reason enforcing was worth doing at all. 'unsafe-inline' concedes
+        that an injected script may RUN; these are what stop it sending what it
+        found anywhere. Losing one undoes the point without breaking anything
+        visible, which is why it is asserted rather than assumed.
+      */
+      const v = (await headerMap())['Content-Security-Policy'] ?? '';
+      for (const directive of CLOSES_AN_EXFIL_CHANNEL) {
+        expect(v, `${directive} is no longer enforced`).toContain(directive);
+      }
+    });
+
+    it('reports on a STRICTER policy than it enforces, or it observes nothing', async () => {
+      /*
+        🔴 THE DEFECT THIS WAS WRITTEN FOR. Until 2026-08-20 the report-only
+        header carried the SAME policy as the enforcing one, so it could only
+        ever report things already permitted — an observation apparatus pointed
+        at a question nobody was asking, costing bytes on every response.
+
+        The report-only script-src must be strictly tighter than the enforcing
+        one, because the nonce question is the only CSP question here that
+        genuinely needs evidence rather than argument.
+      */
+      const h = await headerMap();
+      const ro = h['Content-Security-Policy-Report-Only'];
+      const enforced = h['Content-Security-Policy'] ?? '';
+      expect(ro, 'the report-only half of the split is missing').toBeDefined();
+
+      const scriptOf = (policy: string) =>
+        policy.split(';').map((d) => d.trim()).find((d) => d.startsWith('script-src')) ?? '';
+
+      const roScript = scriptOf(ro ?? '');
+      expect(roScript, 'report-only has no script-src to observe').toContain('script-src');
+      expect(
+        roScript,
+        'the report-only script-src still allows the escapes the enforcing one does, so it ' +
+          'reports nothing the enforcing policy would not already permit',
+      ).not.toContain("'unsafe-inline'");
+      expect(roScript).not.toContain("'unsafe-eval'");
+      expect(
+        roScript.length,
+        'report-only script-src is not stricter than the enforcing one',
+      ).toBeLessThan(scriptOf(enforced).length);
     });
 
     it('names a report destination that exists', async () => {

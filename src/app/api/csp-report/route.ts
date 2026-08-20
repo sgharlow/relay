@@ -23,6 +23,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 import { rateLimit, clientKey } from '../../../../lib/http/rate-limit';
 import { readJson, isResponse } from '../../../../lib/http/owner-route';
+import { recordCspViolation } from '../../../../lib/ops/csp-report-store';
 
 /** A browser sends one of these per violation; a broken page can send many. */
 const LIMIT = 20;
@@ -76,16 +77,37 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const document = short(v['document-uri'] ?? v.documentURL)?.split('?')[0] ?? null;
 
     /*
+      🔴 THE FIELD THAT MAKES THE REST WORTH STORING. Since 2026-08-20 this
+      product ships TWO policies: an enforcing one and a stricter report-only one
+      (script-src without 'unsafe-inline'/'unsafe-eval' — the nonce question).
+      Both report here, in the same shape.
+
+      `enforce` means something was ACTUALLY BLOCKED on the live site and a user
+      may have seen a broken page. `report` means the stricter policy WOULD have
+      blocked it and nothing broke. Those demand completely different responses,
+      and without this field they are indistinguishable.
+    */
+    const disposition = short(v.disposition);
+
+    /*
       script-sample / sample is deliberately NOT read. See the header: it is a
       slice of the page, and this product's pages hold decrypted plaintext.
     */
     try {
       process.stderr.write(
-        `[csp] directive=${directive ?? '?'} blocked=${blocked ?? '?'} at=${document ?? '?'}\n`,
+        `[csp] ${disposition ?? '?'} directive=${directive ?? '?'} blocked=${blocked ?? '?'} at=${document ?? '?'}\n`,
       );
     } catch {
       /* a broken stderr must not escalate */
     }
+
+    /*
+      Durable, because stderr forgets in about a day and the whole purpose of a
+      report-only period is to accumulate evidence. Awaited so a serverless
+      instance is not frozen mid-write, and incapable of throwing by construction
+      — see the module header.
+    */
+    await recordCspViolation({ disposition, directive, blocked, document });
   }
 
   return ok;
