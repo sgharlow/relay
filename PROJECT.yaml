@@ -1837,6 +1837,43 @@ deferred:
     ends_when: "a page exists with, per secret: what it protects, blast radius, safe order, what
       breaks mid-flight, how to verify after, and a last-set date — where 'unknown' is a finding
       rather than a blank."
+    closed:
+      date: 2026-08-20
+      what_shipped: "docs/secret-rotation-runbook.md — twelve secrets, a table with a Last set
+        column that currently reads `unknown` throughout (written out rather than left blank,
+        because 'how old is this?' being unanswerable IS the finding), and a section for each one
+        that is not routine. Cross-linked from docs/security-incident-runbook.md §1 — the situation
+        it exists for — and from .env.example beside the first secret."
+      the_rule_that_outranks_the_table: "Rotating a secret here is never only a credential change.
+        Every one of them is signing or authenticating something IN FLIGHT, and for two of them that
+        in-flight thing is a family in an emergency. There is no secret in this product whose
+        rotation is free, and the cost is not proportional to how alarming the name sounds."
+      # 🔴 THREE THINGS THE WRITING ESTABLISHED BY READING THE CODE.
+      nextauth_secret_signs_more_than_sessions: "It also signs step-up elevation, WebAuthn
+        challenges and recovery enrolment. The 24h session is the cost; the other three are minutes
+        long and merely fail an in-flight ceremony. ⚠️ AND THERE ARE TWO NAMES: auth-options.ts
+        reads NEXTAUTH_SECRET ?? AUTH_SECRET while step-up.ts, webauthn.ts and recovery-enrolment.ts
+        read only the first — so setting AUTH_SECRET alone leaves sessions verifying while step-up
+        and passkeys throw."
+      the_aws_keys_are_read_by_nothing: "No application code references AWS_SECRET_ACCESS_KEY; the
+        SDK picks it up from the environment. Grepping finds nothing and it is easy to conclude they
+        are unused. They authenticate DSQL token minting AND KMS — the whole product — and they are
+        also the one rotation here that can be made seamless, by having two access keys valid at
+        once. Deactivate the old key, delete it later."
+      dsql_password_should_be_empty: "Found by the coverage check rather than by writing: it is a
+        manual override holding a short-lived IAM token, and the code mints its own when it is
+        absent. A VALUE in it is the finding — somebody worked around an auth failure by pasting a
+        token instead of fixing the identity."
+      guard: "lib/ops/secrets-have-a-rotation-procedure.test.ts derives the obligation from
+        .env.example: every secret-shaped variable must appear in the runbook, so adding a secret
+        without a procedure fails. Proven by planting a TWILIO_API_KEY entry. It also asserts the
+        guard is not vacuous (a broken regex matching nothing would pass).
+        ⚠️ IT TRIPPED OVER THE WRAPPED-PHRASE TRAP ON ITS FIRST RUN — an assertion went red against
+        a runbook that said exactly what it looked for, because the phrase spanned a line break.
+        That is gates.g3.dossier's recorded failure in a new place; it failed loudly here only
+        because the phrase was expected to be PRESENT, and an absence check written the same way
+        would have passed on a document that said the forbidden thing. Every multi-word match in
+        that file now tolerates wrapping."
 
   - id: stripe-is-missing-from-the-subprocessor-list          # "B9"
     owner: claude

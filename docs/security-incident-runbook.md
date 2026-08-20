@@ -70,9 +70,9 @@ yourself out of the investigation.
 
 > ⚠️ **Rotating `NEXTAUTH_SECRET` signs out every owner in the world, including people mid-crisis.**
 > That is a *feature* here and an outage on an ordinary Tuesday. Decide deliberately, and expect
-> support contacts. `docs/secret-rotation-runbook.md` (`PROJECT.yaml → deferred → no-secret-rotation-runbook`)
-> is where the mechanics of every rotation belong; until it exists, read the variable's own notes in
-> `.env.example`.
+> support contacts. **`docs/secret-rotation-runbook.md` §1** carries the mechanics — including the
+> trap that `AUTH_SECRET` is a second name for the same value and three modules read only the first,
+> so setting the wrong one leaves sessions working while step-up and passkeys throw.
 
 ### 1b. Cut the token paths, if the exposure could reach them
 
@@ -81,6 +81,11 @@ Rotating either **invalidates every live link immediately** — and during an op
 a verifier clicking a legitimate link gets an error at the moment a family is waiting. Rotate anyway
 if the secret is implicated: the release state is the source of truth and links can be reissued. Know
 the cost before you pay it, not after.
+
+**`docs/secret-rotation-runbook.md` §2** is the procedure, including how to check whether a release
+is open first, and the fact that a contact who has CLAIMED a standby account is unaffected — these
+secrets cover unclaimed contacts only, so the more of a circle that has claimed, the smaller this
+blast radius is.
 
 ### 1c. Protect the key
 
