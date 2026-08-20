@@ -42,7 +42,7 @@ async function main(): Promise<void> {
   const counts = await countDogfood(count);
   const verdict = assessDogfoodReadiness(counts);
 
-  console.log('\nOwner vault, as it stands (demo-flagged accounts excluded):\n');
+  console.log('\nOwner vault, as it stands (demo-flagged AND reserved-domain accounts excluded):\n');
   const rows: Array<[string, number]> = [
     ['real owner accounts', counts.realOwners],
     ['vault items', counts.vaultItems],

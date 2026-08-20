@@ -25,6 +25,7 @@ function ready(): DogfoodCounts {
   return {
     realOwners: 1,
     demoOwners: 0,
+    disposableOwners: 0,
     vaultItems: 3,
     recipients: 1,
     verifiers: 1,
@@ -95,6 +96,7 @@ describe('the near-misses, which are the point', () => {
     const v = assessDogfoodReadiness({
       realOwners: 0,
       demoOwners: 1,
+    disposableOwners: 0,
       vaultItems: 0,
       recipients: 0,
       verifiers: 0,
@@ -109,6 +111,7 @@ describe('the near-misses, which are the point', () => {
     const v = assessDogfoodReadiness({
       realOwners: 0,
       demoOwners: 0,
+    disposableOwners: 0,
       vaultItems: 0,
       recipients: 0,
       verifiers: 0,
@@ -187,15 +190,35 @@ describe('the counts come from one definition', () => {
       expect(counts[key], `${key} was not populated`).toBe(1);
     }
 
-    // Every query must mention the demo column: either it scopes to non-demo
-    // owners, or it IS the demo tally. A count that forgot would quietly include
-    // fixture rows and report a seeded vault as real.
-    const unscoped = asked.filter((s) => !s.includes('is_demo_account'));
-    expect(
-      unscoped,
-      `these counts do not exclude demo owners: ${unscoped.join(' | ')}`,
-    ).toEqual([]);
-    expect(asked.length, 'no queries were issued at all').toBe(7);
+    /*
+      🔴 THE ASSERTION THAT MATTERS, and the weaker version of it shipped first.
+      It used to require only that each query mentioned `is_demo_account` — which
+      every query did, and which was not enough, because NOTHING SETS that column.
+      The walk accounts arrive through ordinary signup on reserved domains and
+      were counted as real owners with real vault items.
+
+      So: every count that is scoped to real owners must carry BOTH exclusions.
+      The two tally queries are the deliberate exceptions and are named, rather
+      than allowed through by a loose filter.
+    */
+    // The two tallies count the EXCLUDED populations, so by definition they do
+    // not carry the exclusions. Named individually rather than filtered loosely,
+    // because a loose filter is how the weak version of this test let everything
+    // through in the first place.
+    const demoTally = asked.filter((s) => s.includes('WHERE COALESCE(is_demo_account, false)'));
+    const disposableTally = asked.filter((s) => s.includes('WHERE NOT (lower(email)'));
+    expect(demoTally, 'the demo tally query went missing').toHaveLength(1);
+    expect(disposableTally, 'the reserved-domain tally query went missing').toHaveLength(1);
+
+    const tallies = [...demoTally, ...disposableTally];
+    const scoped = asked.filter((s) => !tallies.includes(s));
+
+    for (const q of scoped) {
+      expect(q, `query does not exclude demo owners: ${q}`).toContain('NOT COALESCE(is_demo_account');
+      expect(q, `query does not exclude reserved-domain walk accounts: ${q}`).toContain('NOT LIKE');
+    }
+    expect(scoped.length, 'the real-owner-scoped counts went missing').toBe(6);
+    expect(asked.length, 'no queries were issued at all').toBe(8);
   });
 });
 
@@ -204,6 +227,7 @@ describe('the cohort refusal', () => {
     assessDogfoodReadiness({
       realOwners: 1,
       demoOwners: 0,
+    disposableOwners: 0,
       vaultItems: 0,
       recipients: 0,
       verifiers: 0,

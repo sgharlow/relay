@@ -14,12 +14,15 @@
  * "Steve has to remember what finished looks like" into one command that says
  * what is missing and what to do about it.
  *
- * ⚠️ DELIBERATELY NOT SATISFIABLE BY FIXTURES. `scripts/reset-demo.ts` can
- * manufacture every count below in seconds, and ROADMAP.md §6 bars using it for
- * this precisely because it would satisfy the numbers while proving nothing. So
- * demo-flagged owners are excluded from every count by the caller, and if the
- * ONLY populated owner is a demo account this reports not-ready and says why.
- * A check that its own bypass satisfies is not a check.
+ * ⚠️ DELIBERATELY NOT SATISFIABLE BY FIXTURES, AND THERE ARE TWO KINDS.
+ * `scripts/reset-demo.ts` can manufacture every count below in seconds, and
+ * ROADMAP.md §6 bars using it for this. The second kind is subtler and was a
+ * live hole in the first version of this file: the E2E walks create real
+ * accounts through ordinary signup, so they are NOT demo-flagged and counted as
+ * genuine owners until the reserved-domain exclusion below was added. Both are
+ * excluded, and both are REPORTED rather than silently filtered — a walk in
+ * flight is the one condition under which these numbers move for reasons that
+ * are not real. A check that its own test harness satisfies is not a check.
  *
  * Pure: the caller runs the SELECTs and passes counts in. No I/O here, and
  * nothing in this module can write — see `scripts/verify-dogfood.ts`, which is
@@ -28,11 +31,15 @@
  * Feature: relay-h0-mvp
  */
 
+import { RESERVED_TLDS } from './disposable-accounts';
+
 export interface DogfoodCounts {
   /** Owner accounts with `is_demo_account = false`. */
   realOwners: number;
   /** Demo-flagged owner accounts, counted only so the verdict can explain itself. */
   demoOwners: number;
+  /** Reserved-domain accounts (walk fixtures). Counted so an in-flight sweep is visible, not silent. */
+  disposableOwners: number;
   /** Vault items belonging to real owners. */
   vaultItems: number;
   /** Recipients named by real owners. */
@@ -74,8 +81,8 @@ export function assessDogfoodReadiness(counts: DogfoodCounts): DogfoodVerdict {
   if (counts.realOwners < 1) {
     missing.push({
       what: 'a real owner account',
-      why: 'every count below hangs off an owner that is not demo-flagged',
-      action: 'sign up at relaystandby.com, or clear is_demo_account on the intended account',
+      why: 'every count below hangs off an owner that is neither demo-flagged nor a walk fixture',
+      action: 'sign up at relaystandby.com with a real address (reserved-domain addresses do not count)',
     });
     // Nothing else can be judged without one, and listing six more consequences
     // of the same absence would read as six problems instead of one.
@@ -134,12 +141,23 @@ export function assessDogfoodReadiness(counts: DogfoodCounts): DogfoodVerdict {
 
   const verdict: DogfoodVerdict = { ready: missing.length === 0, missing };
 
+  const notes: string[] = [];
   if (counts.demoOwners > 0) {
-    verdict.note =
-      `${counts.demoOwners} demo-flagged account(s) exist and are excluded from every count above ` +
-      'on purpose: a vault seeded by scripts/reset-demo.ts would satisfy these numbers while ' +
-      'proving nothing (ROADMAP.md §6).';
+    notes.push(
+      `${counts.demoOwners} demo-flagged account(s) excluded on purpose: a vault seeded by ` +
+        'scripts/reset-demo.ts would satisfy these numbers while proving nothing (ROADMAP.md §6).',
+    );
   }
+  if (counts.disposableOwners > 0) {
+    // Said out loud rather than silently filtered: a sweep in flight is the one
+    // condition under which these numbers move for reasons that are not real.
+    notes.push(
+      `${counts.disposableOwners} reserved-domain account(s) excluded — a walk is in flight or ` +
+        'left rows behind. They are NOT evidence of a populated vault; they delete themselves. ' +
+        'Run `npm run verify:orphans` if this is unexpected.',
+    );
+  }
+  if (notes.length) verdict.note = notes.join(' ');
 
   return verdict;
 }
@@ -152,10 +170,29 @@ export function summarise(v: DogfoodVerdict): string {
 }
 
 /**
- * Demo-flagged owners are excluded everywhere, and the subquery says so once.
- * `COALESCE` because the column arrived after the first accounts did.
+ * What counts as a real owner, said once.
+ *
+ * 🔴 THE HOLE THIS CLOSES, FOUND THE DAY AFTER THIS FILE SHIPPED. The first
+ * version excluded only `is_demo_account`, and **nothing sets that column** —
+ * `auth-options.ts` reads it in four places and no signup path ever writes it.
+ * The walk accounts (`e2e-*`, `disposable-owner.ts`) are created through
+ * ORDINARY SIGNUP on reserved domains, so every one of them counted as a real
+ * owner and every fixture item it created counted as a real vault item.
+ *
+ * The consequence was specific and bad: run a journey sweep, and `verify:dogfood`
+ * reports READY off the back of accounts that delete themselves an hour later —
+ * and `invite:cohort` would then let real invitations through. A check that its
+ * own test harness satisfies is exactly the false green this probe was written
+ * to prevent, built into the probe.
+ *
+ * Reserved TLDs come from `disposable-accounts.ts` rather than being re-listed,
+ * so adding one there closes it here too. `lower()` because addresses are not
+ * case-normalised on the way in.
  */
-const REAL_OWNERS = 'SELECT id FROM users WHERE NOT COALESCE(is_demo_account, false)';
+const RESERVED_EXCLUSION = RESERVED_TLDS.map((t) => `lower(email) NOT LIKE '%.${t}'`).join(' AND ');
+
+const REAL_OWNERS =
+  `SELECT id FROM users WHERE NOT COALESCE(is_demo_account, false) AND ${RESERVED_EXCLUSION}`;
 
 /**
  * The counts, from one definition.
@@ -172,6 +209,9 @@ export async function countDogfood(
   return {
     realOwners: await count(`SELECT count(*) AS n FROM (${REAL_OWNERS}) o`),
     demoOwners: await count('SELECT count(*) AS n FROM users WHERE COALESCE(is_demo_account, false)'),
+    disposableOwners: await count(
+      `SELECT count(*) AS n FROM users WHERE NOT (${RESERVED_EXCLUSION})`,
+    ),
     vaultItems: await count(`SELECT count(*) AS n FROM vault_items WHERE owner_id IN (${REAL_OWNERS})`),
     recipients: await count(`SELECT count(*) AS n FROM recipients WHERE owner_id IN (${REAL_OWNERS})`),
     verifiers: await count(`SELECT count(*) AS n FROM verifiers WHERE owner_id IN (${REAL_OWNERS})`),
