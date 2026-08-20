@@ -1577,6 +1577,264 @@ deferred:
         Recorded here because it is the cleanest evidence this file has for its own claim ladder:
         wired is not live-proven, and the gap between them was one `npx`."
 
+  # ── OPENED 2026-08-20 by the deep production-readiness pass ───────────────
+  #
+  # Provenance, because it decides how much weight these carry: they came out of
+  # a full re-analysis of the requirements, the live code and the live
+  # infrastructure against one question this repo had not asked in those words —
+  # what does a CUSTODIAN of other people's credentials owe the people already
+  # inside? The 2026-08-16 readiness assessment answered a different one, well:
+  # what a reader and an editor would see. Its verdict, 'nothing in the shipping
+  # product is broken, half-built, or embarrassing', was true of that question
+  # and is not evidence about this one.
+  #
+  # ⚠️ THEY LIVED IN ROADMAP.md AND NOWHERE ELSE FOR A DAY, which is the drift
+  # this list exists to prevent: ROADMAP.md is SUBSIDIARY to this file, and a
+  # debt item recorded only in a subsidiary document is one session away from
+  # being lost. ROADMAP.md §7 recorded that weakness against itself; this is the
+  # fix it named.
+  #
+  # None of these is a feature. Each makes an EXISTING promise true, which is why
+  # they are not held by the demand gate — that gate bars horizontal build, and
+  # reading it as barring maintenance of a live system would make it a rule
+  # against custody. ROADMAP.md §1 carries the test that separates the two.
+
+  - id: signin-had-no-attempt-budget                          # "B1"
+    owner: claude
+    opened: 2026-08-20
+    what: "Owner sign-in is an email address and a six-digit authenticator code and nothing else —
+      there is no password. `authorize` did a DSQL lookup and a code comparison per attempt with no
+      failure counter and no rate limit, so a stranger who knew an owner's address could walk the
+      keyspace unattended. Three valid codes in a million against the skew window means a hit in a
+      few hundred thousand attempts, and behind the door is an owner session, which unwraps that
+      owner's items without step-up."
+    why_it_matters: "Account takeover was vault compromise. Every OTHER guessable credential here
+      already had a budget — recipient, verifier and recovery codes each carry MAX_FAILED_ATTEMPTS,
+      /api/account/step-up calls rateLimit, and break-glass carries a written argument for why ~59
+      bits needs neither. The six-digit code was the shortest secret in the product and the only one
+      with no argument attached, which is what makes this an oversight rather than a decision."
+    closed:
+      date: 2026-08-20
+      commit: e32e15b
+      what_shipped: "lib/auth/signin-throttle.ts — a per-ADDRESS failure budget that counts failures
+        only and RESETS on a correct code (the shape recipient-code.ts uses, not the shape of a rate
+        limiter), plus a generous per-SOURCE attempt limit for the spray case the per-address budget
+        is structurally blind to. Checked BEFORE resolveTotpSecret so a refused attempt costs no
+        query. A refusal returns the same bare null as every other failure — answering 'too many
+        attempts' would confirm that an address holds a Relay account."
+      not_charged: "A DSQL lookup failure is OURS and must not spend the caller's budget; charging
+        for it would turn a database blip into a lockout of every owner who tried during it."
+      proof: "32 new tests; all three claims of the sibling guard proven by planting the defect —
+        gate call removed (3 red), guess-watch call removed (2 red), recordSigninFailure added to the
+        lookup-failure catch (2 red). Gate exit 0."
+      what_it_does_not_do: "Both counters are per-instance memory, so a distributed attempt is
+        under-counted — lib/http/rate-limit.ts says so in its own header and it is still true. This
+        raises the floor from NOTHING to the control the step-up route already had. The durable
+        per-account budget needs a row, therefore a migration, therefore Steve: see
+        `signin-budget-is-not-durable` below."
+
+  - id: the-guess-watch-did-not-cover-the-front-door          # "B2"
+    owner: claude
+    opened: 2026-08-20
+    what: "lib/ops/guess-watch.ts exists because 'a guess at a code that does not exist left no trace
+      at all'. Its GuessKind union was recipient | verifier | invitation | recovery. The sign-in path
+      was absent, so a walk through the authenticator keyspace was not only unlimited, it was
+      unobserved."
+    why_it_matters: "A limiter without an alarm hides the attack it deflects — the attacker slows to
+      fit the budget and nobody ever learns they were there. The credential most worth guessing was
+      the one kind a guess against which was never counted."
+    closed:
+      date: 2026-08-20
+      commit: e32e15b
+      what_shipped: "The `totp` kind, recorded in the same branch that spends the budget, and
+        `severityParagraph()`."
+      the_copy_would_have_lied: "The alert closed with an unconditional 'Nothing is currently at risk
+        from guessing alone (the short codes carry 2^39.6, recovery codes 2^49.5), so this is a
+        prompt to look, not an incident.' True of four long codes and false of six digits. An alert
+        that reassures the reader at exactly the moment the arithmetic stops being comfortable is the
+        alert doing the attacker's work. Both branches are now asserted by content."
+
+  - id: the-failover-does-not-carry-the-ability-to-decrypt    # "B3"
+    owner: claude
+    opened: 2026-08-20
+    what: "lib/kms/kms-client.ts builds one KMSClient from AWS_REGION (default us-east-1) against one
+      CMK. lib/db/connection.ts keeps primary and secondary pools and DSQL_USE_SECONDARY fails the
+      DATABASE over to us-west-2. The crypto path does not move with it, so a us-east-1 KMS
+      impairment makes every vault unreadable from BOTH regions."
+    why_it_matters: "CLAUDE.md's failover invariant reads as though the env switch is sufficient. It
+      is sufficient for the data and not for the key, and nobody discovers that on a calm afternoon."
+    ends_when: "the limitation is written where a person mid-failover meets it, AND Steve rules on
+      the multi-Region-key proposal. ⚠️ The FIX is an infrastructure change to a working system —
+      5-gate policy, snapshot, rollback, explicit request. Writing it down is in scope; taking it is
+      not."
+
+  - id: nothing-watches-the-key                               # "B4"
+    owner: claude
+    opened: 2026-08-20
+    what: "Ciphertext without the CMK is unrecoverable. A deleted key, a scheduled deletion, or a key
+      policy edited to drop the runtime principal destroys every vault permanently — and none of it
+      appears in a diff, a test run or a build."
+    why_it_matters: "This is exactly the class verify:roles and verify:iam were built for, one layer
+      down: two walls have re-measuring probes and the one UNDERNEATH them had none.
+      docs/backup-restore-runbook.md covers the database, and a restored cluster is ciphertext
+      without the key that opens it."
+    ends_when: "a read-only verify:kms exists in the shape of verify:iam, is wired into the
+      pre-release list, and has been seen to FAIL against a planted change — a wall-checker that has
+      only ever passed has not been seen to work."
+
+  - id: tenant-separation-at-the-kms-boundary-is-not-cryptographic   # "B5"
+    owner: claude
+    opened: 2026-08-20
+    what: "generateDataKey and decryptDataKey pass no EncryptionContext, and DecryptCommand names no
+      KeyId, so any blob wrapped under the CMK unwraps for any caller the APPLICATION lets through."
+    why_it_matters: "The application-layer hole this permitted was found and closed on 2026-08-13 —
+      the route header in /api/kms/unwrap tells the story: a body-supplied wrapped_data_key was a
+      cross-tenant oracle. The fix was correct and the structure that allowed it is unchanged. The
+      portfolio rule is structural safety over convention: make the cross-tenant unwrap impossible AT
+      KMS rather than refused by a check somebody has to keep writing."
+    ends_when: "new wraps are bound to a context and legacy blobs are PROVEN to decrypt forever.
+      ⚠️ Compatibility is the whole risk: every key wrapped before the change has no context and can
+      never be rewritten, because the server cannot read plaintext — the same permanent-legacy rule
+      lib/crypto/secret-payload.ts already lives under. It needs a per-row marker, therefore a
+      migration, therefore Steve, and it cannot be live-proven in a credential-less worktree. Design
+      first: docs/backlog.md Sprint 4."
+
+  - id: the-in-app-alarm-shares-fate-with-product-email       # "B6"
+    owner: claude
+    opened: 2026-08-20
+    what: "lib/ops/error-reporter.ts and lib/ops/incident.ts alert through sendEmailBestEffort —
+      Resend, the same provider whose Outlook deliverability is an open ticket and whose DMARC
+      posture is still p=none."
+    why_it_matters: "If Resend is degraded, or the alert lands in a junk folder, 500s stop being
+      reported and the silence reads as health. The GitHub-hosted monitors do NOT share this fate —
+      scheduler-monitor.yml and delivery-webhook-monitor.yml both exist because 'a watchdog must be
+      able to outlive the thing it watches', and an in-app alerter that can only speak through the
+      product's own mail provider is that same mistake one layer up."
+    ends_when: "either the in-app alerts are readable by the independent monitor, or it is RULED that
+      the GitHub monitors are the alarm of record and error-reporter.ts says so itself. Either is
+      fine; the current state is neither."
+
+  - id: no-incident-or-breach-runbook                         # "B7"
+    owner: claude
+    opened: 2026-08-20
+    what: "docs/ holds a backup/restore runbook, an email-DNS runbook and a submission runbook. For a
+      product holding other people's credentials there is no written answer to what is done first,
+      what is preserved, who is told, and by when."
+    why_it_matters: "Cheap now, unwritable at 3am. State breach-notification law binds an individual
+      operator exactly as it binds a company, and the operator ruling means the person who makes each
+      call is a real person rather than a role that does not exist."
+    ends_when: "one page exists covering containment order (session-epoch revocation first — the
+      mechanism already exists), evidence preservation (the audit chain is append-only and
+      hash-chained; it must not be touched), and notification. It must also state what Relay CANNOT
+      disclose because it cannot read it, which is the one genuinely good piece of news in a breach."
+
+  - id: no-secret-rotation-runbook                            # "B8"
+    owner: claude
+    opened: 2026-08-20
+    what: "NEXTAUTH_SECRET, RECIPIENT_JWT_SECRET, VERIFIER_JWT_SECRET, CRON_SECRET, RESEND_API_KEY,
+      RESEND_WEBHOOK_SECRET, the Stripe keys and a long-lived AWS access key pair all sit in Vercel
+      with no recorded age, no procedure and no owner. Nothing in docs/ rotates anything."
+    why_it_matters: "This is the operational half of the arc docs/least-privilege-cutover.md closed on
+      identity. Two of these are not merely inconvenient: rotating either JWT secret invalidates every
+      live link, which during an open release means a verifier clicking a valid link gets an error at
+      the moment a family is waiting. Nobody should be discovering that mid-incident, and
+      no-incident-or-breach-runbook above points at this file for its rotation step."
+    ends_when: "a page exists with, per secret: what it protects, blast radius, safe order, what
+      breaks mid-flight, how to verify after, and a last-set date — where 'unknown' is a finding
+      rather than a blank."
+
+  - id: stripe-is-missing-from-the-subprocessor-list          # "B9"
+    owner: claude
+    opened: 2026-08-20
+    what: "src/app/privacy/page.tsx lists AWS, Vercel, OpenAI and Resend under 'Who else is involved'
+      and omits Stripe, which processes the payment details of every paying customer. Live-mode
+      Stripe has been charging since 2026-08-08."
+    why_it_matters: "Same class as the og:description that still sold estate after estate was
+      withdrawn: a factual defect on a page whose entire value is that it is accurate."
+    ends_when: "Stripe is named AND the list is pinned to the set of providers the codebase actually
+      talks to — a hardcoded four-item assertion would pass the day a fifth arrives."
+
+  - id: support-has-an-address-and-no-commitment              # "C6"
+    owner: steve
+    opened: 2026-08-20
+    what: "hello@relaystandby.com is offered on the acute paths — the access screen tells a recipient
+      whose reveal failed to write in 'so a person can look' — with no stated response time and no
+      defined monitoring."
+    why_it_matters: "A promise of a human, made to someone in an emergency, is either kept or it
+      should not be on that screen."
+    ends_when: "Steve decides a response commitment and who watches the inbox, and the acute-path copy
+      is made to match it. This is a decision, not a build — which is why the owner is not claude."
+
+  - id: relays-own-continuity-is-unstated                     # "C7"
+    owner: claude
+    opened: 2026-08-20
+    what: "The product's entire subject is what happens when the person holding everything cannot act.
+      Relay is operated by one individual (ratified.relay-operator-is-an-individual) and says nothing
+      about what becomes of a customer's vault if THAT individual is the one who stops."
+    why_it_matters: "It is the first question a cautious reader asks of a one-person custodian, and
+      the answer is good: self-serve export already exists, and the encryption means the operator was
+      never able to read anything. This is a statement to write, not a system to build — the most
+      on-brand trust copy available and it costs an afternoon."
+    ends_when: "/about and /terms answer it plainly, WITHOUT promising an escrow or a wind-down period
+      that does not exist, and the sentence is pinned the way operator-named.test.ts pins the
+      operator."
+
+  - id: the-rate-limiters-justification-cites-a-cancelled-flight    # "D6"
+    owner: claude
+    opened: 2026-08-20
+    what: "lib/http/rate-limit.ts is per-instance memory and says so. Its stated argument for staying
+      that way is that a shared store is not worth adding 'for a $250 ad test' — and that flight was
+      cancelled (ratified.g1-google-lane-cancelled)."
+    why_it_matters: "The reasoning now rests on a premise that no longer exists, while the endpoints it
+      guards include ones that cost money (/api/ai/intake reaches OpenAI, /api/stripe/checkout reaches
+      Stripe) and one that is now an authentication control (signin-had-no-attempt-budget above).
+      Leaving a justification that cites a cancelled ad flight is the drift this repo keeps catching."
+    ends_when: "the stance is re-derived against the world that exists, the header is corrected, and a
+      recommendation with a cost reaches Steve. ⚠️ A shared store is infrastructure: proposing is in
+      scope, adding it is not."
+
+  - id: unit-economics-are-unmodelled                         # "D7"
+    owner: claude
+    opened: 2026-08-20
+    what: "Nothing anywhere derives the per-owner cost of DSQL, KMS requests, Vercel functions, OpenAI
+      intake and Resend against the price in monetization_path."
+    why_it_matters: "At today's scale it does not matter. It is the arithmetic that tells the demand
+      lane whether it is selling something with a margin, and the demand lane is running now."
+    ends_when: "one page exists with three scenarios — dormant owner, typical owner, owner in an active
+      release, the third being the expensive one and the one the product is for — every assumption
+      named, and the break-even count. ⚠️ No number from it may be copied anywhere else."
+
+  - id: a-failed-renewal-tells-the-owner-nothing               # "E1"
+    owner: claude
+    opened: 2026-08-20
+    what: "invoice.payment_failed is not a handled event; the webhook handles
+      checkout.session.completed and customer.subscription.updated/deleted. When a subscription
+      finally lapses the handler writes an audit entry and sends no mail."
+    why_it_matters: "🔴 Stated precisely, because the first draft of this finding was WRONG in the
+      half that matters and the correction is the useful part: ACTIVE_STATUSES already INCLUDES
+      past_due, so a card that fails on renewal does NOT revoke access during Stripe's retry window.
+      That is correct and deliberate. What is missing is everything around it. And it becomes
+      release-blocking rather than merely rude the moment TIER_LIMITS.free.canRelease flips to false
+      (ratified.beta-free-release, revisit 2026-10-01): an expired card would then stop the one thing
+      the product exists to do, because of a billing event nobody was told about."
+    ends_when: "the owner is told, once per invoice, idempotently against Stripe's redeliveries, with
+      the one link that fixes it — BEFORE the 2026-10-01 paywall revisit, not after."
+
+  - id: the-post-lapse-state-is-undefined                     # "E2"
+    owner: steve
+    opened: 2026-08-20
+    what: "A lapsed owner drops to the free tier holding a vault that may exceed the free item cap.
+      assertCanAddItems gates ADDING only, so existing items are untouched."
+    why_it_matters: "That is the humane behaviour and it is an emergent property of where the check
+      sits, not a decision anybody made or wrote down. A custodian must be able to answer 'what
+      happens to my data if I stop paying' in one sentence, and /terms cannot answer it because
+      nothing has decided it. Today a refactor of assertCanAddItems could silently start deleting
+      people's history and no test would notice."
+    ends_when: "the behaviour is established path by path by READING the code, pinned by tests so the
+      humane behaviour stops being an accident, and stated in /terms. ⚠️ Changing what a lapse does to
+      customer data is Steve's decision, which is why the owner is not claude; describing what it
+      currently does is not."
+
   # ── CLOSED 2026-08-18, the day after it was opened ────────────────────────
   #
   #   secret-types-phase-1-wiring — the entry said the columns were inert, that

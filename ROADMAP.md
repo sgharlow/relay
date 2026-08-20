@@ -164,6 +164,13 @@ candidates for `PROJECT.yaml → deferred` and should be entered there when they
 right now. None of them adds a feature; each makes an existing promise true. Ordered by
 consequence.
 
+> **Each item below is now an entry in `PROJECT.yaml → deferred`** (added 2026-08-20), which is the
+> authoritative debt register and the file the next session reads. Every entry carries its short
+> code here — `B1`, `C7`, `E2` — as a comment on its `id:`, so searching that file for the code
+> finds it. The mapping is deliberately not restated as a table: two copies of a mapping is two
+> things to drift. **Where this document and that file disagree about an item's state, that file
+> wins.**
+
 | # | Item | Evidence | What closes it |
 |---|---|---|---|
 | **B1** 🔴 **NEW** | **The owner's front door has no attempt budget and no rate limit.** Owner sign-in is `email` + a 6-digit TOTP code and nothing else — there is no password (`SignInForm.tsx` says so in a comment). The `email-totp` provider's `authorize` in `lib/auth/auth-options.ts` performs a database lookup and a code comparison per attempt, with no per-account failure counter and no call into `lib/http/rate-limit`. A takeover yields decrypted items: `/api/kms/unwrap` requires only an owner session — `lib/ops/step-up-guard.ts` elevates bulk export, recovery codes and account deletion, and correctly does not elevate item-by-item reveal | Read the provider and grep for a limiter: there is none. **The asymmetry is the proof this is an oversight rather than a decision** — `recipient-code.ts`, `verifier-code.ts` and `recovery-code.ts` each carry `MAX_FAILED_ATTEMPTS`, `/api/account/step-up` calls `rateLimit`, and `break-glass` carries a written argument for why it needs neither (~59 bits of entropy). The 6-digit code is the *shortest* secret in the product and the only one with no argument attached | A per-account attempt budget on `email-totp` (the shape `recipient-code.ts` already uses), plus the `rateLimit` call the step-up route already makes. Verify whether a Vercel WAF rule covers `/api/auth/callback/credentials` — currently unknown, and unknown is not covered |
@@ -212,7 +219,8 @@ press kit exists (`lib/g1/press-kit.ts`, test-pinned); the H0 badge is reframed
 Checkout works, the webhook reconciles, cancellation is self-serve, and `past_due` is deliberately
 inside `ACTIVE_STATUSES` so a card that fails on renewal does **not** revoke access during Stripe's
 retry window. That is correct and better than this pass expected. What is missing is everything
-that happens *around* a renewal.
+that happens *around* a renewal. As with §2-B, **each item is an entry in `PROJECT.yaml → deferred`**
+carrying its short code on its `id:`.
 
 | # | Item | Evidence | Why it is not "retention work" |
 |---|---|---|---|
@@ -454,9 +462,14 @@ PROJECT.yaml in the same commit**, and if the two ever disagree, PROJECT.yaml is
 file has a defect. A sprint that starts before its entry event is not ahead of schedule; it is the
 horizontal-build failure this roadmap exists to prevent.
 
-⚠️ **The §2-B and §2-E findings are in this file and nowhere else, which is a known weakness of
-this revision.** `PROJECT.yaml → deferred` is the repo's debt register and the thing the next
-session reads; a debt item that lives only in a subsidiary document is one drift away from being
-lost — the exact failure that entry's own header describes. Each finding should be entered there
-with an owner and an `ends_when` as it is ruled on, and struck from here once it is. Until then,
-this section is the record that they were found and where they belong.
+✅ **The weakness this section recorded against itself is closed (2026-08-20).** It read: *"The §2-B
+and §2-E findings are in this file and nowhere else, which is a known weakness of this revision…
+Each finding should be entered there with an owner and an `ends_when` as it is ruled on."* All
+fifteen are now entries in `PROJECT.yaml → deferred`, each with an owner, an `ends_when` that is a
+condition rather than a date, and its short code on its `id:`. Two of them — `B1` and `B2` — went in
+already closed, because the change that closed them landed first in the same sprint.
+
+The paragraph is kept rather than deleted because it is the reasoning that produced the fix, and
+because the rule it states still binds everything added here later: **a finding recorded only in
+this file is one session away from being lost.** New work goes into `PROJECT.yaml` as it is ruled
+on, and is struck from here when it closes there.
