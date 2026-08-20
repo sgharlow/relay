@@ -119,6 +119,24 @@ npm run verify:orphans # what did the walks leave behind on PRODUCTION? Counts e
                        # or standing by for someone else is reported HELD, never
                        # sweepable. NEEDS .env.local, no server. Run it after
                        # verify:live, and on any day a walk was interrupted.
+npm run verify:dogfood # can the owner's vault host a cohort invitation? Counts
+                       # items, recipients, verifiers, access rules and configured
+                       # triggers for NON-DEMO owners, and names what is missing.
+                       # Run it BEFORE `npm run invite:cohort`: that script invites
+                       # people to stand by as recipients and verifiers for the
+                       # owner's vault, and on 2026-08-20 that vault held one
+                       # account and NOTHING else — zero items, zero people, no
+                       # release ever opened — so an invitee would have been
+                       # standing by for nothing. The access-rule count is the one
+                       # that matters most: items and people with no rule between
+                       # them are two lists, not a plan.
+                       # ⚠️ A not-ready result is a STATUS, not a defect — nothing
+                       # in this repo fixes it and no commit turns it green. Exit 1
+                       # = not ready, exit 2 = the probe could not run, and the two
+                       # are deliberately different. Demo-flagged owners are
+                       # excluded on purpose: reset-demo.ts would satisfy every
+                       # count while proving nothing. Read-only, asserted by test.
+                       # NEEDS .env.local, no server.
 npm run flight:snapshot # the G1 flight's daily read AND the sitting sheet's pre-flight
                        # line 3. Prints the snapshot row + the lead notes (verdict line
                        # 4), and EXITS 1 if caregiver_leads is not empty before the

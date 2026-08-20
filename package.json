@@ -29,6 +29,7 @@
     "flight:snapshot": "npx tsx --env-file=.env.local scripts/flight-snapshot.ts",
     "verify:iam": "npx tsx --env-file=.env.admin scripts/verify-iam.ts",
     "verify:kms": "npx tsx --env-file=.env.admin scripts/verify-kms.ts",
+    "verify:dogfood": "npx tsx --env-file=.env.local scripts/verify-dogfood.ts",
     "invite:cohort": "npx tsx --env-file=.env.local scripts/invite-cohort.ts",
     "verify:factors": "npx tsx --env-file=.env.local scripts/e2e-factors.ts",
     "verify:orphans": "npx tsx --env-file=.env.local scripts/disposable-sweep.ts",
