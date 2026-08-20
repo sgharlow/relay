@@ -15,6 +15,7 @@
 
 import { sendEmailBestEffort, sendEmailToAllBestEffort } from './email';
 import { addressesFor } from './fanout';
+import { appUrl } from '../app-url';
 import { issueVerifierToken } from '../auth/verifier-token';
 import { issueVerifierCode, formatCode } from '../auth/verifier-code';
 import { issueRecipientCode } from '../auth/recipient-code';
@@ -59,9 +60,13 @@ export const RELEASE_NOTICE_UNDELIVERED_ACTION = 'release_notice_undelivered';
  * setup, and is deliberately NOT repurposed — auth configuration is not
  * something to change as a side effect of fixing an email link.
  */
-export function appUrl(): string {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
-}
+/*
+  Imported AND re-exported: `export { x } from '...'` alone makes the name
+  available to importers but does NOT bind it in this module's scope, and this
+  file calls appUrl() in six places. tsc caught that immediately; it is worth a
+  line because the two forms look interchangeable and are not.
+*/
+export { appUrl };
 
 /**
  * After a release is RELEASED, emails every scoped recipient a one-time access

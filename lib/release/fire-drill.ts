@@ -45,13 +45,10 @@ import { addressesFor } from '../notify/fanout';
 import { getOwnerLabel } from '../people/owner-label';
 import { classifyOrFailOpen } from '../notify/verifier-notice-class';
 import type { DrillState } from './drill-claim';
+import { appUrl } from '../app-url';
 
 export const FIRE_DRILL_SENT = 'fire_drill_sent';
 export const FIRE_DRILL_ACKNOWLEDGED = 'fire_drill_acknowledged';
-
-function appUrl(): string {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
-}
 
 export interface DrillPerson {
   id: string;

@@ -35,6 +35,7 @@
  */
 
 import { SignJWT, jwtVerify } from 'jose';
+import { isSecureOrigin } from '../app-url';
 import { NextResponse } from 'next/server';
 
 import { query } from '../db/connection';
@@ -259,9 +260,7 @@ export function attachStepUp(res: NextResponse, token: string): NextResponse {
   res.cookies.set(STEP_UP_COOKIE, token, {
     httpOnly: true,
     sameSite: 'strict',
-    secure: (process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXTAUTH_URL ?? '').startsWith(
-      'https://',
-    ),
+    secure: isSecureOrigin(),
     path: '/',
     maxAge: STEP_UP_TTL_SECONDS,
   });

@@ -36,6 +36,7 @@
  */
 
 import { SignJWT, jwtVerify } from 'jose';
+import { appUrl } from '../app-url';
 import {
   generateRegistrationOptions,
   verifyRegistrationResponse,
@@ -75,7 +76,7 @@ export interface RpConfig {
  * which is what makes `http://localhost:3000` work in development.
  */
 export function rpConfig(): RpConfig {
-  const raw = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
+  const raw = appUrl();
   const url = new URL(raw);
   return {
     rpID: url.hostname,

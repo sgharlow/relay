@@ -27,18 +27,19 @@ import { notifyInvitation } from '../notify/notifications';
 import { query } from '../db/connection';
 import { getOwnerLabel } from './owner-label';
 import { reserveInviteEmail } from '../notify/invite-budget';
+import { appUrl } from '../app-url';
 
 /**
  * The origin claim links are built on.
  *
- * Mirrors `appUrl()` in the notification layer, and for the same reason: the
+ * Uses the shared `appUrl()` (lib/app-url.ts). It used to mirror a copy in the
+ * notification layer; both were the same three lines, which is why they are one
+ * definition now. The reason for the fallback chain is unchanged: the
  * invitations route read `NEXTAUTH_URL ?? ''`, which in production still held
  * the pre-domain deployment — and when unset produced a RELATIVE url, so the
  * claim link in an email would have pointed nowhere at all.
  */
-function appUrl(): string {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
-}
+
 
 export interface InviteResult {
   claimUrl: string;
