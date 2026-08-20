@@ -2715,6 +2715,31 @@ deferred:
         the disposition, with the query string STRIPPED and script-sample absent — both privacy
         protections observed rather than assumed. The synthetic row was then deleted; the table
         starts empty so the first real window is uncontaminated.
+      # 🔴 THE ONE LINK NOT YET OBSERVED, AND IT IS THE ONE THAT WOULD LIE QUIETLY.
+      browser_delivery_is_unproven: >-
+        The policy FIRES and the endpoint WORKS; what has not been observed is a browser
+        DELIVERING a report between the two. Verified on production 2026-08-20: each page logs
+        exactly two violations, matching its two inline RSC scripts — but they log at INFO level
+        ("The policy is report-only, so the violation has been logged but no further action has
+        been taken"), and after ~90 seconds and a page close, csp_reports held ZERO rows.
+        Headless Chromium is known to be unreliable about out-of-band Reporting API delivery, so
+        this is probably a harness artifact rather than a product defect — but PROBABLY IS NOT
+        PROVEN.
+      how_to_tell_the_difference: >-
+        ⚠️ An empty csp_reports table has TWO possible meanings and they are opposite: "nothing
+        violates the stricter policy" (a green light for the nonce work) or "reports are not being
+        delivered at all" (no information whatsoever). Do not read the first from an empty table.
+        Check with a REAL browser — open relaystandby.com in ordinary Chrome or Firefox, then
+        query the table. If rows appear, delivery works and the window is real. If they do not,
+        the delivery path needs fixing before any nonce decision rests on this data, and the
+        reliable fallback is a `securitypolicyviolation` event listener POSTing to the same
+        endpoint rather than relying on the Reporting API.
+      an_input_to_the_nonce_decision_found_on_the_way: >-
+        Chrome's violation message offers a per-script SHA-256 hash as an alternative to a nonce.
+        That is a real third option in principle — but these are RSC streaming payloads whose
+        content differs per page and per render, so their hashes are not stable and a hash
+        allowlist cannot work here. Nonces (and therefore Node-runtime middleware) remain the only
+        viable route, which is worth knowing before someone proposes hashes as the cheap way out.
       the_guard_was_inverted_not_relaxed: >-
         lib/ops/security-headers.test.ts refused every page-blanking directive on the enforcing
         header. That premise is now the ratified decision, so the guard would have been refusing
