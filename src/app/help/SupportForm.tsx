@@ -16,7 +16,7 @@
  */
 
 import { useState, type FormEvent } from 'react';
-import { CONTACT_EMAIL, CONTACT_MAILTO } from '../../../lib/contact';
+import { CONTACT_EMAIL, CONTACT_MAILTO, SUPPORT_RESPONSE_TIME } from '../../../lib/contact';
 
 type Status = 'idle' | 'sending' | 'sent' | 'failed';
 
@@ -114,7 +114,7 @@ export function SupportForm({ from }: { from?: string }) {
         <a className="underline" href={CONTACT_MAILTO}>
           {CONTACT_EMAIL}
         </a>
-        .
+        . Either way a person reads it, and you will hear back {SUPPORT_RESPONSE_TIME}.
       </p>
     </form>
   );

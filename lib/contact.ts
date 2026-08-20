@@ -97,3 +97,26 @@ export const OPERATOR_NAME = 'Steve Harlow';
  * one link that uses it.
  */
 export const OPERATOR_PROFILE_URL = 'https://www.linkedin.com/in/stevengharlow/';
+
+/**
+ * How long a person waits for an answer, and the promise the acute paths were
+ * already implying without it.
+ *
+ * 🔴 THE FINDING (`PROJECT.yaml → deferred → support-has-an-address-and-no-commitment`,
+ * C6). `hello@relaystandby.com` is offered on the paths people reach at their
+ * worst — the access screen tells a recipient whose reveal failed to write in
+ * *"so a person can look"* — and nothing anywhere said how long looking takes.
+ * A promise of a human, made to somebody in an emergency, is either kept or it
+ * should not be on that screen.
+ *
+ * RULED BY STEVE 2026-08-20: one business day. Chosen because it is honest for a
+ * solo operator on his worst week rather than flattering on his best — a
+ * commitment that is true only when nothing else is happening is the one that
+ * breaks on the day it matters. It makes the acute-path copy true as written,
+ * which is why that copy did not have to change.
+ *
+ * ⚠️ ONE DEFINITION, CONSUMED EVERYWHERE. The same rule `OPERATOR_NAME` follows:
+ * a response time stated in three places is three things to keep true, and the
+ * one nobody updates is the one a customer quotes back.
+ */
+export const SUPPORT_RESPONSE_TIME = 'within one business day';

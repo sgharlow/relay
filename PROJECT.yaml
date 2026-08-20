@@ -1733,6 +1733,32 @@ deferred:
         first arms-length customer, then re-argue under the 5-gate policy — on this project's own
         sequencing rule rather than on a technical judgement. ⚠️ An accepted risk with no recorded
         acceptance is just an unknown risk, so the entry stays open until Steve answers."
+    closed:
+      date: 2026-08-20
+      by: steve
+      # Both halves of `ends_when` are met: the limitation is written where a
+      # person meets it, and the proposal is ruled. What remains is an ACCEPTED
+      # risk with a recorded acceptance and a reopen trigger — which is the
+      # opposite of an open item, and the reason this closes rather than lingers.
+      decision: "OPTION A — keep the single-Region CMK. The exposure is accepted knowingly, in
+        writing, rather than by omission."
+      what_is_accepted: "During a us-east-1 KMS impairment, Relay cannot open anybody's vault, from
+        either region. It is an AVAILABILITY problem and not a durability one — nothing is lost and
+        nothing is exposed, and reveals resume when the Region does. What makes the acceptance
+        honest rather than lazy is that the limitation is now written where a person meets it
+        (CLAUDE.md's failover invariant, docs/backup-restore-runbook.md's own section and its sixth
+        restore step) and the customer-facing answer is prepared."
+      reopens_when: "the first arms-length customer — then re-argue Option B under the 5-gate policy
+        with docs/kms-region-proposal.md's ordering, which is not negotiable. Also on a partner's
+        diligence (they will ask) or the first time a Region actually wobbles."
+      why_not_now: "This project's own sequencing rule rather than a technical judgement.
+        demand_signal is none; the mitigation's real cost is not the dollar a month, it is a
+        permanent two-key decrypt path in the most dangerous code in the repository, taken before a
+        single stranger has stored anything in it. The same logic declined counsel."
+      verified_live_the_same_day: "npm run verify:kms now RUNS, and prints the single-Region note on
+        every pass — so the accepted limitation is re-stated to whoever runs the wall check rather
+        than living only in a proposal nobody reopens."
+
       the_deceptive_part: "It is an AVAILABILITY problem, not a durability one — nothing is lost and
         nothing is exposed. What makes it worth a runbook section is the shape of the day: the site
         is up, pages render, the vault list loads, and Reveal is the only thing that fails. Somebody
@@ -1972,6 +1998,28 @@ deferred:
       should not be on that screen."
     ends_when: "Steve decides a response commitment and who watches the inbox, and the acute-path copy
       is made to match it. This is a decision, not a build — which is why the owner is not claude."
+    closed:
+      date: 2026-08-20
+      ruled_by: steve
+      decision: "WITHIN ONE BUSINESS DAY, stated."
+      why_that_number: "Honest for a solo operator on his worst week rather than flattering on his
+        best. A commitment that is only true when nothing else is happening is the one that breaks
+        on the day it matters."
+      what_shipped: "SUPPORT_RESPONSE_TIME in lib/contact.ts — one definition, beside OPERATOR_NAME
+        and CONTACT_EMAIL — consumed by /about and the support form. /about adds that an actively
+        failing release should say so in the subject line and goes to the top."
+      the_acute_copy_did_not_change: "deliberately. AccessClient's 'tell us … so a person can look'
+        was IMPLYING a commitment; stating one makes that sentence true as written rather than
+        needing it softened."
+      guard: "lib/ops/support-commitment.test.ts. ⚠️ What it guards is the COUPLING, not the
+        wording: the failure mode is not somebody deleting the sentence, it is a SECOND surface
+        stating a different number until a customer quotes the wrong one back. It sweeps every .tsx
+        under src/app for a rival response time and fails naming the file. Proven by planting 'we
+        usually reply within a few hours' on the support form.
+        🔴 And its first version was BACKWARDS — it required /about to contain the literal address,
+        which would have gone green only on a page that HARDCODED it, the opposite of the rule this
+        very file enforces. Assert the reference, not the value."
+
 
   - id: relays-own-continuity-is-unstated                     # "C7"
     owner: claude

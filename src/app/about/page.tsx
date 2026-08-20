@@ -29,7 +29,7 @@
 
 import Link from 'next/link';
 
-import { CONTACT_EMAIL, CONTACT_MAILTO, OPERATOR_NAME, OPERATOR_PROFILE_URL } from '../../../lib/contact';
+import { CONTACT_EMAIL, CONTACT_MAILTO, OPERATOR_NAME, OPERATOR_PROFILE_URL, SUPPORT_RESPONSE_TIME } from '../../../lib/contact';
 
 const TITLE = 'About — who is behind Relay';
 const DESCRIPTION =
@@ -146,7 +146,13 @@ export default function AboutPage() {
             {CONTACT_EMAIL}
           </a>{' '}
           reaches Steve directly. It is read by a person, not a queue, and it is the right address
-          for support, security reports, refunds and press.
+          for support, security reports, refunds and press. <strong>You will hear back{' '}
+          {SUPPORT_RESPONSE_TIME}.</strong>
+        </p>
+        <p className="mt-3 text-t2 leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
+          That is one person&rsquo;s honest commitment on a bad week, not a promise that sounds
+          better on a good one. If something is actively going wrong with a release, say so in the
+          subject line and it goes to the top.
         </p>
         <p className="mt-3 text-t2 leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
           Writing about family caregiving or digital access and want to ask something? Same address.
