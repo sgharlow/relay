@@ -2595,6 +2595,15 @@ deferred:
       nothing; the probe excludes demo-flagged owners for this reason and ROADMAP.md §6 bars it by
       name. The point is a vault that is REAL, because the claim being repaired is a claim about
       real use.
+    guarded_structurally_2026_08_20: >-
+      `invite:cohort --commit` now REFUSES when the vault cannot host an invitation, rather than
+      only being reported on by `verify:dogfood`. A report is a convention somebody has to remember
+      to run, and the mistake it prevents is not recoverable by a re-run: the people in
+      .relay-cohort.json are real, and withdrawing an invitation costs a conversation. The dry run
+      is deliberately never gated — listing the roster is how the list gets checked — and
+      `--anyway` proceeds while printing exactly what is being overridden, so a defensible early
+      invitation (naming a verifier before the vault is filled) stays possible and visible rather
+      than driving someone to delete the check.
 
   - id: the-coverage-gate-is-declared-and-unenforced           # "D8"
     owner: claude

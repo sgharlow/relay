@@ -13,7 +13,13 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { assessDogfoodReadiness, summarise, type DogfoodCounts } from './dogfood-readiness';
+import {
+  assessDogfoodReadiness,
+  countDogfood,
+  gateCohortInvite,
+  summarise,
+  type DogfoodCounts,
+} from './dogfood-readiness';
 
 function ready(): DogfoodCounts {
   return {
@@ -148,6 +154,14 @@ describe('the shell that runs it', () => {
     expect(SCRIPT).toContain('process.exit(2)');
   });
 
+  it('asks for the counts through the shared definition, not its own SQL', () => {
+    // Two copies of "what counts as ready" is two things to drift.
+    expect(SCRIPT).toContain('countDogfood');
+    expect(SCRIPT, 'the SQL belongs in lib/ops, so both callers ask the same question').not.toContain(
+      'FROM vault_items',
+    );
+  });
+
   it('is wired as an npm script, or nobody will ever run it', () => {
     const pkg = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8')) as {
       scripts: Record<string, string>;
@@ -156,5 +170,118 @@ describe('the shell that runs it', () => {
     expect(pkg.scripts['verify:dogfood']).toContain('scripts/verify-dogfood.ts');
     // It reads a live cluster, so it needs the env file the other probes use.
     expect(pkg.scripts['verify:dogfood']).toContain('--env-file=.env.local');
+  });
+});
+
+describe('the counts come from one definition', () => {
+  it('countDogfood asks for every field, and excludes demo owners in each', async () => {
+    const asked: string[] = [];
+    const counts = await countDogfood(async (sql) => {
+      asked.push(sql);
+      return 1;
+    });
+
+    // Every field the verdict reads must actually have been queried; a field left
+    // at a default would silently read as zero and manufacture a missing piece.
+    for (const key of Object.keys(counts) as Array<keyof DogfoodCounts>) {
+      expect(counts[key], `${key} was not populated`).toBe(1);
+    }
+
+    // Every query must mention the demo column: either it scopes to non-demo
+    // owners, or it IS the demo tally. A count that forgot would quietly include
+    // fixture rows and report a seeded vault as real.
+    const unscoped = asked.filter((s) => !s.includes('is_demo_account'));
+    expect(
+      unscoped,
+      `these counts do not exclude demo owners: ${unscoped.join(' | ')}`,
+    ).toEqual([]);
+    expect(asked.length, 'no queries were issued at all').toBe(7);
+  });
+});
+
+describe('the cohort refusal', () => {
+  const notReady = () =>
+    assessDogfoodReadiness({
+      realOwners: 1,
+      demoOwners: 0,
+      vaultItems: 0,
+      recipients: 0,
+      verifiers: 0,
+      accessRules: 0,
+      releaseConfigs: 0,
+    });
+
+  it('lets a ready vault through', () => {
+    const d = gateCohortInvite(assessDogfoodReadiness(ready()), false);
+    expect(d.refuse).toBe(false);
+  });
+
+  it('refuses an unready vault, and says how to override', () => {
+    const d = gateCohortInvite(notReady(), false);
+    expect(d.refuse).toBe(true);
+    expect(d.message).toContain('REFUSED');
+    // A refusal with no way forward is a refusal somebody deletes.
+    expect(d.message).toContain('--anyway');
+    expect(d.message).toContain('verify:dogfood');
+  });
+
+  it('names every missing piece in the refusal, not just the first', () => {
+    const d = gateCohortInvite(notReady(), false);
+    for (const piece of ['vault item', 'recipient', 'verifier', 'access rule', 'release trigger']) {
+      expect(d.message, `refusal does not mention ${piece}`).toContain(piece);
+    }
+  });
+
+  it('proceeds under --anyway but prints what is being overridden', () => {
+    const d = gateCohortInvite(notReady(), true);
+    expect(d.refuse).toBe(false);
+    expect(d.message).toContain('PROCEEDING ANYWAY');
+    expect(d.message).toContain('vault item');
+  });
+});
+
+describe('the refusal is placed where it can actually refuse', () => {
+  const COHORT = readFileSync(join(process.cwd(), 'scripts/invite-cohort.ts'), 'utf8');
+
+  it('invite-cohort CALLS the gate, not merely imports it', () => {
+    /*
+      ⚠️ This asserted `toContain('gateCohortInvite')` first, and a plant that
+      deleted the call left the import line behind — so it passed on exactly the
+      defect it was written for. That is the same shape as the check in this repo
+      that matched "Stripe" inside "NotStripe". Match the call.
+    */
+    expect(COHORT).toContain('gateCohortInvite(assessDogfoodReadiness(');
+  });
+
+  it('gates AFTER the dry-run return, so listing the roster is never blocked', () => {
+    /*
+      Blocking the dry run would push an operator toward --commit just to see
+      anything, which is the opposite of what this protects.
+    */
+    const dryRun = COHORT.indexOf('if (!COMMIT)');
+    const gate = COHORT.indexOf('gateCohortInvite(');
+    expect(dryRun).toBeGreaterThan(-1);
+    expect(gate).toBeGreaterThan(dryRun);
+  });
+
+  it('gates BEFORE anyone is created, or it is a guard on nothing', () => {
+    /*
+      The failure this repo keeps meeting: a check that exists, runs, and sits
+      after the work it was meant to prevent. Ordering is the assertion.
+    */
+    const gate = COHORT.indexOf('gateCohortInvite(');
+    const creates = COHORT.indexOf("'/api/recipients'");
+    // ⚠️ Both bounds asserted first. indexOf returns -1 when absent, and -1 is
+    // dutifully "less than" any real index — so without this the test passes
+    // most convincingly when the gate has been deleted entirely.
+    expect(gate, 'no gate call found at all').toBeGreaterThan(-1);
+    expect(creates, 'no person-creation call found — this test has gone blind').toBeGreaterThan(-1);
+    expect(gate, 'the readiness gate runs after people are created').toBeLessThan(creates);
+  });
+
+  it('exits non-zero when it refuses', () => {
+    const gate = COHORT.indexOf('gateCohortInvite(');
+    const after = COHORT.slice(gate, gate + 400);
+    expect(after).toContain('process.exit(1)');
   });
 });

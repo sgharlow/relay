@@ -26,44 +26,20 @@
  */
 
 import { query } from '../lib/db/connection';
-import { assessDogfoodReadiness, summarise, type DogfoodCounts } from '../lib/ops/dogfood-readiness';
+import { assessDogfoodReadiness, countDogfood, summarise } from '../lib/ops/dogfood-readiness';
 
 /**
- * Every count excludes demo-flagged owners. `scripts/reset-demo.ts` can
- * manufacture all of these in seconds, and ROADMAP.md §6 bars using it to
- * satisfy sprint 1 — so the check its own bypass would satisfy is not written
- * that way. `COALESCE` because the column arrived after the first accounts did.
+ * The SQL lives in lib/ops/dogfood-readiness.ts, not here, because
+ * `scripts/invite-cohort.ts` asks the same question before it commits — and two
+ * copies of "what counts as ready" is two things to drift.
  */
-const REAL_OWNERS = 'SELECT id FROM users WHERE NOT COALESCE(is_demo_account, false)';
-
 async function count(sql: string): Promise<number> {
   const r = await query<{ n: string }>(sql);
   return Number(r.rows[0]?.n ?? 0);
 }
 
 async function main(): Promise<void> {
-  const counts: DogfoodCounts = {
-    realOwners: await count(`SELECT count(*) AS n FROM (${REAL_OWNERS}) o`),
-    demoOwners: await count(
-      'SELECT count(*) AS n FROM users WHERE COALESCE(is_demo_account, false)',
-    ),
-    vaultItems: await count(
-      `SELECT count(*) AS n FROM vault_items WHERE owner_id IN (${REAL_OWNERS})`,
-    ),
-    recipients: await count(
-      `SELECT count(*) AS n FROM recipients WHERE owner_id IN (${REAL_OWNERS})`,
-    ),
-    verifiers: await count(
-      `SELECT count(*) AS n FROM verifiers WHERE owner_id IN (${REAL_OWNERS})`,
-    ),
-    accessRules: await count(
-      `SELECT count(*) AS n FROM access_rules WHERE owner_id IN (${REAL_OWNERS})`,
-    ),
-    releaseConfigs: await count(
-      `SELECT count(*) AS n FROM release_state WHERE owner_id IN (${REAL_OWNERS})`,
-    ),
-  };
-
+  const counts = await countDogfood(count);
   const verdict = assessDogfoodReadiness(counts);
 
   console.log('\nOwner vault, as it stands (demo-flagged accounts excluded):\n');

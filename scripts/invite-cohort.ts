@@ -3,6 +3,7 @@
  *
  *   npx tsx --env-file=.env.local scripts/invite-cohort.ts              # DRY RUN (default)
  *   npx tsx --env-file=.env.local scripts/invite-cohort.ts --commit     # actually creates people
+ *   ... --commit --anyway   # proceed even if the owner vault cannot host an invitation
  *
  * WHY THIS EXISTS. Phase 0 has been at N=0 since 2026-08-12 with a correct,
  * live instrument and nobody in it. The per-person path — add the person, open
@@ -55,10 +56,18 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 
 import { VALID_ROLES } from '../lib/domain/enums';
 import { INVITE_EMAIL_DAILY_LIMIT } from '../lib/notify/invite-budget';
+import { query } from '../lib/db/connection';
+import {
+  assessDogfoodReadiness,
+  countDogfood,
+  gateCohortInvite,
+} from '../lib/ops/dogfood-readiness';
 
 const BASE = (process.env.RELAY_BASE_URL ?? 'https://relaystandby.com').replace(/\/$/, '');
 const COOKIE = process.env.RELAY_OWNER_COOKIE ?? '';
 const COMMIT = process.argv.includes('--commit');
+// Deliberate exception to the readiness refusal below. Prints what it overrides.
+const ANYWAY = process.argv.includes('--anyway');
 const INPUT = '.relay-cohort.json';
 const OUTPUT = '.relay-cohort-codes.json';
 
@@ -163,6 +172,28 @@ async function main(): Promise<void> {
     console.log(`\n[cohort] These are REAL people going into the production database. Check the list, then --commit.`);
     return;
   }
+
+  /*
+    🔴 CAN THE VAULT THESE PEOPLE ARE BEING INVITED INTO ACTUALLY HOST THEM?
+
+    Measured on 2026-08-20, the answer was no and nothing asked: production held
+    one owner account with zero vault items, zero access rules and no release
+    that had ever left `armed`. This script would have invited real people —
+    named in .relay-cohort.json, not test rows — to stand by for nothing.
+
+    `npm run verify:dogfood` reports the same thing, but a report is a convention
+    somebody has to remember to run. This is the structural half.
+  */
+  const counts = await countDogfood(async (sql) => {
+    const r = await query<{ n: string }>(sql);
+    return Number(r.rows[0]?.n ?? 0);
+  });
+  const decision = gateCohortInvite(assessDogfoodReadiness(counts), ANYWAY);
+  if (decision.refuse) {
+    console.error(`\n[cohort] ${decision.message}\n`);
+    process.exit(1);
+  }
+  console.log(`\n[cohort] ${decision.message}\n`);
 
   if (!COOKIE) {
     console.error('[cohort] ✗ RELAY_OWNER_COOKIE is not set — an owner session is required to create people.');

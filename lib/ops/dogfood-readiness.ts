@@ -150,3 +150,88 @@ export function summarise(v: DogfoodVerdict): string {
     ? 'READY — the owner vault can host a cohort invitation.'
     : `NOT READY — ${v.missing.length} piece(s) missing: ${v.missing.map((m) => m.what).join(', ')}.`;
 }
+
+/**
+ * Demo-flagged owners are excluded everywhere, and the subquery says so once.
+ * `COALESCE` because the column arrived after the first accounts did.
+ */
+const REAL_OWNERS = 'SELECT id FROM users WHERE NOT COALESCE(is_demo_account, false)';
+
+/**
+ * The counts, from one definition.
+ *
+ * Both `verify-dogfood.ts` and `invite-cohort.ts` ask the same question, and two
+ * copies of "what counts as ready" is two things to drift — the portfolio rule
+ * is one authoritative definition per cross-boundary contract. The query
+ * function is injected, so this module still performs no I/O and the SQL is
+ * testable without a cluster.
+ */
+export async function countDogfood(
+  count: (sql: string) => Promise<number>,
+): Promise<DogfoodCounts> {
+  return {
+    realOwners: await count(`SELECT count(*) AS n FROM (${REAL_OWNERS}) o`),
+    demoOwners: await count('SELECT count(*) AS n FROM users WHERE COALESCE(is_demo_account, false)'),
+    vaultItems: await count(`SELECT count(*) AS n FROM vault_items WHERE owner_id IN (${REAL_OWNERS})`),
+    recipients: await count(`SELECT count(*) AS n FROM recipients WHERE owner_id IN (${REAL_OWNERS})`),
+    verifiers: await count(`SELECT count(*) AS n FROM verifiers WHERE owner_id IN (${REAL_OWNERS})`),
+    accessRules: await count(`SELECT count(*) AS n FROM access_rules WHERE owner_id IN (${REAL_OWNERS})`),
+    releaseConfigs: await count(`SELECT count(*) AS n FROM release_state WHERE owner_id IN (${REAL_OWNERS})`),
+  };
+}
+
+export interface CohortGateDecision {
+  refuse: boolean;
+  message: string;
+}
+
+/**
+ * Should `invite:cohort --commit` proceed?
+ *
+ * 🔴 THE REASON THIS IS A REFUSAL AND NOT A WARNING. `verify:dogfood` reports,
+ * and a report is a convention every future operator has to remember to run.
+ * The portfolio rule is to prefer a structure that makes the mistake impossible
+ * over a convention somebody must remember, and the mistake here is specific and
+ * hard to undo: real people, named in a gitignored file, receive an invitation to
+ * stand by for a vault with nothing in it. They are not test rows. Withdrawing an
+ * invitation costs a conversation.
+ *
+ * ⚠️ THE OVERRIDE EXISTS ON PURPOSE. There are legitimate reasons to invite
+ * early — naming a verifier before the vault is filled is a defensible order of
+ * operations — and a check with no escape hatch is a check somebody deletes the
+ * first time it is wrong. `--anyway` proceeds and prints exactly what is being
+ * overridden, so the exception is visible in the run output rather than silent.
+ * The dry run is never gated: listing the roster is how the list gets checked,
+ * and blocking that would push people toward `--commit` to see anything at all.
+ */
+export function gateCohortInvite(verdict: DogfoodVerdict, override: boolean): CohortGateDecision {
+  if (verdict.ready) {
+    return { refuse: false, message: 'Owner vault is ready to host an invitation.' };
+  }
+
+  const missing = verdict.missing.map((m) => `  - ${m.what}: ${m.action}`).join('\n');
+
+  if (override) {
+    return {
+      refuse: false,
+      message:
+        '⚠️  PROCEEDING ANYWAY. The owner vault cannot currently host an invitation:\n\n' +
+        `${missing}\n\n` +
+        'Real people are about to be invited to stand by for this. That is a defensible\n' +
+        'choice — naming a verifier before the vault is filled is a real order of operations —\n' +
+        'but it is being recorded here because it was chosen rather than missed.',
+    };
+  }
+
+  return {
+    refuse: true,
+    message:
+      '✗ REFUSED: the owner vault cannot host an invitation yet.\n\n' +
+      `${missing}\n\n` +
+      'These are real people. Inviting them now means asking them to stand by for a vault\n' +
+      'with nothing in it — there is nothing an access rule could point at and nothing the\n' +
+      'readiness banner could truthfully report.\n\n' +
+      'Run `npm run verify:dogfood` for the full picture. If this is deliberate, re-run with\n' +
+      '--anyway and the reason will be printed with the run.',
+  };
+}
