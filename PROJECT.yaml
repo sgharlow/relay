@@ -1822,6 +1822,27 @@ deferred:
       cross-tenant oracle. The fix was correct and the structure that allowed it is unchanged. The
       portfolio rule is structural safety over convention: make the cross-tenant unwrap impossible AT
       KMS rather than refused by a check somebody has to keep writing."
+    ruled:
+      date: 2026-08-20
+      by: steve
+      decision: "DEFER THE BUILD. B5 stays OPEN deliberately — the design is finished and the code
+        is not written."
+      what_is_done: "docs/encryption-context-design.md (the compatibility rule, the call sites, and
+        the fallback implementation that must NOT be built) and docs/encryption-context-rollout.md
+        (three deploys, and the point of no return being the first row WRITTEN with a context).
+        Migration 037 is authored AND APPLIED to both regions — a nullable column nothing reads."
+      why_defer: "The exploit this addresses was closed at the application layer on 2026-08-13; what
+        remains is structural rather than exploitable. demand_signal is none, and this is the one
+        path where being wrong is unrecoverable — it needs live proof at each of three deploys. The
+        design costs nothing to sit on. Same 'spend when there is a customer' logic that ruled B3
+        Option A and declined counsel."
+      reopens_when: "a customer exists, a partner's diligence asks how tenants are separated, or
+        anything changes on the wrap/unwrap path — a change there without this design in hand is how
+        the fallback shape gets built by accident."
+      ⚠️_the_allow_list_entry_is_now_load_bearing: "vault_items.kms_context_era is applied and
+        referenced by nothing, allow-listed in lib/ops/schema-columns-are-used.test.ts with its own
+        removal condition. That entry is the only thing recording that the column is waiting rather
+        than abandoned."
     ends_when: "new wraps are bound to a context and legacy blobs are PROVEN to decrypt forever.
       ⚠️ Compatibility is the whole risk: every key wrapped before the change has no context and can
       never be rewritten, because the server cannot read plaintext — the same permanent-legacy rule
@@ -2196,6 +2217,13 @@ deferred:
         left alone and reported rather than refactored: see the sprint report."
       proof: "20 tests. Both plants red: removing the dedupe (double-sends on Stripe's retry), and
         recording before sending (the record then claims delivery it cannot know about)."
+      ⚠️_still_owed_live: "THE REAL STRIPE WEBHOOK HAS NEVER FIRED THIS. The unit tests prove the
+        module and the route guard proves the webhook calls it; only Stripe proves the payload shape.
+        There is no Stripe key in .env.local or .env.admin, so this cannot be done from a laptop.
+        STEVE: send a test-mode invoice.payment_failed to the production endpoint from the Stripe
+        dashboard, confirm exactly ONE email arrives, then re-deliver the SAME event and confirm
+        nothing is sent — that second half is the dedupe, and it is the half a single send does not
+        prove. Ruled 2026-08-20; record the result here when done."
 
 
   - id: the-post-lapse-state-is-undefined                     # "E2"
