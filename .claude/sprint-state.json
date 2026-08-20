@@ -1,47 +1,21 @@
 {
-  "sprint": "2026-08-20-4",
-  "branch": "sprint/2026-08-20-4",
-  "worktree": "C:/Users/sghar/CascadeProjects/relay-sprint-2026-08-20-4",
-  "based_on": "sprint/2026-08-20-3 (unmerged) — Sprint 4 depends on Sprints 1-3. Four branches now chain 1->2->3->4; merging 4 merges all of them.",
-  "backlog_source": "explicit — docs/backlog.md Sprint 4, named in the invocation. NOT inferred.",
-  "gate_held": {
-    "rule": "Sprint 4's own header: DESIGN ONLY unless Steve says otherwise.",
-    "consequence": "S4-3 (the wrap/unwrap change) was NOT built. S4-4 is specified inside the design rather than written, because it must call signatures S4-3 has not created.",
-    "spare_iterations": "Three in-scope items left two iterations, so the queue was re-ranked to sprint 3's top carried candidates."
-  },
-  "iterations_used": 5,
-  "iterations_max": 5,
-  "queue": [
-    { "id": "S4-1", "title": "The compatibility rule", "axis": "documentation", "status": "shipped", "commit": "35f4242",
-      "settled_by_reading": "Context is { owner_id } and that is FORCED: encryptForUpload wraps before the item exists, so there is no item id to bind to. Both unwrap paths already hold ownerId, so no new query.",
-      "the_finding": "Try-with-context-then-fall-back RE-OPENS the exact hole the change closes. The era must be a stored fact, never inferred from a failure." },
-    { "id": "S4-2", "title": "Migration 037 authored, not applied", "axis": "completeness", "status": "shipped", "commit": "99924c1",
-      "guard_refused_it": "lib/ops/schema-columns-are-used.test.ts fired — a column no code mentions is what migration 035 shipped. Resolved with an allow-list entry carrying its own removal condition.",
-      "contrast": "NULL means LEGACY here, where in 035 NULL meant UNKNOWN. Same mechanism, opposite epistemics." },
-    { "id": "S4-5", "title": "Roll-forward and roll-back notes", "axis": "documentation", "status": "shipped", "commit": "a75ac83",
-      "the_finding": "The point of no return is the first row WRITTEN with a context, not the migration and not the read-side deploy. That forces three deploys, not one, with the write side behind a flag." },
-    { "id": "carried-1", "title": "Nothing parses PROJECT.yaml", "axis": "correctness", "weight": 5, "blast": 2, "effort": 1, "score": 10, "status": "shipped", "commit": "b53edce",
-      "proof": "Planted an unescaped quote: gates.test.ts passed 12/12 (blind); the new test failed 7 and named the syntax error.",
-      "dependency_added": "yaml 2.9.0, devDependencies, exact-pinned, self-typed. npm audit still 0." },
-    { "id": "carried-2", "title": "One definition of the app origin", "axis": "correctness", "weight": 5, "blast": 1, "effort": 1, "score": 5, "status": "shipped", "commit": "46ccfd2",
-      "found": "FIVE copies, not the four I counted. lib/release/fire-drill.ts was missed because my enumerating grep ended in head -5 and truncated at exactly the limit." }
+  "branch": "sprint/2026-08-20-5",
+  "backlogSource": "ROADMAP.md §3 Sprint 1 (read from the main checkout; rev 3 is uncommitted there)",
+  "iterationsUsed": 5,
+  "iterationCap": 5,
+  "baseline": { "start": "build RED (worktree node_modules junction, not a repo defect)", "end": "green" },
+  "items": [
+    { "id": "S1-I1", "title": "the ladder claim argues for itself", "axis": "correctness", "status": "shipped", "commit": "53ef5bf" },
+    { "id": "S1-I2", "title": "verify:dogfood readiness probe", "axis": "wiring", "status": "shipped", "commit": "f799db8" },
+    { "id": "S1-I3", "title": "seven findings into the register", "axis": "completeness", "status": "shipped", "commit": "d84a7e5" },
+    { "id": "S1-I4", "title": "coverage thresholds enforced in CI", "axis": "correctness", "status": "shipped", "commit": "241995a" },
+    { "id": "S1-I5", "title": "invite:cohort refuses an empty vault", "axis": "security", "status": "shipped", "commit": "a2886e1" },
+    { "id": "S1-1.1/1.2/1.3", "title": "populate the owner's vault", "status": "blocked", "reason": "credentials + content only Steve has" },
+    { "id": "S1-1.5", "title": "verify:orphans after the walk", "status": "blocked", "reason": "credentials" }
   ],
-  "outcome": "complete — 5 of 5 iterations used, 0 blocked",
-  "baseline_end": {
-    "gate": "exit 0",
-    "tests": "green — 267 files, 2984 passed, 1 skipped",
-    "audit": "0 vulnerabilities",
-    "delta": "+31 tests, +3 files, no new skips"
-  },
-  "report": "docs/sprint-reports/2026-08-20-sprint-4.md",
-  "my_own_errors_this_sprint": [
-    "The gate check `npm run gate | tail -2 >/dev/null; echo $?` reads TAIL's exit code, not npm's, so it printed 0 unconditionally for two iterations. The repo's pre-commit hook caught the failing test, not me.",
-    "Counted four copies of the app-origin expression; there were five. The enumerating grep ended in `head -5` and truncated at exactly the limit.",
-    "A test asserted over a fixed 4000-character slice and went red on code past the end of the function.",
-    "A guard's failure mode was a bare ENOENT, and another's was `no tests` — both fixed so the failure explains itself."
-  ],
-  "not_live_proven": [
-    "Everything in this sprint is design or test-only; nothing here touches a live system.",
-    "Carried: verify:live owed since sprint 3's webhook change; the Stripe test-mode invoice.payment_failed has never been fired; the Vercel plan tier is unverified."
+  "verificationOwedFromMainCheckout": [
+    "npm run verify:dogfood (never run against a real cluster; smoke-run only)",
+    "npm run invite:cohort past its input check",
+    "npm run verify:orphans"
   ]
 }
