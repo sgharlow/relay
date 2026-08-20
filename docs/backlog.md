@@ -243,7 +243,12 @@ what is preserved, who is told, and by when. Cheap now; unwritable at 3am.
 
 ---
 
-# Sprint 2 — Durability, independence, and the two runbooks
+# ✅ Sprint 2 — Durability, independence, and the two runbooks — COMPLETE 2026-08-20
+
+> All five items shipped on branch `sprint/2026-08-20-2` (branched from `sprint/2026-08-20-1`,
+> which it depends on), 0 blocked. Report: `docs/sprint-reports/2026-08-20-sprint-2.md`.
+> **One thing waits on Steve:** migration `036_signin_attempts.sql` is authored and NOT applied —
+> the code is safe without it and simply does not engage until it lands.
 
 **Theme:** the second stage of the security work — the parts that need persistence, a second
 channel, or a written procedure.
@@ -252,7 +257,7 @@ channel, or a written procedure.
 
 ---
 
-### S2-1 · A durable per-account sign-in budget
+### ✅ S2-1 · A durable per-account sign-in budget — SHIPPED 2026-08-20 (`e446d43`), migration 036 awaits Steve
 
 - **Axis:** security · **Effort:** M · **Blast:** all users · **Depends on:** S1-1
 
@@ -291,7 +296,7 @@ testable against a mocked `pg` boundary and must be.
 
 ---
 
-### S2-2 · The in-app alarm stops sharing fate with product email
+### ✅ S2-2 · The in-app alarm stops sharing fate with product email — SHIPPED 2026-08-20 (`506ce9b`), branch (b): ruled
 
 - **Axis:** security / correctness · **Effort:** M · **Blast:** all users
 
@@ -330,7 +335,7 @@ offline; the schedule is proven by the first real run.
 
 ---
 
-### S2-3 · The secret rotation runbook
+### ✅ S2-3 · The secret rotation runbook — SHIPPED 2026-08-20 (`dbd7b0e`)
 
 - **Axis:** documentation / security · **Effort:** M · **Blast:** all users
 
@@ -360,7 +365,7 @@ This is the operational half of the arc `docs/least-privilege-cutover.md` closed
 
 ---
 
-### S2-4 · Relay's own continuity, stated
+### ✅ S2-4 · Relay's own continuity, stated — SHIPPED 2026-08-20 (`98955a7`)
 
 - **Axis:** completeness (a promise the product implies and never makes) · **Effort:** S ·
   **Blast:** all users
@@ -390,7 +395,7 @@ build**, and it is the most on-brand piece of trust copy available.
 
 ---
 
-### S2-5 · Stripe joins the subprocessor list
+### ✅ S2-5 · Stripe joins the subprocessor list — SHIPPED 2026-08-20 (`a02a8bf`), plus a second defect on the same page
 
 - **Axis:** correctness (of a legal page) · **Effort:** S · **Blast:** all paying users
 

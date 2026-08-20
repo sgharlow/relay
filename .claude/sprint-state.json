@@ -1,108 +1,107 @@
 {
-  "sprint": "2026-08-20-1",
-  "branch": "sprint/2026-08-20-1",
-  "worktree": "C:/Users/sghar/CascadeProjects/relay-sprint-2026-08-20-1",
-  "started_utc": "2026-08-20T04:08:57Z",
-  "backlog_source": "explicit — docs/backlog.md Sprint 1, named in the invocation. NOT inferred. That file was written the same day as the sequencing view of ROADMAP.md §2.",
-  "input_carried": {
-    "commit": "806e462",
-    "files": ["ROADMAP.md", "docs/backlog.md", ".gitignore"],
-    "why": "The sprint's declared input existed only as uncommitted work in the main checkout, and a worktree is taken from HEAD. Rule 1 forbids committing to master, so they were carried onto the branch before iteration 1. S1-2's criteria edit ROADMAP.md §2 and §7, which against HEAD's copy do not exist.",
-    "not_the_1_0_failure": "Authored minutes earlier in the same conversation at the user's request, not another terminal's work. Nothing else in the main checkout was touched."
+  "sprint": "2026-08-20-2",
+  "branch": "sprint/2026-08-20-2",
+  "worktree": "C:/Users/sghar/CascadeProjects/relay-sprint-2026-08-20-2",
+  "based_on": {
+    "branch": "sprint/2026-08-20-1",
+    "why": "NOT master. docs/backlog.md states Sprint 2's dependency on Sprint 1, and it is a hard one: S2-1 extends lib/auth/signin-throttle.ts, which exists only on that branch. A worktree from HEAD could not have built it.",
+    "review_consequence": "sprint/2026-08-20-2 CONTAINS sprint/2026-08-20-1. Merging this merges both. Review sprint 1 first if the two are to be judged separately."
   },
+  "started_utc": "2026-08-20T04:53:09Z",
+  "backlog_source": "explicit — docs/backlog.md Sprint 2, named in the invocation. NOT inferred.",
   "baseline": {
     "types": "green",
     "lint": "green",
-    "tests": "green — 252 files, 2761 passed, 1 skipped",
+    "tests": "green — 255 files, 2824 passed, 1 skipped",
     "build": "green",
     "audit": "0 vulnerabilities",
-    "command": "TZ=UTC npm run gate",
-    "note": "npm ci in the worktree rather than a node_modules junction — the 2026-08-19 sprint recorded that Turbopack rejects the junction, which fails gate:build for an isolation artefact rather than a repo defect."
+    "command": "TZ=UTC npm run gate"
   },
   "iterations_used": 5,
   "iterations_max": 5,
   "queue": [
     {
-      "id": "S1-1",
-      "title": "Sign-in has an attempt budget and a witness",
-      "axis": "security",
-      "weight": 5,
-      "blast": 3,
-      "effort": 1,
-      "score": 15,
-      "status": "shipped",
-      "commit": "e32e15b",
-      "why_first": "Hard-priority ladder rung 2 — exploitable defect on a reachable path. Owner sign-in is email + a six-digit code with no failure counter and no rate limit, and an owner session unwraps that owner's vault.",
-      "red_green": "All three claims of lib/ops/signin-is-throttled.test.ts proven by planting the defect: gate call removed (3 red), guess-watch call removed (2 red), recordSigninFailure added to the lookup-failure catch (2 red)."
-    },
-    {
-      "id": "S1-2",
-      "title": "The findings get a home in PROJECT.yaml",
-      "axis": "correctness",
-      "weight": 5,
-      "blast": 2,
-      "effort": 1,
-      "score": 10,
-      "status": "shipped",
-      "commit": "91b09ff",
-      "note": "Unblocks every later sprint — 15 entries, 3 owned by Steve, B1/B2 entered already closed. YAML validated by parse (18 entries)."
-    },
-    {
-      "id": "S1-3",
-      "title": "verify:kms — the third wall",
+      "id": "S2-1",
+      "title": "A durable per-account sign-in budget",
       "axis": "security",
       "weight": 5,
       "blast": 3,
       "effort": 2,
       "score": 7.5,
       "status": "shipped",
-      "commit": "df38d32",
-      "not_live_proven": "The wiring has never executed — no credentials in a worktree. 22 fixture tests cover every rule."
+      "commit": "e446d43",
+      "ordering_note": "Taken first ahead of higher-scoring items on the standing instruction that security is the priority. Recorded as an explicit override of the score rather than a silent one.",
+      "red_green": "Planting `durable === null ||` in place of `durable !== null &&` — treating 'cannot answer' as a refusal — turns the structural guard and seven behavioural tests red.",
+      "awaits_steve": "db/migrations/036_signin_attempts.sql, both regions, then verify:schema."
     },
     {
-      "id": "S1-4",
-      "title": "The failover does not carry the ability to decrypt, and nothing says so",
+      "id": "S2-2",
+      "title": "The in-app alarm stops sharing fate with product email",
+      "axis": "security",
+      "weight": 5,
+      "blast": 3,
+      "effort": 2,
+      "score": 7.5,
+      "status": "shipped",
+      "commit": "506ce9b",
+      "branch_taken": "(b) — the GitHub monitors are the alarm of record; in-app mail is advisory.",
+      "red_green": "Removing the delivery-result read (1 red); deleting a monitor file (3 red)."
+    },
+    {
+      "id": "S2-5",
+      "title": "Stripe joins the subprocessor list",
+      "axis": "correctness",
+      "weight": 5,
+      "blast": 2,
+      "effort": 1,
+      "score": 10,
+      "status": "shipped",
+      "commit": "a02a8bf",
+      "also_found": "users.totp_secret was undisclosed on /privacy's 'what we can read' list while the section above claimed nobody obtaining the database could read anything. Fixed loudly.",
+      "guard_nearly_failed": "The first version asserted toContain('Stripe') and PASSED its own plant, because 'NotStripe' contains 'Stripe'. Caught only because the plant was run."
+    },
+    {
+      "id": "S2-4",
+      "title": "Relay's own continuity, stated",
+      "axis": "completeness",
+      "weight": 4,
+      "blast": 3,
+      "effort": 1,
+      "score": 12,
+      "status": "shipped",
+      "commit": "98955a7",
+      "red_green": "Softening 'a stopped service cannot release anything to anyone' (1 red); adding an escrow promise (2 red)."
+    },
+    {
+      "id": "S2-3",
+      "title": "The secret rotation runbook",
       "axis": "documentation",
       "weight": 2,
       "blast": 3,
-      "effort": 1,
-      "score": 6,
+      "effort": 2,
+      "score": 3,
       "status": "shipped",
-      "commit": "67b43ba",
-      "half_only": "The writing-down half. The ruling on docs/kms-region-proposal.md is Steve's; B3 stays open."
-    },
-    {
-      "id": "S1-5",
-      "title": "The security incident and breach runbook",
-      "axis": "documentation",
-      "weight": 2,
-      "blast": 3,
-      "effort": 1,
-      "score": 6,
-      "status": "shipped",
-      "commit": "c0b6fe9",
-      "deviation": "Named security-incident-runbook.md, not incident-response-runbook.md as the contract said — `incident` already means a customer-facing feature (/api/audit/incidents) and an error beacon (/api/incident) here.",
-      "found_while_writing": [
-        "users.totp_secret is plaintext TEXT (migration 003) and is NOT wrapped by the CMK — the zero-knowledge claim has an exception that any breach notice must state",
-        "There is no bulk session revocation: bumpSessionEpoch is per user, called from one place. Signing everybody out means rotating NEXTAUTH_SECRET, which is a global outage as well as a containment."
-      ]
+      "commit": "dbd7b0e",
+      "found_by_the_guard": "The first draft covered eleven secrets and missed DSQL_PASSWORD — which turned out to be the most interesting of the twelve.",
+      "tripped_a_recorded_trap": "An assertion went red against a runbook that said exactly what it looked for, because the phrase wrapped across a line break. Same shape as gates.g3.dossier."
     }
   ],
-  "ended_utc": "2026-08-20T05:02:00Z",
+  "ended_utc": "2026-08-20T06:05:00Z",
   "outcome": "complete — queue exhausted, 5 of 5 iterations used, 0 blocked",
   "baseline_end": {
     "types": "green",
     "lint": "green",
-    "tests": "green — 255 files, 2824 passed, 1 skipped",
+    "tests": "green — 260 files, 2904 passed, 1 skipped",
     "build": "green",
     "audit": "0 vulnerabilities",
     "gate": "exit 0",
-    "delta": "+63 tests, +3 files, no new skips"
+    "delta": "+80 tests, +5 files, no new skips"
   },
-  "report": "docs/sprint-reports/2026-08-20-sprint.md",
-  "harness_note": "TodoWrite was not available in this harness. The scored queue lives here and in the report instead, rather than being skipped silently.",
+  "report": "docs/sprint-reports/2026-08-20-sprint-2.md",
+  "harness_note": "TodoWrite unavailable in this harness; the scored queue lives here and in the report.",
   "not_live_proven": [
-    "scripts/verify-kms.ts has never run against the real CMK — run it from the main checkout, and once against a deliberate negative so a refusal is seen to exit 1",
-    "The sign-in attempt budget has never been exercised by a real sign-in. npm run verify:live (e2e-stepup) is the walk that would catch a limiter refusing a legitimate person, and it needs .env.local and a running server"
+    "Migration 036 is authored and NOT applied, so the durable sign-in budget has never executed against DSQL. Its missing-table and error branches are unit-proven against a mocked pg; the happy path is not.",
+    "verify:schema will report signin_attempts MISSING until 036 is applied — the check working, not a regression.",
+    "Carried from sprint 1: scripts/verify-kms.ts has never run against the real CMK, and B3's ruling is still owed."
   ]
 }
