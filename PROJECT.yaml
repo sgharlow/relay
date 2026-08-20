@@ -1632,6 +1632,32 @@ deferred:
         raises the floor from NOTHING to the control the step-up route already had. The durable
         per-account budget needs a row, therefore a migration, therefore Steve: see
         `signin-budget-is-not-durable` below."
+    durable_half:
+      date: 2026-08-20
+      status: "WRITTEN AND WAITING ON A MIGRATION — not live, and not claimed as live."
+      what_shipped: "db/migrations/036_signin_attempts.sql (authored, NOT applied) and
+        lib/auth/signin-attempts.ts, composed inside signin-throttle.ts so the two layers are one
+        choke point and callers never learn where a count is kept."
+      the_property_that_matters: "It refuses only on a NUMBER. `null` from the store means it could
+        not answer — no migration, unreachable cluster, timed-out query — and that is NOT zero.
+        Treating null as a refusal would hand any DSQL blip the power to lock out every owner at
+        once, which is the failure this control must never cause. Memory stays the floor, is checked
+        FIRST, and is never removed by an unreachable database."
+      deploy_order_is_not_a_hazard_this_time: "Migration 029 THREW when its table was absent and
+        took passkey sign-in down for four minutes. This detects a missing relation (42P01) once,
+        logs one line, latches, and falls back to memory — so the code is safe to deploy before the
+        migration and simply does not engage until it lands."
+      the_address_is_never_stored: "email_key is SHA-256 of the normalised address. The table must
+        count failures against addresses that have NO account — refusing to would tell an attacker
+        which addresses are real — so in plaintext it would slowly become a list of everyone anybody
+        ever tried, including typos of real people's addresses. Hashing costs nothing: counting is
+        identical and an investigation can still hash a SUSPECTED address and search for it."
+      steve_must_run: "npx tsx --env-file=.env.admin db/migrations/migrate.ts
+        036_signin_attempts.sql — BOTH regions (the second by naming DSQL_PRIMARY_ENDPOINT with the
+        secondary's value; migrate.ts does not honour DSQL_USE_SECONDARY), then npm run
+        verify:schema. ⚠️ verify:schema derives what it expects from the migration files, so it will
+        report signin_attempts MISSING from the moment this lands until it is applied. That is the
+        check working, not a defect."
 
   - id: the-guess-watch-did-not-cover-the-front-door          # "B2"
     owner: claude

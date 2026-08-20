@@ -37,15 +37,33 @@
  *     GENEROUS, because a household or an office behind one NAT shares a source
  *     and a guard nobody can satisfy is a lockout.
  *
- * ⚠️ NEITHER IS A SECURITY BOUNDARY YET, and saying so is load-bearing.
- * `lib/http/rate-limit.ts` explains why in its own header: the counters live in
- * process memory, so they are per-instance and a distributed attempt is
- * under-counted. This raises the floor from NOTHING to the same control the
- * step-up route already has. The durable per-account budget — a row, a
- * migration, and therefore a sysadmin act — is the second stage, and it is
- * recorded as `PROJECT.yaml → deferred` S2-1 / docs/backlog.md Sprint 2. This
- * module is the seam it will swap in behind: callers depend on these four
- * functions, not on where the count is kept.
+ * ✅ THE DURABLE HALF LANDED 2026-08-20 (S2-1), and this module is where the two
+ * compose. The paragraph that stood here said the in-memory counters were "not
+ * a security boundary yet", that a distributed attempt is under-counted because
+ * process memory is per-instance, and that the fix was a row. It is kept below
+ * because it is still exactly true of the memory layer, and because the seam it
+ * predicted is the seam that was used — callers still depend on these four
+ * functions and still do not know where a count is kept:
+ *
+ *   > "⚠️ NEITHER IS A SECURITY BOUNDARY YET, and saying so is load-bearing.
+ *   > lib/http/rate-limit.ts explains why in its own header: the counters live
+ *   > in process memory, so they are per-instance and a distributed attempt is
+ *   > under-counted. This raises the floor from NOTHING to the same control the
+ *   > step-up route already has."
+ *
+ * MEMORY IS STILL CHECKED FIRST, AND IT IS NOT A CACHE. It is a floor that costs
+ * no query and cannot be taken away by an unreachable database: an address that
+ * has already burnt its budget on THIS instance is refused without touching
+ * DSQL. The durable count is consulted only when memory would have let the
+ * attempt through, which is also what keeps a spray from turning the sign-in
+ * path into load on the database.
+ *
+ * ⚠️ AND THE DURABLE HALF IS ALLOWED TO BE ABSENT. `lib/auth/signin-attempts.ts`
+ * degrades to nothing when the table has not been migrated, when DSQL is
+ * unreachable, or when a query times out — it returns `null`, meaning *no
+ * information*, which this module treats as "memory decides" and never as
+ * "zero failures". Migration 029 is the recorded reason for that shape: it threw
+ * when its table was absent and took passkey sign-in down for four minutes.
  *
  * ⚠️ IT MUST NEVER TAKE THE FRONT DOOR DOWN. Every path here is
  * non-throwing and in-memory. An authentication control whose own failure
@@ -56,6 +74,11 @@
  */
 
 import { rateLimit } from '../http/rate-limit';
+import {
+  durableFailureCount,
+  recordDurableFailure,
+  clearDurableFailures,
+} from './signin-attempts';
 
 /**
  * Failed sign-ins allowed against ONE address before the door closes.
@@ -152,11 +175,11 @@ export interface SigninGateResult {
  * query. Each attempt otherwise resolves a TOTP secret from DSQL, so an
  * unbudgeted door is an amplifier against the database as well as a way in.
  */
-export function checkSigninAllowed(
+export async function checkSigninAllowed(
   email: string,
   source: string | null,
   now: number = Date.now(),
-): SigninGateResult {
+): Promise<SigninGateResult> {
   const key = throttleKey(email);
   const budget = budgets.get(key);
   if (budget && now < budget.resetAt && budget.failures >= MAX_FAILED_ATTEMPTS) {
@@ -168,6 +191,23 @@ export function checkSigninAllowed(
   const sourceKey = `signin:${source ?? 'unknown'}`;
   if (!rateLimit(sourceKey, MAX_SOURCE_ATTEMPTS, SOURCE_WINDOW_MS, now).allowed) {
     return { allowed: false, refusedBy: 'source' };
+  }
+
+  /*
+    Only now is the database asked, and the ordering is deliberate twice over:
+    an address already refused by memory costs no query, and a spray cannot turn
+    the sign-in path into sustained load on DSQL.
+
+    `null` means the durable store could not answer — the table is not migrated,
+    the cluster is unreachable, the query timed out. That is NOT zero. Zero is a
+    claim that the address is clean; null is an admission that we do not know,
+    and only one of them is true when the database is down. Treating null as a
+    refusal would hand any DSQL blip the power to lock out every owner at once,
+    which is the failure this control must never cause.
+  */
+  const durable = await durableFailureCount(email, FAILURE_WINDOW_MS);
+  if (durable !== null && durable >= MAX_FAILED_ATTEMPTS) {
+    return { allowed: false, refusedBy: 'address' };
   }
 
   return { allowed: true };
@@ -182,17 +222,23 @@ export function checkSigninAllowed(
  * differently here would rebuild the enumeration oracle the uniform `null` exists
  * to prevent.
  */
-export function recordSigninFailure(email: string, now: number = Date.now()): void {
+export async function recordSigninFailure(
+  email: string,
+  now: number = Date.now(),
+): Promise<void> {
   const key = throttleKey(email);
   const existing = budgets.get(key);
 
   if (!existing || now >= existing.resetAt) {
     if (budgets.size >= MAX_TRACKED_ADDRESSES) evictExpired(now);
     budgets.set(key, { failures: 1, resetAt: now + FAILURE_WINDOW_MS });
-    return;
+  } else {
+    existing.failures += 1;
   }
 
-  existing.failures += 1;
+  // Memory is updated FIRST and unconditionally, so the floor holds even if the
+  // durable write is refused, slow, or lands on a cluster without migration 036.
+  await recordDurableFailure(email);
 }
 
 /**
@@ -203,8 +249,9 @@ export function recordSigninFailure(email: string, now: number = Date.now()): vo
  * four codes and then got one right starts again from zero, while an attacker —
  * who by definition never succeeds — never gets the reset.
  */
-export function clearSigninFailures(email: string): void {
+export async function clearSigninFailures(email: string): Promise<void> {
   budgets.delete(throttleKey(email));
+  await clearDurableFailures(email);
 }
 
 /** Current failure count for an address. Exported for tests, not for gating. */

@@ -126,3 +126,102 @@ describe('a refusal is indistinguishable from any other failure', () => {
     expect(thrown).toBe(false);
   });
 });
+
+/**
+ * The durable half, added with migration 036 (S2-1).
+ *
+ * The in-memory budget is per-instance, so a distributed attempt against one
+ * address is under-counted by every instance and none of them ever reaches ten.
+ * `lib/auth/signin-attempts.ts` is the row that closes that. It is composed
+ * inside `signin-throttle.ts` rather than called from `authorize`, deliberately:
+ * one choke point, and callers that never learn where a count is kept.
+ *
+ * ⚠️ WHAT THESE ASSERT IS THE PROPERTY THAT KEEPS IT SAFE, not that it exists.
+ * A durable control on the front door can fail in two directions, and only one
+ * of them is survivable. Under-counting lets an attacker through; over-refusing
+ * locks out every owner in the world the moment DSQL hiccups. Migration 029 is
+ * the recorded precedent for the second — it threw when its table was absent and
+ * took passkey sign-in down for four minutes.
+ */
+describe('the durable budget cannot lock the product out', () => {
+  const throttle = () =>
+    stripComments(readFileSync(join(process.cwd(), 'lib/auth/signin-throttle.ts'), 'utf8'));
+  const store = () =>
+    stripComments(readFileSync(join(process.cwd(), 'lib/auth/signin-attempts.ts'), 'utf8'));
+
+  it('the throttle consults the durable count', () => {
+    expect(throttle()).toContain('durableFailureCount(');
+  });
+
+  it('and records and clears durably, or memory and the row disagree', () => {
+    expect(throttle()).toContain('recordDurableFailure(');
+    expect(throttle()).toContain('clearDurableFailures(');
+  });
+
+  it('refuses only on a NUMBER, never on the absence of an answer', () => {
+    // `null` means the store could not answer. Treating it as a refusal hands
+    // any DSQL blip the power to lock out every owner at once.
+    const src = throttle();
+    expect(src).toMatch(/durable\s*!==\s*null\s*&&\s*durable\s*>=/);
+  });
+
+  it('asks the database only after memory has already allowed the attempt', () => {
+    const src = throttle();
+    const sourceGate = src.indexOf('MAX_SOURCE_ATTEMPTS');
+    const durable = src.indexOf('await durableFailureCount(');
+    expect(sourceGate).toBeGreaterThan(-1);
+    expect(durable).toBeGreaterThan(-1);
+    // A refused attempt must cost no query, or the control that stops a spray
+    // becomes the thing that turns it into database load.
+    expect(durable).toBeGreaterThan(sourceGate);
+  });
+
+  it('the store never throws — every entry point catches', () => {
+    const src = store();
+    for (const fn of [
+      'durableFailureCount',
+      'recordDurableFailure',
+      'clearDurableFailures',
+      'sweepOldSigninAttempts',
+    ]) {
+      const at = src.indexOf(`export async function ${fn}`);
+      expect(at, `${fn} is gone`).toBeGreaterThan(-1);
+      const body = src.slice(at, at + 900);
+      expect(body, `${fn} does not catch`).toContain('catch');
+    }
+  });
+
+  it('the address is hashed before it reaches a query', () => {
+    const src = store();
+    // The table records failures against addresses that have no account — it
+    // must, or throttling would tell an attacker which addresses are real. In
+    // plaintext that makes it a list of everyone anybody ever tried.
+    expect(src).toContain('createHash');
+    for (const call of ['INSERT INTO signin_attempts', 'DELETE FROM signin_attempts']) {
+      expect(src).toContain(call);
+    }
+    expect(src.match(/signinKeyFor\(email\)/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
+  });
+
+  it('the migration exists and uses the shapes DSQL actually supports', () => {
+    const sql = readFileSync(join(process.cwd(), 'db/migrations/036_signin_attempts.sql'), 'utf8');
+    /*
+      🔴 STRIPPED FIRST, AND THIS TEST CAUGHT ITSELF DOING THE WRONG THING.
+      The first draft asserted `not.toContain('ON CONFLICT')` against the whole
+      file and went red — on the migration's own COMMENT, which explains at
+      length why ON CONFLICT is not used here. That is the failure CLAUDE.md
+      names in its own words: "a guard that greps for a forbidden string matches
+      the comment that explains the string." An absence check must look only at
+      what executes.
+    */
+    const statements = sql.replace(/--[^\n]*/g, ' ');
+
+    expect(statements).toContain('CREATE TABLE IF NOT EXISTS signin_attempts');
+    // DSQL supports no other index kind, and no sort order on key columns.
+    expect(statements).toContain('CREATE INDEX ASYNC');
+    // ON CONFLICT errored on real infra and 500'd the first live claim.
+    expect(statements).not.toContain('ON CONFLICT');
+    // A counter column would be a write-write conflict under snapshot isolation.
+    expect(statements).not.toContain('UPDATE');
+  });
+});

@@ -119,7 +119,7 @@ export const authOptions: NextAuthOptions = {
           Relay account and rebuild the enumeration oracle from the other side.
           The reason is logged for the server and never returned.
         */
-        const gate = checkSigninAllowed(email, sourceAddress(req?.headers));
+        const gate = await checkSigninAllowed(email, sourceAddress(req?.headers));
         if (!gate.allowed) {
           console.warn(`[auth] sign-in refused by ${gate.refusedBy} budget`);
           return null;
@@ -165,7 +165,7 @@ export const authOptions: NextAuthOptions = {
             outside they are the same event, and separating them here is how the
             uniform `null` gets undone from the inside.
           */
-          recordSigninFailure(email);
+          await recordSigninFailure(email);
           await recordCodeMiss('totp');
           return null;
         }
@@ -181,7 +181,7 @@ export const authOptions: NextAuthOptions = {
           the next line — which is ours, not theirs — cannot leave a proven
           owner holding a spent budget.
         */
-        clearSigninFailures(email);
+        await clearSigninFailures(email);
 
         // --- auth_sub → users.id upsert ---
         // For credentials-based auth the auth_sub is the email address.

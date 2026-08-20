@@ -1,0 +1,110 @@
+-- 036 — the durable half of the owner front door's attempt budget.
+--
+-- 🔴 WHAT THIS IS THE SECOND STAGE OF. Until 2026-08-20 owner sign-in had no
+-- failure counter and no rate limit of any kind: an email address and six
+-- digits, three of a million valid at any instant, and an owner session behind
+-- it that decrypts that owner's vault. `lib/auth/signin-throttle.ts` closed that
+-- with two in-process counters, which raised the floor from nothing to the same
+-- control /api/account/step-up already had.
+--
+-- It is per-INSTANCE memory, and `lib/http/rate-limit.ts` says in its own header
+-- that this is not a security boundary. Serverless means many instances, so a
+-- distributed attempt against one address is under-counted by construction —
+-- each instance sees a fraction of the attempts and none of them ever reaches
+-- ten. Closing that needs a row, which is this file.
+--
+-- ── THE EMAIL IS HASHED, AND THAT IS THE DESIGN, NOT CAUTION ────────────────
+-- `email_key` is SHA-256 of the normalised address, never the address.
+--
+-- This table records failures against addresses that DO NOT HAVE ACCOUNTS as
+-- well as ones that do — that is not a flaw, it is required, because refusing
+-- to count unknown addresses would tell an attacker which addresses are real by
+-- which ones throttle. But it means that in plaintext this table would slowly
+-- become a list of every address anybody ever tried against Relay, including
+-- typos of real people's addresses and every target of a spray. None of those
+-- people are users, none of them consented, and that data exists nowhere else
+-- in the product.
+--
+-- Hashing costs nothing operationally: counting works identically, and an
+-- investigation is still possible in the direction that matters — hash a
+-- SUSPECTED address and search for it. What is lost is the ability to browse
+-- the table as a list of victims, which is exactly the capability that should
+-- not exist.
+--
+-- ── APPEND-ONLY, AND WHY THERE IS NO COUNTER COLUMN ─────────────────────────
+-- One row per failure, counted with a predicate on read. NOT a single row per
+-- address with an incrementing counter, for two reasons that are both recorded
+-- history in this repository rather than theory:
+--
+--   1. DSQL has snapshot isolation, so two failures against the same address at
+--      the same moment would be a write-write conflict (SQLSTATE 40001) on the
+--      same row, and the failure path of an authentication control is the worst
+--      possible place to be reasoning about OCC retries. Separate INSERTs never
+--      conflict.
+--   2. An upsert would want `INSERT … ON CONFLICT`, and this data layer cannot
+--      rely on it — `lib/people/claim.ts` records that ON CONFLICT "errored on
+--      real infra and returned a 500 from production on the very first live
+--      claim". Nothing in this codebase uses it, deliberately.
+--
+-- Expiry is a PREDICATE ON THE READ PATH, so a row older than the window counts
+-- for nothing whether or not anything ever deletes it. The sweep below is
+-- HOUSEKEEPING and must never be treated as a dead-man's-switch candidate — the
+-- same ruling `auth_challenges` (029) carries, for the same reason: if the sweep
+-- stopped, the table would grow and nothing would become less safe.
+--
+-- ── NO GRANTS HERE, AND THAT IS DELIBERATE ──────────────────────────────────
+-- 032 and 033 set `ALTER DEFAULT PRIVILEGES IN SCHEMA public` for relay_dev and
+-- relay_app, so a table created from here on is readable and writable by the
+-- application without a per-table GRANT. That rule binds to the CREATING role,
+-- and migrations run as `admin` — the same identity that ran 032 and 033 — so it
+-- applies. 031 is the counter-example worth remembering: it created a table
+-- before 032 existed and the first read as relay_dev failed with `permission
+-- denied`, silently, at runtime.
+--
+-- ⚠️ If `npm run verify:schema` reports this table present but unreadable after
+-- applying, that is this paragraph being wrong, and the fix is an explicit
+-- GRANT rather than a shrug.
+--
+-- ── APPLY TO BOTH REGIONS BEFORE THE CODE THAT NEEDS IT ─────────────────────
+-- ⚠️ THE CODE THAT READS THIS TABLE IS ALREADY WRITTEN AND ALREADY SAFE WITHOUT
+-- IT. `lib/auth/signin-attempts.ts` detects a missing relation (SQLSTATE 42P01)
+-- ONCE, logs it, and falls back to the in-memory counters — sign-in keeps
+-- working exactly as it did before this migration. That is a deliberate
+-- departure from 029, which THREW when its table was absent and took passkey
+-- sign-in down for four minutes while it was being applied. A security control
+-- that can take the front door down is worse than the gap it closes.
+--
+-- So the deploy order here is not a hazard, only a sequence: the durable budget
+-- simply does not engage until this lands.
+--
+--   npx tsx --env-file=.env.admin db/migrations/migrate.ts 036_signin_attempts.sql
+--   DSQL_PRIMARY_ENDPOINT=<the DSQL_SECONDARY_ENDPOINT value from .env.admin> \
+--     npx tsx --env-file=.env.admin db/migrations/migrate.ts 036_signin_attempts.sql
+--   npm run verify:schema
+--
+-- ⚠️ The second command names the SECONDARY endpoint explicitly because
+-- migrate.ts reads only DSQL_PRIMARY_ENDPOINT and does not honour
+-- DSQL_USE_SECONDARY. Setting that switch instead would apply the migration to
+-- the primary TWICE and leave the secondary bare — the one-region failure
+-- 035's header warns about in the same words.
+--
+-- ── ROLLBACK ────────────────────────────────────────────────────────────────
+-- `DROP TABLE signin_attempts;`. The application returns to in-memory-only
+-- counting on the next request, because that is what it already does when the
+-- table is missing. Nothing else has to be undone and no data is lost that
+-- matters — the contents are failure counts with a fifteen-minute half-life.
+--
+-- Requirements: 17.1 · PROJECT.yaml deferred signin-had-no-attempt-budget
+--   (B1, "what_it_does_not_do") · docs/backlog.md S2-1
+
+CREATE TABLE IF NOT EXISTS signin_attempts (
+  id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  -- SHA-256 of the lower-cased, trimmed address. Never the address itself.
+  email_key  TEXT        NOT NULL,
+  failed_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ASYNC because DSQL supports no other kind, and no sort order on the key
+-- columns for the same reason (reference-aurora-dsql-migration-gotchas).
+CREATE INDEX ASYNC idx_signin_attempts_key ON signin_attempts (email_key);
+CREATE INDEX ASYNC idx_signin_attempts_at ON signin_attempts (failed_at);

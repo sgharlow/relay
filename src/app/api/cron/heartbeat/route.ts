@@ -16,6 +16,7 @@ import { recordSchedulerRun } from '../../../../../lib/release/scheduler-ledger'
 import { escalateLapsedRequests } from '../../../../../lib/release/escalation';
 import { sweepSilentVerifiers } from '../../../../../lib/release/silence-sweep';
 import { sweepExpiredChallenges } from '../../../../../lib/auth/challenge-store';
+import { sweepOldSigninAttempts } from '../../../../../lib/auth/signin-attempts';
 import { timingSafeEquals } from '../../../../../lib/http/timing-safe';
 
 async function handle(req: NextRequest): Promise<NextResponse> {
@@ -73,6 +74,15 @@ async function handle(req: NextRequest): Promise<NextResponse> {
   */
   const challengesSwept = await sweepExpiredChallenges();
 
+  /*
+    The same shape and the same ruling, for the sign-in attempt budget
+    (migration 036). Expiry is a predicate on the READ path — a row older than
+    the window counts for nothing whether or not this ever runs — so if this
+    line stopped, the table would grow and nothing would become less safe.
+    Housekeeping. Do not wire an alert to this one either.
+  */
+  const signinAttemptsSwept = await sweepOldSigninAttempts();
+
   // CC9: record the run so its ABSENCE is detectable by /api/health/scheduler.
   await recordSchedulerRun(summary);
 
@@ -82,6 +92,7 @@ async function handle(req: NextRequest): Promise<NextResponse> {
     escalated: escalated.length,
     silenceNotices: silent.length,
     challengesSwept,
+    signinAttemptsSwept,
   });
 }
 
