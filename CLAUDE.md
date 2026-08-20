@@ -91,6 +91,16 @@ npm run verify:iam     # the OTHER half of the least-privilege wall — can the 
                        # principal still obtain a DSQL ADMIN token? Reads the live policy,
                        # managed AND inline, wildcards included. verify:roles cannot see
                        # this. Read-only; NEEDS .env.admin (an identity that can read IAM).
+npm run verify:kms     # the wall UNDERNEATH both of those, and the only one whose failure
+                       # is permanent. Is the CMK every vault is wrapped under still there,
+                       # enabled, not scheduled for deletion, rotation as intended, and does
+                       # its key policy still let the runtime principal GenerateDataKey and
+                       # Decrypt? A disabled or deleted key leaks nothing and makes every
+                       # vault permanently unreadable — and a key PENDING DELETION still
+                       # decrypts, so every other signal stays green for the whole waiting
+                       # period and then the data is gone. Read-only (DescribeKey,
+                       # GetKeyPolicy, GetKeyRotationStatus); NEEDS .env.admin, because the
+                       # application deliberately does not hold kms:DescribeKey.
 npm run verify:stamp   # the last link in verify:live, not run by hand. Appends one
                        # line to docs/verify-live-runs.jsonl recording that the
                        # chain completed, and against which commit. It runs only
@@ -354,6 +364,31 @@ asserts the positive half — a policy stripped to nothing grants no admin and t
 a check that is happiest when the product is broken is measuring the wrong thing. Proven in both
 directions against real AWS data, with no IAM mutation: v1 is retained as the rollback and still
 carries the grant, so pointing the reader at it is a live negative control.
+
+**`npm run verify:kms` is the seventh, added 2026-08-20, and it watches the layer under both of
+those.** `verify:roles` and `verify:iam` protect ACCESS to data that, if they fail, still exists.
+Underneath them sits the customer master key, and every vault here is ciphertext plus a data key
+wrapped by it — so the failure this watches for is not a breach, it is an **erasure with no
+rollback**. A disabled key, a scheduled deletion, or a key policy that stops naming the runtime
+principal leaks nothing and makes every vault permanently unreadable; `docs/backup-restore-runbook.md`
+covers the database, and a restored cluster is ciphertext without the key that opens it.
+
+**And the product looks fine the whole time**, which is why this is a scheduled re-measurement
+rather than a note asking somebody to look: a key pending deletion **still decrypts**, so every
+health check, canary and page stays green for the entire waiting period and then the data is gone.
+That is the same green-signal-measuring-the-wrong-thing shape as the rest of this directory.
+
+Read-only — `DescribeKey`, `GetKeyPolicy`, `GetKeyRotationStatus`, nothing else. `lib/ops/kms-wall.ts`
+holds the pure verdict so every rule is proven against a planted fixture with no credentials, in the
+shape `iam-wall.ts` established. It asserts the positive half too: a key policy that grants **nobody**
+fails, because a check that is happiest when the product is dead is measuring the wrong thing.
+Rotation is compared against `ROTATION_INTENDED`, which records the as-provisioned state rather than a
+recommendation — the finding worth alarming on is nobody having decided.
+
+⚠️ **The wiring is not yet live-proven.** Every rule is unit-proven; that the script reads the right
+key and exits non-zero on a refusal is only proven by seeing it fail. Point `KMS_KEY_ID` at a key
+that does not exist and confirm it exits 1 — `verify:iam` keeps policy v1 as a live negative control
+for exactly this reason.
 
 Accessibility is a fifth: `node scripts/a11y-audit.mjs` with `A11Y_OWNER_EMAIL` set to an account
 that exists (`scripts/disposable-owner.ts create` makes one). CI covers the signed-out half only —

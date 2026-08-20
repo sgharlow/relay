@@ -226,3 +226,59 @@ describe('scripts that run TypeScript can actually start', () => {
     ).toEqual([]);
   });
 });
+
+/**
+ * The three walls, and the fact that nothing was pinning them.
+ *
+ * `verify:roles`, `verify:iam` and `verify:kms` are re-measuring probes over
+ * live infrastructure — each watches a wall that leaves no trace in this repo,
+ * where one console click or one `create-policy-version` changes the answer with
+ * no diff, no test run and no build. They are the checks that make "we are
+ * least-privileged" a measurement rather than a memory.
+ *
+ * 🔴 AND UNTIL 2026-08-20, NOTHING ASSERTED THEY STILL EXISTED. Every one of
+ * them is a `package.json` string — not type-checked, not linted, not executed
+ * by any test — exactly the class the bare-`tsx` guard below was written for
+ * after two entries shipped unable to start. A wall check quietly renamed,
+ * repointed or dropped is a wall nobody is measuring any more, and the symptom
+ * of that is silence, which is also what a held wall looks like.
+ *
+ * They are deliberately NOT in `gate`: all three need AWS or database
+ * credentials, which CI does not have and must not have.
+ */
+describe('the walls each have a command, and it points at the real probe', () => {
+  const WALLS: [script: string, harness: string, what: string][] = [
+    ['verify:roles', 'scripts/verify-roles.ts', 'what a database role may do once connected'],
+    ['verify:iam', 'scripts/verify-iam.ts', 'whether the runtime can obtain an admin connection'],
+    ['verify:kms', 'scripts/verify-kms.ts', 'whether the key every vault depends on is still usable'],
+  ];
+
+  it.each(WALLS)('%s exists and runs %s', (name, harness) => {
+    const cmd = pkg.scripts[name];
+    expect(cmd, `${name} is gone — a wall nobody measures is a wall nobody has`).toBeTruthy();
+    expect(cmd).toContain(harness);
+  });
+
+  it.each(WALLS)('%s runs under an identity chosen deliberately', (name) => {
+    // Every one of these reads live infrastructure, so it names its env file
+    // rather than inheriting whatever happens to be in the shell.
+    expect(pkg.scripts[name]).toContain('--env-file=');
+  });
+
+  /*
+    The key wall specifically runs as the SYSADMIN identity. kms:DescribeKey and
+    kms:GetKeyPolicy are deliberately not what the application holds — the
+    runtime needs GenerateDataKey and Decrypt and nothing more, and a probe that
+    could run on the app's own credentials would be evidence the wall is in the
+    wrong place.
+  */
+  it('verify:kms runs as the sysadmin identity, not the application', () => {
+    expect(pkg.scripts['verify:kms']).toContain('.env.admin');
+  });
+
+  it('none of them is folded into the credential-free gate', () => {
+    for (const [name] of WALLS) {
+      expect(pkg.scripts.gate).not.toContain(name);
+    }
+  });
+});
