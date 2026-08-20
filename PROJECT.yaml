@@ -46,6 +46,33 @@ architecture_plan: docs/standby-architecture.md   # version: hybrid+6
 # stays gated on G1/G2, and market.wtp_evidence is still `none`.
 ladder: dogfooded
 
+# ⚠️ THE RUNG ABOVE IS NOW CHECKED. `lib/ops/ladder-claim.ts` reads this block and goes red if the
+# claim stops carrying its own evidence; its header records the 2026-08-20 measurement that prompted
+# it. The four prose caveats above were all correct and all enforced by nothing.
+#
+# `as_of` MUST STAY QUOTED. Unquoted, YAML parses it as a Date, the guard sees a non-string, and it
+# reports the date as malformed — which is the guard working, but for a confusing reason.
+ladder_evidence:
+  as_of: '2026-08-08'
+  basis: >-
+    All ten claimed journeys walked against production as a brand-new self-serve account, on real
+    Aurora DSQL and real KMS, including live-mode Stripe checkout. J10 (estate) was withdrawn
+    rather than walked.
+  record: docs/user-journeys.md
+  scope: >-
+    HISTORICAL, AND NARROWER THAN THE WORD SOUNDS. Recorded 2026-08-20 as ROADMAP.md sprint 1
+    item 1.4. `dogfooded` here means the mechanism was demonstrated end to end against production
+    on the date above. It does NOT mean Relay is in continuous use, and the difference had gone
+    unstated for twelve days. Measured against production on 2026-08-20: one owner account, zero
+    vault items, zero recipients, zero verifiers, zero invitations, and no release that has ever
+    left `armed` — that account holds a paid subscription and an empty vault. The rung is therefore
+    a claim about a demonstration, not about ongoing use. It stays `dogfooded` because promotion to
+    `customer-used` needs an arms-length person and G1 gates that.
+    ⚠️ Re-earning it present-tense is ROADMAP.md sprint 1 items 1.1-1.3, and it needs Steve: the
+    owner's vault has to hold something real before the beta cohort can be invited to stand by
+    for it. Seeding it with `scripts/reset-demo.ts` fixtures would satisfy a count and prove
+    nothing, which is why ROADMAP.md §6 bars it explicitly.
+
 derived:
   test_count: "npx vitest run 2>&1 | grep -E 'Tests .* passed' | tail -1   # static proxy: grep -rE '\\b(it|test)\\(' --include='*.test.*' lib src | wc -l"
   head: "git rev-parse --short HEAD"
