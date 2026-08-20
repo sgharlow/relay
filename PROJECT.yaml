@@ -1742,6 +1742,31 @@ deferred:
       mechanism already exists), evidence preservation (the audit chain is append-only and
       hash-chained; it must not be touched), and notification. It must also state what Relay CANNOT
       disclose because it cannot read it, which is the one genuinely good piece of news in a breach."
+    closed:
+      date: 2026-08-20
+      what_shipped: "docs/security-incident-runbook.md — evidence first (verify the chain and record
+        the result BEFORE touching anything, because a break found at the start is evidence and a
+        break found later is a question about what you did), then containment in order, then scope
+        in writing, then notification, then the write-up."
+      named_security-incident_not_incident-response: "deliberate. `incident` already means two other
+        things here — /api/audit/incidents is a CUSTOMER-FACING feature ('what happened while you
+        were away') and /api/incident is a client-side error beacon. The runbook opens by naming all
+        three, because confusing them mid-event would be expensive."
+      # 🔴 TWO THINGS THE WRITING ESTABLISHED BY CHECKING RATHER THAN ASSUMING.
+      the_zero_knowledge_claim_has_an_exception: "`users.totp_secret` is plaintext TEXT on the users
+        table (migration 003) and is NOT wrapped by the CMK. So a database compromise reaches owner
+        authenticator seeds even though it reaches no vault contents. Any notice that says 'we
+        cannot read your data' without saying that is a notice that misleads — and it is the
+        sentence that would be quoted back. Also exposed and worth naming plainly: item TITLES,
+        which are metadata by our definition and personal by any reader's."
+      there_is_no_bulk_session_revocation: "`bumpSessionEpoch` is per user and is called from exactly
+        ONE place (/api/auth/recover). Signing everybody out means rotating NEXTAUTH_SECRET, which
+        is a global outage as well as a containment — including for people mid-crisis. The runbook
+        says so rather than leaving somebody to discover it at 3am. A bulk path is not proposed
+        here: it is a real capability with a real blast radius and it deserves its own decision."
+      what_it_deliberately_omits: "severity tiers, an on-call rotation, an escalation matrix. There
+        is one operator and no rota (ratified.relay-operator-is-an-individual); inventing that
+        ceremony would produce a document that reads as though somebody else is coming."
 
   - id: no-secret-rotation-runbook                            # "B8"
     owner: claude

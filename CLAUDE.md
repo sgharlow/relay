@@ -441,6 +441,26 @@ and `type-scale`'s backtracking lookahead, which counted 388 violations that wer
 - Source files carry a header comment citing the `Requirements: N.N` they satisfy — keep this
   traceability when adding files, referencing `.kiro/specs/relay-h0-mvp/requirements.md`.
 
+## Runbooks — the four documents nobody reads until they have to
+
+| Runbook | For |
+|---|---|
+| `docs/security-incident-runbook.md` | somebody may have obtained access they should not have |
+| `docs/backup-restore-runbook.md` | the data is gone, damaged, or a restore needs proving |
+| `docs/email-dns-runbook.md` | mail is not arriving |
+| `docs/kms-region-proposal.md` | not a runbook — the standing decision behind the failover limitation both of the first two describe |
+
+⚠️ **"Incident" already means two other things in this codebase**, and the security runbook opens by
+saying so: `/api/audit/incidents` is a *customer-facing feature* ("what happened while you were
+away") and `/api/incident` is a *client-side error beacon*. Neither is a security event.
+
+Two facts from that runbook worth knowing before you need it, because both are counter-intuitive
+under pressure. **There is no bulk session revocation** — `bumpSessionEpoch` is per user and is
+called from exactly one place, so signing everybody out means rotating `NEXTAUTH_SECRET`, which is
+a global outage as well as a containment. And **the zero-knowledge claim does not cover owner
+authenticator seeds**: `users.totp_secret` is plaintext server-side and is not wrapped by the CMK,
+so a database compromise reaches it even though it reaches no vault contents.
+
 ## Notes
 
 - Git is initialized with remote `origin` → github.com/sgharlow/relay (branch `master`).
