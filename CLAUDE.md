@@ -376,6 +376,7 @@ actually *use* the thing, and each fails loudly rather than silently:
 | `scrollable-regions.test.ts` | a box that scrolls sideways is focusable AND named | `tabIndex={0}` + `role="region"` + `aria-label`, or stop it scrolling |
 | `type-scale.ts` | no page invents a tenth type step | `t1`–`t9`, never a px literal |
 | `raw-color.test.ts` | hardcoded colours do not spread | the tokens in `globals.css` |
+| `signin-is-throttled.test.ts` | the owner front door spends an attempt budget and rings the alarm | `checkSigninAllowed` before the lookup, `recordSigninFailure` + `recordCodeMiss('totp')` on refusal, `clearSigninFailures` on success |
 
 Two habits they encode. **Every allowlist entry argues for itself** — a reason under ~40 characters
 fails, and a reason that makes a checkable claim (*"it is rate-limited"*) is itself checked, because

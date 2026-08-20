@@ -24,6 +24,29 @@ import { claimStandbyRole } from '../people/claim';
 import { redeemBreakGlass } from '../people/break-glass';
 import { readSessionEpoch } from './session-epoch';
 import { query } from '../db/connection';
+import {
+  checkSigninAllowed,
+  recordSigninFailure,
+  clearSigninFailures,
+} from './signin-throttle';
+import { recordCodeMiss } from '../ops/guess-watch';
+
+/**
+ * The client address NextAuth hands `authorize`, or null.
+ *
+ * NextAuth v4 passes a plain header BAG rather than a `Headers` instance, so
+ * `lib/http/rate-limit`'s `clientKey` — which calls `.get()` — cannot be reused
+ * here. Same rule, spelled for this shape: the left-most `x-forwarded-for` entry
+ * is the client, and an unidentifiable caller returns null so the throttle can
+ * bucket it conservatively rather than exempt it.
+ */
+function sourceAddress(headers: Record<string, unknown> | undefined): string | null {
+  const raw = headers?.['x-forwarded-for'] ?? headers?.['x-real-ip'];
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (typeof value !== 'string') return null;
+  const first = value.split(',')[0]?.trim();
+  return first ? first : null;
+}
 
 // ---------------------------------------------------------------------------
 // Extend next-auth types
@@ -68,13 +91,39 @@ export const authOptions: NextAuthOptions = {
        * Returns a User object (causing NextAuth to proceed) or null (reject).
        * Per Requirement 17.1: sessions without a valid TOTP factor are rejected.
        */
-      async authorize(credentials): Promise<User | null> {
+      async authorize(credentials, req): Promise<User | null> {
         if (!credentials?.email || !credentials?.totpCode) {
           return null; // Missing credentials → reject
         }
 
         const email = credentials.email.trim().toLowerCase();
         const totpCode = credentials.totpCode.trim();
+
+        /*
+          --- ATTEMPT BUDGET (lib/auth/signin-throttle.ts) ---
+
+          There is no password on this door: an address and six digits are the
+          whole of it, and three of a million codes are valid at any instant.
+          Until 2026-08-20 nothing here counted a failure or refused a caller,
+          so a stranger who knew an owner's address could walk the keyspace
+          unattended in hours against the account that decrypts a vault.
+
+          CHECKED BEFORE THE LOOKUP, on purpose. `resolveTotpSecret` is a DSQL
+          query, so a refused attempt must cost nothing — an unbudgeted door is
+          an amplifier against the database as well as a way in.
+
+          ⚠️ A REFUSAL RETURNS THE SAME `null` AS EVERY OTHER FAILURE. The
+          comment below already establishes why an unknown address, a wrong code
+          and an undecodable secret must be indistinguishable from outside;
+          answering "too many attempts" would confirm that an address holds a
+          Relay account and rebuild the enumeration oracle from the other side.
+          The reason is logged for the server and never returned.
+        */
+        const gate = checkSigninAllowed(email, sourceAddress(req?.headers));
+        if (!gate.allowed) {
+          console.warn(`[auth] sign-in refused by ${gate.refusedBy} budget`);
+          return null;
+        }
 
         // --- MFA gate (Requirement 17.1) ---
         // Resolve THIS owner's secret. A shared secret would let any user mint a
@@ -89,14 +138,50 @@ export const authOptions: NextAuthOptions = {
         try {
           totpSecret = await resolveTotpSecret(email);
         } catch (err) {
-          // A lookup failure is ours, not the caller's. Log it; say nothing.
+          /*
+            A lookup failure is OURS, not the caller's — so it is the one
+            failure that must NOT spend the caller's budget. Charging somebody
+            for our database being unreachable would turn a DSQL blip into a
+            lockout of every owner who tried during it, which is the failure
+            mode this whole module is written to avoid causing.
+          */
           console.error('[auth] TOTP secret lookup failed:', err);
           return null;
         }
 
         if (!totpSecret || !validateTotpCodeFor(totpSecret, totpCode)) {
+          /*
+            Both halves count, and they are recorded together because they are
+            two different questions.
+
+            The BUDGET closes the door on this address. The MISS tells somebody
+            it is happening — lib/ops/guess-watch.ts exists because "a guess at
+            a code that does not exist left no trace at all", and until now the
+            shortest secret in the product was the one kind it did not count. A
+            limiter without an alarm hides the attack it deflects: the attacker
+            simply slows down, and nobody ever learns they were there.
+
+            An unknown address and a wrong code both land here on purpose. From
+            outside they are the same event, and separating them here is how the
+            uniform `null` gets undone from the inside.
+          */
+          recordSigninFailure(email);
+          await recordCodeMiss('totp');
           return null;
         }
+
+        /*
+          The code was right, so the budget starts again from zero — this is
+          what makes it a FAILURE budget rather than a rate limit. Somebody who
+          fumbled four codes and then got one right is not carrying those four
+          into their next bad day, while an attacker, who by definition never
+          reaches this line, never gets the reset.
+
+          Cleared HERE rather than after the upsert, so a database failure on
+          the next line — which is ours, not theirs — cannot leave a proven
+          owner holding a spent budget.
+        */
+        clearSigninFailures(email);
 
         // --- auth_sub → users.id upsert ---
         // For credentials-based auth the auth_sub is the email address.

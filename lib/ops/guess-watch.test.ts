@@ -24,6 +24,7 @@ import {
   recordCodeMiss,
   missesInWindow,
   ALERT_THRESHOLD,
+  severityParagraph,
   _resetGuessWatchForTesting,
 } from './guess-watch';
 
@@ -158,5 +159,73 @@ describe('every redemption path reports its misses', () => {
       /if \(!(row|invite)\)/.test(before),
       `${file} calls recordCodeMiss somewhere other than its no-row branch`,
     ).toBe(true);
+  });
+});
+
+describe('severity — the paragraph that would otherwise have lied', () => {
+  /*
+    🔴 THE DEFECT THIS PINS. Before `totp` was a GuessKind the alert closed with
+    an unconditional reassurance: "Nothing is currently at risk from guessing
+    alone (the short codes carry 2^39.6, recovery codes 2^49.5), so this is a
+    prompt to look, not an incident." That is true of four long codes and false
+    of a six-digit authenticator code, which is about 2^20 with three values
+    valid at once against the skew window. Adding the kind without touching the
+    copy would have produced an alert that reassures the reader at exactly the
+    moment the arithmetic stops being comfortable — the alert doing the
+    attacker's work.
+  */
+
+  it('does not reassure when authenticator codes are in the window', () => {
+    const text = severityParagraph({ totp: 12 });
+    expect(text).not.toContain('Nothing is currently at risk');
+    expect(text).toContain('AUTHENTICATOR CODES');
+  });
+
+  it('names the count and calls it an incident rather than a prompt', () => {
+    const text = severityParagraph({ recipient: 30, totp: 12 });
+    expect(text).toContain('12');
+    expect(text).toContain('incident');
+  });
+
+  it('keeps the original reassurance when only long codes were missed', () => {
+    const text = severityParagraph({ recipient: 30, recovery: 10 });
+    expect(text).toContain('Nothing is currently at risk');
+    expect(text).not.toContain('AUTHENTICATOR');
+  });
+
+  it('treats an absent totp count the same as zero', () => {
+    expect(severityParagraph({})).toContain('Nothing is currently at risk');
+    expect(severityParagraph({ totp: 0 })).toContain('Nothing is currently at risk');
+  });
+
+  it('reaches the real alert — a totp-bearing window sends the alarmed text', async () => {
+    // Real clock, like every alerting test above. `lastAlertAt` starts at 0
+    // and the cooldown is measured against it, so a small fake `now` suppresses
+    // the first alert entirely — a property of the harness, not of the module.
+    for (let i = 0; i < ALERT_THRESHOLD; i += 1) {
+      await recordCodeMiss('totp');
+    }
+    expect(mockSend).toHaveBeenCalledTimes(1);
+    const sent = mockSend.mock.calls[0]![0] as { text: string };
+    expect(sent.text).toContain('AUTHENTICATOR CODES');
+    expect(sent.text).not.toContain('Nothing is currently at risk');
+  });
+});
+
+describe('the paths list above is code-kinds only, and that is deliberate', () => {
+  /*
+    `totp` is the fifth kind and it is NOT in PATHS. It cannot be: those
+    assertions look for a `if (!row)` / `if (!invite)` no-row branch, and the
+    sign-in path has no row to miss — every failed authenticator code is a miss
+    of the kind this module counts, which is why its budget lives in
+    lib/auth/signin-throttle.ts rather than on a row.
+
+    Its call site is guarded by lib/ops/signin-is-throttled.test.ts instead.
+    This test exists so that reading PATHS as exhaustive fails rather than
+    misleads.
+  */
+  it('the sign-in provider reports totp misses, guarded in its own file', () => {
+    const guard = readFileSync('lib/ops/signin-is-throttled.test.ts', 'utf8');
+    expect(guard).toContain("recordCodeMiss('totp')");
   });
 });
