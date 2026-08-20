@@ -66,10 +66,23 @@ export default function PrivacyPage() {
             <li>which items you said depend on which others</li>
             <li>your email address, and when you last checked in</li>
             <li>the names, emails and phone numbers of people you designate</li>
+            <li>
+              the secret behind <strong>your own</strong> sign-in authenticator — the one Relay
+              gave you when you created the account. It is stored on our servers in readable
+              form, unlike everything in your vault
+            </li>
           </ul>
           <p className="mt-3">
             So we can tell that you store a Chase account. We cannot tell you anything about it.
             If the mere existence of an account is sensitive to you, do not label it accurately.
+          </p>
+          <p className="mt-3">
+            The last item is the sharpest one and it is listed deliberately. Your vault contents
+            are encrypted where we cannot reach them; your <em>sign-in</em> authenticator is not.
+            Anyone who obtained our database could not read a single vault item — but they could
+            generate your sign-in codes. That is why the vault is worth what it is and the
+            database alone is not, and why we would tell you about a breach rather than reassure
+            you with the first half of that sentence.
           </p>
         </section>
 
@@ -91,6 +104,11 @@ export default function PrivacyPage() {
             <li><strong>Vercel</strong> — hosting and privacy-friendly, cookieless analytics</li>
             <li><strong>OpenAI</strong> — the labels-only analysis described above</li>
             <li><strong>Resend</strong> — sending email such as invitations and alerts</li>
+            <li>
+              <strong>Stripe</strong> — payment processing, if you subscribe. Your card details go
+              to Stripe directly and never reach our servers; we keep only the fact that a
+              subscription exists and its status
+            </li>
           </ul>
           <p className="mt-3">
             We do not sell your data, we do not share it for advertising, and there are no

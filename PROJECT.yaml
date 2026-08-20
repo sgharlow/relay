@@ -1848,6 +1848,30 @@ deferred:
       withdrawn: a factual defect on a page whose entire value is that it is accurate."
     ends_when: "Stripe is named AND the list is pinned to the set of providers the codebase actually
       talks to — a hardcoded four-item assertion would pass the day a fifth arrives."
+    closed:
+      date: 2026-08-20
+      what_shipped: "Stripe named on /privacy with what it receives and what it does not (card
+        details go to Stripe directly and never reach our servers). Pinned by
+        lib/ops/subprocessors-are-listed.test.ts, which derives the obligation from package.json:
+        EVERY runtime dependency is either a service that receives customer data and must be named
+        on the page, or is classified as in-process WITH A REASON. Adding any dependency forces
+        that decision — the same shape as body-limit's ALLOWED_RAW."
+      # 🔴 A SECOND DEFECT ON THE SAME PAGE, found by checking it against the CODE.
+      the_authenticator_seed_was_undisclosed: "The 'what we can read' list did not mention that
+        `users.totp_secret` is stored in readable form (plaintext TEXT, migration 003, not wrapped
+        by the CMK), while the section above it said 'neither can anyone who obtains our database'.
+        True of vault CONTENTS and materially incomplete as a whole: somebody holding the database
+        could not read one vault item and COULD generate the owner's sign-in codes. Now listed, with
+        a paragraph saying exactly that — and fixed loudly rather than silently, because it was
+        outside this item's stated scope."
+      # 🔴 AND THE GUARD PASSED ITS OWN PLANT ON THE FIRST TRY.
+      nearly_the_fourth: "The first version asserted `section.toContain('Stripe')`. The plant renamed
+        `<strong>Stripe</strong>` to `<strong>NotStripe</strong>` — which still CONTAINS 'Stripe',
+        so the check stayed GREEN on a page that no longer named the processor. A substring match on
+        a company name checks that those letters appear somewhere, not that the company is listed.
+        This repo has three recorded cases of a guard passing on the very defect it was written for;
+        this was nearly a fourth, and it was caught only because the plant was RUN rather than
+        assumed. Now matched as a list entry, and the negative case is asserted in the test itself."
 
   - id: support-has-an-address-and-no-commitment              # "C6"
     owner: steve
