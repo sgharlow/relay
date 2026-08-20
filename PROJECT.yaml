@@ -1677,6 +1677,17 @@ deferred:
           counts 0 (not null), three failures count 3, the window predicate both includes and
           EXPIRES them, another address is unaffected, a clear removes every row, and housekeeping
           runs. Zero rows left behind afterwards (census: 0)."
+        proven_in_production_after_deploy: "The chain end to end, against relaystandby.com after the
+          merge: a failed sign-in for an address with NO account answered HTTP 401, minted no
+          session, and left exactly ONE row in signin_attempts — written by the DEPLOYED runtime
+          connecting as relay_app, which no earlier check covered. verify:roles proved the GRANT
+          exists; this proves production uses it. Row deleted afterwards; zero remain.
+          ⚠️ THE FIRST ATTEMPT REPORTED A FALSE FAILURE and it was the probe, not the product: it
+          POSTed to /api/auth/callback/credentials when the provider id is `email-totp`, so NextAuth
+          answered 400 before `authorize` ever ran and no row could have been written. Reported as
+          'production did not record the failed sign-in' for about a minute. A probe that cannot
+          reach the code it is testing produces a confident wrong answer — the reference to copy was
+          scripts/e2e-stepup.ts, which posts to the provider id and keeps a cookie jar."
         # 🔴 AND THE PROBE DISAGREED WITH AN EXPECTATION, WHICH IS WHY IT WAS WORTH RUNNING.
         the_contract_nobody_had_written_down: "It asked for a 1ms window and got back the three rows
           it expected to be excluded. `make_interval` takes SECONDS, so windowMs is ceiled — 1ms
