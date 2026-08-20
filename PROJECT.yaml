@@ -2126,6 +2126,28 @@ deferred:
     ends_when: "one page exists with three scenarios — dormant owner, typical owner, owner in an active
       release, the third being the expensive one and the one the product is for — every assumption
       named, and the break-even count. ⚠️ No number from it may be copied anywhere else."
+    closed:
+      date: 2026-08-20
+      what_shipped: "docs/unit-economics.md. Vendor prices FETCHED from each pricing page on the
+        day rather than recalled; every driver that could not be measured without production
+        credentials is listed as a numbered assumption with what happens if it is wrong."
+      the_finding: "THIS IS A FIXED-COST BUSINESS, NOT A VARIABLE ONE. A typical owner costs about
+        27 cents a year to serve and an owner in an ACTIVE RELEASE — the moment the product exists
+        for — costs about 35 cents. Fixed costs are roughly $267/yr, so BREAK-EVEN IS ABOUT THREE
+        PAYING OWNERS. Margin is not the question at this price, in either direction."
+      the_weakest_link_is_named: "The break-even is dominated by A1 — that Vercel is on a ~$20/month
+        plan — which is the one assumption NOT verified, because a sprint worktree holds no
+        credentials. On the free plan break-even is closer to ONE. Verifying that single figure is
+        worth more than refining every variable driver on the page."
+      two_things_it_changed: "(1) Enabling KMS key rotation is NOT free — the first and second
+        rotation each add $1/month, capped after. ROTATION_INTENDED is false, and turning it on is
+        ~$24/yr, about 10% of fixed costs. Small, and no longer invisible. (2) A multi-Region CMK
+        costs $1/month PER REPLICA on top of the primary, which confirms
+        docs/kms-region-proposal.md's Option B estimate rather than leaving it as a guess."
+      what_is_not_on_the_page: "The costs that would actually matter are not infrastructure —
+        support time, and the third-party security audit G5 requires. One audit is worth more than a
+        decade of the figures derived here."
+
 
   - id: a-failed-renewal-tells-the-owner-nothing               # "E1"
     owner: claude
