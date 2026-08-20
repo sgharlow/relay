@@ -265,6 +265,15 @@ export default function TermsPage() {
             alarming is that the remedy is real, self-serve and needs nothing from him.
           */}
           <p className="mt-2">
+            <strong>If you stop paying, nothing is deleted.</strong> When a subscription ends your
+            account returns to the free plan and your vault stays exactly as it is — the items, the
+            people you named, and the arrangements between them. What the free plan changes is what
+            you can <strong>add</strong>: it holds fewer items, so if you are above that number you
+            will not be able to add new ones until you either remove some or start a plan again.
+            Reading, editing and exporting what is already there are not affected, and neither is
+            anyone&rsquo;s ability to reach you in an emergency.
+          </p>
+          <p className="mt-2">
             <strong>There is no successor and no escrow.</strong> If Relay stops being operated, the
             service stops, and a stopped service cannot release access to anyone you named. Your
             content is not at risk — vault items are encrypted in your browser and he cannot read

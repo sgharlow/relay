@@ -2190,6 +2190,37 @@ deferred:
       humane behaviour stops being an accident, and stated in /terms. ⚠️ Changing what a lapse does to
       customer data is Steve's decision, which is why the owner is not claude; describing what it
       currently does is not."
+    closed:
+      date: 2026-08-20
+      note: "Closed by DESCRIBING, which is the half that was claude's. Nothing about what a lapse
+        does was changed, and `canRelease` was not touched."
+      the_answer: "A LAPSE CHANGES EXACTLY ONE THING: WHAT YOU CAN ADD. Established by reading every
+        path — existing items, recipients and verifiers are untouched; access rules and release
+        states were never gated at all; EDITING an existing item is not gated (PUT carries no cap
+        check); REVEAL and EXPORT are not gated by tier; and the only bulk deletion of a vault lives
+        in deleteAccount(), which is a different act preceded by cancelling billing. Adding is
+        refused above the free cap, and that is the whole of it."
+      why_it_needed_pinning: "The humane answer was an EMERGENT PROPERTY of where the checks sit,
+        not a decision. The risk was never a bug — it was a refactor: somebody tidying
+        entitlements.ts could move a cap onto a read path, or add a downgrade handler that trims a
+        vault to the free limit, and nothing would have noticed while /terms promised otherwise."
+      guard: "lib/ops/post-lapse-state.test.ts, 13 assertions, one per path. Proven by planting BOTH
+        regressions it exists for: a downgrade handler that DELETEs vault_items (1 red), and a cap
+        check added to the item EDIT path (1 red). It also pins TIER_LIMITS.free.canRelease at its
+        current value WITHOUT asserting that value is right — so flipping it goes red and makes
+        somebody read the three artifacts that must move together, rather than being a quiet
+        one-liner that converts an expired card into a blocked release."
+      terms: "/terms now answers it in one paragraph: nothing is deleted, the vault stays, what
+        changes is what you can add, and reading/editing/exporting are unaffected."
+      # 🔴 A NAME THIS SPRINT'S OWN BACKLOG INVENTED.
+      assertcanadditems_does_not_exist: "The backlog entry for this item, and the entry above it,
+        both referred to `assertCanAddItems`. There is no such function — the real gates are
+        assertWithinItemCap, assertBatchWithinItemCap, assertWithinRecipientCap and
+        assertWithinVerifierCap. The wrong name had already been repeated into a comment in
+        lapse-notice.ts before reading the file. Corrected in both places, and recorded: a
+        plausible-looking function name in a comment is what a later reader greps for, fails to
+        find, and then distrusts the surrounding comment over."
+
 
   # ── CLOSED 2026-08-18, the day after it was opened ────────────────────────
   #

@@ -178,11 +178,17 @@ export async function notifyRenewalFailed(params: {
  * The subscription actually ended.
  *
  * ⚠️ THE DATA SENTENCE IS THE POINT OF THIS MESSAGE, and it must match what the
- * code actually does rather than what feels reassuring. `assertCanAddItems`
- * gates ADDING only, so nothing is deleted on a lapse — see
- * `PROJECT.yaml → deferred → the-post-lapse-state-is-undefined` and the /terms
- * sentence it produced. If that behaviour ever changes, this copy changes in the
- * same commit; `lib/ops/lapse-notice-matches-terms.test.ts` holds them together.
+ * code actually does rather than what feels reassuring. `assertWithinItemCap`
+ * and `assertBatchWithinItemCap` gate ADDING only; editing, revealing and
+ * exporting are not gated by tier, and nothing anywhere deletes on a downgrade.
+ * Established by reading every path on 2026-08-20 and pinned by
+ * `lib/ops/post-lapse-state.test.ts`; the same sentence is in `/terms`.
+ *
+ * 🔴 AN EARLIER DRAFT OF THIS COMMENT NAMED `assertCanAddItems`, WHICH DOES NOT
+ * EXIST. It came from this sprint's own backlog entry and was repeated here
+ * without checking. Left recorded because a plausible-looking function name in a
+ * comment is exactly the kind of thing a later reader greps for, fails to find,
+ * and then distrusts the whole comment over.
  */
 export async function notifySubscriptionLapsed(params: {
   ownerId: string;
