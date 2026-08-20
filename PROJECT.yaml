@@ -2142,6 +2142,39 @@ deferred:
       the product exists to do, because of a billing event nobody was told about."
     ends_when: "the owner is told, once per invoice, idempotently against Stripe's redeliveries, with
       the one link that fixes it — BEFORE the 2026-10-01 paywall revisit, not after."
+    closed:
+      date: 2026-08-20
+      what_shipped: "lib/billing/lapse-notice.ts — two notices (renewal failed, subscription ended),
+        deduped on the Stripe object id, wired into the webhook. invoice.payment_failed is a handled
+        event for the first time; the final lapse now tells the person it happened to as well as
+        recording that it happened."
+      nothing_changes_entitlement: "past_due is inside ACTIVE_STATUSES deliberately, so a failed
+        renewal does not revoke access during the retry window. This is notification ONLY, and the
+        route guard asserts the payment-failed branch never calls upsertSubscription — otherwise it
+        would revoke access during exactly the window that exists to prevent that."
+      dedupe_is_the_audit_log: "Same storage invite-budget.ts already meters against — no new table.
+        Keyed on the Stripe id rather than a time window, because Stripe's retry schedule is its own
+        business and a window would double-send on a slow retry and suppress a genuinely new failure
+        on a fast one. `detail->>` is proven against DSQL by two existing live paths
+        (lib/access/closure.ts, lib/notify/notifications.ts) rather than assumed."
+      the_record_tells_the_truth: "Order is check -> send -> record, and the entry carries whether
+        the send succeeded. Recording first would write `notified` for mail that never left;
+        recording only on success would retry forever against a permanently bouncing address. A
+        failed send also leaves a distinct `NOTICE NOT DELIVERED` line, the shape error-reporter.ts
+        uses, because a notification nobody received is silence that reads as health."
+      # ⚠️ A CONTRACT DETAIL THE BACKLOG GOT WRONG.
+      there_was_no_webhook_test_harness: "The item said 'red-green proven against the existing
+        webhook test harness'. There is none — src/app/api/stripe/webhook/ has no test file at all.
+        Logic went into lib/ per the repo convention and is tested there, plus a route-level guard
+        in the same file, because every module test would stay green if the webhook stopped calling
+        either notifier."
+      also_touched: "lib/notify/notifications.ts — `appUrl()` was module-private and the same
+        three-line expression is duplicated in lib/people/invite.ts and inlined in two auth files.
+        Exported the canonical one rather than adding a FIFTH copy. ⚠️ The other three copies are
+        left alone and reported rather than refactored: see the sprint report."
+      proof: "20 tests. Both plants red: removing the dedupe (double-sends on Stripe's retry), and
+        recording before sending (the record then claims delivery it cannot know about)."
+
 
   - id: the-post-lapse-state-is-undefined                     # "E2"
     owner: steve

@@ -59,7 +59,7 @@ export const RELEASE_NOTICE_UNDELIVERED_ACTION = 'release_notice_undelivered';
  * setup, and is deliberately NOT repurposed — auth configuration is not
  * something to change as a side effect of fixing an email link.
  */
-function appUrl(): string {
+export function appUrl(): string {
   return process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
 }
 

@@ -23,6 +23,10 @@ import { getStripe } from '../../../../../lib/billing/stripe';
 import { query } from '../../../../../lib/db/connection';
 import { writeAuditEntry } from '../../../../../lib/audit/audit-service';
 import { PRICE_YEARLY_CENTS } from '../../../../../lib/offer';
+import {
+  notifyRenewalFailed,
+  notifySubscriptionLapsed,
+} from '../../../../../lib/billing/lapse-notice';
 
 /** Stripe needs the byte-exact body; Next must not pre-parse it. */
 export const dynamic = 'force-dynamic';
@@ -132,6 +136,22 @@ async function currentSubscriptionStatus(
   }
 }
 
+/**
+ * The owner behind a subscription id alone.
+ *
+ * An `invoice.payment_failed` payload carries the subscription id but not the
+ * subscription object, so `ownerIdFor` cannot be reused: it reads metadata that
+ * is not present here. This resolves from the row we already wrote at checkout,
+ * which is the only link that exists for an invoice.
+ */
+async function ownerIdForSubscriptionId(subscriptionId: string): Promise<string | null> {
+  const r = await query<{ owner_id: string }>(
+    `SELECT owner_id FROM subscriptions WHERE stripe_subscription_id = $1 LIMIT 1`,
+    [subscriptionId],
+  );
+  return r.rows[0]?.owner_id ?? null;
+}
+
 /** owner_id travels in metadata; falling back to a customer lookup is a last resort. */
 async function ownerIdFor(sub: Stripe.Subscription): Promise<string | null> {
   const fromMetadata = sub.metadata?.owner_id;
@@ -236,7 +256,42 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             entity: 'subscription',
             detail: { source: 'stripe', status: current },
           });
+
+          /*
+            The audit entry records that it HAPPENED; this tells the person it
+            happened to. Deduped on the subscription id, so the several events
+            that can carry a terminal status produce one message.
+          */
+          await notifySubscriptionLapsed({ ownerId, subscriptionId: sub.id });
         }
+        break;
+      }
+
+      /*
+        🔴 UNHANDLED UNTIL 2026-08-20, AND IT IS THE EVENT A CUSTOMER FEELS.
+        A card expires, Stripe retries for about three weeks, and until this
+        existed the owner heard nothing at any point — not on the first failure,
+        and not when the subscription finally ended.
+
+        NOTHING HERE CHANGES ENTITLEMENT. `past_due` is inside ACTIVE_STATUSES
+        by design, so a failed renewal does not revoke access during the retry
+        window; this is notification only. The dedupe, the copy and the audit
+        record live in lib/billing/lapse-notice.ts.
+      */
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object as Stripe.Invoice & {
+          subscription?: string | { id?: string } | null;
+        };
+        const subId =
+          typeof invoice.subscription === 'string'
+            ? invoice.subscription
+            : invoice.subscription?.id;
+        if (!subId || !invoice.id) break;
+
+        const ownerId = await ownerIdForSubscriptionId(subId);
+        if (!ownerId) break;
+
+        await notifyRenewalFailed({ ownerId, invoiceId: invoice.id });
         break;
       }
 
