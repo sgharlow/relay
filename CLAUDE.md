@@ -192,6 +192,19 @@ These cut across multiple files and are easy to break. Preserve them.
   failover). It also auto-rotates to secondary on a primary connection error (60s unhealthy window).
   Do not add infra-level failover — the demo relies on this env toggle.
 
+  🔴 **THE SWITCH MOVES THE DATA AND NOT THE KEY, and until 2026-08-20 nothing said so.**
+  `lib/kms/kms-client.ts` builds one `KMSClient` from `AWS_REGION` (default `us-east-1`) against
+  one CMK. Flipping `DSQL_USE_SECONDARY` reaches the us-west-2 database and then asks a us-east-1
+  key to unwrap what it finds there. So a **regional KMS impairment in us-east-1 makes every vault
+  unreadable from BOTH regions** — the failover is a database failover, and this product's data is
+  ciphertext plus a wrapped key. Reads of non-secret rows keep working, which is the part that
+  makes it confusing on the day: the site is up, the dashboard renders, and Reveal is the only
+  thing that fails.
+  Known, accepted, and recorded as `PROJECT.yaml → deferred → the-failover-does-not-carry-the-ability-to-decrypt`
+  (B3). The fix is a multi-Region CMK — an infrastructure change to a working system, so it needs
+  the 5-gate policy and Steve's explicit request: `docs/kms-region-proposal.md`. Do not take it as
+  part of something else.
+
 - **Plaintext never leaves the browser (client-side envelope encryption).** The browser generates a
   per-item AES-GCM-256 data key via SubtleCrypto, encrypts, then calls `/api/kms/wrap` to wrap the
   data key with the KMS CMK. The server stores only `ciphertext` + `wrapped_data_key` and **never**

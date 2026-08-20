@@ -1667,6 +1667,21 @@ deferred:
       the multi-Region-key proposal. ⚠️ The FIX is an infrastructure change to a working system —
       5-gate policy, snapshot, rollback, explicit request. Writing it down is in scope; taking it is
       not."
+    half_closed:
+      date: 2026-08-20
+      what_shipped: "The writing-down half. CLAUDE.md's failover invariant now states that the env
+        switch moves the data path and not the crypto path, and docs/backup-restore-runbook.md
+        carries it as its own section plus a sixth restore step — unwrap ONE item before calling a
+        restore done, because a restored cluster is ciphertext and the key is in no recovery point
+        in any vault here. The proposal Steve rules on is docs/kms-region-proposal.md."
+      still_open: "the RULING. Recommendation on the proposal is Option A — accept it until the
+        first arms-length customer, then re-argue under the 5-gate policy — on this project's own
+        sequencing rule rather than on a technical judgement. ⚠️ An accepted risk with no recorded
+        acceptance is just an unknown risk, so the entry stays open until Steve answers."
+      the_deceptive_part: "It is an AVAILABILITY problem, not a durability one — nothing is lost and
+        nothing is exposed. What makes it worth a runbook section is the shape of the day: the site
+        is up, pages render, the vault list loads, and Reveal is the only thing that fails. Somebody
+        flipping the switch under pressure concludes the failover worked."
 
   - id: nothing-watches-the-key                               # "B4"
     owner: claude

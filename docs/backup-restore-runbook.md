@@ -127,6 +127,45 @@ so a restore is safe to perform even while production is running.
    provides) plus `witnessRegion` and `peerRegion` metadata. See the
    [AWS restore guide](https://docs.aws.amazon.com/aws-backup/latest/devguide/restore-auroradsql.html).
 
+6. **Unwrap one item before you call it restored.** 🔴 **A restored cluster is
+   ciphertext.** Step 3 checks that `ciphertext` and `wrapped_data_key` are both
+   present, which proves the payloads survived the restore and proves nothing
+   about whether they can still be OPENED. Those two columns are meaningless
+   without the CMK they were wrapped under, and that key is not part of this
+   backup, not part of this restore, and not covered by any recovery point in
+   any vault here. A restore that has never unwrapped anything has verified the
+   half that was never really at risk.
+
+   Run `npm run verify:kms` (the key is present, enabled, not scheduled for
+   deletion, and its policy still names the runtime), then take one real item
+   through the product's own reveal path. Until that has happened, the restore
+   is unproven.
+
+## 🔴 The key is single-Region and the database is not
+
+**Read this before a regional failover, not during one.** `DSQL_USE_SECONDARY=true`
+moves every query to us-west-2. It does **not** move the ability to decrypt:
+`lib/kms/kms-client.ts` builds one client from `AWS_REGION` (default
+`us-east-1`) against one CMK, so a failed-over app reaches the us-west-2
+database and then asks a **us-east-1** key to unwrap what it finds.
+
+A regional KMS impairment in us-east-1 therefore makes every vault unreadable
+from **both** regions, and the shape of that day is deceptive: non-secret reads
+keep working, the site is up, the dashboard renders, and Reveal is the only
+thing that fails. Somebody flipping the switch under pressure will conclude the
+failover worked.
+
+- **This is a known, accepted limitation**, not a defect discovered mid-incident.
+  Recorded as `PROJECT.yaml → deferred → the-failover-does-not-carry-the-ability-to-decrypt`.
+- **The remedy, if a regional KMS outage is the event you are in:** there is no
+  in-product one. Data is safe — nothing is lost, and nothing is exposed — and
+  reveals resume when the key's Region does. Say that to anyone affected rather
+  than improvising, because the alternative (moving key material) does not exist
+  for a single-Region CMK created this way.
+- **The permanent fix is a decision, not an action to take here:**
+  `docs/kms-region-proposal.md`. It is an infrastructure change to a working
+  system and needs the 5-gate policy and Steve's explicit request.
+
 ## Proven, not assumed (2026-08-08)
 
 The whole path was executed end to end, not reasoned about:
