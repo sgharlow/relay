@@ -1,0 +1,103 @@
+-- 037 — which wrapping era a row's data key belongs to.
+--
+-- ⛔ AUTHORED, NOT APPLIED, AND NOTHING READS IT YET. Sprint 4 is gated to
+-- design only (docs/backlog.md), so the wrap/unwrap change this column exists
+-- for is deliberately not in the same branch. Applying this early is harmless —
+-- it is one nullable column that no code selects — but it is not useful either
+-- until that change lands. The full design is docs/encryption-context-design.md.
+--
+-- ── WHAT IT IS FOR ──────────────────────────────────────────────────────────
+-- `lib/kms/kms-client.ts` wraps every per-item data key under one CMK with NO
+-- `EncryptionContext`, so any blob wrapped under that key unwraps for any caller
+-- the APPLICATION lets through. The cross-tenant oracle that permitted was
+-- closed on 2026-08-13 at the application layer (see the 🔴 header in
+-- src/app/api/kms/unwrap/route.ts); the STRUCTURE that allowed it is unchanged.
+-- Binding new wraps to `{ owner_id }` moves the refusal into KMS itself.
+--
+-- ── 🔴 WHY A COLUMN, AND NOT A TRY-THEN-FALL-BACK ───────────────────────────
+-- THIS IS THE WHOLE REASON THIS FILE EXISTS, and it is not bookkeeping
+-- convenience. Every data key wrapped before that change has no context and must
+-- decrypt forever — the server cannot read plaintext, so no migration can ever
+-- re-wrap a row. The obvious way to cope is to try with the context and, on
+-- failure, retry without it.
+--
+-- That re-opens the exact hole the change closes:
+--
+--     attacker submits a foreign wrapped_data_key
+--       -> Decrypt with EncryptionContext { owner_id: attacker }  -> fails
+--       -> fall back: Decrypt with no context                     -> SUCCEEDS
+--
+-- A no-context fallback is a permanently available bypass, reachable by anyone
+-- who can make the first attempt fail — which is precisely what submitting
+-- somebody else's blob does. Every test written against legitimate blobs would
+-- pass and the oracle would still be open.
+--
+-- So the era is a STORED FACT, read from the row BEFORE the KMS call, and never
+-- inferred from a failure. A decrypt that fails with the context its own row
+-- claims is an ERROR, not a prompt to try something weaker.
+--
+-- ── NULL MEANS LEGACY, AND THERE IS NOTHING TO BACKFILL ─────────────────────
+-- Every row that exists on the day this runs was wrapped without a context, so
+-- NULL already means exactly the right thing. Nothing has to be computed and
+-- nothing can be got wrong.
+--
+-- ⚠️ This is the OPPOSITE of migration 035's situation, and the contrast is
+-- worth keeping. `secret_kinds` also defaulted to NULL, but there NULL meant
+-- UNKNOWN — the server could not know what an existing blob held, so the column
+-- stayed unknown forever unless a client re-declared it. Here the server knows
+-- with certainty: if the row predates the change, it has no context. Same
+-- mechanism, opposite epistemics.
+--
+-- ── TEXT, NOT BOOLEAN ───────────────────────────────────────────────────────
+-- A boolean can only ever answer "context or not". A named era can answer WHICH
+-- context shape, which is what a second binding would need — the design settles
+-- on `{ owner_id }` because the wrap happens before the item exists, and if that
+-- ordering ever changes `{ owner_id, item_id }` becomes possible and becomes a
+-- second era rather than a rewrite. Same reasoning that made `secret_kinds` TEXT.
+--
+-- Intended values, and the code that reads them owns this list:
+--     NULL         wrapped before 2026-08, no EncryptionContext
+--     'owner_v1'   wrapped with { owner_id: <the owning user's id> }
+--
+-- ── NO INDEX ────────────────────────────────────────────────────────────────
+-- It is read alongside the row it belongs to and never filtered on, exactly like
+-- 035's two columns. Adding an index here would cost writes and buy nothing.
+--
+-- ── GRANTS ARE INHERITED ────────────────────────────────────────────────────
+-- This is a COLUMN on an existing table, not a new table, so the 031/032 trap
+-- (a new table invisible to the least-privilege role until ALTER DEFAULT
+-- PRIVILEGES caught up) does not apply. relay_app and relay_dev already hold
+-- DML on vault_items and that covers the new column.
+--
+-- ── APPLY TO BOTH REGIONS ───────────────────────────────────────────────────
+-- Aurora DSQL: ADD COLUMN is supported and sets no default, so there is no table
+-- rewrite and existing rows read NULL. DSQL cannot add a NOT NULL column anyway.
+--
+--   npx tsx --env-file=.env.admin db/migrations/migrate.ts 037_kms_context_era.sql
+--   DSQL_PRIMARY_ENDPOINT=<the DSQL_SECONDARY_ENDPOINT value from .env.admin> \
+--     npx tsx --env-file=.env.admin db/migrations/migrate.ts 037_kms_context_era.sql
+--   npm run verify:schema
+--
+-- ⚠️ The second command names the SECONDARY endpoint explicitly because
+-- migrate.ts reads only DSQL_PRIMARY_ENDPOINT and does not honour
+-- DSQL_USE_SECONDARY. Setting that switch instead would apply the migration to
+-- the primary TWICE and leave the secondary bare.
+--
+-- ⚠️ `verify:schema` derives what it expects from these files, so it will report
+-- `vault_items.kms_context_era` MISSING from the moment this lands in the repo
+-- until it is applied. That is the check working, not a defect — the same thing
+-- 036 did, and the reason that behaviour was worth having.
+--
+-- ── ROLLBACK ────────────────────────────────────────────────────────────────
+-- `ALTER TABLE vault_items DROP COLUMN kms_context_era;` — safe ONLY while no
+-- row has a non-NULL value. Once anything has been wrapped with a context,
+-- dropping this column makes those rows undecryptable, because nothing would
+-- record that they need one. At that point the rollback is not a migration: it
+-- is the code reverting to no-context wraps for NEW items while continuing to
+-- read the column for old ones. docs/encryption-context-rollout.md works through
+-- both halves.
+--
+-- Requirements: 2.2, 2.4, 17.4 · PROJECT.yaml deferred
+--   tenant-separation-at-the-kms-boundary-is-not-cryptographic (B5) · docs/backlog.md S4-2
+
+ALTER TABLE vault_items ADD COLUMN IF NOT EXISTS kms_context_era TEXT;
