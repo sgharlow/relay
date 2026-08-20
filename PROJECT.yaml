@@ -1754,6 +1754,35 @@ deferred:
     ends_when: "either the in-app alerts are readable by the independent monitor, or it is RULED that
       the GitHub monitors are the alarm of record and error-reporter.ts says so itself. Either is
       fine; the current state is neither."
+    closed:
+      date: 2026-08-20
+      ruling: "THE GITHUB-HOSTED MONITORS ARE THE ALARM OF RECORD; every in-app email is ADVISORY.
+        scheduler-monitor.yml, delivery-webhook-monitor.yml and production-canary.yml run
+        off-platform and share fate with neither Vercel nor Resend. Written into
+        lib/ops/error-reporter.ts and lib/ops/incident.ts, which are the two files that were making
+        the implicit claim."
+      why_this_branch_and_not_the_other: "The case that looks worst for the in-app alerter — Resend
+        degraded — is ALREADY covered by an independent path, because a Resend outage stops the
+        delivery webhook and that monitor reports it through GitHub. The two ways of making the
+        alerter itself independent both fail on their own terms: persisting alerts for a monitor to
+        poll puts the alarm behind DSQL, so it could not report a DSQL outage — the same
+        fate-sharing moved rather than removed, and it needs a migration; and calling GitHub from
+        the request path adds an outbound dependency and a second secret to an error handler whose
+        first rule is that it must never throw."
+      # 🔴 THE HALF THAT WAS A REAL DEFECT RATHER THAN A CLASSIFICATION.
+      the_boolean_was_on_the_floor: "sendEmailBestEffort RETURNS false when the provider refuses,
+        and error-reporter.ts discarded it. So a 500 during a Resend outage was silent twice — the
+        incident, and the fact that its alert had been lost. Losing an alert is not worse than never
+        having one; losing it SILENTLY is, because the quiet reads as health. It now writes one
+        distinctly-marked line (`ALERT NOT DELIVERED`) so an operator reading back after an outage
+        can tell 'composed and lost' from 'nothing happened'."
+      guard: "lib/ops/alarm-of-record.test.ts — the three monitors exist, each runs on a schedule,
+        each runs on GitHub, both alerters carry the ruling and name the monitors, and the delivery
+        result is read rather than dropped. Proven by planting BOTH failures: removing the delivery
+        result (1 red) and deleting a monitor file (3 red). ⚠️ It is a COVERAGE check, not a
+        liveness check — it reads workflow files and cannot know whether GitHub ran them. What it
+        prevents is a monitor removed in a tidy-up while three files still cite it as the reason
+        their own alerting may be advisory."
 
   - id: no-incident-or-breach-runbook                         # "B7"
     owner: claude

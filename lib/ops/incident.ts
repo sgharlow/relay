@@ -23,6 +23,20 @@
  * the log is the record, the email is the tap on the shoulder. Swapping in a
  * real error service later is this one file.
  *
+ * ✅ RATIFIED 2026-08-20 (B6). The paragraph above reached the right answer a
+ * week before the question was asked properly, and the ruling now says so out
+ * loud rather than leaving it as one file's local reasoning: the GitHub-hosted
+ * monitors — `scheduler-monitor.yml`, `delivery-webhook-monitor.yml`,
+ * `production-canary.yml` — are the ALARM OF RECORD, and every in-app email is
+ * advisory. They run off-platform and share fate with neither Vercel nor
+ * Resend, so the case that looks worst for this file (Resend degraded) is
+ * covered by an independent path: a Resend outage stops the delivery webhook,
+ * and that monitor reports it through GitHub.
+ * The full argument, including why persisting alerts for a monitor to poll
+ * would move the fate-sharing rather than remove it, is in
+ * `lib/ops/error-reporter.ts`'s header. `lib/ops/alarm-of-record.test.ts` holds
+ * the ruling and the three monitors in place.
+ *
  * Feature: relay-h0-mvp
  * Requirements: J5-R7
  */

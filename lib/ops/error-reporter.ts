@@ -12,6 +12,40 @@
  * did not have (the canary's header still says otherwise; that comment predates
  * the upgrade). This module is what that hook calls.
  *
+ * ⚠️ RULING, 2026-08-20 — THIS IS NOT THE ALARM OF RECORD.
+ *
+ * The finding (`PROJECT.yaml → deferred → the-in-app-alarm-shares-fate-with-product-email`,
+ * B6): this alerter speaks through Resend, which is the same provider the
+ * product's own mail rides, whose Outlook deliverability is an open ticket and
+ * whose DMARC posture is still `p=none`. A watchdog that shares fate with the
+ * thing it watches is the mistake `scheduler-monitor.yml` and
+ * `delivery-webhook-monitor.yml` were both written to avoid — "a watchdog must
+ * be able to outlive the thing it watches" — and it was being made one layer up.
+ *
+ * THE RULING IS THAT THE GITHUB-HOSTED MONITORS ARE THE ALARM OF RECORD AND
+ * THIS MAIL IS ADVISORY. Three of them run off-platform, alert through GitHub,
+ * and share fate with neither Vercel nor Resend:
+ *
+ *   scheduler-monitor.yml         the release sweep stopped
+ *   delivery-webhook-monitor.yml  mail telemetry stopped — i.e. RESEND ITSELF
+ *   production-canary.yml         the refusals that cost something stopped refusing
+ *
+ * So the case that looks worst for this file — Resend degraded — is already
+ * covered by an independent path, because a Resend outage stops the delivery
+ * webhook and that monitor says so through GitHub.
+ *
+ * WHY NOT MAKE THIS ONE INDEPENDENT INSTEAD. The two candidates both fail on
+ * their own terms. Persisting alerts for a monitor to poll puts the alarm
+ * behind DSQL, so it could not report a DSQL outage — the same fate-sharing
+ * moved rather than removed, and it needs a migration. Calling GitHub directly
+ * from the request path adds an outbound dependency and a second secret to an
+ * error handler whose first rule is that it must never throw. Neither buys more
+ * than the three monitors already provide.
+ *
+ * WHAT THIS FILE STILL OWES, and now pays: it is the only thing that knows when
+ * ITS OWN alert was refused, so it says so in the log rather than dropping the
+ * boolean. See the send below.
+ *
  * TWO PROPERTIES DECIDE WHETHER THIS HELPS OR HURTS:
  *
  *   1. It must never throw. It runs inside the error path, so a failure here
@@ -150,7 +184,7 @@ export async function reportServerError(err: unknown, context: ErrorContext = {}
     */
     const environment = alertEnvironmentLabel();
 
-    await sendEmailBestEffort({
+    const delivered = await sendEmailBestEffort({
       to,
       subject: `Relay: server error on ${path ?? 'an unknown route'}`,
       text:
@@ -162,6 +196,39 @@ export async function reportServerError(err: unknown, context: ErrorContext = {}
         `but not emailed. Check the Vercel logs for the rate and the full stack.\n` +
         (stack ? `\nFirst stack:\n${redact(stack).split('\n').slice(0, 12).join('\n')}\n` : ''),
     });
+
+    /*
+      🔴 THE RETURN VALUE WAS DISCARDED UNTIL 2026-08-20, AND IT IS THE ONE
+      THING THIS FUNCTION KNOWS THAT NOBODY ELSE CAN.
+
+      `sendEmailBestEffort` answers `false` when the provider refused — and this
+      alert rides Resend, the same provider whose Outlook deliverability is an
+      open ticket and whose DMARC posture is still `p=none`. So the failure mode
+      was: a 500 happens, the alert is composed, Resend is degraded, the send
+      fails, the boolean is dropped on the floor, and the incident is silent
+      twice over.
+
+      Losing an alert is not worse than never having one. Losing it SILENTLY is,
+      because the quiet reads as health — which is the shape this repository
+      keeps catching.
+
+      There is nowhere fate-independent to escalate to from inside this process,
+      and that is exactly why the GitHub-hosted monitors are the alarm of record
+      (see the ruling in this file's header). What IS achievable here is a
+      trace: one distinctly-marked line in the Vercel log, so an operator
+      reading back after an outage can see that an alert was composed and lost
+      rather than concluding that nothing happened.
+    */
+    if (!delivered) {
+      try {
+        process.stderr.write(
+          `[error-reporter] ALERT NOT DELIVERED for ${path ?? 'unknown'} — the mail provider ` +
+            'refused it. The incident is real and this email did not arrive.\n',
+        );
+      } catch {
+        /* a broken stderr must not escalate — the same rule guess-watch keeps */
+      }
+    }
   } catch {
     // Deliberately total. This runs inside the error path; anything escaping
     // here would replace a handled failure with an unhandled one.
