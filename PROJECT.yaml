@@ -2557,3 +2557,166 @@ deferred:
   # lib/notify/email.ts, and the scripts now assert that themselves so a later
   # edit cannot point one at a real domain. Confirmed against the dev log: ZERO
   # send attempts across all three walks. No sending reputation was spent.
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Added 2026-08-20, from the post-sprint review that produced ROADMAP.md rev 3.
+  #
+  # ⚠️ THESE WENT IN BECAUSE THEY EXISTED IN EXACTLY ONE PLACE AND IT WAS AN
+  # UNCOMMITTED FILE. ROADMAP.md §7 states the rule — "a finding recorded only in
+  # this file is one session away from being lost" — and the rev-3 rewrite that
+  # states it was itself sitting uncommitted in a working tree when these were
+  # written. Every entry below is therefore self-contained: it must be readable
+  # and actionable without ROADMAP.md, because ROADMAP.md may not survive.
+  # ────────────────────────────────────────────────────────────────────────────
+
+  - id: the-owners-vault-is-empty                              # "A0"
+    owner: steve
+    opened: 2026-08-20
+    what: >-
+      Measured against production on 2026-08-20: one owner account, ZERO vault items, zero
+      recipients, zero verifiers, zero invitations, zero claims, and no release that has ever
+      left `armed`. That single account is real (not demo-flagged, TOTP enrolled) and holds a
+      live $119/yr paid subscription. Re-derive with `npm run verify:dogfood`.
+    why_it_matters: >-
+      This is a hard prerequisite on the demand lane that no plan document named until now.
+      `scripts/invite-cohort.ts` invites people to stand by as recipients and verifiers FOR THIS
+      VAULT. With nothing in it, an invitee is standing by for nothing, an access rule has nothing
+      to point at, and the readiness banner has nothing true to report. It also makes
+      `ladder: dogfooded` a claim about a past demonstration rather than the system as it stands —
+      see ladder_evidence at the top of this file, which now says so explicitly.
+      ⚠️ It follows that the beta cohort CANNOT usefully be invited before this is fixed, which
+      re-orders the demand lane: this cheap item gates the expensive one.
+    ends_when: >-
+      `npm run verify:dogfood` reports READY — a non-demo owner with at least one real vault item,
+      one recipient, one verifier, one access rule joining them, and one configured release
+      trigger.
+    explicitly_not: >-
+      Seeding it with `scripts/reset-demo.ts`. That would satisfy every count in seconds and prove
+      nothing; the probe excludes demo-flagged owners for this reason and ROADMAP.md §6 bars it by
+      name. The point is a vault that is REAL, because the claim being repaired is a claim about
+      real use.
+
+  - id: the-coverage-gate-is-declared-and-unenforced           # "D8"
+    owner: claude
+    opened: 2026-08-20
+    what: >-
+      `vitest.config.ts` declares coverage thresholds (lines 80 / functions 80 / branches 70 /
+      statements 80) and no pipeline evaluates them. CI runs `npm test`; `npm run test:coverage`
+      is never invoked by `gate` or by any workflow. Measured 2026-08-20 the project was well
+      over every threshold, which is exactly why this went unnoticed.
+    why_it_matters: >-
+      A declared-but-unevaluated threshold is worse than an absent one: it is counted as
+      protection in the very review that should have caught its absence. This is the same shape as
+      every entry in lib/ops/ — a guard that lives somewhere nothing calls is a guard on nothing —
+      and the same shape as the finding that produced verify-scripts-documented.test.ts.
+      Because the numbers currently pass with margin, turning enforcement on costs nothing today
+      and is only ever more expensive later.
+    ends_when: >-
+      A pipeline evaluates the declared thresholds on every push, and the evaluation has been
+      proven to fail by planting a violation (a threshold raised above the real figure, or an
+      uncovered file) rather than only by passing once.
+
+  - id: the-csp-report-sink-expires-before-anyone-reads-it     # "D9"
+    owner: steve
+    opened: 2026-08-20
+    what: >-
+      `next.config.mjs` enforces four CSP directives and additionally ships a
+      `Content-Security-Policy-Report-Only` header carrying `script-src` and others, with
+      `report-uri /api/csp-report`. That route writes to stderr and nowhere else. Vercel runtime
+      log retention was measured on 2026-08-20 at approximately 24 hours (a 7-day query and a
+      24-hour query returned identical counts), and `/api/csp-report` did not appear among the 29
+      distinct request paths in the retained window.
+    why_it_matters: >-
+      The point of a report-only period is to gather evidence for enforcing. This one cannot: its
+      only sink expires before anybody reviews it, so the follow-on that ratified.
+      csp-enforce-the-safe-four points at — enforcing `script-src` — has no data behind it and no
+      way to accumulate any. Leaving it as-is is not a cautious middle state; it is a permanent
+      report-only header that costs bytes on every response and informs nothing.
+      ⚠️ Do not read "no reports observed" as "no violations". One day of mostly-synthetic traffic
+      is not evidence, and that is the finding, not the reassurance.
+    ends_when: >-
+      Either the reports land somewhere that outlives a day and a decision is taken on real data,
+      or `script-src` is enforced on a written argument and the report-only header is removed.
+      Silently extending the report-only period is the third option and is the current state.
+
+  - id: the-journey-sweep-is-stale                             # "D10"
+    owner: claude
+    opened: 2026-08-20
+    what: >-
+      `docs/user-journeys.md` records a walk of 2026-08-08 — 444 commits back as measured
+      2026-08-20. Its own header flagged it stale on 2026-08-13 ("five days and a great deal of
+      function old"), 264 commits back, and it has not been re-walked since that note was written.
+      `verify:live` covers five walks; J3, J6 and J9 are not among them, so those three have no
+      automated cover either.
+    why_it_matters: >-
+      The sweep table is named in CLAUDE.md as an authority for build state, alongside this file.
+      An authority that is 444 commits behind is worse than no authority, because it is still
+      being cited. The three journeys with neither a recent walk nor `verify:live` cover are the
+      ones where a regression would currently be found by a user.
+    ends_when: >-
+      The sweep is re-walked and its table re-dated, AND a decision is recorded for J3/J6/J9:
+      either they join `verify:live`, or they are explicitly walk-only with that stated in the
+      table so the gap is visible rather than accidental.
+
+  - id: every-secrets-age-is-unknown                           # "D11"
+    owner: steve
+    opened: 2026-08-20
+    what: >-
+      docs/secret-rotation-runbook.md shipped 2026-08-19 with a "Last set" column reading
+      `unknown` for all twelve secrets — written out deliberately, because the unanswerability was
+      the finding. The procedure now exists; the clock it needs has no starting point.
+    why_it_matters: >-
+      A rotation runbook with no ages cannot tell you which secret to rotate first, and "rotate
+      everything" is not available here: the runbook's own rule is that every secret in this
+      product is signing or authenticating something in flight, and for the two JWT secrets that
+      in-flight thing is a family in an emergency.
+    ends_when: >-
+      Each secret has a real last-set date, or an explicit "predates records" with the date that
+      determination was made.
+    note: >-
+      The AWS access key's age is discoverable without asking anyone — `aws iam list-access-keys`
+      returns `CreateDate`. ⚠️ `@aws-sdk/client-iam` is NOT a dependency of this repo, so that is a
+      CLI-side lookup and not a script to add. The Vercel-held secrets have no such record and
+      need Steve.
+
+  - id: the-auth-and-react-lines-are-a-major-version-behind    # "D12"
+    owner: claude
+    opened: 2026-08-20
+    what: >-
+      Dependency drift measured 2026-08-20 was patch/minor only with zero advisories. Two
+      structural facts are worth recording anyway: `next-auth ^4.24.15` is the legacy line
+      (v5/Auth.js is current), and React 18 runs under Next 16.
+    why_it_matters: >-
+      This is a WATCH ITEM AND NOT WORK, and it is filed precisely so it is not mistaken for work.
+      A major-version upgrade of a working system is barred by the portfolio Infrastructure Change
+      Policy absent a documented problem, and there is no documented problem — the current
+      versions are secure and functioning. Recorded so the next reviewer who notices the gap finds
+      this decision instead of "discovering" it and opening a migration.
+    ends_when: >-
+      A security advisory affects the pinned line, or a feature the product actually needs
+      requires the newer one. Either reopens it as a real change under the 5-gate policy; neither
+      has happened.
+
+  - id: the-lapse-notice-is-wired-not-live-proven              # "E1-prime"
+    owner: steve
+    opened: 2026-08-20
+    what: >-
+      lib/billing/lapse-notice.ts shipped 2026-08-19 closing a-failed-renewal-tells-the-owner-
+      nothing: `notifyRenewalFailed` and `notifySubscriptionLapsed`, deduped on the Stripe event
+      id via audit_log, ordered check-then-send-then-record. Every rule is unit-proven. The wiring
+      has never been exercised against Stripe.
+    why_it_matters: >-
+      On this repo's own claim ladder that is `wired`, not `live-proven`, and the distinction is
+      the whole reason the ladder has both words: a response shape that has never met the real API
+      is a guess. It matters on a date — ratified.beta-free-release is revisited 2026-10-01, and
+      the moment `TIER_LIMITS.free.canRelease` flips to false, an expired card becomes a BLOCKED
+      RELEASE. An untested notification is the only thing standing between a failed renewal and a
+      family finding out at the worst possible moment.
+    ends_when: >-
+      A test-mode `invoice.payment_failed` is fired at the production webhook and exactly one
+      email is confirmed received; THEN the same event is re-delivered and nothing is sent.
+    the_half_that_gets_skipped: >-
+      ⚠️ The re-delivery. The first half proves mail goes out, which is the satisfying half and the
+      one that feels like the test. The dedupe is the half that is only ever exercised by doing it
+      twice, and Stripe retries failed webhooks by design — so the untested path is also the one
+      production will take on an ordinary day.
