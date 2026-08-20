@@ -41,12 +41,38 @@ happened.
 | `RESEND_API_KEY` | every outbound email | all mail stops. Loud, and the monitors catch it | unknown |
 | `RESEND_WEBHOOK_SECRET` | verifying Resend's delivery events | delivery telemetry stops; `/circle` reads `unknown` again | unknown |
 | `OPENAI_API_KEY` | the importance engine | intake analysis degrades; the vault is unaffected | unknown |
-| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | the IAM identity for DSQL **and** KMS | **the whole product**. See §5 | unknown |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` (Vercel → IAM `relay-runtime`) | the IAM identity for DSQL **and** KMS in production | **the whole product**. See §5 | **2026-06-24** |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` (`.env.local` → IAM `relay-dev`) | a laptop's read/write on product tables. No DDL, cannot write `caregiver_leads` | local walks and scripts stop; production unaffected | **2026-08-16** |
+| IAM `autospecai` access key (`~/.aws/credentials`, used by `.env.admin`) | **database admin** — migrations, roles, grants — plus IAM and KMS reads | migrations and every `verify:*` that needs `.env.admin` stop. Production unaffected: it does not hold this identity | **2025-06-29** |
 
-> ⚠️ **"unknown" is a finding, not a blank.** None of these has a recorded set-date, so none of them
-> has a known age, so "are any of these old?" cannot be answered today. Fill a cell in the moment
-> you rotate one, and the table starts being able to answer it. That is the whole reason the column
-> exists before there is anything to put in it.
+> ⚠️ **"unknown" is a finding, not a blank.** Fill a cell the moment you rotate one, and the table
+> starts being able to answer "are any of these old?". That is the whole reason the column exists
+> before there is anything to put in it.
+>
+> ✅ **Three cells filled 2026-08-20, and they were free.** The AWS rows never needed anyone to
+> remember: IAM records a `CreateDate` per access key, so their ages are *discoverable* rather than
+> recalled. Re-derive at any time — no CLI needed, and the AWS CLI is in fact broken on this machine
+> (Norton's CA bundle at `~/.aws-certs` goes stale as Norton rotates); Node's SDK uses a different
+> trust store and works:
+>
+> ```bash
+> npx tsx --env-file=.env.admin -e "import('@aws-sdk/client-iam').then(async m => { \
+>   const c = new m.IAMClient({}); \
+>   for (const u of ['relay-dev','relay-runtime','autospecai']) { \
+>     const r = await c.send(new m.ListAccessKeysCommand({ UserName: u })); \
+>     r.AccessKeyMetadata.forEach(k => console.log(u, k.Status, k.CreateDate.toISOString().slice(0,10))); } })"
+> ```
+>
+> 🔴 **The oldest thing in the estate is the `autospecai` admin key at 418 days (as of 2026-08-20),
+> and it is the one with database-admin rights.** It is also the only identity here that can issue
+> DDL. If exactly one secret on this page gets rotated, it is that one — and note that rotating it
+> is unusually *safe*, because production does not hold it: the blast radius is this laptop's ability
+> to run migrations, not the live site.
+>
+> The nine remaining `unknown` rows are Vercel-held. Vercel records a last-updated timestamp per
+> environment variable, so those are discoverable too — `vercel env ls` once the CLI is installed
+> (`npm i -g vercel`), or read off the dashboard. Tracked as
+> `PROJECT.yaml → deferred → every-secrets-age-is-unknown` (D11).
 
 ---
 
