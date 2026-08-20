@@ -1,89 +1,108 @@
 {
-  "sprint": "2026-08-19-1",
-  "branch": "sprint/2026-08-19-1",
-  "worktree": "C:/Users/sghar/CascadeProjects/relay-sprint-2026-08-19-1",
-  "started_utc": "2026-08-19T03:50:46Z",
-  "backlog_source": "explicit — the invocation named the Claude list produced in this session (itself derived from PROJECT.yaml deferred:, docs/sprint-reports/2026-08-18-sprint.md and docs/g1-outlet-dossier.md), plus five pieces of Steve guidance applied to the Steve list",
+  "sprint": "2026-08-20-1",
+  "branch": "sprint/2026-08-20-1",
+  "worktree": "C:/Users/sghar/CascadeProjects/relay-sprint-2026-08-20-1",
+  "started_utc": "2026-08-20T04:08:57Z",
+  "backlog_source": "explicit — docs/backlog.md Sprint 1, named in the invocation. NOT inferred. That file was written the same day as the sequencing view of ROADMAP.md §2.",
+  "input_carried": {
+    "commit": "806e462",
+    "files": ["ROADMAP.md", "docs/backlog.md", ".gitignore"],
+    "why": "The sprint's declared input existed only as uncommitted work in the main checkout, and a worktree is taken from HEAD. Rule 1 forbids committing to master, so they were carried onto the branch before iteration 1. S1-2's criteria edit ROADMAP.md §2 and §7, which against HEAD's copy do not exist.",
+    "not_the_1_0_failure": "Authored minutes earlier in the same conversation at the user's request, not another terminal's work. Nothing else in the main checkout was touched."
+  },
   "baseline": {
     "types": "green",
     "lint": "green",
-    "tests": "green — 248 files, 2719 passed, 1 skipped",
+    "tests": "green — 252 files, 2761 passed, 1 skipped",
     "build": "green",
-    "command": "npm run gate",
-    "note": "first run failed on gate:build only, because the node_modules junction used for worktree isolation is rejected by Turbopack ('Symlink [project]/node_modules is invalid, it points out of the filesystem root'). Replaced with a real npm ci in the worktree; the failure was an isolation artefact, not a repo defect."
+    "audit": "0 vulnerabilities",
+    "command": "TZ=UTC npm run gate",
+    "note": "npm ci in the worktree rather than a node_modules junction — the 2026-08-19 sprint recorded that Turbopack rejects the junction, which fails gate:build for an isolation artefact rather than a repo defect."
   },
   "iterations_used": 5,
   "iterations_max": 5,
   "queue": [
     {
-      "id": "S1",
-      "title": "caregiver.com submission packet complete by the outlet's own rules, and dated for 2026-08-19",
-      "axis": "documentation",
-      "weight": 2,
+      "id": "S1-1",
+      "title": "Sign-in has an attempt budget and a witness",
+      "axis": "security",
+      "weight": 5,
+      "blast": 3,
+      "effort": 1,
+      "score": 15,
+      "status": "shipped",
+      "commit": "e32e15b",
+      "why_first": "Hard-priority ladder rung 2 — exploitable defect on a reachable path. Owner sign-in is email + a six-digit code with no failure counter and no rate limit, and an owner session unwraps that owner's vault.",
+      "red_green": "All three claims of lib/ops/signin-is-throttled.test.ts proven by planting the defect: gate call removed (3 red), guess-watch call removed (2 red), recordSigninFailure added to the lookup-failure catch (2 red)."
+    },
+    {
+      "id": "S1-2",
+      "title": "The findings get a home in PROJECT.yaml",
+      "axis": "correctness",
+      "weight": 5,
       "blast": 2,
       "effort": 1,
-      "score": 4,
+      "score": 10,
       "status": "shipped",
-      "why_first": "named first in the invocation and carries an explicit date (8/19). It is the critical path to g1-arms-length-demand, the only live gate.",
-      "commit": "0e029d0"
+      "commit": "91b09ff",
+      "note": "Unblocks every later sprint — 15 entries, 3 owned by Steve, B1/B2 entered already closed. YAML validated by parse (18 entries)."
     },
     {
-      "id": "S2",
-      "title": "Decision records and their guards — threshold ratification deferred to 11/30, cohort deferred 4 days, ratify_by guarded, GATE_LANES ordering guarded, stale journey line corrected, D2 hold recorded",
-      "axis": "correctness",
+      "id": "S1-3",
+      "title": "verify:kms — the third wall",
+      "axis": "security",
       "weight": 5,
-      "blast": 2,
+      "blast": 3,
       "effort": 2,
-      "score": 5,
+      "score": 7.5,
       "status": "shipped",
-      "commit": "39cb3b3"
+      "commit": "df38d32",
+      "not_live_proven": "The wiring has never executed — no credentials in a worktree. 22 fixture tests cover every rule."
     },
     {
-      "id": "S3",
-      "title": "Prioritised partner/endorser organisation list, to fill gates.g3-b2b2c-pilot-loi.first_targets",
-      "axis": "completeness",
-      "weight": 4,
-      "blast": 2,
-      "effort": 2,
-      "score": 4,
+      "id": "S1-4",
+      "title": "The failover does not carry the ability to decrypt, and nothing says so",
+      "axis": "documentation",
+      "weight": 2,
+      "blast": 3,
+      "effort": 1,
+      "score": 6,
       "status": "shipped",
-      "commit": "a271689"
+      "commit": "67b43ba",
+      "half_only": "The writing-down half. The ruling on docs/kms-region-proposal.md is Steve's; B3 stays open."
     },
     {
-      "id": "S4",
-      "title": "Count the abandoned disposable accounts — the gap D4 named and nothing in the repo does",
-      "axis": "correctness",
-      "weight": 5,
-      "blast": 2,
-      "effort": 2,
-      "score": 5,
+      "id": "S1-5",
+      "title": "The security incident and breach runbook",
+      "axis": "documentation",
+      "weight": 2,
+      "blast": 3,
+      "effort": 1,
+      "score": 6,
       "status": "shipped",
-      "commit": "3272945"
-    },
-    {
-      "id": "S5",
-      "title": "Staleness dead-man on verify:live — the half of the release gate nothing schedules",
-      "axis": "correctness",
-      "weight": 5,
-      "blast": 2,
-      "effort": 2,
-      "score": 5,
-      "status": "shipped",
-      "commit": "ff28278"
+      "commit": "c0b6fe9",
+      "deviation": "Named security-incident-runbook.md, not incident-response-runbook.md as the contract said — `incident` already means a customer-facing feature (/api/audit/incidents) and an error beacon (/api/incident) here.",
+      "found_while_writing": [
+        "users.totp_secret is plaintext TEXT (migration 003) and is NOT wrapped by the CMK — the zero-knowledge claim has an exception that any breach notice must state",
+        "There is no bulk session revocation: bumpSessionEpoch is per user, called from one place. Signing everybody out means rotating NEXTAUTH_SECRET, which is a global outage as well as a containment."
+      ]
     }
   ],
-  "ended_utc": "2026-08-19T04:32:14.602Z",
+  "ended_utc": "2026-08-20T05:02:00Z",
   "outcome": "complete — queue exhausted, 5 of 5 iterations used, 0 blocked",
   "baseline_end": {
     "types": "green",
     "lint": "green",
-    "tests": "green — 252 files, 2760 passed, 1 skipped",
+    "tests": "green — 255 files, 2824 passed, 1 skipped",
     "build": "green",
+    "audit": "0 vulnerabilities",
     "gate": "exit 0",
-    "utc_run": "exit 0"
+    "delta": "+63 tests, +3 files, no new skips"
   },
-  "report": "docs/sprint-reports/2026-08-19-sprint.md",
+  "report": "docs/sprint-reports/2026-08-20-sprint.md",
+  "harness_note": "TodoWrite was not available in this harness. The scored queue lives here and in the report instead, rather than being skipped silently.",
   "not_live_proven": [
-    "scripts/disposable-sweep.ts (verify:orphans) has never run against the cluster — the worktree has no .env.local by design"
+    "scripts/verify-kms.ts has never run against the real CMK — run it from the main checkout, and once against a deliberate negative so a refusal is seen to exit 1",
+    "The sign-in attempt budget has never been exercised by a real sign-in. npm run verify:live (e2e-stepup) is the walk that would catch a limiter refusing a legitimate person, and it needs .env.local and a running server"
   ]
 }

@@ -43,7 +43,12 @@ and say so.
 
 ---
 
-# Sprint 1 — The front door, the key, and the record
+# ✅ Sprint 1 — The front door, the key, and the record — COMPLETE 2026-08-20
+
+> All five items shipped on branch `sprint/2026-08-20-1`, 0 blocked. Report:
+> `docs/sprint-reports/2026-08-20-sprint.md`. **Two carry work a worktree could not do** —
+> S1-3 has never run against the real key, and S1-4 produced a proposal Steve has not ruled on.
+> Both are recorded in `PROJECT.yaml → deferred` rather than here, which is the point of S1-2.
 
 **Theme:** the four things a custodian of other people's credentials must be able to say are true
 before the beta cohort creates accounts that are not Steve's. Security first, per the standing
@@ -53,7 +58,7 @@ instruction.
 
 ---
 
-### S1-1 · Sign-in has an attempt budget and a witness
+### ✅ S1-1 · Sign-in has an attempt budget and a witness — SHIPPED 2026-08-20 (`e32e15b`)
 
 - **Axis:** security · **Effort:** S · **Blast:** all users · **Priority:** jumps the queue —
   exploitable defect on a reachable path
@@ -107,7 +112,7 @@ and is the walk that would notice a limiter that refuses a legitimate person.
 
 ---
 
-### S1-2 · The findings get a home in `PROJECT.yaml`
+### ✅ S1-2 · The findings get a home in `PROJECT.yaml` — SHIPPED 2026-08-20 (`91b09ff`)
 
 - **Axis:** correctness (of the record) · **Effort:** S · **Blast:** all future sessions
 - **Why early:** it unblocks the most other items — every sprint below is discoverable from
@@ -136,7 +141,7 @@ this item is the fix it names.
 
 ---
 
-### S1-3 · `verify:kms` — the third wall
+### ✅ S1-3 · `verify:kms` — the third wall — SHIPPED 2026-08-20 (`df38d32`), live run still owed
 
 - **Axis:** security · **Effort:** M · **Blast:** all users (catastrophic, irreversible)
 
@@ -179,7 +184,7 @@ seen to work.
 
 ---
 
-### S1-4 · The failover does not carry the ability to decrypt, and nothing says so
+### ✅ S1-4 · The failover does not carry the ability to decrypt, and nothing says so — SHIPPED 2026-08-20 (`67b43ba`), ruling still owed
 
 - **Axis:** documentation (of a correctness property) · **Effort:** S · **Blast:** all users
 
@@ -210,7 +215,7 @@ Steve's explicit request. Proposing is in scope; taking it is not.
 
 ---
 
-### S1-5 · The incident and breach runbook
+### ✅ S1-5 · The incident and breach runbook — SHIPPED 2026-08-20 (`c0b6fe9`) as `docs/security-incident-runbook.md`
 
 - **Axis:** documentation · **Effort:** S · **Blast:** all users
 
