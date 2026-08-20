@@ -109,7 +109,7 @@ export function assessDogfoodReadiness(counts: DogfoodCounts): DogfoodVerdict {
     missing.push({
       what: 'at least one recipient',
       why: 'the cohort invites people to be recipients; with none named, there is no role to invite into',
-      action: 'name a recipient in /people',
+      action: 'name a recipient in /circle',
     });
   }
 
@@ -117,7 +117,7 @@ export function assessDogfoodReadiness(counts: DogfoodCounts): DogfoodVerdict {
     missing.push({
       what: 'at least one verifier',
       why: 'release requires a confirmation, and with no verifier no release can ever complete',
-      action: 'name a verifier in /people',
+      action: 'name a verifier in /circle',
     });
   }
 

@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   assessDogfoodReadiness,
@@ -130,6 +130,76 @@ describe('the near-misses, which are the point', () => {
     const v = assessDogfoodReadiness(counts);
     expect(v.ready, 'demo accounts existing does not make a real vault unready').toBe(true);
     expect(v.note ?? '').toContain('excluded');
+  });
+});
+
+describe('the actions name screens that actually exist', () => {
+  /*
+    🔴 THEY DID NOT. Two actions read "name a recipient in /people" — a route
+    that has never existed in this product. Recipients and verifiers are added in
+    /circle. The probe was written to tell an operator what to do next, and it
+    confidently sent them to a 404. Found by reading the app router while walking
+    Steve through the very steps this text describes.
+
+    The repo already checks the other direction for code: fetch-routes-exist
+    asserts no `fetch` names a route nothing serves. Prose had no such check —
+    and prose is what a human actually follows.
+  */
+  function appPages(): Set<string> {
+    const root = join(process.cwd(), 'src', 'app');
+    const found = new Set<string>();
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) walk(full);
+        else if (entry.name === 'page.tsx') {
+          const url = full
+            .slice(root.length)
+            .split(String.fromCharCode(92))
+            .join('/')
+            .replace(/\/page\.tsx$/, '')
+            // Route groups — (owner), (access) — are not part of the URL.
+            .replace(/\/\([^)]+\)/g, '');
+          found.add(url === '' ? '/' : url);
+        }
+      }
+    };
+    walk(root);
+    return found;
+  }
+
+  const PAGES = appPages();
+
+  it('discovered the app router pages at all, or this check is blind', () => {
+    expect(PAGES.size, 'no pages found — the walk is broken, not the actions').toBeGreaterThan(5);
+    expect(PAGES.has('/vault/new'), 'sanity: /vault/new must be discoverable').toBe(true);
+    expect(PAGES.has('/circle'), 'sanity: /circle must be discoverable').toBe(true);
+  });
+
+  it('every route mentioned in an action is a real page', () => {
+    const actions = assessDogfoodReadiness({
+      realOwners: 1,
+      demoOwners: 0,
+      disposableOwners: 0,
+      vaultItems: 0,
+      recipients: 0,
+      verifiers: 0,
+      accessRules: 0,
+      releaseConfigs: 0,
+    }).missing.map((m) => m.action);
+
+    expect(actions.length, 'no actions to check').toBeGreaterThan(0);
+
+    const bad: string[] = [];
+    for (const action of actions) {
+      for (const match of action.match(/(?:^|\s)(\/[a-z][a-z0-9/-]*)/g) ?? []) {
+        const route = match.trim().replace(/[.,]$/, '');
+        if (!PAGES.has(route)) bad.push(`${route} — in: "${action}"`);
+      }
+    }
+
+    expect(bad, `these actions send the reader to routes that do not exist:\n  ${bad.join('\n  ')}`)
+      .toEqual([]);
   });
 });
 
