@@ -65,3 +65,62 @@ describe('the beta release flag and what the manual promises', () => {
     ).toBe(true);
   });
 });
+
+/**
+ * The THIRD artifact, which nothing was watching.
+ *
+ * The flip moves three things together (`ROADMAP.md` §2-F-j): the flag, the
+ * manual's §2.7 promise — coupled above — and the deliberately skipped test in
+ * `entitlements.test.ts` that asserts the very behaviour the flip enables.
+ *
+ * 🔴 NOTHING COUPLED THE THIRD. Flipping the flag with the skip still in place
+ * would enable the paywall while the one test that proves it works stays
+ * switched off, and the suite would be green. That is the shape of green this
+ * repo keeps catching: a check that is not running looks exactly like a check
+ * that is passing.
+ *
+ * Added 2026-08-20 (docs/backlog.md S3-3). Like the guard above, this is not a
+ * test that the flag must never change — it is a test that it cannot change
+ * ALONE.
+ */
+describe('the skipped paywall test moves with the flag', () => {
+  const SUITE = 'lib/billing/entitlements.test.ts';
+  const SKIP = /it\.skip\(\s*'blocks release on free/;
+
+  it('is skipped exactly while the free tier can still release', () => {
+    const suite = readFileSync(SUITE, 'utf8');
+    const stillSkipped = SKIP.test(suite);
+
+    if (TIER_LIMITS.free.canRelease) {
+      expect(
+        stillSkipped,
+        'The free tier can release, so a test asserting it CANNOT would fail. ' +
+          'It is correctly skipped — this branch documents the current state.',
+      ).toBe(true);
+      return;
+    }
+
+    expect(
+      stillSkipped,
+      'canRelease has been flipped to false, and `blocks release on free` in ' +
+        `${SUITE} is STILL SKIPPED. The paywall is now enforced and the one test ` +
+        'that proves it works is switched off. Remove the `.skip` in the same ' +
+        'change as the flag — the test was read on 2026-08-20 and confirmed ' +
+        'correct for exactly this behaviour.',
+    ).toBe(false);
+  });
+
+  /*
+    Same reasoning as the sentence-still-exists check above: a guard that greps
+    for a test which has been renamed or deleted is a guard watching nothing.
+  */
+  it('the test this guard watches still exists to be watched', () => {
+    const suite = readFileSync(SUITE, 'utf8');
+    expect(
+      /blocks release on free/.test(suite),
+      `The 'blocks release on free' test is gone from ${SUITE}. Either it was ` +
+        'un-skipped and renamed, or it was deleted — re-point this guard, or ' +
+        'remove it on purpose.',
+    ).toBe(true);
+  });
+});
