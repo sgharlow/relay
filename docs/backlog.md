@@ -418,7 +418,12 @@ that it is accurate.
 
 ---
 
-# Sprint 3 — Billing lifecycle, before the paywall decision
+# ✅ Sprint 3 — Billing lifecycle, before the paywall decision — COMPLETE 2026-08-20
+
+> All five items shipped on branch `sprint/2026-08-20-3` (from master), 0 blocked. Report:
+> `docs/sprint-reports/2026-08-20-sprint-3.md`. **The 2026-10-01 paywall revisit is now a
+> decision rather than a hazard** — the flip is assembled in `docs/paywall-flip-changeset.md`
+> and a lone flip turns three guards red.
 
 **Theme:** everything that must be true before `ratified.beta-free-release` comes up for its
 **2026-10-01** revisit, so the flip is a decision rather than a hazard.
@@ -431,7 +436,7 @@ event nobody was told about.
 
 ---
 
-### S3-1 · A failed renewal tells the owner
+### ✅ S3-1 · A failed renewal tells the owner — SHIPPED 2026-08-20 (`94f56db`)
 
 - **Axis:** correctness · **Effort:** M · **Blast:** all paying users
 
@@ -461,7 +466,7 @@ sends **no mail**.
 
 ---
 
-### S3-2 · What happens to a vault when someone stops paying
+### ✅ S3-2 · What happens to a vault when someone stops paying — SHIPPED 2026-08-20 (`e7a6d37`)
 
 - **Axis:** completeness · **Effort:** M · **Blast:** all paying users
 
@@ -489,7 +494,7 @@ sentence, and the Terms cannot answer it because nothing has decided it.
 
 ---
 
-### S3-3 · The paywall flip, assembled but not thrown
+### ✅ S3-3 · The paywall flip, assembled but not thrown — SHIPPED 2026-08-20 (`1ec19b2`), nothing flipped
 
 - **Axis:** completeness · **Effort:** S · **Blast:** all users · **Depends on:** S3-1, S3-2
 
@@ -516,7 +521,7 @@ afternoon's archaeology under time pressure.
 
 ---
 
-### S3-4 · Unit economics, one page
+### ✅ S3-4 · Unit economics, one page — SHIPPED 2026-08-20 (`a0ab75d`)
 
 - **Axis:** documentation · **Effort:** S · **Blast:** the demand lane
 
@@ -540,7 +545,7 @@ selling something with a margin — and Steve is out selling it this week.
 
 ---
 
-### S3-5 · Re-derive the rate limiter's stance
+### ✅ S3-5 · Re-derive the rate limiter's stance — SHIPPED 2026-08-20 (`f53706e`)
 
 - **Axis:** security · **Effort:** S · **Blast:** all users
 

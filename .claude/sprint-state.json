@@ -1,107 +1,58 @@
 {
-  "sprint": "2026-08-20-2",
-  "branch": "sprint/2026-08-20-2",
-  "worktree": "C:/Users/sghar/CascadeProjects/relay-sprint-2026-08-20-2",
-  "based_on": {
-    "branch": "sprint/2026-08-20-1",
-    "why": "NOT master. docs/backlog.md states Sprint 2's dependency on Sprint 1, and it is a hard one: S2-1 extends lib/auth/signin-throttle.ts, which exists only on that branch. A worktree from HEAD could not have built it.",
-    "review_consequence": "sprint/2026-08-20-2 CONTAINS sprint/2026-08-20-1. Merging this merges both. Review sprint 1 first if the two are to be judged separately."
-  },
-  "started_utc": "2026-08-20T04:53:09Z",
-  "backlog_source": "explicit — docs/backlog.md Sprint 2, named in the invocation. NOT inferred.",
+  "sprint": "2026-08-20-3",
+  "branch": "sprint/2026-08-20-3",
+  "worktree": "C:/Users/sghar/CascadeProjects/relay-sprint-2026-08-20-3",
+  "based_on": "master @ 6a60ae2 — sprints 1 and 2 merged first, so no branch dependency",
+  "backlog_source": "explicit — docs/backlog.md Sprint 3, named in the invocation. NOT inferred.",
   "baseline": {
-    "types": "green",
-    "lint": "green",
-    "tests": "green — 255 files, 2824 passed, 1 skipped",
-    "build": "green",
-    "audit": "0 vulnerabilities",
-    "command": "TZ=UTC npm run gate"
+    "gate": "exit 0",
+    "tests": "green — 261 files, 2912 passed, 1 skipped",
+    "audit": "0 vulnerabilities"
   },
   "iterations_used": 5,
   "iterations_max": 5,
   "queue": [
-    {
-      "id": "S2-1",
-      "title": "A durable per-account sign-in budget",
-      "axis": "security",
-      "weight": 5,
-      "blast": 3,
-      "effort": 2,
-      "score": 7.5,
-      "status": "shipped",
-      "commit": "e446d43",
-      "ordering_note": "Taken first ahead of higher-scoring items on the standing instruction that security is the priority. Recorded as an explicit override of the score rather than a silent one.",
-      "red_green": "Planting `durable === null ||` in place of `durable !== null &&` — treating 'cannot answer' as a refusal — turns the structural guard and seven behavioural tests red.",
-      "awaits_steve": "db/migrations/036_signin_attempts.sql, both regions, then verify:schema."
-    },
-    {
-      "id": "S2-2",
-      "title": "The in-app alarm stops sharing fate with product email",
-      "axis": "security",
-      "weight": 5,
-      "blast": 3,
-      "effort": 2,
-      "score": 7.5,
-      "status": "shipped",
-      "commit": "506ce9b",
-      "branch_taken": "(b) — the GitHub monitors are the alarm of record; in-app mail is advisory.",
-      "red_green": "Removing the delivery-result read (1 red); deleting a monitor file (3 red)."
-    },
-    {
-      "id": "S2-5",
-      "title": "Stripe joins the subprocessor list",
-      "axis": "correctness",
-      "weight": 5,
-      "blast": 2,
-      "effort": 1,
-      "score": 10,
-      "status": "shipped",
-      "commit": "a02a8bf",
-      "also_found": "users.totp_secret was undisclosed on /privacy's 'what we can read' list while the section above claimed nobody obtaining the database could read anything. Fixed loudly.",
-      "guard_nearly_failed": "The first version asserted toContain('Stripe') and PASSED its own plant, because 'NotStripe' contains 'Stripe'. Caught only because the plant was run."
-    },
-    {
-      "id": "S2-4",
-      "title": "Relay's own continuity, stated",
-      "axis": "completeness",
-      "weight": 4,
-      "blast": 3,
-      "effort": 1,
-      "score": 12,
-      "status": "shipped",
-      "commit": "98955a7",
-      "red_green": "Softening 'a stopped service cannot release anything to anyone' (1 red); adding an escrow promise (2 red)."
-    },
-    {
-      "id": "S2-3",
-      "title": "The secret rotation runbook",
-      "axis": "documentation",
-      "weight": 2,
-      "blast": 3,
-      "effort": 2,
-      "score": 3,
-      "status": "shipped",
-      "commit": "dbd7b0e",
-      "found_by_the_guard": "The first draft covered eleven secrets and missed DSQL_PASSWORD — which turned out to be the most interesting of the twelve.",
-      "tripped_a_recorded_trap": "An assertion went red against a runbook that said exactly what it looked for, because the phrase wrapped across a line break. Same shape as gates.g3.dossier."
-    }
+    { "id": "S3-5", "title": "Re-derive the rate limiter's stance", "axis": "security",
+      "weight": 5, "blast": 3, "effort": 1, "score": 15, "status": "shipped", "commit": "f53706e",
+      "why_first": "Highest score in the queue AND the standing security-first instruction — they agreed.",
+      "guard_failed_on_its_own_doc": "The stance doc tabulated nine public endpoints and omitted six authenticated ones; the derived guard caught it immediately." },
+    { "id": "S3-1", "title": "A failed renewal tells the owner", "axis": "correctness",
+      "weight": 5, "blast": 2, "effort": 2, "score": 5, "status": "shipped", "commit": "94f56db",
+      "contract_deviation": "The backlog required proof against 'the existing webhook test harness'. There is none — that route has no test file. Logic went to lib/ per convention, plus a route-level guard.",
+      "red_green": "Dedupe removed (double-sends on Stripe's retry); record-before-send (the record claims a delivery it cannot know about)." },
+    { "id": "S3-2", "title": "What happens to a vault when someone stops paying", "axis": "completeness",
+      "weight": 4, "blast": 2, "effort": 2, "score": 4, "status": "shipped", "commit": "e7a6d37",
+      "the_answer": "A lapse changes exactly one thing: what you can ADD.",
+      "red_green": "A downgrade handler that DELETEs vault_items; a cap check added to the item EDIT path.",
+      "found": "assertCanAddItems does not exist — a name this sprint's own backlog invented and I repeated into a comment." },
+    { "id": "S3-3", "title": "The paywall flip, assembled but not thrown", "axis": "completeness",
+      "weight": 4, "blast": 3, "effort": 1, "score": 12, "status": "shipped", "commit": "1ec19b2",
+      "depended_on": ["S3-1", "S3-2"],
+      "found": "Two of the three artifacts were ALREADY coupled by a pre-existing beta-flag.test.ts. The third — the skipped test — was coupled to nothing.",
+      "nothing_flipped": "canRelease still true, .skip still present, gates.test.ts green. A lone flip now turns THREE guards red." },
+    { "id": "S3-4", "title": "Unit economics, one page", "axis": "documentation",
+      "weight": 2, "blast": 2, "effort": 1, "score": 4, "status": "shipped", "commit": "a0ab75d",
+      "the_finding": "Fixed-cost business. Typical owner ~$0.27/yr, an active release ~$0.35 for the episode, break-even about THREE paying owners.",
+      "weakest_link": "A1 — the Vercel plan — is unverified and is what break-even rests on. On the free plan it is closer to one." }
   ],
-  "ended_utc": "2026-08-20T06:05:00Z",
   "outcome": "complete — queue exhausted, 5 of 5 iterations used, 0 blocked",
   "baseline_end": {
-    "types": "green",
-    "lint": "green",
-    "tests": "green — 260 files, 2904 passed, 1 skipped",
-    "build": "green",
-    "audit": "0 vulnerabilities",
     "gate": "exit 0",
-    "delta": "+80 tests, +5 files, no new skips"
+    "tests": "green — 264 files, 2953 passed, 1 skipped",
+    "audit": "0 vulnerabilities",
+    "delta": "+41 tests, +3 files, no new skips"
   },
-  "report": "docs/sprint-reports/2026-08-20-sprint-2.md",
-  "harness_note": "TodoWrite unavailable in this harness; the scored queue lives here and in the report.",
+  "report": "docs/sprint-reports/2026-08-20-sprint-3.md",
+  "orientation_slips": [
+    "The first npm ci ran in the MAIN checkout — a cd inside a backgrounded command. Let it finish rather than killing it (a half-removed node_modules in main would be worse), verified main intact, then installed in the worktree.",
+    "One commit hit the recorded Norton .git lock: 'Permission denied' writing an object. The commit succeeded; git fsck clean and all five files present. Verified rather than assumed."
+  ],
   "not_live_proven": [
-    "Migration 036 is authored and NOT applied, so the durable sign-in budget has never executed against DSQL. Its missing-table and error branches are unit-proven against a mocked pg; the happy path is not.",
-    "verify:schema will report signin_attempts MISSING until 036 is applied — the check working, not a regression.",
-    "Carried from sprint 1: scripts/verify-kms.ts has never run against the real CMK, and B3's ruling is still owed."
+    "S3-1's notices have never been sent by the real Stripe webhook. Trigger a test-mode invoice.payment_failed against production and confirm ONE email arrives. The unit tests prove the module; only Stripe proves the wiring.",
+    "A1: the Vercel plan tier, which the unit-economics break-even rests on."
+  ],
+  "debt": [
+    "appUrl() is duplicated four ways; the canonical one is now exported rather than a fifth copy added. Reported, not refactored.",
+    "Nothing parses PROJECT.yaml — carried across three sprints now."
   ]
 }
