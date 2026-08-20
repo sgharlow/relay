@@ -2615,6 +2615,29 @@ deferred:
       A pipeline evaluates the declared thresholds on every push, and the evaluation has been
       proven to fail by planting a violation (a threshold raised above the real figure, or an
       uncovered file) rather than only by passing once.
+    closed:
+      date: 2026-08-20
+      what_shipped: >-
+        .github/workflows/ci.yml — the Test step now runs `npm run test:coverage` instead of
+        `npm test`. Same suite, once, with instrumentation, and the job fails when a declared
+        threshold is breached. A second step was rejected: it would run ~3000 tests twice to
+        learn one more fact.
+      measured_before_switching_on: >-
+        91.47% statements, 85.2% branches, 90.99% functions, 92.69% lines, against declared
+        thresholds of 80/80/70/80 — over every one with margin. ⚠️ That margin is why this was
+        free today and would only ever have been more expensive later, and it is also why the
+        gap survived so long: nothing was failing, so nothing drew attention to the fact that
+        nothing was checking.
+      proven_to_fail: >-
+        Branches was raised from 70 to 99 against a real figure of 85.2, and the command exited 1
+        with "ERROR: Coverage for branches (85.2%) does not meet global threshold (99%)". The
+        config was then restored and verified byte-identical by checksum, so no threshold was
+        altered by this change — only whether anything reads them.
+      the_thresholds_were_not_touched: >-
+        Deliberately. The declared numbers are unchanged at 80/80/70/80; the only change is that
+        something now evaluates them. Adjusting a threshold in the same commit that first
+        enforces it would make the new figure unfalsifiable, and lowering one to fit reality is
+        the prohibited move this entry exists to guard against.
 
   - id: the-csp-report-sink-expires-before-anyone-reads-it     # "D9"
     owner: steve

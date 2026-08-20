@@ -63,8 +63,24 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Test
-        run: npm test
+      # 🔴 THIS RAN `npm test` AND THE DECLARED COVERAGE THRESHOLDS WERE EVALUATED
+      # BY NOTHING. `vitest.config.ts` has declared lines 80 / functions 80 /
+      # branches 70 / statements 80 since the config was written; `npm test` does
+      # not read them, `gate` does not invoke `test:coverage`, and no workflow did
+      # either. So the thresholds were counted as protection in exactly the review
+      # that should have caught their absence — the decorative-guard shape this
+      # repo keeps meeting, and the same one that produced every check in lib/ops/.
+      #
+      # `test:coverage` rather than an extra step: it runs the same suite once,
+      # with instrumentation, and fails the job when a threshold is breached.
+      # Adding a second step would run ~3000 tests twice to learn one more fact.
+      #
+      # It was measured before being switched on and passed with margin, which is
+      # precisely why turning it on cost nothing today and would only ever have
+      # cost more later. Proven to fail by planting a threshold above the real
+      # figure, not by passing once.
+      - name: Test (with coverage thresholds enforced)
+        run: npm run test:coverage
 
       - name: Build
         run: npm run build
