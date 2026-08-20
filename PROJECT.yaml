@@ -1658,6 +1658,35 @@ deferred:
         verify:schema. ⚠️ verify:schema derives what it expects from the migration files, so it will
         report signin_attempts MISSING from the moment this lands until it is applied. That is the
         check working, not a defect."
+      applied:
+        date: 2026-08-20
+        status: "✅ APPLIED TO BOTH REGIONS AND LIVE-PROVEN. The durable half is no longer 'written
+          and waiting'."
+        preconditions_checked_first: "AWS Backup fresh in both regions before any DDL — us-east-1
+          newest 0.3h old, us-west-2 newest 0.1h old, deletion protection ON for both clusters
+          (scripts/backup-status.mjs). The 5-gate infrastructure policy, satisfied rather than
+          assumed: documented problem, <10min rollback (DROP TABLE), snapshot verified BEFORE,
+          isolated test (the code tolerates the table's absence), explicit request."
+        proof: "verify:schema ✓ 26/26 tables and 33/33 columns in BOTH regions, where it had
+          reported signin_attempts ABSENT in both an hour earlier. verify:roles ✓ 'the split is
+          intact' in both regions against 26 declared tables — which is the check that migration
+          031's trap did NOT recur: ALTER DEFAULT PRIVILEGES (032/033) did grant relay_app DML on a
+          table created afterwards, as 036's header claimed and did not assume."
+        happy_path_live_proven: "The unit suite could only ever reach the missing-table and error
+          branches. A probe against the production cluster exercised the rest: a clean address
+          counts 0 (not null), three failures count 3, the window predicate both includes and
+          EXPIRES them, another address is unaffected, a clear removes every row, and housekeeping
+          runs. Zero rows left behind afterwards (census: 0)."
+        # 🔴 AND THE PROBE DISAGREED WITH AN EXPECTATION, WHICH IS WHY IT WAS WORTH RUNNING.
+        the_contract_nobody_had_written_down: "It asked for a 1ms window and got back the three rows
+          it expected to be excluded. `make_interval` takes SECONDS, so windowMs is ceiled — 1ms
+          becomes 1s. The CODE was right and the EXPECTATION was wrong, but nothing said so, and a
+          contract nobody writes down is one the next caller discovers the same way. Rounding UP is
+          deliberate: a wider window counts MORE failures, so the error falls on the side of
+          refusing an attacker, and rounding down could produce a zero-length window that silently
+          disables the budget while looking healthy. Now documented on the function and pinned by
+          two tests (1ms -> 1s, 1500ms -> 2s, and 15min -> exactly 900s)."
+
 
   - id: the-guess-watch-did-not-cover-the-front-door          # "B2"
     owner: claude
@@ -1722,6 +1751,29 @@ deferred:
     ends_when: "a read-only verify:kms exists in the shape of verify:iam, is wired into the
       pre-release list, and has been seen to FAIL against a planted change — a wall-checker that has
       only ever passed has not been seen to work."
+    closed:
+      date: 2026-08-20
+      what_shipped: "lib/ops/kms-wall.ts + scripts/verify-kms.ts (sprint 1, df38d32), and on
+        2026-08-20 it was RUN — the `ends_when` above is satisfied in full rather than in part."
+      first_live_run: "✓ CMK b3af288c… in us-east-1: Enabled, CUSTOMER-managed, SYMMETRIC_DEFAULT,
+        not pending deletion, and its key policy still lets arn:…:user/relay-runtime GenerateDataKey
+        and Decrypt. The runtime principal ARN was derived correctly from the key's own ARN rather
+        than configured."
+      rotation_intent_was_right: "ROTATION_INTENDED = false was a DERIVATION from how
+        docs/aws-setup.md creates the key, recorded as the as-provisioned state rather than a
+        recommendation. The live key reports rotation OFF, so the pin matches reality and a silent
+        change in either direction is now catchable."
+      # 🔴 THE HALF THAT MATTERS: it has been seen to FAIL.
+      negative_controls: "THREE, all exit 1. (1) a key id that does not exist -> NotFoundException,
+        reported as a finding rather than a crash. (2) KMS_KEY_ID unset -> refused before any AWS
+        call. (3) alias/aws/s3 — a key that REALLY EXISTS and is not ours -> the policy rule fires
+        (`the key policy could not be read`), which proves the refusal is about the key's state and
+        not merely about absence. A wall checker seen only to pass has not been seen to work."
+      single_region_note_fires: "The B3 note printed on the live run exactly as designed —
+        'single-Region CMK: DSQL fails over between regions and this key does not move with it' — as
+        a NOTE, not a failure, because the fix is an infrastructure decision and a check that fails
+        on a knowingly-accepted limitation is a check somebody disables."
+
 
   - id: tenant-separation-at-the-kms-boundary-is-not-cryptographic   # "B5"
     owner: claude

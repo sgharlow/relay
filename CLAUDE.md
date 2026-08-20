@@ -272,6 +272,25 @@ on every push. **`npm run verify:live` is the other half**: five walks that driv
 > deeper half: in UTC that regression cannot be observed AT ALL, so a date rule needs a
 > structural guard as well as a behavioural one.
 
+> 🔴 **THE CHAIN CANNOT BE RUN TWICE IN AN HOUR FROM ONE HOST, and until 2026-08-20 nothing said
+> so.** `/api/auth/signup` allows **10 per hour per client key** (`LIMIT = 10`,
+> `WINDOW_MS = 60 * 60 * 1000`), and one full chain performs **exactly 10 signups**. So the first
+> run consumes the entire budget and a second inside the hour is guaranteed to fail — as a bare
+> `ERROR: signup begin 429`, part-way through, with nothing saying why. Found by hitting it: a walk
+> reported `25/26` and the next two runs died outright, which reads exactly like a flaky test and is
+> not one.
+>
+> The limiter is **per-instance memory** (`lib/http/rate-limit.ts`), so **restarting `npm run dev`
+> resets the budget** and is the fix when you need a second run — that is the same fresh-instance
+> state a real release run starts from, not a weakening of anything. ⚠️ Check that the old process
+> actually died first: on Windows, killing the shell can leave `next dev` bound to 3000, and two
+> listeners means walks land on whichever instance answers — including the one whose budget is
+> already spent. `netstat -ano | grep :3000` should show exactly one `node`.
+>
+> The sign-in source limiter added the same day (`MAX_SOURCE_ATTEMPTS = 45` per 15 minutes,
+> `lib/auth/signin-throttle.ts`) has more headroom — one chain performs ~11 sign-ins — but it is the
+> same class, and roughly four chains inside fifteen minutes would trip it.
+
 **It is deliberately NOT in CI.** These walks create and delete real accounts, and `.env.local`
 points at the **production** cluster because Relay has no dev database. A job doing that on every
 pull request would be writing to customers' data to check a diff — and the rows it forgot would be

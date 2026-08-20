@@ -109,6 +109,22 @@ export function signinKeyFor(email: string): string {
  * treat as "no information", never as zero. Zero is a claim that the address is
  * clean; null is an admission that we do not know, and only one of those is
  * true when the database is unreachable.
+ *
+ * ⚠️ THE WINDOW HAS SECOND GRANULARITY, AND IT ROUNDS UP. `make_interval` takes
+ * seconds, so `windowMs` is divided and CEILED — a sub-second window becomes one
+ * second, never zero. Found by running this against the real cluster after
+ * migration 036 landed: a probe asked for a 1 ms window and got back the rows it
+ * expected to be excluded, because 1 ms had become 1 s.
+ *
+ * Rounding UP is the correct direction and not an accident of arithmetic: a
+ * slightly wider window counts slightly MORE failures, so the error falls on the
+ * side of refusing an attacker rather than admitting one. Rounding down could
+ * produce a zero-length window, which would silently disable the durable budget
+ * while looking like it was working.
+ *
+ * Production is unaffected either way — `FAILURE_WINDOW_MS` is fifteen minutes,
+ * which is exactly 900 seconds. This matters only to callers inventing their own
+ * window, and it is written down so the next one does not have to discover it.
  */
 export async function durableFailureCount(
   email: string,

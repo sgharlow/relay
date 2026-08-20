@@ -92,6 +92,35 @@ describe('counting', () => {
     expect(params[1]).toBe(900);
   });
 
+  /*
+    🔴 PINNED AFTER A LIVE PROBE DISAGREED WITH AN EXPECTATION. Once migration
+    036 landed, a probe against the real cluster asked for a 1 ms window and got
+    back the three rows it expected to be excluded. `make_interval` takes
+    SECONDS, so the millisecond window had been ceiled to one second.
+
+    The code was right and the expectation was wrong — but nothing said so, and
+    a contract nobody wrote down is one the next caller discovers the same way.
+    Rounding UP is deliberate: a wider window counts MORE failures, so the error
+    falls on the side of refusing an attacker. Rounding down could produce a
+    zero-length window and silently disable the budget while looking healthy.
+  */
+  it('rounds a sub-second window UP to one second, never down to zero', async () => {
+    mockQuery.mockResolvedValue({ rows: [{ n: '0' }] } as never);
+
+    await durableFailureCount(EMAIL, 1);
+    expect((mockQuery.mock.calls[0]![1] as unknown[])[1]).toBe(1);
+
+    mockQuery.mockClear();
+    await durableFailureCount(EMAIL, 1_500);
+    expect((mockQuery.mock.calls[0]![1] as unknown[])[1]).toBe(2);
+  });
+
+  it('passes the production window through exactly — 15 minutes is 900 seconds', async () => {
+    mockQuery.mockResolvedValue({ rows: [{ n: '0' }] } as never);
+    await durableFailureCount(EMAIL, WINDOW);
+    expect((mockQuery.mock.calls[0]![1] as unknown[])[1]).toBe(900);
+  });
+
   it('appends rather than incrementing — no counter column to race on', async () => {
     mockQuery.mockResolvedValue({ rowCount: 1 } as never);
     await recordDurableFailure(EMAIL);
