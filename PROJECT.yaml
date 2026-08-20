@@ -2670,6 +2670,64 @@ deferred:
       Either the reports land somewhere that outlives a day and a decision is taken on real data,
       or `script-src` is enforced on a written argument and the report-only header is removed.
       Silently extending the report-only period is the third option and is the current state.
+    closed:
+      date: 2026-08-20
+      decided_by: steve
+      option: >-
+        C — both. Enforce the policy that is safe today, AND point report-only at the next rung,
+        AND give it a sink that outlives a day. Neither half alone was sufficient: enforcing
+        without a stricter report-only leaves the nonce question unmeasured forever, and
+        persisting reports without enforcing delays all protection while evidence accumulates
+        about only one directive.
+      what_shipped: >-
+        next.config.mjs — the full policy moved to `Content-Security-Policy`, and
+        `Content-Security-Policy-Report-Only` now carries the same policy with `unsafe-inline`
+        and `unsafe-eval` removed from script-src. Both are built from one shared definition, so
+        they cannot drift apart. Migration 038 (`csp_reports`) applied to BOTH regions;
+        lib/ops/csp-report-store.ts writes to it, fail-open, with the 42P01 latch
+        signin-attempts.ts established.
+      why_enforcing_was_worth_more_than_the_old_note_said: >-
+        The config claimed enforcing while `unsafe-inline` remains "would buy very little". For a
+        product that decrypts plaintext in the browser, the threat is EXFILTRATION, not execution.
+        `unsafe-inline` concedes that an injected script may run; connect-src, img-src,
+        form-action and default-src stop it sending what it found anywhere. Only navigation
+        remains, and navigation is visible to the person sitting there. Silent theft becomes
+        visible theft — most of the practical protection, with no middleware.
+      # 🔴 THE FINDING THAT ONLY A BROWSER COULD PRODUCE.
+      grep_was_wrong: >-
+        The pre-decision measurement said "zero third-party scripts", from searching the source.
+        @vercel/analytics INJECTS a script from va.vercel-scripts.com at RUNTIME, so it appears in
+        no grep for `<script>` or `fetch(`. Loading four pages in a real browser found it in
+        seconds. ⚠️ Any future change to these directives needs a browser, not a search — and the
+        obvious fix was also wrong: that origin is DEV-ONLY (production loads
+        /_vercel/insights/script.js, same-origin, verified in the package bundle AND in
+        relaystandby.com's served HTML), so adding it to script-src would have permanently widened
+        production for a script production never loads. Recorded in next.config.mjs beside the
+        directive so nobody silences the dev console at production's expense.
+      what_the_report_only_header_will_actually_say: >-
+        Production HTML carries 2 inline `<script>` blocks with NO nonce (`self.__next_f` — RSC
+        payload streaming), so the stricter policy WILL report on essentially every page load.
+        That is the measurement, not a fault: the question is whether anything OTHER than Next's
+        own bootstrap appears. ⚠️ Dev showed NO report-only violations at all — a Turbopack-dev
+        artifact. Do not read dev silence as evidence that the nonce work is unnecessary.
+      proven_end_to_end: >-
+        POST to /api/csp-report returned 204 and a row landed in the production cluster carrying
+        the disposition, with the query string STRIPPED and script-sample absent — both privacy
+        protections observed rather than assumed. The synthetic row was then deleted; the table
+        starts empty so the first real window is uncontaminated.
+      the_guard_was_inverted_not_relaxed: >-
+        lib/ops/security-headers.test.ts refused every page-blanking directive on the enforcing
+        header. That premise is now the ratified decision, so the guard would have been refusing
+        the change it existed to protect. It now asserts the opposite and sharper danger — that
+        `'unsafe-inline'` is never removed from the ENFORCING script-src without nonces landing in
+        the same change, a one-word deletion that white-screens the product FOR EVERYONE and reads
+        as tightening security — plus that report-only stays strictly stricter than enforcing,
+        which is the defect this entry found.
+      still_open_downstream: >-
+        The nonce/middleware decision itself. It is now measurable for the first time; it was not
+        before. Revisit once `csp_reports` holds a real window of production traffic and the
+        question "does anything other than Next's bootstrap violate script-src 'self'" has an
+        answer with a date on it.
 
   - id: the-journey-sweep-is-stale                             # "D10"
     owner: claude
