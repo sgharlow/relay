@@ -84,3 +84,10 @@ e2e-*.png
 # for the same reason .relay-cohort.json does, and docs reference the path, never
 # the values. Written by hand; see docs/oped-angle-3-draft.md's send checklist.
 .relay-submitter.json
+
+# The autonomous-sprint mutex, written in the MAIN checkout while a sprint holds
+# it and deleted on every exit path. It carries a pid, so committing one would
+# outlive the process that took it and make the next sprint refuse to start for a
+# process that died days ago. ~/.claude/commands/sprint.md §1.0 requires this line
+# to exist before the lock is ever written.
+.claude/sprint.lock
