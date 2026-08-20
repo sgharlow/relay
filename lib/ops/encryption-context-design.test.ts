@@ -160,6 +160,44 @@ describe('premise 4 — nothing has started implementing this yet', () => {
   });
 });
 
+describe('the rollout plan records the irreversible boundary', () => {
+  const ROLLOUT = read('docs/encryption-context-rollout.md');
+
+  it('says the migration goes first, and why the other order is an outage', () => {
+    expect(ROLLOUT).toMatch(/migration goes first/i);
+    expect(ROLLOUT).toContain('42703');
+  });
+
+  it('names the point of no return as the first context WRITE, not the migration', () => {
+    // Getting this wrong is the whole risk: a reader who thinks the migration is
+    // the dangerous step will treat the deploy after it as routine.
+    expect(ROLLOUT).toMatch(/point of no return/i);
+    expect(ROLLOUT).toMatch(/first row written with a context/i);
+  });
+
+  it('requires the reading side to ship BEFORE anything writes a context', () => {
+    expect(ROLLOUT).toMatch(/three deploys, not one/i);
+  });
+
+  it('says a rollback after phase C is a FLAG, never a revert', () => {
+    expect(ROLLOUT).toMatch(/Do not revert the code after C/i);
+  });
+
+  it('states that ADD COLUMN cannot disturb existing reads, which was checked', () => {
+    // The claim rests on there being no SELECT * against vault_items. If one
+    // ever appears, phase A stops being free and this line stops being true.
+    expect(ROLLOUT).toMatch(/no `?SELECT \*`?/i);
+
+    const files = ['lib/access/dashboard.ts', 'src/app/api/kms/unwrap/route.ts'];
+    for (const f of files) {
+      const src = stripComments(read(f));
+      expect(src, `${f} now uses SELECT * — phase A is no longer free`).not.toMatch(
+        /SELECT\s+\*\s+FROM\s+vault_items/i,
+      );
+    }
+  });
+});
+
 describe('the design records the trap rather than only the plan', () => {
   it('names the fallback as the thing that must not be built', () => {
     expect(DESIGN).toMatch(/re-opens the exact hole/i);
