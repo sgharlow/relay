@@ -1,5 +1,12 @@
 # Partner and endorser dossier — read from the primary sources, 2026-08-18
 
+> ✅ **RULED 2026-08-20 — gate `g3-b2b2c-pilot-loi` RATIFIED AS AMENDED by Steve.** Both of this
+> dossier's recommendations were adopted: `wealth manager` is removed from the gate's categories
+> (§9 below is the argument), and the first targets are Homethrive → Wellthy, with the NAC
+> Innovation Collaborative in parallel. Authority: `PROJECT.yaml → gates.g3-b2b2c-pilot-loi.ratified`.
+> The ranking below is the reasoning, kept as written; the kill is measured on MEETINGS by
+> 2026-11-30, so the next act is outreach, not more research.
+
 > Fills `PROJECT.yaml → gates.g3-b2b2c-pilot-loi.first_targets`, which reads *"OPEN — Steve's to
 > name. Two specific organisations, not two categories."* Steve asked for a prioritised list of
 > organisations best aligned to **endorsing or partnering on** this product.

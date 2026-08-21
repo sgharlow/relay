@@ -184,8 +184,8 @@ moved. They are struck here and **closed in `PROJECT.yaml`, which is the record.
 | A1 | Op-ed voice pass + cover email, Word doc derived from final text with the contact block, submitted to caregiver.com | steve | `docs/oped-angle-3-draft.md` send checklist |
 | A2 | Second outlet: The Caregiver Space — the submission IS the finished piece; no pitch is reviewed | steve | `docs/g1-outlet-dossier.md` |
 | A3 | Beta cohort: run `invite:cohort --commit` (or re-defer with a record). **Blocked on A0.** Phase 0 claim conversion is the number two shipped security decisions rest on | steve | `ratified.beta-cohort-deferred-four-days`; `docs/beta-cohort-handoff.md` |
-| **A4** 🔴 | **Ratify (or amend/decline) gate `g3-b2b2c-pilot-loi`; name two target organisations. `ratify_by` 2026-09-01 — the nearest dated obligation in the project** | steve | `PROJECT.yaml → gates.g3` (mechanically enforced); `docs/g3-partner-dossier.md` (rec: Homethrive → Wellthy; NAC Innovation Collaborative in parallel) |
-| A5 | Rule on dropping `wealth manager` from G3's categories — inherited from the withdrawn estate product | steve | `docs/g3-partner-dossier.md` §7–9 |
+| ~~A4~~ | ~~Ratify (or amend/decline) gate `g3-b2b2c-pilot-loi`; name two target organisations~~ | ✅ **Closed 2026-08-20 — RATIFIED AS AMENDED** by Steve, twelve days before `ratify_by`: `wealth manager` dropped from the metric, first targets named (Homethrive → Wellthy; NAC Innovation Collaborative in parallel). `due:` 2026-11-30 now governs; kill is measured on meetings | `PROJECT.yaml → gates.g3-b2b2c-pilot-loi.ratified` |
+| ~~A5~~ | ~~Rule on dropping `wealth manager` from G3's categories~~ | ✅ **Closed 2026-08-20** — dropped, inside the G3 ratification (A4) | `PROJECT.yaml → gates.g3-b2b2c-pilot-loi.ratified` |
 | A6 | Partner outreach → **meetings** (G3's kill is measured on meetings, not LOIs) | steve | `PROJECT.yaml → gates.g3.leading_indicator` |
 | A7 | Editorial thresholds: re-derive target and N **before** the first placement is live, ratified **in the same commit** the `ed-*` src enters `GATE_LANES` (guarded); then day-of `verify:funnel` + `flight:snapshot`, then flight-log entries | steve | `docs/g1-editorial-threshold-proposal.md`; `lib/ops/editorial-preflight-claims.test.ts`; `deferred → g1-editorial-thresholds-deferred` |
 | A8 | The gate itself: ONE arms-length person who pays or writes that they would, at a seen price | steve | `PROJECT.yaml → gates.g1-arms-length-demand` |
@@ -325,8 +325,8 @@ time, and it has been stationary for four sprints. **The 2026-09-01 date is not 
 
 | # | Item | Effort | Blocks on |
 |---|---|---|---|
-| **2.1** | **Ratify, amend or decline `g3-b2b2c-pilot-loi`, and name two target organisations (A4)** | S | — |
-| 2.2 | Rule on dropping `wealth manager` from G3's categories (A5) | S | 2.1 |
+| ~~**2.1**~~ | ~~Ratify, amend or decline `g3-b2b2c-pilot-loi`, and name two target organisations (A4)~~ ✅ **Done 2026-08-20** — ratified as amended | S | — |
+| ~~2.2~~ | ~~Rule on dropping `wealth manager` from G3's categories (A5)~~ ✅ **Done 2026-08-20** — dropped, inside 2.1 | S | 2.1 |
 | **2.3** | **Re-derive and ratify the editorial threshold and N (A7) — before any placement is live** | M | — |
 | 2.4 | Op-ed voice pass, cover email, Word doc, submit to caregiver.com (A1) | M | 2.3 |
 | 2.5 | The Caregiver Space submission — the piece *is* the submission (A2) | M | 2.3 |
@@ -391,7 +391,7 @@ Zero-knowledge productionization as scale demands.
 | date | what | owner |
 |---|---|---|
 | ~2026-09-03 | `verify:live` freshness dead-man fires (14 days from the 2026-08-20 stamp) | claude |
-| **2026-09-01** | **`gates.g3-b2b2c-pilot-loi.ratify_by` — mechanically enforced** | steve |
+| ~~**2026-09-01**~~ | ~~`gates.g3-b2b2c-pilot-loi.ratify_by`~~ — ✅ **met 2026-08-20**, ratified as amended; the gate's `due:` 2026-11-30 now governs | steve |
 | ~2026-09-10 | DMARC reports purge from trash — hard expiry, unrecoverable after | steve |
 | 2026-09-30 | `gates.g2-counsel-opinion` due date — **declined**, estate-gated instead; the date survives as a record | steve |
 | 2026-10-01 | `ratified.beta-free-release` revisit — the paywall flip (F-j), preconditioned on E1 | steve |

@@ -383,10 +383,28 @@ gates:
   # proposed gate nobody rules on is indistinguishable from the silence it was
   # written to end.
   - id: g3-b2b2c-pilot-loi
-    status: "PROPOSED — awaiting Steve's ratification. Drafted 2026-08-18."
+    ratified:
+      date: 2026-08-20
+      by: steve
+      decision: "RATIFIED AS AMENDED, twelve days before `ratify_by`. The gate is live and `due:`
+        (2026-11-30) now governs. Two amendments, both argued in docs/g3-partner-dossier.md §7–9
+        and both adopted: (1) `wealth manager` is REMOVED from the metric's categories — it was
+        inherited from the estate product withdrawn 2026-08-14, and approaching one means either
+        mis-selling a feature that does not exist or leading with the caregiving story to an
+        audience organised around the other one (this closes ROADMAP A5 together with A4);
+        (2) `first_targets` are NAMED: Homethrive, then Wellthy, with the National Alliance for
+        Caregiving Innovation Collaborative approached in parallel — the dossier's recommended
+        order, adopted as written."
+      what_changed_in_this_block: "the `status: PROPOSED` line was replaced by this block (the
+        shape lib/ops/gates.test.ts reads as ratified); `metric:` no longer lists wealth manager;
+        `first_targets:` opens with the names. `ratify_by:` is KEPT as the record of the date the
+        answer was owed by. Nothing else moved — thresholds, kill condition, leading indicator and
+        what_does_not_count are as drafted."
+      was: "PROPOSED — awaiting Steve's ratification. Drafted 2026-08-18."
     metric: "signed pilot agreement or letter of intent from ONE distribution partner — a benefits
-      broker, credit union, employer benefits provider or wealth manager — to put Relay in front of
-      their members, employees or clients."
+      broker, credit union, or employer caregiver-benefits provider — to put Relay in front of
+      their members, employees or clients. (`wealth manager` was a fourth category until the
+      2026-08-20 ratification removed it; see `ratified:` above.)"
     target: "1"
     kill: "zero partner MEETINGS taken by the date below -> the B2B2C branch that G1's own kill
       condition routes to is closed as well, and the disposition becomes an explicit park-or-archive
@@ -433,7 +451,9 @@ gates:
     # that cannot see its subject passes, which is the shape of green this repo keeps
     # catching. Found by planting a rename and watching the suite stay green.
     dossier: docs/g3-partner-dossier.md
-    first_targets: "STILL Steve's to name — but no longer from a blank page. The dossier above
+    first_targets: "NAMED 2026-08-20, at ratification: Homethrive, then Wellthy, with the NAC
+      Innovation Collaborative in parallel. What follows is the dossier reasoning that produced
+      that order, kept because it is the argument and not just the answer. The dossier above
       (2026-08-18) ranks nine candidates, each route checked against the organisation's
       own site, in the shape the outlet dossier proved out. Recommended order: **Homethrive**
       (has publicly integrated two partners' capabilities in 2026 — demonstrated yes, not a guess),
