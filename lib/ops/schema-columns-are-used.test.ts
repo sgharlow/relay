@@ -213,3 +213,149 @@ describe('every column the schema declares is referenced by the application', ()
     expect(SEP).toBe('\\');
   });
 });
+
+/**
+ * 🔴 THE CHECK ABOVE READS IN ONE DIRECTION, AND THAT IS THE HALF THAT PASSES.
+ *
+ * `new RegExp(\`\\b${col}\\b\`).test(src)` asks whether a column is MENTIONED.
+ * A column named only in an `INSERT` list or after a `SET` satisfies it
+ * completely — the application writes the value and nothing ever reads it back.
+ * That is the `consent_artifacts` shape this file's header says it exists to
+ * catch, and seven columns were sitting in it while the guard reported clean.
+ *
+ * A write-only column is a promise nothing keeps, in the same way an
+ * unreferenced one is: the enrolment form asks for a passkey label that no
+ * screen ever shows, `last_used_at` is maintained on every authentication and
+ * cannot answer "when did I last use this key", and a confirmation timestamp is
+ * recorded and cleared by a state machine that only ever reads the state beside
+ * it.
+ *
+ * ⚠️ THE DETECTOR IS DELIBERATELY CONSERVATIVE, and errs toward silence. It
+ * removes two unambiguous write contexts — the parenthesised column list of an
+ * `INSERT INTO`, and the assignment targets inside a `SET` clause up to `WHERE`
+ * — and then asks whether the column survives anywhere at all. Anything it
+ * cannot classify is left in place and reads as a read, so the failure mode is a
+ * write-only column going unreported rather than a live column being called
+ * dead. A guard that cries wolf on this codebase's SQL would be turned off
+ * within a week.
+ *
+ * `COALESCE($n, col)` inside a `SET` is treated as a write, not a read: a column
+ * defaulting to its own current value never surfaces the value to anything.
+ * `subscriptions.current_period_end` is exactly that and was invisible until the
+ * case was handled.
+ */
+
+/** Write contexts removed, so what remains is a read or nothing. */
+function readContextsOnly(src: string): string {
+  return src
+    .replace(/INSERT\s+INTO\s+[a-z_]+\s*\(([^)]*)\)/gi, (m, list: string) => m.replace(list, ''))
+    .replace(
+      /\bSET\b([\s\S]*?)(?=\bWHERE\b|`)/gi,
+      (_m, body: string) =>
+        'SET ' +
+        body
+          .replace(/COALESCE\(\s*\$\d+\s*,\s*[a-z_]+\s*\)/gi, 'COALESCE()')
+          .replace(/[a-z_]+\s*=/gi, '='),
+    );
+}
+
+/**
+ * Columns the application writes and never reads, each with the reason that is
+ * true today. An entry is not an excuse — it is a claim that can be checked, and
+ * the check below deletes the entry's cover the moment a reader appears.
+ */
+const WRITE_ONLY_BY_DESIGN: Record<string, string> = {
+  'webauthn_credentials.device_label':
+    'Captured at enrolment from the browser hint and shown on no screen. The account page ' +
+    'lists passkeys without it, so a person who names a key cannot see the name again. Owned ' +
+    'by the passkey surface, not by ops: either render it or stop asking for it.',
+  'webauthn_credentials.last_used_at':
+    'Maintained on every successful authentication and read by nothing, so "when did I last ' +
+    'use this key" — the question that makes a passkey list safe to prune — cannot be ' +
+    'answered. Same owner and same choice as device_label.',
+  'subscriptions.current_period_end':
+    'Written by the Stripe webhook and read by nothing. The renewal date is shown from ' +
+    "Stripe's own portal instead, which is the source of truth for billing, so the column is " +
+    'a local copy nobody consults. Keep it or drop it, but it is not evidence of anything today.',
+  'caregiver_leads.click_platform':
+    'Paid-click attribution, SUPERSEDED by ratified.retire-paid-advertising (2026-08-16). ' +
+    'There are no paid clicks to attribute; flight-snapshot.ts reads email, note, src, cta, ' +
+    'notified and created_at, which is the whole editorial-lane instrument.',
+  'caregiver_leads.click_id':
+    'The other half of the same attribution pair, SUPERSEDED by the same ruling. Retained ' +
+    'rather than dropped because a migration to remove a column is not free and the rows are ' +
+    'harmless; counted as protection by nothing.',
+  'recipients.fingerprint_confirmed_at':
+    'Set and cleared by the standby state machine alongside `standby_state`, and only the ' +
+    'state is ever read. So the product knows a contact HAS confirmed and cannot say WHEN — ' +
+    'which is the fact a circle-readiness question actually turns on. Owned by lib/people.',
+  'verifiers.fingerprint_confirmed_at':
+    'The verifier half of the same pair, written and cleared in the same three places and read ' +
+    'in none of them. Same owner and the same decision: surface it or stop maintaining it.',
+};
+
+describe('a column the application only ever writes is not a column it uses', () => {
+  const writeOnly = (): string[] => {
+    const reads = readContextsOnly(applicationSource());
+    const src = applicationSource();
+    const found: string[] = [];
+    for (const [table, cols] of declaredColumns()) {
+      for (const col of cols) {
+        if (UBIQUITOUS.has(col)) continue;
+        const re = new RegExp('\\b' + col + '\\b');
+        if (re.test(src) && !re.test(reads)) found.push(table + '.' + col);
+      }
+    }
+    return found.sort();
+  };
+
+  it('the detector can still see a write context — a clean result must not be an empty one', () => {
+    /*
+      Same rule the scan above keeps. If the INSERT or SET regexes stop matching,
+      every column reads as "read" and this whole check reports nothing forever.
+      So: assert the stripping actually removed something substantial.
+    */
+    const before = applicationSource();
+    const after = readContextsOnly(before);
+    expect(after.length, 'the write-context stripper removed nothing').toBeLessThan(before.length);
+    expect(
+      before.length - after.length,
+      'the stripper removed almost nothing — the INSERT/SET regexes have probably broken',
+    ).toBeGreaterThan(2_000);
+  });
+
+  it('finds no write-only column outside the allow-list', () => {
+    const undeclared = writeOnly().filter((k) => !(k in WRITE_ONLY_BY_DESIGN));
+    expect(
+      undeclared,
+      'These columns are written by the application and read by nothing:\n' +
+        undeclared.map((u) => `  ${u}`).join('\n') +
+        '\n\nThe value goes into the database and never comes out, so whatever asked for it is ' +
+        'a promise nothing keeps. Read it somewhere, stop writing it, or add it to ' +
+        'WRITE_ONLY_BY_DESIGN with a reason naming what supersedes it or which surface owes ' +
+        'the read.',
+    ).toEqual([]);
+  });
+
+  it('the allow-list only lists columns that really are write-only', () => {
+    // The direction that rots: a listed column later given a reader leaves a
+    // stale claim behind that would hide the next regression on the same column.
+    const stillWriteOnly = new Set(writeOnly());
+    const nowRead = Object.keys(WRITE_ONLY_BY_DESIGN).filter((k) => !stillWriteOnly.has(k));
+    expect(
+      nowRead,
+      'These are on the write-only allow-list but something reads them now — delete the entry: ' +
+        nowRead.join(', '),
+    ).toEqual([]);
+  });
+
+  it('every allow-list entry argues for itself', () => {
+    for (const [key, reason] of Object.entries(WRITE_ONLY_BY_DESIGN)) {
+      expect(reason.length, `${key}'s reason is too short to be an argument`).toBeGreaterThan(60);
+      expect(
+        reason,
+        `${key}'s reason names neither what supersedes it nor who owes the read`,
+      ).toMatch(/superseded|owned by|owner|source of truth|instead/i);
+    }
+  });
+});

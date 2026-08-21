@@ -34,6 +34,15 @@
 # delay noticing a dead stream, which is the right trade for a product whose
 # mail is bursty; what it buys is an alarm nobody learns to ignore.
 #
+# 🔴 THE TRAP EVERY SCHEDULED ALARM HERE SHARES. sgharlow/relay is a PUBLIC
+# repository, and GitHub automatically disables scheduled workflows in a public
+# repository after 60 days with no repository activity. So this watchdog — like
+# the other three — shares one failure mode with the thing it watches: a quiet
+# owner. GitHub emails before disabling, so it is not silent; that email is the
+# only warning, and a disabled workflow cannot report that it was disabled.
+# The full account, and the off-GitHub heartbeat that would close it, are in
+# .github/workflows/date-guards.yml.
+#
 # Feature: relay-standby
 
 name: Delivery webhook monitor
@@ -66,10 +75,22 @@ jobs:
             code=$(printf '%s' "$body" | tail -n1)
             payload=$(printf '%s' "$body" | sed '$d')
 
-            # Truncated: a non-200 from Vercel is a full HTML error page, and
-            # dumping it buries the one line that matters.
+            # 🔴 THIS WAS `head -c 400` AND IT CUT OFF THE ONE THING WORTH
+            # READING. `meaning` is the LAST key of the health payload, and the
+            # ten keys in front of it run past 250 bytes on a healthy cluster and
+            # further on an unhealthy one — so the explanation was truncated
+            # mid-sentence precisely when there was an explanation. The
+            # truncation rationale was sound for the wrong body: a non-200 from
+            # Vercel IS a full HTML error page and dumping it buries everything.
+            # So: extract `meaning` when the body is the JSON this endpoint
+            # returns, and keep truncating when it is not.
             echo "attempt $attempt -> HTTP $code"
-            printf '%s\n' "$payload" | head -c 400
+            meaning=$(printf '%s' "$payload" | jq -r '.meaning // empty' 2>/dev/null || true)
+            if [ -n "$meaning" ]; then
+              printf '%s\n' "$meaning"
+            else
+              printf '%s\n' "$payload" | head -c 400
+            fi
             echo
 
             if [ "$code" = "200" ]; then
@@ -83,15 +104,42 @@ jobs:
             fi
           done
 
-          echo "::error::No delivery event has EVER arrived, or the endpoint is unreachable (HTTP $code)."
-          echo "Resend is not delivering webhook events, so /circle cannot report what"
-          echo "happened to any message — it renders nothing, which an owner reads as"
-          echo "'no news' rather than 'we cannot see'."
+          # 🔴 THIS LINE READ "No delivery event has EVER arrived" FOR EVERY
+          # FAILURE, AND HAD BEEN WRONG SINCE 2026-08-15. That was the only
+          # unhealthy state when the text was written. `webhook-health.ts` has
+          # since grown three more — `refusing`, `deaf` and `mute` — and the
+          # commonest of them, a revoked RESEND_API_KEY, would have been reported
+          # as its opposite: an operator told "no event has ever arrived" goes to
+          # the webhook configuration page while every message the product sends
+          # is being refused at the door. The checklist below had the same shape:
+          # it was written for the original condition and never revisited.
+          #
+          # `lib/ops/monitor-diagnostics.test.ts` now derives the condition names
+          # from the `const healthy = ...` expression in webhook-health.ts and
+          # fails if this text does not mention one of them, so the next
+          # condition added cannot arrive without its diagnosis.
+          echo "::error::Delivery telemetry is UNHEALTHY or the endpoint is unreachable (HTTP $code). The printed 'meaning' above says which."
+          echo "The four states this alarms on, and what each one means:"
+          echo "  everHeard=false  No delivery event has EVER arrived — the webhook is unconfigured"
+          echo "                   or has never worked. Expected on a fresh deployment only."
+          echo "  refusing         The provider is REFUSING our sends and nothing has been accepted"
+          echo "                   since. Relay is sending no mail at all: invitations, verifier"
+          echo "                   notices and access codes are all failing. THIS IS THE OUTAGE."
+          echo "  deaf             Messages were accepted more than the settle window ago and"
+          echo "                   nothing was reported back about any of them — the event stream"
+          echo "                   has stopped, so /circle cannot say what became of any message."
+          echo "  mute             Events are arriving for messages with no send record, so"
+          echo "                   recordSendAttempt has stopped writing and this check would"
+          echo "                   otherwise revert to reporting healthy no matter what."
           echo ""
-          echo "Check, in order:"
-          echo "  1. Resend dashboard -> Webhooks: does the endpoint exist and point at"
-          echo "     https://relaystandby.com/api/resend/webhook ?"
-          echo "  2. Does RESEND_WEBHOOK_SECRET in Vercel still match the endpoint's"
-          echo "     signing secret? A rotation there silently drops every event."
-          echo "  3. npx tsx --env-file=.env.local scripts/verify-delivery-webhook.ts <your-address>"
+          echo "Check, in the order the state implies:"
+          echo "  refusing -> RESEND_API_KEY first (revoked or wrongly rotated is the commonest"
+          echo "              cause), then whether the Resend account is suspended and the sending"
+          echo "              domain still verified. docs/secret-rotation-runbook.md §RESEND_API_KEY."
+          echo "  deaf     -> Resend dashboard -> Webhooks: does the endpoint exist and point at"
+          echo "              https://relaystandby.com/api/resend/webhook ? Does RESEND_WEBHOOK_SECRET"
+          echo "              in Vercel still match its signing secret? A rotation silently drops every event."
+          echo "  mute     -> a privilege or schema change on email_send_attempts; migration 030"
+          echo "              already locked the application out of that table once."
+          echo "  any      -> npx tsx --env-file=.env.local scripts/verify-delivery-webhook.ts <your-address>"
           exit 1

@@ -352,7 +352,15 @@ function ProposePerson({ vault, onProposed }: { vault: Vault; onProposed: () => 
 
       <label htmlFor="p-role" style={{ display: 'block', fontSize: 'var(--t3)', fontWeight: 600, marginTop: 12 }}>How would you describe them?</label>
       <select id="p-role" value={role} onChange={(e) => setRole(e.target.value)} style={fieldStyle}>
-        {['recipient', 'partner', 'caregiver', 'executor'].map((r) => <option key={r} value={r}>{r}</option>)}
+        {/*
+          was: ['recipient', 'partner', 'caregiver', 'executor'] — a second,
+          hand-copied version of VALID_ROLES. `executor` is gone for the reason
+          recorded on the owner's own form in PeopleSections.tsx: /terms says
+          there is no executor role, and estate was withdrawn permanently on
+          2026-08-14, so the label promised a capability and did nothing.
+          role-options.test.ts reads both selects, because they are two lists.
+        */}
+        {['recipient', 'partner', 'caregiver'].map((r) => <option key={r} value={r}>{r}</option>)}
       </select>
 
       {/*

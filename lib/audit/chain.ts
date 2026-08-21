@@ -28,6 +28,46 @@ export function computeEntryHash(prevHash: string, entry: unknown): string {
   return sha256(prevHash + canonicalJson(entry));
 }
 
+/**
+ * The primary key an entry at `(ownerId, seq)` MUST carry.
+ *
+ * 🔴 THIS IS A GUARD, NOT AN IDENTIFIER SCHEME. `audit_log.id` was
+ * `gen_random_uuid()` and `idx_audit_log_owner_seq` is non-unique, so nothing at
+ * the database level stopped two rows sharing `(owner_id, seq)`. The writer
+ * reads MAX(seq) and INSERTs as two autocommit statements — there is no BEGIN
+ * anywhere in this repo — and two INSERTs of DIFFERENT primary keys do not
+ * conflict under snapshot isolation, so an overlapping pair of writers for one
+ * owner forked the chain and nothing raised SQLSTATE 40001 to retry.
+ *
+ * Deriving the key from the position in the chain makes that collision a
+ * WRITE-WRITE CONFLICT ON ONE ROW, which is precisely the thing DSQL does
+ * detect: the loser is refused (duplicate key, or 40001) and takes the next seq
+ * instead. Safety by structure rather than by a comment asking a future writer
+ * to remember — and it needs no migration, which matters because a migration
+ * here is a sysadmin act that lands separately from the code.
+ *
+ * A UNIQUE index on `(owner_id, seq)` would express the same rule more directly.
+ * It is not used because Aurora DSQL may not enforce UNIQUE secondary indexes —
+ * migration 002 is the unapplied draft that records exactly that, and
+ * `lib/auth/upsert-user.ts` documents the production 500 that discovering it
+ * cost. A primary key is enforced.
+ *
+ * Rows written before 2026-08-21 carry random ids; they are untouched and still
+ * verify, because the hash chain never covered `id` (it is in
+ * `HASH_EXCLUDED_KEYS`). The guard binds from the next append onward.
+ *
+ * Shaped as an RFC 9562 version-8 (custom) UUID so the `UUID` column accepts it
+ * and nobody mistakes it for a random one.
+ */
+export function auditEntryId(ownerId: string, seq: number): string {
+  const h = sha256(`audit_log:${ownerId}:${seq}`);
+  const variant = ((parseInt(h[16], 16) & 0x3) | 0x8).toString(16);
+  return (
+    `${h.slice(0, 8)}-${h.slice(8, 12)}-8${h.slice(13, 16)}-` +
+    `${variant}${h.slice(17, 20)}-${h.slice(20, 32)}`
+  );
+}
+
 /** Minimal shape a chain entry must expose for verification. */
 export interface ChainEntry {
   seq: number;

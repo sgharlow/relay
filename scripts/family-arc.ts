@@ -22,6 +22,7 @@
  */
 
 import { query, closeAllPools } from '../lib/db/connection';
+import { deleteAccount } from '../lib/account/lifecycle';
 import { writeAuditEntry } from '../lib/audit/audit-service';
 import { issueRecipientToken } from '../lib/auth/recipient-token';
 import { createDelegation, recordConsent, getActiveDelegation } from '../lib/people/delegation';
@@ -42,27 +43,32 @@ const note = (s: string) => {
 };
 const step = (n: string) => console.log(`\n── ${n} ${'─'.repeat(Math.max(0, 58 - n.length))}`);
 
+/**
+ * Remove a fixture account and everything it owns.
+ *
+ * 🔴 THIS WAS TEN HAND-WRITTEN DELETEs, EACH WRAPPED IN A SILENT `catch`. Two
+ * problems compounded. The list named ten of the twenty-one tables
+ * `deleteAccount()` touches, so an arc that issued an invitation, took a
+ * delegation with a consent artifact, minted recipient or verifier codes or
+ * enrolled a passkey left every one of those rows behind — with a dangling
+ * owner_id, on the PRODUCTION cluster, because `.env.local` is the only cluster
+ * there is. And the swallowed exception meant a failed delete looked exactly
+ * like a table that had no rows.
+ *
+ * `deleteAccount()` is the integrity layer for a schema with no foreign keys.
+ * It also cancels billing before it destroys anything and releases the standby
+ * roles this user holds in OTHER owners' rosters — the 2026-08-12 production
+ * incident, and rows no `WHERE owner_id = $1` can reach.
+ *
+ * audit_log is purged afterwards for the reason reset-demo.ts gives: the
+ * cascade retains it on purpose so a real closure leaves a record, and a fixture
+ * arc that re-runs under a fresh id would leave that record pointing at nobody.
+ */
 async function purge(email: string): Promise<void> {
   const u = await query<{ id: string }>(`SELECT id FROM users WHERE email = $1`, [email]);
   for (const row of u.rows) {
-    for (const sql of [
-      `DELETE FROM access_requests WHERE owner_id=$1`,
-      `DELETE FROM delegations WHERE owner_id=$1 OR delegate_user_id=$1`,
-      `DELETE FROM verifier_confirmations WHERE release_state_id IN (SELECT id FROM release_state WHERE owner_id=$1)`,
-      `DELETE FROM access_rules WHERE owner_id=$1`,
-      `DELETE FROM release_state WHERE owner_id=$1`,
-      `DELETE FROM vault_items WHERE owner_id=$1`,
-      `DELETE FROM recipients WHERE owner_id=$1`,
-      `DELETE FROM verifiers WHERE owner_id=$1`,
-      `DELETE FROM audit_log WHERE owner_id=$1`,
-      `DELETE FROM users WHERE id=$1`,
-    ]) {
-      try {
-        await query(sql, [row.id]);
-      } catch {
-        /* table absent for this owner */
-      }
-    }
+    await deleteAccount(row.id);
+    await query(`DELETE FROM audit_log WHERE owner_id=$1`, [row.id]);
   }
 }
 

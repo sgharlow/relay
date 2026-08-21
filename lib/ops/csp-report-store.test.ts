@@ -140,3 +140,60 @@ describe('the route that calls it', () => {
     expect(readFileSync(ROUTE, 'utf8')).toContain('process.stderr.write');
   });
 });
+
+/**
+ * 🔴 THE SINK HAD NO READER, AND D9 WAS CLOSED ANYWAY.
+ *
+ * Migration 038 states its own purpose: "observe real traffic, remove what
+ * nothing needs, then take the middleware decision on evidence." This module
+ * writes the rows. Until 2026-08-21 a grep for `FROM csp_reports` across lib/,
+ * src/, scripts/, docs/ and PROJECT.yaml returned nothing at all — no script, no
+ * endpoint, no query. The report-only rung exists to answer one question and
+ * there was no way to ask it.
+ *
+ * Moving evidence from a log that forgets in a day to a table nobody opens is
+ * not progress; it is the same silence with a longer retention. And the
+ * column-use guard could not see it — `schema-columns-are-used.test.ts` matches
+ * a column mentioned anywhere, so `disposition`, `directive`, `blocked` and
+ * `document` all passed on the strength of appearing in the INSERT above.
+ *
+ * ⚠️ THE READER CANNOT BE RUN HERE. It needs `.env.local`, which points at the
+ * production cluster. So this asserts the reader EXISTS and asks the right
+ * question; whether its output is useful is a thing a person finds out by
+ * running it. That is the honest limit of a credential-free suite, and stating
+ * it is better than a check that implies more than it does.
+ */
+describe('something can read what this writes', () => {
+  const READER = 'scripts/verify-csp.ts';
+
+  it('a reader exists', async () => {
+    const { existsSync } = await import('node:fs');
+    expect(
+      existsSync(READER),
+      `${READER} is gone. csp_reports is then a write-only table again, and the report-only ` +
+        'CSP rung has no way to produce the evidence it exists to gather — which is the state ' +
+        'D9 was closed in.',
+    ).toBe(true);
+  });
+
+  it('it actually queries the table, rather than being a file named after one', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync(READER, 'utf8');
+    expect(src).toMatch(/FROM csp_reports/i);
+    // The split that is the whole point: `enforce` means a real page broke,
+    // `report` means the stricter policy would have blocked and nothing did.
+    expect(src, 'the reader does not distinguish enforced from report-only').toContain(
+      'disposition',
+    );
+  });
+
+  it('never deletes — pruning is a decision about the observation window', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync(READER, 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, ' ')
+      .split('\n')
+      .map((l) => l.replace(/\/\/.*$/, ''))
+      .join('\n');
+    expect(src).not.toMatch(/DELETE\s+FROM|TRUNCATE/i);
+  });
+});

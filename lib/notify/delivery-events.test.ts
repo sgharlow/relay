@@ -17,7 +17,13 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import { attributableToRelay, recordDeliveryEvent, classify, MAX_DETAIL_CHARS } from './delivery-events';
+import {
+  attributableToRelay,
+  recordDeliveryEvent,
+  recordSendRefusal,
+  classify,
+  MAX_DETAIL_CHARS,
+} from './delivery-events';
 import { query } from '../db/connection';
 
 vi.mock('../db/connection', () => ({ query: vi.fn(async () => ({ rows: [], rowCount: 0 })) }));
@@ -177,5 +183,85 @@ describe('classify', () => {
   it('never invents a reassuring verdict for an event it does not know', () => {
     expect(classify('email.opened')).toBe('unknown');
     expect(classify('')).toBe('unknown');
+  });
+});
+
+/**
+ * 🔴 THE HALF OF THE SWITCH THAT WAS NEVER RECORDED (found 2026-08-21).
+ *
+ * `recordSendAttempt` runs only AFTER Resend has accepted a message. So a
+ * revoked or wrongly-rotated `RESEND_API_KEY`, a suspended shared account, a
+ * sending-domain restriction — any 4xx — wrote nothing at all: zero attempt
+ * rows, zero events, `/api/health/delivery-webhook` reading "a quiet week" and
+ * answering 200, and the only trace a `[notify] email … failed` line in a log
+ * that ages out in a day. The dead-man's switch would have armed and rung a
+ * bell nobody hears, and `docs/secret-rotation-runbook.md` claimed the exact
+ * opposite: "RESEND_API_KEY fails loudly — all mail stops, and
+ * delivery-webhook-monitor.yml notices."
+ *
+ * A refusal is now an attempt row too, marked so it can never be mistaken for
+ * an accepted send. No new column, so this works on a cluster today rather than
+ * after a migration lands.
+ */
+describe('recordSendRefusal', () => {
+  it('writes an attempt row a Resend id can never collide with', async () => {
+    await recordSendRefusal('validation_error');
+
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain('INSERT INTO email_send_attempts');
+    expect(String(params[0])).toMatch(/^refused:validation_error:/);
+  });
+
+  it('gives every refusal its own row, so two are two', async () => {
+    await recordSendRefusal('rate_limit_exceeded');
+    await recordSendRefusal('rate_limit_exceeded');
+    const first = (mockQuery.mock.calls[0] as [string, unknown[]])[1][0];
+    const second = (mockQuery.mock.calls[1] as [string, unknown[]])[1][0];
+    expect(first).not.toBe(second);
+  });
+
+  /*
+    THE MARKER IS TELEMETRY, NOT A LOG LINE. This table is deliberately the least
+    personal thing Relay stores — an id and a timestamp, no recipient and no body
+    (migration 031) — and a provider error message can quote the address it
+    refused. So an input that looks anything like an address never becomes a
+    marker, and the rest is reduced to a bounded class name.
+  */
+  it('never lets an address become a marker', async () => {
+    await recordSendRefusal('bounced: alex@example.org is suppressed');
+    const marker = String((mockQuery.mock.calls[0] as [string, unknown[]])[1][0]);
+    expect(marker).toMatch(/^refused:unknown:/);
+    expect(marker).not.toContain('alex');
+    expect(marker).not.toContain('example');
+  });
+
+  it('bounds and normalises the class name', async () => {
+    await recordSendRefusal('  Validation Error!!  ');
+    expect(String((mockQuery.mock.calls[0] as [string, unknown[]])[1][0])).toMatch(
+      /^refused:validation_error:/,
+    );
+
+    mockQuery.mockClear();
+    await recordSendRefusal('x'.repeat(200));
+    const marker = String((mockQuery.mock.calls[0] as [string, unknown[]])[1][0]);
+    expect(marker.split(':')[1]).toHaveLength(40);
+  });
+
+  it('falls back to a class rather than writing nothing at all', async () => {
+    await recordSendRefusal('   ');
+    expect(String((mockQuery.mock.calls[0] as [string, unknown[]])[1][0])).toMatch(
+      /^refused:unknown:/,
+    );
+  });
+
+  /*
+    Same direction as `recordSendAttempt`, and for the same reason: telemetry
+    must never be able to fail the thing it measures. A dropped refusal row makes
+    the switch slightly less likely to fire, never more.
+  */
+  it('swallows a database failure — it is telemetry about an error, mid-error', async () => {
+    mockQuery.mockRejectedValueOnce(new Error('DSQL unreachable'));
+    await expect(recordSendRefusal('validation_error')).resolves.toBeUndefined();
   });
 });

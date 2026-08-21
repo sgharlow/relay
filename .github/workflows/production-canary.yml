@@ -1,12 +1,17 @@
 # Synthetic canary against production.
 #
-# WHAT THIS IS FOR, AND WHY IT IS NOT AN ERROR REPORTER. Next 14 gives no global
-# hook for route errors, so anything wired in-app only covers the handlers
-# someone remembered to wrap — the wrong shape for catching a failure nobody
-# anticipated. On 2026-08-08 a validly signed verifier link returned an
-# unhandled 500 in production, behind a green suite of a thousand tests, and it
-# was found by a person poking at it by hand. This exercises the real paths from
-# outside, on a schedule, so the next one is found by a machine at 3am instead.
+# WHAT THIS IS FOR, AND WHY IT IS NOT AN ERROR REPORTER. On 2026-08-08 a validly
+# signed verifier link returned an unhandled 500 in production, behind a green
+# suite of a thousand tests, and it was found by a person poking at it by hand.
+# This exercises the real paths from outside, on a schedule, so the next one is
+# found by a machine at 3am instead.
+#
+# ⚠️ THIS SAID "Next 14 gives no global hook for route errors" UNTIL 2026-08-21,
+# which stopped being true at the Next 16 upgrade — `onRequestError` exists and
+# lib/ops/error-reporter.ts is wired to it. The two are complements: the hook
+# reports what the application THREW; this asserts that the refusals still
+# refuse, and a boundary that quietly starts answering 200 throws nothing for
+# any hook to catch.
 #
 # WHY THE CHECKS ARE BEHAVIOURAL. Every page in this app returned 200 for the
 # entire time that verifier link was broken. So these assert that forged tokens
@@ -20,16 +25,45 @@
 # Hosted here rather than on Vercel for the same reason as the scheduler
 # monitor: a watchdog must be able to outlive the thing it watches.
 #
+# 🔴 THE TRAP EVERY SCHEDULED ALARM HERE SHARES. sgharlow/relay is a PUBLIC
+# repository, and GitHub automatically disables scheduled workflows in a public
+# repository after 60 days with no repository activity. So this watchdog — like
+# the other three — shares one failure mode with the thing it watches: a quiet
+# owner. GitHub emails before disabling, so it is not silent; that email is the
+# only warning, and a disabled workflow cannot report that it was disabled.
+# The full account, and the off-GitHub heartbeat that would close it, are in
+# .github/workflows/date-guards.yml.
+#
 # Feature: relay-h0-mvp (CC9)
 
 name: Production canary
 
 on:
   schedule:
-    # Every 15 minutes. Fast enough that a broken deploy is caught before much
-    # paid traffic lands on it, slow enough to stay far inside free minutes.
+    # Every 15 minutes. ("Fast enough that a broken deploy is caught before much
+    # paid traffic lands on it" until 2026-08-21 — paid advertising was retired
+    # on 2026-08-16.) The cadence stands on its own: a broken deploy is caught
+    # within a quarter of an hour of landing, and this stays far inside free
+    # minutes.
     - cron: '*/15 * * * *'
-  workflow_dispatch: {} # so the alarm can be proven to work on demand
+  # 🔴 THIS SAID `workflow_dispatch: {} # so the alarm can be proven to work on
+  # demand` FOR ITS WHOLE LIFE AND THE COMMENT WAS FALSE. The probe step ran the
+  # canary with no argument, so a manual run could only ever hit production and
+  # could only ever pass; making it go red needed a commit, which is exactly what
+  # nobody does to test an alarm. In ~1,200 scheduled runs since 2026-08-08 this
+  # workflow has never been red once, and B4's own bar is that a checker which
+  # has only ever passed has not been seen to work.
+  #
+  # `scripts/canary.ts` already accepted a base URL — `argv[2]`, then
+  # CANARY_BASE_URL — and this file simply never passed one. Dispatch it against
+  # an unreachable host to force every check to fail and confirm the resulting
+  # GitHub notification actually reaches a watched inbox.
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Base URL to probe. Point it somewhere dead to prove the alarm fires.'
+        required: false
+        default: 'https://relaystandby.com'
   push:
     branches: [master]
     paths:
@@ -58,6 +92,12 @@ jobs:
           node-version: '22'
 
       - name: Probe production
+        # `inputs.base_url` is empty on a scheduled or push run, so the fallback
+        # is what the schedule uses and the dispatch default is only there to
+        # make the manual form self-explanatory. The scheduled behaviour is
+        # unchanged by this.
+        env:
+          CANARY_BASE_URL: ${{ inputs.base_url || 'https://relaystandby.com' }}
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/canary.ts
 
       - name: Explain a failure

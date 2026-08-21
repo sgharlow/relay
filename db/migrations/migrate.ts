@@ -1,13 +1,13 @@
 /**
  * db/migrations/migrate.ts
  *
- * Applies the 001_initial.sql DDL migration against an Aurora DSQL endpoint.
+ * Applies ONE named DDL migration against an Aurora DSQL endpoint.
  *
  * Usage:
- *   npx tsx db/migrations/migrate.ts                        # applies 001_initial.sql (default)
- *   npx tsx db/migrations/migrate.ts 002_unique_auth_sub.sql  # applies a specific migration
+ *   npx tsx db/migrations/migrate.ts 0NN_name.sql   # the filename is REQUIRED
  *
  * Migrations are NOT tracked in a table; pass the file you intend to apply.
+ * There is no default and there must not be one — see the SQL_FILENAME note.
  * 001 is the fresh-schema bootstrap; later files (e.g. 002) are applied
  * individually, under the infra-change gate where relevant.
  *
@@ -34,6 +34,11 @@ import fs from 'fs';
 import path from 'path';
 import { Client } from 'pg';
 import { DsqlSigner } from '@aws-sdk/dsql-signer';
+// Pure and file-free (it takes SQL text, not paths), so importing it here costs
+// no database and no credentials — and it is the SAME parser `verify:schema`
+// uses, which is what stops this tool and that check disagreeing about what a
+// migration declares.
+import { declaredTables } from '../../lib/db/schema-manifest';
 
 // ---------------------------------------------------------------------------
 // Configuration — read from environment variables
@@ -84,9 +89,24 @@ function passwordSource(): string | (() => Promise<string>) {
 }
 
 // ---------------------------------------------------------------------------
-// Read SQL file — defaults to 001_initial.sql; pass a filename to apply another.
+// Read SQL file. THE FILENAME IS REQUIRED.
+//
+// 🔴 IT USED TO DEFAULT: `process.argv[2] ?? '001_initial.sql'`. A bare
+// invocation against the production cluster therefore re-ran the bootstrap, as
+// `admin`, with DDL rights. It was harmless only by accident — every CREATE
+// TABLE hits 42P07 and is skipped below — and migration 029's header had
+// already had to warn "migrate.ts applies ONE named file and silently applies
+// 001 if called bare — pass the filename". That is a comment asking somebody to
+// remember, on the one tool here that can drop a table. Removed 2026-08-21.
 // ---------------------------------------------------------------------------
-const SQL_FILENAME = process.argv[2] ?? '001_initial.sql';
+const SQL_FILENAME = process.argv[2];
+if (!SQL_FILENAME) {
+  console.error('[migrate] ERROR: name the migration to apply.');
+  console.error('  npx tsx --env-file=.env.admin db/migrations/migrate.ts 0NN_name.sql');
+  console.error('  Migrations are NOT tracked in a table, so this applies exactly what you name');
+  console.error('  and nothing else. `npm run verify:schema` reports what a cluster has.');
+  process.exit(1);
+}
 // Basename only — never apply files outside this directory.
 const SQL_FILE = path.resolve(__dirname, path.basename(SQL_FILENAME));
 
@@ -161,22 +181,32 @@ async function migrate(): Promise<void> {
     const tables = result.rows.map((r) => r.tablename);
     console.log('[migrate] Tables present in public schema:', tables);
 
-    const EXPECTED_TABLES = [
-      'access_rules',
-      'audit_log',
-      'recipients',
-      'release_state',
-      'users',
-      'vault_items',
-      'verifier_confirmations',
-      'verifiers',
-    ];
+    /*
+      🔴 THIS WAS A HAND-WRITTEN LIST OF EIGHT NAMES, and it printed
+      "All 8 expected tables are present" while the migrations declare far more.
+      A sanity check that congratulates you on a third of the schema is worse
+      than none, because it gets read as coverage.
 
-    const missing = EXPECTED_TABLES.filter((t) => !tables.includes(t));
-    if (missing.length > 0) {
-      console.warn('[migrate] WARNING: expected tables not found:', missing);
+      Derived instead from the file just applied, which is the only thing this
+      run can honestly speak for: apply 012 and it checks `access_requests`;
+      apply an ADD COLUMN migration and it correctly claims nothing. Whether the
+      CLUSTER matches every migration is `npm run verify:schema`'s question, and
+      it asks about columns and readability too.
+    */
+    const expected = declaredTables([sql]);
+    const missing = expected.filter((t) => !tables.includes(t));
+
+    if (expected.length === 0) {
+      console.log(
+        `[migrate] ${SQL_FILENAME} declares no new tables — nothing to sanity-check here. ` +
+          'Run `npm run verify:schema` to compare columns across both regions.',
+      );
+    } else if (missing.length > 0) {
+      console.warn('[migrate] WARNING: tables declared by this migration not found:', missing);
     } else {
-      console.log('[migrate] All 8 expected tables are present. ✓');
+      console.log(
+        `[migrate] All ${expected.length} table(s) declared by ${SQL_FILENAME} are present. ✓`,
+      );
     }
   } catch (err) {
     console.error('[migrate] ERROR during migration:', err);

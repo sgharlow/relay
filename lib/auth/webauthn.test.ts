@@ -50,9 +50,16 @@ import {
   verifyAuthenticationResponse,
 } from '@simplewebauthn/server';
 import {
+  generateRegistrationOptions,
+  generateAuthenticationOptions,
+} from '@simplewebauthn/server';
+import {
   rpConfig,
   sealChallenge,
   openChallenge,
+  listCredentialIdsForUser,
+  beginRegistration,
+  beginAuthentication,
   finishRegistration,
   finishAuthentication,
   CHALLENGE_TTL_SECONDS,
@@ -263,5 +270,99 @@ describe('finishAuthentication', () => {
       finishAuthentication({ response: { id: 'cred-abc' } as never, expectedChallenge: 'c' }),
     ).rejects.toThrow();
     expect(mockQuery).toHaveBeenCalledTimes(1); // the lookup only
+  });
+});
+
+/**
+ * 🔴 THE HALF OF THE PASSKEY LAYER NO TEST EXECUTED (found 2026-08-21).
+ *
+ * `finishRegistration` and `finishAuthentication` were covered from the start —
+ * they are where the cryptography and the BIGINT trap live. The three functions
+ * that OPEN each ceremony were not: `listCredentialIdsForUser`,
+ * `beginRegistration`, `beginAuthentication`. Their only callers are the three
+ * `/api/webauthn/*` option routes, none of which has a route test either, so the
+ * inputs the browser is handed came from nothing that runs.
+ *
+ * Both option shapes are load-bearing rather than cosmetic. `excludeCredentials`
+ * is what stops a person who already registered this device meeting an opaque
+ * "InvalidStateError" dead end, and `residentKey: 'preferred'` is what makes the
+ * credential DISCOVERABLE — which is the entire [A1] stage-two promise that a
+ * contact who acts once in five years types nothing at all. An empty
+ * `allowCredentials` on the sign-in side is the same promise from the other end:
+ * naming credentials there would both require knowing who is signing in and
+ * disclose which ones exist.
+ */
+describe('beginRegistration — the options the browser is handed', () => {
+  it('excludes the passkeys this user already has, so a re-register is not a dead end', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ credential_id: 'cred-a' }, { credential_id: 'cred-b' }],
+      rowCount: 2,
+    } as never);
+
+    await beginRegistration({ id: 'u-1', email: 'owner@example.com' });
+
+    const opts = vi.mocked(generateRegistrationOptions).mock.calls[0][0];
+    expect(opts.excludeCredentials).toEqual([{ id: 'cred-a' }, { id: 'cred-b' }]);
+    expect(opts.rpID).toBe('relaystandby.com');
+  });
+
+  it('asks for a DISCOVERABLE credential — the whole of "types nothing at all"', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
+    await beginRegistration({ id: 'u-1', email: 'owner@example.com' });
+
+    const opts = vi.mocked(generateRegistrationOptions).mock.calls[0][0];
+    expect(opts.authenticatorSelection?.residentKey).toBe('preferred');
+    // 'preferred', not 'required': a contact holding a device that cannot do
+    // user verification must still be able to enrol at all.
+    expect(opts.authenticatorSelection?.userVerification).toBe('preferred');
+  });
+
+  it('returns the same challenge it puts in the options — one value, not two', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
+    const { options, challenge } = await beginRegistration({ id: 'u-1', email: 'a@b.com' });
+    expect(challenge).toBe(options.challenge);
+  });
+
+  it('names the user by their address, which is what the passkey manager shows', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
+    await beginRegistration({ id: 'u-1', email: 'owner@example.com' });
+
+    const opts = vi.mocked(generateRegistrationOptions).mock.calls[0][0];
+    expect(opts.userName).toBe('owner@example.com');
+    expect(opts.userDisplayName).toBe('owner@example.com');
+  });
+});
+
+describe('beginAuthentication — and what it deliberately does NOT say', () => {
+  it('names no credentials, so the sign-in page discloses nothing about who exists', async () => {
+    const { options, challenge } = await beginAuthentication();
+
+    const opts = vi.mocked(generateAuthenticationOptions).mock.calls[0][0];
+    expect(opts.allowCredentials).toBeUndefined();
+    expect(opts.rpID).toBe('relaystandby.com');
+    expect(challenge).toBe(options.challenge);
+  });
+
+  it('asks the database nothing — there is no identifier to look anything up by', async () => {
+    await beginAuthentication();
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+});
+
+describe('listCredentialIdsForUser', () => {
+  it('is scoped to the one user, and returns bare ids', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ credential_id: 'cred-a' }],
+      rowCount: 1,
+    } as never);
+
+    expect(await listCredentialIdsForUser('u-1')).toEqual(['cred-a']);
+    expect(String(mockQuery.mock.calls[0][0])).toContain('user_id = $1');
+    expect(mockQuery.mock.calls[0][1]).toEqual(['u-1']);
+  });
+
+  it('returns an empty list rather than throwing for a user with none', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as never);
+    expect(await listCredentialIdsForUser('u-2')).toEqual([]);
   });
 });

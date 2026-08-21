@@ -8,20 +8,35 @@
 > The flip itself is Steve's, and it is one line. Everything else on this page is what has to move
 > with it.
 
-## Preconditions — all met as of 2026-08-20
+## Preconditions — ~~all met as of 2026-08-20~~ three of four; row 1 was not (corrected 2026-08-21)
 
 The flip converts an expired card into a **blocked release** — the one thing the product exists to
 do, stopped by a billing event. These are what make that survivable rather than silent:
 
 | # | Precondition | State |
 |---|---|---|
-| 1 | A failed renewal tells the owner (S3-1) | ✅ `lib/billing/lapse-notice.ts`, wired into the webhook |
+| 1 | A failed renewal tells the owner (S3-1) | ⚠️ **was BROKEN when this table was written** — see below |
 | 2 | The final lapse tells them too | ✅ same module, deduped on the subscription id |
 | 3 | `/terms` says what a lapse does to their data (S3-2) | ✅ "If you stop paying, nothing is deleted" |
 | 4 | The post-lapse behaviour is pinned by tests | ✅ `lib/ops/post-lapse-state.test.ts` |
 
 **Without 1 and 2, the flip means somebody's release stops working because of an email they never
 got.** That was the state until this sprint.
+
+> 🔴 **Row 1 read `✅ lib/billing/lapse-notice.ts, wired into the webhook` on 2026-08-20 and the
+> notice could not have fired.** The handler read `invoice.subscription`, a field the pinned API
+> version (`2026-07-29.dahlia`) does not put on an Invoice — it moved to
+> `parent.subscription_details.subscription`. `subId` resolved to `undefined`, the case broke, and
+> the endpoint answered `{received:true}`: a clean 200 in Stripe's dashboard for an event that told
+> nobody anything. Fixed 2026-08-21, both shapes now read, with a unit test per shape
+> (`src/app/api/stripe/webhook/route.test.ts`).
+>
+> **The lesson for this page, not just for that bug:** every precondition in the table above was
+> established by reading code and greps, and this one passed both — the module existed, the webhook
+> called it, and a test asserted the call. What no check asked was whether the payload it reads
+> looks like the payload Stripe sends. Row 1 is now `built`, not `live-proven`; **E1-prime is still
+> the open half**, and that is a precondition of the flip rather than a nicety
+> (`PROJECT.yaml → deferred → the-lapse-notice-is-wired-not-live-proven`).
 
 ## The three artifacts, grep-verified
 
@@ -39,6 +54,49 @@ mentions it only in a comment explaining why the notices exist.
 
 ⚠️ **The manual ships twice.** `public/guide/index.html` and `public/guide/relay-guide.pdf` are the
 same document, and `scripts/guide-pdf.mjs` exists because the two were able to drift. Re-run it.
+
+## 🔴 The flip does NOT paywall releases. It paywalls one of four ways a release starts.
+
+> Added 2026-08-21. **This is an open decision, not a finding with a fix**, and it belongs to Steve
+> before the flip rather than after it.
+
+`assertCanRelease` is called in exactly **one** place — `lib/release/triggers.ts:126`, inside
+`initiateTrigger`. Found by grepping `assertCanRelease` across `lib/`, `src/` and `scripts/`, the
+same way the three artifacts above were found. But `armed → pending` is reached from **four**
+places, and `lib/release/*.ts` imports nothing from `lib/billing` except that one file:
+
+| # | Path | Where | Who starts it | Gated today |
+|---|---|---|---|---|
+| 1 | Owner presses Initiate | `lib/release/triggers.ts:135` | the owner, deliberately | ✅ yes |
+| 2 | Missed check-in | `lib/release/heartbeat.ts:287` | the **cron**, on silence | ❌ no |
+| 3 | Owner consents to an access request | `lib/release/challenge.ts:96` | a recipient asks, the owner agrees | ❌ no |
+| 4 | Owner silent on a challenge | `lib/release/escalation.ts:109` | **nobody** — the clock | ❌ no |
+
+(`lib/release/simulate.ts:70` is a fifth transition and is not in scope: it is the demo control,
+route-gated to demo accounts, and `getEntitlement` resolves a demo account to `paid` regardless.)
+
+**So after the flip, a free or lapsed owner cannot press Initiate — and a missed check-in, an
+access request they consent to, or an unanswered challenge still releases.** Whether that is the
+product or a hole is genuinely undecided, and both readings are defensible:
+
+- **Only the manual path is paywalled** (leave as is). The dead-man's-switch is the promise Relay
+  makes to a family; a card that expired while somebody was in hospital is the exact moment not to
+  enforce billing. This is the same argument that put `past_due` inside `ACTIVE_STATUSES`.
+- **All four are paywalled.** Otherwise the paywall is on the one path an owner controls and off
+  the three that fire on their behalf, which is close to no paywall at all — and paths 2 and 4 need
+  no owner action, so a lapsed account would keep doing the paid thing indefinitely.
+
+⚠️ **The current change-set does not detect this.** "Proven: flipping `canRelease` to `false` turns
+three tests red" is true and does not help — none of those three asserts *where* the gate is
+applied. That is `feedback-a-guard-on-the-wrong-gate` exactly: assert **where** a check runs, not
+only that the helper works. Whichever way the ruling goes, the flip commit should carry a test
+naming all four paths and asserting the gate sits on each one that is meant to be gated — a table
+that fails when a fifth path appears, rather than a comment asking the next author to remember.
+
+**Also unwritten either way:** `/terms` and guide §2.7 describe what the free plan can do. If paths
+2–4 stay ungated, that is a *feature* a free owner has and neither document mentions it; if they
+are gated, both documents become wrong on the day of the flip. One of those edits belongs in the
+same commit.
 
 ## What already couples them — and what did not
 
@@ -96,6 +154,12 @@ public/guide/index.html            §2.7 — the free limits no longer "apply on
                                    adding more"; a free or lapsed account cannot release
 public/guide/relay-guide.pdf       re-run `node scripts/guide-pdf.mjs`
 PROJECT.yaml                       record the ruling on ratified.beta-free-release
+                                   AND the ruling on the four armed->pending paths
+lib/release/<per the ruling>       if paths 2-4 are to be gated, the call goes on each
+                                   one — plus a test that names all four, so a fifth
+                                   path cannot appear ungated and unnoticed
+/terms + guide §2.7                whichever way the ruling goes, one of them is
+                                   currently silent on what a free plan can still do
 ```
 
 **Then run:** `npm run gate`, and `npm run verify:live` — the paywall sits on the release path, and

@@ -79,6 +79,19 @@ async function existingGrantIds(ownerId: string, policyId: string): Promise<stri
 /**
  * What WOULD change if this policy's predicate became `next`. The owner sees
  * revocations before confirming them (J4-R14).
+ *
+ * ⚠️ NO CALLER, AND THAT IS A RULING RATHER THAN AN OMISSION — recorded here
+ * 2026-08-21 because reading this function alone suggests a screen that does
+ * not exist. `PROJECT.yaml → ratified.policy-edit-routes` (2026-08-13) retired
+ * PUT/DELETE `/api/policies/[id]`: a policy is changed by removing it and
+ * writing another, so there is no edit for this to preview.
+ *
+ * J4-R14 therefore holds in halves. Its DELETE half is satisfied by
+ * `deletePoliciesForRecipient` (recipients.ts); its EDIT half cannot occur.
+ * Kept and tested rather than deleted, because restoring an edit path would
+ * need exactly this diff and it is the reconciliation logic that is hard to get
+ * right — but nothing here is wired, and a future reader should not infer
+ * otherwise from its presence.
  */
 export async function previewPolicyChange(
   ownerId: string,

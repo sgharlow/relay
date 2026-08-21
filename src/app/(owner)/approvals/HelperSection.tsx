@@ -149,25 +149,46 @@ export default function HelperSection({
     <section className="space-y-3">
       <h2 className="text-t5 font-semibold text-ink">Someone who helps you set this up</h2>
       <p className="text-ink">
-        A helper can add and tidy your information so you do not have to do it all yourself.
+        {/* was: "add and tidy your information" — "tidy" describes editing, which
+            a helper cannot do. See the note on the consent list below. */}
+        A helper can add your information for you, so you do not have to do it all yourself.
       </p>
 
       {/*
         The scopes, in plain words. DELEGATE_SCOPES is propose-level for people
-        and policies and contains nothing about decrypting, triggers or release —
-        that is the substance of the whole feature, and an owner deciding whether
-        to hand somebody this deserves to read it before the button, not after.
+        and contains nothing about decrypting, triggers or release — that is the
+        substance of the whole feature, and an owner deciding whether to hand
+        somebody this deserves to read it before the button, not after.
+
+        🔴 THIS LIST OVERSTATED BY THREE LINES UNTIL 2026-08-21. It was:
+
+            "add and edit items in your vault / import a list from elsewhere /
+             suggest people and access rules"
+
+        Editing and importing were never wired to a delegate: nothing calls
+        `requireScope(actor, 'items:update')` or `'import:run'` — /api/import is
+        `requireOwner` and PUT /api/vault/items/[id] is owner-only — and "access
+        rules" outlived `policies:propose`, which was removed on 2026-08-12 for
+        being exactly this, "a granted capability that silently does nothing…
+        worse than an absent one, because it reads as working". The scopes stayed
+        in DELEGATE_SCOPES, so the copy kept describing them.
+
+        On a CONSENT screen that is not untidiness: the list an owner is asked to
+        agree to was not the list of what they were agreeing to. Wiring the two
+        dead scopes to routes is a build and is demand-gated; saying what is true
+        is neither. HelperSection.test.ts reads the routes and fails if this list
+        runs ahead of them again — in either direction.
       */}
       <div className="rounded-lg border border-rule bg-paper-sunken p-4">
         <p className="font-medium text-ink">A helper can:</p>
         <ul className="mt-1 list-disc pl-5 text-ink">
-          <li>add and edit items in your vault</li>
-          <li>import a list from elsewhere</li>
-          <li><strong>suggest</strong> people and access rules — which then wait for you</li>
+          <li>add new items to your vault</li>
+          <li><strong>suggest</strong> people &mdash; which then wait for you</li>
         </ul>
         <p className="mt-3 font-medium text-ink">A helper can never:</p>
         <ul className="mt-1 list-disc pl-5 text-ink">
           <li>open or read anything in your vault</li>
+          <li>change or delete an item once it is in — only you can</li>
           <li>decide who gets access — every one of those comes to you first</li>
           <li>start, stop or change a release</li>
           <li>add themselves to anything</li>

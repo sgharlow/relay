@@ -22,7 +22,22 @@ import { getOwnerLabel } from '../../../../../../lib/people/owner-label';
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function POST(req: NextRequest, { params }: Ctx): Promise<NextResponse> {
-  const auth = await requireOwner();
+  /*
+    🔴 `req` — SO THIS COUNTS AS CHECKING IN. It was `requireOwner()` until
+    2026-08-21, and owner-route.ts states the consequence: "a route that does not
+    pass `req` records nothing."
+
+    The denial is the case that matters. An owner who reads "someone is asking
+    for access to your vault" and answers "I'm fine — no" has just proved, in
+    person and deliberately, that they are alive and holding their own account.
+    Nothing was stamped, so `runHeartbeatSweep` — which re-reads overdue owners
+    against `last_active_at` — went on treating them as silent. The most visibly
+    present owner in the product was invisible to the one column that measures it.
+
+    J5-R1: liveness derived from authenticated product activity. The user guide
+    puts it plainly: any deliberate action in the product counts as checking in.
+  */
+  const auth = await requireOwner(req);
   if (isResponse(auth)) return auth;
 
   const body = await readJson(req);

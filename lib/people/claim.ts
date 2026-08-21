@@ -164,7 +164,7 @@ export async function claimStandbyRole(params: {
   // earlier confirmation was an assertion about a DIFFERENT human holding this
   // slot and must not silently stand. The owner's light drops to amber and they
   // are asked again (Risk 8).
-  await query(
+  const bound = await query(
     // `break_glass_only` is cleared in the SAME statement as the binding, not by
     // a follow-up call: the marker records that somebody will never hold an
     // account, and they just did. A separate write could be forgotten or fail on
@@ -176,6 +176,25 @@ export async function claimStandbyRole(params: {
       WHERE id = $2 AND owner_id = $3`,
     [userId, invite.person_id, invite.owner_id],
   );
+
+  /*
+    🔴 NOBODY READ THIS ROWCOUNT UNTIL 2026-08-21, and one branch above skips
+    the only other check. Removing a person used to leave their invitation
+    behind (deleteRecipient/deleteVerifier cascaded rules and policies and
+    nothing else), so an orphan invitation could still be typed. The branch that
+    creates a user catches it — the email lookup returns nothing and refuses —
+    but the `existingUserId` branch never looks the person up, so a signed-in
+    contact reached this statement, matched ZERO rows, and carried on: the code
+    was burned, a session was minted with no role attached, and `standby_claimed`
+    went into the OWNER's tamper-evident log naming a person who does not exist.
+
+    The cascade is fixed at source. This is the guard at the place the mistake
+    lands, which is where it belongs — invitations minted before that fix have
+    up to thirty days left to run.
+  */
+  if (bound.rowCount === 0) {
+    throw new ValidationError(REFUSAL, 'token');
+  }
 
   // Against the OWNER: it is their circle that changed, and their audit chain
   // that has to be able to show when each person became reachable.

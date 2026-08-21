@@ -107,3 +107,50 @@ describe('the one thing only the reporter can know', () => {
     expect(after).toContain('catch');
   });
 });
+
+/**
+ * 🔴 THE FATE THE ALARM OF RECORD SHARES WITH A QUIET OWNER, and which nothing
+ * in this repo recorded until 2026-08-21.
+ *
+ * The B6 ruling rests on these three running off-platform, sharing fate with
+ * neither Vercel nor Resend. True — and all three, plus `date-guards.yml`, share
+ * fate with GitHub continuing to fire cron triggers. `sgharlow/relay` is a
+ * PUBLIC repository, and GitHub automatically disables scheduled workflows in a
+ * public repository after 60 days with no repository activity.
+ *
+ * That is the exact shape every header in this directory warns about, one layer
+ * further out: the product's dead-man is designed for an owner who has gone
+ * quiet, and the repo going quiet for two months turns the dead-men off. GitHub
+ * emails before disabling, so it is not silent — but a disabled workflow cannot
+ * report that it was disabled, and the warning lands in the same inbox the
+ * holiday is being taken away from.
+ *
+ * ⚠️ THIS TEST DOES NOT FIX IT. Closing it needs an off-GitHub heartbeat — a
+ * Route 53 health check or CloudWatch Synthetics canary alarming to the SNS
+ * topic `docs/backup-restore-runbook.md` proved reaches a human. That is new
+ * infrastructure with a cost, so it is proposed rather than taken. What this
+ * does is make the trap impossible to add a fourth scheduled alarm without
+ * meeting: every one of them has to carry the account of it.
+ */
+describe('every scheduled alarm records the trap it shares with the others', () => {
+  const SCHEDULED = [...MONITORS.map(([f]) => f), 'date-guards.yml'];
+
+  it.each(SCHEDULED)('%s names the 60-day auto-disable', (file) => {
+    expect(
+      read(file),
+      `${file} runs on a schedule and does not mention that GitHub disables scheduled ` +
+        'workflows in a public repository after 60 days of repository inactivity. Every ' +
+        'alarm here depends on that not happening, and a reader deciding whether this ' +
+        'workflow can be relied on during a quiet period needs to know it.',
+    ).toContain('after 60 days');
+  });
+
+  it('the scheduled set is the monitors plus the date guards, and nothing has been dropped', () => {
+    // A file removed from .github/workflows but left in this list would make the
+    // check above throw on a missing file rather than report a gap.
+    for (const f of SCHEDULED) {
+      expect(existsSync(join(WORKFLOWS, f)), `${f} is gone`).toBe(true);
+      expect(read(f), `${f} no longer runs on a schedule`).toContain('schedule:');
+    }
+  });
+});

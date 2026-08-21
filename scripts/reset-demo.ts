@@ -16,29 +16,36 @@
 
 import { query, closeAllPools } from '../lib/db/connection';
 import { seedDemo } from '../lib/seed/seed-runner';
+import { deleteAccount } from '../lib/account/lifecycle';
 
 const DEMO_EMAIL = 'demo@relay.test';
 
-/** Delete every row owned by `ownerId` across all tables (no FKs in DSQL). */
+/**
+ * Delete every row owned by `ownerId`.
+ *
+ * 🔴 THIS USED TO BE A HAND-WRITTEN LIST OF SEVEN TABLES, and the header above
+ * describes exactly why that could not hold: the public site keeps accruing
+ * guest changes. Every one of those changes lands in a table the list did not
+ * name — invitations, access_requests, delegations and their consent_artifacts,
+ * approvals, access_policies, recipient_codes and verifier_codes, break_glass
+ * codes, recovery codes, passkeys, auth_challenges. `deleteAccount()` purges
+ * twenty-one tables and this named six of them plus users, so every reset
+ * orphaned whatever had accrued since the last one, on the production cluster,
+ * and re-seeded a NEW owner id that could never be joined back to them.
+ *
+ * The cascade is also the only thing that releases the standby roles this user
+ * holds in other owners' rosters — rows a `WHERE owner_id = $1` cannot see.
+ *
+ * ⚠️ AND THEN THE AUDIT LOG, WHICH THE CASCADE DELIBERATELY KEEPS. deleteAccount
+ * retains audit_log because closing a real person's account must not erase the
+ * record that it happened. A demo reset is a different act: the seed mints a new
+ * owner id, so a retained row would be an orphan pointing at a user that no
+ * longer exists — the very thing this function was failing to prevent. So it is
+ * removed here, explicitly, after the cascade has returned.
+ */
 async function wipeOwner(ownerId: string): Promise<void> {
-  // verifier_confirmations is keyed by release_state_id, not owner_id — clear it
-  // via the owner's release_state rows before those rows are deleted.
-  await query(
-    `DELETE FROM verifier_confirmations
-      WHERE release_state_id IN (SELECT id FROM release_state WHERE owner_id = $1)`,
-    [ownerId],
-  );
-  for (const table of [
-    'audit_log',
-    'access_rules',
-    'release_state',
-    'verifiers',
-    'recipients',
-    'vault_items',
-  ]) {
-    await query(`DELETE FROM ${table} WHERE owner_id = $1`, [ownerId]);
-  }
-  await query(`DELETE FROM users WHERE id = $1`, [ownerId]);
+  await deleteAccount(ownerId);
+  await query(`DELETE FROM audit_log WHERE owner_id = $1`, [ownerId]);
 }
 
 async function main(): Promise<void> {

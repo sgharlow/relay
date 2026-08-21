@@ -99,10 +99,22 @@ function dsqlRegion(host: string): string {
  * authenticate as `admin` at all, so this is a wall rather than a convention —
  * the credential is incapable of the thing, not merely discouraged from it.
  *
- * ⚠️ UNSET MEANS ADMIN, AND THAT DEFAULT IS DELIBERATE. Production still runs
- * on the admin path; changing how the live application authenticates as a side
- * effect of adding an option is exactly the kind of silent change that breaks
- * things nobody was watching. Production moves when somebody sets the variable.
+ * ⚠️ UNSET MEANS ADMIN — a LOCAL affordance, not the production state.
+ *
+ * This paragraph read *"Production still runs on the admin path; … Production
+ * moves when somebody sets the variable"* until 2026-08-21. That was true for
+ * one day. Production moved on 2026-08-16: `DSQL_ROLE=relay_app` is set in
+ * Vercel and `dsql:DbConnectAdmin` was stripped from `relay-runtime-policy`
+ * (v2; v1 retained as the rollback). The comment on the function that CHOOSES
+ * the production identity was the last place still describing the before.
+ *
+ * The consequence of believing it is not academic. With the grant stripped, an
+ * unset `DSQL_ROLE` no longer means "admin, as always" — it means the live site
+ * mints an admin token it is not permitted to obtain and cannot connect at all.
+ * `lib/ops/iam-wall.ts` names the same hazard from the other direction.
+ *
+ * Both halves are re-measurable rather than remembered: `npm run verify:roles`
+ * for the database wall, `npm run verify:iam` for the IAM wall.
  */
 export function dsqlIdentity(): { user: string; admin: boolean } {
   const role = process.env.DSQL_ROLE?.trim();
@@ -209,22 +221,61 @@ export function getPool(): pg.Pool {
 // ---------------------------------------------------------------------------
 
 /**
- * Returns true for errors that indicate the underlying TCP connection or host
- * is unreachable — triggering a failover to the secondary pool.
+ * Connection errors come in two kinds and they must NOT be treated alike.
+ *
+ * 🔴 UNTIL 2026-08-21 THEY WERE. One predicate covered both, and `query()`
+ * re-issued the IDENTICAL SQL against the secondary for any of them. But
+ * ECONNRESET and a socket ETIMEDOUT can arrive AFTER the statement was sent and
+ * committed, and the two endpoints are one logical cluster — the runbook says
+ * so ("Regions are one logical cluster. A DELETE replicates to the peer"), and
+ * the 2026-08-20 close-out recorded the secondary already holding the primary's
+ * DDL. So the replay landed on the same data: a duplicate contact or vault
+ * item, a denial counted twice toward the halt threshold, a second audit row at
+ * the same seq.
+ *
+ * It failed in the flattering direction. The scenario the retry exists for — a
+ * wobbling primary connection — is exactly the scenario in which the write has
+ * already happened.
+ *
+ * PRE-SEND: the connection was never established, so the statement provably did
+ * not run. Replaying it is an at-most-once write, and this is the failover the
+ * demo switch and the runbook rely on. Unchanged.
  */
-function isConnectionError(err: unknown): boolean {
+function isPreSendConnectError(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
   const code = (err as NodeJS.ErrnoException).code;
   const msg = err.message.toLowerCase();
   return (
     code === 'ECONNREFUSED' ||
     code === 'ENOTFOUND' ||
-    code === 'ETIMEDOUT' ||
-    code === 'ECONNRESET' ||
     msg.includes('connection timeout') ||
+    msg.includes('timeout exceeded when trying to connect') ||
     msg.includes('connect econnrefused') ||
     msg.includes('connection refused')
   );
+}
+
+/**
+ * POST-SEND-POSSIBLE: the socket died and we cannot know whether the server
+ * applied the statement. The primary is still marked unhealthy — so the next
+ * call rotates and the failover story holds — but the statement itself is only
+ * replayed when it is a read.
+ */
+function isPostSendConnectionError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const code = (err as NodeJS.ErrnoException).code;
+  return code === 'ECONNRESET' || code === 'ETIMEDOUT';
+}
+
+/**
+ * Idempotent by construction, so a replay cannot change anything.
+ *
+ * A data-modifying CTE would have to begin with `WITH`, which this does not
+ * match — so "starts with SELECT" is a sufficient test rather than an
+ * optimistic one.
+ */
+function isReplayableRead(sql: string): boolean {
+  return /^\s*SELECT\b/i.test(sql);
 }
 
 // ---------------------------------------------------------------------------
@@ -234,10 +285,16 @@ function isConnectionError(err: unknown): boolean {
 /**
  * Executes a parameterised SQL query against the currently active pool.
  *
- * If a connection-level error is encountered (host unreachable, timeout, etc.)
- * the primary pool is marked unhealthy and the query is automatically retried
- * once against the secondary pool.  Query-level errors (e.g. constraint
- * violations, SQLSTATE 40001) are NOT retried here — callers handle those.
+ * On a connection-level error the primary pool is marked unhealthy, so this and
+ * subsequent requests inside the 60-second window route to the secondary. The
+ * STATEMENT is replayed on the secondary only when replaying it is safe: the
+ * connection never opened (so it provably did not run), or it is a read. A
+ * write that met a reset mid-flight is surfaced to the caller instead, because
+ * the caller — `withOccRetry`, an intent-read, a CAS on `version` — is the
+ * layer that knows whether repeating it is sound. See `isPreSendConnectError`.
+ *
+ * Query-level errors (constraint violations, SQLSTATE 40001) are NOT retried
+ * here — callers handle those.
  */
 export async function query<T extends pg.QueryResultRow = pg.QueryResultRow>(
   sql: string,
@@ -248,12 +305,17 @@ export async function query<T extends pg.QueryResultRow = pg.QueryResultRow>(
   try {
     return await pool.query<T>(sql, params);
   } catch (err) {
-    if (isConnectionError(err)) {
-      // Rotate to secondary for this and subsequent requests within the window
-      markPrimaryUnhealthy();
+    const preSend = isPreSendConnectError(err);
+    if (!preSend && !isPostSendConnectionError(err)) throw err;
+
+    // Rotate to secondary for subsequent requests within the window.
+    markPrimaryUnhealthy();
+
+    if (preSend || isReplayableRead(sql)) {
       const secondary = getSecondaryPool();
       return await secondary.query<T>(sql, params);
     }
+
     throw err;
   }
 }

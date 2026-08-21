@@ -13,7 +13,7 @@ import { Resend } from 'resend';
 
 import { alertEnvironmentLabel } from '../ops/alert-address';
 
-import { recordSendAttempt } from './delivery-events';
+import { recordSendAttempt, recordSendRefusal } from './delivery-events';
 import { textToHtml } from './text-to-html';
 import { recordSend } from './transcript';
 
@@ -186,20 +186,56 @@ export async function sendEmail(msg: EmailMessage): Promise<void> {
     headers, read at the mailbox — never Resend's `Delivered`, which cannot see
     which folder a message was filed into.
   */
-  const result = await getClient().emails.send({
-    from,
-    to: msg.to,
-    subject: msg.subject,
-    text: msg.text,
-    html: textToHtml(msg.text),
-    ...(replyTo ? { replyTo } : {}),
-  });
+  /*
+    🔴 EVERYTHING BELOW THIS LINE USED TO FAIL WITHOUT LEAVING A TRACE ANY
+    MONITOR COULD READ (found 2026-08-21). `recordSendAttempt` runs only after
+    acceptance, and `recordSend` is `lib/notify/transcript.ts` — in-memory, and
+    refusing to arm in production by design because these bodies carry live
+    access codes. So a revoked or wrongly-rotated `RESEND_API_KEY`, a suspended
+    shared Resend account, a sending-domain restriction, or any 4xx wrote NO row
+    at all: `/api/health/delivery-webhook` saw zero ripe sends, read that as a
+    quiet week, and answered 200 while every message Relay sent was refused.
+    `docs/secret-rotation-runbook.md` claimed the opposite in as many words.
+
+    `recordSendRefusal` is the row that gives that switch something to see. It is
+    awaited and cannot throw — telemetry must not be able to fail a send, and
+    this is telemetry mid-failure.
+
+    ⚠️ THE TWO GUARDS ABOVE ARE DELIBERATELY OUTSIDE IT. A reserved-TLD refusal
+    and the non-production allow-list are Relay working correctly; they fire on
+    every local run and `demo@relay.test` trips one in production by design.
+    Counting them would make the monitor alarm about itself, and a monitor that
+    cries wolf is a monitor that gets muted — the failure this file's own
+    neighbours keep recording.
+  */
+  let result: Awaited<ReturnType<Resend['emails']['send']>>;
+  try {
+    result = await getClient().emails.send({
+      from,
+      to: msg.to,
+      subject: msg.subject,
+      text: msg.text,
+      html: textToHtml(msg.text),
+      ...(replyTo ? { replyTo } : {}),
+    });
+  } catch (err) {
+    // A missing key (no client can be built) and a dead socket land here. Both
+    // mean the provider was never able to answer, which is the shape of the
+    // rotation failure the runbook was most confident about.
+    const message = `Resend could not be reached: ${String(err)}`;
+    recordSend(msg, { accepted: false, error: message });
+    await recordSendRefusal('transport');
+    throw new Error(message);
+  }
 
   // The error field is the ONLY signal that a send failed.
   if (result?.error) {
     const e = result.error as { name?: string; message?: string };
     const message = `Resend rejected the send: ${e.name ?? 'error'} — ${e.message ?? 'no message'}`;
     recordSend(msg, { accepted: false, error: message });
+    // The NAME only. `message` quotes the address it refused, and the attempts
+    // table is deliberately the least personal thing Relay stores.
+    await recordSendRefusal(e.name ?? 'error');
     throw new Error(message);
   }
 
@@ -207,6 +243,7 @@ export async function sendEmail(msg: EmailMessage): Promise<void> {
   if (!result?.data?.id) {
     const message = 'Resend returned no message id; the send cannot be considered accepted';
     recordSend(msg, { accepted: false, error: message });
+    await recordSendRefusal('no_message_id');
     throw new Error(message);
   }
 

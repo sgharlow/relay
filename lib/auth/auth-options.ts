@@ -16,6 +16,7 @@
 
 import type { NextAuthOptions, User } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
+import { getToken } from 'next-auth/jwt';
 import { validateTotpCodeFor } from './totp';
 import { resolveTotpSecret } from './resolve-totp-secret';
 import { upsertUser, type UserRecord } from './upsert-user';
@@ -46,6 +47,80 @@ function sourceAddress(headers: Record<string, unknown> | undefined): string | n
   if (typeof value !== 'string') return null;
   const first = value.split(',')[0]?.trim();
   return first ? first : null;
+}
+
+/**
+ * Who the caller ALREADY is, read from the session cookie that arrived with this
+ * request — never from the form body.
+ *
+ * 🔴 THE HOLE THIS CLOSES (found 2026-08-21, live since the standby providers
+ * shipped). `standby-claim` and `break-glass` declared `existingUserId` as a
+ * credential and passed it straight into `claimStandbyRole` / `redeemBreakGlass`,
+ * where `if (existingUserId) { userId = existingUserId }` skips ALL identity work
+ * and returns it as the claim's identity. `authorize` then SELECTed that row and
+ * minted a session as that user. So anybody holding one valid unclaimed code —
+ * normally their own legitimate invitation — could POST it to
+ * `/api/auth/callback/standby-claim` with a csrfToken from `/api/auth/csrf` and
+ * any user's UUID, and be signed in as that person. Account takeover, from a
+ * field the two real clients (ClaimClient.tsx, BreakGlassClient.tsx) never send.
+ *
+ * The multi-hat rule it was written for is real (§3.7 rule 2: a person who is
+ * already someone here must LINK a second relationship, never mint a second
+ * account, because a second `users` row severs every standby link they hold).
+ * What was wrong was the SOURCE of the answer. `/api/invitations/[token]` already
+ * had it right — it derives the id from `getOwnerSession()`. This is that same
+ * rule, spelled for a place where there is no session helper: authorization is
+ * read against the caller, never asserted by the caller.
+ *
+ * ⚠️ NextAuth v4 hands `authorize` `{ query, body, headers, method }` and NO
+ * `cookies`, and `getToken` reads `req.cookies` rather than parsing the header
+ * itself — so the bag has to be built here or the lookup silently finds nothing.
+ *
+ * FAILING TO READ A SESSION MEANS "NOT SIGNED IN", never "signed in as someone
+ * else": every path out of here returns either an id the cookie cryptographically
+ * proves or `undefined`, which mints a fresh identity — the behaviour every
+ * browser claim already had.
+ */
+async function callerUserId(
+  headers: Record<string, unknown> | undefined,
+): Promise<string | undefined> {
+  const raw = headers?.['cookie'];
+  if (typeof raw !== 'string' || !raw) return undefined;
+
+  const cookies: Record<string, string> = {};
+  for (const part of raw.split(';')) {
+    const eq = part.indexOf('=');
+    if (eq < 0) continue;
+    const name = part.slice(0, eq).trim();
+    // Values are left exactly as they arrived. A NextAuth JWE is base64url and
+    // dots, so decoding it would only create a way to throw on a stray `%`.
+    if (name) cookies[name] = part.slice(eq + 1).trim();
+  }
+
+  /*
+    Pinned from what actually arrived rather than inferred. `getToken` guesses
+    the `__Secure-` prefix from `NEXTAUTH_URL`/`VERCEL`, and a wrong guess reads
+    no cookie and reports "not signed in" — which here is not a refusal but a
+    SECOND ACCOUNT for someone who already has one, i.e. the §3.7 failure, and it
+    would be invisible because everything still works.
+  */
+  const secureName = '__Secure-next-auth.session-token';
+  const cookieName = Object.keys(cookies).some((n) => n.startsWith(secureName))
+    ? secureName
+    : 'next-auth.session-token';
+
+  try {
+    const token = await getToken({
+      req: { cookies, headers } as unknown as Parameters<typeof getToken>[0]['req'],
+      cookieName,
+      secret: process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET,
+    });
+    const id = token?.ownerId ?? token?.sub;
+    return typeof id === 'string' && id ? id : undefined;
+  } catch (err) {
+    console.warn('[auth] could not read the caller session; claiming as a new identity:', err);
+    return undefined;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -221,25 +296,27 @@ export const authOptions: NextAuthOptions = {
      * add one, this session is what they have — which is why it is worth nothing
      * more than the single-use code that produced it.
      *
-     * `existingUserId` is passed by the caller when someone is already signed in,
-     * so a second relationship LINKS rather than minting a second account
-     * (§3.7 rule 2).
+     * When the caller is ALREADY signed in, a second relationship LINKS rather
+     * than minting a second account (§3.7 rule 2). ⚠️ That identity comes from
+     * their session cookie via `callerUserId` and NOT from an `existingUserId`
+     * form field, which until 2026-08-21 it did — see that function's header for
+     * the takeover it allowed.
      */
     CredentialsProvider({
       id: 'standby-claim',
       name: 'Standby claim',
       credentials: {
         token: { label: 'Code', type: 'text' },
-        existingUserId: { label: 'Existing user', type: 'text' },
       },
 
-      async authorize(credentials): Promise<User | null> {
+      async authorize(credentials, req): Promise<User | null> {
         if (!credentials?.token) return null;
 
         try {
           const claim = await claimStandbyRole({
             token: credentials.token,
-            existingUserId: credentials.existingUserId || undefined,
+            // Server-derived. Anything the body says about identity is ignored.
+            existingUserId: await callerUserId(req?.headers),
           });
 
           const rec = await query<{ id: string; email: string; is_demo_account: boolean }>(
@@ -288,16 +365,17 @@ export const authOptions: NextAuthOptions = {
       name: 'Emergency code',
       credentials: {
         code: { label: 'Emergency code', type: 'text' },
-        existingUserId: { label: 'Existing user', type: 'text' },
       },
 
-      async authorize(credentials): Promise<User | null> {
+      async authorize(credentials, req): Promise<User | null> {
         if (!credentials?.code) return null;
 
         try {
           const redeemed = await redeemBreakGlass({
             code: credentials.code,
-            existingUserId: credentials.existingUserId || undefined,
+            // Server-derived, for the same reason as `standby-claim` above: this
+            // provider carried the identical takeover until 2026-08-21.
+            existingUserId: await callerUserId(req?.headers),
           });
 
           const rec = await query<{ id: string; email: string; is_demo_account: boolean }>(

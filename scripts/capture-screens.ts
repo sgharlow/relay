@@ -42,6 +42,9 @@ import { generateTotpCodeFor } from '../lib/auth/totp';
 import { issueVerifierToken } from '../lib/auth/verifier-token';
 import { CryptoService } from '../lib/crypto/crypto-service';
 import { query, closeAllPools } from '../lib/db/connection';
+// The product's own cascade. See the backstop at the end of main() for why a
+// hand-written DELETE is not an option on a cluster with no foreign keys.
+import { deleteAccount } from '../lib/account/lifecycle';
 
 const BASE = process.env.E2E_BASE || 'http://localhost:3000';
 const SCREENS = 'public/guide/screens';
@@ -554,12 +557,29 @@ async function main(): Promise<void> {
       browser abandoned), and a leftover on this cluster is a row on PRODUCTION.
       Scoped to this run's own stamp; the same purge-by-fixture-email precedent
       family-arc.ts set.
+
+      🔴 THIS BACKSTOP WAS `DELETE FROM users WHERE id = $1` AND NOTHING ELSE,
+      then printed "cluster clean: no fixture rows remain". It was the opposite
+      of clean. This schema has no foreign key constraints, so removing the
+      users row orphaned every vault_item, recipient, verifier, release_state,
+      access_rule and audit_log row the run had created — on production — and
+      `npm run verify:orphans` could not see any of it, because that census
+      finds accounts by joining from the users table it had just emptied. A
+      backstop that reports success while leaving more wreckage than it removes
+      is worse than no backstop.
+
+      deleteAccount() is the integrity layer: it cancels billing first, releases
+      the standby roles this user holds in other owners' rosters, and purges the
+      twenty-one tables in the order their reachability requires. If it ever
+      refuses — it refuses rather than proceed when an account carries a
+      subscription it cannot cancel — that is a fixture that must not be swept,
+      and the message says so.
     */
     const leftovers = await query<{ id: string; email: string }>(
       `SELECT id, email FROM users WHERE email LIKE $1`, [`relay-shoot-%-${stamp}@relay.test`],
     );
     for (const row of leftovers.rows) {
-      await query(`DELETE FROM users WHERE id = $1`, [row.id]);
+      await deleteAccount(row.id);
       console.log(`  purged leftover fixture user: ${row.email}`);
     }
     if (!leftovers.rows.length) console.log('  cluster clean: no fixture rows remain');

@@ -9,16 +9,20 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 
 vi.mock('../db/connection', () => ({ query: vi.fn() }));
 
 import { query } from '../db/connection';
 import {
   TIER_LIMITS,
+  UPGRADE_PATH,
   getEntitlement,
   assertWithinItemCap,
   assertBatchWithinItemCap,
   assertWithinRecipientCap,
+  assertWithinVerifierCap,
   assertCanRelease,
   EntitlementError,
 } from './entitlements';
@@ -232,5 +236,153 @@ describe('assertCanRelease', () => {
       .mockResolvedValueOnce({ rows: [{ is_demo_account: false }] } as never)
       .mockResolvedValueOnce({ rows: [{ tier: 'paid' }] } as never);
     await expect(assertCanRelease('o-1')).resolves.toBeUndefined();
+  });
+});
+
+/**
+ * Where a capped owner is sent.
+ *
+ * 🔴 THE ITEM CAP SAID "Upgrade" AND POINTED AT NOTHING. Its two siblings — the
+ * recipient and verifier caps — deliberately say "Email us", with the reason
+ * written above each of them: *"'Upgrade' would be a lie until checkout exists
+ * — there is nowhere to upgrade to."* Checkout then shipped, and the item cap
+ * was the one message that had been using the word all along, so it was never
+ * revisited. It became the only cap in the product that names an action the
+ * owner cannot take.
+ *
+ * And there was genuinely nowhere to go. `POST /api/stripe/checkout` has
+ * exactly two callers — the price card on `/start` and the buy-intent branch of
+ * signup — and `/account` offers only "Manage or cancel subscription", which
+ * answers *"There is no subscription on this account yet."* to the free owner
+ * reading it. So a free owner who filled their vault was told to upgrade, and
+ * every surface they could reach either had no such control or denied one
+ * existed.
+ *
+ * The message now names the one page that does take money, and the constant is
+ * exported so a screen can link it rather than re-typing a path that could rot.
+ */
+describe('the item cap tells the owner where to actually pay', () => {
+  function atTheCap() {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ is_demo_account: false }] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never)
+      .mockResolvedValueOnce({ rows: [{ count: '10' }] } as never);
+  }
+
+  it('names a destination rather than an abstract "Upgrade"', async () => {
+    atTheCap();
+    const msg: string = await assertWithinItemCap('o-1').catch((e) => e.message);
+    expect(msg).toContain(UPGRADE_PATH);
+  });
+
+  it('says the vault is untouched, because a cap is not a deletion', async () => {
+    // The same sentence the lapse notice and /terms make. An owner meeting a
+    // limit for the first time is being told what happens to what they already
+    // stored, and that answer must not differ by surface.
+    atTheCap();
+    const msg: string = await assertWithinItemCap('o-1').catch((e) => e.message);
+    expect(msg.toLowerCase()).toMatch(/nothing (you have )?(stored|saved) is|already (stored|saved)/);
+  });
+
+  /*
+    THE PATH IS A ROUTE THIS APP SERVES, checked structurally rather than
+    trusted. A message naming a 404 is worse than one naming nothing: it looks
+    like a way out and is a dead end, and nothing about a string constant would
+    fail if the route were renamed.
+  */
+  it('the upgrade path is a page that exists', () => {
+    expect(existsSync(join('src/app/(owner)', UPGRADE_PATH, 'page.tsx'))).toBe(true);
+  });
+
+  /*
+    The BATCH message keeps "email us" and does not name the path. A refused
+    import is a different situation — the owner has a file too big for the plan
+    and the useful next step is a conversation, not a checkout — and it already
+    said so honestly.
+  */
+  it('leaves the import refusal pointing at a person', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ is_demo_account: false }] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never)
+      .mockResolvedValueOnce({ rows: [{ count: '8' }] } as never);
+    const msg: string = await assertBatchWithinItemCap('o-1', 12).catch((e) => e.message);
+    expect(msg).toContain('email us');
+  });
+});
+
+/**
+ * The verifier cap, which was enforced by a function no test ran.
+ *
+ * 🔴 IT WAS COVERED ONLY BY MOCKS OF ITSELF. `src/app/api/verifiers/route.test.ts`
+ * replaces `assertWithinVerifierCap` with `vi.fn()` in both directions — pass
+ * and reject — so the route tests proved the route reacts to a 402 that a mock
+ * invented, and `entitlements.test.ts` had blocks for items and recipients and
+ * none for verifiers. The coverage report showed lines 223-243 unexecuted.
+ *
+ * That matters more here than the symmetry suggests: this cap is the only bound
+ * on how many addresses one free, self-serve account can introduce into an
+ * outbound mail path on a sender shared with another project, and the whole key
+ * simply did not exist until 2026-08-13. An off-by-one here ships green.
+ *
+ * Mirrors the recipient block case for case, deliberately.
+ */
+describe('assertWithinVerifierCap', () => {
+  it('allows the 4th verifier on free', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ is_demo_account: false }] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never)
+      .mockResolvedValueOnce({ rows: [{ count: '3' }] } as never);
+    await expect(assertWithinVerifierCap('o-1')).resolves.toBeUndefined();
+  });
+
+  it('REJECTS the 5th verifier on free', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ is_demo_account: false }] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never)
+      .mockResolvedValueOnce({ rows: [{ count: '4' }] } as never);
+    await expect(assertWithinVerifierCap('o-1')).rejects.toThrow(EntitlementError);
+  });
+
+  it('carries the limit and tier on the error, so the route can answer 402 with it', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ is_demo_account: false }] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never)
+      .mockResolvedValueOnce({ rows: [{ count: '4' }] } as never);
+    const err = await assertWithinVerifierCap('o-1').catch((e: EntitlementError) => e);
+    expect(err).toBeInstanceOf(EntitlementError);
+    expect((err as EntitlementError).limit).toBe(TIER_LIMITS.free.verifiers);
+    expect((err as EntitlementError).tier).toBe('free');
+  });
+
+  it('never caps a paid owner and does not even count', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ is_demo_account: false }] } as never)
+      .mockResolvedValueOnce({ rows: [{ tier: 'paid' }] } as never);
+    await expect(assertWithinVerifierCap('o-1')).resolves.toBeUndefined();
+    expect(mockQuery).toHaveBeenCalledTimes(2);
+  });
+
+  it('counts only the requesting owner rows', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ is_demo_account: false }] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never)
+      .mockResolvedValueOnce({ rows: [{ count: '0' }] } as never);
+    await assertWithinVerifierCap('o-1');
+
+    const [sql, params] = mockQuery.mock.calls[2];
+    expect(sql).toMatch(/FROM verifiers WHERE owner_id = \$1/);
+    expect(params).toEqual(['o-1']);
+  });
+
+  it('routes to a person, like the recipient cap, rather than promising an upgrade', async () => {
+    // Both caps are about people rather than storage, and an owner who hits
+    // both must not be told two different stories about what to do next.
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ is_demo_account: false }] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never)
+      .mockResolvedValueOnce({ rows: [{ count: '4' }] } as never);
+    const msg: string = await assertWithinVerifierCap('o-1').catch((e) => e.message);
+    expect(msg).not.toContain('Upgrade');
+    expect(msg).toContain('Email us');
   });
 });

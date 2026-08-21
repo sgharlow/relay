@@ -96,6 +96,33 @@ who had never been confirmed, and the product recorded it while saying plainly t
 open anything on its own. Quorum counting only `confirmed` people is the assumption the whole
 assurance model rests on, and it had never been observed refusing on production before.
 
+### ⚠️ The money path is in NO sweep and in NO automated walk — added 2026-08-21
+
+Both tables above cover J1–J10 and stop short of the till. J1's row ends at *"price →
+`caregiver_intent` fired"* — the event **before** checkout — so the surface that takes real money
+from real people has never been a row in this document, and the ten-journey frame is why: billing is
+cross-cutting, so it belongs to everyone and was audited by no one. It is not in `verify:live`
+either — that chain is stepup · multiowner · ui · reveal · factors · stamp (`package.json`), and no
+script under `scripts/` mentions Stripe or checkout. `lib/ops/canary.ts` probes the billing routes
+for 401/400 **negatives** only, which proves the doors are locked, not that the path works.
+
+Per step, on the ladder — dates derived from the records named, not restated here:
+
+| Step | Ladder | The record that says so |
+|---|---|---|
+| Checkout → webhook → entitlement | **live-proven once, 2026-08-08** | a real card charged end to end; `PROJECT.yaml → monetization_path` is authoritative for the date and price. ⚠️ **that walk predates the handler it is offered as proof of** — `src/app/api/stripe/webhook/route.ts` was reworked on 2026-08-13 to resolve the subscription reference order-independently (`invoice.parent.subscription_details` then `invoice.subscription`), and the rework has no live re-proof |
+| Billing portal (cancel reachable) | **live-proven 2026-08-09** | `docs/g1-launch-checklist.md` item 7h — a `live_` portal session rendering the real subscription and a working cancel control |
+| `customer.subscription.updated` / `.deleted` | **built + unit-tested; NOT live-proven** | `src/app/api/stripe/webhook/route.test.ts` covers both, including the out-of-order retry case. No production event of either type has been observed being handled |
+| `deleteAccount` cancels at Stripe before deleting rows | **built + unit-tested; NOT live-proven** | `lib/account/lifecycle.test.ts` — cancel-first, so a deleted local row can never leave a live subscription billing a stranger. Never executed against a real subscription |
+| Lapse / dunning (E1) | **not proven at all** | `docs/e1-stripe-lapse-proof.md` — the dedupe key is the **invoice** id, so only a genuine RESEND proves it |
+
+**Why this is left as a hole rather than closed here.** Every check above costs a real charge on a
+Stripe account shared with two other projects, so putting billing into `verify:live` is a spend
+decision and a blast-radius decision, not a documentation one — **Steve's call** (`ROADMAP` 3.3
+decides walk-only vs automated for the journeys; billing is not named there and should be). What
+this section fixes is the part that was actually wrong: the file implied the sweeps covered the
+product, and they cover everything except the one path that touches money.
+
 ### ✅ J4 and J5 closed — walked on production 2026-08-13
 
 **J5 — the check-in button, finally clicked.** It had been shipped since `afff84b` and never
@@ -201,11 +228,11 @@ asserts the count so it cannot drift.
 
 | Step | 08-06 tag | Today | Evidence |
 |---|---|---|---|
-| 3 Free starter vault, passkey or TOTP, no card | `[GAP]` | **BUILT** | self-serve signup with per-user TOTP; passkeys via `webauthn_credentials` + `auth_challenges` (029) |
+| 3 Free starter vault, passkey or TOTP, no card | `[GAP]` | **BUILT (TOTP at signup); PASSKEY IS A POST-SIGNUP ADD-ON** (narrowed 2026-08-21) | J1-R3 — *an encrypted item before any payment* — is met: signup is email → TOTP enrolment → recovery codes, no card (`src/app/auth/signup/SignUpForm.tsx`, whose own header says "email, then TOTP enrolment"). The step's *"passkey or TOTP"* is not offered as a choice at signup: passkeys are real (`webauthn_credentials` + `auth_challenges`, `029`) but are enrolled afterwards from `src/app/(owner)/account/PasskeySection.tsx`. ~~Previously cited the passkey tables as if they were a signup option.~~ Passkey-first signup stays demand-gated |
 | 4 Prompted 8-item caregiver seed | `[GAP]` | **BUILT** | `lib/seed/caregiver-checklist.ts`, `src/app/(owner)/start/SeedWizard.tsx` |
 | 5 Legible zero-knowledge moment | reveal `[GAP]` | **BUILT** | `SeedWizard.tsx` renders the ciphertext leaving the browser |
 | 6 Risk-graph reveal | framing `[GAP]` | **BUILT** | `lib/ai/prioritize-agent.ts` `detectGaps`, `lib/vault/dashboard-view.ts` |
-| 7 Paywall at peak value, free-tier caps | `[GAP]` | **BUILT** | `lib/billing/entitlements.ts` — caps enforced server-side |
+| 7 Paywall at peak value, free-tier caps | `[GAP]` | **BUILT — but the SHIPPED caps are not the caps J1-R7 specifies** (noted 2026-08-21) | `lib/billing/entitlements.ts` — `TIER_LIMITS` is the one authoritative statement of the tier and enforcement is server-side, as required. The item cap matches the requirement; recipients and release do not. See the correction under J1-R7 |
 | 8 Checkout → entitlement → wizard | `[P2]` billing | **BUILT** | live-mode Stripe, charged end to end 2026-08-08 (`PROJECT.yaml monetization_path`) |
 
 ### J2 — Cold-start defeat
@@ -215,7 +242,7 @@ asserts the count so it cannot drift.
 | 1 Three import lanes | CSV `[BUILT]` | **CSV built; document + email lanes OPEN** | `lib/import/csv-parser.ts`. The other two lanes do not exist |
 | 6 Review by exception, owner override persisting across re-analysis | `[GAP]` | **override BUILT; the by-exception SCREEN open** | `owner_set_root` (028) and `owner_set_irreplaceable` (034) both survive re-analysis — `lib/ai/intake-agent.ts`. No screen yet surfaces *only* the exceptions |
 | 8 Top-three gap framing | framing `[GAP]` | **engine built; framing OPEN** | `detectGaps` ranks by consequence; nothing renders "close the top three" |
-| 9 Explicit continuity-ready state | `[GAP]` | **OPEN** | no `continuityReady` concept anywhere in `lib/` or `src/` |
+| 9 Explicit continuity-ready state | `[GAP]` | ~~**OPEN**~~ **PARTIAL — the general clause is BUILT; two item-level conditions are not** (corrected 2026-08-21) | ~~Was: "no `continuityReady` concept anywhere in `lib/` or `src/`".~~ **That was a grep for a name, not for the concept, and it missed a shipped surface**: `lib/vault/readiness.ts` defines a `ready` boolean plus named, owner-facing blockers (`no_items`, `no_recipients`, `no_rules`, `no_verifiers`, `unsatisfiable_quorum`, `fragile_quorum`), rendered by `ReadinessBanner.tsx` and served by `/api/readiness` — walked on production 2026-08-13. What is genuinely missing is step 9's own two conditions: **every root credential carries a `backup_note`**, and **no `CUSTODY_RISK` remains on an irreplaceable item**. Neither is a blocker code; `detectGaps` evaluates them only on the vault page (`GapList`) |
 
 ### J3 — Assisted setup for a parent
 
@@ -238,24 +265,33 @@ shipped in sprints 1–4 and was walked on production on 2026-08-12.
 
 | Step | 08-06 tag | Today | Evidence |
 |---|---|---|---|
-| 1 One person, many roles | `[GAP]` (unification) | **BUILT** | unified people list, `lib/people/` |
+| 1 One person, many roles | `[GAP]` (unification) | ~~**BUILT**~~ **READ-SIDE MERGE BUILT; SINGLE-ENTRY EXPERIENCE OPEN** (corrected 2026-08-21) | `lib/people/people.ts` merges the two tables on normalised email and its own header states J4-R1 as the motivation — but its only caller is `src/app/api/delegations/route.ts` (the role-concentration check). The **entry** experience is still two forms: `RecipientSection` (role select over `VALID_ROLES`, which has no `verifier`/`both`) and a separate `VerifierSection` in `src/app/(owner)/circle/PeopleSections.tsx`; there is no `POST /api/people`, and `/api/circle` reads recipients and verifiers as two lists |
 | 2 Auto-proposed policies | `[GAP]` | **BUILT** | `lib/rules/policy-proposals.ts` |
 | 3 Approve/edit in bulk → `access_rules` | `[GAP]` | **BUILT** | policies materialise as a diff |
 | 4 Coverage matrix | `[GAP]` | **BUILT** | `lib/rules/coverage.ts`, `src/app/(owner)/circle/CircleClient.tsx` |
-| 6 N-of-M with proposed defaults | defaults `[GAP]` | **BUILT** | validation, storage and defaults |
+| 6 N-of-M with proposed defaults | defaults `[GAP]` | ~~**BUILT**~~ **VALIDATION + STORAGE BUILT; PROPOSED DEFAULTS OPEN** (corrected 2026-08-21 — the 08-06 tag was right about the defaults half) | Validation is genuinely built and enforced at the boundary: `validateNofM` (`lib/rules/access-rules.ts`) and `assertQuorumSatisfiable` against the **confirmed** verifier count (`lib/release/quorum.ts`, wired at `/api/triggers/[id]/config`). The only *default* is `opts.requiredConfirmations ?? 1` (`lib/release/provisioning.ts`) applied to every trigger type alike, and `TriggersPageClient.tsx` renders a bare number input with no proposal beside it |
 | 7 Recipients claim in calm, standby view | `[GAP]` / KYC `[P2]` | **BUILT except KYC** | the hybrid+6 standby account; `/claim` live. Identity verification stays `[P2]` |
 | 8 Verifiers claim with no account | `[GAP]` | **BUILT** | `/verify` surface |
 | 9 Explicit circle-complete state | `[GAP]` | **BUILT** | `lib/rules/coverage.ts` + `/api/circle` |
 
-⚠️ **Invitations are owner-delivered by design.** `BETA_INVITE_CHANNEL = 'owner'` (`lib/people/invite.ts`)
-sends no email — the owner reads the claim code out. Step 7 is built; its *delivery* is deliberately manual.
+⚠️ **Invitations have TWO delivery arms, and this note used to describe only one** (corrected
+2026-08-21). ~~Was: *"Invitations are owner-delivered by design. `BETA_INVITE_CHANNEL = 'owner'`
+sends no email — the owner reads the claim code out. Its delivery is deliberately manual."*~~ That
+overstated the flag's reach in exactly the way `PROJECT.yaml` had already recorded as a defect:
+`BETA_INVITE_CHANNEL` (`lib/people/invite.ts`) is read by `inviteOnCreateBestEffort` **only**, so it
+governs the invitation fired at person-CREATE time. The invitations surface is a separate decision
+per person — `POST /api/invitations` takes `deliveryChannel` and **defaults it to `email`** — which
+is deliberate, because Phase 0 exists to compare the two arms (`docs/first-invitations.md`,
+`docs/standby-architecture.md`). Outbound volume on the email arm is bounded by
+`lib/notify/invite-budget.ts` under `ratified.outbound-mail-bounds`, not by this flag. Step 7 is
+built; **its delivery is owner-chosen, not manual-only.**
 
 ### J5 — The living habit
 
 | Step | 08-06 tag | Today | Evidence |
 |---|---|---|---|
 | 1 Passive liveness on ordinary actions | derivation `[GAP]` | **BUILT** | `lib/release/liveness.ts` on the main write paths |
-| 2 Per-trigger cadence | partial | **BUILT** | `lib/release/heartbeat.ts` |
+| 2 Per-trigger cadence | partial | ~~**BUILT**~~ **base cadence BUILT; PER-TRIGGER OPEN** (corrected 2026-08-21) | One cadence per OWNER: `users.checkin_interval_days` (`001_initial.sql`), read and written by `lib/release/release-list.ts`. `runHeartbeatSweep` selects overdue owners on that single interval and then arms `WHERE owner_id = $1 AND state = 'armed'` — **every** trigger type on the same clock (`lib/release/heartbeat.ts`). No migration gives `release_state` an interval column |
 | 3 Escalation ladder before any transition | `[GAP]` | **OPEN for J5's own case; BUILT for two adjacent ones** | `lib/release/escalation.ts` escalates when the OWNER goes quiet on a challenge (window lapses → verifiers asked) and `lib/release/silence-sweep.ts` + `quiet-channel.ts` when the VERIFIER channel goes quiet. What does not exist is a reminder ladder to the owner **before** `runHeartbeatSweep` advances ARMED → PENDING: an overdue owner is escalated by the transition itself |
 | 4 Quarterly continuity review | `[GAP]` | **OPEN** | no occurrence of "quarterly" in the codebase |
 | 5 Life-event prompts | `[GAP]` | **OPEN** | — |
@@ -263,6 +299,16 @@ sends no email — the owner reads the claim code out. Step 7 is built; its *del
 
 **J5 is the journey with the most genuinely open surface.** Its shipped half is the half that
 matters — the switch cannot fire on a living owner — but the retention half is not built.
+
+⚠️ **Row 2 said BUILT for eleven days and the 08-06 tag it overwrote — *partial* — was the right
+answer** (found 2026-08-21). The register's own method note says a row names the file that settles
+it; row 2 named `heartbeat.ts`, which is the file that *refutes* it. A cadence exists and is
+configurable; what J5-R3 asks for — cadence **per trigger type** — does not, and the difference is
+not cosmetic. `emergency` is armed on the same 30-day clock as `travel` and `business`, and this
+journey's own text argues emergency "is better served by recipient-initiated request plus owner
+challenge" — i.e. that its cadence should differ. **J5-R3 is OPEN**, not built. Building it is
+demand-gated; see the open list below. This is the shape the whole register exists to prevent: an
+overstatement is worse than a stale tag, because a stale tag advertises its date.
 
 ### J6 — Someone requests access · J7 — The verifier's moment
 
@@ -272,9 +318,32 @@ shipped in sprints 3–4 and were walked on production on 2026-08-13.
 
 | Step | Today | Evidence |
 |---|---|---|
-| J6 1–6 | **BUILT** | access requests, owner-challenge-first, velocity limits, circle notification; walked 2026-08-13 |
+| J6 1 · 4a · 4b · 4c · 6 | **BUILT** | access requests, owner-challenge-first, deny/approve/lapse handling, velocity limits, circle notification (`src/app/api/access-requests/`, `lib/release/escalation.ts`) |
+| J6 2 — evidence attachment | **PARTIAL** | request + reason are built and the reason is sanitised before storage. The optional *evidence* half is not: `012_access_requests.sql` declares `evidence_ref TEXT`, the INSERT in `src/app/api/access-requests/route.ts` never writes it, and `AskControl.tsx` offers no attachment control. **A column is not a feature** |
+| J6 3 — challenge on every channel, one tap | **PARTIAL, and J6-R3 as written is unimplementable — see the amendment below** | Delivered by email only (`sendAccessRequestChallenge`, `lib/notify/notifications.ts`), carrying a bare `/challenge` link that requires sign-in. SMS and push are unbuilt (SMS is ranked rung 5 in `docs/standby-architecture.md` §3.4 and parked on `ROADMAP` C4) |
+| J6 5 — honest live status | **PARTIAL** | `src/app/(access)/standby/StandbyClient.tsx` shows an **absolute deadline** ("if they do not answer by …") plus the case reference and what happens next — honest, and never a dead end, which is the requirement's substance. J6-R10's *"including time remaining"* is not rendered: the countdown helper exists on the owner side only (`timeLeft`, `src/app/(owner)/challenge/ChallengeClient.tsx`) |
 | J7 1–8 | **BUILT** | verifier decision surface with Confirm / Deny / I don't know, halt on unreachable threshold, closure message |
 | J7 error state | **BUILT 2026-08-17** | a bad code or a failed submit used to be a dead end; `lib/ops/emergency-paths-have-a-way-back.test.ts` now holds both surfaces shut |
+
+🔴 **J6's OUTCOMES are `wired`, not `live-proven` — the walks stopped at the request** (recorded
+2026-08-21). Read the two sweep rows above literally. 2026-08-08: *"request → 201 `awaiting_owner`
+… forged token → 403; velocity limit fires"*. 2026-08-13: *"request created (201), owner challenged,
+and the request now visible in-product"*. **Neither walk denied, approved, or let a window lapse.**
+Every branch that happens *after* the challenge lands — 4a deny, 4b approve, 4c escalation to the
+verifiers — has unit tests and has never run on production. That is the half this journey exists
+for: 4b is the flow change the design section calls the highest-value one in the whole event
+sequence, and 4c is the incapacity fast path that `docs/standby-architecture.md` §4.4 names as the
+defect which justified building standby ahead of G1.
+
+Nothing in `verify:live` reaches them either: the chain is stepup · multiowner · ui · reveal ·
+factors · stamp (see `package.json`), and no script under `scripts/` touches
+`/api/access-requests` or the lapse sweep. `ROADMAP` D10 already records J6 as outside `verify:live`.
+
+**The bar before a stranger is invited is one production walk of all three:** request → deny (state
+never leaves `armed`, requester told); request → approve (reaches `released`, recipient reveals);
+request → window lapse (escalates, only **confirmed** verifiers are asked, quorum still required).
+Until then J6 reads `live-proven` for step 1 and `wired` for everything after it, and this file
+should not say otherwise.
 
 ### J8 — Hands on the account · PRIMARY DEMAND
 
@@ -315,11 +384,30 @@ Everything above that is not BUILT, DROPPED or WITHDRAWN:
 
 1. **J5 retention** — the owner-reminder ladder before a heartbeat transition (the other two
    escalation cases are built), quarterly review, life-event prompts, renewal receipt.
-2. **J2** — the by-exception review screen, top-three framing, continuity-ready state, and the
-   document + email ingestion lanes.
-3. **J8** — single-next-action card, ephemeral reveal, shared progress.
-4. **J3** — the monthly delegate digest.
-5. **KYC at claim** — `[P2]`, needs a vendor.
+   **J7-R13 rides here too**: per-verifier response rate and latency delivers *through* the
+   quarterly review, so it is blocked on this line rather than independently buildable — the audit
+   entries it would aggregate are already written.
+2. **J5-R3 — cadence per trigger type** (added 2026-08-21). Distinct from retention and previously
+   recorded as BUILT: there is one interval per **owner**, and every armed trigger type runs on it.
+3. **J2** — the by-exception review screen, top-three framing, the document + email ingestion lanes,
+   and the two item-level **continuity-ready** conditions (`backup_note` on every root credential,
+   no `CUSTODY_RISK` on an irreplaceable). ~~"continuity-ready state"~~ — the general clause is
+   built and displayed (`lib/vault/readiness.ts`); only these two conditions are missing.
+4. **J8** — single-next-action card, ephemeral reveal, shared progress.
+5. **J3** — the monthly delegate digest.
+6. **J4 single entry** (added 2026-08-21) — one person, many roles, entered once. The read-side
+   merge exists; the two add forms are what J4-R1 is actually about.
+7. **J6 refinements** (added 2026-08-21) — evidence attachment on a request, channels beyond email,
+   time remaining on the recipient's status.
+8. **KYC at claim** — `[P2]`, needs a vendor.
+9. **J1 qualification** (added 2026-08-21) — the behavioral question and the latent-tier capture.
+   Qualification today is by inbound-channel allow-list, which is a ratified definition rather than
+   an unbuilt one, but it is not what J1-R2 describes.
+
+**Two things on this list are not build items and must not be treated as ones.** The J6 outcome
+branches need a **walk**, not code — deny, approve and lapse-escalate are wired and never
+live-proven. The nurture branch and the billing/`verify:live` question need a **decision** from
+Steve; both are in Part VIII's open-decisions table.
 6. ~~**Second factors** — an account that demands a code is not modelled end to end. Phase 0 shipped
    2026-08-17 (a recipient can now be handed a live TOTP code); Phase 1 — `secret_kinds` and
    `factors_required`, migration `035` — is written and **awaiting the migration**, without which
@@ -402,8 +490,12 @@ yet.** The tags exist so this document can never be misread as a description of 
 Where a single step is partly built, the tag names which part: e.g. `crypto [BUILT], reveal [GAP]`.
 
 **Gate discipline.** Nothing in the `[P2]` column should be built before its gate clears.
-`g1-caregiver-wtp` gates all D2C build. `g2-counsel-opinion` gates **all of Journey 10** for any
-paying customer. Both are owned by Steve with dates in `PROJECT.yaml`.
+`g1-caregiver-wtp` gates all D2C build. ~~`g2-counsel-opinion` gates **all of Journey 10** for any
+paying customer.~~ **HISTORICAL — corrected 2026-08-21.** That sentence describes a gate that no
+longer gates anything: `g2-counsel-opinion` was **declined** on 2026-08-14 and J10 is `withdrawn`,
+not waiting. Journey 10 is not gated, deferred or `[P2]` — **it is out of the product**, and
+`lib/ops/gates.test.ts` fails if `USER_SELECTABLE_TRIGGER_TYPES` widens while that decision stands.
+`PROJECT.yaml` is authoritative for both the gate and the journey.
 
 ---
 
@@ -445,11 +537,13 @@ flowchart TD
 ```
 
 The acute tier is strategically important but is **not a subscription customer** — by the time the
-crisis lands there is no time to populate a vault. Its correct commercial treatment is the
-**estate/trigger activation fee** (Build Spec §24) and, critically, as an *acquisition channel*: the
-caregiver who just went through an unassisted crisis is the highest-intent prospect that exists.
-Journey 9 and Journey 10 are therefore designed to end in a referral moment, not merely a completed
-transaction.
+crisis lands there is no time to populate a vault. ~~Its correct commercial treatment is the
+**estate/trigger activation fee** (Build Spec §24)~~ — **that half is void as of 2026-08-14**: the
+activation fee was an estate product, and estate was withdrawn permanently, so there is no second
+revenue line here to design toward. What survives, and is the more important half, is the **acquisition
+channel**: the caregiver who just went through an unassisted crisis is the highest-intent prospect
+that exists. **Journey 9** is therefore designed to end in a referral moment, not merely a completed
+transaction ~~(and Journey 10)~~.
 
 ### 3. The three-body problem — the wedge's defining structural fact
 
@@ -548,7 +642,7 @@ the owner renews. Journey 8 is specified in the most detail for this reason.
 | **Delegate** | Helper with scoped setup rights on another person's vault. Cannot read secrets they did not enter. | Claimed account + recorded consent artifact. Walked 2026-08-12 |
 | **Recipient** | Designated to receive scoped access when a trigger fires. | **Standby account** (primary — resolves the open release server-side); scoped HS256 JWT retained for **unclaimed** contacts only |
 | **Verifier** | Trusted third party who confirms or denies that a trigger condition is real. Never sees vault contents. | Standby account, or a signed single-use link. An **unconfirmed** verifier's answer is recorded and does not count toward quorum |
-| **Executor** | A recipient with `role = 'executor'` on the estate trigger. | As recipient. Gated on `g2-counsel-opinion`; identity verification still `[P2]` |
+| **Executor** | ~~A recipient with `role = 'executor'` on the estate trigger.~~ **`executor` survives as a `VALID_ROLES` label; the estate TRIGGER it acted on does not.** An executor is a recipient like any other today | ~~Gated on `g2-counsel-opinion`~~ **Not gated — WITHDRAWN 2026-08-14** (corrected 2026-08-21: the gate was declined, not met, so "gated" read as temporary). As recipient; identity verification still `[P2]` |
 
 > **Retagged 2026-08-13.** Every row above except Executor read `[GAP]` while the mechanism was
 > live — the delegate model, the claimed standby account and the verifier surface had all shipped.
@@ -692,12 +786,12 @@ That is the number the gate is actually trying to learn.
 | # | Step | State |
 |---|---|---|
 | 1 | Lands on `/caregivers` from search, paid, or a community channel. Headline leads with **reversibility**, not storage. | `[BUILT]` |
-| 2 | Qualifies **behaviorally, not demographically** — "Are you managing someone else's affairs?" gates into the flow rather than into a form. | `[BUILT]` |
+| 2 | Qualifies by **inbound channel**, on an allow-list — `GATE_LANES` / `isGateQualifyingSrc` (`src/app/caregivers/content.ts`), fired once per session by `QualifiedTracker.tsx`. ~~"Are you managing someone else's affairs?" gates into the flow rather than into a form.~~ **No such question exists on the page** (corrected 2026-08-21 — the `[BUILT]` tag was answering about the event, not the qualifier). | channel qualification `[BUILT]`, behavioral question `[GAP]` |
 | 3 | Starts a free starter vault: email + passkey or TOTP enrolment. No credit card. | `[GAP]` |
 | 4 | **Prompted seed, not a blank vault.** "Name the accounts you'd need first if they were hospitalized tomorrow" — an 8-item caregiver-archetype checklist: primary email, phone carrier, primary bank, health insurance, pharmacy/patient portal, utilities, mortgage or rent, and the password manager. Eight against a 10-item cap leaves headroom. | `[GAP]` |
 | 5 | First save runs client-side encryption, with a **legible zero-knowledge moment**: show the actual ciphertext leaving the browser. Trust is the acquisition barrier; make the guarantee visible, not merely true. | crypto `[BUILT]`, reveal `[GAP]` |
 | 6 | Intake Agent scores the seed. **The reveal:** the risk graph renders — "your mother's Gmail is the reset path for 6 of the 8 accounts you just entered. If you can't get into it, you can't reset any of them." | engine `[BUILT]`, framing `[GAP]` |
-| 7 | Paywall lands **here**, at peak demonstrated value. Free tier caps at 10 items / 1 recipient / no release capability. Price tested at or above $99/yr. | `[GAP]` |
+| 7 | Paywall lands **here**, at peak demonstrated value. Free tier caps items, recipients and verifiers — the numbers live in `TIER_LIMITS` (`lib/billing/entitlements.ts`), not in this table. ~~10 items / 1 recipient / no release capability~~ *(that phrasing was true on 2026-08-06 and is not now — see J1-R7)*. Price tested at or above $99/yr. | `[GAP]` |
 | 8 | Checkout → entitlement provisioned → lands directly in the setup wizard (J2), never on a dashboard with nothing on it. | `[P2]` billing |
 
 ### Process flow
@@ -734,12 +828,20 @@ flowchart TD
 ### Requirements
 
 - **J1-R1** The landing surface SHALL lead with reversibility, not storage or organization.
-- **J1-R2** Qualification SHALL be behavioral. No demographic form SHALL gate entry to the product.
+- **J1-R2** ⚠️ **AMENDED 2026-08-21.** Qualification SHALL NOT be demographic and **no form of any kind SHALL gate entry to the product** — that half is met, and is the half that carries the product intent. What ships is **channel** qualification, not behavioral: `isGateQualifyingSrc` counts a `/caregivers` visit as qualified iff its `?src=` is on the `GATE_LANES` allow-list (`PROJECT.yaml → ratified.g1-n-is-an-allow-list`, 2026-08-16), and that ruling — taken to make G1's denominator fail *loudly* rather than silently over-count — is what "qualified" now means in this product.
+  Was: *"Qualification SHALL be behavioral."* An in-page behavioral question ("Are you managing someone else's affairs?") was specified and never built; `grep` for it across the landing surface returns nothing. **Consequence to be honest about:** the G1 denominator counts arrival on a declared lane, not evidence that the arriver is a caregiver, so the ratio it feeds is per-lane conversion — which is what J1-R10 asks for — and not a measure of caregiver intent. Building the question is demand-gated; if it is ever built, it must not become a form (R2's surviving clause).
+  **The `No → latent tier — capture email` branch of the process flow below has no surface at all** and never did. It is not tracked anywhere; it is listed with the failure branches for a decision rather than left implied.
 - **J1-R3** A prospect SHALL be able to create an encrypted item before any payment is requested.
 - **J1-R4** The seed step SHALL present a prompted caregiver-archetype checklist. A blank vault SHALL NOT be the first-run experience.
 - **J1-R5** The first save SHALL surface a visible artifact of client-side encryption. The zero-knowledge guarantee SHALL be legible to a non-technical user, not merely documented.
 - **J1-R6** The risk-graph reveal SHALL render before the price is shown, and SHALL name a specific dependency count derived from the user's own entries.
-- **J1-R7** The free tier SHALL cap at 10 items and 1 recipient, and SHALL NOT permit any release. Cap enforcement SHALL be server-side.
+- **J1-R7** ⚠️ **AMENDED 2026-08-21 — the shipped tier is authoritative, and it is `TIER_LIMITS` in `lib/billing/entitlements.ts`.** The free tier SHALL cap items, recipients and verifiers, and cap enforcement SHALL be server-side. **The numbers are not restated here** — one authoritative definition, per the volatile-facts rule; read `TIER_LIMITS`.
+  Was: *"SHALL cap at 10 items and 1 recipient, and SHALL NOT permit any release."* Two of those three clauses stopped being true and the requirement was never amended, so a reader checking the product against this line would have "found" two defects that are decisions:
+  - **1 recipient → 4**, on 2026-08-08. At one recipient a family with two adult children could not name them both, and with no checkout to upgrade through the cap was not a paywall, it was a wall. The reasoning lives at the value in `entitlements.ts`.
+  - **`SHALL NOT permit any release` → release IS permitted on free**, ratified and dated: `PROJECT.yaml → ratified.beta-free-release`, revisited 2026-10-01. Founding families are onboarded by hand and have not paid; enforcing the paywall now would mean the beta cannot exercise the one capability the product exists for. `assertCanRelease` is called on the release path, so re-enforcing is one line rather than a rediscovery.
+  - A **verifier** cap of 4 was added 2026-08-13 — not a change of decision but a missing key: verifiers were created through a route that sends mail on their behalf and were uncapped until then.
+  - The item cap is unchanged and enforced server-side, as this requirement always demanded.
+  🔴 **Only the release clause carries a ratified entry.** The recipient and verifier caps are dated code comments and nothing more, which is how they drifted from this line unnoticed — they should be folded into `beta-free-release`'s 2026-10-01 revisit so all three tier decisions are reviewed together. That is a `PROJECT.yaml` edit, not one this file may make.
 - **J1-R8** The price point SHALL be configurable without deploy, to permit price testing under G1.
 - **J1-R9** The G1 click-to-intent metric SHALL be measured at reveal → checkout, not landing → form.
 - **J1-R10** Every funnel event SHALL be keyed by inbound channel so per-channel conversion is computable, and event emission SHALL be verified to actually fire before any gate reading is treated as a verdict.
@@ -754,7 +856,7 @@ flowchart TD
 |---|---|
 | Encryption fails at first save | Abort, surface a browser-visible error, transmit nothing. Silent abort is not acceptable (R2.7) |
 | Intake Agent times out | Default `importance_score = 0.5`, warn which items defaulted, never block item creation (R11.9) |
-| Prospect abandons after seed | Free tier persists. Nurture on **gap consequence**, never on generic reminders |
+| Prospect abandons after seed | Free tier persists — **that half is true and structural**: nothing deletes a vault, and the Stripe webhook only moves `subscription` status. ⚠️ **The nurture half does not exist and is tracked nowhere** (found 2026-08-21). `grep -i nurture` across `src/`, `lib/`, `PROJECT.yaml`, `ROADMAP.md` and `docs/backlog.md` returns nothing; the only outbound surfaces in `lib/notify/notifications.ts` are release, invitation, delegation, recovery and lapse. It is a **new outbound capability** on an account bounded by `ratified.outbound-mail-bounds`, so it is not something to add quietly. **Steve's call: give it an unlock in `ROADMAP` §2-F (first cohort of abandoned seeds actually observed) or strike the branch.** Do not build it ahead of demand |
 | Payment declines | Vault and seed persist intact at free-tier caps. Never destroy entered data on a billing failure |
 
 ---
@@ -848,7 +950,17 @@ flowchart TD
 **Trigger:** The buyer is not the person whose accounts these are.
 **Success:** Recorded parent consent, delegated setup rights active, vault populated, no unilateral self-grant possible.
 **Business stake:** **The wedge does not convert without this.** Also the product's principal harm vector.
-**State:** `[GAP]` — entirely net-new. No delegation concept exists in the schema.
+**State:** `PROJECT.yaml: journeys → J3` is authoritative; the step-level register above this section
+carries the per-step evidence.
+
+> **Corrected 2026-08-21.** ~~This line read: *"`[GAP]` — entirely net-new. No delegation concept
+> exists in the schema."*~~ It was **false from migration `009` onward** and had been named in
+> writing — the 2026-08-17 register four hundred lines up calls it *"the most out-of-date line in
+> this document"* and then left it standing, so a reader who entered at J3 rather than at the top
+> was still told the model was unbuilt. `delegations`, `consent_artifacts` and `approvals` shipped
+> in migrations `009`–`010` and the whole journey was walked on production on 2026-08-12.
+> Acknowledging a wrong line is not correcting it; the pointer replaces the claim so the sentence
+> cannot rot again.
 
 ### The design decision
 
@@ -1266,14 +1378,18 @@ sequenceDiagram
 
 - **J6-R1** A recipient SHALL be able to request access without an owner-issued link.
 - **J6-R2** Every reversible-trigger request SHALL challenge the owner before notifying any verifier.
-- **J6-R3** The owner challenge SHALL be delivered across all registered channels simultaneously and SHALL be actionable in one tap.
+- **J6-R3** ⚠️ **AMENDED 2026-08-21 — `docs/standby-architecture.md` §2 principle 3 and §3.4**, the same in-place treatment J4-R11 received. The owner challenge SHALL be delivered on **every channel the owner has registered**, SHALL state the decision and its deadline in the message body itself, and SHALL be actionable **immediately on sign-in** — the challenge queue is the first thing an authenticated owner sees.
+  Was: *"delivered across all registered channels simultaneously and SHALL be actionable in one tap."* Both clauses had to move, for different reasons:
+  - *"All registered channels"* reads today as *all channels*, of which one exists: email (`sendAccessRequestChallenge`, `lib/notify/notifications.ts`). SMS is ranked rung 5 in §3.4 and parked on `ROADMAP` C4 (A2P registration, 2–4 week lead); push has no surface. The requirement is unchanged in substance — it just cannot be read as a list of channels the product was supposed to have built.
+  - *"One tap"* is **barred by the architecture, not merely unbuilt.** Principle 3 forbids a link that signs you in, and the whole anti-phishing promise the invitation walk verified — *"Relay will never send you a link that signs you in"* — is the same promise. A one-tap "Yes, release access" in an email is a credential in a URL arriving at the worst possible moment, which is exactly the shape this product exists to eliminate. The email therefore carries a **bare** `/challenge` link and the decision is taken after authentication. **A requirement that can only be met by breaking a ratified principle is a defect in the requirement.**
+  The happy-path table's step 3 still describes push + SMS + two one-tap actions; it is kept as the 2026-08-06 design intent, and this amendment is what governs.
 - **J6-R4** Owner denial SHALL close the request with `release_state` never leaving `armed`.
 - **J6-R5** Owner approval SHALL advance the release to `GRACE` via the existing `ARMED → PENDING → GRACE` transitions, suppressing verifier notification and auto-satisfying N-of-M, with the auto-satisfaction recorded as owner-consented in the audit log. **No new state transition SHALL be added to `PERMITTED_TRANSITIONS`.**
 - **J6-R6** Escalation to `PENDING` SHALL occur only after the owner-challenge window expires without response.
 - **J6-R7** The challenge window SHALL be configurable per trigger type.
 - **J6-R8** Requests SHALL be subject to velocity limits and a cooling-off period per recipient.
 - **J6-R9** All recipients and verifiers SHALL be notified that a request was made, regardless of outcome.
-- **J6-R10** The requesting recipient SHALL see accurate live status at all times, including time remaining.
+- **J6-R10** The requesting recipient SHALL see accurate live status at all times, including time remaining. ⚠️ **PARTIAL as of 2026-08-21:** the status is accurate, honest and never a dead end — `StandbyClient.tsx` names the deadline, the case reference, and what happens if the owner does not answer — but it renders an **absolute** deadline, not time remaining. The countdown helper exists on the owner's side of the same event (`timeLeft`, `src/app/(owner)/challenge/ChallengeClient.tsx`); the recipient's side does not use it.
 - **J6-R11** Every request SHALL be assigned a case ID referenced in every subsequent notification to every actor (CC7).
 - **J6-R12** An owner SHALL be able to stop a release from any channel at any point before it commits. **The stop is state-dependent and SHALL respect the permitted transitions:** from `PENDING` the release returns to `ARMED`; explicit `CANCELLED` is reachable only from `GRACE`. `PENDING → CANCELLED` is not a permitted transition and SHALL NOT be added.
 
@@ -1421,6 +1537,7 @@ flowchart TD
 - **J7-R11** Verifiers SHALL NEVER be granted read access to ciphertext or decrypted content.
 - **J7-R12** All verifiers SHALL receive a closure message stating the outcome and the owner's ability to reverse it.
 - **J7-R13** Verifier response rate and latency SHALL be measured per verifier. A consistently unresponsive verifier is a silent single point of failure and SHALL be surfaced to the owner during the J5 quarterly review.
+  ⚠️ **OPEN and, until 2026-08-21, tracked nowhere.** Nothing measures either figure — a repo-wide search for a response rate or verifier latency returns nothing. **The raw material already exists**: `verifier_confirmed`, `verifier_denied`, `verifier_abstained` and `answer_not_counted` audit entries are written per decision (`lib/release/triggers.ts`), so this is aggregation over data the product already keeps, not new instrumentation. What does not exist is the **surface** — this requirement delivers through the J5 quarterly review, which is itself OPEN (register: J5 step 4). It is therefore blocked on J5 retention rather than independently buildable, is demand-gated with it, and is recorded on the open list below so it stops being invisible.
 
 ---
 
@@ -1519,7 +1636,7 @@ sequenceDiagram
 - **J8-R1** The recipient SHALL NOT need to locate, forward, or re-request a token link at access time.
 - **J8-R2** Authorization SHALL use a strongly-consistent read of `release_state`. Cached reads SHALL NOT authorize.
 - **J8-R3** A token whose `version` differs from the current `release_state.version` SHALL be rejected with no keys served.
-- **J8-R4** The triage plan SHALL be precomputed on vault change and SHALL render without a generation delay at release.
+- **J8-R4** ⚠️ **MET BY CONSTRUCTION, and the mechanism is not the one specified — annotated 2026-08-21.** The triage plan SHALL render without a generation delay at release. **The `precomputed on vault change` clause is retired:** there is no `triage_plans` table and there should not be one. `orderForHandoff` (`lib/access/dashboard.ts`) ranks and dependency-orders from **metadata already loaded for the read** — root first, `importance_score` descending, alphabetical ties, dependencies ahead of dependants — inside `buildDashboard`, synchronously, with no KMS and no AI call. The 15-second generation budget and its degraded fallback that O5 was written to remove **do not exist to remove**: `lib/ai/triage-agent.ts` has no production caller at release. A cache would add an invalidation surface and a staleness bug to a computation that is already sub-millisecond, which is the opposite of the requirement's intent. J8-R5 and J8-R6 (the ordering itself) remain binding and are what the tests hold.
 - **J8-R5** Root credentials SHALL always rank first, followed by `importance_score` descending, ties broken alphabetically by title.
 - **J8-R6** Plan ordering SHALL place an item's dependencies earlier in the sequence than the item itself.
 - **J8-R7** The interface SHALL present a single next action above any list.
@@ -1664,34 +1781,70 @@ have.
 
 ### Requirements
 
-- **J9-R1** Reversal SHALL be available from any authenticated owner channel.
+- **J9-R1** Reversal SHALL be available from any authenticated owner channel. ⚠️ **Reads as a gap and is not one — annotated 2026-08-21.** One authenticated channel exists: the signed-in web app (`PUT /api/checkin`, and `POST /api/triggers/[id]/stand-down` from `TriggersPageClient.tsx`). No email-reply, SMS or phone path exists, and none is being built — SMS is rung 5 in `docs/standby-architecture.md` §3.4 and parked on `ROADMAP` C4 / §2-F-h. For a passkey holder the shipped path is already one tap, and *"any channel"* was never a promise to accept an **unauthenticated** instruction, which the product's pull-before-push principle forbids outright. The requirement is left as written rather than narrowed, because narrowing it to the current surface is Steve's call and would erase the intent that a second channel is wanted once one is asked for.
 - **J9-R2** Reversal SHALL be rejected for `estate`, with an explicit error stating the release cannot be reversed.
 - **J9-R3** All transitions SHALL use CAS checking both `state` and `version`.
 - **J9-R4** OCC conflicts SHALL retry ≤3 times with exponential backoff and jitter, re-reading and re-evaluating before each attempt.
 - **J9-R5** **On retry exhaustion the release row SHALL end in `ARMED`.**
 - **J9-R6** All recipient sessions for a reversed release SHALL be invalidated within 60 seconds.
 - **J9-R7** The recipient SHALL receive an explanatory close, not an authorization error.
-- **J9-R8** The owner SHALL receive a reversal receipt naming what was accessed, by whom, and for how long.
-- **J9-R9** The receipt SHALL be independently verifiable against the hash chain and SHALL be exportable.
-- **J9-R10** The system SHALL confirm re-arm explicitly and SHALL prompt to close any gap the event revealed.
+- ~~**J9-R8** The owner SHALL receive a reversal receipt naming what was accessed, by whom, and for how long.~~ **DROPPED 2026-08-16 — `PROJECT.yaml → ratified.j9-5-7-dropped`.**
+- ~~**J9-R9** The receipt SHALL be independently verifiable against the hash chain and SHALL be exportable.~~ **DROPPED 2026-08-16 — same ruling** (it is the receipt's property; it falls with the receipt).
+- ~~**J9-R10** The system SHALL confirm re-arm explicitly and SHALL prompt to close any gap the event revealed.~~ **DROPPED 2026-08-16 — same ruling.**
+
+  > **These three were still binding SHALLs here five days after they were dropped** (annotated
+  > 2026-08-21). Steps 5–7 were struck in the *"Known gaps that are NOT defects"* section at the top
+  > of this file and in the 08-17 register; the requirement list they translate into was not
+  > touched, so the requirements layer — the thing built and tested against — went on demanding
+  > work a recorded decision had cancelled. **Deciding something in one section of a document does
+  > not decide it in the others.** The ruling, its rationale and its reopen condition live in
+  > `PROJECT.yaml → ratified.j9-5-7-dropped`; the short form is that step 4, the graceful close,
+  > was built and live-proven on 2026-08-08 and carries the weight these were meant to share, so
+  > 5–7 were enhancements to a complete journey rather than gaps in an incomplete one. Reopen on a
+  > real user reporting the close feels abrupt — a signal from a person, not a backlog item.
+  > The audit-trail requirements are untouched: **J9-R11 still binds**, and the hash chain R9 would
+  > have exported is still written and still INSERT-only.
 - **J9-R11** The audit log SHALL remain INSERT-only throughout. Reversal SHALL NOT delete or amend history.
-- **J9-R12** Mean time from owner action to full token invalidation SHALL be measured and alarmed against the 60-second requirement.
+- **J9-R12** ⚠️ **RETIRED 2026-08-21 — MET BY CONSTRUCTION; there is no longer a quantity to measure.** Was: *"Mean time from owner action to full token invalidation SHALL be measured and alarmed against the 60-second requirement."* R12 is a **metric on R6**, and R6 stopped being a race the moment authorization moved to a per-request server-side read. The session path re-reads `release_state` on every call (`getAccessDashboardForRecipient` → `readReleaseState`, `lib/access/dashboard.ts`), so a reversed release is refused on the recipient's very next request with nothing to expire; the token path compares the JWT's `version` against the live row (`assertVersion`) and refuses on mismatch. The interval is *one request*, not a mean, and no token can outlive a re-arm. **A 60-second alarm on a value that is structurally zero measures nothing and would be a monitor that can only ever look green** — this portfolio has enough of those. If the per-request read is ever replaced by a cache or a revocation list, R12 comes back with it; J8-R2 (*"cached reads SHALL NOT authorize"*) is the guard that keeps that from happening quietly.
 
 ---
 
 ## J10 — The permanent handoff
 
+> # 🔴 SUPERSEDED 2026-08-14 — J10 IS WITHDRAWN, PERMANENTLY. NOTHING BELOW IS A PLAN.
+>
+> `PROJECT.yaml → journeys → J10` is authoritative and records `status: withdrawn`.
+> `PROJECT.yaml → gates → g2-counsel-opinion` was **declined**, not met: no counsel opinion is being
+> sought, so estate is out of the product rather than waiting on anything. `POST /api/rules` answers
+> **400** for `trigger_type: estate`, `estate` is absent from `USER_SELECTABLE_TRIGGER_TYPES`, and
+> `lib/ops/gates.test.ts` fails if that list widens while the decision stands — **re-offering estate
+> means reversing the recorded decision first, in its own change.**
+>
+> **The entire section below is kept as the specification of a capability that was deliberately
+> removed**, because deleting it would leave nothing to read when someone next proposes estate and
+> would hide the reasoning that closed it. Read it as history. **Do not read any `[GAP]` or `[P2]`
+> in it as a backlog item, and do not complete it.** That is the exact failure mode the
+> `withdrawn` vocabulary was added to prevent — `gated` reads as temporary on every future status
+> pass, which is how a deliberately-removed capability gets quietly rebuilt by someone finishing
+> what looked like an unfinished plan.
+
 **Actor:** Executor (recipient with `role = 'executor'`)
 **Trigger:** The owner has died.
 **Success:** Verified, irreversible release; provider transitions completed; a legally defensible record.
-**Business stake:** The highest willingness-to-pay moment in the product — the activation-fee revenue line (§24). Also the highest-risk: a false death release is unrecoverable.
+**Business stake:** ~~The highest willingness-to-pay moment in the product — the activation-fee revenue line (§24).~~ **Void — the activation-fee line went with the journey** (2026-08-14). Also the highest-risk: a false death release is unrecoverable, which is part of why it was withdrawn rather than parked.
 
-> ### ⛔ Legal gate — binding
+> ### ⛔ Legal gate — ~~binding~~ **CLOSED BY REMOVAL, 2026-08-14**
 >
-> **`g2-counsel-opinion` (owner: steve, due 2026-09-30) MUST clear before any paying estate customer.**
-> Relay's fiduciary/custodian status under RUFADAA is unresolved. An adverse opinion routes this
-> journey to B2B2C-through-regulated-partners only, or parks it. This journey may be *specified* now;
-> it MUST NOT be sold before that opinion exists.
+> ~~**`g2-counsel-opinion` (owner: steve, due 2026-09-30) MUST clear before any paying estate
+> customer.** Relay's fiduciary/custodian status under RUFADAA is unresolved. An adverse opinion
+> routes this journey to B2B2C-through-regulated-partners only, or parks it. This journey may be
+> *specified* now; it MUST NOT be sold before that opinion exists.~~
+>
+> **This gate will not clear, because it is not being attempted.** It was closed by removing the
+> capability it guarded, not by satisfying it — on this project's own sequencing rule, demand before
+> spend: `wtp_evidence` is `none`, G1 has measured no traffic, and a written opinion before any of
+> that would be spending on a capability nobody has asked for. **`may be specified now` is the one
+> clause that must not survive**, because it is the standing invitation to keep building this.
 
 ### The optimization that defines this journey
 
@@ -1798,15 +1951,17 @@ The eight structural changes, consolidated:
 | **O2** | Policies over attributes, materializing into `access_rules` | J4, J2 | Up to 900 hand-authored per-item rows; new items silently uncovered | Removes the setup cliff and the staleness bug. **Additive — `access_rules` stays authoritative, no contract change.** Reconciliation on policy edit/delete is specified in J4-R14/R15 — a materializing layer without it would silently widen access |
 | **O3** | Claim in calm, not in crisis | J4, J8 | Raw `?token=` link arriving at the worst moment | Removes all identity friction from the highest-stress moment; creates the referral relationship |
 | **O4** | Verifiers can deny and abstain | J7 | Confirm-only API — a rubber stamp | **Correctness fix in the moat mechanism.** Silence and objection must be distinguishable |
-| **O5** | Precompute the triage plan | J8 | 15s generation budget at `RELEASED` + degraded fallback | Metadata-only computation has no reason to run during a crisis. Removes the fallback path's relevance |
+| **O5** | ~~Precompute the triage plan~~ **Compute the plan at read time from metadata** (restated 2026-08-21) | J8 | 15s generation budget at `RELEASED` + degraded fallback | Metadata-only computation has no reason to run during a crisis — **and no reason to be cached either.** The optimization's goal (no generation delay at release) is met by `orderForHandoff` computing synchronously inside `buildDashboard` with no AI or KMS call. The cache named in the original wording was never built and is not wanted: see J8-R4 |
 | **O6** | Passive-first liveness with an escalation ladder | J5, J6 | 30-day manual check-in ritual | False `PENDING` is the fastest way to destroy trust. Preserves scarce verifier attention |
 | **O7** | Owner-challenge-first on every reversible trigger | J6 | Escalating every request straight to N-of-M | Short-circuits both the false-alarm case and the owner-is-conscious case before any verifier is contacted. Mitigates the §27 verification cold-start risk. **Implemented with the existing seven transitions — see J6-R5** |
 | **O8** | Review by exception after import | J2 | A 300-row list the owner must triage | Surfaces ~20 consequential items and collapses ~280. Asking a human to review every row defeats the importance engine's entire purpose |
 
 **None of the eight adds a state transition, changes a module contract, or moves an authorization
 check.** O2 adds a layer above `access_rules`; O4 and O7 add columns and side effects around the
-existing CAS path; O5 caches a computation that already exists. That is deliberate — the release
-mechanism is the part of this system that is correct, and it should be the part that changes least.
+existing CAS path; ~~O5 caches a computation that already exists~~ **O5 turned out to need no new
+mechanism at all — the computation is cheap enough to run on the read** (2026-08-21). That is
+deliberate — the release mechanism is the part of this system that is correct, and it should be the
+part that changes least.
 
 ---
 
@@ -1883,15 +2038,29 @@ through `withOccRetry`, and an `owner_id` predicate on every query.
 
 What remains genuinely open is **refinement inside journeys that work**, not missing journeys:
 
+> ⚠️ **Rebuilt 2026-08-21. This table is the file's closing "what is still open" summary, and three
+> of its seven rows listed decided things as open** — which is worse than the staleness it was
+> written to avoid, because a *closing* summary is what a reader trusts when they have stopped
+> reading. J9's row asked for work dropped by ruling on 2026-08-16; J10's row described a journey
+> withdrawn on 2026-08-14 as blocked on a gate; J8's row asked for a cache the architecture does not
+> want. The 2026-08-17 step register above is the finer-grained answer and wins on any disagreement;
+> `PROJECT.yaml → journeys` wins over both.
+
 | Journey | Still open |
 |---|---|
-| J2 | Review-by-exception; document and email ingestion lanes (`[P2]`) |
-| J5 | Escalation ladder, quarterly review packaging, renewal receipt |
-| J8 | Precomputed triage plan, single-next-action, ephemeral reveal, shared progress; mobile (`[P2]`) |
-| J9 | Steps 5–7: reversal receipt, re-arm confirmation, thank-the-recipient. Step 4 (graceful close) shipped 2026-08-08 and carries their weight for now |
-| J10 | Everything, correctly — blocked on `g2-counsel-opinion` |
+| J1 | The behavioral qualifier and the latent-tier capture (J1-R2) — qualification is by channel allow-list today. The abandon-after-seed nurture branch is **undecided, not deferred** |
+| J2 | Review-by-exception; top-three gap framing; the two item-level continuity-ready conditions (`backup_note` on every root, no `CUSTODY_RISK` on an irreplaceable); document and email ingestion lanes (`[P2]`) |
+| J3 | The monthly "what was done on your behalf" digest — nothing schedules it |
+| J4 | Single-entry add-person across roles (read-side merge exists, two add forms remain); proposed N-of-M defaults per trigger type |
+| J5 | Owner-reminder ladder **before** a heartbeat transition (the two adjacent escalation cases are built), **per-trigger cadence (J5-R3)**, quarterly review packaging, life-event prompts, renewal receipt |
+| J6 | Evidence attachment on a request; channels beyond email; time-remaining on the recipient's status. ⚠️ **And the outcome branches — deny, approve, lapse-escalate — are `wired`, never walked on production** |
+| J7 | Per-verifier response rate and latency (J7-R13), which delivers through J5's quarterly review and is blocked on it |
+| J8 | ~~Precomputed triage plan~~ *(retired — met by read-time ordering, see J8-R4)*, single-next-action, ephemeral reveal, shared progress; mobile (`[P2]`) |
+| J9 | ~~Steps 5–7: reversal receipt, re-arm confirmation, thank-the-recipient~~ **DROPPED 2026-08-16 by ruling, not deferred — `PROJECT.yaml → ratified.j9-5-7-dropped`.** Step 4, the graceful close, shipped 2026-08-08 and carries their weight. Reversal from a second owner channel (J9-R1) is a channel question, not a journey gap |
+| J10 | ~~Everything, correctly — blocked on `g2-counsel-opinion`~~ **NOTHING IS OPEN. WITHDRAWN 2026-08-14** — the gate was declined, not met, and the capability was removed rather than parked. `PROJECT.yaml → journeys → J10` is authoritative |
 | CC8 | Behaviour on a genuinely old low-end phone. Everything else in CC8 is now checked |
-| — | Identity verification (KYC) at claim (`[P2]`) |
+| — | Identity verification (KYC) at claim (`[P2]`) — needs a vendor; stays closed until a partner's diligence or a real user asks (`ROADMAP` §2-F-i) |
+| — | **The money path is in no sweep and no automated walk** — see the section near the top of this file for the per-step ladder |
 
 ### Sequencing against the gates
 
@@ -1910,19 +2079,21 @@ journeys do not override it. The correct order:
    reveal, price, and a *verified-firing* instrument (J1-R10). Everything else waits.
 2. **On G1 pass** — J4's claim flow and J3's delegation, because they are what make the wedge
    actually usable, then J7's verifier surface, which is the largest correctness gap.
-3. **G2 before any estate work reaches a paying customer.** J10 may be specified; it may not be sold.
+3. ~~**G2 before any estate work reaches a paying customer.** J10 may be specified; it may not be sold.~~ **VOID 2026-08-14 — there is no estate work to sequence.** G2 was declined and J10 withdrawn; *"may be specified"* is the clause that kept inviting more of it.
 4. **J8 and J9 polish continuously** — they are largely built, and the optimizations are refinements
    rather than new systems.
 
 ### Open decisions
 
-| # | Decision | Owner |
-|---|---|---|
-| 1 | Price point for the G1 test — at, above, or below the $99.99/yr Everplans anchor | Steve |
-| 2 | Free-tier caps: 10 items / 1 recipient as specified, or different | Steve |
-| 3 | Whether the delegate model (J3) needs its own counsel review alongside G2 — the elder-abuse surface is a distinct legal question from RUFADAA custodianship | Steve |
-| 4 | Whether recovery and release quorums may share a social graph (Part VI) | Design |
-| 5 | Owner-challenge window per trigger type — 2h for emergency is a starting proposal, not evidence | Design |
+| # | Decision | Owner | Status |
+|---|---|---|---|
+| 1 | ~~Price point for the G1 test — at, above, or below the $99.99/yr Everplans anchor~~ | Steve | **DECIDED by shipping** — the live price is in `PROJECT.yaml → monetization_path` and is not restated here. ⚠️ The anchor in the original wording is itself stale: `PROJECT.yaml` records that the competitor price is no longer $99.99. Re-derive an anchor before re-opening this |
+| 2 | ~~Free-tier caps: 10 items / 1 recipient as specified, or different~~ | Steve | **DECIDED — different, and shipped.** `TIER_LIMITS` (`lib/billing/entitlements.ts`) is the one authoritative statement. Recipients raised 2026-08-08; verifiers capped 2026-08-13; release permitted on free per `ratified.beta-free-release`, revisit 2026-10-01. ⚠️ Only the release half is ratified — see J1-R7 |
+| 3 | ~~Whether the delegate model (J3) needs its own counsel review alongside G2~~ — the elder-abuse surface is a distinct legal question from RUFADAA custodianship | Steve | **OPEN, and it did NOT go away with G2.** G2 was declined and estate withdrawn, but J3 shipped and is live: the delegate model is the product's *"principal harm vector"* by this document's own words. It no longer has a gate to ride alongside, so it needs its own answer |
+| 4 | Whether recovery and release quorums may share a social graph (Part VI) | Design | OPEN |
+| 5 | Owner-challenge window per trigger type — 2h for emergency is a starting proposal, not evidence | Design | OPEN — `challengeExpiry` (`lib/release/access-request.ts`) is where the proposal lives |
+| 6 | **Whether any billing check joins `verify:live`** — every one costs a real charge on a Stripe account shared with two other projects, so this is a spend and blast-radius call. Added 2026-08-21 | Steve | OPEN |
+| 7 | **The J1 abandon-after-seed nurture branch** — give it an unlock in `ROADMAP` §2-F (first cohort of abandoned seeds actually observed) or strike it. It is a new outbound capability under `ratified.outbound-mail-bounds`. Added 2026-08-21 | Steve | OPEN |
 
 ---
 

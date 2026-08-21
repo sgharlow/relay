@@ -76,7 +76,7 @@ describe('claimStandbyRole — binding an identity to a roster row', () => {
       [INVITE], // find invitation
       1, // mark claimed — one row AFFECTED, i.e. this caller won the CAS
       [{ email: 'sister@example.com' }], // roster row email
-      [], // link claimed_user_id + standby_state
+      1,  // link claimed_user_id + standby_state — ONE row affected
     );
 
     const out = await claimStandbyRole({ token: 'ABCDE-FGHIJ' });
@@ -99,7 +99,7 @@ describe('claimStandbyRole — binding an identity to a roster row', () => {
     rows(
       [INVITE],
       1, // mark claimed — won the CAS
-      [], // link — no user lookup or upsert should happen at all
+      1,  // link — no user lookup or upsert should happen at all
     );
 
     const out = await claimStandbyRole({ token: 'ABCDE-FGHIJ', existingUserId: 'user-77' });
@@ -116,7 +116,7 @@ describe('claimStandbyRole — binding an identity to a roster row', () => {
       [{ ...INVITE, person_type: 'verifier', person_id: 'ver-1' }],
       1, // mark claimed — won the CAS
       [{ email: 'uncle@example.com' }],
-      [],
+      1,
     );
 
     await claimStandbyRole({ token: 'ABCDE-FGHIJ' });
@@ -125,7 +125,7 @@ describe('claimStandbyRole — binding an identity to a roster row', () => {
   });
 
   it('records the claim in the audit log against the OWNER, whose circle changed', async () => {
-    rows([INVITE], 1, [{ email: 'sister@example.com' }], []);
+    rows([INVITE], 1, [{ email: 'sister@example.com' }], 1);
 
     await claimStandbyRole({ token: 'ABCDE-FGHIJ' });
 
@@ -161,12 +161,47 @@ describe('claimStandbyRole — binding an identity to a roster row', () => {
   });
 });
 
+describe('an invitation whose roster row is gone', () => {
+  it('refuses instead of minting a session with no role', async () => {
+    /*
+      🔴 THE ORPHAN INVITATION. `deleteRecipient`/`deleteVerifier` cascaded only
+      access_policies and access_rules, so removing somebody left their
+      unexpired invitation behind. The code-entry paths refuse when the roster
+      row has gone — break-glass.ts checks, and the branch below that looks up
+      the person's email fails on `if (!email)`. This branch does not look the
+      person up at all: `existingUserId` skips straight to the binding UPDATE,
+      which matched ZERO rows and whose rowCount nobody read.
+
+      So the invitation was burned, the caller got a session bound to nothing,
+      and `standby_claimed` was written into the OWNER's tamper-evident log for
+      a person who does not exist. The cascade is fixed in recipients.ts and
+      verifiers.ts; this is the guard at the place the mistake actually lands,
+      because rows written before that fix are still out there with up to thirty
+      days to run.
+    */
+    rows(
+      [INVITE],
+      1, // won the CAS on the invitation
+      0, // the binding UPDATE matched NOTHING — the owner removed this person
+    );
+
+    await expect(
+      claimStandbyRole({ token: 'ABCDE-FGHIJ', existingUserId: 'user-77' }),
+    ).rejects.toThrow(ValidationError);
+
+    expect(
+      writeAuditEntry,
+      'a claim was recorded against the owner for a person who no longer exists',
+    ).not.toHaveBeenCalled();
+  });
+});
+
 describe('re-claiming invalidates a confirmation made about someone else', () => {
   it('clears fingerprint_confirmed_at, so the owner is asked again', async () => {
     // Risk 8. A re-claim binds a different claimed_user_id, which changes the
     // derived phrase — an earlier confirmation was an assertion about a
     // DIFFERENT human holding this slot and must not silently stand.
-    rows([INVITE], 1, [{ email: 'sister@example.com' }], []);
+    rows([INVITE], 1, [{ email: 'sister@example.com' }], 1);
 
     await claimStandbyRole({ token: 'ABCDE-FGHIJ' });
 

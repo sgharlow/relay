@@ -117,6 +117,105 @@ describe('deleteAccount', () => {
     expect(sqlIssued().some((s) => /DELETE FROM break_glass_codes/i.test(s))).toBe(true);
   });
 
+  it('clears the confirmations that can only be reached THROUGH release_state, first', async () => {
+    /*
+      🔴 verifier_confirmations is keyed on release_state_id and nothing else
+      (001_initial.sql) — there is no owner_id to filter on. So it had to be
+      reached through release_state, and release_state was the FIRST thing
+      deleted, after which those rows are unreachable by any query this product
+      can write. Every account closed through DELETE /api/account left its
+      verifier attestations on the cluster, including the four purged on
+      2026-08-18.
+
+      The fixture scripts knew better than the product: reset-demo.ts and
+      family-arc.ts both clear them with this exact subquery before dropping
+      release_state.
+    */
+    await deleteAccount('owner-1');
+    const sql = sqlIssued();
+
+    const confirmations = sql.findIndex((s) => /DELETE FROM verifier_confirmations/i.test(s));
+    const releaseState = sql.findIndex((s) => /DELETE FROM release_state/i.test(s));
+
+    expect(confirmations, 'verifier_confirmations is never cleared').toBeGreaterThanOrEqual(0);
+    expect(sql[confirmations]).toMatch(/release_state_id IN \(SELECT id FROM release_state WHERE owner_id/i);
+    expect(
+      confirmations < releaseState,
+      'release_state is deleted first, which makes the confirmation rows unreachable forever',
+    ).toBe(true);
+  });
+
+  it('clears the access codes, consent artifacts and auth challenges the account issued', async () => {
+    /*
+      Each of these was left behind, and each is a live credential or a record
+      the privacy page says goes:
+        recipient_codes  — an access-code hash, the higher-value of the two code
+                           types (it opens the vault rather than asking a
+                           question). verifier_codes was cleared; this was not.
+        consent_artifacts — no owner_id, so it has to be reached through the
+                           delegations row that points at it, BEFORE that row is
+                           deleted.
+        auth_challenges  — unspent WebAuthn/step-up nonces for a user who no
+                           longer exists.
+    */
+    await deleteAccount('owner-1');
+    const sql = sqlIssued();
+
+    expect(sql.some((s) => /DELETE FROM recipient_codes WHERE owner_id/i.test(s))).toBe(true);
+    expect(sql.some((s) => /DELETE FROM auth_challenges WHERE user_id/i.test(s))).toBe(true);
+
+    const consent = sql.findIndex((s) => /DELETE FROM consent_artifacts/i.test(s));
+    const delegations = sql.findIndex((s) => /DELETE FROM delegations/i.test(s));
+    expect(consent, 'consent_artifacts is never cleared').toBeGreaterThanOrEqual(0);
+    expect(
+      consent < delegations,
+      'the delegations row is the only pointer to the consent artifact; deleting it first orphans the artifact',
+    ).toBe(true);
+  });
+
+  it('aborts before deleting the users row when a delete FAILS rather than being absent', async () => {
+    /*
+      🔴 The catch around the optional deletes was unconditional — `catch { }`
+      with the comment "table absent in this deployment". A 40001 serialization
+      failure, a 42501 permission denial of the 031/032 class, or a dropped
+      connection was swallowed exactly like a missing table, and then
+      `DELETE FROM users` ran anyway. The API returned 200 with a report that
+      never counted those tables, and no retry was possible because the owner
+      was gone.
+
+      Half-deleted is the one state with no recovery, which is the same
+      discipline the Stripe cancellation and the resign step already follow.
+    */
+    query.mockImplementation(async (sql: string) => {
+      if (/DELETE FROM break_glass_codes/i.test(sql)) {
+        throw Object.assign(new Error('permission denied for table break_glass_codes'), { code: '42501' });
+      }
+      return { rows: [], rowCount: 0 };
+    });
+
+    await expect(deleteAccount('owner-1')).rejects.toThrow(/permission denied/);
+
+    expect(
+      sqlIssued().some((s) => /DELETE FROM users/i.test(s)),
+      'the users row went while a bearer credential survived — the account cannot be retried',
+    ).toBe(false);
+  });
+
+  it('still closes the account when an optional table is absent from this deployment', async () => {
+    // The one error that IS tolerated, and the only one: 42P01, relation does
+    // not exist. Narrowed the way signin-attempts.ts and csp-report-store.ts
+    // narrow theirs, rather than by swallowing everything.
+    query.mockImplementation(async (sql: string) => {
+      if (/DELETE FROM recipient_codes/i.test(sql)) {
+        throw Object.assign(new Error('relation "recipient_codes" does not exist'), { code: '42P01' });
+      }
+      return { rows: [], rowCount: 0 };
+    });
+
+    await expect(deleteAccount('owner-1')).resolves.toBeTruthy();
+    expect(sqlIssued().some((s) => /DELETE FROM users/i.test(s))).toBe(true);
+  });
+
   it('removes the passkeys — a public key must not outlive the account', async () => {
     // Proven on production 2026-08-12: webauthn_credentials rows survived the
     // user row. Sign-in still failed safely, but the data was retained against

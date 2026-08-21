@@ -182,6 +182,88 @@ async function main(): Promise<void> {
       console.log(`FAIL: ${stale} disposable account(s) older than ${maxAgeHours}h are still on the cluster.`);
       process.exitCode = 1;
     }
+
+    /*
+      🔴 THE CENSUS ABOVE IS STRUCTURALLY BLIND TO THE WORST OUTCOME, and was
+      from its first line. Every account it can see is reached by joining OUT of
+      the users table (`FROM users WHERE email LIKE …`). So the moment a users
+      row is gone, everything that row owned becomes invisible here — and a
+      users-row-only delete is precisely what three fixture scripts were doing
+      (capture-screens.ts deleted nothing else at all, and then printed "cluster
+      clean"). The one shape this sweep exists to report was the one shape it
+      could not report.
+
+      This is deliberately a different question from the one above. That one asks
+      "whose account is still here?"; this asks "whose rows are here with nobody
+      to own them?" — the wreckage of a purge that half-ran, a script that died
+      between statements, or a hand-written cascade shorter than the real one.
+      Neither question implies the other.
+
+      READ-ONLY like the rest of the file. It counts and it fails the run; it
+      never deletes. Repairing an orphan needs a human decision about which of
+      two bad states is being restored, and this schema has no foreign keys to
+      make the answer obvious.
+
+      The per-table column is named rather than assumed: most owned tables key on
+      `owner_id`, but the ones that belong to a PERSON rather than to a vault key
+      on `user_id`, and asking the wrong column returns a clean zero instead of
+      an error.
+    */
+    const OWNER_COLUMNS: [table: string, column: string][] = [
+      ['vault_items', 'owner_id'],
+      ['recipients', 'owner_id'],
+      ['verifiers', 'owner_id'],
+      ['access_rules', 'owner_id'],
+      ['release_state', 'owner_id'],
+      ['invitations', 'owner_id'],
+      ['audit_log', 'owner_id'],
+      ['access_requests', 'owner_id'],
+      ['access_policies', 'owner_id'],
+      ['approvals', 'owner_id'],
+      ['subscriptions', 'owner_id'],
+      ['recipient_codes', 'owner_id'],
+      ['verifier_codes', 'owner_id'],
+      ['break_glass_codes', 'owner_id'],
+      ['webauthn_credentials', 'user_id'],
+      ['recovery_codes', 'user_id'],
+      ['auth_challenges', 'user_id'],
+    ];
+
+    const dangling: [table: string, n: number][] = [];
+    for (const [table, column] of OWNER_COLUMNS) {
+      try {
+        const r = await client.query<{ n: string }>(
+          `SELECT count(*)::text AS n FROM ${table}
+            WHERE ${column} IS NOT NULL AND ${column} NOT IN (SELECT id FROM users)`,
+        );
+        const n = Number(r.rows[0]?.n ?? 0);
+        if (n > 0) dangling.push([table, n]);
+      } catch (err) {
+        /*
+          NOT swallowed. A table this sweep cannot read is a table it cannot
+          vouch for, and reporting "no orphans" on the strength of a failed
+          query is the false green this whole file was written against. It is
+          reported and it fails the run, the same as finding orphans would.
+        */
+        console.log(`  ! could not census ${table}.${column}: ${(err as Error).message}`);
+        process.exitCode = 1;
+      }
+    }
+
+    console.log('');
+    if (dangling.length === 0) {
+      console.log('Orphan census: no rows point at a user that no longer exists.');
+    } else {
+      const total = dangling.reduce((a, [, n]) => a + n, 0);
+      console.log(`FAIL: ${total} row(s) point at a user that no longer exists:`);
+      for (const [table, n] of dangling) console.log(`  ${table}: ${n}`);
+      console.log('');
+      console.log('Something deleted a users row without running the cascade. The rows are');
+      console.log('unreachable through the application and invisible to the account census');
+      console.log('above. Decide per table whether to purge them; deleteAccount() cannot help');
+      console.log('once the users row is gone, which is the reason it deletes that row LAST.');
+      process.exitCode = 1;
+    }
   } finally {
     await client.end();
   }

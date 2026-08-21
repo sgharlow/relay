@@ -64,13 +64,21 @@ export const SUBSCRIPTION_LAPSED_ACTION = 'subscription_lapsed_notice';
 export type NoticeOutcome = 'sent' | 'undelivered' | 'duplicate' | 'no-address';
 
 /**
- * Has this exact notice already gone out?
+ * Is there already an audit entry for this action carrying this Stripe id?
  *
  * Keyed on the Stripe object id rather than on time, because Stripe's retry
  * schedule is its own business and a time window would either double-send on a
  * slow retry or suppress a genuinely new failure on a fast one.
+ *
+ * ⚠️ GENERALISED 2026-08-21, name and all. This started as "has this notice
+ * gone out" and the webhook needed the same question about a different kind of
+ * record — whether `subscription_started` had already been written for a
+ * REDELIVERED event id. Two functions issuing the same query against the same
+ * column is how one of them drifts, so there is one, and it is named after what
+ * it actually asks. `noticeAlreadySent` remains as the notice-shaped way of
+ * asking it, because that is what reads correctly at the notice call sites.
  */
-export async function noticeAlreadySent(
+export async function stripeIdAlreadyRecorded(
   ownerId: string,
   action: string,
   stripeId: string,
@@ -81,6 +89,15 @@ export async function noticeAlreadySent(
     [ownerId, action, stripeId],
   );
   return Number(r.rows[0]?.n ?? 0) > 0;
+}
+
+/** Has this exact notice already gone out? One question, asked in notice terms. */
+export async function noticeAlreadySent(
+  ownerId: string,
+  action: string,
+  stripeId: string,
+): Promise<boolean> {
+  return stripeIdAlreadyRecorded(ownerId, action, stripeId);
 }
 
 async function ownerEmail(ownerId: string): Promise<string | null> {

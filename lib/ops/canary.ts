@@ -1,12 +1,21 @@
 /**
  * What "production is working" means, expressed as assertions.
  *
- * WHY THIS EXISTS. Next 14 gives no global hook for route errors, so anything
- * in-app only covers the handlers someone remembered to wrap — the wrong shape
- * for catching a failure nobody anticipated. And the failure nobody anticipated
- * is the normal case: on 2026-08-08 a validly signed verifier link returned an
- * unhandled 500 in production, behind a fully green suite of a thousand tests,
- * and it was found by a person poking at it by hand.
+ * WHY THIS EXISTS. It was written when Next 14 gave no global hook for route
+ * errors, so anything in-app covered only the handlers someone remembered to
+ * wrap — the wrong shape for catching a failure nobody anticipated. And the
+ * failure nobody anticipated is the normal case: on 2026-08-08 a validly signed
+ * verifier link returned an unhandled 500 in production, behind a fully green
+ * suite of a thousand tests, and it was found by a person poking at it by hand.
+ *
+ * ⚠️ THAT PREMISE IS NO LONGER THE WHOLE STORY, and this header said it was
+ * until 2026-08-21. Next 16's `onRequestError` DOES give a global server-error
+ * hook, and `lib/ops/error-reporter.ts` is what it calls. The two are
+ * complements, not substitutes, and the distinction is the reason this file
+ * survives the upgrade: the hook reports errors the application THREW, from
+ * inside it. This asserts, from outside and on a schedule, that the refusals
+ * still refuse — a boundary that quietly starts saying 200 throws nothing for
+ * any hook to catch.
  *
  * These are deliberately assertions about BEHAVIOUR rather than liveness. That
  * a page returns 200 proves close to nothing — every page in this app returned
@@ -66,8 +75,19 @@ export const CHECKS: CanaryCheck[] = [
     path: '/caregivers',
     expectStatus: 200,
     expectBodyContains: ['Relay'],
+    /*
+      🔴 THIS SAID "The page every paid click lands on is down. Ad spend
+      continues while the traffic it buys hits nothing." Paid advertising was
+      retired on 2026-08-16 (PROJECT.yaml ratified.retire-paid-advertising), so
+      the consequence this printed at 3am was about a flight that no longer
+      exists — and a check whose stated consequence is untrue is a check that
+      gets read once and then muted. That is this file's own rule, four lines
+      into its header.
+    */
     meaning:
-      'The page every paid click lands on is down. Ad spend continues while the traffic it buys hits nothing.',
+      'The landing page every editorial placement points at is down. Op-eds are the ratified ' +
+      'channel and they carry a URL that cannot be corrected once published, so the readers a ' +
+      'piece sends arrive at nothing and the g1 demand gate reads their absence as no interest.',
   },
   {
     name: 'signup page offers enrolment',

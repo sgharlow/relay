@@ -4,10 +4,19 @@
  * GET  → the decision context (counts and categories, never titles or content)
  * POST → confirm | deny | abstain
  *
- * The sibling `/api/verify/[token]` is unchanged and stays permanently: J7-R1
- * (amended 2026-08-12) guarantees no enrolment step at decision time, so a
- * verifier who never claimed still decides via a single-use code. This is the
- * claimed verifier's door, not a replacement for theirs.
+ * The sibling `/api/verify/[token]` is unchanged and stays: J7-R1 guarantees no
+ * enrolment step at decision time, and a CONFIRMED verifier who holds no passkey
+ * and no authenticator has no other way in. This is the signed-in verifier's
+ * door, not a replacement for theirs.
+ *
+ * 🔴 THAT SENTENCE USED TO SAY "so a verifier who never claimed still decides
+ * via a single-use code", corrected 2026-08-21. J7-R1's SECOND amendment
+ * (2026-08-12, docs/user-journeys.md:1386-1402) withdrew exactly that: an
+ * unconfirmed verifier is classified `not_counted` and is mailed no code at all
+ * (lib/notify/verifier-notice-class.ts), because once quorum counts only
+ * confirmed people, a code to an unconfirmed one buys a vote with no effect.
+ * The guarantee that survives is narrower and absolute — nobody enrols in order
+ * to answer.
  *
  * `buildVerifierContext` and `submitConfirmation` are untouched — both already
  * took a plain `releaseStateId` + `verifierId`, and the token was only ever how

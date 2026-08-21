@@ -164,10 +164,32 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const [ownerRow, requester, circle] = await Promise.all([
       query<{ email: string }>(`SELECT email FROM users WHERE id = $1 LIMIT 1`, [ownerId]),
       query<{ name: string }>(`SELECT name FROM recipients WHERE id = $1 LIMIT 1`, [payload.recipientId]),
+      /*
+        🔴 THIS MAILED PEOPLE THE OWNER HAD REMOVED, until 2026-08-21. Both arms
+        read the roster with no `standby_state` filter, so a REVOKED recipient or
+        verifier still received "someone asked for access to X's vault" — naming
+        the requester — on every single request.
+
+        Revocation is "the control behind the coercion risk"
+        (docs/standby-architecture.md §3.7 rule 1): the owner's way to remove
+        somebody who should no longer be near their affairs. Continuing to tell
+        that person when an emergency is raised, and by whom, is the leak the
+        control exists to close.
+
+        Every sibling read already had the filter — standby-resolve.ts (twice),
+        session-access.ts, closure.ts, requester-session.ts, and notifyOneVerifier,
+        whose comment reads "a revoked one is deliberately skipped". This query
+        was written for J6-R9 and did not inherit it. `coalesce(..., 'invited')`
+        because the column is NULL for rows predating migration 020.
+      */
       query<{ email: string; name: string }>(
-        `SELECT email, name FROM recipients WHERE owner_id = $1 AND id <> $2
+        `SELECT email, name FROM recipients
+          WHERE owner_id = $1 AND id <> $2
+            AND coalesce(standby_state, 'invited') <> 'revoked'
          UNION ALL
-         SELECT email, name FROM verifiers WHERE owner_id = $1`,
+         SELECT email, name FROM verifiers
+          WHERE owner_id = $1
+            AND coalesce(standby_state, 'invited') <> 'revoked'`,
         [ownerId, payload.recipientId],
       ),
     ]);

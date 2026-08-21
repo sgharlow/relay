@@ -172,3 +172,113 @@ describe('the probe notices a sweep that runs and achieves nothing', () => {
     expect(String(mockQuery.mock.calls[0][0])).toContain('failures');
   });
 });
+
+/*
+ * 🔴 AND IT ONLY EVER WATCHED THE FIRST PHASE. Closed 2026-08-21.
+ *
+ * `transitioned` and `failures` come from `runHeartbeatSweep`, which does one
+ * thing: ARMED → PENDING → GRACE. The two legs that run after it in the same
+ * cron reported into a JSON response nobody reads and swallowed their failures
+ * without so much as a stderr line:
+ *
+ *   - `resolveElapsedGrace` — GRACE → RELEASED. The transition that actually
+ *     opens a vault once quorum is met and the window has passed. THE product
+ *     event.
+ *   - `escalateLapsedRequests` — a request the owner never answered, handed on
+ *     to the verifiers.
+ *
+ * So the exact failure the `didWork` rule was written for could recur one phase
+ * later and this probe would answer 200 forever: sweep runs punctually, arms
+ * nothing because nothing is overdue, `failures: 0`, healthy — while every
+ * quorum-met release in the database sits in GRACE and never opens.
+ *
+ * MEASURED FROM THE WORK ITSELF, NOT FROM A COUNTER THE SWEEP REMEMBERS TO
+ * WRITE. The obvious fix was new scheduler_runs columns, which needs a
+ * migration in two regions and is a second thing that can silently stop being
+ * written — the same shape as the bug. The rows that OUGHT to have been
+ * resolved are queryable directly, so the probe asks the database what is stuck
+ * rather than asking the sweep how it thinks it did. It also works for a
+ * failure that never reached the sweep at all: a cron that stopped invoking the
+ * later legs, a deploy where the call was dropped.
+ */
+describe('the probe notices the phases the sweep never reported', () => {
+  const now = new Date('2026-08-06T12:00:00Z');
+  const run = (over: Record<string, unknown>) =>
+    ({
+      rows: [
+        {
+          ran_at: '2026-08-06T11:30:00Z',
+          transitioned: 0,
+          failures: 0,
+          grace_overdue: 0,
+          escalation_overdue: 0,
+          ...over,
+        },
+      ],
+    }) as never;
+
+  it('is UNHEALTHY when a quorum-met GRACE row has stayed unreleased past the threshold', async () => {
+    mockQuery.mockResolvedValueOnce(run({ grace_overdue: 1 }));
+
+    const health = await getSchedulerHealth(now);
+
+    // Punctual, zero failures, and still not healthy — the vault that should
+    // have opened has not.
+    expect(health.ageSeconds).toBe(1800);
+    expect(health.failures).toBe(0);
+    expect(health.healthy).toBe(false);
+    expect(health.graceOverdue).toBe(1);
+  });
+
+  it('is UNHEALTHY when a lapsed request has sat unescalated past the threshold', async () => {
+    mockQuery.mockResolvedValueOnce(run({ escalation_overdue: 2 }));
+
+    const health = await getSchedulerHealth(now);
+
+    expect(health.healthy).toBe(false);
+    expect(health.escalationOverdue).toBe(2);
+  });
+
+  /*
+    A row becomes due the instant its window passes, and the cron is hourly, so
+    "due right now" is the ordinary state of affairs. Only a row still due after
+    a whole missed run plus slack means the resolver is not running — the same
+    threshold and the same reasoning as the staleness check, so a single lost
+    CAS race never pages anyone.
+  */
+  it('asks only about rows that have been due longer than one missed run', async () => {
+    mockQuery.mockResolvedValueOnce(run({}));
+
+    await getSchedulerHealth(now);
+
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toMatch(/FROM release_state/i);
+    expect(sql).toMatch(/FROM access_requests/i);
+    // now − STALE_AFTER_SECONDS, not now.
+    expect(params).toEqual([new Date(now.getTime() - STALE_AFTER_SECONDS * 1000).toISOString()]);
+  });
+
+  it('is healthy when nothing is stuck', async () => {
+    mockQuery.mockResolvedValueOnce(run({}));
+    await expect(getSchedulerHealth(now)).resolves.toMatchObject({
+      healthy: true,
+      graceOverdue: 0,
+      escalationOverdue: 0,
+    });
+  });
+
+  /*
+    A probe that 500s is a probe that cannot tell a monitor anything, and this
+    endpoint is public and unauthenticated. Absent columns read as zero rather
+    than NaN — which would make `> 0` false and silently disable the check, so
+    the test says which direction the fallback goes.
+  */
+  it('treats absent overdue counts as zero rather than crashing the probe', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ ran_at: '2026-08-06T11:30:00Z' }] } as never);
+    await expect(getSchedulerHealth(now)).resolves.toMatchObject({
+      healthy: true,
+      graceOverdue: 0,
+      escalationOverdue: 0,
+    });
+  });
+});

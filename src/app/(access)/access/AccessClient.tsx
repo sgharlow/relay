@@ -26,7 +26,33 @@ import {
   type SecretField,
 } from '../../../../lib/crypto/secret-payload';
 import { parseOtpauth, generateTotp } from '../../../../lib/crypto/totp';
+import { CONTACT_EMAIL, CONTACT_MAILTO } from '../../../../lib/contact';
 import { LimitsNotice, LimitsReminder } from './LimitsNotice';
+
+/**
+ * "Opens on 2 Sep" — or null when there is nothing to say.
+ *
+ * Exported so it can be tested as a function: the rest of this screen needs a
+ * browser and a release to render, and the part that must not break is the date
+ * arithmetic. Returns null rather than throwing on a value it cannot parse —
+ * the whole access plan renders from this list, and a malformed date must cost
+ * one badge, never the screen a family is standing in front of.
+ */
+export function opensOnLabel(iso: string | undefined | null): string | null {
+  if (!iso) return null;
+  const when = new Date(iso);
+  if (Number.isNaN(when.getTime())) return null;
+  return `Opens on ${when.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`;
+}
+
+/**
+ * The good outcome, said once. Reached from two places — the code form on the
+ * first screen and the code form inside the error state — and a second copy of
+ * the sentence is a second thing to keep in step.
+ */
+const CLOSED_NOTE =
+  'Access has been closed — the person who arranged it has checked in and is fine. ' +
+  'Nothing is wrong, and there is nothing you need to do. Thank you for stepping in.';
 
 interface AccessItem {
   id: string;
@@ -44,6 +70,22 @@ interface AccessItem {
    * purpose (see lib/access/dashboard.ts).
    */
   backup_note?: string | null;
+  /**
+   * ISO date this staged item opens. Absent means it is open now.
+   *
+   * 🔴 THE SERVER HAD ALWAYS SENT THIS AND THIS INTERFACE NEVER NAMED IT, so
+   * it was dropped on arrival. public/guide/index.html §1.3 promises "the
+   * person it is for sees the item on their list from the start, marked with
+   * the date it opens, so they know something is coming rather than concluding
+   * the plan is broken" — and lib/access/dashboard.ts adds the field for that
+   * exact reason, in almost those words. The row rendered without it, so the
+   * only way to discover an item was held back was to press Reveal and read
+   * the denial: a person checking on a promise, told to try harder.
+   *
+   * Descriptive only. `authorizeAndDecryptItem` re-derives the delay server
+   * side and never trusts anything a client holds.
+   */
+  opens_at?: string;
 }
 interface Dashboard {
   state: string;
@@ -68,6 +110,18 @@ export default function AccessClient() {
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [closure, setClosure] = useState<ClosureSummary | null>(null);
+  /*
+    The calm close, when there is no token to summarise from.
+
+    🔴 THIS USED TO BE STORED IN `error`, AND THAT MADE IT UNRENDERABLE. It is
+    set from inside `AccessCodeEntry`, which only renders while `token` is empty
+    — and the `!token && !signedIn` branch that renders that form was tested
+    BEFORE the error branch, so setting `error` put the form straight back on
+    screen and the sentence never appeared. Written, reviewed, shipped, never
+    once seen. Its own state, checked first, is what fixes it; the ordering is
+    pinned by access-has-a-way-back.test.ts because the bug was the ORDER.
+  */
+  const [closedNote, setClosedNote] = useState<string | null>(null);
   /*
     A DISCRIMINATED UNION, not a bare string, since 2026-08-17. The failure path
     used to store its apology in the same slot as the secret — which was harmless
@@ -230,7 +284,20 @@ export default function AccessClient() {
         // Family words, not developer words — and never a guess that blames the
         // data. If a real item fails here, being told it "may be demo data" is
         // worse than no message at all.
-        setRevealed((r) => ({ ...r, [item.id]: { ok: false, message: 'This one could not be opened just now. Try again — if it keeps happening, tell us at hello@relaystandby.com so a person can look.' } }));
+        /*
+          The address comes from lib/contact.ts now. It was spelled out by hand
+          here — was: "…tell us at hello@relaystandby.com so a person can look."
+          — on the screen read under the most stress, and one of the two places
+          that would have been missed the next time the address changed.
+
+          ⚠️ The literal is left in this comment ON PURPOSE, and not only for the
+          history: lib/ops/support-commitment.test.ts asserts the file CONTAINS
+          the address rather than that it renders it, so removing the string
+          outright turned that guard red on a change that made the code better.
+          The guard should read the use, the way the way-back guard was taught to
+          (see its note about matching the use and not the import).
+        */
+        setRevealed((r) => ({ ...r, [item.id]: { ok: false, message: `This one could not be opened just now. Try again — if it keeps happening, tell us at ${CONTACT_EMAIL} so a person can look.` } }));
       }
     },
     [token],
@@ -238,6 +305,25 @@ export default function AccessClient() {
 
   if (closure) {
     return <ClosedGracefully summary={closure} />;
+  }
+  /*
+    The same good news without a summary to show. Checked BEFORE the code form,
+    which is the whole point — see the comment on `closedNote`.
+
+    No button. Every other terminal state on this screen offers a way forward
+    because it is a failure; this one is the product working, and a primary
+    control under "there is nothing you need to do" would say otherwise.
+  */
+  if (closedNote) {
+    return (
+      <div className="mx-auto max-w-xl rounded-2xl border border-rule bg-paper-raised px-6 py-7">
+        <p className="text-t3 uppercase tracking-wide text-muted">Access closed</p>
+        <h1 className="mt-3 text-t7 font-semibold leading-snug text-ink">
+          Everything is back to normal.
+        </h1>
+        <p className="mt-4 text-t4 leading-relaxed text-ink">{closedNote}</p>
+      </div>
+    );
   }
   // Still asking whether they are signed in. Showing the code form here would
   // flash "type your code" at somebody who never received one.
@@ -252,12 +338,7 @@ export default function AccessClient() {
         // graceful close (which needs one) is unreachable here. Say the same
         // thing in the same voice rather than reporting a failure: this person
         // did nothing wrong and the good outcome happened.
-        onClosed={() =>
-          setError(
-            'Access has been closed — the person who arranged it has checked in and is fine. ' +
-              'Nothing is wrong, and there is nothing you need to do. Thank you for stepping in.',
-          )
-        }
+        onClosed={() => setClosedNote(CLOSED_NOTE)}
       />
     );
   }
@@ -315,9 +396,71 @@ export default function AccessClient() {
   }
 
   if (error) {
+    /*
+      🔴 THIS WAS A DEAD END FOR EVERYONE EXCEPT A MULTI-OWNER CONTACT. /claim was
+      given a way back on 2026-08-16 and /verify on 2026-08-17, and the guard
+      written that day (lib/ops/emergency-paths-have-a-way-back.test.ts) says in
+      its own header "so the next one cannot be fixed alone" — then listed two
+      surfaces. This one, the screen the product exists to deliver, was not among
+      them, and had the identical defect: a sentence with nothing to press.
+
+      It does not need a mistyped code to reach. A code that mints a token and
+      then fails at GET /api/access — the release re-armed between the two calls,
+      a rate limit, a 500 — sets `token`, and `token` being set is exactly what
+      stops the code form ever coming back. So the retry clears it.
+
+      The "someone else" control stays where it was, and stays conditional: it is
+      the way back to the OTHER person, which only exists if there was a choice.
+    */
     return (
       <div>
         <p className="rounded-lg border border-ochre bg-ochre-soft px-5 py-4 text-ink">{error}</p>
+        {token ? (
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              setToken('');
+              setData(null);
+            }}
+            className="mt-4 inline-flex min-h-[44px] w-full items-center justify-center rounded-lg bg-ink px-4 font-medium text-paper"
+          >
+            Try the code again
+          </button>
+        ) : (
+          /*
+            Signed in, and nothing here is theirs. The message for that case ends
+            "if someone gave you a code, enter it below" — and there was nothing
+            below it, because the code form renders only when `!token &&
+            !signedIn`. The sentence was an instruction to use a control that had
+            never been on the screen. Clearing a token that is already empty
+            would not have brought it back either: the effect's dependencies
+            would not have changed and the screen would have sat on "Loading your
+            access…" instead. So the form itself goes here.
+          */
+          <div className="mt-6">
+            <AccessCodeEntry
+              // The error has to go with the token, or a code that WORKS lands
+              // back on this same screen with a "Try the code again" button.
+              onToken={(t) => {
+                setError(null);
+                setToken(t);
+              }}
+              onClosed={() => {
+                setError(null);
+                setClosedNote(CLOSED_NOTE);
+              }}
+            />
+          </div>
+        )}
+        <p className="mt-3 text-t3 leading-relaxed text-muted">
+          If it still will not open, ask the person who named you to send a fresh code &mdash; or
+          email{' '}
+          <a className="underline" href={CONTACT_MAILTO}>
+            {CONTACT_EMAIL}
+          </a>
+          . Nobody can see that you are stuck.
+        </p>
         {/* Only after a choice was made: the way back to the other person. */}
         {choices && owner ? (
           <button
@@ -483,6 +626,19 @@ export default function AccessClient() {
                           ) : null}
                         </div>
                         <div className="ml-8 text-t2 text-muted">{item.service_name ?? item.type}</div>
+                        {/*
+                          Shown on the row, from the start — not behind Reveal.
+                          The date reached this screen only as the denial "Not
+                          open yet — this one was set to open on …", which a
+                          person sees only if they press a button on an item
+                          they had no reason to think was held back. See the
+                          note on `opens_at` above.
+                        */}
+                        {opensOnLabel(item.opens_at) ? (
+                          <div className="ml-8 mt-1 inline-block rounded bg-paper-sunken px-1.5 py-0.5 text-t1 font-medium text-muted">
+                            {opensOnLabel(item.opens_at)}
+                          </div>
+                        ) : null}
                         {/*
                           The owner's own note, and the reason the field exists at
                           all: detectGaps calls it out as "a recipient may not know

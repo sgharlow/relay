@@ -168,3 +168,106 @@ describe('Property 5: zero plaintext at rest', () => {
     );
   });
 });
+
+/*
+  🔴 THE EDIT PATH WAS THE ONE WITH NO COVER, and it is the one where a missing
+  declaration turns a working feature into a 400.
+
+  `updateItemSecret` is the client half of PUT /api/vault/items/[id]. The SERVER
+  half is tested, including its fail-closed refusal of a write with no
+  `secret_kinds`. This half — the one that has to DERIVE `secret_kinds` from the
+  new plaintext and send it — showed as an uncovered function, its only caller
+  is a click handler in ItemControls.tsx, and the last live walk of an item
+  update predates migration 035 entirely. That is exactly the D1 regression
+  class: a fail-closed boundary shipped, `gate` stayed green, and two live walks
+  broke, because a unit suite cannot see a real write path.
+
+  The rotation property is the other half. `encryptForUpload` mints a FRESH
+  wrapped key per call, so an edit rotates the item's key as a side effect —
+  reusing the old key to save a KMS round trip would keep a leaked key valid
+  across every future edit.
+*/
+describe('updateItemSecret — the owner edits a stored secret', () => {
+  function updateFetch(captured: { url?: string; method?: string; body?: Record<string, unknown> }, status = 200) {
+    let wraps = 0;
+    return vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === '/api/kms/wrap') {
+        wraps += 1;
+        return new Response(
+          JSON.stringify({
+            plaintext_data_key: freshKeyB64(),
+            wrapped_data_key: `WK-${wraps}`,
+            kms_key_id: 'cmk-test',
+          }),
+          { status: 200 },
+        );
+      }
+      captured.url = url;
+      captured.method = init?.method;
+      captured.body = JSON.parse(init!.body as string);
+      return new Response(JSON.stringify({ updated: true }), { status });
+    }) as unknown as typeof fetch;
+  }
+
+  it('PUTs re-encrypted ciphertext, a fresh wrapped key, and a re-derived declaration', async () => {
+    const captured: { url?: string; method?: string; body?: Record<string, unknown> } = {};
+    const svc = new CryptoService(updateFetch(captured));
+
+    // The CURRENT payload shape (`relay: 1`), because that is what the edit form
+    // writes. The legacy `{username, password}` object decodes to those two
+    // kinds only — it has no way to carry a seed — so asserting a `totp`
+    // declaration through it would be asserting against the wrong format.
+    await svc.updateItemSecret(
+      'item-1',
+      JSON.stringify({
+        relay: 1,
+        fields: [
+          { kind: 'username', value: 'sam' },
+          { kind: 'password', value: 'rotated' },
+          { kind: 'totp', value: 'JBSWY3DPEHPK3PXP' },
+        ],
+      }),
+      { type: 'login', title: 'Gmail' },
+    );
+
+    expect(captured.url).toBe('/api/vault/items/item-1');
+    expect(captured.method).toBe('PUT');
+    expect(captured.body!.wrapped_data_key).toBe('WK-1');
+    expect(captured.body!.title).toBe('Gmail');
+
+    // The declaration must describe the NEW blob. A stale one makes an item read
+    // `usable` on a demand it can no longer meet — the falsehood 035 exists to end.
+    expect(captured.body!.secret_kinds, 'the edit sent no secret_kinds; the route fails closed on that')
+      .toBeTruthy();
+    expect(captured.body!.secret_kinds).toContain('totp');
+
+    expect(JSON.stringify(captured.body)).not.toContain('rotated');
+  });
+
+  it('escapes the item id rather than pasting it into the path', async () => {
+    const captured: { url?: string } = {};
+    const svc = new CryptoService(updateFetch(captured as never));
+    await svc.updateItemSecret('a/b?c', 'x', { type: 'note', title: 'n' });
+    expect(captured.url).toBe('/api/vault/items/a%2Fb%3Fc');
+  });
+
+  it('throws CryptoError with the status when the server refuses', async () => {
+    const svc = new CryptoService(updateFetch({} as never, 400));
+    await expect(
+      svc.updateItemSecret('item-1', 'x', { type: 'note', title: 'n' }),
+    ).rejects.toBeInstanceOf(CryptoError);
+  });
+
+  it('does not PUT at all when the KMS wrap fails — no half-written item', async () => {
+    const fetchImpl = vi.fn(async (url: string) => {
+      if (url === '/api/kms/wrap') return new Response('nope', { status: 500 });
+      throw new Error('the vault must not be called after a failed wrap');
+    }) as unknown as typeof fetch;
+
+    const svc = new CryptoService(fetchImpl);
+    await expect(
+      svc.updateItemSecret('item-1', 'x', { type: 'note', title: 'n' }),
+    ).rejects.toBeInstanceOf(CryptoError);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+});

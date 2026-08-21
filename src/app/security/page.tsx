@@ -96,8 +96,26 @@ const ARCHITECTURE = [
     v: 'ARMED → PENDING → GRACE → RELEASED, with exactly seven permitted transitions. Each one is a compare-and-set against a strongly-consistent store, so an owner, a verifier and the scheduler acting at the same moment cannot double-release. Exhausting a retry always lands back in ARMED — the safe state is the default, not the exception.',
   },
   {
+    /*
+      🔴 THIS ROW ADVERTISED A BRICKED-UP DOOR UNTIL 2026-08-21. It read:
+
+          "… Emergencies reverse; estate handoffs are permanent by construction."
+
+      — twelve lines below the row that says Relay does not offer estate or
+      inheritance services. `gates.g2-counsel-opinion` was DECLINED on 2026-08-14
+      and estate was "narrowed OUT of the product PERMANENTLY"; no user can
+      create one. The domain keeps the type so legacy rows still resolve, which
+      is why the sentence stayed true of the CODE and false of the PRODUCT.
+
+      lib/ops/gates.test.ts sweeps for the phrasings that make estate read as
+      "not yet", because that was the drift it was written for. This sentence
+      carried no hedge at all — it stated estate as a present property — so it
+      sailed past. page.test.ts reads every sentence here containing the word
+      instead. (Wording it in the terms that guard names would trip the guard,
+      which is how this note found out the sweep covers comments too.)
+    */
     k: 'Reversibility as a property of the trigger',
-    v: 'Whether a release can be undone is derived from the trigger type rather than a flag someone could set wrongly. Emergencies reverse; estate handoffs are permanent by construction.',
+    v: 'Whether a release can be undone is derived from the trigger type rather than a flag someone could set wrongly. Every trigger an owner can choose is reversible: checking in closes access that has already opened. The one irreversible class, a permanent handover, is not offered.',
   },
   {
     k: 'Hash-chained audit log',
@@ -169,8 +187,19 @@ export default function SecurityPage() {
         </dl>
 
         <p className="mt-10 rounded-xl border border-rule-strong bg-paper-sunken p-5 text-t3 leading-relaxed text-ink">
+          {/*
+            was: "Relay is early-stage software with no paying customers yet."
+
+            True on the day it was written, false at the exact event the whole
+            demand lane exists to produce — on the page somebody reads BEFORE
+            paying. src/app/terms/page.tsx records the identical sentence going
+            wrong there already: it "said 'no paying customers yet' for a day
+            after the first live charge". It was deleted from the Terms and left
+            standing here, where no test read it. The replacement admits the same
+            thing and does not expire.
+          */}
           <span className="font-semibold text-ink">One thing we will not claim.</span> Relay
-          is early-stage software with no paying customers yet. The engineering above is real and
+          is early-stage software, built and run by one person. The engineering above is real and
           you can inspect it, but a young product is a young product — please do not make this the
           only place something important is written down. Our{' '}
           <Link href="/terms" className="text-ink underline">

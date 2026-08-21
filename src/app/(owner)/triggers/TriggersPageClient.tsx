@@ -13,6 +13,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiGet, apiSend } from '../_lib/api';
 import { article } from '../../../../lib/text/article';
+import { StatusLine, type StatusMessage } from './StatusLine';
 
 interface ReleaseState {
   id: string;
@@ -110,7 +111,15 @@ export default function TriggersPage() {
 
 function CheckInButton({ onDone }: { onDone: () => Promise<void> }) {
   const [state, setState] = useState<'idle' | 'busy' | 'done'>('idle');
-  const [msg, setMsg] = useState<string | null>(null);
+  /*
+    🔴 THIS WAS A BARE STRING AND BOTH BRANCHES WROTE INTO IT, corrected
+    2026-08-21 — success sentence and thrown error alike, rendered in
+    `text-sage-text`, the colour reserved for "closed, safe". An owner whose
+    check-in failed (401 after a session expiry, a 500) read "Request failed
+    (401)" in the reassuring colour beside the most time-critical control in the
+    product. The tone now travels with the message; see StatusLine.tsx.
+  */
+  const [msg, setMsg] = useState<StatusMessage | null>(null);
 
   async function checkIn() {
     setState('busy');
@@ -120,16 +129,18 @@ function CheckInButton({ onDone }: { onDone: () => Promise<void> }) {
       const reset = r?.reset ?? [];
       // Naming what was stood down matters: an owner checking in after an alarm
       // needs to know it actually closed, not just that a button worked.
-      setMsg(
-        reset.length > 0
-          ? `Checked in — ${reset.join(', ')} re-armed.`
-          : 'Checked in. Nothing needed reversing.',
-      );
+      setMsg({
+        ok: true,
+        text:
+          reset.length > 0
+            ? `Checked in — ${reset.join(', ')} re-armed.`
+            : 'Checked in. Nothing needed reversing.',
+      });
       setState('done');
       await onDone();
     } catch (err) {
       setState('idle');
-      setMsg(String((err as Error).message));
+      setMsg({ ok: false, text: String((err as Error).message) });
     }
   }
 
@@ -143,24 +154,28 @@ function CheckInButton({ onDone }: { onDone: () => Promise<void> }) {
       >
         {state === 'busy' ? 'Checking in…' : "I'm fine — check in"}
       </button>
-      {msg ? <span className="text-t2 text-sage-text">{msg}</span> : null}
+      <StatusLine msg={msg} />
     </span>
   );
 }
 
 function CadenceForm({ current, onSaved }: { current: number; onSaved: () => Promise<void> }) {
   const [days, setDays] = useState(String(current));
-  const [msg, setMsg] = useState<string | null>(null);
+  // Same slot, same two branches, same fix as CheckInButton. Here the shared
+  // colour was `text-muted` rather than sage — not a false green, but "Saved"
+  // and a validation refusal were still typographically identical, so a
+  // rejected interval looked like an accepted one.
+  const [msg, setMsg] = useState<StatusMessage | null>(null);
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setMsg(null);
     try {
       await apiSend('/api/settings', 'PUT', { checkin_interval_days: Number(days) });
-      setMsg('Saved');
+      setMsg({ ok: true, text: 'Saved' });
       await onSaved();
     } catch (err) {
-      setMsg(String((err as Error).message));
+      setMsg({ ok: false, text: String((err as Error).message) });
     }
   }
 
@@ -212,7 +227,7 @@ function CadenceForm({ current, onSaved }: { current: number; onSaved: () => Pro
           around — and the only way to perform one was to wait for the cron to
           notice, or to stand down each trigger individually. */}
       <CheckInButton onDone={onSaved} />
-      {msg ? <span className="text-t2 text-muted">{msg}</span> : null}
+      <StatusLine msg={msg} />
     </form>
   );
 }
@@ -273,7 +288,7 @@ function SimulatePanel({ onDone }: { onDone: () => Promise<void> }) {
 function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promise<void> }) {
   const reversible = rs.trigger_type !== 'estate';
   const [n, setN] = useState(String(rs.required_confirmations));
-  const [msg, setMsg] = useState<string | null>(null);
+  const [msg, setMsg] = useState<StatusMessage | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   /**
    * 🔴 FIRING A RELEASE WAS ONE UNGUARDED CLICK, on a button labelled
@@ -293,12 +308,15 @@ function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promi
    * rests on not happening. A false alarm is cheap in database terms and
    * expensive in the only currency this product runs on.
    *
-   * The irreversible branch asks the trigger type to be TYPED, matching what
-   * closing an account already demands. One click after a warning is not a
-   * decision; finding the keyboard is.
+   * ⚠️ THE TYPE-THE-WORD HALF IS GONE, 2026-08-21. This paragraph used to end:
+   * "The irreversible branch asks the trigger type to be TYPED, matching what
+   * closing an account already demands." That branch only ever ran for `estate`,
+   * which was withdrawn permanently on 2026-08-14 — so it guarded a ceremony
+   * whose only possible outcome was a 400 from `/initiate`. Removed with the
+   * copy it guarded; `typedConfirm` went with it. The reversible confirmation
+   * above stays, on its own argument.
    */
   const [confirmingInitiate, setConfirmingInitiate] = useState(false);
-  const [typedConfirm, setTypedConfirm] = useState('');
 
   const act = async (fn: () => Promise<unknown>) => {
     setMsg(null);
@@ -307,7 +325,11 @@ function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promi
       setConfirmingCancel(false);
       await onChange();
     } catch (err) {
-      setMsg(String((err as Error).message));
+      // This slot only ever carries failures — `act` sets it nowhere else — so
+      // it was already clay. It goes through StatusLine anyway: the invariant
+      // worth holding is "no message span picks its own colour", and an
+      // exception to it is how the next one gets written.
+      setMsg({ ok: false, text: String((err as Error).message) });
     }
   };
 
@@ -326,7 +348,10 @@ function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promi
         <div className="flex gap-2">
           {/* Firing a release is the most consequential control on this screen
               and was one unguarded click. See the note on `confirmingInitiate`. */}
-          {rs.state === 'armed' && !confirmingInitiate ? (
+          {/* `reversible` gates the control, not just the copy inside it: for a
+              withdrawn trigger type `/initiate` answers 400, so offering the
+              button at all is offering a refusal. See the estate note below. */}
+          {rs.state === 'armed' && reversible && !confirmingInitiate ? (
             <button
               onClick={() => setConfirmingInitiate(true)}
               className="rounded border border-rule-strong px-2.5 py-1 text-t1 font-medium hover:bg-paper-sunken"
@@ -372,19 +397,45 @@ function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promi
         </div>
       </div>
 
-      {/* CANCELLED is terminal — nothing transitions out of it and check-in
-          does not reverse it. A bare badge does not convey that a rule is dead,
-          so say it. */}
+      {/*
+        CANCELLED is terminal — nothing transitions out of it and check-in does
+        not reverse it. A bare badge does not convey that a rule is dead, so say
+        it.
+
+        🔴 IT SAID IT AND THEN OFFERED A REMEDY THAT DOES NOTHING, corrected
+        2026-08-21. The sentence was: "Retired. This trigger cannot be re-armed —
+        recreate the access rule to grant this recipient emergency access again."
+        Every clause after the dash was false.
+
+        `release_state` is ONE row per (owner, trigger_type), not one per rule.
+        Creating a rule calls `ensureReleaseState`, which returns the EXISTING
+        row whatever its state — so the "new" rule binds straight back to the
+        cancelled one, `/initiate` answers 409 forever, and the sweep never looks
+        at it. An owner following the instruction would have finished believing
+        they had restored emergency access, and would find out otherwise on the
+        day it mattered. That is the worst class of copy this product can carry.
+
+        It was wrong about the SCOPE too. Cancelling retires the trigger type for
+        that owner — every rule that uses it, every recipient — not "this
+        recipient".
+
+        docs/user-journeys.md:1598 specifies the other resolution: re-arming
+        provisions a NEW release_state row. Nothing implements that, and building
+        it is a state-model change, not a copy fix. Until someone rules on it,
+        the screen describes what the product does. Guarded by
+        cancelled-is-terminal.test.ts.
+      */}
       {rs.state === 'cancelled' ? (
         <p className="mt-2 text-t1 leading-relaxed text-muted">
-          Retired. This trigger cannot be re-armed — recreate the access rule to grant this
-          recipient emergency access again.
+          Retired for good. Nothing re-arms {rs.trigger_type} now — not checking in, not adding a
+          new access rule. Every rule that uses this trigger is inert.
         </p>
       ) : null}
       {confirmingCancel && rs.state === 'grace' ? (
         <p className="mt-2 text-t1 leading-relaxed text-clay">
-          This retires the trigger for good. To stop a false alarm and keep the rule, use{' '}
-          <span className="font-semibold">Stand down — re-arm</span> instead.
+          This retires {article(rs.trigger_type)} <span className="font-semibold">{rs.trigger_type}</span>{' '}
+          for good — every access rule that uses it, for everyone, with no way back. To stop a false
+          alarm, use <span className="font-semibold">Stand down — re-arm</span> instead.
         </p>
       ) : null}
 
@@ -394,71 +445,61 @@ function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promi
         triggers get different sentences and different weights, because they are
         different acts that happen to share a button.
       */}
-      {confirmingInitiate && rs.state === 'armed' ? (
-        <div
-          className={`mt-3 rounded border p-3 ${
-            reversible ? 'border-ochre bg-ochre-soft' : 'border-clay bg-clay-soft'
-          }`}
-        >
-          {reversible ? (
-            <p className="text-t2 leading-relaxed text-ink">
-              Everyone you named to confirm {article(rs.trigger_type)}{' '}
-              <span className="font-semibold">{rs.trigger_type}</span> will be asked whether this is
-              real. If enough of them agree, the access you arranged
-              opens. <span className="font-semibold">You can stop it at any point by checking in.</span>
-            </p>
-          ) : (
-            <>
-              <p className="text-t2 font-semibold leading-relaxed text-clay">
-                {article(rs.trigger_type) === 'an' ? 'An' : 'A'} {rs.trigger_type} handover cannot
-                be undone.
-              </p>
-              <p className="mt-1 text-t2 leading-relaxed text-clay">
-                If the people you named agree, what you set aside passes to them permanently.
-                Checking in will not reverse it and neither can we.
-              </p>
-              {/* The window is the whole protection here, so it is named rather
-                  than left as a silent property of the system. */}
-              <p className="mt-1 text-t2 leading-relaxed text-clay">
-                Relay waits <span className="font-semibold">three days</span> after they agree
-                before it completes. That is the only chance anyone gets to stop it.
-              </p>
-              <label htmlFor={`confirm-${rs.id}`} className="mt-3 block text-t2 font-medium text-clay">
-                Type <span className="font-semibold">{rs.trigger_type}</span> to confirm
-              </label>
-              <input
-                id={`confirm-${rs.id}`}
-                value={typedConfirm}
-                onChange={(e) => setTypedConfirm(e.target.value)}
-                autoComplete="off"
-                className="mt-1 w-full rounded border border-clay px-3 py-2 text-t2"
-              />
-            </>
-          )}
+      {/*
+        🔴 THE IRREVERSIBLE BRANCH WAS A CEREMONY FOR A WITHDRAWN CAPABILITY,
+        removed 2026-08-21. It rendered, for any non-reversible trigger: "A
+        estate handover cannot be undone", "what you set aside passes to them
+        permanently", "Relay waits three days after they agree before it
+        completes", a type-the-word input, and a button reading "Hand over
+        permanently".
+
+        Estate was withdrawn PERMANENTLY on 2026-08-14 — g2-counsel-opinion was
+        DECLINED, not deferred — and Relay confers no legal authority on anyone.
+        `USER_SELECTABLE_TRIGGER_TYPES` excludes it and
+        `/api/triggers/[type]/initiate` answers 400, so the only reachable
+        outcome of that whole ritual was an error: an owner with a legacy
+        release_state row would have read three paragraphs about permanence,
+        typed the word to confirm, pressed "Hand over permanently", and been
+        refused. Two defects in one branch — copy offering a withdrawn
+        capability, and a control that can only fail.
+
+        The branch is not deleted into silence. A legacy row still renders, and
+        a badge with no controls and no explanation reads as a bug rather than
+        as a decision, so it says what happened. Guarded by
+        estate-is-withdrawn.test.ts.
+      */}
+      {!reversible && rs.state === 'armed' ? (
+        <p className="mt-2 text-t1 leading-relaxed text-muted">
+          Withdrawn. Relay no longer offers {rs.trigger_type} arrangements and this trigger cannot
+          be started. Nothing you set aside has been changed or shared.
+        </p>
+      ) : null}
+
+      {confirmingInitiate && rs.state === 'armed' && reversible ? (
+        <div className="mt-3 rounded border border-ochre bg-ochre-soft p-3">
+          <p className="text-t2 leading-relaxed text-ink">
+            Everyone you named to confirm {article(rs.trigger_type)}{' '}
+            <span className="font-semibold">{rs.trigger_type}</span> will be asked whether this is
+            real. If enough of them agree, the access you arranged
+            opens. <span className="font-semibold">You can stop it at any point by checking in.</span>
+          </p>
 
           <div className="mt-3 flex gap-2">
             <button
               type="button"
-              disabled={!reversible && typedConfirm.trim().toLowerCase() !== rs.trigger_type}
               onClick={() => {
                 setConfirmingInitiate(false);
-                setTypedConfirm('');
                 void act(() =>
                   apiSend(`/api/triggers/${encodeURIComponent(rs.trigger_type)}/initiate`, 'POST'),
                 );
               }}
-              className={`min-h-[32px] rounded px-3 py-1.5 text-t2 font-semibold text-paper disabled:opacity-50 ${
-                reversible ? 'bg-ink' : 'bg-clay'
-              }`}
+              className="min-h-[32px] rounded bg-ink px-3 py-1.5 text-t2 font-semibold text-paper disabled:opacity-50"
             >
-              {reversible ? 'Yes — ask them now' : `Hand over permanently`}
+              Yes — ask them now
             </button>
             <button
               type="button"
-              onClick={() => {
-                setConfirmingInitiate(false);
-                setTypedConfirm('');
-              }}
+              onClick={() => setConfirmingInitiate(false)}
               className="min-h-[32px] rounded border border-rule-strong bg-paper-raised px-3 py-1.5 text-t2 text-ink"
             >
               Not yet
@@ -494,7 +535,7 @@ function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promi
         >
           Set
         </button>
-        {msg ? <span className="text-t1 text-clay">{msg}</span> : null}
+        <StatusLine msg={msg} size="t1" />
       </div>
     </div>
   );

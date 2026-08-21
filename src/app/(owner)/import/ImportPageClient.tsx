@@ -26,7 +26,17 @@ export default function ImportPage() {
   const [format, setFormat] = useState<CsvFormat>('1password');
   const [parsed, setParsed] = useState<ParseResult | null>(null);
   const [progress, setProgress] = useState<number | null>(null);
-  const [report, setReport] = useState<{ imported: number; skipped: number; duplicates: number } | null>(null);
+  const [report, setReport] = useState<{
+    imported: number;
+    skipped: number;
+    duplicates: number;
+    /** Which rows were skipped, not just how many — see the report below. */
+    duplicateRows: Array<{ row: number; title: string }>;
+    /** How many access rules the new items matched (J4-R4). */
+    policiesMatched: number;
+    /** True when the batch was too large to match inline, or matching failed. */
+    coverageDeferred: boolean;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -90,12 +100,23 @@ export default function ImportPage() {
         setProgress(Math.round(((i + 1) / parsed.rows.length) * 90)); // 0–90% = encrypt
       }
       setProgress(95);
-      const res = await apiSend<{ imported: number; duplicatesSkipped?: number }>('/api/import', 'POST', { items });
+      const res = await apiSend<{
+        imported: number;
+        duplicatesSkipped?: number;
+        duplicateRows?: Array<{ row: number; title: string }>;
+        policiesMatched?: number;
+        coverageDeferred?: boolean;
+      }>('/api/import', 'POST', { items });
       setProgress(100);
       setReport({
         imported: res.imported,
         skipped: parsed.skipped.length,
         duplicates: res.duplicatesSkipped ?? 0,
+        // Older deploys of the route answer without this. An absent list is
+        // reported as no list rather than as no skips — the count is separate.
+        duplicateRows: res.duplicateRows ?? [],
+        policiesMatched: res.policiesMatched ?? 0,
+        coverageDeferred: res.coverageDeferred ?? false,
       });
     } catch (err) {
       // Abort: nothing uploaded if a row failed to encrypt (Req 10.4).
@@ -221,6 +242,29 @@ export default function ImportPage() {
             </p>
           ) : null}
           {/*
+            🔴 IMPORTED ITEMS USED TO LAND UNCOVERED, SILENTLY. `coverNewItem`
+            ran on the single-item route only — under a comment saying it was
+            there "so an import cannot land silently uncovered (J4-R4)" — and
+            /api/import never called it. An owner accepted the rules Relay
+            proposed, imported their password manager, and none of it was
+            reachable by anyone they had named. J4-R4's second half is that the
+            owner SHALL be notified; nothing rendered the count, so this is it.
+          */}
+          {report.policiesMatched ? (
+            <p className="mt-2 text-sage-text">
+              {report.policiesMatched === 1
+                ? 'One of these matched an access rule you already had, and is now covered by it.'
+                : `${report.policiesMatched} of these matched access rules you already had, and are now covered by them.`}
+            </p>
+          ) : null}
+          {report.coverageDeferred ? (
+            <p className="mt-2 text-t2 text-clay">
+              These were imported, but they have <strong>not</strong> been matched against your
+              access rules yet — so nobody can reach them. Open Rules and re-apply your rules to
+              cover them.
+            </p>
+          ) : null}
+          {/*
             🔴 SILENCE HERE READ AS SUCCESS. `splitDuplicates` matches an incoming
             row against items already in the vault on a normalised
             title + service_name, so re-importing a fresh export — the natural
@@ -240,6 +284,37 @@ export default function ImportPage() {
               left alone — <strong>including any two-factor codes in this export</strong>. To add a
               code to an account you already have, open it in your vault and choose Update.
             </p>
+          ) : null}
+          {/*
+            🔴 A COUNT IS NOT A REPORT. Until 2026-08-21 this said "left 1 already
+            in your vault untouched" and stopped there, which tells an owner that
+            something did not arrive and gives them no way to find out what.
+
+            It mattered more than tidiness because the matching was wrong as well:
+            the client sends `title: row.service_name`, so every row from an export
+            has title === service_name, and two Google logins were one key. The
+            second credential was dropped and this sentence was the only trace.
+            lib/vault/dedupe.ts now separates them on url; this names whatever it
+            still merges, so a silent skip cannot happen again.
+
+            J2 step 3: every skip reported with its row number and reason.
+          */}
+          {report.duplicateRows.length ? (
+            <div className="mt-2 text-t2 text-muted">
+              <p>Rows left out, by their line in your file:</p>
+              <ul className="mt-1 space-y-0.5">
+                {report.duplicateRows.map((d) => (
+                  <li key={d.row}>
+                    Row {d.row} &mdash; {d.title} &middot; already in your vault
+                  </li>
+                ))}
+              </ul>
+              {report.duplicateRows.length < report.duplicates ? (
+                <p className="mt-1">
+                  &hellip; and {report.duplicates - report.duplicateRows.length} more.
+                </p>
+              ) : null}
+            </div>
           ) : null}
         </div>
       ) : null}

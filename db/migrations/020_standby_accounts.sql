@@ -39,6 +39,17 @@ ALTER TABLE verifiers ADD COLUMN IF NOT EXISTS fingerprint_confirmed_at TIMESTAM
 -- Two timestamps replace the three state-splits the original brief proposed.
 -- Nothing behaves differently on either, so they are facts to record, not states
 -- to transition through: PERMITTED_TRANSITIONS stays at seven.
+--
+-- ⚠️ NEITHER IS WRITTEN BY ANY CODE, and that is now a recorded decision rather
+-- than an oversight (noted 2026-08-21). Both were superseded before anything
+-- stamped them: `notified_at` by email_send_attempts + email_delivery_events,
+-- which record per-message outcomes instead of one timestamp per release; and
+-- `first_access_at` by the audit chain, from which closure.ts derives first and
+-- last access as min(ts)/max(ts) by actor — hash-chained, so it cannot be
+-- back-dated the way a column can. The entries in
+-- `lib/ops/schema-columns-are-used.test.ts` are the authority; this note exists
+-- so a reader of the migration finds the ruling without re-investigating.
+-- Dropping them is a migration on DSQL, i.e. a sysadmin act, and not worth one.
 ALTER TABLE release_state ADD COLUMN IF NOT EXISTS notified_at TIMESTAMPTZ;
 ALTER TABLE release_state ADD COLUMN IF NOT EXISTS first_access_at TIMESTAMPTZ;
 

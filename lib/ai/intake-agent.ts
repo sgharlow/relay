@@ -7,7 +7,9 @@
  * Req 11.7), resolves `depends_on_title` → `depends_on_item_id` within the batch
  * (Req 11.6), and persists each item via withOccRetry. On classification failure
  * or timeout it defaults score 0.5 / is_root_credential false, lists the items in
- * `warnings`, and never blocks (Req 11.9). Batches are capped at 300 (Req 11.10).
+ * `warnings`, and never blocks (Req 11.9). Batches are capped at 300 (Req 11.10)
+ * and whatever the cap left behind is reported as `remaining` rather than
+ * dropped in silence — see that field.
  *
  * Feature: relay-h0-mvp
  * Requirements: 11.1–11.7, 11.9, 11.10
@@ -34,6 +36,31 @@ export interface IntakeItemResult {
 
 export interface IntakeResult {
   scored: number;
+  /**
+   * Items in the vault this run did NOT reach, because the batch cap
+   * (Req 11.10) is smaller than the vault.
+   *
+   * 🔴 THIS RUN USED TO BE SILENT ABOUT THEM. The metadata was sliced to
+   * `batchLimit` and the result said `scored: 300` — true, and it reads as
+   * "your vault is scored". `entitlements.paid.items` is Infinity, so a vault
+   * CAN exceed the cap, and J2's own success criterion is a 300-item real
+   * vault: the first account large enough to matter is the first account the
+   * old number misreported.
+   *
+   * Non-zero here does NOT mean the rest get scored on the next run. There is
+   * no "never scored" marker to order by — `importance_score` is NOT NULL
+   * DEFAULT 0.5, so an unscored item is indistinguishable from one scored at
+   * exactly 0.5 — and adding one is a migration, which is a sysadmin act that
+   * lands separately from this code. What is fixed here is the claim; batching
+   * across runs needs that column first.
+   *
+   * ⚠️ OPTIONAL IN THE TYPE, ALWAYS SET BY `runIntake`. Fixtures outside this
+   * module build an `IntakeResult` by hand, and making it required would fail
+   * their compile rather than their behaviour — a type error in a mock is not
+   * the signal this field exists to send. Tighten to required once those
+   * fixtures carry it.
+   */
+  remaining?: number;
   /** Item ids that used the default classification (LLM failure/timeout). */
   warnings: string[];
   results: IntakeItemResult[];
@@ -82,8 +109,10 @@ export async function runIntake(ownerId: string, opts: IntakeOptions = {}): Prom
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const batchLimit = opts.batchLimit ?? BATCH_LIMIT;
 
-  const items = (await getVaultMetadata(ownerId)).slice(0, batchLimit);
-  if (items.length === 0) return { scored: 0, warnings: [], results: [] };
+  const all = await getVaultMetadata(ownerId);
+  const items = all.slice(0, batchLimit);
+  const remaining = all.length - items.length;
+  if (items.length === 0) return { scored: 0, remaining, warnings: [], results: [] };
 
   const titleToId = new Map(items.map((i) => [i.title.toLowerCase(), i.id]));
 
@@ -193,5 +222,5 @@ export async function runIntake(ownerId: string, opts: IntakeOptions = {}): Prom
     results.push(result);
   }
 
-  return { scored: results.length, warnings, results };
+  return { scored: results.length, remaining, warnings, results };
 }

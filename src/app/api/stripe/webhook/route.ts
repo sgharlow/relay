@@ -23,9 +23,11 @@ import { getStripe } from '../../../../../lib/billing/stripe';
 import { query } from '../../../../../lib/db/connection';
 import { writeAuditEntry } from '../../../../../lib/audit/audit-service';
 import { PRICE_YEARLY_CENTS } from '../../../../../lib/offer';
+import { COMP_COHORT, CONVERTED_FROM_COMP_COHORT } from '../../../../../lib/billing/entitlements';
 import {
   notifyRenewalFailed,
   notifySubscriptionLapsed,
+  stripeIdAlreadyRecorded,
 } from '../../../../../lib/billing/lapse-notice';
 
 /** Stripe needs the byte-exact body; Next must not pre-parse it. */
@@ -70,11 +72,32 @@ async function upsertSubscription(params: {
   );
 
   if (existing.rows[0]) {
+    /*
+      🔴 THE UPDATE USED TO TOUCH NEITHER `cohort` NOR `price_cents`, so a
+      comped row that later took a real subscription stayed marked as a gift
+      forever — see CONVERTED_FROM_COMP_COHORT in lib/billing/entitlements.ts
+      for why that is the most expensive row in the table to mislabel.
+
+      Both writes are conditional on money having actually moved, which is what
+      `recordsPayment` means: a paid tier carrying a Stripe subscription id.
+      Writing them unconditionally would be the same corruption in the other
+      direction — a `customer.subscription.deleted` carries the plan's
+      `unit_amount`, so an unconditional write would stamp $119 onto a comped
+      row at the moment it ENDED and turn the gift into revenue on its way out.
+
+      The cohort swap is a CASE rather than a read-then-write because the row is
+      not read first; the comparison has to happen where the value is, or two
+      concurrent events could each decide from a stale copy.
+    */
+    const recordsPayment = params.tier === 'paid' && Boolean(params.stripeSubscriptionId);
+
     await query(
       `UPDATE subscriptions
           SET tier = $2, status = $3, stripe_customer_id = COALESCE($4, stripe_customer_id),
               stripe_subscription_id = COALESCE($5, stripe_subscription_id),
               current_period_end = COALESCE($6, current_period_end),
+              cohort = CASE WHEN $7::boolean AND cohort = $8::text THEN $9::text ELSE cohort END,
+              price_cents = CASE WHEN $7::boolean THEN COALESCE($10::int, price_cents) ELSE price_cents END,
               updated_at = now()
         WHERE id = $1`,
       [
@@ -84,6 +107,10 @@ async function upsertSubscription(params: {
         params.stripeCustomerId ?? null,
         params.stripeSubscriptionId ?? null,
         params.currentPeriodEnd ?? null,
+        recordsPayment,
+        COMP_COHORT,
+        CONVERTED_FROM_COMP_COHORT,
+        recordsPayment ? (params.priceCents ?? null) : null,
       ],
     );
     return;
@@ -152,6 +179,87 @@ async function ownerIdForSubscriptionId(subscriptionId: string): Promise<string 
   return r.rows[0]?.owner_id ?? null;
 }
 
+/**
+ * The subscription id on an invoice, on either shape the API has used.
+ *
+ * 🔴 THIS READ `invoice.subscription` AND THAT FIELD DOES NOT EXIST on the
+ * version this code pins. `lib/billing/stripe.ts` pins `2026-07-29.dahlia`, and
+ * on that version `Invoice` has no top-level `subscription` member at all — the
+ * id moved under `parent.subscription_details.subscription`
+ * (stripe@22.4.0 `cjs/resources/Invoices.d.ts`: `parent: Invoice.Parent | null`,
+ * `Parent.SubscriptionDetails.subscription: string | Subscription`). The
+ * handler had to widen the Stripe type by hand to read the old name, which was
+ * the tell: the local widening existed precisely because the field was gone.
+ *
+ * The failure mode was the worst available one. `subId` came back undefined,
+ * the case `break`s, the endpoint answers `{received:true}`, and Stripe's
+ * dashboard shows a clean 200 for an event that told nobody anything — so the
+ * renewal notice, which is the precondition the paywall flip is waiting on,
+ * could never have fired and nothing would have looked wrong.
+ *
+ * BOTH shapes are read rather than just the new one, newest first. An endpoint
+ * created before the rename is pinned to its own API version and still delivers
+ * the legacy field, and which version `we_1U2IIG…` carries cannot be read from
+ * this repo. Reading both makes the question stop mattering, which is the same
+ * move `currentSubscriptionStatus` makes about delivery order.
+ */
+type InvoiceSubscriptionRef = string | { id?: string } | null | undefined;
+
+function subscriptionIdOnInvoice(invoice: Stripe.Invoice): string | undefined {
+  const widened = invoice as Stripe.Invoice & { subscription?: InvoiceSubscriptionRef };
+
+  const candidates: InvoiceSubscriptionRef[] = [
+    widened.parent?.subscription_details?.subscription,
+    widened.subscription,
+  ];
+
+  for (const c of candidates) {
+    if (typeof c === 'string' && c) return c;
+    if (c && typeof c === 'object' && c.id) return c.id;
+  }
+  return undefined;
+}
+
+/**
+ * One audit entry per Stripe EVENT, however many times it is delivered.
+ *
+ * 🔴 THE TRAIL WAS THE ONE THING REPLAY CORRUPTED. Everything else here is
+ * already idempotent — the entitlement UPDATE lands on the existing row, the
+ * status is re-read from Stripe rather than taken from the payload, and the
+ * lapse notices dedupe on the invoice and subscription ids. `writeAuditEntry`
+ * ran unconditionally, so a Stripe retry — which this handler deliberately
+ * invites by returning 500 on failure, and which a dashboard redelivery can
+ * cause at any time — wrote "your subscription started" into the owner's log
+ * twice for one event.
+ *
+ * That log is a product surface, and it is hash-chained and append-only: a
+ * duplicate cannot be quietly removed later without breaking the chain, so it
+ * has to not be written.
+ *
+ * The key is `event.id`, which is what Stripe holds constant across retries —
+ * not the subscription id, which is constant across genuinely different events.
+ * The lookup is the same one `lib/billing/lapse-notice.ts` already performs, and
+ * it is literally the same function rather than a second copy of the query.
+ *
+ * ⚠️ THE SKIP IS THE ENTRY, NOT THE WORK. Only the audit write is suppressed; the
+ * entitlement reconciliation above it always runs, because Stripe retries
+ * precisely when it is unsure the first attempt landed.
+ */
+async function writeAuditEntryOncePerEvent(
+  ownerId: string,
+  eventId: string,
+  entry: { action: string; entity: 'subscription'; detail: Record<string, unknown> },
+): Promise<void> {
+  if (await stripeIdAlreadyRecorded(ownerId, entry.action, eventId)) return;
+
+  await writeAuditEntry(ownerId, {
+    actor: 'system',
+    action: entry.action,
+    entity: entry.entity,
+    detail: { ...entry.detail, stripe_id: eventId },
+  });
+}
+
 /** owner_id travels in metadata; falling back to a customer lookup is a last resort. */
 async function ownerIdFor(sub: Stripe.Subscription): Promise<string | null> {
   const fromMetadata = sub.metadata?.owner_id;
@@ -203,8 +311,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           stripeCustomerId: typeof s.customer === 'string' ? s.customer : s.customer?.id,
           stripeSubscriptionId: typeof s.subscription === 'string' ? s.subscription : s.subscription?.id,
         });
-        await writeAuditEntry(ownerId, {
-          actor: 'system',
+        await writeAuditEntryOncePerEvent(ownerId, event.id, {
           action: 'subscription_started',
           entity: 'subscription',
           detail: { source: 'stripe' },
@@ -250,8 +357,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         });
 
         if (!active) {
-          await writeAuditEntry(ownerId, {
-            actor: 'system',
+          await writeAuditEntryOncePerEvent(ownerId, event.id, {
             action: 'subscription_cancelled',
             entity: 'subscription',
             detail: { source: 'stripe', status: current },
@@ -279,13 +385,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         record live in lib/billing/lapse-notice.ts.
       */
       case 'invoice.payment_failed': {
-        const invoice = event.data.object as Stripe.Invoice & {
-          subscription?: string | { id?: string } | null;
-        };
-        const subId =
-          typeof invoice.subscription === 'string'
-            ? invoice.subscription
-            : invoice.subscription?.id;
+        const invoice = event.data.object as Stripe.Invoice;
+        const subId = subscriptionIdOnInvoice(invoice);
         if (!subId || !invoice.id) break;
 
         const ownerId = await ownerIdForSubscriptionId(subId);

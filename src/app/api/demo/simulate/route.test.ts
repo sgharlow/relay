@@ -46,6 +46,28 @@ it('400 on an unknown trigger type', async () => {
   expect(mockRun).not.toHaveBeenCalled();
 });
 
+/*
+  🔴 THIS ROUTE VALIDATED AGAINST THE OPEN LIST, closed 2026-08-21. It imported
+  `VALID_TRIGGER_TYPES` — the DOMAIN enum, which still contains `estate` for
+  compatibility with rows written before the withdrawal — while every other
+  release-starting boundary uses the CLOSED list `USER_SELECTABLE_TRIGGER_TYPES`
+  (rules, policies, initiate, config, the dropdown).
+
+  Harmless in practice today: the route is demo-gated and the seed types its
+  release states as `UserSelectableTriggerType`, so `runSimulation` would 404
+  before doing anything. That is a defence-in-depth gap held shut by two
+  circumstances rather than by a rule — and this is a route that drives ARMED →
+  RELEASED on a NON-REVERSIBLE trigger. The portfolio rule is structural safety
+  over convention: the closed list is the only list a release-starting route
+  consults.
+*/
+it('400 on estate — the closed list is the only list this route consults', async () => {
+  mockSession.mockResolvedValueOnce({ ownerId: 'owner-1', isDemo: true });
+  const res = await POST(makeReq({ trigger_type: 'estate' }));
+  expect(res.status).toBe(400);
+  expect(mockRun).not.toHaveBeenCalled();
+});
+
 it('runs the simulation for a demo account and returns the state sequence', async () => {
   mockSession.mockResolvedValueOnce({ ownerId: 'owner-1', isDemo: true });
   mockRun.mockResolvedValueOnce({ releaseStateId: 'rs-1', states: ['pending', 'grace', 'released'] });

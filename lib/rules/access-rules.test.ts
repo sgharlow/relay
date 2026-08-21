@@ -19,6 +19,9 @@ import {
   validateAccessRuleInput,
   validateNofM,
   createRule,
+  listRules,
+  updateRule,
+  deleteRule,
   VALID_TRIGGER_TYPES,
   VALID_SCOPES,
 } from './access-rules';
@@ -203,5 +206,83 @@ describe('malformed identifiers are rejected at the edge, naming the field', () 
     const upper = '3F2504E0-4F89-41D3-9A0C-0305E82C3301';
     const r = validateAccessRuleInput(validRule({ vault_item_id: upper }));
     expect(r.vault_item_id).toBe(upper);
+  });
+});
+
+/*
+  🔴 THREE OF THE FOUR EXPORTS IN THIS MODULE HAD NO TEST, and the route that
+  removes a recipient's access was one of them. `listRules` (GET /api/rules),
+  `updateRule` and `deleteRule` (DELETE /api/rules/[id]) all showed as uncovered
+  functions, while `src/app/api/rules/[id]/route.ts` states that PUT was retired
+  and "`updateRule` survives in lib/rules/access-rules.ts with its tests" — a
+  sentence that was simply not true.
+
+  The api-reachability guard cannot see this: it checks that ROUTES are
+  reachable, not that library exports are exercised, so a retired capability
+  sitting in a module is invisible to it. Retiring the function was the other
+  honest option; it is kept and tested instead, because that is what the route's
+  own header already claims and the claim is cheaper to make true than to unwind.
+*/
+describe('the owner-scoped rule CRUD the routes actually call', () => {
+  const OWNER = 'owner-1';
+  const ROW = {
+    id: 'rule-1',
+    vault_item_id: '11111111-1111-4111-8111-111111111111',
+    recipient_id: '22222222-2222-4222-8222-222222222222',
+    trigger_type: 'emergency',
+    scope: 'view',
+    reversible: true,
+    release_after_days: null,
+    created_at: new Date('2026-08-21T00:00:00.000Z'),
+  };
+
+  it('listRules scopes to the owner and returns them oldest first', async () => {
+    mockQuery.mockResolvedValueOnce(qResult([ROW]));
+
+    const rules = await listRules(OWNER);
+
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(String(sql)).toMatch(/WHERE owner_id = \$1/);
+    expect(String(sql)).toMatch(/ORDER BY created_at ASC/);
+    expect(params).toEqual([OWNER]);
+    expect(rules[0].id).toBe('rule-1');
+    expect(rules[0].created_at).toBe('2026-08-21T00:00:00.000Z');
+  });
+
+  it('deleteRule refuses to delete another owner\'s rule by id alone', async () => {
+    // The owner_id predicate is the whole authorization story on a schema with
+    // no foreign keys: pass someone else's rule id and it must match nothing.
+    mockQuery.mockResolvedValueOnce(qResult([]));
+
+    const foreignRuleId = 'rule-belonging-to-someone-else';
+    await deleteRule(OWNER, foreignRuleId);
+
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(String(sql)).toMatch(/DELETE FROM access_rules WHERE id = \$1 AND owner_id = \$2/);
+    expect(params).toEqual([foreignRuleId, OWNER]);
+  });
+
+  it('updateRule checks BOTH references belong to the owner before writing', async () => {
+    mockQuery.mockResolvedValueOnce(qResult([ROW]));
+
+    await updateRule(OWNER, 'rule-1', validateAccessRuleInput(validRule()));
+
+    expect(mockAssert).toHaveBeenCalledWith(OWNER, [
+      { table: 'vault_items', id: validRule().vault_item_id },
+      { table: 'recipients', id: validRule().recipient_id },
+    ]);
+    expect(String(mockQuery.mock.calls[0][0])).toMatch(/WHERE id = \$7 AND owner_id = \$8/);
+  });
+
+  it('updateRule returns null rather than inventing a row when nothing matched', async () => {
+    mockQuery.mockResolvedValueOnce(qResult([]));
+    expect(await updateRule(OWNER, 'no-such-rule', validateAccessRuleInput(validRule()))).toBeNull();
+  });
+
+  it('updateRule does not write when the cross-owner check throws', async () => {
+    mockAssert.mockRejectedValueOnce(new Error('IntegrityError: cross-owner reference'));
+
+    await expect(updateRule(OWNER, 'rule-1', validateAccessRuleInput(validRule()))).rejects.toThrow(/cross-owner/);
+    expect(mockQuery).not.toHaveBeenCalled();
   });
 });

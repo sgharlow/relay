@@ -1,5 +1,37 @@
 # Design Document — Relay H0 MVP
 
+> ## ⚠️ SUPERSEDED IN PART — three sections are stale, four are still authoritative (2026-08-21)
+>
+> `CLAUDE.md` sends every reader here before touching release, crypto or OCC logic, so what this file
+> is *wrong* about matters as much as what it is right about. It describes the H0 MVP as designed in
+> June 2026. The product has shipped past it. **Nothing below has been rewritten** — this is the
+> record of a design that was built and then grew — but the parts a reader must not trust are named
+> here, with what replaced each.
+>
+> ### Do not read these sections as current
+>
+> | Section | Superseded by | How stale, measured |
+> |---|---|---|
+> | **§Data Models — "Full Schema (DSQL-Correct DDL)"** | `db/migrations/*.sql`, verified live by `npm run verify:schema` | The DDL here is **the 8 tables of migration 001 and nothing since**. It predates `auth_challenges`, `webauthn_credentials`, `delegations`, `approvals`, `access_requests`, `subscriptions`, `recovery_codes`, `invitations`, `consent_artifacts`, `csp_reports` and the rest, and it is missing columns the release and crypto paths write on every call: `release_state.received_denials` (011), `users.session_epoch` (025), `vault_items.secret_kinds` and `vault_items.factors_required` (035), `vault_items.kms_context_era` (037). **Never take a column list from this file.** Derive it — `grep -h "CREATE TABLE" db/migrations/*.sql` for the tables, then `npm run verify:schema` to confirm both live regions actually have them. |
+> | **§Components and Interfaces 1 — Route Structure** and **§API Surface** | `src/app/api/**` as it stands | These list the handlers of the twelve-day build. The live tree is several times larger — count it with `find src/app/api -name route.ts \| wc -l` and `ls -d src/app/api/*/` rather than from here — and covers standby, claim, approvals, delegations, access-requests, fire-drill, webauthn, stripe, circle and people, none of which existed when this was written. Three entries also point at handlers that are **gone or never existed**: `POST /api/ai/prioritize` and `POST /api/ai/triage` were retired 2026-08-13 (`docs/retired-surface.md`), and `GET /api/vault/items/:id` has no GET export — that route serves `PUT`, `DELETE` and `PATCH` only. |
+> | **§Components and Interfaces 2 — Crypto Boundary** (the *recipient delivery* half only) | `docs/standby-architecture.md` — hybrid+6, ratified 2026-08-11 | The envelope-encryption boundary itself is unchanged and still correct. What changed is how a recipient is authenticated to it: minted `?token=` links are being demoted to a fallback for **unclaimed** contacts, and a claimed recipient signs in as themselves with the release resolved server-side. |
+> | **Overview — "Stack locked: Next.js 14"** | `package.json` | Next **16**. Also "three Next.js route handlers that call OpenAI" — one remains (`/api/ai/intake`). |
+>
+> ### Still authoritative, and this is why the file is kept rather than archived
+>
+> - **§Release State Machine — the permitted-transition table.** Seven edges, matching `PERMITTED_TRANSITIONS` in `lib/release/state-machine.ts` exactly. It is more accurate than `requirements.md` 5.2 was, and settling that disagreement is what proved the table right.
+> - **The OCC / CAS pattern** — compare-and-swap on `state` *and* `version`, bounded retry, and the safe reset to `ARMED` on exhaustion.
+> - **§Correctness Properties** — the numbered property register the test suite tags against (`// Feature: relay-h0-mvp, Property N`). See the note on Property 1 below; every other property is live.
+> - **The zero-knowledge boundary and the AI metadata-only rule.**
+>
+> ### One thing this banner deliberately does not do
+>
+> It does not promise the four sections above will stay right. A design document cannot re-measure
+> itself, and this drift accumulated for two months under a file that four other documents point at.
+> The schema and route claims are now delegated to things that *are* re-measured — `verify:schema`
+> against both live regions, and the `lib/ops/` reachability checks against the route tree — which is
+> the only durable form of the fix.
+
 ## Overview
 
 Relay is a living-continuity platform. Owners build an encrypted vault of accounts, credentials, documents, and instructions, assign scoped access to recipients, and configure verified trigger conditions. When a trigger fires the system advances through a controlled release state machine (ARMED → PENDING → GRACE → RELEASED) guarded by optimistic concurrency control. Emergencies are reversible; estate handoffs are permanent.
@@ -718,11 +750,32 @@ The following properties are drawn from acceptance criteria that are amenable to
 
 ---
 
-### Property 1: Vault uniqueness per owner
+### Property 1: Vault uniqueness per owner — ~~SUPERSEDED BY THE SHIPPED SCHEMA (2026-08-21)~~
 
-*For any* owner identity, calling vault creation twice must result in exactly one vault row for that owner — the second call must return a conflict error.
+> ~~*For any* owner identity, calling vault creation twice must result in exactly one vault row for that owner — the second call must return a conflict error.~~
+>
+> **There is no vault row, and there never was one.** `db/migrations/001_initial.sql` creates
+> `users`, `recipients`, `verifiers`, `vault_items`, `access_rules`, `release_state`,
+> `verifier_confirmations` and `audit_log` — no `vaults` table. `grep -rn "FROM vaults\|INTO vaults"`
+> across `lib` and `src` returns nothing. "The vault" is the set of `vault_items` rows carrying an
+> owner's `owner_id`; it is not an entity that gets created, so it cannot be created twice and there
+> is no conflict error to return. The property describes a design that was reconsidered before the
+> first migration was written.
+>
+> **This is why it had no tagged test, and the absence was the more honest signal.** Every other
+> defined property carries a `// Feature: relay-h0-mvp, Property N` tag in the suite. Writing a test
+> for this one would have meant inventing the table to test it against. `tasks.md` recorded Property 1
+> as "covered by conventional unit tests without tags (`lib/db/integrity.test.ts`)" — that file covers
+> **cross-owner isolation**, which is Property 4's subject, not uniqueness. Nothing was ever testing
+> this claim under either description.
+>
+> **The invariant that actually holds in its place** is one-`release_state`-row per
+> `(owner_id, trigger_type)` — Requirement 5.1, and a real uniqueness constraint the code does enforce.
+> The property numbering is left with a gap rather than renumbered: the numbers are cited by tag from
+> the test files, and renumbering a register that other files point into is how a traceability scheme
+> stops being traceable.
 
-**Validates: Requirements 1.1**
+**Validated: nothing. Requirement 1.1 is satisfied by the absence of the entity, not by a check.**
 
 ---
 
@@ -851,6 +904,17 @@ The following properties are drawn from acceptance criteria that are amenable to
 *For any* import batch containing duplicate `(service_name, url)` pairs (case-insensitive), the count of vault item rows created must equal the count of distinct `(service_name, url)` pairs in the batch — duplicates must be silently skipped and included in the skip report.
 
 **Validates: Requirements 10.6**
+
+> **Covered, but UNTAGGED — noted 2026-08-21.** The behaviour is asserted by
+> `lib/import/csv-parser.test.ts` ("deduplicates case-insensitively on (service_name, url) (Req 10.6)"),
+> which cites the requirement but carries no `// Feature: relay-h0-mvp, Property 17` tag — so a tag
+> sweep of the suite reports this property as uncovered when it is not. `tasks.md` went further and
+> recorded that **"Property 17 was never defined — the numbering skips from 16 to 18"**; it is defined,
+> here, and that claim is corrected in `tasks.md` as of the same date.
+>
+> Two dedupe keys exist and this property governs only one of them — the within-batch comparison.
+> The vault-side comparison uses normalised `title + service_name` (`lib/vault/dedupe.ts`); Requirement
+> 10.6 now states both.
 
 ---
 

@@ -168,6 +168,19 @@ failover worked.
 
 ## Proven, not assumed (2026-08-08)
 
+> 🔴 **THIS DRILL PREDATES STEP 6, AND STEP 6 IS THE HALF THAT MATTERS.** The
+> unwrap requirement was added to this runbook on 2026-08-19. The only drill on
+> record ran on 2026-08-08 and did not perform one — it checked that `ciphertext`
+> and `wrapped_data_key` were *present*, which is step 3. In step 6's own words,
+> a restore that has never unwrapped anything "has verified the half that was
+> never really at risk."
+>
+> So the accurate claim as of 2026-08-21 is: **the database is proven
+> restorable; the vault is not proven readable after a restore.** Everything
+> below is true and none of it is evidence for the second half. Read it as a
+> RESTORE proof, not a RECOVERY proof. `ladder: live-proven` for the restore
+> path; `wired` for the decrypt-after-restore path.
+
 The whole path was executed end to end, not reasoned about:
 
 - On-demand backup of the production cluster → **COMPLETED**, 494,356 bytes.
@@ -211,8 +224,47 @@ forced into `ALARM` deliberately and then reset to `OK`. Given that the SNS
 policy gap above meant "configured" and "delivers" were demonstrably different
 things here, firing it once was the only honest verification.
 
+## The drill cadence, and the fact that nothing enforces it
+
+**Next due: 2026-09-05.** Owner: **both** — the AWS admin credentials are
+Steve's, the walk is Claude's.
+
+A restore drill is only evidence of the criteria that existed when it ran, and
+the criteria changed on 2026-08-19. The next one must include, in this order:
+
+1. `node scripts/backup-now.mjs` → restore to a scratch cluster (steps 1–5 above).
+2. `npm run verify:kms` — the key every vault is wrapped under is still present,
+   enabled and not scheduled for deletion.
+3. **One real item through the product's own reveal path**, against the scratch
+   endpoint. Override `DSQL_PRIMARY_ENDPOINT` in a throwaway env file — never by
+   editing `.env.local`, which points at production and is the only copy.
+4. Record the RTO actually observed, then delete the scratch cluster and confirm
+   both production clusters are still `ACTIVE` with deletion protection on.
+
+⚠️ **"Quarterly" is currently a word in two planning documents with no owner, no
+trigger and no absence alarm.** `ROADMAP.md` §2-D (D3) and §5 both say to
+schedule one; `docs/backlog.md` carries the line; **`PROJECT.yaml` has no entry
+at all**, and ROADMAP's own §5 note says a finding recorded only in that file is
+one session away from being lost. Until D3 exists in `PROJECT.yaml` as a dated
+gate — the form `lib/ops/gates.test.ts` can turn red on, and
+`.github/workflows/date-guards.yml` now runs daily — this date is a note, and a
+note is what the last one was.
+
 ## Still open
 
+- **The DR vault's copy jobs have no absence alarm — only their FAILURES alert.**
+  The `relay-backup-absent` alarm watches completed **backup** jobs, which are
+  produced by the primary vault. If the plan's copy action is removed, or its
+  cross-Region permission changes in a way that raises no `COPY_JOB_FAILED`
+  event (editing the rule to drop the copy does exactly that), the primary keeps
+  backing up, the alarm stays quiet, and `relay-vault-dr` goes stale with nobody
+  told. The instrument that would see it — `backup-status.mjs`, which checks
+  BOTH vaults — is the hand-run one below. The additive fix is a second
+  CloudWatch alarm on `AWS/Backup NumberOfCopyJobsCompleted`, same SNS topic,
+  same `TreatMissingData: breaching`, forced to ALARM once the way the first one
+  was. That is an AWS change with a cost attached, so it is **Steve's call**, not
+  a thing to arrange quietly. (Recorded 2026-08-21 from a reading of this
+  document; the live alarm definition was not re-read.)
 - ~~The first **scheduled** run has not happened yet (05:00 UTC).~~ ✅ **CONFIRMED
   2026-08-12**, four days after this was written. `backup-status.mjs` reports
   **4 recovery points in each vault, newest 21.8h / 21.6h old, 610537 bytes** —

@@ -167,14 +167,34 @@ export const BETA_INVITE_CHANNEL: 'email' | 'owner' = 'owner';
  * Swallows everything. Adding someone to a circle of trust is a database fact
  * that must not fail because a mailbox is full, and the owner can always resend
  * from the invitations surface.
+ *
+ * 🔴 IT MINTS NOTHING ON THE OWNER-DELIVERED ARM, AND UNTIL 2026-08-21 IT DID.
+ * This function awaits `inviteAndNotify` and returns void, discarding the
+ * `claimCode`. On the owner arm nothing is emailed, and only a hash is stored —
+ * so the row it created carried a credential that existed in no email, no
+ * screen and no variable, and no human could ever type it. The owner then used
+ * InviteControl, which created a SECOND row.
+ *
+ * That is not merely untidy. `scripts/phase0-report.ts` counts
+ * `count(*) AS issued` per delivery_channel, so the owner arm's open% and
+ * claim% were structurally capped near 50% before a single person was
+ * measured — and PROJECT.yaml records two security decisions resting on that
+ * number. A funnel must count invitations a human could have received.
+ *
+ * Guarded on the CHANNEL rather than removed: Phase B flips
+ * `BETA_INVITE_CHANNEL` back to `'email'`, and on that arm the create-time
+ * invitation IS the delivery.
  */
 export async function inviteOnCreateBestEffort(
   ownerId: string,
   personId: string,
   personType: PersonType,
+  channel: 'email' | 'owner' = BETA_INVITE_CHANNEL,
 ): Promise<void> {
+  if (channel === 'owner') return;
+
   try {
-    await inviteAndNotify(ownerId, personId, personType, BETA_INVITE_CHANNEL);
+    await inviteAndNotify(ownerId, personId, personType, channel);
   } catch (err) {
     process.stderr.write(`[people] invitation on create failed for ${personId}: ${String(err)}\n`);
   }

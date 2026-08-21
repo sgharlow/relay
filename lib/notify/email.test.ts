@@ -15,12 +15,31 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { Resend } from 'resend';
 
+/*
+  PARTIAL, not a stub. The real `recordSendAttempt` and `recordSendRefusal` still
+  run — this suite has no database, so both genuinely fail and are genuinely
+  swallowed, which is what the "still succeeds when the send-attempt record
+  cannot be written" test below is actually asserting. Replacing them outright
+  would quietly turn that test into a tautology.
+*/
+vi.mock('./delivery-events', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./delivery-events')>();
+  return {
+    ...actual,
+    recordSendAttempt: vi.fn(actual.recordSendAttempt),
+    recordSendRefusal: vi.fn(actual.recordSendRefusal),
+  };
+});
+
+import { recordSendRefusal } from './delivery-events';
 import {
   sendEmail,
   sendEmailBestEffort,
   sendEmailToAllBestEffort,
   _setResendClientForTesting,
 } from './email';
+
+const mockRefusal = vi.mocked(recordSendRefusal);
 
 function stub(response: unknown): Resend {
   return { emails: { send: vi.fn(async () => response) } } as unknown as Resend;
@@ -43,6 +62,7 @@ beforeEach(() => {
   // environment since 2026-08-15, and under vitest NODE_ENV is 'test' —
   // positively not production, and correctly refused.
   vi.stubEnv('VERCEL_ENV', 'production');
+  mockRefusal.mockClear();
 });
 afterEach(() => {
   _setResendClientForTesting(null);
@@ -386,5 +406,89 @@ describe('sendEmailBestEffort', () => {
   it('returns FALSE on a provider rejection — previously it returned true', async () => {
     _setResendClientForTesting(stub({ data: null, error: { name: 'validation_error', message: 'nope' } }));
     await expect(sendEmailBestEffort({ to: 'a@b.com', subject: 's', text: 't' })).resolves.toBe(false);
+  });
+});
+
+/**
+ * 🔴 A REFUSED SEND LEFT NO DURABLE TRACE OF ANY KIND (found 2026-08-21).
+ *
+ * `recordSendAttempt` runs on line 229 — after acceptance. So the one failure
+ * `docs/secret-rotation-runbook.md` was most confident about, a revoked or
+ * wrongly-rotated `RESEND_API_KEY`, wrote nothing: no attempt row, no event, and
+ * `/api/health/delivery-webhook` reading zero ripe sends as "a quiet week" and
+ * answering 200. All mail stopping looked exactly like no mail being due.
+ * `recordSend` is `lib/notify/transcript.ts`, which is in-memory and refuses to
+ * arm in production by design, so it could never cover this.
+ *
+ * The direction of these assertions is the point: OUR pre-flight refusals must
+ * stay uncounted. They fire on every local run, `demo@relay.test` trips one in
+ * production, and a monitor that alarms about its own working guards is a
+ * monitor that gets muted.
+ */
+describe('a refused send is recorded where a monitor can see it', () => {
+  it('records the provider error class when Resend refuses', async () => {
+    _setResendClientForTesting(
+      stub({ data: null, error: { name: 'validation_error', message: 'restricted key' } }),
+    );
+    await expect(sendEmail({ to: 'a@b.com', subject: 's', text: 't' })).rejects.toThrow();
+    expect(mockRefusal).toHaveBeenCalledWith('validation_error');
+  });
+
+  it('records a refusal when the provider answers with no message id', async () => {
+    _setResendClientForTesting(stub({ data: null, error: null }));
+    await expect(sendEmail({ to: 'a@b.com', subject: 's', text: 't' })).rejects.toThrow();
+    expect(mockRefusal).toHaveBeenCalledWith('no_message_id');
+  });
+
+  it('records a refusal when the provider cannot be asked at all', async () => {
+    // The revoked-key shape one layer earlier: no client can be built, so the
+    // SDK is never reached. This is the case the runbook promised would be loud.
+    _setResendClientForTesting(null);
+    delete process.env.RESEND_API_KEY;
+    await expect(sendEmail({ to: 'a@b.com', subject: 's', text: 't' })).rejects.toThrow(
+      /RESEND_API_KEY/,
+    );
+    expect(mockRefusal).toHaveBeenCalledWith('transport');
+  });
+
+  it('records a refusal when the SDK itself throws', async () => {
+    _setResendClientForTesting({
+      emails: {
+        send: vi.fn(async () => {
+          throw new Error('socket hang up');
+        }),
+      },
+    } as unknown as Resend);
+    await expect(sendEmail({ to: 'a@b.com', subject: 's', text: 't' })).rejects.toThrow(
+      /socket hang up/,
+    );
+    expect(mockRefusal).toHaveBeenCalledWith('transport');
+  });
+
+  it('does NOT record our own reserved-TLD refusal — that guard is working', async () => {
+    _setResendClientForTesting(stub(ok));
+    await expect(sendEmail({ to: 'demo@relay.test', subject: 's', text: 't' })).rejects.toThrow();
+    expect(mockRefusal).not.toHaveBeenCalled();
+  });
+
+  it('does NOT record the non-production allow-list refusal', async () => {
+    vi.stubEnv('VERCEL_ENV', undefined);
+    vi.stubEnv('NODE_ENV', 'development');
+    _setResendClientForTesting(stub(ok));
+    await expect(sendEmail({ to: 'real@example.com', subject: 's', text: 't' })).rejects.toThrow();
+    expect(mockRefusal).not.toHaveBeenCalled();
+  });
+
+  it('does NOT record a missing from-address — misconfiguration, not a refusal', async () => {
+    delete process.env.RESEND_FROM_ADDRESS;
+    _setResendClientForTesting(stub(ok));
+    await expect(sendEmail({ to: 'a@b.com', subject: 's', text: 't' })).rejects.toThrow();
+    expect(mockRefusal).not.toHaveBeenCalled();
+  });
+
+  it('records nothing on the happy path beyond the acceptance', async () => {
+    _setResendClientForTesting(stub(ok));
+    await sendEmail({ to: 'a@b.com', subject: 's', text: 't' });
+    expect(mockRefusal).not.toHaveBeenCalled();
   });
 });

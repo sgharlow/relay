@@ -5,12 +5,18 @@
  * written to exercise — it exists because a validly signed verifier link 500'd
  * in production behind a green suite of a thousand tests. But a canary can only
  * ever check the failures someone already thought of, and an open self-serve
- * beta driven by ads is strangers walking paths nobody scripted. Without this,
- * the first report of a broken signup is a customer who bothers to email.
+ * beta is strangers walking paths nobody scripted. Without this, the first
+ * report of a broken signup is a customer who bothers to email.
+ *
+ * (That sentence said "an open self-serve beta driven by ads" until 2026-08-21.
+ * The ads were retired on 2026-08-16 — ratified.retire-paid-advertising — and
+ * the strangers now arrive from editorial placements instead. The premise is
+ * unchanged: unscripted paths, no script to check them.)
  *
  * Next 16's `onRequestError` gives the global server-error hook that Next 14
- * did not have (the canary's header still says otherwise; that comment predates
- * the upgrade). This module is what that hook calls.
+ * did not have. This module is what that hook calls. The canary's header said
+ * otherwise until 2026-08-21 and now describes the two as complements, which is
+ * what they are.
  *
  * ⚠️ RULING, 2026-08-20 — THIS IS NOT THE ALARM OF RECORD.
  *

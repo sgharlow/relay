@@ -115,3 +115,65 @@ describe('the AI seam sends non-secret descriptive metadata and nothing else', (
     expect(create).not.toHaveBeenCalled();
   });
 });
+
+/*
+  WHAT THE MODEL RETURNS, AND WHAT HAPPENS WHEN IT RETURNS SOMETHING ELSE.
+
+  The projection above is well pinned. The other direction was not: both refusal
+  branches in `classifyVaultItems` were uncovered, so nothing asserted that a
+  malformed response FAILS rather than being half-read into a score.
+
+  That matters because of who catches it. `runIntake` treats any throw from this
+  seam as Req 11.9's failure case — default 0.5, warn per item, never block — so
+  a response shape that changed under us degrades an owner's whole vault to the
+  default score with a warning list, which is the correct behaviour only if this
+  function actually throws. Returning `undefined` or a partial array instead
+  would write those values as if the model had chosen them.
+
+  ⚠️ STILL NOT A GOLDEN FIXTURE. No recorded REAL response is checked in here,
+  so schema drift at the provider is not covered — these are shapes we invent.
+  Capturing one costs a live intake run with credentials (metadata only; no
+  secret is ever sent by the projection above) and is the honest next step.
+*/
+describe('a malformed response is refused, not partially believed', () => {
+  it('throws when the model returns no content', async () => {
+    create.mockResolvedValueOnce({ choices: [{ message: { content: null } }] });
+    await expect(classifyVaultItems([item()])).rejects.toThrow(/no content/i);
+  });
+
+  it('throws when there are no choices at all', async () => {
+    create.mockResolvedValueOnce({ choices: [] });
+    await expect(classifyVaultItems([item()])).rejects.toThrow(/no content/i);
+  });
+
+  it('throws when the JSON parses but carries no items array', async () => {
+    create.mockResolvedValueOnce({ choices: [{ message: { content: '{"results":[]}' } }] });
+    await expect(classifyVaultItems([item()])).rejects.toThrow(/items array/i);
+  });
+
+  it('throws when items is present but not an array', async () => {
+    // The shape a "helpful" model produces when asked for one item: an object
+    // keyed by id. Reading `.items` and iterating would yield nothing and look
+    // like a successful empty classification.
+    create.mockResolvedValueOnce({ choices: [{ message: { content: '{"items":{"i-1":{}}}' } }] });
+    await expect(classifyVaultItems([item()])).rejects.toThrow(/items array/i);
+  });
+
+  it('throws when the content is not JSON at all', async () => {
+    create.mockResolvedValueOnce({ choices: [{ message: { content: 'I cannot help with that.' } }] });
+    await expect(classifyVaultItems([item()])).rejects.toThrow();
+  });
+
+  it('returns the rows unchanged when the shape is right — clamping is runIntake\'s job', async () => {
+    // Deliberate division of labour: this seam parses, `clampScore` (Property
+    // 18) bounds. An out-of-range score arriving here must survive to be
+    // clamped rather than being silently corrected in two places.
+    create.mockResolvedValueOnce({
+      choices: [{ message: { content: '{"items":[{"id":"i-1","importance_score":7.5,"is_root_credential":true,"recurring_billing":false,"irreplaceable":false,"depends_on_title":null}]}' } }],
+    });
+    const out = await classifyVaultItems([item()]);
+    expect(out).toEqual([
+      { id: 'i-1', importance_score: 7.5, is_root_credential: true, recurring_billing: false, irreplaceable: false, depends_on_title: null },
+    ]);
+  });
+});

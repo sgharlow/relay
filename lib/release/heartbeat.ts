@@ -371,8 +371,24 @@ export async function resolveElapsedGrace(machine: Machine, now: Date = new Date
       }).catch(() => undefined);
 
       released++;
-    } catch {
-      // A concurrent writer moved the row; the next sweep re-evaluates it.
+    } catch (err) {
+      /*
+        A concurrent writer moved the row; the next sweep re-evaluates it.
+
+        🔴 THAT SENTENCE WAS THE WHOLE HANDLER UNTIL 2026-08-21 — no counter, no
+        log line, nothing. It is true of a lost CAS race and of nothing else. A
+        schema change, a bad deploy of state-machine.ts, OCC exhaustion on every
+        row: all landed here, silently, hourly, while `recordSchedulerRun` wrote
+        a healthy row because it only ever carried the ARMED→PENDING counters.
+        The transition that opens a vault could fail permanently and every
+        signal the product emitted said fine.
+
+        `getSchedulerHealth` is the alarm now — it derives the stuck rows
+        straight from the database rather than trusting a counter. This line is
+        what lets whoever answers that alarm find out WHY, with the row that
+        failed and the error that failed it.
+      */
+      process.stderr.write(`[heartbeat] grace release failed for ${row.id}: ${String(err)}\n`);
     }
   }
 

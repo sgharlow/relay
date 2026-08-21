@@ -22,14 +22,57 @@
  * The promise and the implementation must agree, so the code follows the
  * document rather than the other way round.
  *
+ * THE PURGE RULE, AND THE TWO WAYS IT WAS WRONG UNTIL 2026-08-21.
+ *
+ * 1. IT SWALLOWED EVERY ERROR. The optional deletes sat in a bare `catch` that
+ *    named one cause — "table absent in this deployment" — while tolerating all
+ *    of them. A 40001 serialization failure, a 42501 permission denial of the
+ *    031/032 class, or a dropped connection was ignored exactly like a missing
+ *    table, and `DELETE FROM users` then ran regardless: 200 OK, a
+ *    DeletionReport that never counted those rows, and no retry possible
+ *    because the owner was gone. Now only 42P01 is tolerated — narrowed the way
+ *    signin-attempts.ts and csp-report-store.ts narrow theirs — and every
+ *    statement runs under `withOccRetry`, which every other write in this data
+ *    layer already had and the one operation that cannot be repeated did not.
+ *
+ * 2. IT COULD NOT REACH TWO TABLES AT ALL. `verifier_confirmations` (keyed on
+ *    release_state_id, no owner_id) and `consent_artifacts` (no owner_id; the
+ *    delegations row is the only pointer) are reachable only THROUGH a row this
+ *    function was deleting first. So every account closed through
+ *    DELETE /api/account left its verifier attestations and consent records on
+ *    the cluster, including the four purged on 2026-08-18. `recipient_codes`
+ *    and `auth_challenges` were simply missed. The fixture scripts were more
+ *    thorough than the product: reset-demo.ts and family-arc.ts already cleared
+ *    the confirmations with the exact subquery now used below.
+ *
+ * The ordering rule that falls out of it: anything reachable only through
+ * another row goes BEFORE that row, and `users` goes last of all.
+ *
  * Feature: relay-h0-mvp
  * Requirements: J13-R1, J13-R2
  */
 
 import { query } from '../db/connection';
+import { withOccRetry } from '../db/occ';
 import { writeAuditEntry } from '../audit/audit-service';
 import { cancelSubscriptionForOwner } from '../billing/cancellation';
 import { resignFromCircle } from '../people/resign';
+
+/** `relation does not exist` — the one failure a closure is allowed to ignore. */
+const UNDEFINED_TABLE = '42P01';
+
+/**
+ * One DELETE from the closure cascade: OCC-retried, tolerating ONLY 42P01.
+ * Everything else propagates and stops the closure. See THE PURGE RULE above.
+ */
+async function purgeOne(sql: string, ownerId: string): Promise<number> {
+  try {
+    return await withOccRetry(async () => (await query(sql, [ownerId])).rowCount ?? 0);
+  } catch (err) {
+    if ((err as { code?: string }).code === UNDEFINED_TABLE) return 0;
+    throw err;
+  }
+}
 
 export interface ExportedItem {
   id: string;
@@ -174,33 +217,51 @@ export async function deleteAccount(ownerId: string): Promise<DeletionReport> {
     detail: { requestedAt: new Date().toISOString() },
   });
 
-  const counted = async (sql: string): Promise<number> => {
-    const r = await query(sql, [ownerId]);
-    return r.rowCount ?? 0;
-  };
+  const purge = (sql: string) => purgeOne(sql, ownerId);
 
-  const releaseStates = await counted(`DELETE FROM release_state WHERE owner_id = $1`);
-  const accessRules = await counted(`DELETE FROM access_rules WHERE owner_id = $1`);
-  const vaultItems = await counted(`DELETE FROM vault_items WHERE owner_id = $1`);
-  const recipients = await counted(`DELETE FROM recipients WHERE owner_id = $1`);
-  const verifiers = await counted(`DELETE FROM verifiers WHERE owner_id = $1`);
+  // BEFORE release_state — reachable only through it. See THE PURGE RULE (2).
+  await purge(
+    `DELETE FROM verifier_confirmations
+      WHERE release_state_id IN (SELECT id FROM release_state WHERE owner_id = $1)`,
+  );
+
+  const releaseStates = await purge(`DELETE FROM release_state WHERE owner_id = $1`);
+  const accessRules = await purge(`DELETE FROM access_rules WHERE owner_id = $1`);
+  const vaultItems = await purge(`DELETE FROM vault_items WHERE owner_id = $1`);
+  const recipients = await purge(`DELETE FROM recipients WHERE owner_id = $1`);
+  const verifiers = await purge(`DELETE FROM verifiers WHERE owner_id = $1`);
 
   // A passkey is account data and the privacy page promises account data goes.
   // These outlived the user row until 2026-08-12: sign-in still failed safely,
   // because `authorize` looks the user up and finds nothing, but a public key
   // tied to a deleted person sat in the table with nothing left to delete it.
-  const passkeys = await counted(`DELETE FROM webauthn_credentials WHERE user_id = $1`);
+  const passkeys = await purge(`DELETE FROM webauthn_credentials WHERE user_id = $1`);
 
-  // Best-effort for tables a given deployment may not have; a missing optional
-  // table must not leave an account half-deleted.
+  // Same reachability problem as verifier_confirmations: consent_artifacts has
+  // no owner_id (009), and the delegations row is the only pointer to it. So it
+  // goes BEFORE the delegations delete below, not after.
+  await purge(
+    `DELETE FROM consent_artifacts
+      WHERE id IN (SELECT consent_artifact_id FROM delegations
+                    WHERE owner_id = $1 OR delegate_user_id = $1)`,
+  );
+
   for (const sql of [
     `DELETE FROM recovery_codes WHERE user_id = $1`,
     `DELETE FROM verifier_codes WHERE owner_id = $1`,
+    // The recipient half of the same pair (017), and the higher-value one: a
+    // recipient code opens the vault, where a verifier code answers a question.
+    // 015 was cleared here from the start and 017 never was.
+    `DELETE FROM recipient_codes WHERE owner_id = $1`,
     `DELETE FROM access_requests WHERE owner_id = $1`,
     `DELETE FROM delegations WHERE owner_id = $1 OR delegate_user_id = $1`,
     `DELETE FROM access_policies WHERE owner_id = $1`,
     `DELETE FROM approvals WHERE owner_id = $1`,
     `DELETE FROM subscriptions WHERE owner_id = $1`,
+    // Unspent WebAuthn and step-up nonces (029). They are single-use and
+    // expire, so this is retention rather than exposure — but the privacy page
+    // says account data goes, and this is account data.
+    `DELETE FROM auth_challenges WHERE user_id = $1`,
     // Outstanding invitations this owner issued. They carry a token hash and a
     // person id, and their roster rows have just been deleted, so leaving them
     // retains a credential for a circle that no longer exists.
@@ -212,14 +273,13 @@ export async function deleteAccount(ownerId: string): Promise<DeletionReport> {
     // page, which was about to claim these were removed.
     `DELETE FROM break_glass_codes WHERE owner_id = $1`,
   ]) {
-    try {
-      await query(sql, [ownerId]);
-    } catch {
-      /* table absent in this deployment */
-    }
+    await purge(sql);
   }
 
-  await query(`DELETE FROM users WHERE id = $1`, [ownerId]);
+  // LAST, and only because everything above returned. While the users row
+  // survives, the closure is retryable; after it goes, nothing can find the
+  // remaining rows to finish the job.
+  await purge(`DELETE FROM users WHERE id = $1`);
 
   return {
     vaultItems,

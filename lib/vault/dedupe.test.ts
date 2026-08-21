@@ -74,6 +74,71 @@ describe('splitDuplicates', () => {
   });
 });
 
+describe('two accounts at the same provider, which is what a CSV actually produces', () => {
+  /*
+    🔴 THE CASE THE SUITE COULD NOT REACH. "distinguishes two accounts at the
+    same service" above uses DIFFERENT TITLES — 'Chase joint' vs 'Chase savings'
+    — and a CSV import can never produce that. ImportPageClient maps
+    `title: row.service_name, service_name: row.service_name`, so every row from
+    an export has title === service_name, and two Google logins arrive as two
+    identical labels.
+
+    lib/import/csv-parser.ts keys ITS in-file dedupe on `service_name|url`, so
+    both rows survive the parse exactly as J2-R5 asks. They were then collapsed
+    on the server, and the response carried a count and no row identity — so a
+    Bitwarden export with a personal and a work Google account imported one of
+    them, and the owner read "left 1 already in your vault untouched" and had no
+    way to know which credential was gone. This is the path the product
+    recommends as how most people should start.
+  */
+  const login = (title: string, service_name: string, url: string | null) => ({ title, service_name, url });
+
+  it('keeps two logins at the same provider when the urls differ', () => {
+    const r = splitDuplicates(
+      [login('Google', 'Google', 'https://mail.google.com'), login('Google', 'Google', 'https://ads.google.com')],
+      [],
+    );
+    expect(r.fresh).toHaveLength(2);
+    expect(r.duplicates).toHaveLength(0);
+  });
+
+  it('still skips the same login on a re-import', () => {
+    const r = splitDuplicates(
+      [login('Google', 'Google', 'https://mail.google.com')],
+      [login('Google', 'Google', 'https://mail.google.com')],
+    );
+    expect(r.fresh).toHaveLength(0);
+    expect(r.duplicates).toHaveLength(1);
+  });
+
+  it('ignores case and trailing slashes in the url, as exports are inconsistent about both', () => {
+    const r = splitDuplicates(
+      [login('Chase', 'Chase', 'HTTPS://Chase.com/')],
+      [login('Chase', 'Chase', 'https://chase.com')],
+    );
+    expect(r.duplicates).toHaveLength(1);
+  });
+
+  it('a url-less existing item still absorbs a row that has one', () => {
+    /*
+      ⚠️ THE REGRESSION THIS EXISTS TO PREVENT. Items added by hand at
+      /vault/new carry no url. If a url simply joined the key, "Chase" typed in
+      by hand would stop matching "Chase" from an export, and the first re-import
+      after any manual add would DOUBLE those rows — the exact defect dedupe was
+      written for. An absent url on either side is not evidence of a different
+      account, so it falls back to the label match.
+    */
+    const r = splitDuplicates([login('Chase', 'Chase', 'https://chase.com')], [item('Chase', 'Chase')]);
+    expect(r.fresh).toHaveLength(0);
+    expect(r.duplicates).toHaveLength(1);
+  });
+
+  it('and the reverse: a url-less row matches an existing item that has one', () => {
+    const r = splitDuplicates([item('Chase', 'Chase')], [login('Chase', 'Chase', 'https://chase.com')]);
+    expect(r.duplicates).toHaveLength(1);
+  });
+});
+
 describe('fail-open — never silently drop a secret', () => {
   it('imports an untitled row rather than matching it against another untitled one', () => {
     const r = splitDuplicates([item(''), item('')], [item('')]);

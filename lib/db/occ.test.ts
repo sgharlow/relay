@@ -243,112 +243,103 @@ describe('withOccRetry — property tests', () => {
   );
 });
 
+
 // ---------------------------------------------------------------------------
 // Property 13: OCC retry with safe default
 // **Validates: Requirements 5.7, 5.9**
 // Feature: relay-h0-mvp, Property 13
-//
-// For any release state transition that encounters SQLSTATE 40001 on ALL
-// attempts (up to 3), the final system state must be 'armed'.  The system
-// must never remain in 'pending', 'grace', or 'released' after retry
-// exhaustion.
-//
-// Test approach:
-//   - Model a release state transition as a function that calls withOccRetry
-//     wrapping a DB operation that always throws SQLSTATE 40001.
-//   - The caller implements the "safe default" contract: if withOccRetry
-//     throws (exhausted), reset state to 'armed'.
-//   - Assert the resulting state equals 'armed' for all starting states and
-//     trigger types (500 iterations).
 // ---------------------------------------------------------------------------
+/*
+  🔴 THIS PROPERTY USED TO TEST A COPY OF THE CODE IT WAS ABOUT.
 
-type ReleaseStateValue = 'armed' | 'pending' | 'grace' | 'released' | 'cancelled';
+  What stood here was `simulateTransitionWithOccExhaustion`, a function defined
+  in this file that called `withOccRetry`, caught the exhausted 40001 itself and
+  `return 'armed'`. The property then asserted that this function returns
+  'armed'. Its own comment said it "mirrors the production pattern in
+  lib/release/state-machine.ts" — and a mirror is exactly the problem: delete
+  `safeResetToArmed` from the real machine and every assertion here still
+  passed. The safe-default invariant is described in CLAUDE.md as "the core
+  correctness story", and its property-based proof was a tautology about a
+  fixture.
 
-/**
- * Simulates the release state transition pattern used by ReleaseStateMachine:
- *   1. Attempt the DB operation via withOccRetry (mocked to always 40001).
- *   2. On OccExhausted (all retries consumed), reset to 'armed' — the safe default.
- *   3. Return the resulting state.
- *
- * This mirrors the production pattern in lib/release/state-machine.ts:
- *   on exhaustion → safeResetToArmed → state = 'armed'
- */
-async function simulateTransitionWithOccExhaustion(
-  currentState: ReleaseStateValue,
-  targetState: ReleaseStateValue,
-  alwaysFailing40001Fn: () => Promise<ReleaseStateValue>,
-): Promise<ReleaseStateValue> {
-  try {
-    // withOccRetry will exhaust 3 retries and re-throw the last 40001 error
-    return await withOccRetry(alwaysFailing40001Fn, noopSleep);
-  } catch (err) {
-    if (isSqlState40001(err)) {
-      // Safe default: any exhausted transition → ARMED
-      // (mirrors safeResetToArmed in ReleaseStateMachine)
-      return 'armed';
-    }
-    // Non-40001 errors propagate (not the case under test here)
-    throw err;
-  }
-}
+  It now drives `ReleaseStateMachine.transition` itself, over every permitted
+  edge and both reversibility settings, and asserts the two things that are
+  actually load-bearing: `OccExhaustedError` is thrown, and the reset UPDATE was
+  ISSUED — the row is left ARMED by a statement, not by a return value.
+
+  ⚠️ THE MOCK MUST NOT FAIL EVERY QUERY, and getting that wrong is how this
+  would go quietly decorative again. `transition` re-READS the row between
+  retries, and that read is outside its inner try — so a mock that throws 40001
+  on everything makes the raw 40001 escape from `readRow` and the exhaustion
+  path is never reached. Only the CAS UPDATE fails here; the re-read and the
+  reset succeed, which is the real shape of a serialization conflict.
+*/
+
+vi.mock('./connection', () => ({ query: vi.fn() }));
+vi.mock('../audit/audit-service', () => ({ writeAuditEntry: vi.fn(async () => ({})) }));
 
 describe('Property 13: OCC retry with safe default', () => {
-  it(
-    'property: any release state transition exhausting 3 retries must result in ARMED state',
-    async () => {
-      // Feature: relay-h0-mvp, Property 13
-      // Validates: Requirements 5.7, 5.9
-      const ALL_STATES: ReleaseStateValue[] = [
-        'armed',
-        'pending',
-        'grace',
-        'released',
-        'cancelled',
-      ];
-      const TRIGGER_TYPES = [
-        'emergency',
-        'travel',
-        'caregiver',
-        'business',
-        'estate',
-      ] as const;
+  it('any permitted transition that exhausts its retries issues the reset to ARMED', async () => {
+    // Feature: relay-h0-mvp, Property 13
+    // Validates: Requirements 5.7, 5.9
+    const { query } = await import('./connection');
+    const { ReleaseStateMachine, PERMITTED_TRANSITIONS, OccExhaustedError } = await import(
+      '../release/state-machine'
+    );
+    const mockQuery = vi.mocked(query);
 
-      await fc.assert(
-        fc.asyncProperty(
-          // Arbitrary starting state
-          fc.constantFrom(...ALL_STATES),
-          // Arbitrary target state (what the transition was trying to reach)
-          fc.constantFrom(...ALL_STATES),
-          // Arbitrary trigger type
-          fc.constantFrom(...TRIGGER_TYPES),
-          async (currentState, targetState, _triggerType) => {
-            let dbCallCount = 0;
+    const edges = PERMITTED_TRANSITIONS.map((t) => ({ ...t }));
+    expect(edges.length, 'no permitted edges — this property would assert nothing').toBeGreaterThan(0);
 
-            // DB driver that always returns SQLSTATE 40001
-            const alwaysFailing40001: () => Promise<ReleaseStateValue> =
-              async () => {
-                dbCallCount++;
-                throw makeSqlState40001Error();
+    await fc.assert(
+      fc.asyncProperty(
+        fc.constantFrom(...edges),
+        fc.boolean(),
+        async (edge, reversible) => {
+          // Skip the combinations the machine refuses before any DB write; the
+          // illegal-edge half is Property 11's job, not this one's.
+          if (edge.reversibleOnly && !reversible) return true;
+
+          mockQuery.mockReset();
+          let resetIssued = false;
+          let casAttempts = 0;
+
+          mockQuery.mockImplementation((async (sql: string) => {
+            if (/^\s*SELECT/i.test(sql)) {
+              return {
+                rows: [{ id: 'rs-1', owner_id: 'owner-1', state: edge.from, version: '0' }],
+                rowCount: 1,
               };
+            }
+            if (/SET state = 'armed'/.test(sql)) {
+              resetIssued = true;
+              return { rows: [{ id: 'rs-1', owner_id: 'owner-1', state: 'armed', version: '1' }], rowCount: 1 };
+            }
+            casAttempts += 1;
+            throw Object.assign(new Error('serialization failure'), { code: '40001' });
+          }) as never);
 
-            const finalState = await simulateTransitionWithOccExhaustion(
-              currentState,
-              targetState,
-              alwaysFailing40001,
-            );
+          const machine = new ReleaseStateMachine({
+            sleep: async () => {},
+            random: () => 0,
+            maxRetries: OCC_RETRY.maxAttempts,
+          });
 
-            // Invariant 1: final state must be 'armed' (safe default)
-            const stateIsArmed = finalState === 'armed';
+          let thrown: unknown;
+          try {
+            await machine.transition('rs-1', edge.from, edge.to, '0', { reversible });
+          } catch (e) {
+            thrown = e;
+          }
 
-            // Invariant 2: DB was called exactly maxAttempts (3) times
-            const calledExactlyMaxAttempts =
-              dbCallCount === OCC_RETRY.maxAttempts;
-
-            return stateIsArmed && calledExactlyMaxAttempts;
-          },
-        ),
-        { numRuns: 500 },
-      );
-    },
-  );
+          return (
+            thrown instanceof OccExhaustedError &&
+            resetIssued &&
+            casAttempts === OCC_RETRY.maxAttempts
+          );
+        },
+      ),
+      { numRuns: 500 },
+    );
+  });
 });

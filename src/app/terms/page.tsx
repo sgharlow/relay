@@ -29,7 +29,12 @@ export const metadata = {
   description: 'What Relay promises, what it does not, and what stage it is at.',
 };
 
-const UPDATED = '12 August 2026';
+// Moves with the content. legal-pages.test.ts fails when the file's last
+// commit is newer than this date — both pages read '12 August 2026' through
+// five material edits (the operator named, continuity, lapse behaviour, Stripe
+// as a subprocessor, the readable authenticator seed), telling a reader
+// comparing versions that nothing had changed.
+const UPDATED = '21 August 2026';
 
 export default function TermsPage() {
   return (
@@ -174,17 +179,51 @@ export default function TermsPage() {
             texting you and US texting you is the whole point, and carriers care
             about exactly that line.
           */}
+          {/*
+            🔴 THE PRESENT TENSE WAS WRONG FOR SIX DAYS. This read "you can give
+            us a mobile number and we will text you when something genuinely
+            needs you" — describing a control that exists nowhere. No screen
+            collects a number, there is no SMS provider in package.json, and
+            src/app/sms/page.tsx says on its face: "text messaging is not
+            switched on yet, and Relay has never sent one."
+            docs/a2p-registration-prep.md puts building the opt-in screen AFTER
+            campaign approval. So the contract a paying owner reads promised a
+            capability, and a third page said it did not exist.
+
+            The paragraph is QUALIFIED rather than deleted. A2P 10DLC review
+            reads this page and rejects a policy that never mentions texting —
+            lib/ops/sms-disclosure.test.ts exists for that, and it must keep
+            passing. legal-pages.test.ts asserts the qualifier; deleting the
+            paragraph to satisfy one guard fails the other, on purpose.
+
+            When the opt-in screen ships, the status sentence comes out of here
+            and out of /sms in the same change (sms/page.tsx says so too).
+          */}
           <p className="mt-2">
-            If you choose to, you can give us a mobile number and we will text you when something
-            genuinely needs you — an emergency being raised, or a reminder that one is still waiting.{' '}
             <strong className="font-semibold text-ink">
-              You turn this on yourself and nobody can turn it on for you
+              Text messaging is not switched on yet, and Relay has never sent one.
+            </strong>{' '}
+            These terms are published in advance, before carrier registration, so they can be read
+            and checked before anything is sent. When it is switched on: you will be able to give us
+            a mobile number, and we would text you only when something genuinely needs you — an
+            emergency being raised, or a reminder that one is still waiting. The rule it will run
+            under, which any opt-in screen has to implement:{' '}
+            <strong className="font-semibold text-ink">
+              you turn this on yourself and nobody can turn it on for you
             </strong>
+            {/* ⚠️ VERBATIM. lib/ops/sms-disclosure.test.ts pins this exact clause,
+                because the same sentence is registered with the carriers — a
+                rewording here is a compliance discrepancy nobody notices until a
+                campaign is suspended. The tense moved around it, not through it. */}
             , not even the person who named you; a number they typed in is there to help{' '}
             <em>them</em> reach you, never used by us for texts. Reply STOP to any message and it
             ends, or HELP to reach us. Standard message and data rates apply, and how often you hear
             from us depends entirely on what happens. As with email, we will never text you a link
-            that signs you in.
+            that signs you in. The current status is always on{' '}
+            <a className="text-ink underline" href="/sms">
+              /sms
+            </a>
+            .
           </p>
         </section>
 

@@ -23,6 +23,7 @@ import {
   type Scope,
 } from '../../../../lib/domain/enums';
 import { apiGet, apiSend } from '../_lib/api';
+import { TRIGGER_LABELS, SCOPE_LABELS } from './labels';
 
 interface Rule {
   id: string;
@@ -70,7 +71,17 @@ export default function RulesPage() {
     <div className="mx-auto max-w-4xl space-y-8">
       <header>
         <h1 className="text-t7 font-semibold tracking-tight">Access Rules</h1>
-        <p className="text-t2 text-muted">Grant a recipient scoped access to an item under a trigger.</p>
+        {/*
+          was: "Grant a recipient scoped access to an item under a trigger." —
+          four schema nouns in one sentence, on the screen the readiness banner
+          sends a brand-new owner to. TriggersPageClient carries the same
+          correction for the same reason: "Every other owner surface says 'Who
+          would step in'; this one alone spoke schema."
+        */}
+        <p className="text-t2 text-muted">
+          A rule is one sentence: <em>this thing</em> goes to <em>this person</em>, if{' '}
+          <em>this happens</em>.
+        </p>
         {error ? (
           <p role="alert" className="mt-2 text-t2 text-clay">
             {error}
@@ -79,7 +90,38 @@ export default function RulesPage() {
       </header>
 
       <ul className="divide-y divide-rule rounded border border-rule bg-paper-raised">
-        {rules.length === 0 ? <li className="px-4 py-3 text-t2 text-muted">No rules yet.</li> : null}
+        {/*
+          🔴 "No rules yet." WAS A DEAD END. An owner arrives here from the
+          readiness banner precisely because they have none — so the empty state
+          is the common case, and it said nothing about what to do. Worse, a
+          rule cannot be written at all without an item AND a person, and with
+          neither the form below is two empty dropdowns. Name the prerequisite,
+          and link to it.
+        */}
+        {rules.length === 0 ? (
+          <li className="px-4 py-3 text-t2 text-muted">
+            No rules yet.{' '}
+            {items.length === 0 ? (
+              <>
+                A rule needs something to share, so start by{' '}
+                <a href="/vault/new" className="font-medium underline">
+                  adding an item to your vault
+                </a>
+                .
+              </>
+            ) : recipients.length === 0 ? (
+              <>
+                A rule needs somebody to share with, so start by{' '}
+                <a href="/circle" className="font-medium underline">
+                  naming someone in your circle
+                </a>
+                .
+              </>
+            ) : (
+              <>Use the form below to say who should be able to reach what, and when.</>
+            )}
+          </li>
+        ) : null}
         {rules.map((rule) => (
           <li key={rule.id} className="flex items-center justify-between px-4 py-2.5 text-t2">
             <div>
@@ -240,7 +282,7 @@ function RuleBuilder({ items, recipients, onCreated }: { items: Named[]; recipie
           <select className={`${inputCls} w-full`} value={form.trigger_type} onChange={(e) => setTrigger(e.target.value as TriggerType)}>
             {USER_SELECTABLE_TRIGGER_TYPES.map((t) => (
               <option key={t} value={t}>
-                {t}
+                {TRIGGER_LABELS[t]}
               </option>
             ))}
           </select>
@@ -250,7 +292,7 @@ function RuleBuilder({ items, recipients, onCreated }: { items: Named[]; recipie
           <select className={`${inputCls} w-full`} value={form.scope} onChange={(e) => setForm({ ...form, scope: e.target.value as Scope })}>
             {VALID_SCOPES.map((s) => (
               <option key={s} value={s}>
-                {s}
+                {SCOPE_LABELS[s]}
               </option>
             ))}
           </select>
@@ -272,6 +314,14 @@ function RuleBuilder({ items, recipients, onCreated }: { items: Named[]; recipie
           days
         </label>
       </div>
+      {/* A bare number box asks a question the owner has no way to answer. The
+          guide's sentence, said where the decision is made. */}
+      <p className="text-t1 leading-relaxed text-muted">
+        Leave <strong>Release after</strong> at 0 and this opens as soon as a release happens. Any
+        other number holds this rule back &mdash; it will only open if you are still unreachable
+        that many days later, and the person it is for sees it on their list from the start, marked
+        with the date it opens.
+      </p>
 
       {error ? <p role="alert" className="text-t2 text-clay">{error}</p> : null}
       <button type="submit" disabled={busy} className="rounded bg-ink px-3 py-1.5 text-t2 font-semibold text-paper hover:bg-ink disabled:opacity-60">

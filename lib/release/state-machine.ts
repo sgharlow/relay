@@ -331,16 +331,51 @@ export class ReleaseStateMachine {
   }
 
   /**
-   * Best-effort, unconditional reset to ARMED — the "default to locked" safety
-   * net invoked on retry exhaustion (Req 5.9). Never throws: a failed reset must
-   * not mask the original error.
+   * Best-effort reset to ARMED — the "default to locked" safety net invoked on
+   * retry exhaustion (Req 5.9) and by the J7-R7 denial halt. Never throws: a
+   * failed reset must not mask the original error.
+   *
+   * 🔴 IT WAS UNCONDITIONAL UNTIL 2026-08-21 — `WHERE id = $1` and nothing
+   * else. That made it the single write in the release subsystem that ignored
+   * PERMITTED_TRANSITIONS, and the ONLY path in the product that could move a
+   * committed RELEASED row backwards. design.md:513 specified it that way and
+   * Req 5.6 (every transition checks the expected state) and Req 5.10 (an
+   * estate release never transitions back) both forbid it; the code followed
+   * the design.
+   *
+   * Both callers can race a release. `transition()` reaches here after
+   * exhausting OCC retries, by which point another writer has demonstrably been
+   * moving the row. `denyConfirmation` reads the head, then runs five queries'
+   * worth of eligibility arithmetic, then halts — a confirmation landing in
+   * that window releases the row, and the halt used to quietly close access
+   * that had just legitimately opened: no closure notice to the recipient, no
+   * audit of a release having happened at all, and the counters left standing.
+   *
+   * PENDING and GRACE are the states where nothing has opened yet, so they are
+   * the only ones this may touch. A row that is already ARMED needs no reset; a
+   * CANCELLED one is terminal; a RELEASED one is a decision that was committed,
+   * and undoing it belongs to `processCheckin` and `standDownTrigger`, which
+   * both notify the people whose access they are closing. "Any ambiguity holds
+   * the locked state" means HOLD, not reverse.
+   *
+   * The tally is cleared in the same statement. A halt is a re-arm, and every
+   * other re-arm path starts the next emergency at 0/N with no denials
+   * (rearm-clears-the-ledger.test.ts); this one used to carry the objections
+   * that caused the halt forward forever, so the next release halted before
+   * anyone answered it.
+   *
+   * Requirements: 5.6, 5.9, 5.10, J7-R7
    */
   async safeResetToArmed(id: string): Promise<void> {
     try {
       const result = await query<ReleaseStateRow>(
         `UPDATE release_state
-            SET state = 'armed', version = version + 1
-          WHERE id = $1
+            SET state = 'armed',
+                version = version + 1,
+                received_confirmations = 0,
+                received_denials = 0,
+                grace_ends_at = NULL
+          WHERE id = $1 AND state IN ('pending', 'grace')
          RETURNING *`,
         [id],
       );

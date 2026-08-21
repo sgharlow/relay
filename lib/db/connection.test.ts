@@ -289,6 +289,68 @@ describe('query() connection-error failover', () => {
     expect(secondary.query).not.toHaveBeenCalled();
   });
 
+  it('does NOT replay a WRITE on the secondary after ECONNRESET', async () => {
+    /*
+      🔴 THE DEFECT THIS WAS WRITTEN FOR. The catch below used to re-issue the
+      IDENTICAL SQL against the secondary for every connection error, and
+      ECONNRESET is precisely the error that can arrive AFTER the statement was
+      sent and committed. The two endpoints are one logical cluster
+      (docs/backup-restore-runbook.md: "A DELETE replicates to the peer"), so
+      the replay lands on the same data — a duplicate contact or vault item, a
+      denial counted twice toward the halt threshold, a second audit row.
+
+      It failed in the flattering direction: the scenario the retry exists for —
+      a wobbling primary — is exactly the scenario where the write already
+      landed. The primary is still marked unhealthy, so the NEXT call rotates;
+      what is gone is the blind replay of THIS one.
+    */
+    const reset = Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' });
+
+    const primary = makeMockPool({ totalCount: 1, query: vi.fn().mockRejectedValue(reset) });
+    const secondary = makeMockPool({ query: vi.fn().mockResolvedValue({ rows: [], rowCount: 1 }) });
+    _setPoolsForTesting(primary, secondary);
+    process.env.DSQL_USE_SECONDARY = 'false';
+
+    await expect(
+      query('INSERT INTO audit_log (owner_id, seq) VALUES ($1, $2)', ['o', 1]),
+    ).rejects.toThrow('ECONNRESET');
+
+    expect(secondary.query, 'the write was replayed and may now exist twice').not.toHaveBeenCalled();
+    expect(isPrimaryUnhealthy(), 'the rotation must still happen — only the replay is dropped').toBe(true);
+  });
+
+  it('DOES replay a read on the secondary after ECONNRESET', async () => {
+    // A SELECT is idempotent by construction, so the availability half of the
+    // failover is kept where it costs nothing.
+    const reset = Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' });
+
+    const primary = makeMockPool({ totalCount: 1, query: vi.fn().mockRejectedValue(reset) });
+    const secondary = makeMockPool({ query: vi.fn().mockResolvedValue({ rows: [{ id: 1 }], rowCount: 1 }) });
+    _setPoolsForTesting(primary, secondary);
+    process.env.DSQL_USE_SECONDARY = 'false';
+
+    const result = await query('SELECT id FROM users WHERE id = $1', ['abc']);
+    expect(result.rows).toEqual([{ id: 1 }]);
+    expect(secondary.query).toHaveBeenCalledTimes(1);
+  });
+
+  it('DOES replay a write when the connection was refused — it cannot have run', async () => {
+    // ECONNREFUSED/ENOTFOUND happen before a statement can be sent, so the
+    // replay is provably an at-most-once write. This is the failover the demo
+    // relies on and it is unchanged.
+    const refused = Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:5432'), {
+      code: 'ECONNREFUSED',
+    });
+
+    const primary = makeMockPool({ totalCount: 1, query: vi.fn().mockRejectedValue(refused) });
+    const secondary = makeMockPool({ query: vi.fn().mockResolvedValue({ rows: [], rowCount: 1 }) });
+    _setPoolsForTesting(primary, secondary);
+    process.env.DSQL_USE_SECONDARY = 'false';
+
+    await query('INSERT INTO recipients (owner_id) VALUES ($1)', ['o']);
+    expect(secondary.query).toHaveBeenCalledTimes(1);
+  });
+
   it('propagates secondary pool errors after failover', async () => {
     const connErr = Object.assign(new Error('connect ECONNREFUSED'), { code: 'ECONNREFUSED' });
     const secondaryErr = new Error('secondary also down');
@@ -374,11 +436,17 @@ describe('closeAllPools', () => {
   the product's own features and APIs. One cluster, and one cluster until G1 is
   decided, so the separation is identity and privilege rather than environments.
 
-  The DEFAULT IS DELIBERATELY UNCHANGED. With DSQL_ROLE unset this behaves
-  exactly as it always has, because production is still running on the admin
-  path and a silent change to how the live app authenticates is the one thing
-  that must not happen as a side effect of adding an option. Production moves
-  when someone sets the variable, not when this ships.
+  ⚠️ THE PARAGRAPH THAT WAS HERE WENT STALE, and it is corrected rather than
+  deleted because it explains why the default is what it is. It read: "The
+  DEFAULT IS DELIBERATELY UNCHANGED … production is still running on the admin
+  path … Production moves when someone sets the variable, not when this ships."
+
+  Production moved on 2026-08-16. `DSQL_ROLE=relay_app` is set in Vercel and
+  `dsql:DbConnectAdmin` is stripped from `relay-runtime-policy`. So unset-means-
+  admin is now a LOCAL affordance only, and the cases below pin the branching —
+  not a claim about which identity the live site holds. That is measured, by
+  `npm run verify:roles` and `npm run verify:iam`, because a comment cannot see
+  an IAM policy version.
 */
 describe('dsqlIdentity — which role, and therefore which token', () => {
   const saved = process.env.DSQL_ROLE;
@@ -387,7 +455,7 @@ describe('dsqlIdentity — which role, and therefore which token', () => {
     else process.env.DSQL_ROLE = saved;
   });
 
-  it('defaults to admin when unset, exactly as before', () => {
+  it('defaults to admin when unset — the local path, not production since 2026-08-16', () => {
     delete process.env.DSQL_ROLE;
     expect(dsqlIdentity()).toEqual({ user: 'admin', admin: true });
   });

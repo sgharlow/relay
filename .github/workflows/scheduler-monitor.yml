@@ -16,6 +16,15 @@
 # notification settings — no third-party uptime account, no secret to rotate,
 # no monthly cost.
 #
+# 🔴 THE TRAP EVERY SCHEDULED ALARM HERE SHARES. sgharlow/relay is a PUBLIC
+# repository, and GitHub automatically disables scheduled workflows in a public
+# repository after 60 days with no repository activity. So this watchdog — like
+# the other three — shares one failure mode with the thing it watches: a quiet
+# owner. GitHub emails before disabling, so it is not silent; that email is the
+# only warning, and a disabled workflow cannot report that it was disabled.
+# The full account, and the off-GitHub heartbeat that would close it, are in
+# .github/workflows/date-guards.yml.
+#
 # Feature: relay-h0-mvp (CC9)
 
 name: Scheduler heartbeat monitor

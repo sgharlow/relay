@@ -4,18 +4,45 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Relay is a "living-continuity" platform (H0 hackathon MVP). Owners build an encrypted vault of
+Relay is a "living-continuity" platform. Owners build an encrypted vault of
 accounts/credentials/documents/instructions, assign scoped access to recipients, and configure
 verified trigger conditions. When a trigger fires, the system advances a release state machine
-(`ARMED → PENDING → GRACE → RELEASED`) guarded by optimistic concurrency control. Emergencies are
-reversible; estate handoffs are permanent. The default-safe state is always `ARMED`.
+(`ARMED → PENDING → GRACE → RELEASED`) guarded by optimistic concurrency control. **Every release
+is reversible** — when the owner checks back in, access closes. The default-safe state is always
+`ARMED`.
+
+> ⚠️ This paragraph read *"Emergencies are reversible; estate handoffs are permanent"* until
+> 2026-08-21, a week after estate was withdrawn. **Relay offers no estate or inheritance capability
+> and confers no legal authority on anyone** (`PROJECT.yaml → gates.g2-counsel-opinion.declined`,
+> 2026-08-14, permanent). The `estate` trigger type survives in the domain enum for compatibility
+> and is excluded from `USER_SELECTABLE_TRIGGER_TYPES` (`lib/domain/enums.ts`); `lib/ops/gates.test.ts`
+> stops that list widening by accident. `README.md` has said this since the ruling — the first
+> paragraph a new session reads had not caught up, which is the more expensive of the two places to
+> be wrong. **Do not widen the selectable list and do not build estate.** Copy anywhere in the repo
+> that still offers estate to a user is a defect to fix, not a feature to restore.
 
 **Stack (locked):** Next.js 16 App Router (TypeScript) on Vercel · Aurora DSQL across two regions
 (us-east-1 / us-west-2) · AWS KMS client-side envelope encryption · Vercel Cron · OpenAI · Resend.
 
-The full source-of-truth specs live in `.kiro/specs/relay-h0-mvp/` (`requirements.md`, `design.md`,
-`tasks.md`) and `specs/Relay_H0_Build_Spec_v2.md`. Read `design.md` before changing any
-release/crypto/OCC logic — it defines the schema, state-transition table, and the demo spine.
+The specs live in `.kiro/specs/relay-h0-mvp/` (`requirements.md`, `design.md`, `tasks.md`) and
+`specs/Relay_H0_Build_Spec_v2.md`. **Each now opens with a dated banner naming what in it is stale —
+read the banner before the body.**
+
+Before changing release/crypto/OCC logic, read `design.md` **§Release State Machine** (the
+permitted-transition table — seven edges, matching `PERMITTED_TRANSITIONS` exactly) and
+**§Correctness Properties**. Those two sections are authoritative. The rest of that file is not:
+
+| For | Go to, not `design.md` |
+|---|---|
+| the schema | `db/migrations/*.sql`, re-measured live by `npm run verify:schema` |
+| the routes | `src/app/api/**` |
+| how a recipient is authenticated | `docs/standby-architecture.md` (hybrid+6, ratified 2026-08-11) |
+
+> ⚠️ This pointer used to read *"it defines the schema, state-transition table, and the demo spine"*,
+> and it sent people to a DDL block declaring **8 tables** when the migrations declare **27** —
+> missing `secret_kinds`, `factors_required`, `kms_context_era`, `received_denials` and
+> `session_epoch`, which are exactly the columns the release and crypto paths write. Narrowed
+> 2026-08-21. A pre-read named in an agent instruction file gets read; a stale one gets believed.
 
 ## Build state — commercialising, live at relaystandby.com
 
@@ -25,10 +52,16 @@ count with the command in `PROJECT.yaml` (`derived.test_count`) rather than trus
 quoted in prose.** A hardcoded count sat here drifting for weeks; that is why it is gone.
 
 Live on **https://relaystandby.com** (the custom domain — the old `relay-three-henna.vercel.app`
-is a stale surface, not the product). Six sprints past the H0 MVP have shipped: self-serve signup
-with per-user TOTP, access policies, delegation with consent, verifier deny/abstain, access
-requests, recovery codes, the wired heartbeat scheduler with an off-Vercel dead-man's switch, and
-live-mode Stripe billing.
+is a stale surface, not the product). Many sprints past the H0 MVP have shipped — **count them with
+`ls docs/sprint-reports/ | wc -l`, and read the newest for what landed most recently.** Among them:
+self-serve signup with per-user TOTP, access policies, delegation with consent, verifier
+deny/abstain, access requests, recovery codes, the wired heartbeat scheduler with an off-Vercel
+dead-man's switch, and live-mode Stripe billing.
+
+> ⚠️ This said **"Six sprints"** until 2026-08-21, by which point `docs/sprint-reports/` held far
+> more than six. Twelve lines above, this same file bans hardcoded counts and explains that a
+> hardcoded test count "sat here drifting for weeks; that is why it is gone" — and then hardcoded a
+> sprint count in the next paragraph. The rule was right and the application of it was incomplete.
 
 **All ten user journeys were re-walked against production on 2026-08-13** — see the re-sweep
 table at the top of `docs/user-journeys.md`, which supersedes both the 2026-08-08 sweep below it
@@ -58,7 +91,9 @@ npm test               # vitest --run (one-shot, the default)
 npm run test:watch     # vitest watch mode
 npm run test:coverage  # vitest --coverage (v8; thresholds 80/80/70/80 lines/fn/branches/stmts)
 
-npm run gate           # types + lint + test + build. No database, no server. CI runs this.
+npm run gate           # types + lint + test + build. No database, no server. ⚠️ NOT identical to
+                       # CI — CI runs `test:coverage` where this runs `vitest --run`, so gate
+                       # evaluates NO coverage threshold. See "Two gates" below.
 npm run verify:live    # the five E2E walks. NEEDS .env.local AND `npm run dev` running.
 npm run verify:reveal  # the fourth walk, alone: an owner stores a structured secret with a
                        # TOTP seed, a recipient claims, a verifier confirms, and Reveal is
@@ -84,9 +119,15 @@ npm run verify:schema  # do both DSQL regions have the tables AND COLUMNS the mi
                        # migration, and before a release. Columns since 2026-08-17: it
                        # compared table names only, so 028 and 034 — whose entire content
                        # is an ADD COLUMN — passed it while unapplied.
-npm run verify:funnel  # is the G1 ad instrument alive? Drives a real browser against
+npm run verify:funnel  # is the G1 demand instrument alive? Drives a real browser against
                        # production under src=qa (gate-excluded), writes nothing.
-                       # Run it daily during an ad flight — see docs/g1-ad-creatives.md.
+                       # Run it on placement day and daily while a piece is live —
+                       # docs/g1-editorial-lane.md step 5, ROADMAP Sprint 4.
+                       # ⚠️ It used to be documented ONLY by "run it daily during an ad
+                       # flight — see docs/g1-ad-creatives.md". Paid advertising was
+                       # retired 2026-08-16 (ratified.retire-paid-advertising) and that
+                       # doc carries a ⛔ RETIRED banner, so a live command's only
+                       # instructions pointed at a document telling you not to act on it.
 npm run verify:iam     # the OTHER half of the least-privilege wall — can the live site's IAM
                        # principal still obtain a DSQL ADMIN token? Reads the live policy,
                        # managed AND inline, wildcards included. verify:roles cannot see
@@ -137,11 +178,19 @@ npm run verify:dogfood # can the owner's vault host a cohort invitation? Counts
                        # excluded on purpose: reset-demo.ts would satisfy every
                        # count while proving nothing. Read-only, asserted by test.
                        # NEEDS .env.local, no server.
-npm run flight:snapshot # the G1 flight's daily read AND the sitting sheet's pre-flight
-                       # line 3. Prints the snapshot row + the lead notes (verdict line
-                       # 4), and EXITS 1 if caregiver_leads is not empty before the
-                       # window opens. Read-only; runs as relay_dev, which cannot write
-                       # that table. NEEDS .env.local, no server.
+npm run flight:snapshot # the G1 instrument's daily read, and the pre-placement check that
+                       # the measurement starts from zero. Prints the snapshot row + the
+                       # lead notes (verdict line 4), and EXITS 1 if caregiver_leads is
+                       # not empty before the window opens — a lane that starts with rows
+                       # in it has an N contaminated from day one. Read-only; runs as
+                       # relay_dev, which cannot write that table. NEEDS .env.local, no
+                       # server. Occasion: docs/g1-editorial-lane.md step 5, ROADMAP
+                       # Sprint 4 ("day-of verify:funnel and flight:snapshot").
+                       # ⚠️ This read "the sitting sheet's pre-flight line 3" until
+                       # 2026-08-21. docs/g1-sitting-sheet.md is ⛔ RETIRED — "there is
+                       # no sitting" — though its three pre-flight commands are the part
+                       # its own banner says remains correct. The command is unchanged;
+                       # only the occasion moved from a paid flight to a placement.
 
 npx vitest --run lib/db/occ.test.ts          # run a single test file
 npx vitest --run -t "OCC retry"              # run tests matching a name
@@ -270,8 +319,25 @@ These cut across multiple files and are easy to break. Preserve them.
 
 ## Two gates, and why only one of them is in CI
 
-`npm run gate` is types + lint + test + build. It needs no credentials and no server, so CI runs it
-on every push. **`npm run verify:live` is the other half**: five walks that drive the running app —
+`npm run gate` is types + lint + test + build. It needs no credentials and no server, so CI runs the
+same four stages on every push.
+
+> ⚠️ **BUT `gate` IS NOT WHAT CI RUNS, and this section claimed it was until 2026-08-21.** CI's test
+> step is **`npm run test:coverage`**; `gate:test` is **`vitest --run`**. Same suite, but coverage
+> instrumentation and the thresholds in `vitest.config.ts` (lines 80 / functions 80 / branches 70 /
+> statements 80) are evaluated only in CI. **So a green `gate` can be a red CI**: delete the last
+> test covering a branchy module and `gate` passes while CI fails on the threshold. CI also runs an
+> AI-co-authorship trailer check that `gate` has no equivalent for.
+>
+> This divergence was *created* by closing D8 (`the-coverage-gate-is-declared-and-unenforced`) — the
+> thresholds had been declared and read by nothing, and switching them on in CI was right. What went
+> unrecorded is that turning them on in one of two "gates" made the two stop being the same thing,
+> in a file that says they are. Documented rather than closed: making `gate:test` run with coverage
+> would slow every local run to buy a signal CI already produces, and that is a `package.json`
+> decision, not a doc one. **Before pushing anything that could move coverage, run
+> `npm run test:coverage` rather than `npm run gate`.**
+
+**`npm run verify:live` is the other half**: five walks that drive the running app —
 `e2e-stepup` (17 assertions over HTTP), `e2e-multiowner` (14), `e2e-ui` (26, in a real browser),
 `e2e-reveal` (20) and `e2e-factors` (17). Start `npm run dev` first.
 
@@ -435,10 +501,26 @@ fails, because a check that is happiest when the product is dead is measuring th
 Rotation is compared against `ROTATION_INTENDED`, which records the as-provisioned state rather than a
 recommendation — the finding worth alarming on is nobody having decided.
 
-⚠️ **The wiring is not yet live-proven.** Every rule is unit-proven; that the script reads the right
-key and exits non-zero on a refusal is only proven by seeing it fail. Point `KMS_KEY_ID` at a key
-that does not exist and confirm it exits 1 — `verify:iam` keeps policy v1 as a live negative control
-for exactly this reason.
+✅ **LIVE-PROVEN 2026-08-20, and it has been seen to FAIL — which is the half that matters.** The
+first live run read CMK `b3af288c…` in us-east-1: Enabled, customer-managed, `SYMMETRIC_DEFAULT`,
+not pending deletion, key policy still granting the runtime principal `GenerateDataKey` and
+`Decrypt` — with the principal ARN *derived from the key's own ARN* rather than configured, so the
+check cannot be satisfied by a stale setting. `ROTATION_INTENDED = false` matched the live key, so
+the pin records the as-provisioned state and a silent change in **either** direction is catchable.
+The B3 single-Region note printed as a NOTE, not a failure, because a check that fails on a
+knowingly-accepted limitation is a check somebody disables.
+
+**Three negative controls, all exit 1:** (1) a key id that does not exist → `NotFoundException`
+reported as a finding rather than a crash; (2) `KMS_KEY_ID` unset → refused before any AWS call;
+(3) `alias/aws/s3` — a key that really exists and is **not ours** → the policy rule fires, which
+proves the refusal is about the key's *state* and not merely about absence. Record:
+`PROJECT.yaml → deferred → nothing-watches-the-key` (B4, closed 2026-08-20).
+
+> ⚠️ This paragraph read *"The wiring is not yet live-proven… Point `KMS_KEY_ID` at a key that does
+> not exist and confirm it exits 1"* for a day after that run happened — telling an operator to go
+> and produce a proof the register already held. Corrected 2026-08-21. The same one-file-two-answers
+> shape as the `relay_app` cutover paragraph above; both were closures recorded in `PROJECT.yaml`
+> and not carried back here.
 
 Accessibility is a fifth: `node scripts/a11y-audit.mjs` with `A11Y_OWNER_EMAIL` set to an account
 that exists (`scripts/disposable-owner.ts create` makes one). CI covers the signed-out half only —
@@ -478,14 +560,22 @@ and `type-scale`'s backtracking lookahead, which counted 388 violations that wer
 - Source files carry a header comment citing the `Requirements: N.N` they satisfy — keep this
   traceability when adding files, referencing `.kiro/specs/relay-h0-mvp/requirements.md`.
 
-## Runbooks — the four documents nobody reads until they have to
+## Runbooks — the documents nobody reads until they have to
 
 | Runbook | For |
 |---|---|
 | `docs/security-incident-runbook.md` | somebody may have obtained access they should not have |
+| `docs/secret-rotation-runbook.md` | a credential may have leaked, or is being rotated — one section per secret: what it protects, blast radius, and the procedure |
 | `docs/backup-restore-runbook.md` | the data is gone, damaged, or a restore needs proving |
 | `docs/email-dns-runbook.md` | mail is not arriving |
 | `docs/kms-region-proposal.md` | not a runbook — the standing decision behind the failover limitation both of the first two describe |
+
+> ⚠️ **This table said "the four documents" and omitted `secret-rotation-runbook.md` — the one the
+> incident runbook hands off TO.** `docs/security-incident-runbook.md` routes its containment steps
+> into that file (§1 for the mechanics, §2 for the procedure), so the index a person opens under
+> pressure did not name the document the first runbook depends on. Added 2026-08-21; the runbook
+> itself shipped 2026-08-20 (`PROJECT.yaml` B8) and its acceptance criterion required exactly this
+> cross-link. Shipping a runbook and not indexing it is how it stays unread on the day it matters.
 
 ⚠️ **"Incident" already means two other things in this codebase**, and the security runbook opens by
 saying so: `/api/audit/incidents` is a *customer-facing feature* ("what happened while you were

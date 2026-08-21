@@ -29,7 +29,7 @@ vi.mock('./owner-label', () => ({ getOwnerLabel: vi.fn(async () => 'Margaret') }
 import { query } from '../db/connection';
 import { notifyInvitation } from '../notify/notifications';
 import { createInvitation } from './invitations';
-import { inviteAndNotify } from './invite';
+import { inviteAndNotify, inviteOnCreateBestEffort } from './invite';
 
 const mockQuery = vi.mocked(query);
 const mockNotify = vi.mocked(notifyInvitation);
@@ -122,5 +122,45 @@ describe('Phase 0 — the delivery split', () => {
   it('defaults to email, so every pre-existing caller is unchanged', async () => {
     await inviteAndNotify(OWNER, PERSON, 'recipient');
     expect(mockNotify).toHaveBeenCalled();
+  });
+});
+
+describe('what creating a person does, and does not, mint', () => {
+  it('mints NOTHING on the owner-delivered arm — the code would reach no one', async () => {
+    /*
+      🔴 EVERY NAMED PERSON LEFT ONE UNREDEEMABLE INVITATION ROW.
+      `inviteOnCreateBestEffort` awaited `inviteAndNotify` and returned void,
+      discarding the `claimCode`. On the owner arm nothing is sent, and only a
+      hash is stored — so the row it created held a credential that existed in
+      no email, no screen and no variable. The owner then pressed Invite, which
+      created a SECOND row, and nothing retired the first.
+
+      Phase 0 counts `count(*) AS issued` per delivery_channel, so the owner
+      arm's open% and claim% were structurally capped near 50% before a single
+      human was measured — and PROJECT.yaml records two security decisions
+      resting on that number.
+
+      Guarded on the CHANNEL, not deleted: Phase B flips
+      `BETA_INVITE_CHANNEL` back to 'email', and on that arm the create-time
+      invitation is the whole point — it is the mail that goes out.
+    */
+    await inviteOnCreateBestEffort(OWNER, PERSON, 'recipient');
+
+    expect(
+      vi.mocked(createInvitation),
+      'a dead invitation row was minted for a code nobody will ever see',
+    ).not.toHaveBeenCalled();
+    expect(mockNotify).not.toHaveBeenCalled();
+  });
+
+  it('still mints and emails when the channel is email', async () => {
+    await inviteOnCreateBestEffort(OWNER, PERSON, 'recipient', 'email');
+    expect(vi.mocked(createInvitation)).toHaveBeenCalled();
+    expect(mockNotify).toHaveBeenCalled();
+  });
+
+  it('swallows a failure — being named is a database fact a mailbox cannot undo', async () => {
+    mockNotify.mockRejectedValueOnce(new Error('resend down'));
+    await expect(inviteOnCreateBestEffort(OWNER, PERSON, 'recipient', 'email')).resolves.toBeUndefined();
   });
 });

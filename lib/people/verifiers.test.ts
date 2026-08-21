@@ -63,7 +63,30 @@ describe('deleteVerifier', () => {
     });
     await deleteVerifier('owner-1', 'v1');
     expect(mockCascade).toHaveBeenCalledWith('verifier_confirmations', 'v1', 'verifier_id', 'owner-1');
-    expect(order).toEqual(['withdraw', 'cascade-confirmations', 'delete-verifier']);
+    expect(order[0]).toBe('withdraw');
+    expect(order[1]).toBe('cascade-confirmations');
+    expect(order[order.length - 1]).toBe('delete-verifier');
+  });
+
+  it('takes back every credential issued FOR this verifier, before the roster row goes', async () => {
+    // Same defect as deleteRecipient's, and the same argument: an invitation
+    // token hash and a one-year break-glass code outliving the person they
+    // named is a credential for a circle that no longer contains them.
+    const order: string[] = [];
+    mockCascade.mockImplementation(async (table: string) => {
+      order.push(table);
+    });
+    mockQuery.mockImplementation(async (sql: string) => {
+      if (sql.startsWith('DELETE FROM verifiers')) order.push('verifiers');
+      return qResult([]);
+    });
+
+    await deleteVerifier('owner-1', 'v1');
+
+    expect(mockCascade).toHaveBeenCalledWith('invitations', 'v1', 'person_id', 'owner-1');
+    expect(mockCascade).toHaveBeenCalledWith('break_glass_codes', 'v1', 'person_id', 'owner-1');
+    expect(mockCascade).toHaveBeenCalledWith('verifier_codes', 'v1', 'verifier_id', 'owner-1');
+    expect(order[order.length - 1], 'the roster row went before its credentials').toBe('verifiers');
   });
 
   /*

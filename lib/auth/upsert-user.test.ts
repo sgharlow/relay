@@ -93,3 +93,75 @@ describe('upsertUser (app-level intent-read; DSQL-safe, no ON CONFLICT)', () => 
     await expect(upsertUser('credentials:a@x.com', 'a@x.com')).rejects.toThrow();
   });
 });
+
+/**
+ * 🔴 ONE PERSON, TWO ROWS (found 2026-08-21).
+ *
+ * `signup.ts` lowercases before it stores and before it asks `emailIsTaken`
+ * (`SELECT id FROM users WHERE email = $1`), and `resolveTotpSecret` looks up
+ * `WHERE email = $1` on a lowercased address. But the standby paths pass the
+ * roster value straight through — `lib/people/claim.ts` and
+ * `lib/people/break-glass.ts` lowercase the AUTH_SUB and hand the email exactly
+ * as the owner typed it, and `recipients.email` is not normalised on the way in
+ * either.
+ *
+ * So an owner who enters a contact as `Sarah@Example.com` creates a users row
+ * with that casing. When Sarah later signs up as an owner herself,
+ * `emailIsTaken('sarah@example.com')` matches nothing and a SECOND identity is
+ * created — the outcome `docs/standby-architecture.md` §3.7 exists to prevent
+ * ("the roster row is the RELATIONSHIP, the user row is the IDENTITY"), and one
+ * that severs every standby link the first row held. Her original row is also
+ * invisible to `resolveTotpSecret`, which is why that function already carries
+ * an `ORDER BY (totp_secret IS NULL), created_at` hedge "if an email ever ends
+ * up on more than one row".
+ *
+ * The normalisation goes HERE rather than at the three call sites, because a
+ * rule every caller must remember is the rule the fourth caller forgets. This is
+ * the same argument `lib/notify/email.ts` makes for putting its reserved-domain
+ * guard at the seam.
+ */
+describe('the email is one key, however it was typed', () => {
+  it('stores a lowercased, trimmed address on INSERT', async () => {
+    mockQuery
+      .mockResolvedValueOnce(qResult([]))
+      .mockResolvedValueOnce(
+        qResult([{ id: 'u-new', email: 'sarah@example.com', is_demo_account: false }]),
+      );
+
+    await upsertUser('standby:sarah@example.com', '  Sarah@Example.COM ');
+
+    const insertParams = mockQuery.mock.calls[1][1] as unknown[];
+    expect(insertParams).toContain('sarah@example.com');
+    expect(insertParams).not.toContain('  Sarah@Example.COM ');
+  });
+
+  /*
+    The UPDATE branch matters as much as the INSERT: it runs on every sign-in, so
+    it is what repairs a row that was written mixed-case before this existed.
+  */
+  it('rewrites a mixed-case row to the normal form on the next sign-in', async () => {
+    mockQuery
+      .mockResolvedValueOnce(
+        qResult([{ id: 'u-1', email: 'Sarah@Example.com', is_demo_account: false }]),
+      )
+      .mockResolvedValueOnce(
+        qResult([{ id: 'u-1', email: 'sarah@example.com', is_demo_account: false }]),
+      );
+
+    await upsertUser('standby:sarah@example.com', 'Sarah@Example.com');
+
+    expect(mockQuery.mock.calls[1][1]).toContain('sarah@example.com');
+  });
+
+  it('leaves the auth_sub exactly as the caller composed it', async () => {
+    // Not this function's key to normalise: `credentials:` and `standby:` are
+    // deliberately different subjects for the same address, and folding them
+    // here would silently merge two identities rather than keep one.
+    mockQuery
+      .mockResolvedValueOnce(qResult([]))
+      .mockResolvedValueOnce(qResult([{ id: 'u-1', email: 'a@x.com', is_demo_account: false }]));
+
+    await upsertUser('standby:A@x.com', 'A@x.com');
+    expect(mockQuery.mock.calls[0][1]).toContain('standby:A@x.com');
+  });
+});

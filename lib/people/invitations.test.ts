@@ -48,8 +48,10 @@ describe('createInvitation', () => {
 
     const out = await createInvitation('o-1', { personId: 'r-1', personType: 'recipient' });
 
-    const [sql, params] = mockQuery.mock.calls[0];
-    expect(sql).toMatch(/INSERT INTO invitations/i);
+    // calls[0] retires any earlier live code for this person; calls[1] inserts.
+    const insert = mockQuery.mock.calls.find((c) => /INSERT INTO invitations/i.test(String(c[0])));
+    expect(insert, 'no INSERT was issued').toBeDefined();
+    const params = insert![1] as unknown[];
     expect(params).toContain(hashToken(out.token));
     expect(params).not.toContain(out.token);
   });
@@ -79,6 +81,46 @@ describe('createInvitation', () => {
 
   it('expires in a usable window', () => {
     expect(INVITE_TTL_DAYS).toBeGreaterThanOrEqual(7);
+  });
+
+  it('retires this person\'s earlier unclaimed codes before minting a new one', async () => {
+    /*
+      🔴 EVERY REISSUE USED TO ADD A LIVE CODE RATHER THAN REPLACE ONE.
+      `createInvitation` INSERTed unconditionally and nothing anywhere retired a
+      prior row — the only `UPDATE invitations SET claimed_at` outside redemption
+      is the rejection path in fingerprint.ts. Redemption matches on `token_hash`
+      with `claimed_at IS NULL AND expires_at > now()`, so an owner who pressed
+      Invite three times left THREE independently redeemable credentials for one
+      seat, each good for thirty days, and had no way to withdraw the first two.
+
+      It also minted a row nobody could ever type. `inviteOnCreateBestEffort`
+      discards the code it gets back, and on the owner-delivered arm nothing is
+      sent — only the hash is stored — so creating a person left one permanently
+      unredeemable invitation, which Phase 0 then counted as issued.
+
+      Retired by EXPIRY, not DELETE, so Phase 0 keeps the funnel record
+      (delivery_channel, cohort, created_at) it needs to interpret the arms.
+    */
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+
+    await createInvitation('o-1', { personId: 'r-1', personType: 'recipient' });
+
+    const [retire, retireParams] = mockQuery.mock.calls[0];
+    expect(String(retire)).toMatch(/UPDATE invitations/i);
+    expect(String(retire)).toMatch(/expires_at = now\(\)/i);
+    expect(String(retire)).toMatch(/claimed_at IS NULL/i);
+    expect(retireParams).toEqual(['o-1', 'r-1']);
+
+    // …and only then the new one.
+    expect(String(mockQuery.mock.calls[1][0])).toMatch(/INSERT INTO invitations/i);
+  });
+
+  it('retires only THIS person\'s codes, scoped to the owner', async () => {
+    // A retirement keyed on person_id alone would be correct today (person ids
+    // are UUIDs) and wrong the moment anything reuses one. Scope it.
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 } as never);
+    await createInvitation('o-1', { personId: 'r-1', personType: 'recipient' });
+    expect(String(mockQuery.mock.calls[0][0])).toMatch(/owner_id = \$1[\s\S]*person_id = \$2/i);
   });
 });
 

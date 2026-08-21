@@ -73,6 +73,52 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 describe('Property 11: only permitted state transitions succeed', () => {
+  /*
+    🔴 EVERY OTHER TEST IN THIS BLOCK USES THE TABLE AS ITS OWN ORACLE. The
+    property below computes `expected` from PERMITTED_TRANSITIONS and then
+    asserts `isPermittedTransition` agrees with it — which it must, since the
+    function reads the same array. Flip any `reversibleOnly` flag and the whole
+    file stays green. Elsewhere the table is pinned only by its LENGTH (7, in
+    challenge.test.ts, escalation.test.ts and triggers.test.ts), and a flipped
+    flag does not change the length.
+
+    A flag flip is not hypothetical damage. `armed → pending` with
+    `reversibleOnly: true` would silently exempt non-reversible triggers from
+    ever arming; `released → armed` with it FALSE would hand estate the exact
+    edge Req 5.10 forbids. So the seven rows are transcribed here literally from
+    design.md's Permitted Transition Table — the authoritative source named in
+    CLAUDE.md — and this is the one assertion in the file that does not consult
+    the code to decide what the code should say. Order included: a reordering is
+    harmless but it is also not a thing anyone should be doing silently.
+
+    Added 2026-08-21.
+  */
+  it('is exactly the seven rows design.md specifies, with their flags', () => {
+    expect(PERMITTED_TRANSITIONS).toEqual([
+      { from: 'armed', to: 'pending', reversibleOnly: false },
+      { from: 'pending', to: 'grace', reversibleOnly: false },
+      { from: 'pending', to: 'armed', reversibleOnly: true },
+      { from: 'grace', to: 'released', reversibleOnly: false },
+      { from: 'grace', to: 'armed', reversibleOnly: true },
+      { from: 'grace', to: 'cancelled', reversibleOnly: true },
+      { from: 'released', to: 'armed', reversibleOnly: true },
+    ]);
+  });
+
+  /*
+    The three forward edges every release takes, asserted for a NON-reversible
+    trigger. Nothing tested these directly: `reversible` was only ever exercised
+    as the thing that makes a reversible-only edge legal, so an edge wrongly
+    marked reversible-only would have failed no assertion here.
+  */
+  it.each([
+    ['armed', 'pending'],
+    ['pending', 'grace'],
+    ['grace', 'released'],
+  ] as const)('%s → %s is open to a non-reversible trigger', (from, to) => {
+    expect(isPermittedTransition(from, to, false)).toBe(true);
+  });
+
   it('isPermittedTransition matches the table exactly for all pairs + reversibility', () => {
     // Feature: relay-h0-mvp, Property 11
     fc.assert(
@@ -137,6 +183,31 @@ describe('transition() CAS + OCC', () => {
     expect(mockAudit).not.toHaveBeenCalled();
   });
 
+  /*
+    The retry loop's OTHER exit, uncovered until 2026-08-21. After a 40001 the
+    loop re-reads the row and re-evaluates whether the ORIGINAL destination is
+    still reachable from wherever the row has landed; if it is not, the retry is
+    abandoned with the row it found rather than retried against a state the
+    caller never asked about. Cancelled is the sharpest case — a terminal state
+    with no outgoing edge — and retrying into it would mean a serialization
+    failure could complete a transition an owner had just cancelled.
+  */
+  it('abandons the retry when the row moved somewhere the edge no longer applies', async () => {
+    mockQuery
+      .mockRejectedValueOnce(sqlState40001()) // CAS UPDATE
+      .mockResolvedValueOnce(qResult([makeRow({ state: 'cancelled', version: '9' })])); // re-read
+
+    try {
+      await machine().transition('rs-1', 'armed', 'pending', '0');
+      throw new Error('should have thrown');
+    } catch (e) {
+      expect(e).toBeInstanceOf(CasMismatchError);
+      expect((e as CasMismatchError).current?.state).toBe('cancelled');
+    }
+    // Abandoned, not retried: no second UPDATE, and no reset of a cancelled row.
+    expect(mockQuery).toHaveBeenCalledTimes(2);
+  });
+
   it('retries a 40001 and succeeds on the next attempt', async () => {
     let updateCalls = 0;
     mockQuery.mockImplementation(async (sql: string) => {
@@ -184,9 +255,58 @@ describe('transition() CAS + OCC', () => {
 // ---------------------------------------------------------------------------
 
 describe('safeResetToArmed', () => {
-  it('unconditionally sets state=armed and never throws on failure', async () => {
+  it('never throws on failure — a failed reset must not mask the original error', async () => {
     mockQuery.mockRejectedValueOnce(new Error('db down'));
     await expect(machine().safeResetToArmed('rs-1')).resolves.toBeUndefined();
+  });
+
+  /*
+    🔴 THE ONE WRITE IN THE RELEASE SUBSYSTEM THAT IGNORED THE TRANSITION TABLE,
+    guarded 2026-08-21. It was `WHERE id = $1` and nothing else — no state
+    predicate, no permitted-transition check — so "default to locked" was
+    implemented as a write that could undo a COMMITTED release.
+
+    Two callers reach it, and both can race a release: `transition()` on OCC
+    exhaustion, and the J7-R7 denial halt, which reads the row, then does five
+    queries' worth of eligibility work, then resets. A confirmation landing in
+    that gap releases the row; the halt then quietly closed the access that had
+    just legitimately opened — no recipient notice, no closure mail, stale
+    counters. For estate it was worse: released→armed is precisely the edge
+    Req 5.10 forbids, and this was the one path that could take it.
+
+    The guard is the two states where nothing has opened yet. A row already
+    RELEASED, ARMED or CANCELLED is left exactly where it is, which is what
+    "default-safe: any ambiguity holds the locked state" actually asks for —
+    holding, not reversing.
+  */
+  it('does NOT reset a RELEASED row — default-to-locked never means undo a release', async () => {
+    mockQuery.mockResolvedValueOnce(qResult([]));
+    await machine().safeResetToArmed('rs-1');
+
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toMatch(/state\s+IN\s*\(\s*'pending'\s*,\s*'grace'\s*\)/);
+    expect(params).toEqual(['rs-1']);
+    // No row matched ⇒ nothing happened, and nothing is logged as if it had.
+    expect(mockAudit).not.toHaveBeenCalled();
+  });
+
+  /*
+    The halt is a RE-ARM, so it owes the same clean tally every other re-arm
+    path now gives (see rearm-clears-the-ledger.test.ts). It did not: the
+    denials that caused the halt, and any confirmations already cast, survived
+    into ARMED. The next emergency on that trigger then started carrying the
+    old objections — enough of them to halt it again before anybody answered.
+  */
+  it('clears the tally as it re-arms, so the next release starts at 0/N with 0 denials', async () => {
+    mockQuery.mockResolvedValueOnce(qResult([makeRow({ state: 'armed', version: '4' })]));
+    await machine().safeResetToArmed('rs-1');
+
+    const [sql] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toMatch(/received_confirmations\s*=\s*0/);
+    expect(sql).toMatch(/received_denials\s*=\s*0/);
+    expect(sql).toMatch(/grace_ends_at\s*=\s*NULL/i);
+    expect(mockAudit).toHaveBeenCalledOnce();
+    expect(mockAudit.mock.calls[0][1].action).toBe('release_safe_reset_armed');
   });
 });
 

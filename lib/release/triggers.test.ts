@@ -117,10 +117,30 @@ function installSim(initial: ReleaseStateRow, verifierPool = 3, verifierState = 
   return { getRow: () => row, confirmations };
 }
 
-const machineStub = () => ({
+/**
+ * @param sim pass the `installSim` handle (or any `{ getRow }`) so
+ *   `safeResetToArmed` MOVES THE ROW the way the real one does.
+ *
+ * 🔴 IT USED TO BE A BARE `vi.fn()` RETURNING undefined, and that mattered from
+ * 2026-08-21. `denyConfirmation` now re-reads after the halt and reports what
+ * actually happened, because `safeResetToArmed` is guarded and can decline to
+ * touch a row a concurrent confirmation already released. A stub that leaves
+ * the row in GRACE models a reset that silently failed — so every halt test
+ * would have been asserting the behaviour of a broken reset, not a working one.
+ * The double mirrors the real predicate: PENDING and GRACE only, tally cleared.
+ */
+const machineStub = (sim?: { getRow: () => ReleaseStateRow }) => ({
   releaseFromGrace: vi.fn(async (..._a: unknown[]) => ({}) as never),
   transition: vi.fn(async (..._a: unknown[]) => ({}) as never),
-  safeResetToArmed: vi.fn(async (..._a: unknown[]) => undefined),
+  safeResetToArmed: vi.fn(async (..._a: unknown[]) => {
+    const row = sim?.getRow();
+    if (!row || (row.state !== 'pending' && row.state !== 'grace')) return undefined;
+    row.state = 'armed';
+    row.received_confirmations = 0;
+    (row as { received_denials?: number }).received_denials = 0;
+    row.grace_ends_at = null;
+    return undefined;
+  }),
 });
 
 beforeEach(() => {
@@ -468,11 +488,11 @@ describe('submitConfirmation — deny and abstain', () => {
 
   it('HALTS to ARMED when denials make the quorum unreachable', async () => {
     // 3 verifiers, need 2, already one denial -> this second one makes it 2.
-    installSim(
+    const sim = installSim(
       makeRow({ required_confirmations: 2, received_confirmations: 0, received_denials: 1 }),
       3,
     );
-    const machine = machineStub();
+    const machine = machineStub(sim);
 
     const out = await submitConfirmation({
       releaseStateId: 'rs-1',
@@ -519,7 +539,7 @@ describe('submitConfirmation — deny and abstain', () => {
       if (sql.startsWith('INSERT INTO verifier_confirmations')) return qResult([]);
       return qResult([]);
     });
-    const machine = machineStub();
+    const machine = machineStub({ getRow: () => mutable });
 
     const out = await submitConfirmation({
       releaseStateId: 'rs-1',
@@ -535,8 +555,8 @@ describe('submitConfirmation — deny and abstain', () => {
   });
 
   it('a sole verifier denying a 1-of-1 halts it immediately', async () => {
-    installSim(makeRow({ required_confirmations: 1, received_confirmations: 0 }), 1);
-    const machine = machineStub();
+    const sim = installSim(makeRow({ required_confirmations: 1, received_confirmations: 0 }), 1);
+    const machine = machineStub(sim);
 
     const out = await submitConfirmation({
       releaseStateId: 'rs-1',
@@ -582,6 +602,55 @@ describe('submitConfirmation — deny and abstain', () => {
     expect(Number(sim.getRow().received_denials ?? 0)).toBe(0);
     expect(machine.releaseFromGrace).not.toHaveBeenCalled();
     expect(machine.safeResetToArmed).not.toHaveBeenCalled();
+  });
+
+  /*
+    The halt's own race, made honest 2026-08-21 alongside the guard on
+    `safeResetToArmed`.
+
+    `denyConfirmation` reads the head, then does five queries' worth of
+    eligibility arithmetic, then halts. A confirmation landing in that gap
+    releases the row. The reset now REFUSES to touch a RELEASED row — undoing a
+    committed release is not a safety net (see state-machine.ts) — so the halt
+    genuinely did not happen, and telling the verifier "halted" would be the
+    same class of lie as the false-green colour: a screen reporting the outcome
+    somebody wanted rather than the one that occurred.
+  */
+  it('reports the truth when a release beat the halt to the row', async () => {
+    const row = makeRow({ required_confirmations: 1, received_confirmations: 0, received_denials: 0 });
+    let stateReads = 0;
+    mockQuery.mockImplementation(async (sql: string, params?: unknown[]) => {
+      const p = params ?? [];
+      if (sql.includes('FROM verifier_confirmations')) return qResult([]);
+      if (sql.startsWith('SELECT * FROM release_state')) {
+        stateReads++;
+        // Read 1 is the head (GRACE, answerable). By the time the halt re-reads,
+        // a concurrent confirmation has driven the row to RELEASED.
+        return qResult([{ ...row, state: stateReads === 1 ? 'grace' : 'released' }]);
+      }
+      if (sql.includes('received_denials')) return qResult([{ ...row, received_denials: 1 }]);
+      if (sql.includes('claimed_user_id, standby_state FROM verifiers WHERE id = $1')) {
+        return qResult([{ id: p[0], claimed_user_id: null, standby_state: 'confirmed' }]);
+      }
+      if (sql.includes('claimed_user_id, standby_state FROM verifiers WHERE owner_id = $1')) {
+        return qResult([{ id: 'v-1', claimed_user_id: null, standby_state: 'confirmed' }]);
+      }
+      if (sql.includes('FROM recipients r')) return qResult([]);
+      if (sql.startsWith('INSERT INTO verifier_confirmations')) return qResult([]);
+      return qResult([]);
+    });
+    const machine = machineStub();
+
+    const out = await submitConfirmation({
+      releaseStateId: 'rs-1',
+      verifierId: 'v-1',
+      decision: 'deny',
+      machine,
+      now,
+    });
+
+    // The denial is on the record either way; what it did not do is stop this.
+    expect(out.status).toBe('released');
   });
 
   it('an absent decision still behaves exactly as confirm', async () => {

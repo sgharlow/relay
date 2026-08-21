@@ -13,11 +13,39 @@
 > way — this is a record of a finished phase, and `PROJECT.yaml` is authoritative for what is
 > true now.
 >
-> **Property-test traceability, reconciled:** 17 tagged `Property N` tests exist (2, 3, 5–16,
-> 18–20). Properties **1 and 4** are covered by conventional unit tests without tags
-> (`lib/db/integrity.test.ts`, `lib/rules/access-rules.test.ts`). **Property 17 was never
-> defined** — the numbering skips from 16 to 18; any "all 20 properties" claim should read
-> "all defined properties".
+> **Box legend — added 2026-08-21, because two markers were in use and only one was defined.**
+> `[x]` = **the box the 2026-08-13 reconciliation checked against the code** and found shipped.
+> `[~]` = **rolled up, not separately re-checked** — and it is used in exactly two places, both
+> verifiable from the file itself: every one of the seven **Checkpoints** (`grep -n "^- \[~\]"`
+> returns nothing else), and **sub-tasks sitting under a ticked parent** (`grep -c "^  *- \[~\]"`).
+> So `[~]` means *"covered by the parent task's or the day-range's check"*, not "partially done" and
+> not "unverified". Derive the counts rather than quoting them: `grep -c '\[x\]'` · `grep -c '\[~\]'`.
+> **No unchecked box remains** — `grep -n '\[ \]'` matches only the quoted example three paragraphs
+> above, which is prose about the old state and not a task.
+>
+> The marker was in use for eight days with no definition anywhere in the file, which made the
+> banner's "each box was checked" claim apply to a subset a reader had no way to identify — and left
+> `[~]` readable as "partially done", the one meaning it does not have.
+>
+> **Property-test traceability — CORRECTED 2026-08-21.** The paragraph here was wrong twice, and
+> both errors pointed the same way: they under-reported coverage and mis-described the register.
+>
+> - ~~"Properties **1 and 4** are covered by conventional unit tests without tags"~~ — **Property 4 is
+>   tagged.** `lib/db/cross-owner-isolation.test.ts` carries `Feature: relay-h0-mvp, Property 4` and is
+>   a real fast-check property test; that file's own header records it being written precisely because
+>   ticking the box without the tag would have claimed evidence that did not exist. This paragraph was
+>   describing the state *before* that file landed.
+> - ~~"**Property 17 was never defined** — the numbering skips from 16 to 18"~~ — **it is defined**, at
+>   `design.md` §"Property 17: CSV import deduplication", and the behaviour is covered by
+>   `lib/import/csv-parser.test.ts`. Only the *tag* is missing from that test. The numbering does not
+>   skip.
+>
+> **What is actually true, derived rather than quoted:** every defined property from 2 to 20 is tagged
+> in the suite except **17** (covered, untagged — see the note in `design.md`). **Property 1 is
+> superseded**: it asserts uniqueness of a `vaults` row and no `vaults` table exists in any migration,
+> so it is struck in `design.md` rather than left looking uncovered. Re-derive the tag list with
+> `grep -rno "Property [0-9]\+" lib src --include=*.test.ts | sed 's/.*Property /Property /' | sort -uV`
+> rather than trusting a count written into prose — that is how this paragraph went stale.
 
 ## Overview
 

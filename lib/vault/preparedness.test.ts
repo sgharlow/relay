@@ -553,3 +553,29 @@ describe('the shape of the input is itself a guard', () => {
     expect(p.mattering).toBe(1);
   });
 });
+
+describe('the gap clause names the thing missing, not its absence', () => {
+  /*
+    🔴 "Missing: nobody who can confirm an emergency is real." — the second line
+    of the first banner an owner ever sees, and a double negative.
+
+    `missingClause` prefixes every gap with "Missing: ", so a gap phrased as an
+    absence reads inside out. This file already fixed the same shape once, on the
+    same surface: `baseSentence` carries the note "'nobody could reach none of
+    the 3 things' is a double negative, and it is the sentence a brand-new owner
+    sees first. Say it once, plainly." The gap strings were not revisited.
+  */
+  it('reads forwards when a brand-new owner has no verifier', () => {
+    const p = assessPreparedness({ items: [], ruledItemIds: [], verifierCount: 0 });
+    const clause = missingClause(p);
+    expect(clause, 'a gap under "Missing:" must not begin with a negative').not.toMatch(
+      /Missing: (nobody|nothing|no one|none)/i,
+    );
+    expect(clause).toContain('someone who can confirm an emergency is real');
+  });
+
+  it('leaves the second-verifier gap alone — it was already phrased forwards', () => {
+    const p = assessPreparedness({ items: [], ruledItemIds: [], verifierCount: 1 });
+    expect(missingClause(p)).toContain('a second person who can confirm an emergency');
+  });
+});

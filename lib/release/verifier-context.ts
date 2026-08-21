@@ -137,7 +137,19 @@ export async function buildVerifierContext(
     if (!categories.includes(cat)) categories.push(cat);
   }
 
-  // "Why now" — what the system already tried before asking a human.
+  /*
+    "Why now" — what the system already tried before asking a human.
+
+    ⚠️ `checkin_reminder_sent` IS NEVER WRITTEN. Noted 2026-08-21: grep finds no
+    producer anywhere outside this file's own test fixture, because the J5-R4
+    escalation ladder (reminders before ARMED → PENDING) is OPEN, not built. The
+    row is kept in the filter so a ladder, if one is ever ruled in, appears on
+    this timeline without a second edit — but nothing here should be read as
+    evidence that an owner was nudged first. `VerifyClient.tsx` renders this
+    action as "We tried to reach them", which is a sentence the product cannot
+    currently earn; it is unreachable today only because the query returns
+    nothing.
+  */
   const history = await query<{ action: string; ts: string }>(
     `SELECT action, ts
        FROM audit_log

@@ -109,8 +109,14 @@ export interface DeclaredColumn {
  * live check could ask until now. A migration that adds a column to a table
  * already present is therefore invisible to it: the check passes, the column is
  * absent, and the failure surfaces as a runtime error on whichever write path
- * touches it first. 034 of this repo's 34 migrations add columns rather than
- * tables, so that is now the likelier half of the class.
+ * touches it first. Roughly half the migrations in this repo add columns rather
+ * than tables, so that is now the likelier half of the class.
+ *
+ * ⚠️ That sentence used to carry a count — "034 of this repo's 34 migrations" —
+ * which was wrong in both numbers and went on being quoted. Derive it instead:
+ * `ls db/migrations/*.sql | wc -l` for the total, and
+ * `grep -lE "ALTER TABLE .* ADD COLUMN" db/migrations/*.sql | wc -l` for the
+ * ADD COLUMN half. This module's own rule, applied to its own header.
  *
  * ONLY `ALTER TABLE ... ADD COLUMN`. Columns inside a `CREATE TABLE` body are
  * deliberately out of scope: they arrive with their table or not at all, so the

@@ -12,6 +12,15 @@
  * The last two tests read the REAL `PROJECT.yaml`. Those are the ones that
  * actually bind; everything above them proves they mean something.
  *
+ * ⚠️ THE LAST ONE IS DESIGNED TO GO RED ON A DATE, WITH NO CODE CHANGE, the way
+ * `gates.test.ts` and `verify-live-freshness.test.ts` are — it judges the claim
+ * against the real clock, so a `ladder_evidence.as_of` left un-re-read past
+ * `SCOPE_REQUIRED_AFTER_DAYS` turns it red on its own. The header did not say so
+ * until 2026-08-21, and the omission had a consequence: nothing scheduled ran
+ * this file, because `date-guards-are-scheduled.test.ts` finds dated guards by
+ * the declaration their headers make. A dead-man that never announced itself
+ * was one nobody arranged to wind.
+ *
  * Feature: relay-h0-mvp
  */
 

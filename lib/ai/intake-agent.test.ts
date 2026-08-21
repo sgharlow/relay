@@ -179,7 +179,7 @@ describe('runIntake', () => {
   it('no-ops on an empty vault', async () => {
     mockMeta.mockResolvedValue([]);
     const out = await runIntake('owner-1', { classify: vi.fn() });
-    expect(out).toEqual({ scored: 0, warnings: [], results: [] });
+    expect(out).toEqual({ scored: 0, remaining: 0, warnings: [], results: [] });
   });
 });
 
@@ -324,5 +324,44 @@ describe('an owner override of irreplaceable survives re-analysis (migration 034
 
     expect(out.results[0].is_root_credential).toBe(true);
     expect(out.results[0].irreplaceable).toBe(false);
+  });
+});
+
+describe('the batch cap is reported, not silent', () => {
+  it('says how many items it did NOT score', async () => {
+    /*
+      🔴 THE 301st ITEM WAS DROPPED WITHOUT A WORD. `runIntake` sliced the
+      metadata to BATCH_LIMIT (300, Req 11.10) and returned `scored: 300` — a
+      number that is true and reads as "the vault is scored". On the paid tier
+      `entitlements.paid.items` is Infinity, so a vault can exceed the cap, and
+      J2's own success criterion is a 300-item real vault: the first account
+      large enough to matter is the first account this misreports.
+
+      There is no "never scored" marker to batch against — `importance_score` is
+      NOT NULL DEFAULT 0.5, so an unscored item is indistinguishable from one
+      scored at exactly 0.5, and adding a marker is a migration. What is fixable
+      here without one is the lie: the result now says what was left.
+    */
+    mockMeta.mockResolvedValue(
+      Array.from({ length: 7 }, (_, i) => meta({ id: `i${i}`, title: `T${i}` })),
+    );
+    const classify = vi.fn(async (): Promise<RawClassification[]> => []);
+
+    const out = await runIntake('owner-1', { classify, batchLimit: 3 });
+
+    expect(out.scored).toBe(3);
+    expect(out.remaining, 'four items were dropped and nothing said so').toBe(4);
+  });
+
+  it('reports zero remaining when the whole vault fits', async () => {
+    mockMeta.mockResolvedValue([meta({ id: 'a', title: 'A' })]);
+    const out = await runIntake('owner-1', { classify: vi.fn(async () => []) });
+    expect(out.remaining).toBe(0);
+  });
+
+  it('reports zero remaining for an empty vault rather than omitting the field', async () => {
+    mockMeta.mockResolvedValue([]);
+    const out = await runIntake('owner-1', { classify: vi.fn(async () => []) });
+    expect(out).toEqual({ scored: 0, remaining: 0, warnings: [], results: [] });
   });
 });

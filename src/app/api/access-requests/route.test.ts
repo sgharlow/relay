@@ -145,3 +145,37 @@ describe('the token door is unchanged', () => {
     expect(mockAuth).not.toHaveBeenCalled();
   });
 });
+
+describe('the circle broadcast does not reach people the owner removed', () => {
+  /*
+    🔴 REVOCATION IS "the control behind the coercion risk" (standby-architecture
+    §3.7 rule 1), and this one query ignored it. Every sibling roster read
+    excludes a revoked contact — `standby-resolve.ts` twice, `session-access.ts`,
+    `closure.ts`, `requester-session.ts`, and `notifyOneVerifier`, whose comment
+    says "a revoked one is deliberately skipped". The J6-R9 broadcast did not, so
+    a person the owner had withdrawn from their circle still received "someone
+    asked for access to X's vault", naming the requester, on every request.
+
+    Asserted on the SQL: the mail goes to whatever rows come back, so the filter
+    has to be in the query and nothing downstream can compensate for it.
+  */
+  it('excludes revoked contacts from both arms of the roster query', async () => {
+    seedInsertPath();
+    await POST(req({ owner_id: OWNER, trigger_type: 'emergency', reason: 'in hospital' }));
+
+    const circleSql = mockQuery.mock.calls
+      .map((c) => String(c[0]))
+      .find((s) => /FROM recipients[\s\S]*UNION ALL[\s\S]*FROM verifiers/i.test(s));
+
+    expect(circleSql, 'the circle roster query was not issued').toBeTruthy();
+
+    const arms = circleSql!.split(/UNION ALL/i);
+    expect(arms).toHaveLength(2);
+    for (const [i, arm] of arms.entries()) {
+      expect(
+        arm,
+        `arm ${i + 1} of the circle broadcast does not exclude revoked contacts:\n${arm}`,
+      ).toMatch(/coalesce\(\s*standby_state\s*,\s*'invited'\s*\)\s*<>\s*'revoked'/i);
+    }
+  });
+});

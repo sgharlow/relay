@@ -166,13 +166,43 @@ export async function updateRecipient(
   return toRecipient(result.rows[0]);
 }
 
-/** Cascade-deletes access_rules for the recipient, then the recipient (Req 3.6). */
+/**
+ * Removes the recipient, everything that grants them access, and every
+ * credential issued FOR them (Req 3.6, J4-R15).
+ *
+ * 🔴 THE CREDENTIALS USED TO STAY. This cascaded access_policies and
+ * access_rules and nothing else, so an owner who removed a contact kept that
+ * contact's unexpired invitation token hash (30 days), their break-glass code
+ * hash — a bearer credential with a ONE-YEAR life, and 023's header is explicit
+ * that the risk is "bounded rather than eliminated" — plus any recipient-code
+ * rows and any open access request.
+ *
+ * The sharp end was `claim.ts`: a signed-in standby who later typed the orphan
+ * invitation burned it, received a session bound to no role, and wrote
+ * `standby_claimed` into the OWNER's tamper-evident log for a person who no
+ * longer exists. That path now checks its own rowCount too — a guard at the
+ * place the mistake lands, because rows written before this fix are still live.
+ *
+ * ORDER: everything findable THROUGH the roster row goes before the roster row.
+ * Same rule as `deleteAccount`, and for the same reason — no foreign keys means
+ * nothing else will notice.
+ */
 export async function deleteRecipient(ownerId: string, id: string): Promise<void> {
   // Policies FIRST. Deleting only the rules would leave the generating policy
   // behind, and the next materialisation would recreate the grants for a
   // recipient who no longer exists (J4-R15).
   await cascadeDelete('access_policies', id, 'recipient_id', ownerId);
   await cascadeDelete('access_rules', id, 'recipient_id', ownerId);
+
+  // `person_id` carries a `person_type` discriminator in both tables, but the
+  // id is a UUID drawn from recipients.id — it cannot collide with a verifier's
+  // — so matching on it alone is exact, and matches how the two cascades above
+  // already key on recipient_id.
+  await cascadeDelete('invitations', id, 'person_id', ownerId);
+  await cascadeDelete('break_glass_codes', id, 'person_id', ownerId);
+  await cascadeDelete('recipient_codes', id, 'recipient_id', ownerId);
+  await cascadeDelete('access_requests', id, 'recipient_id', ownerId);
+
   await withOccRetry(() =>
     query(`DELETE FROM recipients WHERE id = $1 AND owner_id = $2`, [id, ownerId]),
   );

@@ -145,6 +145,13 @@ export async function updateVerifier(
 export async function deleteVerifier(ownerId: string, id: string): Promise<void> {
   await withdrawVerifierAttestations(ownerId, id);
   await cascadeDelete('verifier_confirmations', id, 'verifier_id', ownerId);
+
+  // And the credentials issued for them, which used to outlive the row.
+  // deleteRecipient carries the full argument; the same defect was in both.
+  await cascadeDelete('invitations', id, 'person_id', ownerId);
+  await cascadeDelete('break_glass_codes', id, 'person_id', ownerId);
+  await cascadeDelete('verifier_codes', id, 'verifier_id', ownerId);
+
   await withOccRetry(() =>
     query(`DELETE FROM verifiers WHERE id = $1 AND owner_id = $2`, [id, ownerId]),
   );

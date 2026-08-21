@@ -45,6 +45,18 @@ and say so.
 
 # ✅ Sprint 1 — The front door, the key, and the record — COMPLETE 2026-08-20
 
+> **The boxes below are ticked because the work shipped and its criteria were checked in the
+> sprint reports (`docs/sprint-reports/2026-08-20-sprint*.md`, each item's *"All met."*), not
+> because a box is a claim in its own right.** They sat unticked under fifteen SHIPPED headings
+> until 2026-08-21, so this file read as though every shipped item's criteria were unmet — the
+> contradiction the portfolio doc-discipline rule names ("reconcile the boxes or delete the file").
+> Two heading caveats were stale in the other direction and are struck in place: S1-4's ruling was
+> taken on 2026-08-19 and S2-1's migration 036 is applied in both regions. S1-3's *live run still
+> owed* and S3-3's *nothing flipped* are still true and are left alone.
+>
+> **`PROJECT.yaml` remains the record.** If a box here and the register disagree, the register is
+> right and this file has a defect.
+
 > All five items shipped on branch `sprint/2026-08-20-1`, 0 blocked. Report:
 > `docs/sprint-reports/2026-08-20-sprint.md`. **Two carry work a worktree could not do** —
 > S1-3 has never run against the real key, and S1-4 produced a proposal Steve has not ruled on.
@@ -84,21 +96,21 @@ keyspace is both unlimited and unobserved.
 
 **Acceptance criteria**
 
-- [ ] `authorize` on the `email-totp` provider calls `rateLimit`, keyed primarily on the **normalised
+- [x] `authorize` on the `email-totp` provider calls `rateLimit`, keyed primarily on the **normalised
       email** — the target is fixed and an attacker's IP is not, so an IP-only key is the wrong
       control here. A second per-IP key is welcome, not sufficient.
-- [ ] A refused attempt returns the **same `null`** as every other failure. The provider's existing
+- [x] A refused attempt returns the **same `null`** as every other failure. The provider's existing
       comment is explicit that an unknown address, a wrong code and an undecodable secret must be
       indistinguishable from outside; a limiter that answers differently leaks account existence and
       would be a new defect, not a fix.
-- [ ] `GuessKind` gains `totp`, and a failed code records a miss through `recordCodeMiss`. The
+- [x] `GuessKind` gains `totp`, and a failed code records a miss through `recordCodeMiss`. The
       limiter and the alarm ship **in one change** — a limiter without an alarm hides the attack it
       deflects.
-- [ ] The budget is chosen against a real person mistyping on a bad connection, and the number
+- [x] The budget is chosen against a real person mistyping on a bad connection, and the number
       carries its reasoning in a comment, in this repo's usual shape.
-- [ ] Red-green proven: a test that fails before the change and passes after, for **both** the
+- [x] Red-green proven: a test that fails before the change and passes after, for **both** the
       refusal and the recorded miss.
-- [ ] The limitation is written down where the next reader meets it: `lib/http/rate-limit.ts` says in
+- [x] The limitation is written down where the next reader meets it: `lib/http/rate-limit.ts` says in
       its own header that it is per-instance memory and "not a security boundary". That is still
       true here. This item raises the floor from *nothing* to *the same control step-up already
       has*; the durable per-account budget is **S2-1** and this item's comment must point at it.
@@ -126,22 +138,22 @@ this item is the fix it names.
 
 **Acceptance criteria**
 
-- [ ] Each of B1–B9, E1, E2, C6, C7, D6, D7 enters `PROJECT.yaml → deferred:` as an entry in the
+- [x] Each of B1–B9, E1, E2, C6, C7, D6, D7 enters `PROJECT.yaml → deferred:` as an entry in the
       existing shape: `id`, `owner`, `opened`, `what`, `why_it_matters`, `ends_when`. `ends_when`
       is a **condition, not a date**, where the existing entries use one (D2's `resumes_when` is the
       model: *"a number, not a date"*).
-- [ ] Items closed by Sprint 1 in the same run are entered **and closed in the same commit**, with
+- [x] Items closed by Sprint 1 in the same run are entered **and closed in the same commit**, with
       the closure recording what shipped — the shape every closed entry in that file already uses.
-- [ ] `ROADMAP.md` §2 entries gain a pointer to the `deferred:` id, and §7's warning paragraph is
+- [x] `ROADMAP.md` §2 entries gain a pointer to the `deferred:` id, and §7's warning paragraph is
       struck, because it will no longer be true.
-- [ ] `npx tsx` parses the YAML — a malformed `deferred:` block is silent until something reads it.
-- [ ] No volatile number is copied into either file in the process.
+- [x] `npx tsx` parses the YAML — a malformed `deferred:` block is silent until something reads it.
+- [x] No volatile number is copied into either file in the process.
 
 **Files:** `PROJECT.yaml`, `ROADMAP.md`
 
 ---
 
-### ✅ S1-3 · `verify:kms` — the third wall — SHIPPED 2026-08-20 (`df38d32`), live run still owed
+### ✅ S1-3 · `verify:kms` — the third wall — SHIPPED 2026-08-20 (`df38d32`), **live run still owed** — every rule is unit-proven against planted fixtures; that the script reads the right key and exits non-zero on a refusal has never been observed. `wired`, not `live-proven`, and CLAUDE.md says the same
 
 - **Axis:** security · **Effort:** M · **Blast:** all users (catastrophic, irreversible)
 
@@ -154,22 +166,22 @@ without the key that opens it.
 
 **Acceptance criteria**
 
-- [ ] `lib/ops/kms-wall.ts` holds the **pure verdict function** over an AWS response shape — no SDK
+- [x] `lib/ops/kms-wall.ts` holds the **pure verdict function** over an AWS response shape — no SDK
       call, no environment, no I/O. Mirrors `lib/ops/iam-wall.ts` exactly, including that every
       refusal names *which* rule refused.
-- [ ] It refuses on each of: key absent · `KeyState` not `Enabled` · a pending deletion · rotation
+- [x] It refuses on each of: key absent · `KeyState` not `Enabled` · a pending deletion · rotation
       state not what the repo intends (decide and record the intent — a symmetric CMK's rotation is
       backwards-compatible, so "on" is defensible; what is not defensible is nobody knowing) · the
       key policy no longer granting the runtime principal · **and the positive half** — a policy
       that grants nobody must also fail, because a check that is happiest when the product is broken
       is measuring the wrong thing (`verify-iam`'s own words).
-- [ ] `scripts/verify-kms.ts` is a thin shell: `DescribeKey`, `GetKeyPolicy`, `GetKeyRotationStatus`,
+- [x] `scripts/verify-kms.ts` is a thin shell: `DescribeKey`, `GetKeyPolicy`, `GetKeyRotationStatus`,
       read-only, no mutation, exits non-zero on any refusal. It runs under `--env-file=.env.admin`,
       like `verify:iam`, because the application's own identity deliberately cannot read this.
-- [ ] `package.json` gains `verify:kms`, and `lib/ops/gate-script.test.ts` covers it — that guard
+- [x] `package.json` gains `verify:kms`, and `lib/ops/gate-script.test.ts` covers it — that guard
       exists because two scripts shipped invoking a bare `tsx` and could not start.
-- [ ] Every rule is red-green proven against a **planted** response fixture.
-- [ ] `CLAUDE.md` gains `verify:kms` in the commands block and in the pre-release list beside
+- [x] Every rule is red-green proven against a **planted** response fixture.
+- [x] `CLAUDE.md` gains `verify:kms` in the commands block and in the pre-release list beside
       `verify:roles` / `verify:iam`, in the same voice.
 
 **Files:** `lib/ops/kms-wall.ts` (+ test), `scripts/verify-kms.ts`, `package.json`, `CLAUDE.md`
@@ -184,7 +196,7 @@ seen to work.
 
 ---
 
-### ✅ S1-4 · The failover does not carry the ability to decrypt, and nothing says so — SHIPPED 2026-08-20 (`67b43ba`), ruling still owed
+### ✅ S1-4 · The failover does not carry the ability to decrypt, and nothing says so — SHIPPED 2026-08-20 (`67b43ba`), ~~ruling still owed~~ **RULED 2026-08-19: Option A, accept the single-Region CMK** (`PROJECT.yaml → deferred → the-failover-does-not-carry-the-ability-to-decrypt`; `docs/kms-region-proposal.md` holds the reversal path)
 
 - **Axis:** documentation (of a correctness property) · **Effort:** S · **Blast:** all users
 
@@ -201,14 +213,14 @@ Steve's explicit request. Proposing is in scope; taking it is not.
 
 **Acceptance criteria**
 
-- [ ] `CLAUDE.md`'s failover invariant states the boundary: the env switch moves the data path and
+- [x] `CLAUDE.md`'s failover invariant states the boundary: the env switch moves the data path and
       not the key, and what that means on the day somebody flips it.
-- [ ] `docs/backup-restore-runbook.md` says the same where a person mid-restore will meet it — a
+- [x] `docs/backup-restore-runbook.md` says the same where a person mid-restore will meet it — a
       restored cluster in the other region is ciphertext until KMS in the key's region answers.
-- [ ] A short proposal (its own section in the runbook, or a doc) sets out the multi-Region-key
+- [x] A short proposal (its own section in the runbook, or a doc) sets out the multi-Region-key
       option, its cost, its migration shape and its rollback, addressed to Steve as a **decision**,
       explicitly not taken.
-- [ ] No code changes. If this item finds itself editing `lib/kms/`, it has become S4 and should
+- [x] No code changes. If this item finds itself editing `lib/kms/`, it has become S4 and should
       stop.
 
 **Files:** `CLAUDE.md`, `docs/backup-restore-runbook.md`
@@ -225,7 +237,7 @@ what is preserved, who is told, and by when. Cheap now; unwritable at 3am.
 
 **Acceptance criteria**
 
-- [ ] One page, `docs/incident-response-runbook.md`, covering: **containment order** (session-epoch
+- [x] One page, `docs/incident-response-runbook.md`, covering: **containment order** (session-epoch
       revocation first — `migration 025` already exists for exactly this; then secret rotation, which
       points at S2-4; then the KMS key policy, which points at S1-3), **evidence preservation** (the
       audit chain is append-only and hash-chained per owner — say explicitly that it must not be
@@ -233,11 +245,11 @@ what is preserved, who is told, and by when. Cheap now; unwritable at 3am.
       custodian owes a customer, and the fact that state breach-notification law applies to an
       individual operator exactly as it does to a company), and **the roll-back-nothing rule** for
       the audit log.
-- [ ] It names the operator by the ratified answer (`ratified.relay-operator-is-an-individual`) —
+- [x] It names the operator by the ratified answer (`ratified.relay-operator-is-an-individual`) —
       the person who makes each call is a real person, not a role that does not exist.
-- [ ] It states what Relay **cannot** disclose because it cannot read it, which is the one genuinely
+- [x] It states what Relay **cannot** disclose because it cannot read it, which is the one genuinely
       good piece of news in a breach and belongs in the notice template.
-- [ ] Linked from `CLAUDE.md` where the other runbooks are named.
+- [x] Linked from `CLAUDE.md` where the other runbooks are named.
 
 **Files:** `docs/incident-response-runbook.md`, `CLAUDE.md`
 
@@ -257,7 +269,7 @@ channel, or a written procedure.
 
 ---
 
-### ✅ S2-1 · A durable per-account sign-in budget — SHIPPED 2026-08-20 (`e446d43`), migration 036 awaits Steve
+### ✅ S2-1 · A durable per-account sign-in budget — SHIPPED 2026-08-20 (`e446d43`), ~~migration 036 awaits Steve~~ **036 APPLIED to both regions** (`npm run verify:schema` green; re-derive rather than trusting this line)
 
 - **Axis:** security · **Effort:** M · **Blast:** all users · **Depends on:** S1-1
 
@@ -274,18 +286,18 @@ door down is a worse outcome than the gap it closes.
 
 **Acceptance criteria**
 
-- [ ] `db/migrations/036_signin_attempts.sql` authored, in the style of the existing files, **not
+- [x] `db/migrations/036_signin_attempts.sql` authored, in the style of the existing files, **not
       applied** — and the item's report says in one line that it is Steve's to run, against **both
       regions**, followed by `npm run verify:schema`.
-- [ ] The budget is per-account, decays on a clock, and **resets on a successful sign-in**.
-- [ ] Absence of the table is tolerated: the code detects it (`42P01`) once, falls back to the
+- [x] The budget is per-account, decays on a clock, and **resets on a successful sign-in**.
+- [x] Absence of the table is tolerated: the code detects it (`42P01`) once, falls back to the
       in-memory limiter, and logs that it did — it must never throw on the sign-in path, and it must
       never fail closed and lock everybody out.
-- [ ] A lockout is **not** distinguishable from a wrong code to the caller. Same `null`, same
+- [x] A lockout is **not** distinguishable from a wrong code to the caller. Same `null`, same
       response — S1-1's criterion, restated because this is where it would be easiest to break.
-- [ ] There is a way back for the person who is genuinely locked out, and it is named in the code:
+- [x] There is a way back for the person who is genuinely locked out, and it is named in the code:
       the existing recovery-code path, which has its own budget and its own entropy argument.
-- [ ] Red-green proven, including the table-absent branch, which is the one that would take the
+- [x] Red-green proven, including the table-absent branch, which is the one that would take the
       product down.
 
 **Files:** `db/migrations/036_signin_attempts.sql`, `lib/auth/` (new module + wiring),
@@ -313,18 +325,18 @@ mistake one layer up.
 
 **Acceptance criteria**
 
-- [ ] Either (a) in-app alerts become **readable by the independent monitor** — persisted, exposed on
+- [x] Either (a) in-app alerts become **readable by the independent monitor** — persisted, exposed on
       a health-shaped endpoint, polled by a GitHub Actions workflow that alerts through GitHub, in
       the shape the two existing monitors already use — or (b) a recorded ruling that the GitHub
       monitors are the alarm of record and the in-app mail is advisory, stated in
       `error-reporter.ts` itself so the next reader is not misled by it.
-- [ ] If (a): the endpoint must not become a new unauthenticated leak. Counts and timestamps, never
+- [x] If (a): the endpoint must not become a new unauthenticated leak. Counts and timestamps, never
       error text, never a stack, never an email address — `lib/ops/incident.ts` already reasons about
       exactly this and its constraint carries over.
-- [ ] If (a): **the absence case is what is monitored**, not just the presence one. A reporter that
+- [x] If (a): **the absence case is what is monitored**, not just the presence one. A reporter that
       has stopped reporting must be distinguishable from a product with no errors — that distinction
       is what `verify-live-freshness.ts` exists to make and the same rule applies here.
-- [ ] Whichever branch is taken, it is recorded in `PROJECT.yaml → deferred` against the B6 entry
+- [x] Whichever branch is taken, it is recorded in `PROJECT.yaml → deferred` against the B6 entry
       that S1-2 created.
 
 **Files:** `lib/ops/error-reporter.ts`, `lib/ops/incident.ts`, possibly `src/app/api/health/*`,
@@ -346,19 +358,19 @@ This is the operational half of the arc `docs/least-privilege-cutover.md` closed
 
 **Acceptance criteria**
 
-- [ ] `docs/secret-rotation-runbook.md`, one section per secret: **what it protects · blast radius on
+- [x] `docs/secret-rotation-runbook.md`, one section per secret: **what it protects · blast radius on
       rotation · the safe order · what breaks mid-flight · how to verify afterwards.**
-- [ ] The two that are not merely inconvenient are called out in their own words:
+- [x] The two that are not merely inconvenient are called out in their own words:
       **`RECIPIENT_JWT_SECRET` / `VERIFIER_JWT_SECRET`** — rotating either invalidates every live
       link, which during an open release means a verifier clicking a valid link gets an error at the
       moment a family is waiting. The procedure must say when it is safe (no open release) and what
       to do when it is not (rotate anyway and re-issue; the release state is the source of truth, the
       link is not).
-- [ ] **`NEXTAUTH_SECRET`** signs live sessions: rotation signs everybody out. That is a *feature*
+- [x] **`NEXTAUTH_SECRET`** signs live sessions: rotation signs everybody out. That is a *feature*
       during an incident (S1-5's containment step) and an outage on an ordinary Tuesday. Say which.
-- [ ] A recorded **last-set date** per secret, with the honest answer where it is unknown — "unknown"
+- [x] A recorded **last-set date** per secret, with the honest answer where it is unknown — "unknown"
       is a finding, not a blank.
-- [ ] Cross-linked from `docs/incident-response-runbook.md`, which points at this for the rotation
+- [x] Cross-linked from `docs/incident-response-runbook.md`, which points at this for the rotation
       step, and from `.env.example` where each variable is described.
 
 **Files:** `docs/secret-rotation-runbook.md`, `docs/incident-response-runbook.md`, `.env.example`
@@ -379,16 +391,16 @@ build**, and it is the most on-brand piece of trust copy available.
 
 **Acceptance criteria**
 
-- [ ] `/about` (and `/terms` where it is contractual) answers three questions plainly: what happens
+- [x] `/about` (and `/terms` where it is contractual) answers three questions plainly: what happens
       to a vault if the operator stops · what a customer can do about it today, in one click,
       unprompted · and why the operator's absence does not put the *contents* at risk, which is the
       one thing this architecture genuinely guarantees.
-- [ ] It does **not** promise an escrow, a successor or a wind-down period that does not exist. The
+- [x] It does **not** promise an escrow, a successor or a wind-down period that does not exist. The
       Terms already describe the mechanism actually operated (the g2 decision's shape); this holds
       the same line.
-- [ ] Pinned by a test in the shape of `lib/ops/operator-named.test.ts`, so the sentence cannot
+- [x] Pinned by a test in the shape of `lib/ops/operator-named.test.ts`, so the sentence cannot
       quietly disappear in a copy edit.
-- [ ] Accessibility unaffected: any new page section keeps the type scale and passes the existing
+- [x] Accessibility unaffected: any new page section keeps the type scale and passes the existing
       structural checks.
 
 **Files:** `src/app/about/page.tsx`, `src/app/terms/page.tsx`, `lib/ops/` (+ test)
@@ -407,11 +419,11 @@ that it is accurate.
 
 **Acceptance criteria**
 
-- [ ] Stripe is named, with what it receives and where — in the same voice as the other four.
-- [ ] Pinned by a test that ties the rendered list to the set of providers the codebase actually
+- [x] Stripe is named, with what it receives and where — in the same voice as the other four.
+- [x] Pinned by a test that ties the rendered list to the set of providers the codebase actually
       talks to, so the **next** provider added is caught by a failure rather than by a reader. A
       hardcoded four-item assertion would pass the day a fifth arrives and is not worth writing.
-- [ ] While in this file: check the rest of it against what the code now does, and report anything
+- [x] While in this file: check the rest of it against what the code now does, and report anything
       else found rather than fixing it silently.
 
 **Files:** `src/app/privacy/page.tsx`, `lib/ops/` (+ test)
@@ -449,17 +461,17 @@ sends **no mail**.
 
 **Acceptance criteria**
 
-- [ ] `invoice.payment_failed` handled: the owner is told, once per invoice, in the product's own
+- [x] `invoice.payment_failed` handled: the owner is told, once per invoice, in the product's own
       voice — what happened, what it means for their plan, and the one link that fixes it (the
       billing portal already exists at `src/app/api/stripe/portal`).
-- [ ] Idempotent against Stripe's retries and redeliveries. The existing handler is
+- [x] Idempotent against Stripe's retries and redeliveries. The existing handler is
       order-independent by design (`currentSubscriptionStatus` re-reads rather than trusting the
       event); this must not regress that.
-- [ ] The final lapse (`customer.subscription.deleted`, or a status leaving `ACTIVE_STATUSES`) also
+- [x] The final lapse (`customer.subscription.deleted`, or a status leaving `ACTIVE_STATUSES`) also
       notifies, and says what S3-2 decides about the data.
-- [ ] Nothing is sent to a reserved domain — `lib/notify/email.ts` refuses at the seam and the tests
+- [x] Nothing is sent to a reserved domain — `lib/notify/email.ts` refuses at the seam and the tests
       must not route around it.
-- [ ] Red-green proven against the existing webhook test harness, including the
+- [x] Red-green proven against the existing webhook test harness, including the
       already-notified-once case.
 
 **Files:** `src/app/api/stripe/webhook/route.ts`, `lib/notify/`, `lib/billing/` (+ tests)
@@ -478,16 +490,16 @@ sentence, and the Terms cannot answer it because nothing has decided it.
 
 **Acceptance criteria**
 
-- [ ] The behaviour is **established by reading the code**, enumerated path by path — items, access
+- [x] The behaviour is **established by reading the code**, enumerated path by path — items, access
       rules, recipients, verifiers, release states, and the release path itself — and written down.
       Where the answer is "nothing happens", that is the finding and it is stated.
-- [ ] A test pins each answer, so the humane behaviour stops being an accident. This is the point of
+- [x] A test pins each answer, so the humane behaviour stops being an accident. This is the point of
       the item: today, a refactor of `assertCanAddItems` could silently start deleting people's
       history and no test would notice.
-- [ ] `/terms` gains the one sentence, matching the mechanism actually operated.
-- [ ] Any place where the current behaviour is **not** defensible is reported, not silently changed.
+- [x] `/terms` gains the one sentence, matching the mechanism actually operated.
+- [x] Any place where the current behaviour is **not** defensible is reported, not silently changed.
       A change to what a lapse does to customer data is Steve's decision.
-- [ ] ⚠️ In scope to *describe*, out of scope to *flip*: `canRelease` stays as it is. That is
+- [x] ⚠️ In scope to *describe*, out of scope to *flip*: `canRelease` stays as it is. That is
       `ratified.beta-free-release`, dated 2026-10-01, and it is Steve's.
 
 **Files:** `lib/billing/entitlements.ts`, `src/app/terms/page.tsx`, `lib/ops/` (+ tests)
@@ -506,15 +518,15 @@ afternoon's archaeology under time pressure.
 
 **Acceptance criteria**
 
-- [ ] A single written change-set description naming every file the flip touches, verified by
+- [x] A single written change-set description naming every file the flip touches, verified by
       grepping for each rather than by memory.
-- [ ] The skipped test is **read and confirmed still correct** for the behaviour that would be
+- [x] The skipped test is **read and confirmed still correct** for the behaviour that would be
       enabled — a test skipped since before the beta may assert something the product has since
       changed, and un-skipping a stale assertion on flip day is the worst possible moment to find
       out.
-- [ ] The preconditions are stated as a checklist: S3-1 shipped, S3-2's sentence live. Without them
+- [x] The preconditions are stated as a checklist: S3-1 shipped, S3-2's sentence live. Without them
       the flip converts an expired card into a blocked release.
-- [ ] **Nothing is flipped.** `lib/ops/gates.test.ts` guards the ordering; this item must leave it
+- [x] **Nothing is flipped.** `lib/ops/gates.test.ts` guards the ordering; this item must leave it
       green.
 
 **Files:** documentation only (plus any test-readability fix that does not change behaviour)
@@ -532,13 +544,13 @@ selling something with a margin — and Steve is out selling it this week.
 
 **Acceptance criteria**
 
-- [ ] Cost per owner per year, itemised, with every assumption named and sourced from published
+- [x] Cost per owner per year, itemised, with every assumption named and sourced from published
       pricing (vault size, KMS calls per reveal, intake tokens, emails per owner per year, function
       invocations). Where a driver is unknown, the assumption is stated as an assumption.
-- [ ] Three scenarios — a dormant owner, a typical owner, an owner in an active release — because
+- [x] Three scenarios — a dormant owner, a typical owner, an owner in an active release — because
       the third is the expensive one and it is the one the product is for.
-- [ ] The break-even owner count for the fixed costs, and the gross margin at the current price.
-- [ ] ⚠️ No number from this page is copied anywhere else. It is a derivation, and it goes stale the
+- [x] The break-even owner count for the fixed costs, and the gross margin at the current price.
+- [x] ⚠️ No number from this page is copied anywhere else. It is a derivation, and it goes stale the
       moment AWS changes a price — it says so at the top and names the date it was derived.
 
 **Files:** `docs/unit-economics.md`
@@ -557,13 +569,13 @@ OpenAI; `/api/stripe/checkout` reaches Stripe) and one that is now an authentica
 
 **Acceptance criteria**
 
-- [ ] A written re-derivation against the world that exists: real users, free standby accounts, an
+- [x] A written re-derivation against the world that exists: real users, free standby accounts, an
       authentication path now depending on it, and paid third-party calls behind public endpoints.
-- [ ] The header comment in `lib/http/rate-limit.ts` is corrected — leaving a justification that
+- [x] The header comment in `lib/http/rate-limit.ts` is corrected — leaving a justification that
       cites a cancelled ad flight is the drift this repo keeps catching.
-- [ ] A recommendation with a cost, addressed to Steve as a decision. ⚠️ **A shared store is
+- [x] A recommendation with a cost, addressed to Steve as a decision. ⚠️ **A shared store is
       infrastructure**: proposing is in scope, adding it is not, and it needs the 5-gate policy.
-- [ ] Recorded against the D6 entry S1-2 created.
+- [x] Recorded against the D6 entry S1-2 created.
 
 **Files:** `lib/http/rate-limit.ts`, `docs/` (+ test only if a claim becomes checkable)
 

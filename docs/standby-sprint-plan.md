@@ -845,7 +845,10 @@ decision surface and in both legal pages.
 
 ## 14. User-manual audit — 2026-08-12
 
-Writing `docs/user-manual.html` as a **family-facing** guide, from the production screenshots
+Writing the user manual (`docs/user-manual.html` when this was written; **it now lives at
+`public/guide/index.html` and is served at `/guide`, with the PDF printed from that served origin
+by `scripts/guide-pdf.mjs`** — moved after this audit, path corrected here 2026-08-21) as a
+**family-facing** guide, from the production screenshots
 already captured, turned out to be a better defect-finder than either the UI review or the security
 review. Both of those asked *is this screen correct*. Explaining a journey end to end to somebody
 who did not build it asks a different question — *can a person actually complete this* — and three

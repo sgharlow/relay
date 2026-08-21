@@ -89,6 +89,36 @@ export async function createInvitation(
   const token = generateInviteCode();
   const expiresAt = new Date(Date.now() + INVITE_TTL_DAYS * 86400_000).toISOString();
 
+  /*
+    🔴 REISSUING USED TO ADD A CODE RATHER THAN REPLACE ONE. This function
+    INSERTed unconditionally and nothing anywhere retired a prior row, so an
+    owner who pressed Invite three times left THREE independently redeemable
+    thirty-day credentials for one seat — `redeemInvitation` and `claimStandbyRole`
+    both match on `token_hash` alone with `claimed_at IS NULL AND expires_at >
+    now()`, so every earlier code stayed good and the owner had no way to
+    withdraw it. "Reissue" is the word the interface uses; the database was
+    doing something else.
+
+    Retired by EXPIRY rather than DELETE on purpose: the row carries
+    `delivery_channel`, `cohort` and `created_at`, which is what makes the
+    Phase 0 arms interpretable, and deleting it would erase the measurement to
+    fix the credential. Expiring does both — `expires_at > now()` is false for
+    it by the time any read happens.
+
+    It also cleans up after the create-time mint: `inviteOnCreateBestEffort`
+    discards the code it receives, and on the owner-delivered arm nothing is
+    sent, so creating a person left one invitation that no human could ever type.
+  */
+  await query(
+    `UPDATE invitations
+        SET expires_at = now()
+      WHERE owner_id = $1
+        AND person_id = $2
+        AND claimed_at IS NULL
+        AND expires_at > now()`,
+    [ownerId, input.personId],
+  );
+
   await query(
     `INSERT INTO invitations
        (owner_id, person_id, person_type, token_hash, expires_at, delivery_channel, cohort)

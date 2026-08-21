@@ -51,6 +51,18 @@
  */
 
 import { query } from '../db/connection';
+import { REFUSED_PREFIX } from './delivery-events';
+
+/**
+ * The LIKE pattern that separates refused attempts from accepted ones.
+ *
+ * Interpolated from `REFUSED_PREFIX` rather than spelled again in four SQL
+ * strings: the marker and the thing that reads it are one contract, and a
+ * literal repeated per query is four places for it to drift. Safe to interpolate
+ * because it is a module constant and never reaches here from a request — the
+ * date bounds stay bound parameters, as they must.
+ */
+const REFUSED_LIKE = `${REFUSED_PREFIX}%`;
 
 /**
  * How long a send is given before its silence means anything.
@@ -77,10 +89,18 @@ export interface DeliveryWebhookHealth {
   lastEventAt: string | null;
   /** Null when never heard, or when the stored timestamp will not parse. */
   ageSeconds: number | null;
-  /** Sends old enough to have been reported on, inside the window. */
+  /** ACCEPTED sends old enough to have been reported on, inside the window. */
   ripeSends: number;
   /** How many of those we did hear about. The live half of the switch. */
   ripeSendsHeard: number;
+  /** Sends the provider refused, or could not be asked about, inside the window. */
+  refusedSends: number;
+  /**
+   * Sends accepted at or after the FIRST refusal in the window. Zero alongside a
+   * non-zero `refusedSends` means the provider stopped taking our mail and has
+   * not started again.
+   */
+  acceptedSinceFirstRefusal: number;
   /** Has the send-side recorder ever written a row? False = it is unproven. */
   writerProven: boolean;
   /**
@@ -122,6 +142,13 @@ export async function getDeliveryWebhookHealth(
     A correlated EXISTS rather than a LATERAL join or an aggregate FILTER: DSQL
     implements a subset of PostgreSQL, and this is the form with the least
     surface to be missing from it. Proven against the live cluster, not assumed.
+
+    ⚠️ REFUSALS ARE EXCLUDED HERE, and that is not tidiness. A message the
+    provider never took can never be reported on — no webhook event will ever
+    carry its id — so counting one as a ripe send would make `deaf` fire and send
+    an operator to the Resend webhook configuration for a fault that is in the
+    API key. Two different faults, two different pages. They are counted below
+    instead, under their own condition.
   */
   const s = await query<{ ripe: string; heard: string }>(
     `SELECT count(*)::text AS ripe,
@@ -129,7 +156,8 @@ export async function getDeliveryWebhookHealth(
               SELECT 1 FROM email_delivery_events e WHERE e.provider_id = a.provider_id
             ) THEN 1 ELSE 0 END), 0)::text AS heard
        FROM email_send_attempts a
-      WHERE a.occurred_at <= $1 AND a.occurred_at >= $2`,
+      WHERE a.occurred_at <= $1 AND a.occurred_at >= $2
+        AND a.provider_id NOT LIKE '${REFUSED_LIKE}'`,
     [new Date(now.getTime() - SETTLE_MS), new Date(now.getTime() - WINDOW_MS)],
   );
 
@@ -178,6 +206,47 @@ export async function getDeliveryWebhookHealth(
   const orphanEvents = Number(w.rows[0]?.orphans ?? 0);
 
   /*
+    🔴 THE THIRD WAY THIS SWITCH STAYS SILENT, and the one that hides the loudest
+    failure available (found 2026-08-21). Everything above judges messages Resend
+    ACCEPTED. Nothing judged the ones it refused — because until that date a
+    refusal wrote no row at all: `email.ts` recorded an attempt only after
+    acceptance, and `transcript.ts` is in-memory and refuses to arm in production
+    because the bodies carry live access codes.
+
+    So a revoked or wrongly-rotated `RESEND_API_KEY`, a suspended shared Resend
+    account, a sending-domain restriction or any 4xx produced zero attempts and
+    zero events, `ripeSends` fell to 0, and this file read that as "a quiet week"
+    and reported healthy while EVERY message Relay sent was being refused.
+    `docs/secret-rotation-runbook.md` asserted the opposite: "RESEND_API_KEY fails
+    loudly — all mail stops, and delivery-webhook-monitor.yml notices."
+
+    THE CONDITION IS "AND HAS NOT RECOVERED", not "any refusal at all". A single
+    429 that the next message sails past is a provider having a moment, and a
+    monitor that fires on it gets muted within a fortnight — the failure mode this
+    whole file is written around. A key that no longer works never recovers, so
+    the condition never clears on its own.
+
+    NO SETTLE WINDOW, unlike the check above, and deliberately: a refusal is
+    already final. Nothing is going to arrive later and change what it means, so
+    there is nothing to wait for.
+  */
+  const windowStart = new Date(now.getTime() - WINDOW_MS);
+  const f = await query<{ refused: string; accepted_since: string }>(
+    `SELECT (SELECT count(*) FROM email_send_attempts
+              WHERE provider_id LIKE '${REFUSED_LIKE}' AND occurred_at >= $1)::text AS refused,
+            COALESCE((SELECT count(*) FROM email_send_attempts
+              WHERE provider_id NOT LIKE '${REFUSED_LIKE}'
+                AND occurred_at >= COALESCE((
+                  SELECT min(occurred_at) FROM email_send_attempts
+                   WHERE provider_id LIKE '${REFUSED_LIKE}' AND occurred_at >= $1
+                ), $1)), 0)::text AS accepted_since`,
+    [windowStart],
+  );
+
+  const refusedSends = Number(f.rows[0]?.refused ?? 0);
+  const acceptedSinceFirstRefusal = Number(f.rows[0]?.accepted_since ?? 0);
+
+  /*
     THE TWO CONDITIONS THAT ARE UNAMBIGUOUSLY WRONG, and nothing else.
 
     `!everHeard` is the original: we have never heard anything at all, so the
@@ -190,7 +259,10 @@ export async function getDeliveryWebhookHealth(
   */
   const deaf = ripeSends > 0 && ripeSendsHeard === 0;
   const mute = writerProven && orphanEvents > 0;
-  const healthy = everHeard && !deaf && !mute;
+  // `refusing` is the outage; `deaf` is only blindness about an outage. Named
+  // first below because an operator reading this is looking for what to fix.
+  const refusing = refusedSends > 0 && acceptedSinceFirstRefusal === 0;
+  const healthy = everHeard && !refusing && !deaf && !mute;
 
   return {
     everHeard,
@@ -199,6 +271,8 @@ export async function getDeliveryWebhookHealth(
     ageSeconds,
     ripeSends,
     ripeSendsHeard,
+    refusedSends,
+    acceptedSinceFirstRefusal,
     writerProven,
     orphanEvents,
     healthy,
@@ -206,7 +280,14 @@ export async function getDeliveryWebhookHealth(
       ? 'No delivery event has EVER arrived, so the Resend webhook is unconfigured or broken. ' +
         'DeliveryLine renders nothing without it, which reads to an owner as "no news" rather ' +
         'than "we cannot see". Run scripts/verify-delivery-webhook.ts.'
-      : deaf
+      : refusing
+        ? `${refusedSends} send(s) were REFUSED by the provider and nothing has been accepted ` +
+          'since the first of them, so Relay is currently sending no mail at all — invitations, ' +
+          'verifier notices and access codes are all failing. Check RESEND_API_KEY first (a ' +
+          'revoked or wrongly-rotated key is the commonest cause and the one the rotation ' +
+          'runbook covers), then that the Resend account is not suspended and the sending ' +
+          'domain is still verified. docs/secret-rotation-runbook.md §RESEND_API_KEY.'
+        : deaf
         ? `${ripeSends} message(s) were accepted by Resend more than ${SETTLE_MS / 3600_000}h ` +
           'ago and NOTHING has been reported back about any of them. Events arrived in the past, ' +
           'so this is a stream that has stopped: check that the webhook endpoint still exists in ' +

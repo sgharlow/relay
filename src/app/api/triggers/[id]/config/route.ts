@@ -13,6 +13,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { requireOwner, readJson, isResponse, mapError } from '../../../../../../lib/http/owner-route';
 import { setRequiredConfirmations } from '../../../../../../lib/release/provisioning';
+import { TriggerError } from '../../../../../../lib/release/triggers';
 import { countEligibleVerifiers, assertQuorumSatisfiable } from '../../../../../../lib/release/quorum';
 import { query } from '../../../../../../lib/db/connection';
 import { isUserSelectableTriggerType } from '../../../../../../lib/domain/enums';
@@ -66,6 +67,13 @@ export async function PUT(req: NextRequest, { params }: Ctx): Promise<NextRespon
     const row = await setRequiredConfirmations(auth.ownerId, triggerType, n, m);
     return NextResponse.json({ required_confirmations: row.required_confirmations, verifier_count: m });
   } catch (err) {
+    // 409 — the trigger is mid-release, or moved between the read and the CAS.
+    // Lowering N during a live GRACE used to open the vault on the next hourly
+    // sweep with nobody doing anything; setRequiredConfirmations refuses now,
+    // and this is the half that tells the owner why rather than rendering a 500.
+    if (err instanceof TriggerError) {
+      return NextResponse.json({ error: 'TriggerError', message: err.message }, { status: err.httpStatus });
+    }
     return mapError(err);
   }
 }

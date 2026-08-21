@@ -54,7 +54,7 @@ describe('ensureReleaseState', () => {
 describe('setRequiredConfirmations', () => {
   it('validates N-of-M then persists N', async () => {
     mockQuery
-      .mockResolvedValueOnce(qResult([{ id: 'rs-1' }])) // ensure: existing
+      .mockResolvedValueOnce(qResult([{ id: 'rs-1', state: 'armed', version: 3 }])) // ensure: existing
       .mockResolvedValueOnce(qResult([{ id: 'rs-1', required_confirmations: 2 }])); // update
     const row = await setRequiredConfirmations('owner-1', 'emergency', 2, 3);
     expect(row.required_confirmations).toBe(2);
@@ -63,5 +63,64 @@ describe('setRequiredConfirmations', () => {
   it('rejects an invalid N-of-M (N > M) before any write', async () => {
     await expect(setRequiredConfirmations('owner-1', 'emergency', 5, 2)).rejects.toBeInstanceOf(ValidationError);
     expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  /*
+    🔴 THE ONE release_state WRITE THE OCC DESIGN DID NOT COVER, closed
+    2026-08-21. `001_initial.sql:9-12` states the rule for this table without
+    exception — "all state mutations use CAS on state+version" — and this
+    statement was `UPDATE ... WHERE owner_id = $1 AND trigger_type = $2`: no
+    state predicate, no version match, no version bump.
+
+    It is the owner's own trigger, so this is not an attack; it is an owner
+    changing the outcome of a release that is already running, which is worse
+    for being an accident. Lower N from 2 to 1 while a GRACE row already holds
+    one confirmation and `resolveElapsedGrace` — which releases on
+    `received_confirmations >= required_confirmations` — opens the vault at the
+    top of the next hour, with nobody having done anything and no screen having
+    said that is what the Set button meant.
+
+    Refused rather than serialised. There is no correct interleaving to pick
+    here: a quorum edit during a live release is a question for the owner, not a
+    race for the database to arbitrate.
+  */
+  it('REFUSES to change the quorum while a release is in flight', async () => {
+    mockQuery.mockResolvedValueOnce(qResult([{ id: 'rs-1', state: 'grace', version: 4 }]));
+
+    await expect(setRequiredConfirmations('owner-1', 'emergency', 1, 3)).rejects.toMatchObject({
+      httpStatus: 409,
+    });
+    // Refused BEFORE the write, not by a rowcount afterwards.
+    expect(mockQuery).toHaveBeenCalledOnce();
+  });
+
+  it('carries the CAS predicate and bumps the version', async () => {
+    mockQuery
+      .mockResolvedValueOnce(qResult([{ id: 'rs-1', state: 'armed', version: 7 }]))
+      .mockResolvedValueOnce(qResult([{ id: 'rs-1', required_confirmations: 2 }]));
+
+    await setRequiredConfirmations('owner-1', 'emergency', 2, 3);
+
+    const [sql, params] = mockQuery.mock.calls[1] as [string, unknown[]];
+    expect(sql).toMatch(/state\s*=\s*'armed'/);
+    expect(sql).toMatch(/version\s*=\s*version\s*\+\s*1/);
+    expect(sql).toMatch(/AND version\s*=\s*\$/);
+    expect(params).toContain('7');
+  });
+
+  /*
+    The CAS losing is a DIFFERENT event from the state check refusing: it means
+    a transition committed between the read and the write — the row is in
+    flight now even though it was ARMED a moment ago. Same refusal, because the
+    answer is the same: do not quietly re-aim a running release.
+  */
+  it('refuses when a transition committed between the read and the write', async () => {
+    mockQuery
+      .mockResolvedValueOnce(qResult([{ id: 'rs-1', state: 'armed', version: 7 }]))
+      .mockResolvedValueOnce(qResult([])); // CAS matched nothing
+
+    await expect(setRequiredConfirmations('owner-1', 'emergency', 2, 3)).rejects.toMatchObject({
+      httpStatus: 409,
+    });
   });
 });

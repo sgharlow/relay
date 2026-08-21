@@ -43,8 +43,14 @@ primitives the app uses in production.
 
 1. **Reversible emergency** — request access, verifiers confirm, recipient gets a
    scoped plan; owner checks in and access closes automatically.
-2. **Region failover** — flip to the us-west-2 endpoint; access keeps working,
-   strongly consistent, no interruption (active-active Aurora DSQL).
+2. **Region failover** — flip to the us-west-2 endpoint; the data keeps working,
+   strongly consistent, no interruption (active-active Aurora DSQL). ⚠️ **It is a
+   *database* failover: decrypt stays in us-east-1.** The CMK is single-Region, so
+   a us-east-1 KMS impairment leaves the site up, the dashboard rendering, and
+   Reveal alone failing. Known and accepted — `PROJECT.yaml → deferred →
+   the-failover-does-not-carry-the-ability-to-decrypt` (B3); the fix is a
+   multi-Region CMK and is gated on the Infrastructure Change Policy
+   ([`docs/kms-region-proposal.md`](docs/kms-region-proposal.md)).
 3. **OCC correctness** — two concurrent releases, exactly one advances.
 4. **Importance / risk graph** — the importance engine ranks the vault and reveals
    the "gates N" dependency edges.
@@ -53,9 +59,10 @@ primitives the app uses in production.
 
 Next.js 16 (App Router, TypeScript) on **Vercel** · **Amazon Aurora DSQL**
 (two regions, active-active, IAM auth) · **AWS KMS** (`@aws-sdk/client-kms`)
-client-side envelope encryption · **NextAuth** + TOTP MFA · **OpenAI** (importance
-engine) · **Resend** (notifications) · **node-postgres** · Vitest + **fast-check**
-(property tests).
+client-side envelope encryption · **NextAuth** + per-user TOTP MFA and
+**WebAuthn passkeys** · **Stripe** (live-mode annual billing) · **OpenAI**
+(importance engine) · **Resend** (notifications) · **node-postgres** · Vitest +
+**fast-check** (property tests).
 
 ### The non-obvious invariants (preserve these)
 - **No foreign keys** (DSQL) — referential integrity is app-enforced (`lib/db/integrity.ts`).
@@ -75,19 +82,40 @@ npm run dev       # http://localhost:3000  (needs DSQL + KMS env for DB-backed r
 
 Tests are property-based where it matters (state machine, OCC, N-of-M, hash chain)
 via `fast-check`. Pure logic is factored into `lib/` and unit-tested; route
-handlers are thin and build-verified. AWS provisioning + live dogfood:
-[`docs/aws-setup.md`](docs/aws-setup.md), [`docs/e2e-verification.md`](docs/e2e-verification.md).
+handlers are thin and build-verified. AWS provisioning + the H0 live dogfood:
+[`docs/aws-setup.md`](docs/aws-setup.md), [`docs/e2e-verification.md`](docs/e2e-verification.md)
+— **both are H0-era records and both open with a banner saying which of their instructions have
+since stopped working.** The identity model that supersedes the provisioning half is
+[`docs/least-privilege-cutover.md`](docs/least-privilege-cutover.md).
 
 ## Status
 
-Backend complete, all UI built, recipient-release notifications wired. Full suite
-green — run `npx vitest --run` for the live count, and the commands in
+**Claim ladder: `dogfooded` — and narrower than the word sounds.** `PROJECT.yaml`
+is the authority (`ladder` + `ladder_evidence`, checked by `lib/ops/ladder-claim.ts`,
+which goes red if the claim stops carrying its own evidence and a scope). It means the
+mechanism was walked end to end against production on a dated occasion — real Aurora
+DSQL, real KMS, live-mode Stripe checkout — **not** that Relay is in continuous use.
+
+Six sprints past the H0 MVP have shipped and are **`live-proven`, which is one rung
+below and is not the same claim**: self-serve signup with per-user TOTP, **WebAuthn
+passkeys**, access policies, delegation with consent, verifier deny/abstain, access
+requests, recovery codes, the heartbeat scheduler with an off-Vercel dead-man's switch,
+and **live-mode Stripe billing**. The standby-account direction
+([`docs/standby-architecture.md`](docs/standby-architecture.md)) is ratified and partly
+shipped. Estate and inheritance are **permanently withdrawn**, not pending.
+
+**Not claimed:** no arms-length customer and no arms-length revenue.
+`gates.g1-arms-length-demand` in `PROJECT.yaml` is the open gate that measures it, and
+`market.wtp_evidence` reads `none`.
+
+Full suite green — run `npx vitest --run` for the live count, and the commands in
 `PROJECT.yaml → derived` for the route and page counts; `tsc --noEmit` +
 `next build` clean. (This paragraph used to hardcode the route count. It had
 drifted to under half the real number, in the first document a stranger reads —
-which is why the counts are commands now and not copies.) Deployed live and dogfooded
-end-to-end on Aurora DSQL + AWS KMS, submitted to H0, and awarded
-**Most Impactful**. Specs (the build contract):
+which is why the counts are commands now and not copies. It also opened
+*"Backend complete, all UI built"* — a bare completion claim with no ladder level, in
+the same sentence as the fixed numbers, which is the identical failure in words instead
+of digits. Corrected 2026-08-21.) Specs (the build contract):
 [`.kiro/specs/relay-h0-mvp/`](.kiro/specs/relay-h0-mvp/) and
 [`specs/Relay_H0_Build_Spec_v2.md`](specs/Relay_H0_Build_Spec_v2.md);
 Devpost write-up: [`specs/Relay_Devpost_Submission.md`](specs/Relay_Devpost_Submission.md).

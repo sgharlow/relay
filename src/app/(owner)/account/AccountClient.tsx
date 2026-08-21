@@ -20,6 +20,7 @@
 import { useRouter } from 'next/navigation';
 import PasskeySection from './PasskeySection';
 import StepUpPrompt, { type StepUpFactors } from './StepUpPrompt';
+import { nameSaveIntent } from './name-intent';
 import { PRICE_YEARLY_LABEL } from '../../../../lib/offer';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -110,8 +111,23 @@ export default function AccountClient() {
     }
     return false;
   }
+  /*
+    ⚠️ STARTS EMPTY, AND THAT IS STILL A GAP. Nothing here knows the current
+    display name: there is no `GET /api/account`, and the NextAuth session
+    callback exposes ownerId, isDemo and sessionEpoch but not `display_name`. So
+    the box shows a placeholder whatever the owner is called.
+
+    Until 2026-08-21 that was worse than cosmetic — pressing Save on the empty box
+    PATCHed an empty string and answered "Saved: (cleared — your email will be
+    used)". An owner could delete the name their family recognises in one click,
+    without ever being shown what they were replacing, on the field this section
+    describes as what people see "at the worst possible moment". `nameSaveIntent`
+    now makes clearing something you ask for rather than something you land on.
+  */
   const [name, setName] = useState('');
   const [nameSaved, setNameSaved] = useState<string | null>(null);
+  /** Set by the first empty submit; cleared the moment anything is typed. */
+  const [confirmClear, setConfirmClear] = useState(false);
   const [newCodes, setNewCodes] = useState<string[] | null>(null);
   const [regenerating, setRegenerating] = useState(false);
   const [openingPortal, setOpeningPortal] = useState(false);
@@ -244,6 +260,18 @@ export default function AccountClient() {
     e.preventDefault();
     setError(null);
     setNameSaved(null);
+
+    const intent = nameSaveIntent(name, confirmClear);
+    if (intent === 'confirm-clear') {
+      setConfirmClear(true);
+      setError(
+        'The box is empty, and saving it would remove your name — messages would show your ' +
+          'email address instead. Press Save name again to confirm, or type a name.',
+      );
+      return;
+    }
+    setConfirmClear(false);
+
     const res = await fetch('/api/account', {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
@@ -299,7 +327,14 @@ export default function AccountClient() {
         <form onSubmit={onSaveName} className="mt-4 flex flex-wrap items-center gap-2">
           <input
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(e.target.value);
+              // Typing withdraws the confirmation. Otherwise somebody who pressed
+              // Save on an empty box, thought better of it and typed a name would
+              // have that treated as a confirmed clear.
+              setConfirmClear(false);
+              setError(null);
+            }}
             placeholder="Margaret Chen"
             className="w-64 rounded border border-rule-strong px-3 py-2 text-t2 focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
           />

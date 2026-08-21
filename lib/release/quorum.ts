@@ -18,13 +18,28 @@
  * the same day — an owner can compare a fingerprint phrase and press one button
  * — so `confirmed` is reachable for the first time and the trap is closed.
  *
- * ⚠️ THE FALLBACK IS NOT RETIRED, AND WILL NOT BE. J7-R1 (amended 2026-08-12)
- * permanently guarantees that a verifier who never enrolled can still render a
- * decision by single-use code. That is why eligibility and *answering* are now
- * separate questions: an unconfirmed verifier may still answer, and their answer
- * is recorded, but it does not advance the quorum. Both statements have to hold
- * at once — "you may always decide" and "a quorum is made of people whose
- * identity was actually checked" — and they only fit together this way.
+ * ⚠️ ELIGIBILITY AND *ANSWERING* ARE SEPARATE QUESTIONS. An unconfirmed
+ * verifier's answer is recorded and does not advance the quorum, and they are
+ * not mailed a code at all — `lib/notify/verifier-notice-class.ts` classifies
+ * them `not_counted` and mints nothing. What J7-R1 guarantees, after its second
+ * amendment, is only **no enrolment step at decision time**: nobody is ever
+ * asked to pick a password mid-emergency in order to answer.
+ *
+ * 🔴 THIS PARAGRAPH SAID THE OPPOSITE UNTIL 2026-08-21, and it said it as the
+ * rationale for the rule below. It read: "THE FALLBACK IS NOT RETIRED, AND WILL
+ * NOT BE. J7-R1 (amended 2026-08-12) permanently guarantees that a verifier who
+ * never enrolled can still render a decision by single-use code."
+ *
+ * That sentence was withdrawn by the SECOND amendment the same day
+ * (docs/user-journeys.md:1386-1402), for the reason this file's own rule
+ * creates: once quorum counts only `confirmed` people, a code mailed to an
+ * unconfirmed verifier buys a vote with no effect — full credential risk, zero
+ * function. The classifier shipped that decision; four code comments kept
+ * quoting the superseded version, so a reader of the module that DEFINES
+ * eligibility would have concluded unconfirmed verifiers are still mailed live
+ * codes and must be able to answer. The single-use code path remains, and it
+ * remains for a different reason: a CONFIRMED verifier with no passkey and no
+ * authenticator genuinely needs one.
  *
  * WHY CONFIRMED AND NOT MERELY CLAIMED. Claiming proves somebody spent a code.
  * Confirming proves the owner spoke to them. The claim ticket is a bearer secret

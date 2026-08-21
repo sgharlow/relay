@@ -1,5 +1,68 @@
 # Relay — H0 Build Spec (v2)
 
+> ## ⛔ SUPERSEDED IN PART — sections listed here are NOT the plan (2026-08-21)
+>
+> `PROJECT.yaml` names this file `authoritative_plan`, so this is where a reader starts. That makes
+> its silences expensive: **everything below reads as live plan, and some of it describes a
+> capability the product now refuses at the trust boundary.** Nothing in the body has been rewritten
+> — the sections are the record of what was intended in June 2026 — but a reader must arrive knowing
+> which planks were withdrawn, which were replaced, and which were never ruled on at all.
+>
+> ### 🔴 Withdrawn permanently — do not resurrect from this document
+>
+> **Estate, in every form.** Ruled 2026-08-14 by Steve: `PROJECT.yaml → gates.g2-counsel-opinion.declined`.
+> The gate was closed *by removing the capability it guarded*, not by satisfying it — no counsel
+> opinion will be obtained, and estate is narrowed out of the product rather than held pending one.
+> `ROADMAP.md` §6 is the standing entry; `lib/ops/gates.test.ts` enforces the ordering; `estate` is
+> excluded from `USER_SELECTABLE_TRIGGER_TYPES` (`lib/domain/enums.ts`) so `POST /api/rules` refuses
+> it with a 400. **Reopening requires reversing that decision first, in its own change.**
+>
+> | Section | What it describes |
+> |---|---|
+> | **§2.2** "Estate / death — the permanent handoff" | Estate as a shipped trigger |
+> | **FR13** (§7) | Provider-specific guidance for estate triggers (Apple Legacy Contact, Google Inactive Account Manager, Meta memorialization) — also struck as `requirements.md` 13.4 |
+> | **§8.1** "Estate triggers are non-reversible once RELEASED" | Still true *of the enum*, but no user can select the type |
+> | **§17** "automated death/incapacity signals" · **§18** "Death verification by layered signals: SSA DMF…" | The entire death-verification programme |
+> | **§24** "Estate/trigger activation fee" | A revenue line for a withdrawn capability |
+> | **§25** moat — "death/incapacity signals + RON" | The verification-network moat as stated |
+>
+> ⚠️ **What the withdrawal does NOT cover, stated so nobody mistakes this for cover:** closing the
+> estate *trigger type* does not stop the product releasing after an owner dies. `runHeartbeatSweep`
+> arms every armed release for an overdue owner with no `trigger_type` filter, and nothing
+> auto-closes a released state — so a deceased owner's `emergency` trigger releases and stays
+> released. The mitigations for that are disclosure and copy. See the `declined:` block in
+> `PROJECT.yaml`.
+>
+> ### Superseded by a later ratified decision
+>
+> | Section | Superseded by |
+> |---|---|
+> | **§26** rollout / open-questions table | `ROADMAP.md` §3 — the G1→G5 sprint chain replaced it entirely |
+> | Any paid-acquisition assumption | `PROJECT.yaml → ratified.retire-paid-advertising` (2026-08-16). Paid advertising is abandoned as a channel; the editorial lane (`docs/g1-editorial-lane.md`) replaced it |
+> | **§18** RON-for-estate | `ROADMAP.md` §6 |
+> | **§23 / §24** "wealth manager / estate attorney" channel framing | `docs/g3-partner-dossier.md` — `wealth manager` was removed from the gate's partner categories, because that channel's interest in this category is almost entirely the inheritance moment |
+>
+> ### ⚠️ Named in this spec, still un-ruled — neither survived nor superseded
+>
+> These are **open questions for Steve**, recorded here because "no disposition" is the one status
+> that leaves no trace in `ROADMAP.md` or `PROJECT.yaml` and so reads, from this file, as *planned*.
+> None of them is being built.
+>
+> - **§18 incapacity verification** — healthcare-proxy / medical-POA documentation and an attending-clinician attestation, plus non-estate RON. **The estate withdrawal does not reach this:** incapacity is the *emergency* path, the product's headline wedge. Today N-of-M human verifiers is the entire assurance model for it, and no document says that is the decided end state. (§18's fraud controls — challenge-owner-first, velocity limits — *are* built and need no ruling.)
+> - **§19 legal & compliance programmes** — SOC 2 / ISO 27001, GDPR / CCPA, a DPA, ESIGN/UETA, retention and right-to-erasure, HIPAA. Zero mentions across `ROADMAP.md` and `PROJECT.yaml`. SOC 2 and a DPA are the first two questions a regulated G3 partner's diligence asks, and G3 is the conversation this project is about to start. Account export and delete *are* built (`src/app/api/account/export`, `lib/account/lifecycle.ts`) without being ruled.
+> - **§23 / §24 adjacent editions** — household & family plans (shared vaults, co-owners), and the **Business Continuity Edition** / SMB wedge. Not planned anywhere, while `business` and `travel` remain live in `USER_SELECTABLE_TRIGGER_TYPES` — so a trigger type from an unruled edition is selectable during a demand test whose every ratified positioning is caregiver-only. §23's own advice is *"Nail one before widening."*
+> - **§20 legible trust** — ongoing bug bounty, published security whitepaper, open-source client. The client half is de facto true (this repo is public, and `/security` exists); the rest is unruled. Only "third-party security audit + pen test (G5)" survives in `ROADMAP.md` §2-G.
+> - **§21 standards play** — convening an open digital-continuity access protocol. Optionality, never scheduled, never ruled.
+> - **§22 operations** — SLOs against the multi-region posture, chaos / failover drills, and productionising the hash-chained log into a queryable compliance-grade ledger. `ROADMAP.md` §2-D covers the quarterly *restore* drill (D3); the **failover** the product was judged on has not been re-exercised as a drill since the hackathon, and nothing says whether it should be.
+>
+> ### Still authoritative
+>
+> The positioning and one-liner (§1), the wedge argument (§23 "pick one wedge — the caregiver"), the
+> crypto and zero-knowledge posture (§9), the competitive analysis (§25), and the functional
+> requirements other than FR13. Where this spec and a ratified decision disagree, **the ratified
+> decision wins** — `PROJECT.yaml → ratified` / `gates` is the contract file, and `ROADMAP.md` is the
+> current plan.
+
 *Standby access for the people who'll need it — when you can't be there.*
 
 **Hackathon:** H0: Hack the Zero Stack with Vercel v0 and AWS Databases

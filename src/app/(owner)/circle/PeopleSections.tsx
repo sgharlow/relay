@@ -37,6 +37,34 @@ import PaperOnlyControl from './PaperOnlyControl';
 import type { DrillState } from '../../../../lib/release/drill-claim';
 
 /**
+ * The roles an owner may CHOOSE, which is narrower than the roles that exist.
+ *
+ * 🔴 THIS SELECT RENDERED `VALID_ROLES` RAW UNTIL 2026-08-21, so it offered
+ * `executor` — one click from a Terms page reading "Relay does not offer estate
+ * or inheritance services — there is no death-verified handoff, no executor
+ * role". docs/user-journeys.md defines an executor as "a recipient with role =
+ * executor on the estate trigger", and estate was withdrawn permanently when
+ * gate g2-counsel-opinion was DECLINED on 2026-08-14. The option therefore named
+ * a capability that does not exist and changed nothing when picked.
+ *
+ * Narrowed exactly as USER_SELECTABLE_TRIGGER_TYPES narrows VALID_TRIGGER_TYPES,
+ * and for the reason recorded there: "the product offered a permanent capability
+ * its own Terms disclaimed, on a surface that takes live payments". `VALID_ROLES`
+ * and the DB CHECK are untouched, so a row already stored as `executor` still
+ * validates and still reads back.
+ *
+ * ⚠️ THIS BELONGS IN lib/domain/enums.ts beside USER_SELECTABLE_TRIGGER_TYPES,
+ * and does not live there yet — the helper's proposal form keeps its own copy of
+ * the list, so there are two. role-options.test.ts reads BOTH files, which is
+ * what holds them together until one definition exists.
+ *
+ * ⚠️ ONLY SAFE BECAUSE THIS FORM CREATES. If a role ever becomes editable, the
+ * stored value has to be added back to the list for that row, or saving an
+ * existing executor would silently rewrite them as a recipient.
+ */
+const SELECTABLE_ROLES = VALID_ROLES.filter((r) => r !== 'executor');
+
+/**
  * Someone who has not bound an account yet still needs a way in. `revoked` is
  * excluded: reissuing to a person the owner deliberately removed would undo the
  * removal by accident.
@@ -526,7 +554,7 @@ export function RecipientSection({
             in this row carry placeholders, which name them; a <select> has no
             placeholder, so it reached a screen reader as an unnamed control. */}
         <select aria-label="Their role" style={field} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as RecipientRole })}>
-          {VALID_ROLES.map((role) => (
+          {SELECTABLE_ROLES.map((role) => (
             <option key={role} value={role}>
               {role}
             </option>
@@ -685,8 +713,19 @@ export function VerifierSection({
         <input style={field} placeholder="Name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         <input style={field} type="email" placeholder="Email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
         <input style={field} placeholder="Phone (optional)" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+        {/*
+          was: "Add a verifier". The readiness banner says "No trusted contact
+          yet" and /rules says "Add a trusted contact" — both linking HERE, where
+          the phrase appeared nowhere and the only button offered a different
+          noun. A new owner following their own to-do list arrived and was asked
+          for something with another name, which is the exact
+          learn-an-internal-distinction failure SidebarNav records.
+
+          "verifier" stays everywhere it is the TABLE, the type and the API.
+          Renaming those for a copy problem would be a contract change.
+        */}
         <button type="submit" disabled={busy} style={{ ...primaryButton, opacity: busy ? 0.6 : 1 }}>
-          Add a verifier
+          Add a trusted contact
         </button>
         {error ? (
           <p role="alert" style={{ gridColumn: '1 / -1', fontSize: 'var(--t2)', color: 'var(--clay)' }}>

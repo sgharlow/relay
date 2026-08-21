@@ -35,6 +35,32 @@ export class EntitlementError extends Error {
 
 export type Tier = 'free' | 'paid';
 
+/**
+ * The one page in the product where a free owner can start paying.
+ *
+ * 🔴 THE ITEM CAP SAID "Upgrade" AND NAMED NOWHERE, and that word had been
+ * wrong twice over. Its two siblings below carry the reason in their own
+ * comments — *"'Upgrade' would be a lie until checkout exists — there is
+ * nowhere to upgrade to"* — and when checkout did ship on 2026-08-08 the item
+ * cap was the message nobody revisited, because it had been using the word
+ * since before there was anything to point at.
+ *
+ * The gap was real and total. `POST /api/stripe/checkout` has exactly two
+ * callers: the price card on `/start`, and the buy-intent branch of signup.
+ * `/account` offers only "Manage or cancel subscription", which answers *"There
+ * is no subscription on this account yet."* to the free owner reading it. So an
+ * owner who filled their vault — the moment of most demonstrated value in the
+ * product — was told to do something no screen they could reach would let them
+ * do.
+ *
+ * Exported rather than inlined so a screen can render it as a link instead of
+ * re-typing a path, and so a rename breaks one definition rather than leaking a
+ * 404 into an error message. `entitlements.test.ts` asserts the route it names
+ * actually exists, because a message pointing at a dead end is worse than one
+ * pointing nowhere: it looks like a way out.
+ */
+export const UPGRADE_PATH = '/start';
+
 export const TIER_LIMITS: Record<
   Tier,
   { items: number; recipients: number; verifiers: number; canRelease: boolean }
@@ -103,6 +129,32 @@ export const TIER_LIMITS: Record<
  * because two spellings of this marker is how the corruption happens anyway.
  */
 export const COMP_COHORT = 'founding-comp';
+
+/**
+ * What a comp becomes when the family behind it actually pays.
+ *
+ * 🔴 THE GUARD ONLY RAN IN ONE DIRECTION UNTIL 2026-08-21.
+ * `scripts/grant-founding-tier.ts` refuses to overwrite a row carrying Stripe
+ * identifiers, so a customer can never be turned into a comp. Nothing handled
+ * the reverse: the webhook's UPDATE path wrote tier, status, the Stripe ids and
+ * the period end and touched NEITHER marker, so a comped row that later took a
+ * real annual subscription kept `cohort = founding-comp` and `price_cents = 0`
+ * forever. `isComped` answers true on either marker by design — that is what
+ * makes losing one insufficient to hide a gift — and here it would have hidden
+ * a sale.
+ *
+ * The conversion this affects is not an edge case. A hand-onboarded founding
+ * family deciding, at arm's length, to pay is exactly the evidence
+ * `g1-arms-length-demand` is waiting for, and the one payment the product most
+ * wants to count would have been excluded from every revenue read, silently and
+ * months later.
+ *
+ * NOT null, and not the absence of a cohort. "Was given this, then chose to buy
+ * it" is a different and more interesting fact than "was always a customer",
+ * and erasing it to make a query simpler would throw away the evidence. It is
+ * simply not a COMP marker, which is all `isComped` asks.
+ */
+export const CONVERTED_FROM_COMP_COHORT = 'converted-from-comp';
 
 /** True when this subscription row was granted by hand rather than paid for. */
 export function isComped(row: { cohort?: string | null; price_cents?: number | null }): boolean {
@@ -179,7 +231,12 @@ export async function assertBatchWithinItemCap(ownerId: string, count: number): 
   const room = Math.max(0, limit - existing);
   throw new EntitlementError(
     count === 1
-      ? `The free plan holds ${limit} items. Upgrade to add the rest of the vault.`
+      ? // Names the page, not the abstraction. See UPGRADE_PATH above for why
+        // the bare word "Upgrade" was the wrong instruction for two years'
+        // worth of reasons and one that outlived them.
+        `The free plan holds ${limit} items. Nothing you have already saved is affected — ` +
+        `to add more, start a plan at ${UPGRADE_PATH}, or email us: we are onboarding ` +
+        `founding families by hand.`
       : `The free plan holds ${limit} items and you have ${existing}, so there is room for ` +
         `${room === 1 ? '1 more' : `${room} more`} — this file has ${count}. ` +
         `Nothing was imported. Trim the file, or email us: we are onboarding founding families by hand.`,

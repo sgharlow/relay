@@ -1,0 +1,98 @@
+# The guards that go red on a date, run on that date.
+#
+# 🔴 WHY THIS FILE EXISTS. Three tests in this repo are built to turn red with no
+# code change: `gates.test.ts` when a gate's `ratify_by` passes,
+# `verify-live-freshness.test.ts` when the live walks go stale, and
+# `ladder-claim.test.ts` when a ladder claim's evidence ages past
+# SCOPE_REQUIRED_AFTER_DAYS. Every one of them is a dead-man's switch.
+#
+# Until 2026-08-21 the only pipeline that ran them was `ci.yml`, which fires on
+# push, pull_request and workflow_dispatch — so all three were evaluated only
+# when somebody touched the repo. That is precisely the condition under which a
+# dead-man has nothing to say. They appeared to work because pushes were
+# frequent; the first quiet fortnight would have made them decoration at the
+# moment they mattered. `lib/ops/date-guards-are-scheduled.test.ts` now fails if
+# a dated guard exists that this file does not run.
+#
+# 🔴 THE TRAP THIS FILE INHERITS, AND SO DO THE OTHER THREE MONITORS.
+# sgharlow/relay is a PUBLIC repository, and GitHub automatically disables
+# scheduled workflows in a public repository after 60 days with no repository
+# activity. Every scheduled alarm here — this one, production-canary,
+# scheduler-monitor, delivery-webhook-monitor — therefore shares one failure
+# mode with the thing they exist to catch: a quiet owner. GitHub emails the
+# owner before disabling, so it is not silent, but that email is the only
+# warning and it arrives in the same inbox a holiday is being taken away from.
+# Nothing in this repo can watch for it, because a workflow that has been
+# disabled cannot report that it was. Closing it needs an off-GitHub heartbeat
+# (a Route 53 health check or CloudWatch Synthetics canary alarming to the SNS
+# topic the backup runbook already proved reaches a human) — new infrastructure
+# with a cost, so it is Steve's call and is recorded rather than taken.
+#
+# WHY NOT JUST ADD `schedule:` TO ci.yml. ci.yml installs, typechecks, lints,
+# runs ~3000 tests, builds Next and reads fifty commits of history. Running all
+# of that daily to ask three calendar questions would cost minutes a day and
+# would fail for reasons that have nothing to do with a date — a flaky install,
+# a transient registry error — which is how a scheduled alarm gets muted. This
+# runs only the dated guards, so a red here means a date passed.
+#
+# Feature: relay-h0-mvp (D4)
+
+name: Date guards
+
+on:
+  schedule:
+    # Daily, early UTC. The tightest window any of these guards watches is the
+    # 14-day verify:live staleness threshold, so daily sampling reports on the
+    # day rather than up to a week late, and three test files cost seconds.
+    - cron: '17 6 * * *'
+  workflow_dispatch: {} # so a date question can be asked on demand
+  push:
+    branches: [master]
+    paths:
+      - '.github/workflows/date-guards.yml'
+      - 'lib/ops/gates.test.ts'
+      - 'lib/ops/verify-live-freshness.test.ts'
+      - 'lib/ops/ladder-claim.test.ts'
+
+concurrency:
+  group: date-guards
+  cancel-in-progress: false
+
+jobs:
+  ask:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    # No secrets. These read PROJECT.yaml and a run log out of the repo; if one
+    # of them ever needs a credential, that is the guard to fix, not this file.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # `npm ci` rather than the canary's no-install trick: these guards import
+      # the yaml parser and the entitlements table, so they need the tree.
+      - name: Install
+        run: npm ci
+
+      - name: Ask the dated questions
+        run: |
+          npx vitest --run \
+            lib/ops/gates.test.ts \
+            lib/ops/verify-live-freshness.test.ts \
+            lib/ops/ladder-claim.test.ts
+
+      - name: Explain a failure
+        if: failure()
+        run: |
+          echo "::error::A dated guard went red. This is a finding about the project, not a broken build."
+          echo "Nothing changed in the code — a date passed. Which one:"
+          echo "  gates.test.ts                 a gate in PROJECT.yaml is past its ratify_by with no decision recorded."
+          echo "  verify-live-freshness.test.ts the five live walks have not been run inside the staleness window."
+          echo "  ladder-claim.test.ts          PROJECT.yaml's ladder claim is older than SCOPE_REQUIRED_AFTER_DAYS"
+          echo "                                and no longer says what it still covers."
+          echo ""
+          echo "Each test prints the honest ways to make it green again. Deleting the guard is not one of them."

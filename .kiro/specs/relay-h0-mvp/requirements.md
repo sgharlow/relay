@@ -1,5 +1,27 @@
 # Requirements Document
 
+> ## ⚠️ AMENDED IN PLACE — read this before citing a criterion (2026-08-21)
+>
+> This file is still authoritative for **what the product must do**, and it is the file every source
+> header cites (`Requirements: N.N`). It is *not* a snapshot of what is built. Six criteria were
+> amended on 2026-08-21 after an audit found the spec disagreeing with the shipped code, with the
+> withdrawn estate capability, or with itself. Each amendment is a dated block **beneath** the
+> criterion it corrects — the original wording is quoted inside it, because a spec that silently
+> changes its mind teaches a reader nothing.
+>
+> | Criterion | What changed |
+> |---|---|
+> | **5.2** | The seventh permitted transition, `RELEASED → ARMED`, was missing. Added — it is the edge the reversibility promise rests on. |
+> | **6.6** | Marked unreachable: the grace window is `0` for every selectable trigger type. Mechanism intact, occasion gone. |
+> | **6.7** | 🔴 **Reversed.** It required release on an elapsed timer *below* quorum — the opposite of Req 5.5, Property 12, and every line of the code. |
+> | **10.6** | One dedupe key was specified; two exist, for a structural reason. Both are now named. |
+> | **13.4** | Struck with the estate withdrawal (2026-08-14). |
+> | **13.6** | Flagged **not built and not ruled on**. Steve's court. |
+>
+> **Where this file and `design.md` disagree, neither wins by default — check the code.** That is how
+> 6.7 was settled. `PROJECT.yaml` is authoritative for *build state*; this file is authoritative for
+> *obligation*; `db/migrations/*.sql` is authoritative for the schema.
+
 ## Introduction
 
 Relay is a living-continuity platform that lets owners build an encrypted vault of accounts, credentials, documents, and instructions, then assign scoped, reversible access to trusted recipients under verified trigger conditions. When a trigger fires — a missed check-in, a manual emergency request, or a verified estate event — the system advances through a controlled release state machine (ARMED → PENDING → GRACE → RELEASED) using optimistic concurrency control. Emergencies are reversible: when the owner checks back in, access closes automatically. Estate handoffs are permanent.
@@ -123,7 +145,9 @@ The platform is built for the H0 hackathon, targeting Amazon Aurora DSQL (multi-
 #### Acceptance Criteria
 
 1. THE Release_State_Machine SHALL maintain a single active Release_State row per (owner_id, trigger_type) pair.
-2. THE Release_State_Machine SHALL advance Release_State only through the permitted transitions: `ARMED` → `PENDING`, `PENDING` → `GRACE`, `GRACE` → `RELEASED`, `GRACE` → `ARMED` (false alarm, reversible triggers only), `GRACE` → `CANCELLED` (Owner cancel, reversible triggers only), and `PENDING` → `ARMED` (heartbeat reset, reversible triggers only).
+2. THE Release_State_Machine SHALL advance Release_State only through the permitted transitions: `ARMED` → `PENDING`, `PENDING` → `GRACE`, `GRACE` → `RELEASED`, `GRACE` → `ARMED` (false alarm, reversible triggers only), `GRACE` → `CANCELLED` (Owner cancel, reversible triggers only), `PENDING` → `ARMED` (heartbeat reset, reversible triggers only), and `RELEASED` → `ARMED` (**stand-down after a release, reversible triggers only** — added to this list 2026-08-21).
+
+   > **The seventh edge was missing here from the start, and it is the one the product's headline promise rests on.** This criterion listed six transitions; `PERMITTED_TRANSITIONS` in `lib/release/state-machine.ts` has always held seven, and `design.md`'s permitted-transition table lists the same seven. `RELEASED → ARMED` is what makes "emergencies are reversible" true — without it a recovered owner could never close the access their emergency opened. Omitting it from the acceptance criteria meant the reversibility claim was implemented and property-tested but not *required* by anything, so deleting the edge would have broken no stated criterion. `reversibleOnly: true` is what keeps a permanent trigger permanent on that edge (Req 5.10).
 3. WHILE the Release_State is in GRACE and the Trigger_Type is reversible, THE Release_State_Machine SHALL allow transition from `GRACE` → `CANCELLED` when the Owner explicitly cancels; IF the current state is not GRACE or the Trigger_Type is non-reversible, THEN the cancellation SHALL be rejected.
 4. WHILE the Release_State is in PENDING and the Trigger_Type is reversible, THE Release_State_Machine SHALL allow transition from `PENDING` → `ARMED` when the Owner submits a heartbeat; IF the current state is not PENDING or the Trigger_Type is non-reversible, THEN the reset SHALL be rejected.
 5. WHEN a GRACE → RELEASED transition is evaluated, THE Release_State_Machine SHALL only proceed if `received_confirmations ≥ required_confirmations` AND the Grace_Window has elapsed; IF either condition is not met, THEN the transition SHALL be deferred.
@@ -147,8 +171,18 @@ The platform is built for the H0 hackathon, targeting Amazon Aurora DSQL (multi-
 3. WHEN a Verifier submits a confirmation, THE Verification_Subsystem SHALL record the confirmation with `confirmed_at` and `method` (`app`, `document`, or `manual`), then increment `received_confirmations` on the Release_State row via a CAS update.
 4. THE Verification_Subsystem SHALL enforce idempotency: a single Verifier SHALL contribute at most one confirmation per Release_State instance; duplicate submissions SHALL be silently ignored without modifying `received_confirmations`.
 5. WHEN `received_confirmations` reaches `required_confirmations` AND the Grace_Window has elapsed, THE Verification_Subsystem SHALL initiate the GRACE → RELEASED CAS transition; IF confirmations arrive after the Grace_Window has already elapsed, THE Verification_Subsystem SHALL initiate the GRACE → RELEASED CAS transition immediately upon receiving the threshold confirmation without waiting for any additional condition.
-6. WHEN `received_confirmations` reaches `required_confirmations` but the Grace_Window has not yet elapsed, THE Verification_Subsystem SHALL remain in GRACE and notify the Owner that release is pending the grace window.
-7. WHEN the Grace_Window elapses AND `received_confirmations` is below `required_confirmations`, THE Verification_Subsystem SHALL still initiate the GRACE → RELEASED CAS transition; N-of-M threshold is evaluated at time of first transition attempt, not blocking release past the Grace_Window; no Owner notification SHALL be sent when the Grace_Window elapses without the threshold being met, as the notification was already sent at PENDING entry.
+6. WHEN `received_confirmations` reaches `required_confirmations` but the Grace_Window has not yet elapsed, THE Verification_Subsystem SHALL remain in GRACE and notify the Owner that release is pending the grace window. **(Unreachable in the shipped product as of 2026-08-21 — see below.)**
+
+   > **This criterion describes a state the live product cannot enter.** `graceWindowMs` (`lib/release/triggers.ts`) returns `0` for every reversible trigger and 72 hours only for a non-reversible one; the only non-reversible trigger type is `estate`, and estate was withdrawn permanently on 2026-08-14 (`PROJECT.yaml → gates.g2-counsel-opinion.declined`, `USER_SELECTABLE_TRIGGER_TYPES` in `lib/domain/enums.ts`). So `grace_ends_at` is always already elapsed when GRACE is entered, quorum is the only thing anyone waits for, and the "pending the grace window" notification has no occasion to fire.
+   >
+   > Left in place rather than struck, because the *mechanism* is intact and correct: `canRelease` still checks the window, and re-introducing a non-zero window for any trigger type re-activates this criterion unchanged. It is marked so that its absence from the built product is not read as a missing feature.
+7. WHEN the Grace_Window elapses AND `received_confirmations` is below `required_confirmations`, THE Verification_Subsystem SHALL **leave the Release_State in GRACE and SHALL NOT initiate the GRACE → RELEASED CAS transition**; the quorum is never waived by the passage of time. No Owner notification SHALL be sent when the Grace_Window elapses without the threshold being met, as the notification was already sent at PENDING entry.
+
+   > 🔴 **AMENDED 2026-08-21 — this criterion previously said the opposite, and it was the most dangerous sentence in this document.** It read: *"THE Verification_Subsystem SHALL still initiate the GRACE → RELEASED CAS transition; N-of-M threshold is evaluated at time of first transition attempt, not blocking release past the Grace_Window."* That is a spec instructing the product to open a stranger's vault on a **timer alone**, with no verifier having agreed — the exact failure the N-of-M model exists to prevent, written into the file that source headers are required to cite (`Requirements: N.N`).
+   >
+   > It was never built that way. The code has always required both conditions and still does: `canRelease` in `lib/release/state-machine.ts` returns `false` while `receivedConfirmations < requiredConfirmations`, and `resolveElapsedGrace` in `lib/release/heartbeat.ts` selects due rows with `AND received_confirmations >= required_confirmations` in the WHERE clause, so an under-quorum row is never even fetched. Property 12 (`design.md`) and Requirement 5.5 both state the built rule.
+   >
+   > **The amendment corrects the spec to the code, not the code to the spec.** Recorded here rather than silently overwritten because the danger was that a future reader would "fix" the working code to match this text — a contradiction between two acceptance criteria in one document resolves in favour of whichever one is read second.
 8. THE Verification_Subsystem SHALL never grant Verifiers read access to vault ciphertext or decrypted Vault_Item contents.
 9. IF a Verifier confirmation CAS commit returns SQLSTATE 40001, THEN THE Verification_Subsystem SHALL retry with exponential backoff (base 100 ms, max 3 retries) before reporting failure to the Verifier.
 
@@ -215,7 +249,13 @@ The platform is built for the H0 hackathon, targeting Amazon Aurora DSQL (multi-
 3. WHEN the Ingestion_Service parses a CSV row with all required columns present, THE Ingestion_Service SHALL extract `service_name`, `url`, `username`, and `password` fields (mapping source-specific column names to these canonical fields) and create a Vault_Item of type `login` per row.
 4. THE Ingestion_Service SHALL encrypt each imported Vault_Item using the Envelope_Encryption scheme (Requirement 2) before uploading ciphertext to the server; IF encryption fails for any item, THEN THE Ingestion_Service SHALL abort the entire import operation and SHALL NOT upload any data, including data from items that encrypted successfully before the failure.
 5. WHEN a CSV import completes, THE Ingestion_Service SHALL report the count of successfully imported items, the count of skipped rows, and the specific reason for each skip.
-6. WHEN a CSV row would produce a duplicate (case-insensitive match on `service_name` + `url` combination already present in the vault), THE Ingestion_Service SHALL skip the row and include it in the skip report.
+6. WHEN a CSV row would produce a duplicate, THE Ingestion_Service SHALL skip the row and include it in the skip report. **Two comparisons, two keys, and the difference is deliberate (amended 2026-08-21):** *within the batch being parsed*, a duplicate is a case-insensitive match on `service_name` + `url` (`parseCSV`, `lib/import/csv-parser.ts`); *against items already in the vault*, a duplicate is a case- and whitespace-insensitive match on normalised `title` + `service_name` (`dedupeKey` / `splitDuplicates`, `lib/vault/dedupe.ts`).
+
+   > **This criterion previously specified one key for both** — *"case-insensitive match on `service_name` + `url` combination already present in the vault"* — which is the batch key applied to the vault comparison, and the vault comparison has never used it.
+   >
+   > **The vault-side key cannot be the URL, for a structural reason worth keeping visible.** The server holds ciphertext it cannot read, so the comparison can only use the labels a human sees; `lib/vault/dedupe.ts` records why title + service name is the pair that identifies an account to the person reviewing the result. The two keys resolve differently in real exports — a Chrome export listing one site under two URLs is one item to the vault check and two to the batch check; two distinct accounts at one service with no URL are two items to the batch check and one to the vault check — and that asymmetry is now stated rather than discovered.
+   >
+   > It is also deliberately conservative in one direction only: a missed duplicate is a tidy-up, a wrongly-skipped row is a credential the family does not have during an emergency. And a matched duplicate is **skipped, never overwritten** — `PROJECT.yaml → ratified.import-never-overwrites-a-vault-item` (2026-08-17) rules that import must never become a path that writes over a stored secret, so a re-import that changes nothing reports what it skipped instead of updating it.
 7. IF parsing fails for any individual row (malformed CSV, missing required field, or encoding error), THE Ingestion_Service SHALL skip that row, record the row number and reason in the import report, and continue processing remaining rows.
 8. THE Ingestion_Service SHALL support a minimum batch of 300 rows within a single import operation, completing the full parse-encrypt-upload cycle within 60 seconds.
 9. IF the whole-file parse fails (e.g., file is not valid CSV, file exceeds 10 MB, or encryption setup fails), THEN THE Ingestion_Service SHALL abort the import, surface a user-visible error, and SHALL NOT upload any partial data.
@@ -266,9 +306,15 @@ The platform is built for the H0 hackathon, targeting Amazon Aurora DSQL (multi-
 1. WHEN a Release_State reaches RELEASED, THE Triage_Agent SHALL produce a time-ordered handoff plan for each Recipient scoped to that trigger.
 2. THE Triage_Agent SHALL order plan steps such that Root_Credentials and items with no `depends_on_item_id` (or whose dependency has already been resolved in the plan) appear before items that depend on unresolved credentials; a dependency is considered resolved when it appears earlier in the plan sequence.
 3. THE Triage_Agent SHALL group items into time-horizon buckets: "Do today" (importance_score ≥ 0.7), "This week" (0.4 ≤ importance_score < 0.7), and "Within 30 days" (importance_score < 0.4); Root_Credentials SHALL always be placed in "Do today" regardless of their scored importance_score.
-4. IF the trigger_type of the Release_State is `estate`, THEN THE Triage_Agent SHALL include provider-specific guidance for each relevant Vault_Item: Apple Legacy Contact steps for Apple ID items, Google Inactive Account Manager steps for Google account items, and Meta memorialization steps for Meta account items.
+4. ~~IF the trigger_type of the Release_State is `estate`, THEN THE Triage_Agent SHALL include provider-specific guidance for each relevant Vault_Item: Apple Legacy Contact steps for Apple ID items, Google Inactive Account Manager steps for Google account items, and Meta memorialization steps for Meta account items.~~ **WITHDRAWN 2026-08-14 with the estate capability itself** (`PROJECT.yaml → gates.g2-counsel-opinion.declined`; `ROADMAP.md` §6). The `estate` trigger type cannot be selected — `USER_SELECTABLE_TRIGGER_TYPES` in `lib/domain/enums.ts` excludes it and `lib/ops/gates.test.ts` enforces that — so this criterion's guard condition is unreachable by construction. Kept struck rather than deleted so a reader meeting Build Spec FR13 has the answer here.
 5. THE Triage_Agent SHALL operate exclusively on non-secret metadata and Vault_Item `title` fields; it SHALL never call KMS Decrypt or receive plaintext secret content.
-6. THE Triage_Agent output SHALL be accessible to the Owner for review and annotation before the first release event; Recipients SHALL see the same plan (plus any Owner annotations) at access time.
+6. THE Triage_Agent output SHALL be accessible to the Owner for review and annotation before the first release event; Recipients SHALL see the same plan (plus any Owner annotations) at access time. **⚠️ NOT BUILT, AND NOT RULED ON — flagged 2026-08-21, owner: Steve.**
+
+   > **Measured, not assumed:** `grep -rl "annotat" lib src` reaches only `lib/ai/triage-agent.ts`, `lib/demo-tour/fixtures.ts` and two unrelated tests. There is no owner-facing plan preview and no annotation surface anywhere in the product; the recipient's plan is derived at access time by `rankAccessItems` (`lib/access/dashboard.ts`) from importance and dependency order, with no owner input in the loop.
+   >
+   > **Why this needs saying out loud.** `docs/retired-surface.md` retired `POST /api/ai/triage` and named the criteria that retirement covers — *13.1–13.5 and 13.8*. 13.6 and 13.7 are outside that list, so this criterion is not retired, not built, not in `ROADMAP.md` §2-F, and not gated. It was simply absent, which is the one status that leaves no trace anywhere and is therefore the one worth marking.
+   >
+   > **The ruling is Steve's** and it is one of two: *drop it* (the plan is derived; the owner already shapes it through `criticality` and backup notes, so annotation is a second editing surface for the same thing) or *defer it into `ROADMAP.md` §2-F* behind that section's demand unlock — a real owner asking to shape what their recipient sees. It is not built here in the meantime: building it would be new capability ahead of demand evidence, which §2-F exists to prevent.
 7. THE Triage_Agent SHALL produce a complete plan for a vault of 300 items within 15 seconds of the RELEASED state being committed.
 8. IF the Triage_Agent fails to produce a plan within the 15-second window, THEN THE Access_Dashboard SHALL fall back to presenting Vault_Items sorted by `importance_score` descending with no time-horizon grouping, and SHALL display a warning indicating the handoff plan is unavailable.
 

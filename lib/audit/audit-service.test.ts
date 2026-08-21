@@ -20,6 +20,7 @@ vi.mock('../db/occ', () => ({
 }));
 
 import { query } from '../db/connection';
+import { verifyAuditChain } from './chain';
 import {
   writeAuditEntry,
   getAuditLog,
@@ -52,8 +53,51 @@ interface Row {
 let store: Row[] = [];
 let idCounter = 0;
 
+/**
+ * The next N chain-head reads answer from the store as it was when the freeze
+ * was taken, not as it is now.
+ *
+ * This is what a second writer for one owner actually sees: DSQL is snapshot
+ * isolated, so a head read taken before another writer committed returns the
+ * OLD head, and both writers compute the same next seq. Two serverless
+ * instances, the hourly cron and an owner action, or `assertNoCrossOwner`
+ * running its checks in parallel all produce it.
+ */
+let staleHeadReads = 0;
+let headSnapshot: Row[] = [];
+
+function freezeHeadFor(reads: number): void {
+  headSnapshot = store.slice();
+  staleHeadReads = reads;
+}
+
 function result(rows: unknown[]) {
   return { rows, rowCount: rows.length, command: '', oid: 0, fields: [] } as never;
+}
+
+/** Duplicate primary key, as `pg` surfaces it. */
+function duplicateKey(): Error {
+  return Object.assign(
+    new Error('duplicate key value violates unique constraint "audit_log_pkey"'),
+    { code: '23505' },
+  );
+}
+
+/**
+ * Maps the INSERT's declared column list onto its parameters, rather than
+ * indexing `$1..$n` positionally. Positional decoding would silently mis-read
+ * every column the day a column is added to the front of the statement — which
+ * is exactly the edit that added the deterministic `id`.
+ */
+function insertedColumns(sql: string, params: unknown[]): Record<string, unknown> {
+  const cols = /INSERT INTO audit_log\s*\(([^)]*)\)/i.exec(sql);
+  if (!cols) throw new Error(`Cannot read the column list from: ${sql}`);
+  const names = cols[1].split(',').map((c) => c.trim());
+  const out: Record<string, unknown> = {};
+  names.forEach((name, i) => {
+    out[name] = params[i];
+  });
+  return out;
 }
 
 function installInMemoryDb() {
@@ -62,27 +106,37 @@ function installInMemoryDb() {
 
     // SELECT chain head
     if (sql.includes('ORDER BY seq DESC')) {
-      const ownerRows = store
+      const view = staleHeadReads > 0 ? (staleHeadReads--, headSnapshot) : store;
+      const ownerRows = view
         .filter((r) => r.owner_id === p[0])
         .sort((a, b) => b.seq - a.seq);
       return result(ownerRows.length ? [{ seq: ownerRows[0].seq, entry_hash: ownerRows[0].entry_hash }] : []);
     }
 
+    // Read-back of one row by primary key (the duplicate-key branch).
+    if (/FROM audit_log\s+WHERE id = \$1/i.test(sql)) {
+      return result(store.filter((r) => r.id === p[0]));
+    }
+
     // INSERT new entry
     if (sql.startsWith('INSERT INTO audit_log')) {
+      const c = insertedColumns(sql, p);
       const row: Row = {
-        id: `audit-${idCounter++}`,
-        owner_id: p[0] as string,
-        seq: p[1] as number,
-        actor: p[2] as string,
-        action: p[3] as string,
-        entity: p[4] as string,
-        entity_id: (p[5] as string | null) ?? null,
-        detail: JSON.parse(p[6] as string),
-        prev_hash: p[7] as string,
-        entry_hash: p[8] as string,
-        ts: p[9] as string,
+        id: (c.id as string | undefined) ?? `audit-${idCounter++}`,
+        owner_id: c.owner_id as string,
+        seq: c.seq as number,
+        actor: c.actor as string,
+        action: c.action as string,
+        entity: c.entity as string,
+        entity_id: (c.entity_id as string | null) ?? null,
+        detail: JSON.parse(c.detail as string),
+        prev_hash: c.prev_hash as string,
+        entry_hash: c.entry_hash as string,
+        ts: c.ts as string,
       };
+      // `id UUID PRIMARY KEY` (001_initial.sql). The real table enforces this;
+      // a mock that did not was why a forked chain could pass every test.
+      if (store.some((r) => r.id === row.id)) throw duplicateKey();
       store.push(row);
       return result([row]);
     }
@@ -102,6 +156,8 @@ function installInMemoryDb() {
 beforeEach(() => {
   store = [];
   idCounter = 0;
+  staleHeadReads = 0;
+  headSnapshot = [];
   mockQuery.mockReset();
   installInMemoryDb();
 });
@@ -151,6 +207,70 @@ describe('writeAuditEntry', () => {
     const first2 = await writeAuditEntry('owner-B', { actor: 'b', action: 'y', entity: 'e' });
     expect(first2.seq).toBe(0);
     expect(first2.prev_hash).toBe('0'.repeat(64));
+  });
+
+  it('a writer working from a stale chain head cannot fork the chain', async () => {
+    /*
+      🔴 THE DEFECT THIS WAS WRITTEN FOR. `appendOnce` read MAX(seq) and then
+      INSERTed as two autocommit statements on a pool — there is no BEGIN
+      anywhere in this repo — and the row carried `gen_random_uuid()`. Two
+      writers for one owner that overlapped therefore both read head N and both
+      INSERTed seq N+1 with the same prev_hash, because two inserts of DIFFERENT
+      primary keys do not conflict under snapshot isolation. Nothing raised
+      40001, so `withOccRetry` had nothing to retry.
+
+      The header claimed the opposite ("two concurrent writers for one owner
+      serialize via SQLSTATE 40001 retry") and `lib/auth/signin-attempts.ts`
+      already asserted the truth about the same engine: "Two separate INSERTs
+      never conflict under snapshot isolation."
+
+      What the owner would have seen is the sharpest part: the chain does not
+      lose data, it reports itself BROKEN. `verifyAuditChain` returns
+      prev_hash_mismatch at that seq permanently, so the tamper-evident log
+      accuses the product of tampering after an ordinary race, on an
+      append-only table with no repair path.
+    */
+    const owner = 'race-owner';
+
+    // Both writers read the head from the same snapshot: an empty chain.
+    freezeHeadFor(2);
+    await writeAuditEntry(owner, { actor: 'a', action: 'first', entity: 'e' });
+    await writeAuditEntry(owner, { actor: 'b', action: 'second', entity: 'e' });
+
+    const seqs = store.filter((r) => r.owner_id === owner).map((r) => r.seq).sort();
+    expect(seqs, 'two entries landed at the same seq — the chain has forked').toEqual([0, 1]);
+
+    expect(verifyAuditChain(await getAuditLog(owner))).toEqual({ valid: true, brokenSeq: null });
+  });
+
+  it('recognises its own INSERT replayed by the failover retry, and does not log twice', async () => {
+    /*
+      `query()` in lib/db/connection.ts retries a connection error on the
+      SECONDARY pool with the identical SQL, and ECONNRESET/ETIMEDOUT can arrive
+      AFTER the statement committed. The replay of a deterministic-id INSERT
+      therefore hits its own row.
+
+      The row that came back must be the one already stored — a second entry for
+      one event is a fabricated fact in a log whose whole purpose is being
+      trusted about what happened.
+    */
+    const owner = 'replay-owner';
+    let replayed = false;
+    const inMemory = mockQuery.getMockImplementation()!;
+    mockQuery.mockImplementation(async (sql: string, params?: unknown[]) => {
+      if (!replayed && sql.startsWith('INSERT INTO audit_log')) {
+        replayed = true;
+        await inMemory(sql, params);      // it landed…
+        throw duplicateKey();             // …and the replay found it there
+      }
+      return inMemory(sql, params);
+    });
+
+    const entry = await writeAuditEntry(owner, { actor: 'a', action: 'once', entity: 'e' });
+
+    expect(store.filter((r) => r.owner_id === owner)).toHaveLength(1);
+    expect(entry.seq).toBe(0);
+    expect(entry.entry_hash).toBe(store[0].entry_hash);
   });
 
   it('throws AuditWriteError after exhausting retries on persistent insert failure', async () => {

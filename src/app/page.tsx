@@ -179,13 +179,24 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Recipients arrive by email with a code, not through this page — but
-          someone who was named and went looking should not hit a dead end. */}
+      {/* Someone who was named and went looking should not hit a dead end.
+
+          🔴 THIS PARAGRAPH USED TO SAY "you will have an email with a code in
+          it" — was: the exact assertion /claim was corrected for on 2026-08-16,
+          made one screen earlier. `BETA_INVITE_CHANNEL = 'owner'`
+          (lib/people/invite.ts) is the arm the product DEFAULTS to and it "sends
+          nothing at all and hands the owner a code to read out". So a daughter
+          who was read her code down the phone was told by the front page to look
+          for a message nobody sent, decided she had missed it, and stopped.
+          `lib/ops/claim-copy.test.ts` was written to stop precisely this and its
+          file list was one file, so it never looked here. page.test.ts does.
+
+          The page cannot know which arm the owner used, so it asserts neither. */}
       <section className="mx-auto max-w-3xl px-6 py-14">
         <h2 className="text-t5 font-semibold">Were you named by someone?</h2>
         <p className="mt-2 text-t2 leading-relaxed text-muted">
-          If someone has asked you to be a recipient or a trusted contact, you will have an email
-          with a code in it. Enter it at{' '}
+          If someone has asked you to be a recipient or a trusted contact, they will have given you
+          a code &mdash; they may have read it out, texted it, or written it down. Enter it at{' '}
           <Link href="/claim" className="text-ochre-text underline underline-offset-4">
             relaystandby.com/claim
           </Link>

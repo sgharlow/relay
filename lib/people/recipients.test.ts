@@ -83,8 +83,47 @@ describe('deleteRecipient', () => {
     expect(order).toEqual([
       'cascade-access_policies',
       'cascade-access_rules',
+      'cascade-invitations',
+      'cascade-break_glass_codes',
+      'cascade-recipient_codes',
+      'cascade-access_requests',
       'delete-recipient',
     ]);
+  });
+
+  it('takes back every credential issued FOR this person, before the roster row goes', async () => {
+    /*
+      🔴 REMOVING SOMEBODY DID NOT REVOKE WHAT THEY HELD. Only access_policies
+      and access_rules were cascaded, so an owner who deleted a contact kept
+      that contact's unexpired invitation token hash, their break-glass code
+      hash (a bearer credential with a ONE-YEAR life, 023), any recipient-code
+      rows and any open access request.
+
+      The sharp end is claim.ts: a signed-in standby who later typed the orphan
+      invitation burned it, got a session with no role, and wrote
+      `standby_claimed` into the owner's tamper-evident log for a person who no
+      longer exists. Redemption is refused on the other code paths only because
+      they look the roster row up; the existing-user branch did not.
+
+      Order matters for the same reason it does in deleteAccount: the roster row
+      is what makes these findable, so it goes last.
+    */
+    const order: string[] = [];
+    mockCascade.mockImplementation(async (table: string) => {
+      order.push(table);
+    });
+    mockQuery.mockImplementation(async (sql: string) => {
+      if (sql.startsWith('DELETE FROM recipients')) order.push('recipients');
+      return qResult([]);
+    });
+
+    await deleteRecipient('owner-1', 'r1');
+
+    expect(mockCascade).toHaveBeenCalledWith('invitations', 'r1', 'person_id', 'owner-1');
+    expect(mockCascade).toHaveBeenCalledWith('break_glass_codes', 'r1', 'person_id', 'owner-1');
+    expect(mockCascade).toHaveBeenCalledWith('recipient_codes', 'r1', 'recipient_id', 'owner-1');
+    expect(mockCascade).toHaveBeenCalledWith('access_requests', 'r1', 'recipient_id', 'owner-1');
+    expect(order[order.length - 1], 'the roster row went before its credentials').toBe('recipients');
   });
 });
 

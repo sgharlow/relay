@@ -160,7 +160,20 @@ export function assessPreparedness(input: PreparednessInput): Preparedness {
 
   const gaps: string[] = [];
   if (verifierCount === 0) {
-    gaps.push('nobody who can confirm an emergency is real');
+    /*
+      🔴 was: 'nobody who can confirm an emergency is real'. `missingClause`
+      prefixes every gap with "Missing: ", so this rendered as "Missing: nobody
+      who can confirm an emergency is real." — a double negative, on the second
+      line of the first banner an owner ever sees.
+
+      `baseSentence` below already carries a note about the identical shape on
+      the identical surface ("'nobody could reach none of the 3 things' is a
+      double negative, and it is the sentence a brand-new owner sees first").
+      That fix rewrote one sentence; the gap strings feeding the clause beside it
+      were not looked at. A gap names the thing that is MISSING, never its
+      absence — the second-verifier gap below was always phrased that way.
+    */
+    gaps.push('someone who can confirm an emergency is real');
   } else if (verifierCount === 1) {
     // Named as a gap rather than a blocker: one verifier works, until the one
     // person is on the same flight as you.

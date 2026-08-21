@@ -17,7 +17,7 @@ import { getOwnerSession } from '../../../../../lib/auth/session';
 import { runSimulation } from '../../../../../lib/release/simulate';
 import { ReleaseStateMachine } from '../../../../../lib/release/state-machine';
 import { TriggerError } from '../../../../../lib/release/triggers';
-import { VALID_TRIGGER_TYPES } from '../../../../../lib/rules/access-rules';
+import { isUserSelectableTriggerType } from '../../../../../lib/domain/enums';
 import { readJsonOptional, isResponse } from '../../../../../lib/http/owner-route';
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -41,7 +41,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (isResponse(parsed)) return parsed;
   const body = parsed as { trigger_type?: string };
   const triggerType = body.trigger_type ?? 'emergency';
-  if (!VALID_TRIGGER_TYPES.includes(triggerType as never)) {
+  /*
+    🔴 THIS READ `VALID_TRIGGER_TYPES` UNTIL 2026-08-21 — the DOMAIN enum, which
+    still carries `estate` so rows written before the withdrawal keep parsing.
+    Every other release-starting boundary asks the CLOSED list (rules, policies,
+    initiate, config, the dropdown); this one, which drives ARMED → RELEASED in
+    ten seconds and would do it on a NON-REVERSIBLE trigger, asked the open one.
+
+    Nothing could reach it: the route is demo-gated, and `lib/seed/demo-data.ts`
+    types its release states as `UserSelectableTriggerType`, so `runSimulation`
+    404s at its own state read. That is a gap held shut by two circumstances
+    rather than by a rule — structural safety over convention says the closed
+    list is the only list a release-starting route consults.
+  */
+  if (!isUserSelectableTriggerType(triggerType)) {
     return NextResponse.json({ error: 'BadRequest', message: 'Unknown trigger type' }, { status: 400 });
   }
 

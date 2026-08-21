@@ -28,6 +28,12 @@ CREATE TABLE users (
   id                    UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
   email                 TEXT         NOT NULL,
   auth_sub              TEXT         NOT NULL,        -- OAuth / Clerk subject
+  -- ⚠️ 'suspended' IS NOT REACHABLE. No code sets it — the value appears only in
+  -- comments (signup.ts, the SMS page) — so `status` is permanently 'active' in
+  -- production. That matters because `runHeartbeatSweep` filters on
+  -- `status = 'active'`: the sweep is gated by a value nothing can change, which
+  -- reads like a safety valve and is not one. Suspending an account today means
+  -- writing the path that sets it, not assuming it exists. (Noted 2026-08-21.)
   status                TEXT         NOT NULL DEFAULT 'active'
                         CHECK (status IN ('active', 'suspended')),
   last_active_at        TIMESTAMPTZ  NOT NULL DEFAULT now(),
@@ -66,6 +72,14 @@ CREATE TABLE verifiers (
   name                TEXT         NOT NULL,
   email               TEXT         NOT NULL,
   phone               TEXT,
+  -- ⚠️ LEGACY. Superseded by `standby_state` (migration 020), which is what the
+  -- quorum predicate actually reads (`isEligibleVerifier`). It is still SELECTed
+  -- and surfaced by lib/people/verifiers.ts, so it is not unreferenced — but
+  -- nothing ever CHANGES it, so every verifier reads 'pending' forever, which is
+  -- exactly the misleading part: a verifier whose standby_state is 'confirmed'
+  -- still looks unverified to anyone querying this column. Do not build on it.
+  -- Not dropped: DDL on DSQL is a sysadmin act and this costs nothing at rest.
+  -- (Noted 2026-08-21; lib/people/standby-state.ts carries the full argument.)
   verification_status TEXT         NOT NULL DEFAULT 'pending',
   created_at          TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
@@ -198,8 +212,25 @@ CREATE INDEX ASYNC idx_verifier_confirmations_release ON verifier_confirmations 
 --   entry_hash = SHA-256(prev_hash || canonical_json(entry))
 --   prev_hash  = entry_hash of prior row for same owner_id
 --              = '0000...0' (64 hex zeros) for the first entry per owner
--- Monotonic seq is maintained by reading MAX(seq)+1 inside the same
--- OCC transaction; retried on SQLSTATE 40001.
+-- 🔴 CORRECTED 2026-08-21. These two lines read:
+--   "Monotonic seq is maintained by reading MAX(seq)+1 inside the same
+--    OCC transaction; retried on SQLSTATE 40001."
+-- There is no such transaction. The writer issues the MAX(seq) read and the
+-- INSERT as two autocommit statements on a pool (no BEGIN exists anywhere in
+-- the application), and two INSERTs of DIFFERENT primary keys do not conflict
+-- under snapshot isolation — so nothing ever raised 40001 and the retry had
+-- nothing to retry. `idx_audit_log_owner_seq` below is NON-unique, so the
+-- database did not catch it either, and two rows at one seq make
+-- `verifyAuditChain` report the owner's chain broken permanently.
+--
+-- What holds it now: `id` is DERIVED from (owner_id, seq) by
+-- `auditEntryId()` in lib/audit/chain.ts, so two writers holding the same head
+-- collide on ONE ROW — a write-write conflict DSQL does detect — and the loser
+-- takes the next seq. `DEFAULT gen_random_uuid()` is kept for the rows written
+-- before that date; the chain never covered `id`, so they still verify.
+-- A UNIQUE index on (owner_id, seq) would say it more directly, and is not used
+-- because DSQL may not enforce UNIQUE secondary indexes (see 002, the draft
+-- that was deliberately never applied).
 CREATE TABLE audit_log (
   id         UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
   owner_id   UUID         NOT NULL,

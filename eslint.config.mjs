@@ -96,6 +96,29 @@ const config = [
 
         REVISIT when the React Compiler is actually adopted; the migration is
         the same work either way, and the rule is a good guide for it.
+
+        🔴 THAT REVISIT TRIGGER COULD NOT FIRE, and an undated temporary flag is
+        a permanent flag. "When the React Compiler is actually adopted" names no
+        date, no owner and no event anything watches; it is the shape the claim-
+        discipline rule was written against, sitting inside a paragraph that
+        argues carefully for everything else.
+
+        So the trigger is now a measurement rather than an intention. MEASURED
+        2026-08-21: ELEVEN files, one violation each — HelpingClient,
+        AccountClient, ApprovalsClient, ChallengeClient, CircleClient,
+        RulesPageClient, SeedWizard, TriggersPageClient, VaultDashboardClient,
+        VerifyClient, SignUpForm.
+
+        Re-derive rather than trusting that list:
+
+            npx eslint . --rule '{"react-hooks/set-state-in-effect":"error"}'
+
+        REOPEN THIS DECISION IF THE COUNT GROWS. Eleven components inherited from
+        a tooling upgrade is a migration deferred; a twelfth is a new component
+        written against a rule the repo has switched off, which is a different
+        thing and was never argued for. Whoever adds one either fixes it at its
+        site or amends this paragraph with the reason — and the count above,
+        being a number in prose, is only as good as the command beside it.
       */
       'react-hooks/set-state-in-effect': 'off',
 

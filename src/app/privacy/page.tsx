@@ -26,7 +26,9 @@ export const metadata = {
   description: 'What Relay stores, what it cannot read, and who it shares with.',
 };
 
-const UPDATED = '12 August 2026';
+// Moves with the content — see the note in src/app/terms/page.tsx and the
+// guard in src/app/terms/legal-pages.test.ts.
+const UPDATED = '21 August 2026';
 
 export default function PrivacyPage() {
   return (
@@ -137,10 +139,20 @@ export default function PrivacyPage() {
             signed in, never the one on the roster row, or this page becomes
             false and the campaign becomes non-compliant in the same stroke.
           */}
+          {/*
+            🔴 "with the box ticked" DESCRIBED A BOX THAT DOES NOT EXIST. There is
+            no opt-in screen, no field collects a mobile number, and /sms says
+            Relay has never sent a text. The rule below is right and is the one
+            any future screen must implement — it was simply written as though
+            it already had been. Qualified, not deleted: the disclosure itself
+            is what A2P review looks for (lib/ops/sms-disclosure.test.ts).
+          */}
           <p className="mt-2">
-            <strong className="font-semibold text-ink">Text messages.</strong> We only text someone
-            who gave us a mobile number themselves, from inside their own signed-in account, with the
-            box ticked. It is off unless chosen, and can be switched off there or by replying STOP.{' '}
+            <strong className="font-semibold text-ink">Text messages.</strong> Text messaging is not
+            switched on yet and Relay has never sent one; this is the rule it will run under. We
+            would only text someone who gave us a mobile number themselves, from inside their own
+            signed-in account, having chosen it. It would be off unless chosen, and could be switched
+            off there or by replying STOP.{' '}
             <strong className="font-semibold text-ink">
               A number somebody else entered for you is never used for text messages
             </strong>{' '}
@@ -238,11 +250,51 @@ export default function PrivacyPage() {
             everything first. It removes your vault, the people you listed, your passkeys and any
             emergency codes you had issued. If you would rather we did it, email us.
           </p>
+          {/*
+            🔴 THIS SAID "Two things deliberately survive" AND LISTED TWO, and
+            three more did. A closed count is the sentence that goes quietly
+            wrong when a fourth thing appears — so it is an open list now.
+
+            What was missing:
+              · email_delivery_events. Every owner's and contact's address, in
+                plaintext, deliberately NOT owner-scoped (migration 027: "the
+                fact lives against an ADDRESS"), and no DELETE anywhere targets
+                it. So the addresses of "the people you listed" outlived the
+                deletion indefinitely, on a page saying they were removed.
+              · caregiver_leads — an address and a free-text note from the
+                interest form, with no deletion path, and this page had never
+                mentioned that form existing at all.
+              · backups, at 35 days (docs/backup-restore-runbook.md).
+
+            lib/account/lifecycle.ts sets the standard: "The promise and the
+            implementation must agree, so the code follows the document."
+            DELETING the delivery records is a retention decision rather than a
+            copy one — a deleted delivery record is also a deleted bounce
+            history, which is what stops us mailing a dead address forever — so
+            it is not taken here. Saying what is true is not a decision.
+          */}
           <p className="mt-2">
-            Two things deliberately survive. The append-only event log described above stays, and it
-            contains no secret material. And if you were standing by for someone else, their record
-            of you stays on their list — unlinked from you and marked as no longer set up — because
-            deleting it would quietly shrink their plan without telling them.
+            Some things deliberately survive, and this is the whole list. The append-only event log
+            described above stays, and it contains no secret material. If you were standing by for
+            someone else, their record of you stays on their list — unlinked from you and marked
+            as no longer set up — because deleting it would quietly shrink their plan without
+            telling them.
+          </p>
+          <p className="mt-2">
+            Two more survive that are worth naming plainly. We keep{' '}
+            <strong className="font-semibold text-ink">delivery records</strong> — the fact that an
+            email reached, bounced from, or was refused by a particular address, including addresses
+            of people you listed. They are held against the address rather than against your
+            account, so closing your account does not remove them; they are what stops us sending
+            forever to a mailbox that no longer exists. And{' '}
+            <strong className="font-semibold text-ink">backups</strong> of the database are kept for
+            35 days, so a deletion is gone from every copy only once that window has passed.
+          </p>
+          <p className="mt-2">
+            Separately: if you used the{' '}
+            <strong className="font-semibold text-ink">interest form</strong> on the caregivers
+            page, the address and note you sent are stored so we can reply. That is not part of an
+            account and is not removed by closing one — email us and we will delete it.
           </p>
         </section>
 

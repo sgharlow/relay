@@ -135,9 +135,21 @@ section exists in advance.
 - **Tell people what to do**: re-enrol the authenticator, review `/audit` for their own account
   (they can verify the chain themselves — the client-side verifier exists), and rotate credentials
   for any account whose *title* being known matters.
-- **The customer contact route is `hello@relaystandby.com`.** ⚠️ It has no stated response
-  commitment (`PROJECT.yaml → deferred → support-has-an-address-and-no-commitment`), so if it is
-  going to carry an incident it needs one that day.
+- **The customer contact route is `hello@relaystandby.com`, and the commitment on it is
+  `SUPPORT_RESPONSE_TIME` in `lib/contact.ts` — one business day.** Ruled by Steve 2026-08-20
+  (`PROJECT.yaml → deferred → support-has-an-address-and-no-commitment`, C6, closed), chosen to be
+  honest on a solo operator's worst week rather than flattering on his best. `/about` and the
+  support form both render it from that one definition, and
+  `lib/ops/support-commitment.test.ts` fails the build if a second surface states a different
+  number — so **do not write a rival figure into an incident notice.** If the incident warrants
+  faster, say so as an explicitly temporary commitment scoped to this incident ("while this is
+  open we are answering within N hours"), and let it lapse back rather than editing the standing
+  one under pressure.
+
+  > **Was:** *"It has no stated response commitment … so if it is going to carry an incident it
+  > needs one that day."* True when this runbook was written; C6 was ruled the same day and this
+  > line was not updated, so the step told an operator at 3am to invent a number that already
+  > existed. Corrected 2026-08-21.
 
 ## Step 4 — afterwards
 

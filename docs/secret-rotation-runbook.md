@@ -1,8 +1,15 @@
 # Secret rotation runbook
 
-> **Written 2026-08-20.** Eleven secrets sit in Vercel with no recorded age, no procedure and no
-> owner, and nothing in `docs/` rotated anything. Recorded as
+> **Written 2026-08-20.** Every secret in the table below — most of them Vercel-held — had no
+> recorded age, no procedure and no owner, and nothing in `docs/` rotated anything. Recorded as
 > `PROJECT.yaml → deferred → no-secret-rotation-runbook`.
+>
+> ⚠️ **Was: "Eleven secrets sit in Vercel."** Corrected 2026-08-21, because that number and the
+> table under it had already drifted apart three ways: this line said eleven, the "Last set" note
+> below said nine, `PROJECT.yaml` said twelve, and the table has a different number of rows again.
+> **The count is the rows — count them there.** This is the repo's own volatile-numbers rule
+> failing on the very document written to stop a different kind of forgetting: a number restated
+> in prose is a second copy, and the second copy is the one nobody updates.
 >
 > This is the operational half of the arc `docs/least-privilege-cutover.md` closed on identity.
 > That work made it impossible for the live site to obtain database admin; this one answers the
@@ -69,10 +76,16 @@ happened.
 > is unusually *safe*, because production does not hold it: the blast radius is this laptop's ability
 > to run migrations, not the live site.
 >
-> The nine remaining `unknown` rows are Vercel-held. Vercel records a last-updated timestamp per
-> environment variable, so those are discoverable too — `vercel env ls` once the CLI is installed
-> (`npm i -g vercel`), or read off the dashboard. Tracked as
-> `PROJECT.yaml → deferred → every-secrets-age-is-unknown` (D11).
+> **Every row still reading `unknown` is Vercel-held** — the three dated cells are the two AWS
+> access-key rows and the admin key, which is the whole of what IAM can answer for you. Vercel
+> records a last-updated timestamp per environment variable, so the rest are discoverable too —
+> `vercel env ls` once the CLI is installed (`npm i -g vercel`), or read off the dashboard.
+> Tracked as `PROJECT.yaml → deferred → every-secrets-age-is-unknown` (D11).
+>
+> ⚠️ **Was: "The nine remaining `unknown` rows."** Corrected 2026-08-21 — same defect as the count
+> in the header, one paragraph apart. The lookup above is also **not** the CLI-side workaround
+> D11's note calls it: `@aws-sdk/client-iam` **is** a devDependency of this repo (`package.json`),
+> which is why the `npx tsx` one-liner works and why filling those three cells cost nothing.
 
 ---
 
@@ -159,6 +172,21 @@ land, renewals do not update, and the product's view of who is paying quietly dr
   subscription) and confirm the row moved. **A 200 from the endpoint proves nothing** — an
   unverified callback is *supposed* to be refused, so the failure and the success look similar from
   outside.
+
+> 🔴 **NOTHING IN THIS REPO WOULD TELL YOU.** There is no health route for Stripe under
+> `src/app/api/health`, and `lib/ops/canary.ts` only proves an *unsigned* webhook is refused —
+> which is the same answer a correctly-configured endpoint and a broken secret both give. The only
+> independent signal is **Stripe's own endpoint-failure notification email to the account owner**,
+> and this is written down because it was the monitor and no document named it.
+>
+> ⚠️ **Unconfirmed (2026-08-21, Steve's court):** nobody has checked that those notifications are
+> switched on, and the Stripe account is **shared** with report-bridge and skillcrossroads, so
+> "the account owner" is not a Relay-specific inbox. One dashboard look closes this.
+>
+> A real send-vs-heard dead-man is deliberately **not** built. At one annual subscription — the
+> owner's own — a reconciliation monitor has no population to be meaningful over, and building it
+> now would be a guard whose green light means nothing. Revisit when the paywall flips or a second
+> paying customer exists, whichever comes first.
 
 ## §5 — the AWS keys · the whole product
 

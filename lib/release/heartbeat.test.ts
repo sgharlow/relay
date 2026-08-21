@@ -274,6 +274,38 @@ describe('resolveElapsedGrace', () => {
 
     await expect(resolveElapsedGrace(machine as never, new Date())).resolves.toBe(1);
   });
+
+  /*
+    🔴 A FAILED RELEASE LEFT NO TRACE AT ALL. The catch here read "a concurrent
+    writer moved the row; the next sweep re-evaluates it" and did nothing else —
+    no counter, no log line. That reasoning holds for a lost CAS race, and for
+    NOTHING ELSE: a schema change, a bad deploy of state-machine.ts, OCC
+    exhaustion on every row, all landed in the same silent branch, hourly,
+    forever. Meanwhile `recordSchedulerRun` wrote a healthy row, because it only
+    ever carried the ARMED→PENDING counters.
+
+    `getSchedulerHealth` now derives the stuck rows from the database and is the
+    alarm. This is the other half: the moment of failure, in the log, with the
+    row id, so the operator reading the alarm can find out WHY rather than only
+    that. A sweep whose every release failed must not look like a quiet one.
+  */
+  it('writes the failure to stderr instead of swallowing it silently', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        { id: 'rs-boom', owner_id: 'o', trigger_type: 'emergency', version: 1, received_confirmations: 1, required_confirmations: 1 },
+      ],
+      rowCount: 1,
+    } as never);
+    const machine = { transition: vi.fn().mockRejectedValue(new Error('CAS mismatch')) };
+    const stderr = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
+
+    await expect(resolveElapsedGrace(machine as never, new Date())).resolves.toBe(0);
+
+    const written = stderr.mock.calls.map((c) => String(c[0])).join('');
+    expect(written).toContain('rs-boom');
+    expect(written).toContain('CAS mismatch');
+    stderr.mockRestore();
+  });
 });
 
 /**

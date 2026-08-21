@@ -163,9 +163,11 @@ channel, whether they opened and claimed it, whether they hold a passkey, and
 what the mail provider last said about their address. Never a code or a phrase
 — states and dates only.
 
-**Give a founding family the paid tier.** The free vault is ten items; a real
-one is twenty-five. Both cap messages already say "email us, we are onboarding
-founding families by hand", and this is the hand:
+**Give a founding family the paid tier.** The free vault is ten items; **a paid
+vault has no item cap** — `TIER_LIMITS.paid.items` in `lib/billing/entitlements.ts`
+is `Number.POSITIVE_INFINITY`, and recipients and verifiers are uncapped with it.
+Both cap messages already say "email us, we are onboarding founding families by
+hand", and this is the hand:
 
 ```
 npx tsx --env-file=.env.local scripts/grant-founding-tier.ts <their-email>
@@ -174,6 +176,13 @@ npx tsx --env-file=.env.local scripts/grant-founding-tier.ts <their-email> --rev
 
 It refuses to touch anybody with a Stripe subscription, and marks the grant so
 it can never be counted as revenue — the number G1 rests on.
+
+> **Was:** *"The free vault is ten items; a real one is twenty-five."* Corrected 2026-08-21.
+> Twenty-five is the **demo** fixture count (`scripts/reset-demo.ts` seeds a 25-item vault), and
+> `scripts/grant-founding-tier.ts` uses it correctly as that comparison — this doc borrowed the
+> number and reported it as a paid ceiling. An operator reading it would have told a founding
+> family they were getting twenty-five items while the grant gave them unlimited ones. The tier
+> limits have exactly one definition; state it from there or do not state it.
 
 **Prove the mail channel still works.** Sends one real message to an address you
 control and waits for the provider's event to come back:

@@ -245,8 +245,19 @@ async function escalateEach(
           process.stderr.write(`[escalation] verifier notices failed: ${String(err)}\n`);
         }
       }
-    } catch {
-      // Independent owners; the next reader or sweep re-evaluates this one.
+    } catch (err) {
+      /*
+        Independent owners; the next reader or sweep re-evaluates this one.
+
+        🔴 AND THAT WAS ALL IT DID UNTIL 2026-08-21 — the same silent-swallow as
+        `resolveElapsedGrace`, in the same cron, one leg over. The sweep's own
+        ledger row records only the ARMED→PENDING counters, so an escalation
+        that failed for every request on every run still reported healthy: the
+        owner never answered, the verifiers were never asked, and nothing
+        anywhere said so. The stderr line is what turns "it stopped working" into
+        something an operator can find.
+      */
+      process.stderr.write(`[escalation] request ${id} failed to escalate: ${String(err)}\n`);
     }
   }
   return results;

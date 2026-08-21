@@ -23,10 +23,27 @@
  * Feature: relay-h0-mvp
  */
 
+import { randomUUID } from 'crypto';
+
 import { query } from '../db/connection';
 
 /** Bounded so a hostile or chatty provider cannot write essays into our rows. */
 export const MAX_DETAIL_CHARS = 200;
+
+/**
+ * What marks an attempt row as a send the provider REFUSED rather than accepted.
+ *
+ * A prefix rather than a column, deliberately. `email_send_attempts` holds
+ * `provider_id TEXT NOT NULL` and nothing else meaningful (migration 031), and a
+ * schema change is a sysadmin act that lands separately from the code that needs
+ * it — so a fix that waits for a migration is a fix that is not running. Resend
+ * ids are UUIDs, so nothing the provider can ever return collides with this, and
+ * `webhook-health.ts` splits the two populations on it.
+ */
+export const REFUSED_PREFIX = 'refused:';
+
+/** Class names are bounded so no provider text can grow into these rows. */
+export const MAX_ERROR_CLASS_CHARS = 40;
 
 /**
  * The events we act on. Resend emits more; anything unrecognised is still
@@ -191,6 +208,57 @@ export async function recordSendAttempt(providerId: string): Promise<void> {
     await query(`INSERT INTO email_send_attempts (provider_id) VALUES ($1)`, [id.slice(0, 128)]);
   } catch (err) {
     process.stderr.write(`[notify] could not record send attempt: ${String(err)}\n`);
+  }
+}
+
+/**
+ * Records that the provider REFUSED one message, or could not be asked at all.
+ *
+ * 🔴 THE HALF THE SWITCH COULD NOT SEE, until 2026-08-21. `recordSendAttempt`
+ * above runs only after Resend has accepted a message, so the failure the
+ * rotation runbook was most confident about — a revoked or wrongly-rotated
+ * `RESEND_API_KEY` — produced NO row of any kind. No attempt, no event, and
+ * therefore `ripeSends = 0`, which `webhook-health.ts` correctly reads as "a
+ * quiet week" and reports healthy. Add a suspended shared account, a sending-
+ * domain restriction, or any 4xx, and the same silence follows: all mail stops,
+ * `/api/health/scheduler` stays 200 because the transitions themselves succeed,
+ * and the only trace is a `[notify] email … failed` line in a Vercel log that
+ * ages out inside a day. `docs/secret-rotation-runbook.md` asserted the reverse.
+ *
+ * ⚠️ ONLY THE PROVIDER'S OWN REFUSALS BELONG HERE. Relay's own pre-flight guards
+ * — the reserved-TLD refusal and the non-production allow-list in `email.ts` —
+ * are working correctly when they refuse, they fire on every local run, and
+ * `demo@relay.test` triggers one in production by design. Recording those would
+ * be a monitor that alarms about itself, which is how monitors get muted.
+ *
+ * ⚠️ NO ADDRESS, EVER. Provider error text quotes the address it refused, and
+ * this table is deliberately the least personal thing Relay stores. So the input
+ * is reduced to a bounded class name, and anything shaped like an address is
+ * refused outright rather than escaped — a rule about what CAN be written beats
+ * a rule about what callers should pass.
+ *
+ * Best-effort in the same direction as `recordSendAttempt`: a dropped row makes
+ * the switch slightly less likely to fire, never more, and this runs on a path
+ * that is already handling an error.
+ */
+export function refusalMarker(errorClass: string): string {
+  const raw = errorClass.trim().toLowerCase();
+  const cls = raw.includes('@')
+    ? '' // Address-shaped: not a class name, and not something to sanitise into one.
+    : raw
+        .replace(/[^a-z0-9_]+/g, '_')
+        .replace(/^_+|_+$/g, '')
+        .slice(0, MAX_ERROR_CLASS_CHARS);
+  return `${REFUSED_PREFIX}${cls || 'unknown'}:${randomUUID()}`;
+}
+
+export async function recordSendRefusal(errorClass: string): Promise<void> {
+  try {
+    await query(`INSERT INTO email_send_attempts (provider_id) VALUES ($1)`, [
+      refusalMarker(errorClass),
+    ]);
+  } catch (err) {
+    process.stderr.write(`[notify] could not record send refusal: ${String(err)}\n`);
   }
 }
 

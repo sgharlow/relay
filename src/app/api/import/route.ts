@@ -19,8 +19,24 @@ import { query } from '../../../../lib/db/connection';
 import { splitDuplicates } from '../../../../lib/vault/dedupe';
 import { runIntake } from '../../../../lib/ai/intake-agent';
 import { assertBatchWithinItemCap, EntitlementError } from '../../../../lib/billing/entitlements';
+import { coverNewItem } from '../../../../lib/rules/policy-materialize';
 
 const MAX_BATCH = 1000;
+
+/** How many skipped rows are named back to the owner. See `duplicateRows`. */
+const DUPLICATE_ROWS_REPORTED = 50;
+
+/**
+ * Above this many new items, policy coverage is left to the Rules screen.
+ *
+ * `coverNewItem` reloads the owner's whole item list and policy set per call, so
+ * covering a batch inline is quadratic. At MAX_BATCH that is two thousand round
+ * trips inside one request — a timeout, which would report a successful import
+ * as a failure and is worse than the gap being closed. A batch variant belongs
+ * with the policy code; until it exists this is bounded and, crucially, SAID:
+ * `coverageDeferred` goes back to the client rather than being swallowed.
+ */
+const COVERAGE_INLINE_MAX = 100;
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   // `req` so this counts as a check-in ([A4]). Filling a vault is the most
@@ -67,11 +83,41 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // used to double the whole vault, which matters because the recipient's
   // access plan is RANKED — a vault full of pairs makes the ranking meaningless
   // and doubles the length of the screen someone reads during an emergency.
-  const existing = await query<{ title: string; service_name: string | null }>(
-    `SELECT title, service_name FROM vault_items WHERE owner_id = $1`,
+  //
+  // ⚠️ `url` IS SELECTED AND THAT IS LOAD-BEARING (2026-08-21). Matching used
+  // to be title + service_name alone, and the import client writes
+  // `title: row.service_name`, so every row from an export has title ===
+  // service_name: two Google logins were one key, and the second credential was
+  // dropped. lib/vault/dedupe.ts now lets an address SEPARATE two rows sharing a
+  // label — but only if it can see one on both sides. Drop `url` from this
+  // SELECT and every stored item reads as address-less, the label decides again,
+  // and the fix quietly covers the in-batch case only.
+  const existing = await query<{ title: string; service_name: string | null; url: string | null }>(
+    `SELECT title, service_name, url FROM vault_items WHERE owner_id = $1`,
     [auth.ownerId],
   );
   const { fresh, duplicates } = splitDuplicates(validated, existing.rows);
+
+  /*
+    WHICH rows were skipped, not just how many.
+
+    "left 1 already in your vault untouched" tells an owner that something did
+    not arrive and gives them no way to find out what. J2 step 3 asks for every
+    skip reported with its row number and reason; this is the duplicate half of
+    that (the parser already reports unreadable rows with theirs).
+
+    Reference identity, not a recomputed key: `duplicates` holds the very objects
+    from `validated`, so the row number is exact and no second key derivation can
+    drift from the first.
+  */
+  const skipped = new Set<unknown>(duplicates);
+  const duplicateRows = validated
+    .map((v, i) => ({ row: i + 1, title: v.title, v }))
+    .filter((r) => skipped.has(r.v))
+    .map(({ row, title }) => ({ row, title }))
+    // A 1000-row export that is entirely a re-import would otherwise answer with
+    // 1000 rows nobody reads. The count above stays exact either way.
+    .slice(0, DUPLICATE_ROWS_REPORTED);
 
   /*
     🔴 THE FREE-TIER CAP WAS NOT ENFORCED HERE AT ALL until 2026-08-13. Only
@@ -97,9 +143,56 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   let imported = 0;
+  const createdIds: string[] = [];
   for (const input of fresh) {
-    await createItem(auth.ownerId, input);
+    const created = await createItem(auth.ownerId, input);
     imported++;
+    if (created?.id) createdIds.push(created.id);
+  }
+
+  /*
+    🔴 J4-R4 RAN ON THE OTHER PRODUCER ONLY, and that producer's comment named
+    this one. src/app/api/vault/items/route.ts calls `coverNewItem` under "so an
+    import cannot land silently uncovered (J4-R4)", and lib/rules/policy-materialize.ts
+    describes itself as covering an item "so an imported item is not silently
+    uncovered" — while /api/import, the import, called neither. Both comments
+    described a behaviour that existed on one route out of two.
+
+    docs/user-journeys.md states the consequence plainly: "every newly imported
+    item lands uncovered by default, silently". An owner accepts the policies
+    Relay proposed, imports their password manager, and none of it is reachable
+    by anyone they named. Nothing on the screen said so, because nothing knew.
+
+    Best-effort and AFTER the writes, in the shape of the intake call below: the
+    items are safely stored either way, and a matching failure must not turn a
+    successful import into an error somebody reads as "nothing saved".
+  */
+  let policiesMatched = 0;
+  let coverageDeferred = false;
+  if (createdIds.length > 0) {
+    try {
+      // One cheap probe first. Most owners hold no policies at all, and covering
+      // against an empty set is N round trips to learn nothing.
+      const anyPolicy = await query<{ id: string }>(
+        `SELECT id FROM access_policies WHERE owner_id = $1 LIMIT 1`,
+        [auth.ownerId],
+      );
+      if (anyPolicy.rows.length > 0) {
+        if (createdIds.length > COVERAGE_INLINE_MAX) {
+          coverageDeferred = true;
+        } else {
+          for (const id of createdIds) {
+            policiesMatched += (await coverNewItem(auth.ownerId, id)).policiesMatched;
+          }
+        }
+      }
+    } catch (err) {
+      // Reported, not silent: the owner is told coverage did not complete, which
+      // is the half of J4-R4 that says they SHALL be notified.
+      coverageDeferred = true;
+      process.stderr.write(`[import] policy coverage failed for ${auth.ownerId}: ${String(err)}
+`);
+    }
   }
 
   // Score what just arrived. Until 2026-08-08 only the guided seed called the
@@ -122,10 +215,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     actor: `owner:${auth.ownerId}`,
     action: 'vault_items_imported',
     entity: 'vault_item',
-    detail: { count: imported, duplicatesSkipped: duplicates.length },
+    detail: { count: imported, duplicatesSkipped: duplicates.length, policiesMatched, coverageDeferred },
   });
 
   // Report the skips. A silent skip is its own defect: the owner counted the
   // rows in their export and will conclude the import lost credentials.
-  return NextResponse.json({ imported, duplicatesSkipped: duplicates.length });
+  return NextResponse.json({
+    imported,
+    duplicatesSkipped: duplicates.length,
+    duplicateRows,
+    policiesMatched,
+    coverageDeferred,
+  });
 }

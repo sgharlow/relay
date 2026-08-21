@@ -291,6 +291,18 @@ gates:
       `customer-used` needs an arms-length user and `revenue-proven` needs arms-length money, which
       is precisely what this gate now measures."
     revisit: "at every /daily-priority from 2026-10-01"
+    editorial_instrument:
+      ratified: 2026-08-20
+      by: steve
+      record: ratified.g1-editorial-thresholds-ratified
+      srcs: "ed-<outlet>, one per placement; only ed-* traffic feeds this instrument"
+      denominator: caregiver_qualified on /caregivers (qualifiedProps)
+      numerator: caregiver_intent (a click on the priced CTA; the Stripe branch emits it)
+      pass: ">= 6% click-to-intent, cumulative across placements, judged at N >= 50"
+      kill: "< 2% after N >= 150 cumulative -> park D2C; the B2B2C branch (g3) continues"
+      no_read_floor: "no judgment either way below N = 50; a placement driving < 10 qualified
+        visits is a DISTRIBUTION failure recorded in g1-flight-log.md, not a demand reading"
+      proposal: docs/g1-editorial-threshold-proposal.md
 
   - id: g2-counsel-opinion
     metric: legal_opinion_on_fiduciary_custodian_status (RUFADAA/estate access — REQUIRED before any paying estate customer)
@@ -725,10 +737,14 @@ ratified:
       lib/ops/security-headers.test.ts is the negative one: it fails if the
       ENFORCING header ever grows a directive that could white-screen the product,
       because merging the two headers is a one-word change."
-    note: "⚠️ /api/csp-report still only writes to stderr, so the 'observe then
-      enforce' plan for script-src has no observer. Deliberate for now — routing
-      it through lib/ops/incident.ts was offered and declined."
-
+    note: "⚠️ SUPERSEDED 2026-08-20 — see `deferred.the-csp-report-sink-expires-before-anyone-reads-it`
+      (D9), which closed with option C. This note read '/api/csp-report still only writes to stderr,
+      so the observe-then-enforce follow-on has no evidence behind it', and every clause of that was
+      true when written and false the same week: migration 038 created `csp_reports` in BOTH
+      regions, `lib/ops/csp-report-store.ts` writes to it fail-open, and a real browser delivered a
+      row on 2026-08-20. The follow-on now HAS a sink. Kept rather than overwritten because the
+      reasoning that produced this decision is still the reasoning — only its blocker moved.
+      Original note preserved in the D9 entry, which quotes it."
   - id: landing-copy-third-person
     date: 2026-08-14
     owner: steve
@@ -1133,38 +1149,33 @@ ratified:
       product, separate measurement, and the portfolio rule against sharing per-product
       billing surfaces applies."
 
-  - id: g1-editorial-thresholds-deferred
-    date: 2026-08-18
+  - id: g1-editorial-thresholds-ratified
+    date: 2026-08-20
     owner: steve
-    decision: "Do NOT ratify the editorial thresholds now. Leave
-      docs/g1-editorial-threshold-proposal.md as a DRAFT and revisit it on 2026-11-30."
-    what_stays_draft: "pass >= 6% click-to-intent among ed-* qualified visitors judged at N >= 50,
-      kill < 2% after N >= 150 cumulative, no read below N = 50. Numbers unchanged — this decision
-      is about WHEN they become binding, not about what they are."
-    rationale: "Steve's call. The numbers were derived against a population that does not exist
-      yet: zero editorial visitors have ever arrived, so every figure in the proposal is a prior
-      rather than a measurement. 11-30 sits after the first placement plausibly lands
-      (mid-October to mid-November per gates.g1-arms-length-demand's own derivation) and a month
-      before that gate falls due, so the ratification happens with at least some real traffic
-      shape in view rather than none."
-    # 🔴 THE CONFLICT THIS DECISION CREATES, NAMED RATHER THAN LEFT TO BE DISCOVERED.
-    conflict: "The proposal's own reason for existing is that the thresholds must be on record
-      BEFORE the first placement goes live — 'so the number cannot be reverse-engineered from
-      whichever result appears' (gates.g1-caregiver-wtp.instrument_retired.thresholds_do_not_
-      transfer, the open task this defers). Deferring to 11-30 does NOT suspend that rule, and a
-      placement landing in October would collide with it head-on: whoever ratified afterwards
-      would be choosing a number while already able to see the result it judges.
-      ⚠️ The two are only compatible under one reading, and it is the reading taken here: a
-      threshold may be deferred, but a LANE may not be declared without one."
-    how_the_conflict_is_resolved: "Structurally, at the moment it matters, rather than by
-      remembering. lib/ops/editorial-preflight-claims.test.ts fails the suite if any `ed-*` src
-      enters GATE_LANES while this decision stands unratified. Nothing about pitching is blocked —
-      pitching is not a placement — and the guard bites only on the one commit that would start
-      counting editorial traffic toward the gate. On that day there are exactly two honest moves:
-      ratify the thresholds in the same commit, or record a decision here that says why not."
-    supersedes: "the open task's 'must be done BEFORE the first placement goes live' as a
-      SCHEDULE. It survives intact as an ORDERING, which is the part that protects the number."
-    revisit: 2026-11-30
+    decision: "RATIFY the editorial-instrument thresholds now, as proposed in
+      docs/g1-editorial-threshold-proposal.md: PASS >= 6% click-to-intent among ed-* qualified
+      visitors, cumulative across placements, judged at N >= 50; KILL < 2% after N >= 150
+      cumulative; NO READ below N = 50. Owner steve; re-derived only by recorded ruling. The
+      numbers live under gates.g1-arms-length-demand.editorial_instrument, which is the block the
+      instrument is judged against."
+    reverses: "g1-editorial-thresholds-deferred (2026-08-18), which deferred ratification to
+      2026-11-30 so the numbers could be set with some real traffic shape in view. Reversed
+      2026-08-20 on Steve's explicit confirmation, after the reversal was named as such rather
+      than presented as a fresh decision. The stronger position is the one the open task always
+      wanted: the bar is on record before a single editorial reader exists, so it cannot be
+      reverse-engineered from whichever result appears. The 08-18 rationale - every figure is a
+      prior, not a measurement - is still true and is accepted: a prior chosen blind is a
+      threshold; a number chosen after the read is a rationalisation."
+    what_the_deferral_had_said: "Kept from the superseded entry so the conflict it named
+      survives: 'a threshold may be deferred, but a LANE may not be declared without one.'
+      lib/ops/editorial-preflight-claims.test.ts enforced that ordering while the deferral stood;
+      with the thresholds ratified its counting-guard is satisfied by construction, and its other
+      assertions (the proposal agrees with the flight log; the staged slugs stay staged) still
+      run. GATE_LANES is STILL EMPTY - ratifying the number does not declare a lane. An ed-* src
+      enters GATE_LANES only in the commit that records a placement going live, as before."
+    unchanged: "the instrument (caregiver_qualified -> caregiver_intent under ed-* srcs),
+      the pre-flight proofs of 2026-08-14 (Lane B) and 2026-08-18 (Lane A), and the rule that
+      after any placement is live these numbers change only by a recorded ruling."
 
   - id: beta-cohort-deferred-four-days
     date: 2026-08-18
@@ -1623,6 +1634,19 @@ deferred:
         invisible to types, lint, tests and build. Fixed with a guard (`gate-script.test.ts`).
         Recorded here because it is the cleanest evidence this file has for its own claim ladder:
         wired is not live-proven, and the gap between them was one `npx`."
+    ruled:
+      date: 2026-08-20
+      by: steve
+      decision: "DEFER the test cluster until the first paying customer. Offered the priced
+        alternative (an isolated single-region DSQL cluster, plausibly inside the free allowance,
+        priced live before provisioning) and declined it for now."
+      what_stands_in: "the two mitigations already live - `verify:orphans` (the counting half)
+        and the 14-day freshness dead-man on `verify:live` (the remembering half) - plus a person
+        running the five-walk chain from the main checkout. This entry stays OPEN because the
+        cause is unchanged: the walks still write to the production cluster."
+      resumes_when: "an arms-length subscription exists (g1-arms-length-demand met), at which
+        point the cluster is re-argued under the 5-gate infra policy with that customer's data
+        as the thing the walks must never touch."
 
   # ── OPENED 2026-08-20 by the deep production-readiness pass ───────────────
   #
@@ -2797,9 +2821,13 @@ deferred:
     owner: claude
     opened: 2026-08-20
     what: >-
-      `docs/user-journeys.md` records a walk of 2026-08-08 — 444 commits back as measured
-      2026-08-20. Its own header flagged it stale on 2026-08-13 ("five days and a great deal of
-      function old"), 264 commits back, and it has not been re-walked since that note was written.
+      `docs/user-journeys.md`'s NEWEST walk record is the full production re-sweep of
+      **2026-08-13**, not the 2026-08-08 sweep above it — this entry said 2026-08-08 until
+      2026-08-21 and was contradicted by the same file it was describing, and by
+      `journeys.J1..J10.walked` in this one. The real staleness is 2026-08-13 -> HEAD.
+      ⚠️ The commit counts this entry used to quote (444, then 264) were hand-copied volatile
+      numbers, which is the drift this file's own rule exists to stop. Derive it instead:
+      `git rev-list --count --since=2026-08-13 HEAD`.
       `verify:live` covers five walks; J3, J6 and J9 are not among them, so those three have no
       automated cover either.
     why_it_matters: >-
@@ -2856,8 +2884,14 @@ deferred:
     opened: 2026-08-20
     what: >-
       lib/billing/lapse-notice.ts shipped 2026-08-19 closing a-failed-renewal-tells-the-owner-
-      nothing: `notifyRenewalFailed` and `notifySubscriptionLapsed`, deduped on the Stripe event
-      id via audit_log, ordered check-then-send-then-record. Every rule is unit-proven. The wiring
+      nothing: `notifyRenewalFailed` and `notifySubscriptionLapsed`, deduped on the Stripe INVOICE
+      id via audit_log (`detail->>'stripe_id'`), ordered check-then-send-then-record.
+      ⚠️ THIS ENTRY SAID "EVENT id" UNTIL 2026-08-21, AND THE DIFFERENCE IS THE WHOLE TEST.
+      Stripe's automatic retries carry a NEW event id for the SAME invoice, so event-id dedupe
+      would let a retry through and send a second email — the invoice key is the stronger design
+      and it is what the code does. Anyone proving this entry from the register alone would have
+      invented a second event with a fresh id, watched nothing send, and recorded a pass for a
+      mechanism they never exercised. docs/e1-stripe-lapse-proof.md had it right throughout. Every rule is unit-proven. The wiring
       has never been exercised against Stripe.
     why_it_matters: >-
       On this repo's own claim ladder that is `wired`, not `live-proven`, and the distinction is

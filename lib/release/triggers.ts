@@ -73,8 +73,17 @@ async function readStateByOwnerTrigger(ownerId: string, triggerType: string): Pr
  * hospital's insurance portal while a timer runs. Every path to here has ALSO
  * already given the owner a chance to say no — an owner-initiated release now
  * needs an explicit confirmation, the cron fires only after the full check-in
- * interval plus reminders, and an escalation only after a challenge window the
- * owner did not answer.
+ * interval, and an escalation only after a challenge window the owner did not
+ * answer.
+ *
+ * 🔴 THAT SENTENCE READ "the full check-in interval PLUS REMINDERS" until
+ * 2026-08-21, and there are no reminders. `runHeartbeatSweep` transitions on the
+ * FIRST overdue sweep and notifies afterwards; grep finds no reminder sender
+ * anywhere in lib/. J5-R4 requires an escalation ladder before any ARMED →
+ * PENDING and the register and ROADMAP both record it as OPEN — this comment
+ * was the only place claiming otherwise, and it was being used to justify a
+ * zero grace window. The ruling above still stands on its other two legs, but
+ * it now stands on what exists.
  *
  * ESTATE: 72 hours, because none of that is true. `processCheckin` puts estate
  * in its `blocked` list — "cannot reverse / permanent once released" — so once
@@ -330,8 +339,10 @@ export type ConfirmStatus =
   /**
    * §4.3 — the answer was RECORDED but does not advance the quorum, because the
    * owner has not confirmed this verifier's identity (or they are conflicted out
-   * under rules 6/7). J7-R1 guarantees anyone named may render a decision; it
-   * does not promise that every decision counts.
+   * under rules 6/7). J7-R1 guarantees that nobody has to ENROL in order to
+   * answer; since its second amendment (2026-08-12) it does not promise that
+   * everyone named can answer, nor that every answer counts. An unconfirmed
+   * verifier is mailed no code at all — see lib/notify/verifier-notice-class.ts.
    */
   | 'not_counted';
 
@@ -451,6 +462,24 @@ async function denyConfirmation(args: {
   // through the same default-safe path OCC exhaustion uses.
   await args.machine.safeResetToArmed(releaseStateId);
 
+  /*
+    RE-READ, AND REPORT WHAT ACTUALLY HAPPENED. This used to write the halt
+    audit entry and return `halted` without ever checking whether the reset
+    landed, which was safe only because the reset was unconditional and always
+    landed. It is guarded now (state-machine.ts): a row a concurrent
+    confirmation already drove to RELEASED is deliberately left alone, because
+    undoing a committed release with no notice to the people whose access it
+    closes is not a safety net.
+
+    So the halt can now genuinely fail to happen, and the verifier must be told
+    so. Logging `release_halted_by_denial` for a release that went ahead would
+    put a false event in the owner's own record — the one place they go to
+    reconstruct what occurred — so both the entry and the status key on the
+    re-read. The denial itself is already on the record above either way.
+  */
+  const after = await readState(releaseStateId);
+  if (after.state !== 'armed') return outcome(after.state === 'released' ? 'released' : 'recorded', after);
+
   await writeAuditEntry(row.owner_id, {
     actor: 'system',
     action: 'release_halted_by_denial',
@@ -459,7 +488,7 @@ async function denyConfirmation(args: {
     detail: { denials: Number(row.received_denials ?? 0) },
   });
 
-  return outcome('halted', await readState(releaseStateId));
+  return outcome('halted', after);
 }
 
 /**
@@ -563,9 +592,12 @@ export async function submitConfirmation(params: SubmitConfirmationParams): Prom
   // not be able to halt a release either, or the same gap reopens facing the
   // other way.
   //
-  // The answer is still recorded below. J7-R1 guarantees that anyone named may
-  // render a decision; what changed is that a decision only advances the
-  // threshold when the owner has actually checked who they were speaking to.
+  // The answer is still recorded below — an unconfirmed verifier who CAN reach
+  // this door (they claimed a standby account, or hold a code from before the
+  // owner's decision) has their answer on the record and out of the tally.
+  // J7-R1 guarantees only that nobody enrols in order to answer; its second
+  // amendment (2026-08-12) withdrew the promise that anyone named can vote, and
+  // an unconfirmed verifier is now mailed no code at all.
   if (!(await verifierCountsTowardQuorum(head.owner_id, head.trigger_type, verifierId))) {
     // RECORDED IN THE AUDIT LOG ONLY, and deliberately NOT in
     // verifier_confirmations. That table is the quorum ledger, and the

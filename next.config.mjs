@@ -194,34 +194,34 @@ const SECURITY_HEADERS = [
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
 
   /*
-    CONTENT-SECURITY-POLICY, ENFORCING — but only the directives that cannot
-    blank a page.
+    CONTENT-SECURITY-POLICY, ENFORCING — the FULL policy. See `CSP_ENFORCED`
+    above for the directive list and the argument behind each one.
 
-    🔴 SHIPPING EVERYTHING REPORT-ONLY WAS COSTING PROTECTION THAT WAS FREE,
-    found by the 2026-08-13 release audit. The argument below for report-only is
-    entirely correct about `script-src`, and entirely irrelevant to the four
-    directives here — none of which has anything to do with Next's inline
-    bootstrap, and none of which can stop a page rendering:
+    🔴 THIS COMMENT DESCRIBED A HEADER THAT HAD NOT BEEN SHIPPED FOR A DAY, and
+    it sat directly above the value it was describing. It read:
 
-      base-uri       a <base> tag injected into a page can silently repoint
-                     every relative URL on it. Nothing in this product emits
-                     one, so 'self' costs nothing and closes the whole class.
-      object-src     no <object>/<embed> anywhere; 'none' is free.
-      frame-ancestors  already enforced by X-Frame-Options: DENY above, which
-                     has been live and breaking nothing. This is the same
-                     instruction in the form newer browsers read.
-      form-action    every form in the app is an onSubmit handler with no
-                     `action` attribute, verified before enforcing; Stripe
-                     checkout is a redirect, not a cross-origin POST.
+      was (until 2026-08-21): "CONTENT-SECURITY-POLICY, ENFORCING — but only the
+      directives that cannot blank a page. … WHAT IS DELIBERATELY ABSENT:
+      default-src, script-src, style-src, img-src, connect-src and font-src. …
+      Those stay in the report-only policy below until real traffic says what
+      they would break."
 
-    WHAT IS DELIBERATELY ABSENT: default-src, script-src, style-src, img-src,
-    connect-src and font-src. An omitted directive is not enforced at all, so
-    this header restricts scripts and network access exactly as much as no
-    header does — which is the point. Those stay in the report-only policy
-    below until real traffic says what they would break.
+    Every one of those six had been in `CSP_ENFORCED` since 2026-08-20 —
+    `CSP_SHARED` carries five and `script-src` is spliced in on the next line —
+    and the top of this file said so ("✅ 2026-08-20: the full policy is now
+    ENFORCED"). Two contradictory explanations of one header in one file, and
+    the WRONG one was the one adjacent to the value, which is the copy a reader
+    trusts. `lib/entitlements.ts` records this class as worse than no comment:
+    somebody deciding whether it is safe to add an external origin would have
+    read "connect-src is absent" and concluded the change was free.
 
-    A test pins the split in both directions: this header must exist, and it
-    must never grow a directive that can blank a screen.
+    The staged rollout the old text described was real and is finished. The two
+    escapes on `script-src` are the one concession that remains, and the stricter
+    report-only header below is what measures the cost of removing them.
+
+    A test pins the split in both directions (`lib/ops/security-headers.test.ts`):
+    the enforcing script-src must KEEP its escapes until the nonce work is done,
+    and the report-only one must stay strictly tighter.
   */
   {
     key: 'Content-Security-Policy',

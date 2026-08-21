@@ -18,6 +18,7 @@ import { withOccRetry } from '../db/occ';
 import { formatCaseId } from './case-id';
 import { ValidationError } from '../validation';
 import { validateNofM, VALID_TRIGGER_TYPES, type TriggerType } from '../rules/access-rules';
+import { TriggerError } from './triggers';
 import type { ReleaseStateRow } from './state-machine';
 
 export interface EnsureOptions {
@@ -73,7 +74,34 @@ export async function ensureReleaseState(
 
 /**
  * Configures the N-of-M quorum for a trigger: validates 1 ≤ N ≤ M (Property 8),
- * ensures the row exists, then sets `required_confirmations = N`.
+ * ensures the row exists, then sets `required_confirmations = N` — but only
+ * while the trigger is ARMED, and only via CAS.
+ *
+ * 🔴 IT WAS THE ONE release_state WRITE THE OCC DESIGN DID NOT COVER, closed
+ * 2026-08-21. `001_initial.sql:9-12` states the rule for this table without
+ * exception — all state mutations use CAS on state + version — and this
+ * statement was `WHERE owner_id = $1 AND trigger_type = $2`: no state
+ * predicate, no version match, no version bump. The route validated N against
+ * the eligible verifier count and never read the row's state at all.
+ *
+ * Only the owner can call it, so this is not an attack. It is an owner changing
+ * the outcome of a release that is already running, which is worse for being an
+ * accident: lower N from 2 to 1 while a GRACE row already holds one
+ * confirmation, and `resolveElapsedGrace` — which releases on
+ * `received_confirmations >= required_confirmations` — opens the vault at the
+ * top of the next hour. Nobody did anything, nothing said that is what the Set
+ * button meant, and the two remaining safeguards (the grace window and a
+ * verifier answering) are both already spent.
+ *
+ * REFUSED, NOT SERIALISED. There is no correct interleaving to choose here — a
+ * quorum edit during a live release is a question for the owner, not a race for
+ * the database to arbitrate. So both ways of losing return 409: the row is not
+ * ARMED when we read it, or a transition committed between the read and the
+ * write. The second is the reason the version predicate is here as well as the
+ * state one; a state check alone has a window exactly the width of this
+ * function.
+ *
+ * Requirements: 3.9, 6.1, 5.6
  */
 export async function setRequiredConfirmations(
   ownerId: string,
@@ -82,16 +110,33 @@ export async function setRequiredConfirmations(
   m: number,
 ): Promise<ReleaseStateRow> {
   validateNofM(n, m); // 1 ≤ N ≤ M (throws ValidationError otherwise)
-  await ensureReleaseState(ownerId, triggerType, { requiredConfirmations: n });
+  const row = await ensureReleaseState(ownerId, triggerType, { requiredConfirmations: n });
+
+  if (row.state !== 'armed') {
+    throw new TriggerError(
+      `The ${triggerType} trigger is in progress (state=${row.state}). Stand it down before changing how many confirmations it needs.`,
+      409,
+    );
+  }
 
   const updated = await withOccRetry(() =>
     query<ReleaseStateRow>(
       `UPDATE release_state
-          SET required_confirmations = $3
-        WHERE owner_id = $1 AND trigger_type = $2
+          SET required_confirmations = $3,
+              version = version + 1
+        WHERE id = $1 AND state = 'armed' AND version = $2
        RETURNING *`,
-      [ownerId, triggerType, n],
+      [row.id, String(row.version), n],
     ),
   );
+
+  if (updated.rowCount === 0 || updated.rows.length === 0) {
+    // The row moved under us. Same answer as above, and deliberately the same
+    // message: from the owner's side these are one situation.
+    throw new TriggerError(
+      `The ${triggerType} trigger changed while you were editing it. Reload and try again.`,
+      409,
+    );
+  }
   return updated.rows[0];
 }

@@ -18,7 +18,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { getDeliveryWebhookHealth, SETTLE_MS } from './webhook-health';
+import { getDeliveryWebhookHealth, SETTLE_MS, WINDOW_MS } from './webhook-health';
 import { query } from '../db/connection';
 
 vi.mock('../db/connection', () => ({ query: vi.fn() }));
@@ -42,6 +42,8 @@ function state(opts: {
   heard?: number;
   attempts?: number;
   orphans?: number;
+  refused?: number;
+  acceptedSince?: number;
 }) {
   const {
     newest = agoHours(2),
@@ -52,11 +54,18 @@ function state(opts: {
     // and every event we hold matches one of them.
     attempts = 12,
     orphans = 0,
+    // …and the provider is accepting. `acceptedSince` only means anything when
+    // there is a refusal for it to be "since".
+    refused = 0,
+    acceptedSince = 0,
   } = opts;
   mockQuery
     .mockResolvedValueOnce(rows([{ n: String(totalEvents), newest }]))
     .mockResolvedValueOnce(rows([{ ripe: String(ripe), heard: String(heard) }]))
-    .mockResolvedValueOnce(rows([{ attempts: String(attempts), orphans: String(orphans) }]));
+    .mockResolvedValueOnce(rows([{ attempts: String(attempts), orphans: String(orphans) }]))
+    .mockResolvedValueOnce(
+      rows([{ refused: String(refused), accepted_since: String(acceptedSince) }]),
+    );
 }
 
 beforeEach(() => mockQuery.mockReset());
@@ -229,5 +238,77 @@ describe('getDeliveryWebhookHealth', () => {
       expect(h.meaning).toContain('RESEND_WEBHOOK_SECRET');
       expect(h.meaning).toContain('6 message(s)');
     });
+  });
+});
+
+/**
+ * 🔴 THE THIRD WAY THIS SWITCH STAYS SILENT, and the one that hides the loudest
+ * failure of all (found 2026-08-21).
+ *
+ * Everything above judges messages Resend ACCEPTED. Nothing judged the ones it
+ * refused, because until this date a refusal wrote no row anywhere: `email.ts`
+ * recorded an attempt only after acceptance, and `transcript.ts` is in-memory
+ * and refuses to arm in production. So a revoked or wrongly-rotated
+ * `RESEND_API_KEY`, a suspended shared account or a domain restriction produced
+ * zero attempts, zero events, `ripeSends = 0` — and this file read that as "a
+ * quiet week" and reported healthy while EVERY message Relay sent was refused.
+ *
+ * That is the same shape as the two defects this file was already rebuilt for,
+ * and `docs/secret-rotation-runbook.md` asserted the opposite in as many words:
+ * "RESEND_API_KEY fails loudly — all mail stops, and delivery-webhook-monitor.yml
+ * notices."
+ *
+ * The condition is "refusals happened and NOTHING has been accepted since the
+ * first of them" — not "any refusal at all". A single 429 that the next message
+ * sails past is a provider having a moment; a key that no longer works never
+ * recovers, so the condition never clears on its own.
+ */
+describe('a provider that refuses everything', () => {
+  it('is UNHEALTHY when refusals happened and nothing has been accepted since', async () => {
+    state({ refused: 9, acceptedSince: 0, ripe: 0, heard: 0 });
+    const h = await getDeliveryWebhookHealth(now);
+
+    // Note ripe=0. Without this check that is indistinguishable from a quiet
+    // week, which is exactly how a dead key stayed invisible.
+    expect(h.healthy).toBe(false);
+    expect(h.refusedSends).toBe(9);
+    expect(h.meaning).toContain('RESEND_API_KEY');
+  });
+
+  it('does NOT alarm when a message was accepted after the refusals', async () => {
+    state({ refused: 2, acceptedSince: 5, ripe: 5, heard: 5 });
+    const h = await getDeliveryWebhookHealth(now);
+
+    expect(h.healthy).toBe(true);
+    expect(h.refusedSends).toBe(2);
+    expect(h.acceptedSinceFirstRefusal).toBe(5);
+  });
+
+  it('stays quiet when nothing has been refused at all', async () => {
+    state({ refused: 0, acceptedSince: 0, ripe: 3, heard: 3 });
+    expect((await getDeliveryWebhookHealth(now)).healthy).toBe(true);
+  });
+
+  /*
+    A REFUSED SEND CAN NEVER BE HEARD ABOUT — the provider never took it, so no
+    webhook event will ever carry its id. Counting refusals as ripe sends would
+    make `deaf` fire and send an operator to the Resend webhook configuration for
+    a fault that is in the API key. Two different faults, two different pages;
+    the query has to keep the populations apart.
+  */
+  it('excludes refusals from the sends the webhook is judged on', async () => {
+    state({ refused: 4, acceptedSince: 0 });
+    await getDeliveryWebhookHealth(now);
+
+    expect(String(mockQuery.mock.calls[1][0])).toContain('NOT LIKE');
+    expect(String(mockQuery.mock.calls[1][0])).toContain('refused:');
+  });
+
+  it('bounds the refusal count to the same window as everything else', async () => {
+    state({ refused: 0 });
+    await getDeliveryWebhookHealth(now);
+
+    const params = mockQuery.mock.calls[3][1] as Date[];
+    expect(params[0].getTime()).toBe(now.getTime() - WINDOW_MS);
   });
 });

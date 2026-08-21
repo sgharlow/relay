@@ -37,6 +37,15 @@ const MUST_RECORD = [
   'src/app/api/recipients/route.ts',
   'src/app/api/verifiers/route.ts',
   'src/app/api/policies/route.ts',
+  /*
+    Added 2026-08-21. Not "a write, therefore liveness" like the rest of this
+    list — this one is load-bearing. A release the cron armed sits on an ARMED
+    row the moment it is stood down, and the sweep re-reads ARMED rows against
+    `last_active_at`. Without the stamp the same owner is re-armed and every
+    verifier re-asked at the top of every hour, forever, because standing down
+    was not evidence that the person who stood it down exists.
+  */
+  'src/app/api/triggers/[id]/stand-down/route.ts',
 ];
 
 describe('liveness coverage', () => {

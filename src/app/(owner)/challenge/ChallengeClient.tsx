@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import { CONTACT_EMAIL, CONTACT_MAILTO } from '../../../../lib/contact';
 
 interface Request {
   id: string;
@@ -94,8 +95,15 @@ export default function ChallengeClient() {
         <p className="mt-3 text-ink">
           This is a loading problem, not an answer — it does not mean nobody is asking. Please
           reload the page. If this keeps happening, email{' '}
-          <a href="mailto:hello@relaystandby.com" className="underline underline-offset-2">
-            hello@relaystandby.com
+          {/*
+            was: a hand-written `mailto:hello@relaystandby.com` with the address
+            spelled out again as the link text. lib/contact.ts exists because the
+            address was three literals once, and changing it meant finding out
+            later where you missed one — this screen, read while somebody is
+            deciding whether to open a vault, was one of the two still missed.
+          */}
+          <a href={CONTACT_MAILTO} className="underline underline-offset-2">
+            {CONTACT_EMAIL}
           </a>
           .
         </p>
@@ -131,13 +139,35 @@ export default function ChallengeClient() {
         if (decided) {
           return (
             <div key={r.id} className="rounded-lg border border-rule-strong bg-paper-raised p-6">
+              {/*
+                🔴 THIS SAID "Access is opening" / "They will be able to reach
+                what you designated" — present tense, on a thing that has not
+                happened yet.
+
+                Approving takes the release to GRACE. Only `resolveElapsedGrace`
+                moves GRACE to RELEASED, and it runs on the hourly heartbeat, so
+                even a reversible trigger — whose grace window is zero — opens at
+                the next sweep, up to an hour later.
+
+                `notifyRequesterOfOutcome` was corrected for exactly this in the
+                requester's email, with a note calling it "a cruel way to be
+                inaccurate", and the OWNER's screen was left saying the opposite.
+                The owner is the person most likely to phone the family member
+                and say it is open; when they look and it is not, the product is
+                broken to both of them at once, at the worst moment.
+
+                The timing itself is not fixed here on purpose — notifications.ts
+                records why forcing a release from a request handler is worse
+                than the wait (resolveElapsedGrace is a global sweep with no
+                owner filter). Saying the true thing is the cheap half.
+              */}
               <h2 className="text-t5 font-semibold">
-                {decided === 'deny' ? 'Nothing was opened' : 'Access is opening'}
+                {decided === 'deny' ? 'Nothing was opened' : 'Access will open shortly'}
               </h2>
               <p className="mt-3 text-ink">
                 {decided === 'deny'
                   ? 'We told them no. Nobody else was contacted, and your vault stayed closed.'
-                  : 'They will be able to reach what you designated. You can close it again at any time.'}
+                  : 'It is not open yet — there is a short wait built in, so a decision made in a hurry can still be undone. They are told the moment it opens, and you can close it again at any time.'}
               </p>
               <p className="mt-3 text-t3 text-muted">Reference {r.case_id}</p>
             </div>

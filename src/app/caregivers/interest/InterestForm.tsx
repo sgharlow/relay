@@ -25,7 +25,7 @@ import { useRef, useState, type FormEvent } from 'react';
 import { CAREGIVER_CHECKOUT, CAREGIVER_LEAD, recallChannel } from '../analytics';
 import { recallClickId } from '../click-id';
 import { PRICE_YEARLY_LABEL } from '../../../../lib/offer';
-import { CONTACT_EMAIL } from '../../../../lib/contact';
+import { CONTACT_EMAIL, SUPPORT_RESPONSE_TIME } from '../../../../lib/contact';
 import { trackG1 } from '../track';
 
 
@@ -101,9 +101,21 @@ export default function InterestForm() {
     return (
       <div className="mt-8 rounded-xl border border-ochre bg-ochre-soft p-6 text-left">
         <p className="font-semibold text-ochre-text">Got it — thank you.</p>
+        {/*
+          was: "you'll hear back within a day" — a faster promise than the one
+          that was ruled. SUPPORT_RESPONSE_TIME is "within one business day",
+          chosen on 2026-08-20 to be "honest for a solo operator on his worst week
+          rather than flattering on his best"; a form submitted on a Friday
+          evening was promising Saturday.
+
+          ⚠️ lib/ops/support-commitment.test.ts sweeps src/app for exactly this
+          and missed it: its rival pattern enumerates quantities and has no bare
+          article, so "within a day" contains no number for it to find. See
+          InterestForm.test.ts.
+        */}
         <p className="mt-2 text-t2 leading-relaxed text-muted">
-          We read every one of these ourselves, and you&apos;ll hear back within a day. If anything
-          is urgent in the meantime, email{' '}
+          We read every one of these ourselves, and you&apos;ll hear back {SUPPORT_RESPONSE_TIME}. If
+          anything is urgent in the meantime, email{' '}
           <a className="text-ochre-text underline underline-offset-4" href={MAILTO}>
             {CONTACT_EMAIL}
           </a>
