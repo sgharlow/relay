@@ -75,6 +75,22 @@ interface RoleContract {
   iamArn: string;
   /** May this role write the G1 measurement table? */
   writesMeasurementTable: boolean;
+  /**
+   * Does this role hold write DML on ANY table?
+   *
+   * Optional and defaulting to `true`, so the two roles this file was written
+   * for are unchanged. It exists for `relay_ro`, added 2026-08-21, which holds
+   * SELECT and nothing else — and which this checker would otherwise have
+   * ignored entirely.
+   *
+   * ⚠️ THAT WOULD HAVE BEEN THE FAMILIAR FAILURE. This file's own header says
+   * why it exists: the least-privilege split is enforced by GRANTs on a live
+   * cluster, and "anyone with admin can widen a role in one statement that
+   * appears in no diff, test run or build". A new wall that this instrument does
+   * not watch is a wall that can be widened silently — so a read-only role that
+   * quietly acquired INSERT would look exactly like a read-only role.
+   */
+  writesAnything?: boolean;
 }
 
 const CONTRACT: RoleContract[] = [
@@ -87,6 +103,20 @@ const CONTRACT: RoleContract[] = [
     role: 'relay_dev',
     iamArn: 'arn:aws:iam::461293170793:user/relay-dev',
     writesMeasurementTable: false,
+  },
+  {
+    /*
+      The verification identity (migration 039). Reads everything, writes
+      nothing, and its IAM policy carries `dsql:DbConnect` and NO KMS — so it can
+      read metadata and can never turn a ciphertext column into a secret.
+      It exists so that an agent running somewhere other than this laptop can
+      check the live system at all: verify:schema, verify:dogfood,
+      verify:orphans, flight:snapshot and this file all need only SELECT.
+    */
+    role: 'relay_ro',
+    iamArn: 'arn:aws:iam::461293170793:user/relay-ro',
+    writesMeasurementTable: false,
+    writesAnything: false,
   },
 ];
 
@@ -187,7 +217,14 @@ async function auditRegion(client: Client, tables: string[]): Promise<string[]> 
   for (const c of CONTRACT) {
     if (!byName.has(c.role)) continue;
     for (const t of tables) {
-      const wantWrite = t === MEASUREMENT_TABLE ? c.writesMeasurementTable : true;
+      // `writesAnything === false` short-circuits every write verb on every
+      // table: a read-only role has no per-table exceptions to make.
+      const wantWrite =
+        c.writesAnything === false
+          ? false
+          : t === MEASUREMENT_TABLE
+            ? c.writesMeasurementTable
+            : true;
       for (const priv of DML) {
         const want = priv === 'SELECT' ? true : wantWrite;
         const got = await client.query<{ ok: boolean }>(
@@ -265,7 +302,16 @@ async function main(): Promise<void> {
     process.exit(1);
   }
   console.log(
-    `[roles] OK — ${checked} region(s). relay_app writes ${MEASUREMENT_TABLE}; relay_dev cannot; neither holds DDL.`,
+    // Derived from CONTRACT rather than spelled out, because this line said
+    // "relay_dev cannot; NEITHER holds DDL" while three roles were being
+    // checked — a summary that silently stops describing what ran is the
+    // smallest version of the drift this whole file exists to catch.
+    `[roles] OK — ${checked} region(s). ${CONTRACT.length} roles: ` +
+      CONTRACT.map(
+        (c) =>
+          `${c.role} ${c.writesAnything === false ? 'reads only' : c.writesMeasurementTable ? `writes ${MEASUREMENT_TABLE}` : `cannot write ${MEASUREMENT_TABLE}`}`,
+      ).join('; ') +
+      '. None holds DDL.',
   );
 }
 
