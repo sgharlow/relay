@@ -51,6 +51,40 @@
 > The strategy claims in Part VII that treat estate as the highest-WTP moment and the
 > activation-fee product are superseded by the same decision.
 
+## ✅ Automated walk evidence — 2026-08-21, against the deployed build
+
+**The five-walk `verify:live` chain ran green against `master` @ `4b05253`** — the commit that
+shipped the safety-first journey subset — and stamped `docs/verify-live-runs.jsonl`. Per-walk
+counts, printed by the walks themselves rather than copied here from memory: step-up 17/17,
+multi-owner 14/14, UI 26/26, reveal 20/20, factors 17/17.
+
+This is **automated cover, not a hand sweep**, and it is deliberately narrower than the tables
+below. What it does prove, against the code now serving production: sign-in with step-up, the
+multi-owner isolation boundary, the owner screens in a real browser, the full decrypt round-trip
+(J8 — plaintext returned byte for byte as labelled fields, with a TOTP code matching one computed
+independently), and the migration-035 factor declaration through the real stack.
+
+> 🔴 **THE GAP THIS DOES NOT CLOSE, stated so it is visible rather than accidental.**
+> **J3, J6 and J9 have no automated cover at all.** No walk exercises assisted setup for a parent
+> (J3), a recipient-initiated access request and the owner challenge (J6), or standing down and
+> re-arming (J9). Their most recent evidence remains the hand sweep of **2026-08-13** in the table
+> below. That matters more than it did last week, because the 2026-08-21 sprint changed code on all
+> three paths: J6 gained a cooling-off after a refused request, J9's Cancel control was retired
+> outright, and J3's delegate scopes were narrowed to what the handlers actually honour.
+> So the three journeys with the least automated cover are three of the ones that moved most
+> recently. Tracked as `PROJECT.yaml → deferred → the-journey-sweep-is-stale` (D10); whether they
+> gain walks or stay explicitly walk-only is a scope decision, not a documentation one.
+
+> ⚠️ **A walk is not a sweep.** The chain creates disposable accounts on a reserved domain and
+> exercises paths; it does not read a screen the way a person does, and it cannot notice that
+> something is confusing, mis-worded, or emotionally wrong. The hand sweeps below remain the record
+> for that, and they are dated.
+
+**Also measured the same day:** accessibility re-run against a production build — 0 serious/critical
+across 36 pages, including the new unified add-a-person form. `PROJECT.yaml → cross_cutting.CC8`.
+
+---
+
 ## ✅ Live journey sweep — 2026-08-08
 
 **Every journey below was walked against production** (`relaystandby.com`) as a brand-new

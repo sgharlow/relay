@@ -1344,7 +1344,22 @@ cross_cutting:
   CC9: { name: "dead-man's switch on the scheduler", status: live,
          evidence: ".github/workflows/scheduler-monitor.yml, both transitions proven 2026-08-08" }
   CC8: { name: "accessibility as a functional requirement", status: live,
-         evidence: "RE-MEASURED 2026-08-18, after the secret-kinds declaration control landed:
+         evidence: "RE-MEASURED 2026-08-21, against a PRODUCTION build on :3100 (the shape CI
+           uses): 0 serious/critical across 36 pages - 18 signed-out, plus 9 owner-mode screens at
+           BOTH 1280 and 390.
+           WHY IT WAS RE-RUN. The safety-subset sprint changed owner-mode UI on three of the nine
+           audited screens in one day: /circle gained the unified add-a-person form (J4-R1), which
+           REPLACED the two single-role forms rather than adding to them; /triggers LOST the Cancel
+           control and gained the withdrawal notice; /approvals had its consent copy rewritten. A
+           form that replaces two forms is not covered by the fact that its route was already
+           audited - that is the exact recurrence the 08-18 note warns about, and this is the third
+           time it has been worth re-running for that reason.
+           The owner half was audited as a disposable owner created and closed for the purpose
+           (scripts/disposable-owner.ts), because an empty vault renders no item controls and 0/36
+           on an empty vault would be a false green. Re-derive rather than trust:
+           `A11Y_BASE=http://localhost:3100 A11Y_OWNER_EMAIL=<disposable> node scripts/a11y-audit.mjs`.
+           ---- prior record, 2026-08-18 ----
+           RE-MEASURED 2026-08-18, after the secret-kinds declaration control landed:
            0 serious/critical across 36 pages - 18 signed-out, plus 9 owner-mode screens at
            BOTH 1280 and 390. Measured against a PRODUCTION build served on :3100, which is
            the shape CI uses, so it is comparable with the records below rather than a dev
@@ -2677,6 +2692,44 @@ deferred:
   # written. Every entry below is therefore self-contained: it must be readable
   # and actionable without ROADMAP.md, because ROADMAP.md may not survive.
   # ────────────────────────────────────────────────────────────────────────────
+
+  - id: thirty-eight-rows-outlived-the-accounts-that-owned-them
+    owner: steve
+    opened: 2026-08-21
+    what: "`npm run verify:orphans` exits 1 on production with 38 DANGLING rows — rows whose owner
+      no longer exists: `verifier_codes` 17, `break_glass_codes` 10, `auth_challenges` 10,
+      `recipient_codes` 1. Unreachable through the application and invisible to the account
+      census, which is why nothing reported them until the census was built."
+    every_one_is_historical_and_that_was_measured: "Re-derive with a per-table min/max of
+      `created_at` over rows whose owner is absent. On 2026-08-21 the NEWEST dangling row in any of
+      the four tables was 2026-08-20 13:59; the oldest was 2026-08-08. **Nothing from 2026-08-21.**
+      That day the cluster saw eleven disposable accounts created and closed — ten by the
+      verify:live chain and one by the a11y audit — and they added ZERO dangling rows. Both
+      cascades are working; this is residue, not an active leak.
+      ⚠️ I first recorded this as 20 rows in two tables. That was WRONG, and wrong in the
+      flattering direction: I had read a truncated `tail` of the probe output rather than the
+      probe's own total. Corrected the same day. The lesson is the dull one this repo keeps
+      relearning — read the tool's verdict line, not the last dozen lines of its stdout."
+    where_it_came_from: "`deleteAccount()` IS the integrity layer, because DSQL has no foreign
+      keys. `auth_challenges` only entered the cascade on 2026-08-21 (commit e609231), so its ten
+      orphans — all from the 2026-08-20 verify:live run — are straightforwardly pre-fix. The other
+      three tables have been in the cascade for longer than their orphans are old, so those rows
+      were left by something that never ran it: a hand-written `DELETE FROM users`, during the
+      manual fixture cleanup of 08-08 to 08-14. That is this repo's recorded trap, having actually
+      happened."
+    why_it_is_steve_s: "Purging is a destructive write against production with no undo, on rows
+      nobody can reach. Not urgent, and not a thing to do unilaterally."
+    risk_if_left: "Low, and stated rather than waved away. `auth_challenges` are single-use nonces
+      that also expire. The three code tables hold HASHED codes whose owner_id no longer resolves,
+      so redemption cannot complete — but they are the sharper ones, because a code is an
+      access-granting artifact and 'cannot resolve' is a claim about today's code rather than a
+      property of the data."
+    ends_when: "The 38 rows are purged and the dangling census exits 0, OR a ruling is recorded
+      that orphans of these kinds are acceptable and the census reports them as a NOTICE — the way
+      it already does for the audit_log rows deleteAccount keeps ON PURPOSE."
+    note: "Do NOT close this by widening the census's ignore list without a ruling. An orphan
+      census that has learned to ignore orphans is the decorative-guard shape this project keeps
+      catching."
 
   - id: the-owners-vault-is-empty                              # "A0"
     owner: steve
