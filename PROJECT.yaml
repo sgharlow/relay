@@ -2747,9 +2747,19 @@ deferred:
   # and actionable without ROADMAP.md, because ROADMAP.md may not survive.
   # ────────────────────────────────────────────────────────────────────────────
 
-  - id: thirty-eight-rows-outlived-the-accounts-that-owned-them
+  - id: rows-outlived-the-accounts-that-owned-them
     owner: steve
     opened: 2026-08-21
+    renamed:
+      date: 2026-08-21
+      from: thirty-eight-rows-outlived-the-accounts-that-owned-them
+      why: "The id encoded a COUNT, and an id is permanent. It said thirty-eight; the census read
+        36 within the hour, because `auth_challenges` rows expire on their own - so the name was
+        wrong the same day and could never be corrected the way a sentence can. This file's own
+        volatile-numbers rule says a figure lives in exactly one place and carries the command that
+        derives it; an identifier is the one place it can never be updated, which makes it the
+        worst place of all to put one. Renamed rather than left as a curiosity, because the next
+        reader would otherwise take 38 as the current number."
     what: "`npm run verify:orphans` exits 1 on production with DANGLING rows — rows whose owner no
       longer exists, across `verifier_codes`, `break_glass_codes`, `auth_challenges` and
       `recipient_codes`. Unreachable through the application and invisible to the account census,
