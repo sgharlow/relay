@@ -2940,3 +2940,42 @@ deferred:
       one that feels like the test. The dedupe is the half that is only ever exercised by doing it
       twice, and Stripe retries failed webhooks by design — so the untested path is also the one
       production will take on an ordinary day.
+    attempted:
+      date: 2026-08-21
+      by: claude
+      outcome: "HALF PROVEN, AND STILL OPEN. Do not read this as closed."
+      what_IS_now_live_proven: "The notice itself, against the PRODUCTION cluster and the real
+        mailer, by calling notifyRenewalFailed directly:
+          call 1 -> `undelivered`, and exactly ONE audit_log row written
+                    (stripe_id = in_E1PRIME_DIRECT_20260821, delivered=false);
+          call 2, SAME invoice id -> `duplicate`, and NO second row.
+        That is both halves of this entry's own ends_when for the dedupe — including the half it
+        names as the one that gets skipped — measured rather than asserted.
+        ⚠️ `undelivered` rather than `sent` because a dev-mail guard REFUSED the send: 'this is not
+        a production environment and the address is not in DEV_MAIL_ALLOWLIST'. That guard working
+        is a good result, and it means no real mail was sent from a laptop; it also means DELIVERY
+        to an inbox is NOT proven here. The owner address on file is a +subaddressed test inbox."
+      what_is_NOT_proven: "The WEBHOOK WIRING — which is the half that matters in production.
+        Driven through the real route with a correctly Stripe-signed `invoice.payment_failed`, the
+        endpoint answered 200 {received:true} and wrote NOTHING, on nine separate attempts.
+        Instrumentation showed the route resolving the invoice id and the subscription id
+        correctly, `ownerIdForSubscriptionId` returning rowCount=1 with the right owner, `sendOnce`
+        being ENTERED with the right arguments, and `noticeAlreadySent` returning n=0 — and then no
+        audit row and no mail-refusal log. That is precisely the shape this file warns about
+        elsewhere: a clean 200 for an event that told nobody anything."
+      why_it_was_not_settled: "THE LOCAL DEV SERVER CANNOT BE TRUSTED FOR THIS TEST ON THIS
+        MACHINE, and that was proven rather than assumed: the running server printed a debug line
+        that had already been DELETED from the file, and later ignored a newly added one while
+        honouring an older one. `next dev` (Turbopack) is serving a stale module graph here, and
+        `rm -rf .next` plus a full restart did not reliably clear it. Every conclusion drawn from
+        the HTTP leg is therefore untrustworthy IN BOTH DIRECTIONS — it is not evidence of a
+        product defect, and it is not evidence of health."
+      next_step: "Prove it against the DEPLOYED build, not a laptop. Two options, both Steve's:
+        (a) confirm in the Stripe dashboard that endpoint we_1U2IIGGs40KMmT4XAIradLoE is subscribed
+            to `invoice.payment_failed` at all — if it is not, no amount of correct code fires, and
+            this is the cheapest question in the lane;
+        (b) then a real (or dashboard-redelivered) event against production, checking for exactly
+            one mail and exactly one audit row, then a redelivery checking for silence.
+        ⚠️ Until (a) is answered, the wiring cannot be proven by any local means."
+      also_found: "`ratified.beta-free-release`'s 2026-10-01 paywall flip has this as a stated
+        precondition. It is not met."
