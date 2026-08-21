@@ -28,12 +28,56 @@ import { ValidationError } from '../validation';
  * The complete set of what a delegate may do. Deliberately contains no
  * decrypt, no trigger control, and no direct creation of recipients — a
  * delegate proposes, the owner approves (J3-R5, J3-R6).
+ *
+ * 🔴 `items:update` AND `import:run` REMOVED 2026-08-21, for exactly the reason
+ * `policies:propose` was removed on 2026-08-12 (the note below). Nothing
+ * anywhere called `requireScope(actor, 'items:update')` or
+ * `requireScope(actor, 'import:run')`: `/api/import` is `requireOwner`, and
+ * `PUT /api/vault/items/[id]` is owner-only. Every delegation ever created was
+ * written with two capabilities no handler consults.
+ *
+ * ⚠️ AND `items:update` CONTRADICTED THE CONSENT ARTIFACT, which is what made it
+ * worth closing rather than carrying. The panel an owner reads while deciding
+ * whether to hand somebody a key to their vault says, in these words, that a
+ * helper can never *"change or delete an item once it is in — only you can"*.
+ * That sentence is what they consent to. The grant sat inert only because no
+ * route asked — and the day one does, every delegation already consented to
+ * under that sentence acquires edit rights over the owner's vault with no second
+ * conversation and no notice. A latent capability that arrives without consent
+ * is not a feature waiting to be finished; on this artifact it is a defect
+ * waiting to fire.
+ *
+ * DROPPED RATHER THAN BUILT, and that direction is the safe one. Building them
+ * would mean widening what a helper may do on vaults whose owners agreed to
+ * something narrower — the copy would have to change too, and an owner who has
+ * already signed cannot re-read it. Narrowing takes nothing away from anybody,
+ * because nothing was ever honoured. If a helper genuinely needs to edit or to
+ * import, that is a product decision with a re-consent step attached, not a
+ * scope quietly restored to this array.
+ *
+ * `delegation.test.ts` reads every route handler and fails if this list ever
+ * again names something no handler gates on — in either direction.
  */
-export const DELEGATE_SCOPES = [
-  'items:create',
+export const DELEGATE_SCOPES = ['items:create', 'people:propose'] as const;
+
+/**
+ * Every scope name the enforcement layer must still be able to be ASKED about,
+ * including the ones no longer granted.
+ *
+ * ⚠️ THIS IS NOT A GRANT LIST, and the difference is the whole point.
+ * `createDelegation` writes `DELEGATE_SCOPES` into the row at creation time, so
+ * rows created before a withdrawal still CARRY the retired string — every
+ * delegation made before 2026-08-12 still names `policies:propose` in the
+ * database today. `requireScope` has to be able to name and refuse those, and
+ * `getActiveDelegation` has to be able to recognise them in order to drop them.
+ * A type that admitted only what is currently granted would make the retired
+ * values unspeakable in the very code whose job is to reject them.
+ */
+export const KNOWN_DELEGATE_SCOPES = [
+  ...DELEGATE_SCOPES,
   'items:update',
   'import:run',
-  'people:propose',
+  'policies:propose',
 ] as const;
 
 /**
@@ -56,7 +100,7 @@ export const DELEGATE_SCOPES = [
  * rejectable. It simply cannot be created or approved any more.
  */
 
-export type DelegateScope = (typeof DELEGATE_SCOPES)[number];
+export type DelegateScope = (typeof KNOWN_DELEGATE_SCOPES)[number];
 
 /** A parent without a smartphone must not be a blocker (J3-R3). */
 export const CONSENT_METHODS = ['link', 'in_person', 'paper_upload'] as const;
@@ -236,7 +280,7 @@ export async function getActiveDelegation(
   delegateUserId: string,
   ownerId: string,
 ): Promise<{ id: string; scopes: DelegateScope[] } | null> {
-  const res = await query<{ id: string; scopes: DelegateScope[] }>(
+  const res = await query<{ id: string; scopes: DelegateScope[] | null }>(
     `SELECT id, scopes
        FROM delegations
       WHERE delegate_user_id = $1
@@ -248,7 +292,37 @@ export async function getActiveDelegation(
   );
 
   const row = res.rows[0];
-  return row ? { id: row.id, scopes: row.scopes } : null;
+  if (!row) return null;
+
+  /**
+   * 🔴 THE STORED SCOPES ARE NARROWED HERE, AND THIS IS THE GUARD THAT MATTERS.
+   *
+   * `createDelegation` writes `DELEGATE_SCOPES` into the row at creation time,
+   * so withdrawing a scope from that constant does nothing at all to the rows
+   * already in the database — `policies:propose` was removed on 2026-08-12 and
+   * every delegation created before then still names it, `items:update` and
+   * `import:run` were removed on 2026-08-21 and every delegation ever created
+   * names both. `requireScope` asks the ROW, not the list, so a fix that only
+   * edited the constant would look complete in the diff and change nothing for
+   * anyone who already has a helper.
+   *
+   * The guard therefore sits at the one place a stored scope enters the running
+   * system, rather than in a comment asking the next caller to remember. Its
+   * consequence is the one that counts: on the day somebody wires
+   * `requireScope(actor, 'items:update')` to a handler, an old row cannot smuggle
+   * in an edit right its owner was explicitly promised no helper would ever have.
+   *
+   * An unreadable column grants NOTHING — the same rule `readStandbyState`
+   * applies to person state, for the same reason. A row is never more trusted
+   * than its data, and a corrupt `scopes` value must fail toward least
+   * privilege, never toward the default in migration 009.
+   */
+  const granted = new Set<string>(DELEGATE_SCOPES);
+  const scopes = (Array.isArray(row.scopes) ? row.scopes : []).filter((s): s is DelegateScope =>
+    granted.has(s),
+  );
+
+  return { id: row.id, scopes };
 }
 
 /** Instant, from any authenticated owner surface (J3-R8). */

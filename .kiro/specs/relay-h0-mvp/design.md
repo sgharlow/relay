@@ -145,7 +145,7 @@ app/
     checkin/route.ts              # PUT — owner heartbeat
     triggers/[type]/initiate/route.ts  # POST — manual emergency
     triggers/[id]/confirm/route.ts     # POST — verifier confirmation
-    triggers/[id]/cancel/route.ts      # POST — owner cancel (reversible)
+    triggers/[id]/cancel/route.ts      # POST — owner cancel (reversible)   # ⚠️ RETIRED 2026-08-21 — deleted; use stand-down. docs/retired-surface.md
     access/route.ts               # GET — recipient scoped items (post-RELEASED)
     access/[itemId]/decrypt/route.ts   # POST — recipient decrypt
     audit/route.ts                # GET — hash-chained log

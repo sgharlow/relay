@@ -40,8 +40,19 @@ import { readFileSync } from 'node:fs';
 
 import { VALID_ROLES } from '../../../../lib/domain/enums';
 
+/**
+ * ⚠️ THREE FILES SINCE 2026-08-21, AND THE THIRD IS THE ONE THAT RENDERS.
+ *
+ * J4-R1 folded the circle screen's two add forms into one `AddPersonForm`, which
+ * is now where the role <select> lives; `PeopleSections.tsx` keeps the narrowed
+ * LIST (`SELECTABLE_ROLES`) and exports it. Both are read, because either one
+ * alone would go green on the defect: pinning only the list file would miss an
+ * option rendered elsewhere, and pinning only the form would miss the list
+ * widening back to include `executor`.
+ */
 const FORMS = [
-  { name: 'the owner naming someone', file: 'src/app/(owner)/circle/PeopleSections.tsx' },
+  { name: 'the owner naming someone', file: 'src/app/(owner)/circle/AddPersonForm.tsx' },
+  { name: 'the narrowed list itself', file: 'src/app/(owner)/circle/PeopleSections.tsx' },
   { name: 'a helper proposing someone', file: 'src/app/(access)/helping/HelpingClient.tsx' },
 ] as const;
 

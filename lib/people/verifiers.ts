@@ -88,6 +88,38 @@ export async function listVerifiers(ownerId: string): Promise<Verifier[]> {
 }
 
 export async function createVerifier(ownerId: string, input: VerifierInput): Promise<Verifier> {
+  /**
+   * 🔴 ONE HUMAN, ONE ROW — AND THIS TABLE DID NOT HAVE THE GUARD (J4-R1).
+   *
+   * `createRecipient` has refused a duplicate normalised email since the
+   * approvals queue shipped, for the reason written there. `createVerifier` was
+   * never given the same check, so the identical mistake stayed one submit away
+   * on the other table — and the consequence here is worse. Quorum is a COUNT of
+   * confirmed verifiers, so one person entered twice could satisfy a quorum of
+   * two on their own: exactly the self-confirmation structure
+   * `detectRoleConcentration` exists to make impossible, reached without a
+   * delegate and without anyone noticing.
+   *
+   * DSQL has no unique constraints, so this is application-side, matching how
+   * all referential integrity works here. Compared on normalised email — the key
+   * `listPeople`, `createRecipient` and `detectRoleConcentration` already share,
+   * so all four agree on what "the same person" means.
+   *
+   * ⚠️ CREATE ONLY. Rows already duplicated in a live vault are left exactly as
+   * they are; merging them is a data change on somebody's circle and is not this
+   * function's call to make.
+   */
+  const existing = await query<{ id: string }>(
+    `SELECT id FROM verifiers WHERE owner_id = $1 AND lower(trim(email)) = lower(trim($2)) LIMIT 1`,
+    [ownerId, input.email],
+  );
+  if (existing.rows.length > 0) {
+    throw new ValidationError(
+      `${input.email} is already a trusted contact for this vault`,
+      'email',
+    );
+  }
+
   const result = await withOccRetry(() =>
     query<Record<string, unknown>>(
       `INSERT INTO verifiers (owner_id, name, email, phone, email_secondary)

@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { RecipientSection, VerifierSection } from './PeopleSections';
+import AddPersonForm from './AddPersonForm';
 
 interface Proposal {
   recipientId: string;
@@ -303,7 +304,21 @@ export default function CircleClient() {
         above names the gap; these are where you close it, on the same screen,
         without having to know that "recipients" and "circle" were once
         different pages.
+
+        🔴 AND ADDING SOMEBODY IS ONE FORM, ABOVE BOTH — 2026-08-21, J4-R1. The
+        two sections below each carried their own add form, so a spouse who
+        would both step in and confirm an emergency was entered twice and became
+        two rows, two invitations and two claim codes for one human — the exact
+        failure J4-R1 names, on a screen whose own data layer opens with "One
+        people list; roles are attributes".
+
+        It sits HERE rather than inside either section because it belongs to
+        neither: a person wearing both hats has no natural section to be added
+        from, and filing the single entry under one of the two headings would
+        restate the same wrong idea about the model.
       */}
+      <AddPersonForm onAdded={load} />
+
       <RecipientSection items={recipients} onChange={load} reachByRecipient={coverage.byRecipient} />
       <VerifierSection items={verifiers} onChange={load} />
     </div>

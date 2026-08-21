@@ -1,6 +1,26 @@
 /**
  * /api/recipients — Owner recipients collection (GET list, POST create).
  *
+ * ⚠️ POST HAS NO UI CALLER SINCE 2026-08-21, AND MUST NOT BE RETIRED FOR IT.
+ * J4-R1 folded the circle screen's two add forms into one, which posts to
+ * `/api/people`; this handler is now driven only from `scripts/` — every one of
+ * the five `verify:live` walks (`e2e-multiowner`, `e2e-ui`, `e2e-reveal`,
+ * `e2e-factors`) and `scripts/invite-cohort.ts` create their people through it,
+ * as does `scripts/disposable-owner.ts`. Deleting it would break the live-proof
+ * chain and the cohort invitation in one move.
+ *
+ * `lib/ops/api-reachability.ts` scans `src/` and `lib/` only, so it cannot see
+ * those callers and reports `POST /api/recipients` (and its verifier sibling) as
+ * unreachable. That finding is TRUE about the product surface and WRONG about
+ * the handler being dead, which is a distinction its allowlists cannot currently
+ * express: `REACHED_FROM_OUTSIDE` is keyed per ROUTE and would exempt GET too,
+ * and `KNOWN_UNREACHABLE` would assert these are dead when they are not. The
+ * resolution is a method-scoped external-caller entry, and it is a deliberate
+ * decision for whoever owns that file — recorded here rather than worked around,
+ * because a gate quietly satisfied is a gate that stops meaning anything.
+ *
+ * GET is unaffected: /rules still reads this collection.
+ *
  * Feature: relay-h0-mvp
  * Requirements: 3.1
  */

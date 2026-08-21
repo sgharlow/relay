@@ -40,12 +40,19 @@ vi.mock('../../../../../lib/release/escalation', () => ({
 vi.mock('../../../../../lib/release/silence-sweep', () => ({
   sweepSilentVerifiers: vi.fn(async () => []),
 }));
+// The nudge that goes to the OWNER before their dead-man's switch fires (J5-R4).
+// Behaviour is covered by lib/release/checkin-reminder.test.ts; here it only has
+// to be called, on the same run, after everything that moves state.
+vi.mock('../../../../../lib/release/checkin-reminder', () => ({
+  sweepCheckinReminders: vi.fn(async () => []),
+}));
 
 import { GET, POST } from './route';
 import { runHeartbeatSweep } from '../../../../../lib/release/heartbeat';
 import { recordSchedulerRun } from '../../../../../lib/release/scheduler-ledger';
 import { escalateLapsedRequests } from '../../../../../lib/release/escalation';
 import { sweepSilentVerifiers } from '../../../../../lib/release/silence-sweep';
+import { sweepCheckinReminders } from '../../../../../lib/release/checkin-reminder';
 
 function req(authz?: string) {
   return {
@@ -164,5 +171,59 @@ describe('cron heartbeat route — silent verifiers', () => {
   it('does not run it for an unauthorized caller', async () => {
     await GET(req('Bearer wrong'));
     expect(sweepSilentVerifiers).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * 🔴 THE OWNER HAD NO WARNING AT ALL — J5-R4, closed 2026-08-21.
+ *
+ * A living owner who missed ONE interval had their verifiers asked whether they
+ * were incapacitated, and the first thing the owner heard was the message saying
+ * it had already started. The reminder rides this cron for the reason the other
+ * two sweeps here already give: it is the scheduler that is already running, and
+ * a second thing that can silently stop is worse than a slightly busier sweep.
+ *
+ * ⚠️ THE ORDERING ASSERTIONS BELOW ARE THE POINT. A reminder must never be able
+ * to delay the transition it warns about, nor to break the ledger whose absence
+ * is the dead-man's alarm for the scheduler itself.
+ */
+describe('cron heartbeat route — the pre-PENDING owner reminder', () => {
+  it('sweeps for owners approaching their deadline and reports the count', async () => {
+    vi.mocked(sweepCheckinReminders).mockResolvedValueOnce(['owner-1'] as never);
+
+    const res = await GET(req('Bearer test-secret'));
+
+    expect(sweepCheckinReminders).toHaveBeenCalled();
+    await expect(res.json()).resolves.toMatchObject({ checkinReminders: 1 });
+  });
+
+  it('does not run it for an unauthorized caller', async () => {
+    await GET(req('Bearer wrong'));
+    expect(sweepCheckinReminders).not.toHaveBeenCalled();
+  });
+
+  it('runs AFTER the heartbeat sweep, so it can never postpone an arming', async () => {
+    await GET(req('Bearer test-secret'));
+
+    const swept = vi.mocked(runHeartbeatSweep).mock.invocationCallOrder[0];
+    const reminded = vi.mocked(sweepCheckinReminders).mock.invocationCallOrder[0];
+    expect(
+      reminded,
+      'the reminder now runs before the sweep that arms overdue triggers',
+    ).toBeGreaterThan(swept);
+  });
+
+  it('runs AFTER the scheduler ledger, so a nudge failure cannot forge a dead scheduler', async () => {
+    /*
+      `recordSchedulerRun` is what /api/health/scheduler reads, and its ABSENCE is
+      the off-Vercel dead-man's switch. If the reminder ran first and threw, the
+      ledger row would never be written and the monitor would report that the
+      product's dead-man's switch had stopped — because an email did not send.
+    */
+    await GET(req('Bearer test-secret'));
+
+    const ledger = vi.mocked(recordSchedulerRun).mock.invocationCallOrder[0];
+    const reminded = vi.mocked(sweepCheckinReminders).mock.invocationCallOrder[0];
+    expect(reminded).toBeGreaterThan(ledger);
   });
 });

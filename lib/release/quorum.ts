@@ -99,11 +99,45 @@ export function isEligibleVerifier(
   return true;
 }
 
+/**
+ * How many DISTINCT PEOPLE could attest, not how many rows exist.
+ *
+ * 🔴 THIS COUNTED ROWS UNTIL 2026-08-21, and the difference is a quorum hole.
+ * One human invited at two addresses — personal and work — claims both standby
+ * invitations with the SAME account and is confirmed twice. That is two rows,
+ * one person, and it counted as 2: a 2-of-3 quorum became satisfiable by that
+ * person alone, while the coverage matrix and `assertQuorumSatisfiable` both
+ * reported two verifiers. N-of-M means N independent attestations; counting a
+ * row rather than a person quietly redefined it.
+ *
+ * `claimed_user_id` is precisely the field that records "these are the same
+ * person", and nothing was reading it for this. A same-address duplicate guard
+ * shipped at the entry point the same day; it closes one ADDRESS twice, not one
+ * HUMAN twice, so the count is done here — at the moment the number is used —
+ * where no future entry path can reopen it.
+ *
+ * ⚠️ UNCLAIMED ROWS COUNT INDIVIDUALLY, deliberately. NULL means nobody has
+ * claimed that invitation yet, so two unclaimed rows are two prospective people
+ * and there is no evidence they are one. Collapsing them would UNDERCOUNT M and
+ * refuse quorums that are genuinely reachable — failing in the direction that
+ * blocks a real emergency, which is the worse direction here.
+ *
+ * Eligibility is applied BEFORE the dedupe, so rules 6 and 7 cannot be dodged by
+ * a conflicted row surviving as the representative of its own pair.
+ */
 export function countEligibleVerifiers(
   rows: VerifierEligibilityRow[],
   ctx: EligibilityContext,
 ): number {
-  return rows.filter((r) => isEligibleVerifier(r, ctx)).length;
+  const eligible = rows.filter((r) => isEligibleVerifier(r, ctx));
+
+  const claimedHumans = new Set<string>();
+  let unclaimed = 0;
+  for (const r of eligible) {
+    if (r.claimed_user_id) claimedHumans.add(r.claimed_user_id);
+    else unclaimed += 1;
+  }
+  return claimedHumans.size + unclaimed;
 }
 
 /**

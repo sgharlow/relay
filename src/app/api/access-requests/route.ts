@@ -124,9 +124,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       throw new ValidationError('Unknown recipient', 'recipient');
     }
 
-    // Velocity limit: repeated asks must not be usable to wear an owner down.
-    const recent = await query<{ created_at: string }>(
-      `SELECT created_at FROM access_requests WHERE recipient_id = $1`,
+    /*
+      May this request be made at all? Two rules, one place, one call — velocity
+      (repeated asks must not wear an owner down) and cooling-off (the owner has
+      already answered this person, and the answer was no).
+
+      🔴 `status` IS NEW HERE, 2026-08-21, and its absence was the whole J6-R8
+      defect. This read `created_at` alone, so `assertRequestAllowed` could only
+      ever count rows — it had no way to see that the owner had refused. A
+      contact who was told no could ask again a minute later, twice, before the
+      three-a-day budget ran out. `PriorRequest` now REQUIRES the column, so
+      dropping it from this SELECT is a `tsc` failure rather than a rule that
+      silently stops firing.
+    */
+    const recent = await query<{ created_at: string; status: string }>(
+      `SELECT created_at, status FROM access_requests WHERE recipient_id = $1`,
       [payload.recipientId],
     );
     assertRequestAllowed(recent.rows);

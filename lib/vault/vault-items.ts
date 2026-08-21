@@ -476,6 +476,34 @@ function stringifyTs(v: unknown): string {
 
 /** Lists an owner's items (metadata only), most-important first. */
 export async function listItems(ownerId: string): Promise<VaultItemMetadata[]> {
+  /*
+    THE OWNER REWROTE THE SECRET, SO THE HELPER WHO ENTERED IT LOSES IT — the
+    created_by_delegate_id = NULL below, added 2026-08-21. It closes a false
+    promise rather than adding a feature.
+
+    created_by_delegate_id records who first entered an item, and
+    POST /api/kms/unwrap reads it to let a delegate re-open something they typed
+    (reasonable: they already know it). This statement rewrote the ciphertext and
+    left that column alone, so after an owner CHANGED the password on an account
+    their helper had set up, the helper could still unwrap it and read the new
+    secret. The consent panel a parent agrees to says the opposite in so many
+    words: "Anything you enter yourself stays closed to them."
+
+    Cleared unconditionally, and ASSIGNED rather than COALESCEd, for the same
+    reason secret_kinds is: the blob just changed, so everything describing the
+    blob changes with it. Safe unconditionally because this statement is
+    owner-scoped (owner_id is in the WHERE clause) and no delegate holds an
+    items:update scope — so every call to it IS the owner.
+
+    Rotating a credential is very often exactly BECAUSE someone should no longer
+    have it, which is why the code was changed to match the copy rather than the
+    copy narrowed to match the code. Pinned by
+    lib/vault/owner-edit-closes-the-helper-out.test.ts.
+
+    ⚠️ This note lives OUT here because the SQL is a template literal and the
+    backticks this explanation needs would terminate it — which is exactly what
+    happened on the first attempt.
+  */
   const result = await withOccRetry(() =>
     query<Record<string, unknown>>(
       `SELECT ${METADATA_COLUMNS}
@@ -575,6 +603,8 @@ export async function updateItem(
               url = COALESCE($6, url),
               backup_note = COALESCE($7, backup_note),
               secret_kinds = $8,
+              -- Cleared, not COALESCEd. See the note above this query.
+              created_by_delegate_id = NULL,
               updated_at = now()
         WHERE id = $9 AND owner_id = $10
        RETURNING ${METADATA_COLUMNS}`,

@@ -22,7 +22,7 @@ import { useState } from 'react';
 
 import { apiSend } from '../_lib/api';
 import { RenameControl } from './RenameControl';
-import { VALID_ROLES, type RecipientRole } from '../../../../lib/domain/enums';
+import { VALID_ROLES } from '../../../../lib/domain/enums';
 import { readStandbyState, circleLight } from '../../../../lib/people/standby-state';
 import InviteControl from './InviteControl';
 import BreakGlassControl from './BreakGlassControl';
@@ -58,11 +58,18 @@ import type { DrillState } from '../../../../lib/release/drill-claim';
  * the list, so there are two. role-options.test.ts reads BOTH files, which is
  * what holds them together until one definition exists.
  *
- * ⚠️ ONLY SAFE BECAUSE THIS FORM CREATES. If a role ever becomes editable, the
+ * ⚠️ ONLY SAFE BECAUSE THE FORM CREATES. If a role ever becomes editable, the
  * stored value has to be added back to the list for that row, or saving an
  * existing executor would silently rewrite them as a recipient.
+ *
+ * ⚠️ THE SELECT ITSELF MOVED on 2026-08-21: J4-R1 folded this file's two add
+ * forms into `AddPersonForm.tsx`, which imports this list. The list stays here
+ * because the reasoning above is about the ROLE VOCABULARY rather than about one
+ * form, and moving a narrowing out from under its own explanation is how the
+ * explanation gets lost. `role-options.test.ts` reads both files so neither half
+ * can widen alone.
  */
-const SELECTABLE_ROLES = VALID_ROLES.filter((r) => r !== 'executor');
+export const SELECTABLE_ROLES = VALID_ROLES.filter((r) => r !== 'executor');
 
 /**
  * Someone who has not bound an account yet still needs a way in. `revoked` is
@@ -217,7 +224,7 @@ function StandbyLight({ state, paperOnly }: { state?: string; paperOnly?: boolea
   );
 }
 
-const field: React.CSSProperties = {
+export const field: React.CSSProperties = {
   fontFamily: 'var(--font-ui)',
   fontSize: 'var(--t2)',
   padding: 'var(--s2) var(--s3)',
@@ -227,7 +234,7 @@ const field: React.CSSProperties = {
   color: 'var(--ink)',
 };
 
-const primaryButton: React.CSSProperties = {
+export const primaryButton: React.CSSProperties = {
   fontFamily: 'var(--font-ui)',
   fontSize: 'var(--t2)',
   fontWeight: 600,
@@ -238,7 +245,7 @@ const primaryButton: React.CSSProperties = {
   border: '1px solid var(--ink)',
 };
 
-const card: React.CSSProperties = {
+export const card: React.CSSProperties = {
   border: '1px solid var(--rule)',
   borderRadius: 'var(--radius-owner)',
   background: 'var(--paper-raised)',
@@ -407,31 +414,9 @@ export function RecipientSection({
   /** id → how many items they can reach, from the coverage matrix. */
   reachByRecipient?: Record<string, number>;
 }) {
-  const [form, setForm] = useState({
-    name: '',
-    relationship: '',
-    email: '',
-    phone: '',
-    role: 'recipient' as RecipientRole,
-  });
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function add(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setBusy(true);
-    try {
-      await apiSend('/api/recipients', 'POST', form);
-      setForm({ name: '', relationship: '', email: '', phone: '', role: 'recipient' });
-      await onChange();
-    } catch (err) {
-      setError(String((err as Error).message));
-    } finally {
-      setBusy(false);
-    }
-  }
-
+  // The create state that used to live here went with the form — see the note
+  // where it stood. This section now only LISTS and removes; naming somebody is
+  // AddPersonForm's job, once, for whatever they would do.
   const { remove, removeError } = useRemove('/api/recipients', onChange);
 
   return (
@@ -544,33 +529,29 @@ export function RecipientSection({
         ))}
       </ul>
 
-      <form
-        onSubmit={add}
-        style={{ ...card, display: 'grid', gap: 'var(--s2)', padding: 'var(--s4)', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}
-      >
-        <input style={field} placeholder="Name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-        <input style={field} type="email" placeholder="Email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-        {/* aria-label: axe flagged this select-name (critical) — the other fields
-            in this row carry placeholders, which name them; a <select> has no
-            placeholder, so it reached a screen reader as an unnamed control. */}
-        <select aria-label="Their role" style={field} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as RecipientRole })}>
-          {SELECTABLE_ROLES.map((role) => (
-            <option key={role} value={role}>
-              {role}
-            </option>
-          ))}
-        </select>
-        <input style={field} placeholder="Relationship (optional)" value={form.relationship} onChange={(e) => setForm({ ...form, relationship: e.target.value })} />
-        <input style={field} placeholder="Phone (optional)" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-        <button type="submit" disabled={busy} style={{ ...primaryButton, opacity: busy ? 0.6 : 1 }}>
-          Add this person
-        </button>
-        {error ? (
-          <p role="alert" style={{ gridColumn: '1 / -1', fontSize: 'var(--t2)', color: 'var(--clay)' }}>
-            {error}
-          </p>
-        ) : null}
-      </form>
+      {/*
+        🔴 THE ADD FORM WAS HERE, AND IT WAS ONE OF TWO — removed 2026-08-21 for
+        J4-R1.
+
+        This section carried its own form and the verifier section below carried
+        another. That is the defect: `lib/people/people.ts` opens with "One
+        people list; roles are attributes", and an owner naming their spouse as
+        both had to find two forms and type the same human twice — producing two
+        rows, two invitations and two claim codes for one person, and a circle
+        whose headcount overstated how many people were actually standing by.
+
+        The single entry is `AddPersonForm`, above both sections. It sits above
+        rather than inside one of them because it belongs to neither: a person
+        who wears both hats has no natural section to be added from, and putting
+        the one form under one of the two headings would say the wrong thing
+        about the model all over again.
+
+        ⚠️ DELETING IT IS LOAD-BEARING, NOT TIDINESS. A unified form added
+        alongside these two would have given the owner three ways in and changed
+        nothing about the outcome — it would read as fixed and behave exactly as
+        before. AddPersonForm.test.tsx renders both sections and fails if a form
+        returns to either.
+      */}
     </section>
   );
 }
@@ -582,25 +563,8 @@ export function VerifierSection({
   items: Verifier[];
   onChange: () => Promise<void>;
 }) {
-  const [form, setForm] = useState({ name: '', email: '', phone: '' });
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function add(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setBusy(true);
-    try {
-      await apiSend('/api/verifiers', 'POST', form);
-      setForm({ name: '', email: '', phone: '' });
-      await onChange();
-    } catch (err) {
-      setError(String((err as Error).message));
-    } finally {
-      setBusy(false);
-    }
-  }
-
+  // Same removal as RecipientSection — this section lists and removes; becoming
+  // a trusted contact is a tick on the one form at the top of the page.
   const { remove, removeError } = useRemove('/api/verifiers', onChange);
 
   return (
@@ -706,33 +670,21 @@ export function VerifierSection({
         ))}
       </ul>
 
-      <form
-        onSubmit={add}
-        style={{ ...card, display: 'grid', gap: 'var(--s2)', padding: 'var(--s4)', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}
-      >
-        <input style={field} placeholder="Name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-        <input style={field} type="email" placeholder="Email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-        <input style={field} placeholder="Phone (optional)" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-        {/*
-          was: "Add a verifier". The readiness banner says "No trusted contact
-          yet" and /rules says "Add a trusted contact" — both linking HERE, where
-          the phrase appeared nowhere and the only button offered a different
-          noun. A new owner following their own to-do list arrived and was asked
-          for something with another name, which is the exact
-          learn-an-internal-distinction failure SidebarNav records.
+      {/*
+        The verifier half of the same removal — see the note in RecipientSection
+        above. Becoming a trusted contact is now a tick on the one form at the
+        top of this page.
 
-          "verifier" stays everywhere it is the TABLE, the type and the API.
-          Renaming those for a copy problem would be a contract change.
-        */}
-        <button type="submit" disabled={busy} style={{ ...primaryButton, opacity: busy ? 0.6 : 1 }}>
-          Add a trusted contact
-        </button>
-        {error ? (
-          <p role="alert" style={{ gridColumn: '1 / -1', fontSize: 'var(--t2)', color: 'var(--clay)' }}>
-            {error}
-          </p>
-        ) : null}
-      </form>
+        ⚠️ THE NOUN CAME WITH IT. This button read "Add a trusted contact", and
+        the reason was written here: the readiness blocker says "No trusted
+        contact yet" and /rules says "Add a trusted contact", both linking to
+        this screen, where the phrase had appeared nowhere and the only button
+        offered "verifier" instead. That phrase now lives on the AddPersonForm
+        tick — the place an owner following their own to-do list arrives at — and
+        `role-noun.test.ts` reads BOTH files so it cannot go missing by being
+        moved. "verifier" stays the table, the type and the API; renaming those
+        for a copy problem would be a contract change.
+      */}
 
       {/*
         Sits under the verifiers and nowhere else. They are the people whose

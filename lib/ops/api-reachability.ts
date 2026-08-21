@@ -48,6 +48,38 @@ export interface Unreachable {
  * be written down and can be argued with.
  */
 export const REACHED_FROM_OUTSIDE: Record<string, string> = {
+  /*
+    ⚠️ THESE TWO BECAME CALLERLESS ON 2026-08-21 AND ARE DELIBERATELY KEPT.
+
+    J4-R1 replaced the two single-role add forms on /circle with one
+    add-a-person form, so no screen POSTs to either route any more and this
+    check went red — correctly, and for a change that was itself correct.
+
+    They are NOT retired, because deleting them would break the release gate.
+    `scripts/` is outside this checker's scan roots (it walks `src/` and `lib/`
+    only, see `candidates()`), so callers there are invisible to it — and every
+    one of the five `verify:live` walks builds its circle through these two
+    endpoints, as do `disposable-owner.ts`, `capture-screens.ts` and
+    `invite-cohort.ts`. That is a checkable claim rather than an assurance:
+    `grep -rn "api/recipients\|api/verifiers" scripts/` lists them.
+
+    So the honest state is "reached, by an operator-run tool rather than by a
+    screen", which is what this list is for. If the walks are ever rewritten to
+    drive the unified endpoint, these entries should go and the routes should be
+    retired into docs/retired-surface.md — not left sitting here.
+  */
+  'POST /api/recipients':
+    'No screen POSTs it since the unified add-a-person form (2026-08-21). Still the ' +
+    'endpoint every verify:live walk, disposable-owner.ts and invite-cohort.ts use to ' +
+    'build a circle — deleting it breaks the release gate. GET is deliberately NOT ' +
+    'exempted and is still checked: the rule builder on /rules reads it ' +
+    '(src/app/(owner)/rules/RulesPageClient.tsx).',
+  'POST /api/verifiers':
+    'Same as POST /api/recipients: callerless in the UI since the unified add form, ' +
+    'still used by the live walks, capture-screens.ts and invite-cohort.ts. GET stays ' +
+    'checked here too — though note it is currently satisfied only by the bare ' +
+    "'/api/verifiers' literal in PeopleSections' useRemove, which this checker reads " +
+    'as a GET because an unadorned mention counts as one.',
   '/api/cron/heartbeat': 'Vercel Cron (vercel.json), hourly, bearer CRON_SECRET.',
   '/api/health/scheduler':
     'Probed by .github/workflows/scheduler-monitor.yml — the dead-man’s switch.',
@@ -307,6 +339,17 @@ export function findUnreachable(repoRoot = '.'): Unreachable[] {
     for (const method of HTTP_METHODS) {
       const declared = new RegExp('^export (?:async )?function ' + method + '\\b', 'm').test(src);
       if (!declared) continue;
+      /*
+        METHOD-SCOPED EXEMPTIONS, added 2026-08-21. The route-level check above
+        is right for a whole endpoint nothing here calls (Vercel Cron, Stripe,
+        the browser). It is far too broad for the case that prompted this: the
+        unified add-a-person form left POST /api/recipients callerless while GET
+        /api/recipients is still what /circle reads to draw the roster. A
+        route-level entry would have exempted the GET too, so a later change
+        orphaning the read path would pass this check silently — an allowlist
+        that grants more than it was written to grant is how a guard rots.
+      */
+      if (REACHED_FROM_OUTSIDE[method + ' ' + route]) continue;
       if (sites.length === 0 || !methodUsedNear(clientBlob, sites, method)) {
         unreachable.push({ route, method });
       }

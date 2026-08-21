@@ -133,6 +133,31 @@ export const PERMITTED_TRANSITIONS: readonly TransitionRule[] = [
   { from: 'pending', to: 'armed', reversibleOnly: true },
   { from: 'grace', to: 'released', reversibleOnly: false },
   { from: 'grace', to: 'armed', reversibleOnly: true },
+  /*
+    ⚠️ DELIBERATELY CALLER-LESS SINCE 2026-08-21. Nothing in the product takes
+    this edge any more — `cancelTrigger` and `POST /api/triggers/[id]/cancel`
+    were removed the same day, and the "Cancel permanently" button with them.
+
+    WHY IT WAS RETIRED. `cancelled` has no outgoing edge in this table, so it is
+    the one terminal state a reversible trigger can reach: check-in does not
+    reverse it, `standDownTrigger` refuses it, the heartbeat sweep only reads
+    ARMED rows, and `/initiate` answers 409 for that trigger TYPE forever after
+    — every access rule using it, every recipient scoped to it. That was two taps
+    from a screen an owner opens while something is going wrong, beside the
+    button they actually want. Stand down (grace → armed, pending → armed) is
+    the false-alarm control and it re-arms.
+
+    WHY THE EDGE STAYS ANYWAY. Production holds rows that took it. The CANCELLED
+    badge and its explanation still render for them, and a state machine that
+    cannot describe a state its own database contains is worse than one carrying
+    an edge nobody calls. `isPermittedTransition` is also read by tests and by
+    the screen's own guard (cancelled-is-terminal.test.ts), which asserts BOTH
+    that this edge survives and that nothing calls it.
+
+    Adding a caller back is a product decision, not a tidy-up. If you are here
+    because something wants to cancel a trigger, the answer is almost certainly
+    stand down.
+  */
   { from: 'grace', to: 'cancelled', reversibleOnly: true },
   { from: 'released', to: 'armed', reversibleOnly: true }, // reversibleOnly ⇒ non-estate
 ];

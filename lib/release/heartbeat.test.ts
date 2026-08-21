@@ -440,8 +440,9 @@ describe('the sweep rings the bell after it arms', () => {
  * trigger_type predicate, so an owner who went past their check-in interval had
  * every armed row advanced — including an `estate` row predating the 2026-08-14
  * withdrawal. Estate is not reversible: `processCheckin` reports it `blocked`,
- * and stand-down and cancel are both gated on `reversible`, so the owner could
- * not have stopped what their own screen told them could not begin.
+ * and stand-down is gated on `reversible` — as cancel was, before that control
+ * was retired on 2026-08-21 — so the owner could not have stopped what their own
+ * screen told them could not begin.
  *
  * The guard belongs in the WHERE clause, beside `is_demo_account = false`, for
  * the reason that exclusion records: a post-hoc filter in JS drifts the moment

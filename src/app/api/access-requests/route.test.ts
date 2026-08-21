@@ -30,6 +30,8 @@ import { query } from '../../../../lib/db/connection';
 import { requireOwner } from '../../../../lib/http/owner-route';
 import { resolveRequesterFor } from '../../../../lib/access/requester-session';
 import { verifyRecipientToken } from '../../../../lib/auth/recipient-token';
+import { writeAuditEntry } from '../../../../lib/audit/audit-service';
+import { notifyCircleOfRequest } from '../../../../lib/notify/notifications';
 import { POST } from './route';
 
 const mockQuery = vi.mocked(query);
@@ -177,5 +179,95 @@ describe('the circle broadcast does not reach people the owner removed', () => {
         `arm ${i + 1} of the circle broadcast does not exclude revoked contacts:\n${arm}`,
       ).toMatch(/coalesce\(\s*standby_state\s*,\s*'invited'\s*\)\s*<>\s*'revoked'/i);
     }
+  });
+});
+
+/**
+ * 🔴 A REFUSAL WAS NOT VISIBLE TO THE RULE THAT ENFORCES IT — J6-R8, 2026-08-21.
+ *
+ * `assertRequestAllowed` is the one place that answers "may this request be
+ * made", and it was handed `SELECT created_at` — so it could count asks and
+ * could not see that the owner had already answered one of them with no. A
+ * contact told no could ask again a minute later, and once more, inside the
+ * three-a-day budget.
+ *
+ * Both halves are asserted here because the unit test cannot see either one: the
+ * rule itself is proved in lib/release/access-request.test.ts against rows
+ * somebody typed, and the mock will happily hand it a `status` the real query
+ * never selected. This is the guard on WHERE the check is applied.
+ */
+describe('a refused requester is cooled off before the next ask (J6-R8)', () => {
+  /** The velocity/cooling-off read, whichever position it occupies. */
+  function priorRequestsSql(): string | undefined {
+    return mockQuery.mock.calls
+      .map((c) => String(c[0]))
+      .find((s) => /FROM access_requests\s+WHERE recipient_id/i.test(s));
+  }
+
+  it('SELECTS the status, without which the rule silently never fires', async () => {
+    seedInsertPath();
+    await POST(req({ owner_id: OWNER, trigger_type: 'emergency', reason: 'in hospital' }));
+
+    const sql = priorRequestsSql();
+    expect(sql, 'the prior-requests read was not issued at all').toBeTruthy();
+    /*
+      Matched inside the select list rather than anywhere in the statement. A
+      bare `toContain('status')` would be satisfied by a WHERE clause, or by the
+      word appearing in some other query — the shape of false green this repo
+      has been bitten by more than once.
+    */
+    expect(sql!.slice(0, sql!.search(/\bFROM\b/i))).toMatch(/\bstatus\b/);
+  });
+
+  it('refuses the next ask with 400 and names cooling_off', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ owner_id: 'o-1' }], rowCount: 1 } as never) // owner lookup
+      .mockResolvedValueOnce({
+        rows: [{ created_at: new Date().toISOString(), status: 'denied_by_owner' }],
+        rowCount: 1,
+      } as never) // prior requests — one refusal, minutes ago
+      .mockResolvedValue({ rows: [], rowCount: 0 } as never);
+
+    const res = await POST(req({ owner_id: OWNER, trigger_type: 'emergency' }));
+
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toMatchObject({ field: 'cooling_off' });
+  });
+
+  it('writes NOTHING when it refuses — no row, no audit, no mail to the circle', async () => {
+    /*
+      The refusal has to happen BEFORE the INSERT. A cooling-off that files the
+      request and then declines it would still broadcast "someone asked for
+      access to your vault" to the whole circle on every attempt, which is the
+      harassment the rule exists to stop, delivered by Relay itself.
+    */
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ owner_id: 'o-1' }], rowCount: 1 } as never)
+      .mockResolvedValueOnce({
+        rows: [{ created_at: new Date().toISOString(), status: 'denied_by_owner' }],
+        rowCount: 1,
+      } as never)
+      .mockResolvedValue({ rows: [], rowCount: 0 } as never);
+
+    await POST(req({ owner_id: OWNER, trigger_type: 'emergency' }));
+
+    const statements = mockQuery.mock.calls.map((c) => String(c[0]));
+    expect(statements.some((s) => /INSERT INTO access_requests/i.test(s))).toBe(false);
+    expect(vi.mocked(writeAuditEntry)).not.toHaveBeenCalled();
+    expect(vi.mocked(notifyCircleOfRequest)).not.toHaveBeenCalled();
+  });
+
+  it('still lets a requester through when the owner has not refused them', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ owner_id: 'o-1' }], rowCount: 1 } as never)
+      .mockResolvedValueOnce({
+        rows: [{ created_at: new Date().toISOString(), status: 'awaiting_owner' }],
+        rowCount: 1,
+      } as never)
+      .mockResolvedValueOnce({ rows: [{ id: 'ar-1' }], rowCount: 1 } as never)
+      .mockResolvedValue({ rows: [{ email: 'o@example.com', name: 'Jordan' }], rowCount: 1 } as never);
+
+    const res = await POST(req({ owner_id: OWNER, trigger_type: 'emergency' }));
+    expect(res.status).toBe(201);
   });
 });

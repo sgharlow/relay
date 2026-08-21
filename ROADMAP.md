@@ -262,7 +262,7 @@ and none should have.**
 | F-a | D2 — remaining requirable factors (sms, email, passkey, hardware_key, security_questions). 🔵 **OPEN, HELD on a number**, not a date: resumes when owners are observed answering the first question | first real declaration answers |
 | F-b | Field-level vault-item editing (single-item ciphertext endpoint + its step-up decision, in the same change) | first real owner maintains a vault over time |
 | F-c | J8 completion slice: single-next-action card, ephemeral reveal, shared progress | a real recipient's observed need |
-| F-d | J5 retention, as a whole: renewal receipt + owner-reminder ladder before a heartbeat transition, **plus the quarterly continuity review and life-event prompts** (J5 steps 4–5, which were tracked only in the journeys register until 2026-08-21 — §7 says that is one session from being lost) | first arms-length subscription approaching renewal |
+| ~~F-d~~ | ~~J5 retention: owner-reminder ladder before a heartbeat transition~~ — ✅ **the LADDER shipped 2026-08-21** (`wired`, not live-proven) under `ratified.journey-safety-subset-2026-08-21`: it was reclassified as a custodial false-positive guard rather than retention, because a living owner who missed one interval had verifiers asked he was incapacitated. **Still gated:** the renewal receipt, the quarterly continuity review and life-event prompts | first arms-length subscription approaching renewal |
 | F-e | J2: by-exception review screen, top-three framing, continuity-ready state, document + email ingestion lanes | demand evidence |
 | F-f | J3: monthly delegate digest | demand evidence |
 | F-g | Secret-types Phase 2: QR scanning; AI inference of `factors_required` (advisory, owner-override) | D2 evidence + demand |

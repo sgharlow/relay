@@ -2,8 +2,9 @@
  * POST /api/triggers/[id]/initiate — Owner fires a trigger (ARMED → PENDING).
  *
  * The `[id]` dynamic segment here carries the TRIGGER TYPE (it shares Next.js's
- * slug name with the sibling confirm/cancel routes, which use it as a
+ * slug name with the sibling confirm and stand-down routes, which use it as a
  * release_state id — Next forbids differing slug names at one path position).
+ * /cancel was a third such sibling until it was retired on 2026-08-21.
  *
  * Asserts the trigger's release_state is ARMED, transitions to PENDING, then
  * emails every verifier a scoped confirmation request (Req 6.2) — best-effort.

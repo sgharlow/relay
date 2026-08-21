@@ -18,7 +18,9 @@ import {
   CHALLENGE_WINDOW_SECONDS,
   MAX_REQUESTS_PER_WINDOW,
   VELOCITY_WINDOW_SECONDS,
+  REFUSAL_COOLING_OFF_SECONDS,
   assertRequestAllowed,
+  refusalCoolingOffUntil,
   challengeExpiry,
 } from './access-request';
 import { ValidationError } from '../validation';
@@ -66,26 +68,41 @@ describe('assertRequestAllowed', () => {
     expect(() => assertRequestAllowed([], now)).not.toThrow();
   });
 
+  /*
+    `status: 'awaiting_owner'` throughout, so these keep testing the VELOCITY
+    rule alone. Requests that were refused are the cooling-off rule's business
+    and are exercised below; a fixture that quietly satisfied both would stop
+    telling you which one fired.
+  */
   it('allows requests below the velocity limit', () => {
-    expect(() => assertRequestAllowed([{ created_at: '2026-08-06T11:00:00Z' }], now)).not.toThrow();
+    expect(() =>
+      assertRequestAllowed([{ created_at: '2026-08-06T11:00:00Z', status: 'awaiting_owner' }], now),
+    ).not.toThrow();
   });
 
   it('REJECTS once the velocity limit is reached', () => {
     const recent = Array.from({ length: MAX_REQUESTS_PER_WINDOW }, () => ({
       created_at: '2026-08-06T11:00:00Z',
+      status: 'awaiting_owner',
     }));
     expect(() => assertRequestAllowed(recent, now)).toThrow(ValidationError);
   });
 
   it('ignores requests outside the window', () => {
     const old = new Date(now.getTime() - (VELOCITY_WINDOW_SECONDS + 60) * 1000).toISOString();
-    const recent = Array.from({ length: MAX_REQUESTS_PER_WINDOW }, () => ({ created_at: old }));
+    const recent = Array.from({ length: MAX_REQUESTS_PER_WINDOW }, () => ({
+      created_at: old,
+      status: 'awaiting_owner',
+    }));
     expect(() => assertRequestAllowed(recent, now)).not.toThrow();
   });
 
   it('counts only requests strictly inside the window boundary', () => {
     const exactly = new Date(now.getTime() - VELOCITY_WINDOW_SECONDS * 1000).toISOString();
-    const recent = Array.from({ length: MAX_REQUESTS_PER_WINDOW }, () => ({ created_at: exactly }));
+    const recent = Array.from({ length: MAX_REQUESTS_PER_WINDOW }, () => ({
+      created_at: exactly,
+      status: 'awaiting_owner',
+    }));
     // On the boundary still counts — the limit is deliberately conservative.
     expect(() => assertRequestAllowed(recent, now)).toThrow(ValidationError);
   });
@@ -168,5 +185,138 @@ describe('sanitiseRequestReason', () => {
     expect(sanitiseRequestReason('   \n\t ')).toBeNull();
     expect(sanitiseRequestReason(undefined)).toBeNull();
     expect(sanitiseRequestReason(42)).toBeNull();
+  });
+});
+
+/**
+ * 🔴 A REFUSAL BOUGHT THE OWNER NOTHING — J6-R8, closed 2026-08-21.
+ *
+ * `assertRequestAllowed` was the only thing standing between a hostile contact
+ * and a stream of asks, and it counts requests without ever looking at how they
+ * ENDED. So an owner who read "someone is asking for access to your vault",
+ * answered no, and put the phone down could be asked again a minute later, and
+ * once more after that, before the 3-per-24h budget ran out. Three refusals in
+ * an afternoon is not a rate limit doing its job — it is the wearing-down this
+ * file's own header says the velocity limit exists to prevent, performed inside
+ * the budget.
+ *
+ * The tests below pin both halves: the refusal must actually bar the next ask,
+ * and it must stop barring it, because a cooling-off that never lifts is a
+ * caregiver locked out of a real emergency.
+ */
+describe('cooling-off after a refusal (J6-R8)', () => {
+  const now = new Date('2026-08-21T12:00:00Z');
+  const ago = (seconds: number) => new Date(now.getTime() - seconds * 1000).toISOString();
+
+  it('REFUSES the next ask inside the cooling-off period', () => {
+    const recent = [{ created_at: ago(60), status: 'denied_by_owner' }];
+    expect(() => assertRequestAllowed(recent, now)).toThrow(ValidationError);
+  });
+
+  it('names cooling_off, not velocity — the owner said no, they did not ask too fast', () => {
+    // The two refusals read identically to a requester unless the field says
+    // which rule fired, and they mean opposite things: "wait your turn" versus
+    // "they answered you".
+    const recent = [{ created_at: ago(60), status: 'denied_by_owner' }];
+    try {
+      assertRequestAllowed(recent, now);
+      expect.unreachable('a refused request one minute ago must bar the next ask');
+    } catch (err) {
+      expect((err as ValidationError).field).toBe('cooling_off');
+    }
+  });
+
+  it('LIFTS once the period has passed — a real emergency must not be locked out', () => {
+    const recent = [
+      { created_at: ago(REFUSAL_COOLING_OFF_SECONDS + 60), status: 'denied_by_owner' },
+    ];
+    expect(() => assertRequestAllowed(recent, now)).not.toThrow();
+  });
+
+  it('still bars on the exact boundary, like the velocity window above it', () => {
+    const recent = [{ created_at: ago(REFUSAL_COOLING_OFF_SECONDS), status: 'denied_by_owner' }];
+    expect(() => assertRequestAllowed(recent, now)).toThrow(ValidationError);
+  });
+
+  it('does not fire on a request the owner has not answered yet', () => {
+    // An open request is the velocity limit's business. Treating "waiting" as
+    // "refused" would silently double the wait on the commonest case.
+    const recent = [{ created_at: ago(60), status: 'awaiting_owner' }];
+    expect(() => assertRequestAllowed(recent, now)).not.toThrow();
+  });
+
+  it('does not fire on an APPROVED request', () => {
+    const recent = [{ created_at: ago(60), status: 'approved_by_owner' }];
+    expect(() => assertRequestAllowed(recent, now)).not.toThrow();
+  });
+
+  it('does not fire on an ESCALATED request — a lapse is not a refusal', () => {
+    /*
+      escalation.ts is explicit that "absence must never be read as consent";
+      the mirror of that rule is that absence must never be read as REFUSAL
+      either. An owner who was too ill to answer has not said no, and the
+      recipient who asked is the person most likely to need to ask again.
+    */
+    const recent = [{ created_at: ago(60), status: 'escalated' }];
+    expect(() => assertRequestAllowed(recent, now)).not.toThrow();
+  });
+
+  it('takes the MOST RECENT refusal, not the first one it finds', () => {
+    // Rows arrive in whatever order the database returns them; a rule that
+    // stopped at the first refused row would let an old one shadow a fresh one.
+    const recent = [
+      { created_at: ago(REFUSAL_COOLING_OFF_SECONDS * 3), status: 'denied_by_owner' },
+      { created_at: ago(60), status: 'denied_by_owner' },
+    ];
+    expect(() => assertRequestAllowed(recent, now)).toThrow(ValidationError);
+  });
+
+  it('ignores an unparseable created_at rather than barring forever', () => {
+    // Bad data must not become a permanent lock-out of the emergency path.
+    const recent = [{ created_at: 'not a date', status: 'denied_by_owner' }];
+    expect(() => assertRequestAllowed(recent, now)).not.toThrow();
+  });
+
+  it('is shorter than the velocity window, so it is a distinct rule and not a longer one', () => {
+    /*
+      The two limits answer different questions and the numbers have to reflect
+      that. If the cooling-off were the longer of the two it would subsume the
+      velocity limit, and one of them would be dead code nobody noticed.
+    */
+    expect(REFUSAL_COOLING_OFF_SECONDS).toBeLessThan(VELOCITY_WINDOW_SECONDS);
+    expect(REFUSAL_COOLING_OFF_SECONDS).toBeGreaterThan(0);
+  });
+
+  it('the velocity limit still fires when nothing was refused', () => {
+    // Adding a rule must not quietly replace the one already there.
+    const recent = Array.from({ length: MAX_REQUESTS_PER_WINDOW }, () => ({
+      created_at: ago(3600),
+      status: 'awaiting_owner',
+    }));
+    try {
+      assertRequestAllowed(recent, now);
+      expect.unreachable('the velocity limit must still refuse');
+    } catch (err) {
+      expect((err as ValidationError).field).toBe('velocity');
+    }
+  });
+});
+
+describe('refusalCoolingOffUntil', () => {
+  const now = new Date('2026-08-21T12:00:00Z');
+
+  it('is null when nothing was ever refused', () => {
+    expect(refusalCoolingOffUntil([{ created_at: now.toISOString(), status: 'awaiting_owner' }]))
+      .toBeNull();
+  });
+
+  it('is the refusal instant plus the cooling-off period', () => {
+    const at = new Date('2026-08-21T06:00:00Z');
+    expect(refusalCoolingOffUntil([{ created_at: at.toISOString(), status: 'denied_by_owner' }]))
+      .toBe(at.getTime() + REFUSAL_COOLING_OFF_SECONDS * 1000);
+  });
+
+  it('is null for an empty history', () => {
+    expect(refusalCoolingOffUntil([])).toBeNull();
   });
 });

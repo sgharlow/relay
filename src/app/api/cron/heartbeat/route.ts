@@ -15,6 +15,7 @@ import { ReleaseStateMachine } from '../../../../../lib/release/state-machine';
 import { recordSchedulerRun } from '../../../../../lib/release/scheduler-ledger';
 import { escalateLapsedRequests } from '../../../../../lib/release/escalation';
 import { sweepSilentVerifiers } from '../../../../../lib/release/silence-sweep';
+import { sweepCheckinReminders } from '../../../../../lib/release/checkin-reminder';
 import { sweepExpiredChallenges } from '../../../../../lib/auth/challenge-store';
 import { sweepOldSigninAttempts } from '../../../../../lib/auth/signin-attempts';
 import { timingSafeEquals } from '../../../../../lib/http/timing-safe';
@@ -36,7 +37,7 @@ async function handle(req: NextRequest): Promise<NextResponse> {
   // The other half of the sweep: GRACE rows whose window has elapsed and whose
   // quorum is already met. Without this, GRACE_WINDOW_MS could not be raised
   // above 0 — a non-zero window would strand releases rather than create the
-  // owner-cancel window it appears to offer.
+  // owner stand-down window (it was an owner-CANCEL window until Cancel was retired 2026-08-21) it appears to offer.
   const graceReleased = await resolveElapsedGrace(machine);
 
   // Requests the owner never answered. CHALLENGE_WINDOW_SECONDS promised that
@@ -86,11 +87,37 @@ async function handle(req: NextRequest): Promise<NextResponse> {
   // CC9: record the run so its ABSENCE is detectable by /api/health/scheduler.
   await recordSchedulerRun(summary);
 
+  /*
+    🔴 THE OWNER'S OWN WARNING, which did not exist until 2026-08-21 (J5-R4). A
+    living owner who missed ONE interval had `runHeartbeatSweep` arm their trigger
+    and their verifiers asked whether they were incapacitated; the first thing the
+    owner heard was the message saying it had already started. This is the ladder
+    that runs before that — see lib/release/checkin-reminder.ts.
+
+    ⚠️ IT IS LAST ON PURPOSE, and both halves of that placement are asserted in
+    route.test.ts rather than left to whoever reads this.
+
+    AFTER `runHeartbeatSweep`, so a nudge can never postpone an arming. It reads a
+    DISJOINT set of owners — approaching their interval, not past it — so the
+    order cannot change any outcome; running it last means a future edit cannot
+    quietly make it a precondition either.
+
+    AFTER `recordSchedulerRun`, so a failing email cannot forge a dead scheduler.
+    That ledger row is what /api/health/scheduler reads and its ABSENCE is the
+    off-Vercel dead-man's switch; if this threw ahead of it, a Resend outage would
+    be reported as the product's dead-man's switch having stopped.
+    `sweepCheckinReminders` also never throws, for the same reason — belt and
+    braces, because the alarm it would trip is the most expensive false alarm in
+    the product.
+  */
+  const checkinReminders = await sweepCheckinReminders();
+
   return NextResponse.json({
     ...summary,
     graceReleased,
     escalated: escalated.length,
     silenceNotices: silent.length,
+    checkinReminders: checkinReminders.length,
     challengesSwept,
     signinAttemptsSwept,
   });

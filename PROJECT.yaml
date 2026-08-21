@@ -1165,6 +1165,55 @@ ratified:
       product, separate measurement, and the portfolio rule against sharing per-product
       billing surfaces applies."
 
+  - id: journey-safety-subset-2026-08-21
+    date: 2026-08-21
+    owner: steve
+    decision: "Build the SAFETY-FIRST SUBSET of the open journey steps in ROADMAP §2-F — and only
+      the steps that make an EXISTING promise true or fix a CUSTODIAL false-positive. A narrow,
+      recorded exception to the demand-gate rule, not its removal."
+    why_it_is_not_horizontal_build: "§1's own test: barred work adds a capability nobody asked for,
+      justified by a forecast; obliged work makes an existing capability or promise actually true
+      and safe, justified by a property of the live system. Each item below fails the first test
+      and passes the second — every one of them was a thing the product already SAID it did."
+    what_shipped:
+      - "J5-R4 owner-reminder ladder before ARMED->PENDING. A living owner who missed ONE interval
+        had their verifiers asked whether they were incapacitated, with no nudge first — J5's own
+        preamble calls a false PENDING the fastest way to destroy trust, and spuriously-asked
+        verifiers stop answering the real one. Rungs at 75% and 90% of the owner's interval."
+      - "J6-R8 cooling-off after a refused access request (12h, per requester, per owner)."
+      - "The Cancel control RETIRED (see docs/retired-surface.md). CANCELLED is terminal and one
+        two-tap press permanently retired the whole trigger TYPE for that owner. Stand-down covers
+        the case and re-arms. The grace->cancelled edge is KEPT with no caller."
+      - "J4-R1 one person, many roles, at the point of ENTRY — a unified add-a-person form. A
+        spouse who was both recipient and verifier used to be typed into two forms and became two
+        rows, which is the failure J4-R1 describes verbatim."
+      - "J3: the delegate scopes the consent copy promised but no handler honoured were WITHDRAWN
+        rather than built, so the grant list, the routes and the copy now agree."
+    found_while_doing_it_and_fixed:
+      - "ONE HUMAN COULD BE COUNTED TWICE TOWARD A QUORUM. `countEligibleVerifiers` counted verifier
+        ROWS, so one person invited at two addresses who claimed both with the same account, and
+        was confirmed twice, counted as 2 — a 2-of-3 quorum satisfiable by one human, with the
+        coverage matrix reporting two verifiers. Now counts DISTINCT claimed_user_id, with
+        unclaimed rows counting individually (collapsing those would undercount M and block a real
+        emergency). lib/release/one-human-one-vote.test.ts."
+      - "A HELPER KEPT READING A SECRET THE OWNER HAD ROTATED. `created_by_delegate_id` grants a
+        delegate read access to items they entered, and `updateItem` rewrote the ciphertext without
+        clearing it — so when an owner CHANGED the password on an account their helper set up, the
+        helper could still unwrap the new secret. The consent panel says the opposite in so many
+        words. Fixed at the statement (`created_by_delegate_id = NULL`), not in the copy, because
+        rotating a credential is very often exactly because someone should no longer have it."
+    ladder: "Everything above is `built` or `wired`. NOTHING here is live-proven — the reminder
+      ladder in particular runs only on the hourly cron and no walk covers it. ⚠️ Its failure mode
+      is this repo's most-cited shape: if the candidate query is rejected, the sweep logs to stderr
+      and returns empty, the cron still answers 200, the scheduler ledger still records a healthy
+      run, and the reminder simply never exists."
+    awaiting_ratification: "Three numbers were CHOSEN and documented, not measured, and each is a
+      one-line edit with no migration: the reminder rungs (75% and 90% of the interval) and the
+      12-hour cooling-off. A fourth question is open and NOT built: an owner can currently name
+      THEMSELVES as their own recipient or verifier — `isEligibleVerifier` already refuses to count
+      an owner toward quorum (rule 7), so the runtime hole is closed, but nothing stops the row
+      being created and the roster reading as fuller than it is."
+
   - id: g1-editorial-thresholds-ratified
     date: 2026-08-20
     owner: steve

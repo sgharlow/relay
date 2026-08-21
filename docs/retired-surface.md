@@ -7,6 +7,39 @@ an unimplemented one.
 
 ---
 
+## `POST /api/triggers/[id]/cancel` — retired 2026-08-21
+
+**Requirement 5.3** (owner stops a release) — **survives**, on
+`POST /api/triggers/[id]/stand-down`, which re-arms.
+
+**Why.** Ruled by Steve on 2026-08-21. CANCELLED is a terminal state:
+`PERMITTED_TRANSITIONS` has no edge out of it, and nothing re-provisions a
+cancelled row. So one two-tap control permanently retired the whole trigger TYPE
+for that owner — every access rule and every recipient hanging off it — with no
+owner-side recovery of any kind. Stand-down was built for the case this control
+was reached for (a false alarm), it re-arms rather than ending anything, and
+CANCELLED was only ever reachable from GRACE, so the two controls sat side by
+side with one of them being a trap.
+
+**The two corrections that preceded it, and why they were not enough.** The
+screen used to tell an owner the remedy was to "recreate the access rule", which
+does not work — `ensureReleaseState` returns the existing cancelled row rather
+than making a new one, so the trigger stays dead. That copy was corrected first,
+which made the screen honest and left the trap in place. Retiring the control is
+the structural version of the same fix.
+
+**What survives, deliberately.** The `grace → cancelled` edge stays in
+`PERMITTED_TRANSITIONS` with **no caller**, and `lib/release/state-machine.ts`
+carries the argument for keeping it: the state machine is the product's
+correctness story and narrowing it is a separate decision from removing a button.
+`KNOWN_UNREACHABLE` stays EMPTY — the route was deleted, not parked.
+
+**If it is ever wanted back**, the shape the journey doc already specifies is
+re-provisioning (a fresh ARMED row), not an un-cancel edge — see
+`docs/user-journeys.md`.
+
+---
+
 ## `POST /api/ai/prioritize` — retired 2026-08-13
 
 **Requirements 12.1–12.4** (Prioritization Agent — gap detection).

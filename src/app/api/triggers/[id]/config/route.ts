@@ -1,8 +1,8 @@
 /**
  * PUT /api/triggers/[id]/config — configure a trigger's N-of-M quorum.
  *
- * The `[id]` segment is the TRIGGER TYPE (shares the slug with confirm/cancel/
- * initiate). Body: { required_confirmations: N }. M is the owner's current
+ * The `[id]` segment is the TRIGGER TYPE (shares the slug with confirm and
+ * initiate; it named /cancel too until that route was retired on 2026-08-21). Body: { required_confirmations: N }. M is the owner's current
  * verifier count; setRequiredConfirmations validates 1 ≤ N ≤ M (Property 8) and
  * provisions/updates the release_state.
  *

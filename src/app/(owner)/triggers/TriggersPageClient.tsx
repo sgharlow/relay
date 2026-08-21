@@ -4,8 +4,17 @@
  * Triggers & Simulate screen (Requirement 4.1, 5.x, 9.1 / task 19.1).
  *
  * Per-trigger release-state badges, check-in cadence config, N-of-M config,
- * Initiate (ARMED), Cancel (GRACE + reversible), and a demo-only Simulate button
- * that runs the ~10s ARMED→PENDING→GRACE→RELEASED flow with a countdown bar.
+ * Initiate (ARMED), Stand down (PENDING/GRACE/RELEASED + reversible), and a
+ * demo-only Simulate button that runs the ~10s ARMED→PENDING→GRACE→RELEASED
+ * flow with a countdown bar.
+ *
+ * 🔴 CANCEL IS GONE — ruled 2026-08-21, and this line used to name it. It sat
+ * next to Stand down, two taps deep, and it retired the whole trigger TYPE for
+ * the owner for good: every access rule using it, every recipient scoped to it,
+ * with no edge out of CANCELLED anywhere in the state machine. Two rounds of
+ * copy fixes went into making that button honest about itself; the ruling is
+ * that no wording earns a permanent, unreachable-from state on the screen
+ * somebody opens in a hurry. Stand down covers the false alarm and re-arms.
  *
  * Feature: relay-h0-mvp
  */
@@ -335,7 +344,6 @@ function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promi
   const reversible = rs.trigger_type !== 'estate';
   const [n, setN] = useState(String(rs.required_confirmations));
   const [msg, setMsg] = useState<StatusMessage | null>(null);
-  const [confirmingCancel, setConfirmingCancel] = useState(false);
   /**
    * 🔴 FIRING A RELEASE WAS ONE UNGUARDED CLICK, on a button labelled
    * "Initiate" that did not say what it does. Added 2026-08-12.
@@ -368,7 +376,6 @@ function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promi
     setMsg(null);
     try {
       await fn();
-      setConfirmingCancel(false);
       await onChange();
     } catch (err) {
       // This slot only ever carries failures — `act` sets it nowhere else — so
@@ -420,26 +427,28 @@ function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promi
               {rs.state === 'released' ? 'Close access — re-arm' : 'Stand down — re-arm'}
             </button>
           ) : null}
-          {/* Two-step inline rather than window.confirm: a native modal blocks
-              the page, reads badly on a phone, and cannot be exercised by the
-              browser tests that guard this behaviour. */}
-          {rs.state === 'grace' && reversible ? (
-            confirmingCancel ? (
-              <button
-                onClick={() => act(() => apiSend(`/api/triggers/${rs.id}/cancel`, 'POST'))}
-                className="rounded border border-clay bg-clay-soft px-2.5 py-1 text-t1 font-semibold text-clay hover:bg-clay-soft"
-              >
-                Retire it for good — tap again
-              </button>
-            ) : (
-              <button
-                onClick={() => setConfirmingCancel(true)}
-                className="rounded border border-rule-strong px-2.5 py-1 text-t1 font-medium text-muted hover:bg-clay-soft hover:text-clay"
-              >
-                Cancel permanently
-              </button>
-            )
-          ) : null}
+          {/*
+            🔴 THE SECOND BUTTON IS GONE, 2026-08-21, and this is where it was.
+
+            It read "Cancel permanently", asked for a second tap, and then
+            retired the trigger TYPE for this owner for good — every access rule
+            that used it, every recipient scoped to it — landing the row in
+            CANCELLED, which `PERMITTED_TRANSITIONS` has no edge out of. Check-in
+            does not reverse it, the sweep never looks at it again, and
+            `/initiate` answers 409 for that type forever.
+
+            It had already been corrected twice: once in 2026-08-08 when it was
+            the ONLY stop control and people were retiring their plan while
+            trying to stop a false alarm, and again on 2026-08-21 when its
+            confirmation was found describing the wrong scope and offering a
+            remedy that does nothing. The ruling that followed is that the
+            problem is not the wording. Stand down, above, is what a false alarm
+            needs, it is the prominent default, and it re-arms.
+
+            Nothing replaces it. An owner who genuinely wants to retire an
+            arrangement removes the access rules behind it, which is reversible
+            and lives on the screen that owns that decision.
+          */}
         </div>
       </div>
 
@@ -476,13 +485,6 @@ function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promi
         <p className="mt-2 text-t1 leading-relaxed text-muted">
           Retired for good. Nothing re-arms {rs.trigger_type} now — not checking in, not adding a
           new access rule. Every rule that uses this trigger is inert.
-        </p>
-      ) : null}
-      {confirmingCancel && rs.state === 'grace' ? (
-        <p className="mt-2 text-t1 leading-relaxed text-clay">
-          This retires {article(rs.trigger_type)} <span className="font-semibold">{rs.trigger_type}</span>{' '}
-          for good — every access rule that uses it, for everyone, with no way back. To stop a false
-          alarm, use <span className="font-semibold">Stand down — re-arm</span> instead.
         </p>
       ) : null}
 

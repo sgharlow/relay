@@ -44,6 +44,9 @@ describe('validateVerifierInput', () => {
 
 describe('createVerifier', () => {
   it('defaults verification_status to pending in the mapping', async () => {
+    // Two queries since the J4-R1 duplicate guard landed: the same-human check,
+    // then the INSERT. The empty first result is "nobody by that address yet".
+    mockQuery.mockResolvedValueOnce(qResult([]));
     mockQuery.mockResolvedValueOnce(
       qResult([{ id: 'v1', name: 'Dr Lee', email: 'lee@example.com', phone: null, verification_status: 'pending', created_at: new Date() }]),
     );
@@ -119,5 +122,62 @@ describe('deleteVerifier', () => {
     mockQuery.mockImplementation(async () => qResult([]));
     await deleteVerifier('owner-1', 'v1');
     expect(mockWithdraw).toHaveBeenCalledWith('owner-1', 'v1');
+  });
+});
+
+/**
+ * 🔴 ONE HUMAN, ONE VERIFIER ROW (J4-R1).
+ *
+ * `createRecipient` has refused a second row for the same normalised email since
+ * the approvals queue shipped — "approving a delegate proposal for someone
+ * already in the circle silently creates a SECOND recipient with the same email".
+ * `createVerifier` never got the same guard, so the identical mistake was still
+ * one submit away on the other table: two verifier rows for one person means two
+ * invitations, two claim codes, two standby lights, and a quorum that counts the
+ * same human twice.
+ *
+ * That last one is the sharp end. Quorum is a COUNT of confirmed verifiers, so a
+ * duplicated person could satisfy a quorum of two on their own — which is
+ * precisely the self-confirmation structure `detectRoleConcentration` exists to
+ * make impossible.
+ *
+ * Compared on the same normalised key `listPeople` and `detectRoleConcentration`
+ * use, so all three agree on what "the same person" means.
+ */
+describe('createVerifier refuses a duplicate human (J4-R1)', () => {
+  it('refuses a second verifier row for an email already on this vault', async () => {
+    mockQuery.mockResolvedValueOnce(qResult([{ id: 'v1' }]));
+
+    await expect(
+      createVerifier('owner-1', validateVerifierInput({ name: 'Sam', email: 'sam@example.com' })),
+    ).rejects.toThrow(ValidationError);
+
+    const inserted = mockQuery.mock.calls.some((c) => /INSERT INTO verifiers/i.test(String(c[0])));
+    expect(inserted, 'the duplicate check must run BEFORE the INSERT').toBe(false);
+  });
+
+  it('compares on the normalised email, not the raw string', async () => {
+    mockQuery.mockResolvedValueOnce(qResult([]));
+    mockQuery.mockResolvedValueOnce(
+      qResult([{ id: 'v2', name: 'Sam', email: ' Sam@Example.COM ', phone: null, verification_status: 'pending', created_at: new Date() }]),
+    );
+
+    await createVerifier('owner-1', validateVerifierInput({ name: 'Sam', email: 'sam@example.com' }));
+
+    const check = String(mockQuery.mock.calls[0][0]);
+    expect(check).toMatch(/SELECT id FROM verifiers/i);
+    expect(check).toMatch(/lower\(trim\(email\)\)\s*=\s*lower\(trim\(\$2\)\)/i);
+    expect(check).toMatch(/owner_id\s*=\s*\$1/i);
+  });
+
+  it('scopes the duplicate check to this owner — a name in another vault is not a clash', async () => {
+    mockQuery.mockResolvedValueOnce(qResult([]));
+    mockQuery.mockResolvedValueOnce(
+      qResult([{ id: 'v3', name: 'Sam', email: 'sam@example.com', phone: null, verification_status: 'pending', created_at: new Date() }]),
+    );
+
+    await createVerifier('owner-1', validateVerifierInput({ name: 'Sam', email: 'sam@example.com' }));
+
+    expect(mockQuery.mock.calls[0][1]).toEqual(['owner-1', 'sam@example.com']);
   });
 });

@@ -2,7 +2,7 @@
  * Trigger lifecycle operations (Requirement 6) built on the ReleaseStateMachine.
  *
  *  - initiateTrigger  — Owner fires a trigger: ARMED → PENDING (Req 6 entry).
- *  - cancelTrigger    — Owner cancels a reversible trigger in GRACE → CANCELLED.
+ *  - standDownTrigger — Owner stops a false alarm: PENDING/GRACE/RELEASED → ARMED.
  *  - submitConfirmation — a Verifier confirmation: idempotent intent-read, then
  *    INSERT + CAS-increment of `received_confirmations` (Req 6.3, 6.4, 6.9). When
  *    the quorum is met AND the grace window has elapsed it drives GRACE→RELEASED
@@ -45,7 +45,7 @@ export class TriggerError extends Error {
 }
 
 // ---------------------------------------------------------------------------
-// Initiate / cancel
+// Initiate / stand down
 // ---------------------------------------------------------------------------
 
 async function readStateByOwnerTrigger(ownerId: string, triggerType: string): Promise<ReleaseStateRow> {
@@ -73,17 +73,21 @@ async function readStateByOwnerTrigger(ownerId: string, triggerType: string): Pr
  * hospital's insurance portal while a timer runs. Every path to here has ALSO
  * already given the owner a chance to say no — an owner-initiated release now
  * needs an explicit confirmation, the cron fires only after the full check-in
- * interval, and an escalation only after a challenge window the owner did not
- * answer.
+ * interval AND the reminder ladder that precedes it, and an escalation only
+ * after a challenge window the owner did not answer.
  *
- * 🔴 THAT SENTENCE READ "the full check-in interval PLUS REMINDERS" until
- * 2026-08-21, and there are no reminders. `runHeartbeatSweep` transitions on the
- * FIRST overdue sweep and notifies afterwards; grep finds no reminder sender
- * anywhere in lib/. J5-R4 requires an escalation ladder before any ARMED →
- * PENDING and the register and ROADMAP both record it as OPEN — this comment
- * was the only place claiming otherwise, and it was being used to justify a
- * zero grace window. The ruling above still stands on its other two legs, but
- * it now stands on what exists.
+ * 🔴 THAT CLAUSE WAS FALSE FOR MOST OF A DAY, and the history matters more than
+ * the current wording. It read "the full check-in interval PLUS REMINDERS" and
+ * there were no reminders: `runHeartbeatSweep` transitioned on the FIRST overdue
+ * sweep and notified afterwards, and grep found no reminder sender anywhere in
+ * lib/. J5-R4 required an escalation ladder before any ARMED → PENDING and the
+ * register and ROADMAP both recorded it as OPEN, so this comment was the only
+ * place in the repo claiming otherwise — and it was being used to justify a zero
+ * grace window. It was corrected to say what existed on 2026-08-21 morning; the
+ * ladder itself landed later the same day
+ * (`lib/release/checkin-reminder.ts`), so the clause is now earned rather than
+ * asserted. Both directions are the same lesson: a comment is not a caller, and
+ * a safety argument resting on one is resting on nothing.
  *
  * ESTATE: 72 hours, because none of that is true. `processCheckin` puts estate
  * in its `blocked` list — "cannot reverse / permanent once released" — so once
@@ -164,40 +168,32 @@ export async function initiateTrigger(
   return grace;
 }
 
-/** Owner cancels a reversible trigger in GRACE → CANCELLED. */
-export async function cancelTrigger(
-  ownerId: string,
-  releaseStateId: string,
-  machine: Pick<ReleaseStateMachine, 'transition'>,
-): Promise<ReleaseStateRow> {
-  const r = await query<ReleaseStateRow>(`SELECT * FROM release_state WHERE id = $1 LIMIT 1`, [
-    releaseStateId,
-  ]);
-  if (r.rowCount === 0 || r.rows.length === 0) {
-    throw new TriggerError('Release state not found', 404);
-  }
-  const row = r.rows[0];
-  if (row.owner_id !== ownerId) {
-    throw new TriggerError('Not authorized for this trigger', 403);
-  }
-  if (row.state !== 'grace' || !isReversibleTrigger(row.trigger_type)) {
-    throw new TriggerError('Only reversible triggers in GRACE can be cancelled', 409);
-  }
+/*
+  🔴 `cancelTrigger` STOOD HERE, and it is retired — ruled 2026-08-21.
 
-  const updated = await machine.transition(row.id, 'grace', 'cancelled', row.version, {
-    reversible: true,
-  });
+  It read the row, checked ownership and reversibility, and drove
+  GRACE → CANCELLED. `PERMITTED_TRANSITIONS` has no edge out of `cancelled`, so
+  that call permanently retired the trigger TYPE for the owner: every access rule
+  using it, every recipient scoped to it, with `/initiate` answering 409 for it
+  forever, check-in not reversing it, and the heartbeat sweep never reading it
+  again. Its only caller was `POST /api/triggers/[id]/cancel`, behind a two-tap
+  "Cancel permanently" button sitting next to the one an owner actually wants —
+  and the whole reason `standDownTrigger` below exists (2026-08-08) is that
+  people were reaching for that button to stop a false alarm and retiring their
+  arrangement instead.
 
-  await writeAuditEntry(ownerId, {
-    actor: `owner:${ownerId}`,
-    action: 'trigger_cancelled',
-    entity: 'release_state',
-    entityId: row.id,
-    detail: { trigger_type: row.trigger_type },
-  });
+  Two rounds of copy fixes went into making the button describe itself honestly.
+  The ruling is that the wording was never the problem: a permanent,
+  unreachable-from state does not belong two taps deep on the screen somebody
+  opens while something is going wrong.
 
-  return updated;
-}
+  ⚠️ THE STATE-MACHINE EDGE IS DELIBERATELY KEPT — see the note on it in
+  state-machine.ts. Production holds rows that took it and the CANCELLED card
+  still renders for them; what is gone is every way to reach it. Removing the
+  function as well as the route is the point: a library call that can permanently
+  retire an owner's arrangement is not something to leave lying about because
+  deleting the button felt like enough.
+*/
 
 /**
  * Owner stands a release down: PENDING or GRACE back to ARMED.

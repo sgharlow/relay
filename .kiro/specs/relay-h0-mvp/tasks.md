@@ -270,7 +270,8 @@ sequenced last so slipping the schedule never endangers the four demo moments.
     - _Requirements: 6.3, 6.4, 6.5, 6.6, 6.9_
   - [~] 17.2 Implement `app/api/triggers/[type]/initiate/route.ts` (POST): Owner auth; validate trigger type; assert `release_state.state = 'armed'`; transition to PENDING via CAS; send Resend emails to all Verifiers for this trigger type; write audit entry `action:"trigger_initiated"`
     - _Requirements: 4.3, 6.2_
-  - [~] 17.3 Implement `app/api/triggers/[id]/cancel/route.ts` (POST): Owner auth; assert state is `GRACE` and trigger is reversible; transition to CANCELLED via CAS; write audit entry `action:"trigger_cancelled"`
+  - [~] 17.3 Implement `app/api/triggers/[id]/cancel/route.ts` (POST): Owner auth; assert state is `GRACE` and trigger is reversible; transition to CANCELLED via CAS; write audit entry `action:"trigger_cancelled"`  
+      ⚠️ **RETIRED 2026-08-21** — this route no longer exists; Requirement 5.3 survives on `POST /api/triggers/[id]/stand-down`. See `docs/retired-surface.md`. Do not rebuild it.
     - _Requirements: 5.3_
   - [~] 17.4 Write property test for verifier confirmation idempotency (Property 14)
     - **Property 14: Verifier confirmation idempotency — N ≥ 2 submissions from the same verifier increment received_confirmations by exactly 1**

@@ -1,6 +1,13 @@
 /**
  * /api/verifiers — Owner verifiers collection (GET list, POST create).
  *
+ * ⚠️ POST HAS NO UI CALLER SINCE 2026-08-21 — see the full note on the sibling
+ * `/api/recipients` route, which carries the argument for both. In short: J4-R1
+ * folded the two add forms into one that posts to `/api/people`, and this
+ * handler is now driven only from `scripts/` (`e2e-reveal`, `invite-cohort`,
+ * `disposable-owner`, `capture-screens`). It must not be retired for looking
+ * dead to a checker that does not scan that directory.
+ *
  * Feature: relay-h0-mvp
  * Requirements: 3.2
  */

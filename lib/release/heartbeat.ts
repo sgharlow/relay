@@ -28,6 +28,21 @@
  * now go out from the sweep, best-effort, after the transition commits — a
  * comment claiming a caller exists is not a caller.
  *
+ * ⚠️ AND RINGING THE BELL AT THE TRANSITION IS NOT A WARNING BEFORE IT. Until
+ * 2026-08-21 the notice above was the whole of what an owner heard: a person on
+ * holiday who missed ONE interval had their verifiers asked whether they were
+ * incapacitated, and learnt of it from the message saying it had already
+ * started. The ladder that runs BEFORE this is `lib/release/checkin-reminder.ts`
+ * — a separate sweep, on the same cron, reading a DISJOINT set of owners (those
+ * approaching their interval, never those past it).
+ *
+ * It is deliberately not called from here. `runHeartbeatSweep` is the product's
+ * dead-man's switch, and a reminder that could delay or suppress ARMED → PENDING
+ * would be a worse defect than the silence it fixes — a genuinely absent owner's
+ * family waiting longer, invisibly, until the day it mattered. Keeping the nudge
+ * out of this function is what makes that impossible rather than merely
+ * unintended. Do not fold it in.
+ *
  * Feature: relay-h0-mvp
  * Requirements: 4.2, 4.3, 4.4, 4.5, 4.7, 6.2
  */
@@ -242,8 +257,11 @@ export async function runHeartbeatSweep(machine: Machine, deps: SweepDeps = {}):
       2026-08-14 withdrawal (`g2-counsel-opinion` declined, permanent) would have
       been armed here, every verifier mailed, and released on quorum — and estate
       is not reversible, so `processCheckin` reports it `blocked` and stand-down
-      and cancel are both gated on `reversible`. The owner could not have stopped
-      what their own screen told them could not begin. The copy was false in
+      is gated on `reversible`. (Cancel was gated on it too; that control was
+      retired on 2026-08-21 and stand-down is now the only stop control, which
+      does not change this argument — neither was available to an estate row.)
+      The owner could not have stopped what their own screen told them could not
+      begin. The copy was false in
       exactly the case it was shown.
 
       The predicate is in the WHERE clause for the reason the demo exclusion

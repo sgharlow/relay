@@ -13,6 +13,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 
 vi.mock('../db/connection', () => ({ query: vi.fn() }));
 vi.mock('../db/occ', () => ({
@@ -24,6 +26,7 @@ import { query } from '../db/connection';
 import { writeAuditEntry } from '../audit/audit-service';
 import {
   DELEGATE_SCOPES,
+  KNOWN_DELEGATE_SCOPES,
   CONSENT_METHODS,
   createDelegation,
   recordConsent,
@@ -38,15 +41,21 @@ const mockQuery = vi.mocked(query);
 beforeEach(() => vi.clearAllMocks());
 
 describe('DELEGATE_SCOPES', () => {
-  it('is exactly the four setup scopes', () => {
-    // Four since 2026-08-12: `policies:propose` was granted to every delegate,
-    // offered by no surface, and could not be applied on approval.
-    expect([...DELEGATE_SCOPES]).toEqual([
-      'items:create',
-      'items:update',
-      'import:run',
-      'people:propose',
-    ]);
+  it('is exactly the two capabilities a helper actually has', () => {
+    /*
+      Was five, then four, now two — and each cut was the same finding.
+      `policies:propose` went on 2026-08-12 ("granted to every delegate, offered
+      by no surface, and could not be applied on approval"). `items:update` and
+      `import:run` went on 2026-08-21: no route calls `requireScope` for either,
+      and `items:update` is the exact capability the consent panel promises a
+      helper will never have.
+
+      THE AUTHORITATIVE EXACT-LIST ASSERTION LIVES HERE AND NOWHERE ELSE. It was
+      written out twice — here and in the policies:propose block below — so a
+      change to the list failed in two places and could be "fixed" in one. The
+      block below now asserts only its own subject.
+    */
+    expect([...DELEGATE_SCOPES]).toEqual(['items:create', 'people:propose']);
   });
 
   it('NEVER grants decrypt, trigger control, or self-grant capability', () => {
@@ -286,13 +295,19 @@ describe('🔴 policies:propose removed — 2026-08-12', () => {
     expect([...DELEGATE_SCOPES]).not.toContain('policies:propose');
   });
 
-  it('still grants exactly the four scopes a helper can use', () => {
-    expect([...DELEGATE_SCOPES]).toEqual([
-      'items:create',
-      'items:update',
-      'import:run',
-      'people:propose',
-    ]);
+  it('is still speakable, so the enforcement layer can refuse it by name', () => {
+    /*
+      Removed from the GRANT list, kept in the KNOWN list — and that difference
+      is load-bearing. Rows created before 2026-08-12 still carry the string in
+      `delegations.scopes`, so `requireScope` and `getActiveDelegation` both have
+      to be able to name it in order to reject it. A type admitting only what is
+      currently granted would make the retired value unspeakable in exactly the
+      code whose job is to throw it away.
+
+      The exact grant list is asserted once, in the DELEGATE_SCOPES block above.
+    */
+    expect([...KNOWN_DELEGATE_SCOPES]).toContain('policies:propose');
+    expect([...DELEGATE_SCOPES]).not.toContain('policies:propose');
   });
 
   it('WRITES the scopes rather than inheriting the database default', async () => {
@@ -309,5 +324,110 @@ describe('🔴 policies:propose removed — 2026-08-12', () => {
     const insert = mockQuery.mock.calls.find((c) => String(c[0]).includes('INSERT INTO delegations'));
     expect(String(insert?.[0])).toMatch(/scopes/);
     expect(String((insert?.[1] as unknown[])[2])).not.toContain('policies:propose');
+  });
+});
+
+/**
+ * 🔴 A GRANT NOTHING HONOURS — the other two, found 2026-08-21.
+ *
+ * `policies:propose` was removed on 2026-08-12 for being "a granted capability
+ * that silently does nothing… worse than an absent one, because it reads as
+ * working". Its two neighbours were left behind: NOTHING anywhere calls
+ * `requireScope(actor, 'items:update')` or `requireScope(actor, 'import:run')`
+ * — `/api/import` is `requireOwner` and `PUT /api/vault/items/[id]` is
+ * owner-only — so every delegation created since the feature shipped was written
+ * with two capabilities that no route consults.
+ *
+ * ⚠️ AND ONE OF THEM CONTRADICTS THE CONSENT ARTIFACT. The panel an owner reads
+ * while deciding whether to hand somebody a key to their vault states, in these
+ * words, that a helper can never "change or delete an item once it is in — only
+ * you can". `items:update` is the grant that would make that false. It is inert
+ * today only because no route asks; the day one does, every delegation already
+ * consented to under that sentence silently acquires edit rights over the
+ * owner's vault, with no second conversation. That is not a latent feature, it
+ * is a latent breach of the one artifact that makes delegation legitimate.
+ *
+ * Read from the routes rather than asserted from a list, so this cannot go green
+ * on a scope somebody meant to wire and did not.
+ */
+describe('every scope a delegate is granted is honoured by some route', () => {
+  /** Scopes an actual handler gates on, read from the handlers themselves. */
+  function scopesHonouredByARoute(): Set<string> {
+    const found = new Set<string>();
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir)) {
+        const full = join(dir, entry);
+        if (statSync(full).isDirectory()) walk(full);
+        else if (entry === 'route.ts') {
+          const src = readFileSync(full, 'utf8')
+            .replace(/\/\*[\s\S]*?\*\//g, ' ')
+            .replace(/\/\/[^\n]*/g, ' ');
+          for (const m of src.matchAll(/requireScope\(\s*\w+\s*,\s*'([^']+)'/g)) found.add(m[1]);
+        }
+      }
+    };
+    walk('src/app/api');
+    return found;
+  }
+
+  it('grants nothing that no handler consults', () => {
+    const honoured = scopesHonouredByARoute();
+    const dead = DELEGATE_SCOPES.filter((s) => !honoured.has(s));
+    expect(
+      dead,
+      'These are written into every delegation row and gated on by no route. ' +
+        'Wire them to a handler or stop granting them — a capability that reads ' +
+        'as working and does nothing is the defect policies:propose was removed for.',
+    ).toEqual([]);
+  });
+
+  it('does not grant the edit the consent panel promises a helper can never do', () => {
+    // src/app/(owner)/approvals/HelperSection.tsx: "A helper can never … change
+    // or delete an item once it is in — only you can."
+    expect([...DELEGATE_SCOPES]).not.toContain('items:update');
+  });
+});
+
+/**
+ * 🔴 REMOVING A SCOPE FROM THE LIST DOES NOT REMOVE IT FROM THE ROWS.
+ *
+ * `createDelegation` writes `DELEGATE_SCOPES` into `delegations.scopes` at
+ * creation time, so a row created before a scope was withdrawn still CARRIES it
+ * — and `requireScope` asks the row, not the list. `policies:propose` was
+ * removed from the constant on 2026-08-12 and every delegation created before
+ * that date still names it in the database to this day.
+ *
+ * So the guard has to sit where the stale value ENTERS the system, which is the
+ * one function that reads that column. Narrowing the constant alone would be a
+ * fix that looks complete in the diff and changes nothing for any row that
+ * already exists.
+ */
+describe('a stored scope the product no longer grants is not honoured', () => {
+  it('drops a retired scope on the way out of the database', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ id: 'd-1', scopes: ['items:create', 'items:update', 'policies:propose'] }],
+    } as never);
+
+    const active = await getActiveDelegation('u-2', 'o-1');
+
+    expect(active?.scopes).toEqual(['items:create']);
+  });
+
+  it('keeps every scope that IS still granted', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ id: 'd-1', scopes: [...DELEGATE_SCOPES] }],
+    } as never);
+
+    const active = await getActiveDelegation('u-2', 'o-1');
+
+    expect(active?.scopes).toEqual([...DELEGATE_SCOPES]);
+  });
+
+  it('survives a row whose scopes column is null or malformed, granting nothing', async () => {
+    // A row is never more trusted than its data — the same rule
+    // `readStandbyState` applies. Unreadable resolves to the LEAST privilege.
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: 'd-1', scopes: null }] } as never);
+
+    await expect(getActiveDelegation('u-2', 'o-1')).resolves.toEqual({ id: 'd-1', scopes: [] });
   });
 });

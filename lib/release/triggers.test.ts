@@ -24,7 +24,6 @@ import { notifyRecipientsOfRelease } from '../notify/notifications';
 import {
   submitConfirmation,
   initiateTrigger,
-  cancelTrigger,
   standDownTrigger,
   resendReleaseNotifications,
   TriggerError,
@@ -225,7 +224,7 @@ describe('submitConfirmation', () => {
 });
 
 // ---------------------------------------------------------------------------
-// initiateTrigger / cancelTrigger
+// initiateTrigger / standDownTrigger
 // ---------------------------------------------------------------------------
 
 describe('initiateTrigger', () => {
@@ -261,24 +260,38 @@ describe('initiateTrigger', () => {
   });
 });
 
-describe('cancelTrigger', () => {
-  it('cancels a reversible GRACE trigger', async () => {
-    mockQuery.mockResolvedValueOnce(qResult([makeRow({ state: 'grace', trigger_type: 'emergency' })]));
-    const machine = machineStub();
-    machine.transition.mockResolvedValueOnce(makeRow({ state: 'cancelled' }) as never);
-    const out = await cancelTrigger('owner-1', 'rs-1', machine);
-    expect(machine.transition.mock.calls[0][2]).toBe('cancelled');
-    expect(out.state).toBe('cancelled');
+/**
+ * 🔴 `cancelTrigger` HAD THREE TESTS HERE, and they went with it on 2026-08-21.
+ *
+ * They asserted that a reversible GRACE trigger cancelled, that estate could
+ * not, and that a cross-owner call got a 403 — all correct, all about a
+ * capability the product no longer offers. Cancelling landed the row in
+ * CANCELLED, which has no outgoing edge, permanently retiring the trigger TYPE
+ * for that owner: every access rule using it, every recipient scoped to it. It
+ * was two taps from the screen an owner opens while something is going wrong,
+ * and `standDownTrigger` below exists precisely because people reached for it to
+ * stop a false alarm.
+ *
+ * What replaced them is a guard rather than a gap. The GRACE → CANCELLED edge is
+ * deliberately kept (production holds rows that took it) and
+ * src/app/(owner)/triggers/cancelled-is-terminal.test.ts now asserts BOTH halves
+ * of the retirement: the edge survives, and nothing calls it — no button, no
+ * route file. Deleting these three without that would have removed the record
+ * along with the capability.
+ */
+describe('nothing in this module reaches the cancelled state any more', () => {
+  it('exports no cancel operation', async () => {
+    /*
+      Asserted on the module's own exports rather than by grepping for the word:
+      this file discusses cancellation at length in prose, and a text search
+      would pass or fail on the comments instead of the code.
+    */
+    const mod = await import('./triggers');
+    expect(Object.keys(mod).filter((k) => /cancel/i.test(k))).toEqual([]);
   });
 
-  it('rejects cancelling an estate trigger (409)', async () => {
-    mockQuery.mockResolvedValueOnce(qResult([makeRow({ state: 'grace', trigger_type: 'estate' })]));
-    await expect(cancelTrigger('owner-1', 'rs-1', machineStub())).rejects.toMatchObject({ httpStatus: 409 });
-  });
-
-  it('rejects a cross-owner cancel (403)', async () => {
-    mockQuery.mockResolvedValueOnce(qResult([makeRow({ state: 'grace', owner_id: 'someone-else' })]));
-    await expect(cancelTrigger('owner-1', 'rs-1', machineStub())).rejects.toMatchObject({ httpStatus: 403 });
+  it('but the edge it used is still declared, so cancelled rows remain describable', () => {
+    expect(isPermittedTransition('grace', 'cancelled', true)).toBe(true);
   });
 });
 

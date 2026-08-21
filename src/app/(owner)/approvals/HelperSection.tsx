@@ -185,14 +185,71 @@ export default function HelperSection({
           <li>add new items to your vault</li>
           <li><strong>suggest</strong> people &mdash; which then wait for you</li>
         </ul>
+        {/*
+          🔴 THE FIRST LINE HERE SAID "open or read anything in your vault", AND
+          IT WAS FALSE — corrected 2026-08-21.
+
+          A delegate can read back every item they personally entered. That is
+          the design, not a hole: `listItemsIEntered` selects on
+          `created_by_delegate_id`, and `POST /api/kms/unwrap` calls
+          `assertDelegateMayRead`, which ALLOWS an item whose provenance is this
+          delegation. lib/people/delegation.ts states the boundary in its own
+          header and closes it with the instruction this copy broke — "a delegate
+          who types a credential in obviously knows it… Never imply the delegate
+          learns nothing."
+
+          ⚠️ THIS ONE FAILED IN THE EXPENSIVE DIRECTION. The three lines removed
+          from the list above overstated what a helper CAN do, so an owner grants
+          more than they meant to. This overstated what a helper is PREVENTED
+          from doing — reassurance about a protection that does not exist, given
+          to the person whose vault it is, on the screen where they decide. In
+          practice: a parent reading "can never open or read anything" concludes
+          it is safe to have their helper type in the bank password, which is
+          exactly the one thing that then IS visible to them, permanently,
+          because they typed it.
+
+          Narrowed, not deleted. The real guarantee is intact and is the one
+          worth stating: everything the OWNER put in stays closed to them.
+        */}
         <p className="mt-3 font-medium text-ink">A helper can never:</p>
         <ul className="mt-1 list-disc pl-5 text-ink">
-          <li>open or read anything in your vault</li>
+          <li>
+            open or read anything you put in — they see only what they typed in themselves, which
+            they knew already
+          </li>
           <li>change or delete an item once it is in — only you can</li>
           <li>decide who gets access — every one of those comes to you first</li>
           <li>start, stop or change a release</li>
           <li>add themselves to anything</li>
         </ul>
+        {/*
+          Said plainly rather than left to be inferred from the line above. The
+          decision an owner is actually making is "which of these things do I let
+          them type in", and nothing on this screen used to help them make it.
+        */}
+        {/*
+          ⚠️ "ANYTHING YOU ENTER YOURSELF STAYS CLOSED TO THEM" WAS FALSE IN ONE
+          CASE UNTIL 2026-08-21, and the case was the likely one. A helper who
+          entered an item keeps read access to it via `created_by_delegate_id`
+          (POST /api/kms/unwrap reads that column) — and `updateItem` used to
+          rewrite the ciphertext WITHOUT clearing it. So when an owner changed
+          the password on an account their helper had set up, the helper could
+          still open it and read the new secret. Rotating a credential is very
+          often precisely because someone should no longer have it.
+
+          Fixed at the statement rather than in this paragraph: `updateItem` now
+          assigns `created_by_delegate_id = NULL`, so an owner's rewrite closes
+          the helper out and this sentence is true as written. Pinned by
+          lib/vault/owner-edit-closes-the-helper-out.test.ts — if that guard is
+          ever removed, this paragraph becomes a false promise on a consent
+          artifact again.
+        */}
+        <p className="mt-3 text-t2 text-ink">
+          So the question worth asking is what you let them type in. If your helper enters your bank
+          password for you, they know your bank password — Relay cannot unknow it for you. Anything
+          you enter yourself stays closed to them, and if you change something they entered, it
+          closes to them too.
+        </p>
       </div>
 
       {err ? <p className="text-clay">{err}</p> : null}
