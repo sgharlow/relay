@@ -2750,10 +2750,14 @@ deferred:
   - id: thirty-eight-rows-outlived-the-accounts-that-owned-them
     owner: steve
     opened: 2026-08-21
-    what: "`npm run verify:orphans` exits 1 on production with 38 DANGLING rows — rows whose owner
-      no longer exists: `verifier_codes` 17, `break_glass_codes` 10, `auth_challenges` 10,
-      `recipient_codes` 1. Unreachable through the application and invisible to the account
-      census, which is why nothing reported them until the census was built."
+    what: "`npm run verify:orphans` exits 1 on production with DANGLING rows — rows whose owner no
+      longer exists, across `verifier_codes`, `break_glass_codes`, `auth_challenges` and
+      `recipient_codes`. Unreachable through the application and invisible to the account census,
+      which is why nothing reported them until the census was built.
+      ⚠️ DO NOT QUOTE A COUNT HERE. This entry said 38 and read 36 within the hour, because
+      `auth_challenges` rows expire on their own — so the number moves without anyone touching it,
+      and a figure in this prose is a second copy that goes stale. Re-derive with
+      `npm run verify:orphans` (which now runs as the read-only `relay_ro` identity)."
     every_one_is_historical_and_that_was_measured: "Re-derive with a per-table min/max of
       `created_at` over rows whose owner is absent. On 2026-08-21 the NEWEST dangling row in any of
       the four tables was 2026-08-20 13:59; the oldest was 2026-08-08. **Nothing from 2026-08-21.**

@@ -284,7 +284,8 @@ sequenced last so slipping the schedule never endangers the four demo moments.
     - _Requirements: 9.1–9.7_
 
 - [x] 19. Build triggers & simulate screen
-  - [~] 19.1 Implement `app/(owner)/triggers/page.tsx`: shows current release state per trigger type (ARMED/PENDING/GRACE/RELEASED badge); cadence configuration form (check-in interval days); "Initiate Emergency" button; Simulate button (visible only for demo accounts, renders countdown progress bar during 10-second run); Cancel button (visible only in GRACE state for reversible triggers)
+  - [~] 19.1 Implement `app/(owner)/triggers/page.tsx`: shows current release state per trigger type (ARMED/PENDING/GRACE/RELEASED badge); cadence configuration form (check-in interval days); "Initiate Emergency" button; Simulate button (visible only for demo accounts, renders countdown progress bar during 10-second run); ~~Cancel button (visible only in GRACE state for reversible triggers)~~
+      ⚠️ **RETIRED 2026-08-21** — the Cancel button is gone from this screen along with the route behind it (17.3). Stand down is the only stop control; Requirement 5.3 survives on `POST /api/triggers/[id]/stand-down`. See `docs/retired-surface.md`. Do not rebuild it.
     - _Requirements: 9.1, 4.1_
 
 - [~] 20. Checkpoint — full demo spine runs end-to-end

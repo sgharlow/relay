@@ -107,6 +107,140 @@ for unused library functions, by design.
 
 ---
 
+> ⚠️ **THE FOUR ENTRIES BELOW WERE WRITTEN ON 2026-08-21, EIGHT DAYS AFTER THE
+> RETIREMENT THEY RECORD.**
+>
+> Commit `c63accd` (2026-08-13) retired six handlers, and its message says "all
+> six retired into docs/retired-surface.md with the reason and the replacement".
+> The `KNOWN_UNREACHABLE` comment in `lib/ops/api-reachability.ts` says the same
+> thing and lists all six by name. **Two of them arrived** — the
+> `PUT`/`DELETE /api/policies/[id]` pair above. The other four were retired in
+> the code and annotated in their own route files, and were never written up
+> here.
+>
+> That is precisely the failure this document exists to prevent, one level up.
+> Two files asserted a section that did not exist, so a reader following the
+> pointer finds nothing and concludes the retirement never happened — which
+> turns a decided removal back into what looks like an unimplemented
+> requirement. It was found from the other direction: while shipping
+> `POST /api/people` on 2026-08-21, whose header comment records the dangling
+> pointer it could not fix from inside a route file.
+>
+> Every reason below is taken from the comment the retiring commit left in the
+> route file itself. Those comments are the contemporaneous record; nothing here
+> is reconstructed from memory.
+
+---
+
+## `GET /api/people` — retired 2026-08-13
+
+> 🔴 **THIS IS NOT THE `POST /api/people` THAT SHIPPED ON 2026-08-21.** Same
+> path, different method, opposite direction. `src/app/api/people/route.ts` was
+> deleted on 2026-08-13 and **re-created on 2026-08-21 holding only a `POST`** —
+> the unified add-a-person form (J4-R1). Nothing in this entry retires,
+> deprecates, or argues against that endpoint. Read the method, not the path:
+> **the read is retired; the write is new and reached.** The file's own header
+> says so, and says it in more detail than this line can.
+
+**Requirement J4-R1** (one list of people, roles as attributes) — the READ half
+**survives** on `GET /api/circle`.
+
+**Why.** Superseded. It returned `{ people: listPeople(ownerId) }` and nothing
+else, while `/api/circle` returns that same roster embedded in the coverage
+matrix and proposed policies the `/circle` screen actually renders — one call
+behind one page. It had had no caller from the day `/circle` was built. Two
+endpoints answering "who is in my circle?" is a contract with two definitions,
+which this repo bans everywhere else.
+
+**What survives.** `listPeople` in `lib/people/people.ts` — the merge-on-read
+that folds a person holding two roles into one row. `GET /api/delegations` calls
+it, and so does `lib/people/add-person.ts`, which is the logic behind the new
+`POST`. Deleting the route never touched it.
+
+---
+
+## `GET /api/policies` — retired 2026-08-13
+
+The read half of `/api/policies`; the file cites **J4-R3, J4-R6, J4-R7, J4-R14
+and CC6** for the endpoint as a whole. Reading an owner's policies **survives**
+on `GET /api/circle`.
+
+**Why.** The same sweep and the same reason as `GET /api/people`, in the words
+of the comment left in `src/app/api/policies/route.ts`: superseded by
+`/api/circle`, "which returns the same policies embedded in the roster and
+coverage matrix the screen actually renders. It had had no caller since /circle
+was built."
+
+**What survives.** `POST /api/policies` is untouched and is reached — it is how
+an owner accepts a proposed policy. Note the asymmetry rather than tidying it
+away: `/api/policies` is now **write-only**, and the read that used to sit
+beside the write is served from a different endpoint.
+
+⚠️ **Do not read this as one decision with the `PUT`/`DELETE` entry above.** The
+policy edit and delete handlers were retired the same day for an entirely
+different reason — a product ruling about what a policy *is* — while this one is
+a plain supersession. Same file, same date, unrelated arguments.
+
+---
+
+## `PUT /api/rules/[id]` — retired 2026-08-13
+
+**Requirements 3.3, 3.5, 3.8** (the owner changes an access rule) — **survive**
+as delete-and-rewrite.
+
+**Why.** Redundant, and it had never had a caller. A rule is changed by removing
+it and writing another: the rule builder sits directly beneath the rule list on
+`/rules`, so both steps are on one screen and no edit surface was ever built.
+`DELETE` on the same route is reached and stays — the route file is now that
+verb alone.
+
+**What survives.** `updateRule` in `lib/rules/access-rules.ts`, with its tests,
+and with no caller in the product. Recorded here so it is a known orphan rather
+than a discovered one — the same disposition as `previewPolicyChange` above, for
+the same reason: `api-reachability.ts` does not check for unused library
+functions, by design.
+
+---
+
+## `GET /api/vault/items/[id]` — retired 2026-08-13
+
+**Requirements 1.5–1.8** (a single owner vault item). **1.8's coverage moved
+rather than going with the GET** — see below.
+
+**Why.** It fetched one item, and there was nothing it returned that anything
+wanted. The list endpoint already carries the metadata every screen needs, and —
+this is the part specific to this product — **the ciphertext is never served
+back to an owner**: an owner re-encrypts on update rather than reading the old
+value, because Relay cannot decrypt it. The one thing only this route could
+return was the one thing no screen ever asks for.
+
+**Risk it carried.** It was the only handler that would return base64
+`ciphertext` plus `wrapped_data_key` over HTTP to an owner session. That is not
+a hole in the zero-knowledge boundary — the data key is wrapped and the server
+still cannot open it — but it is a reachable path shipping the payload to no
+consumer.
+
+**What survives.** `PUT` and `DELETE` on this same route, both reached from
+`/vault` (`src/app/(owner)/vault/ItemControls.tsx`, `lib/vault/declare-factors.ts`
+and `lib/crypto/crypto-service.ts` all call them).
+
+⚠️ **A NEARBY COMMENT DESCRIBES A DIFFERENT EVENT, and the two are easy to
+merge.** The header of `lib/ops/api-reachability.ts` names "`PUT` and
+`DELETE /api/vault/items/[id]`" as the worst of the four callerless handlers
+found by hand between 2026-08-12 and 2026-08-13 — implemented, validated,
+audited, tested, and reachable from nothing. Those two were **wired**, not
+retired, and they are the two that survive here. Only the `GET` was removed.
+
+**Requirement 1.8** — a row you do not own and a row that does not exist must
+return the SAME 403, so existence is never revealed — was written against the
+`GET`. Its assertions now sit on `DELETE` in
+`src/app/api/vault/items/[id]/route.test.ts`, which is why deleting a handler
+did not delete the guarantee. Moving a requirement's coverage to another verb is
+the step that is easiest to skip and the one that turns a retirement into a
+regression.
+
+---
+
 ## Not retired, but unreached
 
 `lib/ops/api-reachability.ts` carries a second list, `KNOWN_UNREACHABLE`, for
