@@ -224,13 +224,33 @@ env vars are only required when DB/KMS code actually runs (tests that don't touc
 without them). AWS provisioning lives in `docs/aws-setup.md` + `scripts/provision-dsql.sh`;
 `infra/iam-policy.json` holds the `dsql:DbConnect` role.
 
-**Two env files, and the split is the security model** (2026-08-15). There is one cluster and there
+**Three env files, and the split is the security model** (2026-08-15; a third added 2026-08-21). There is one cluster and there
 will be one until G1 is decided, so least privilege is built from identity, not environments.
 
 | File | Identity | Can |
 |---|---|---|
 | `.env.local` | IAM `relay-dev` → DB role `relay_dev` | read/write product tables. **No DDL.** **Cannot write `caregiver_leads`.** |
 | `.env.admin` | IAM `autospecai` → DB role `admin` | everything: migrations, roles, grants |
+| `.env.ro` | IAM `relay-ro` → DB role `relay_ro` | **SELECT on every table and nothing else.** No writes, no DDL, and its IAM policy carries `dsql:DbConnect` with **no KMS at all** |
+
+`.env.ro` exists because an agent running anywhere but this laptop could not check ANYTHING
+about the live system — the only credentials that existed could also write. Five of the seven
+read-only verifications talk only to the database and now run under it:
+
+```bash
+npx tsx --env-file=.env.ro scripts/verify-schema.ts      # and verify-dogfood.ts,
+npx tsx --env-file=.env.ro scripts/disposable-sweep.ts   # flight-snapshot.ts, verify-roles.ts
+```
+
+⚠️ **`verify:iam` and `verify:kms` are NOT unlocked by it** — they read the AWS API rather than
+the database, and a credential that lives in someone else's cloud has no business enumerating
+IAM. They stay admin-run.
+
+⚠️ **Read-only is not harmless.** Emails, display names and vault item TITLES are plaintext
+columns, so this is still production PII. What it can never do is decrypt: with no KMS grant the
+vault stays ciphertext with no key, which is the property that makes it safe to put somewhere
+less trusted than this machine. `relay_ro` is watched by `npm run verify:roles` alongside the
+other two — a wall that instrument does not check is a wall that can be widened silently.
 
 `.env.admin` holds **no secrets** — just `AWS_PROFILE`, so the key stays in `~/.aws/credentials`
 alone. Being a sysadmin is something you *choose* by naming that file, not a power you carry by

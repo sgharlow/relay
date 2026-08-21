@@ -1165,6 +1165,60 @@ ratified:
       product, separate measurement, and the portfolio rule against sharing per-product
       billing surfaces applies."
 
+  - id: two-constraints-on-unattended-work-2026-08-21
+    date: 2026-08-21
+    owner: steve
+    decision: "Take BOTH cheap halves of the 'how do we handle this in future' question: branch
+      protection on master now, and a read-only production credential (`relay_ro`). The full test
+      environment (D4) stays deferred."
+    the_question_behind_it: "Unattended and cloud agents hit two walls: they have no credentials,
+      and they must not push master because a push auto-deploys to a live product. Both walls have
+      ONE root cause — relay has no non-production environment, so 'a credential' and 'production
+      access' are the same object. These two changes address the symptoms cheaply; only D4
+      addresses the cause."
+    what_shipped:
+      branch_protection: "master requires a PR and two status checks (`verify`, `axe`) with
+        `enforce_admins: true`, so NOBODY pushes it directly — not Steve, not an agent holding his
+        token. `required_approving_review_count: 0`, so a solo operator can still self-merge and an
+        emergency fix is a PR away rather than blocked. PROVEN rather than assumed: a throwaway
+        empty commit was pushed at master and REJECTED ('Changes must be made through a pull
+        request'; '2 of 2 required status checks are expected'), remote unchanged, probe discarded.
+        ⚠️ `probe` is deliberately NOT required — production-canary.yml runs on a schedule and
+        never on a PR, so requiring it would deadlock every PR forever.
+        Rollback: `gh api -X DELETE repos/sgharlow/relay/branches/master/protection`."
+      relay_ro: "IAM user `relay-ro` + `relay-ro-policy` (`dsql:DbConnect` on both clusters, and
+        NOTHING else) mapped to DB role `relay_ro` by migration 039, applied to BOTH regions.
+        SELECT on every table, no writes, no DDL, and — the point — NO KMS. `relay-dev` by contrast
+        holds `kms:Decrypt`. So a leaked `relay_ro` key reads metadata and can never turn a
+        ciphertext column into a secret."
+    proven_not_assumed: "A no-op write probe (`WHERE 1=0`, `SELECT ... WHERE false`, so a missing
+      permission check could not damage anything) ran in BOTH regions: 7/7 correct each time —
+      SELECT allowed on users, vault_items, caregiver_leads and the catalog; UPDATE, DELETE and
+      INSERT all refused with `permission denied`. Then the five database-only verifications were
+      run under it end to end: verify:schema (both regions green), verify:dogfood (correctly NOT
+      READY), verify:orphans, flight:snapshot, verify:roles."
+    a_gap_this_created_and_closed: "`verify:roles` checked TWO roles and would have ignored
+      `relay_ro` entirely — a new wall the instrument that guards the other two does not watch,
+      which is precisely the shape that file's own header warns about ('anyone with admin can widen
+      a role in one statement that appears in no diff'). It now checks three, via a
+      `writesAnything` flag that defaults true so the original two are unchanged. Proven able to
+      fail: declaring relay_ro a writer produced 78 problems; restoring returned it to green. Its
+      summary line is now DERIVED from the contract, because it had gone on saying 'neither holds
+      DDL' while three roles were being checked."
+    what_it_does_NOT_unlock: "verify:iam and verify:kms. Those read the AWS API rather than the
+      database, so a DB credential does nothing for them — and a credential that lives in someone
+      else's cloud has no business enumerating IAM. They stay admin-run.
+      ⚠️ I told Steve this unlocked 'all seven read-only scripts'. It unlocks FIVE. Corrected the
+      same day, before anything was built on the wrong number."
+    residual_risk_accepted: "`.env.ro` is still a PRODUCTION credential and still reads PII —
+      emails, display names and vault item titles are plaintext columns. Read-only is not harmless.
+      It was added to .gitignore BEFORE the key was ever created, because this repository is
+      PUBLIC and a credential committed here would be world-readable."
+    still_deferred: "D4, the real fix. And it is BIGGER than the 'cluster' I first described: the
+      walks do a full KMS wrap/unwrap, so a genuine test environment needs its own CMK, IAM
+      principal and env file as well as a DSQL cluster. Re-argue it under the 5-gate infra policy
+      when there is a customer to justify it."
+
   - id: journey-safety-subset-2026-08-21
     date: 2026-08-21
     owner: steve

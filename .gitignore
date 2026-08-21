@@ -71,6 +71,13 @@ e2e-*.png
 # but never commit it regardless.
 .env.admin
 
+# The read-only verification identity (IAM relay-ro -> DB role relay_ro,
+# migration 039). Listed BEFORE the file was ever created, because this
+# repository is PUBLIC and a credential committed here is world-readable.
+# It grants dsql:DbConnect and NOTHING else -- no KMS -- so it can read
+# metadata and can never decrypt a vault. It is still production PII.
+.env.ro
+
 # Beta cohort input and the issued claim codes. REAL PEOPLE and LIVE CREDENTIALS —
 # the codes are readable exactly once at issue, so .relay-cohort-codes.json is the
 # only copy. Never commit either. See scripts/invite-cohort.ts.
