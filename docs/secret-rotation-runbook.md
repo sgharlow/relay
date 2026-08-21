@@ -50,8 +50,17 @@ happened.
 | `OPENAI_API_KEY` | the importance engine | intake analysis degrades; the vault is unaffected | **2026-06-24** |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` (Vercel → IAM `relay-runtime`) | the IAM identity for DSQL **and** KMS in production | **the whole product**. See §5 | **2026-06-24** |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` (`.env.local` → IAM `relay-dev`) | a laptop's read/write on product tables. No DDL, cannot write `caregiver_leads` | local walks and scripts stop; production unaffected | **2026-08-16** |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` (`.env.ro` -> IAM `relay-ro`) | a READ-ONLY look at production: SELECT on every table, no writes, no DDL, and **no KMS**, so it can read metadata and can never decrypt a vault | the five database-only verifications stop (`verify:schema`, `verify:dogfood`, `verify:orphans`, `flight:snapshot`, `verify:roles`). Production and the live site are unaffected: nothing serves traffic with this identity | **2026-08-21** |
 | IAM `autospecai` access key (`~/.aws/credentials`, used by `.env.admin`) | **database admin** — migrations, roles, grants — plus IAM and KMS reads | migrations and every `verify:*` that needs `.env.admin` stop. Production unaffected: it does not hold this identity | **2025-06-29** |
 
+> 🆕 **`relay-ro` added 2026-08-21, the day it was created.** It is the weakest credential in
+> this table by construction and the easiest to rotate: `aws iam create-access-key --user-name
+> relay-ro`, write the new pair into `.env.ro`, confirm with `npx tsx --env-file=.env.ro
+> scripts/verify-roles.ts`, then `aws iam delete-access-key` for the old id. Nothing serves
+> customer traffic with it, so there is no blast radius beyond a verification script failing
+> until the file is updated — which makes it the one secret here that can be rotated on a whim
+> rather than in a window.
+>
 > ✅ **FILLED 2026-08-21 — every cell now carries a date, and D11 is closed.** The ten
 > Vercel-held values were read from the Vercel API (`GET /v9/projects/{id}/env` — `createdAt`
 > and `updatedAt` per key; values were never fetched). **Every key has `createdAt ==
