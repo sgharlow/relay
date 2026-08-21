@@ -241,8 +241,24 @@ describe('the shell that runs it', () => {
     };
     expect(pkg.scripts['verify:dogfood'], 'no verify:dogfood script declared').toBeTruthy();
     expect(pkg.scripts['verify:dogfood']).toContain('scripts/verify-dogfood.ts');
-    // It reads a live cluster, so it needs the env file the other probes use.
-    expect(pkg.scripts['verify:dogfood']).toContain('--env-file=.env.local');
+    /*
+      It reads a live cluster, so it needs a credentialed env file — and since it
+      ONLY reads, it must use the READ-ONLY one.
+
+      This asserted `.env.local` until 2026-08-21, which was right when that was
+      the only credential that existed and became wrong the day `relay_ro` did.
+      `.env.local` is IAM relay-dev: full DML on every product table and
+      `kms:Decrypt`. `.env.ro` is relay_ro: SELECT and nothing else, no KMS. A
+      probe that only counts rows has no business holding the ability to change
+      or decrypt them, and the guard should say so rather than merely requiring
+      "an env file" — which would let it drift back to the stronger identity
+      without anything noticing.
+    */
+    expect(
+      pkg.scripts['verify:dogfood'],
+      'verify:dogfood must run as the read-only identity (.env.ro): it only reads, and .env.local ' +
+        'carries write access and kms:Decrypt',
+    ).toContain('--env-file=.env.ro');
   });
 });
 

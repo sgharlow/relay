@@ -74,6 +74,16 @@ independently), and the migration-035 factor declaration through the real stack.
 > So the three journeys with the least automated cover are three of the ones that moved most
 > recently. Tracked as `PROJECT.yaml → deferred → the-journey-sweep-is-stale` (D10); whether they
 > gain walks or stay explicitly walk-only is a scope decision, not a documentation one.
+>
+> ⚠️ **A FOURTH JOURNEY MOVED THE SAME DAY, and it is not in the sentence above: J4** (added
+> 2026-08-21, after this paragraph was written). J4-R1 single entry shipped that afternoon —
+> `POST /api/people` plus one `AddPersonForm`, replacing the two add forms on `/circle`. It is not
+> in the J3/J6/J9 list because it is not *uncovered*: the a11y re-run loaded the new form as one of
+> the pages it covers (the count is stated once, in the walk-evidence section above). But **a11y cover is not functional cover.** The UI walk visits `/account`, `/access`
+> and `/vault` and never opens `/circle` (`scripts/e2e-ui.ts`), so nothing automated has typed a
+> name into that form. The generalisation the paragraph above reaches for holds with four rather
+> than three: **the code that moved today is the code the walks do not touch**, which is the
+> ordinary consequence of walks being written for last month's product.
 
 > ⚠️ **A walk is not a sweep.** The chain creates disposable accounts on a reserved domain and
 > exercises paths; it does not read a screen the way a person does, and it cannot notice that
@@ -219,9 +229,28 @@ and concludes the old defect is back.
 1. **CANCELLED was a one-way door.** The only stop-control during a release was Cancel, which lands
    in a terminal state that check-in does not reverse. One click permanently retired the access
    rule. Added `standDownTrigger`; Cancel is demoted behind a two-tap confirmation.
+   ⚠️ **That last clause is the 2026-08-08 fix, and it was not the end of it — the control was
+   RETIRED OUTRIGHT on 2026-08-21** (`POST /api/triggers/[id]/cancel` deleted; reason and
+   replacement in `docs/retired-surface.md`). A two-tap confirmation made the trap harder to reach
+   and left it in place: CANCELLED is terminal, nothing re-provisions a cancelled row, so the
+   control still permanently retired the trigger type for that owner. Stand-down was already built
+   for the case Cancel was reached for and it re-arms. **Read this row as the record of 2026-08-08,
+   not as a description of a control that exists.**
 2. **A RELEASED trigger had no owner control at all** — no button of any kind in the one state where
    closing access is the entire product claim. `standDownTrigger` now covers RELEASED and resets the
    release bookkeeping, so the next emergency is not pre-confirmed.
+   ⚠️ **That last clause held for RELEASED ONLY, and it took until 2026-08-21 for anyone to notice**
+   (`5acb026`). `standDownTrigger` and `processCheckin` cleared `received_confirmations` when the
+   state was RELEASED and cleared nothing when it was PENDING or GRACE — the ordinary false alarm
+   caught early, which is the case the control was actually built for. A 2-of-3 carrying one vote
+   therefore opened the next emergency needing one more. Worse, `verifier_confirmations` keyed on
+   the permanent `release_state` row rather than the release instance, so the idempotency read asked
+   *"has this verifier EVER answered on this trigger"*: a verifier who answered once was told
+   `duplicate` forever after, and on the 1-of-1 roster the beta actually has, the second emergency
+   could never reach quorum at all. Both re-arm paths now reset unconditionally and the read is
+   scoped to `initiated_at`. **Read the sentence above as true of RELEASED on 2026-08-08 and true of
+   every reversible state since 2026-08-21** — and note that the sweep this list came from could not
+   have caught it, because a walk that fires one emergency never sees the second one.
 3. **Every emailed link pointed at `relay-three-henna.vercel.app`.** Found by Steve in a real inbox.
    `appUrl()` read `NEXTAUTH_URL`, which still held the pre-domain deployment. A raw vercel.app host
    with a JWT in the query string, arriving during an emergency, is indistinguishable from phishing.
@@ -314,7 +343,7 @@ shipped in sprints 1–4 and was walked on production on 2026-08-12.
 | 2 Consent invitation incl. a printable path | `[GAP]` | **BUILT** | the paper path — walked 2026-08-08, "a parent without a smartphone is not a blocker" |
 | 3 Consent recorded as a first-class artifact | `[GAP]` | **BUILT, and now readable** | `consent_artifacts` (009); surfaced on the approvals screen 2026-08-17 (`HelperSection.tsx`) after being write-only for eight days |
 | 4 Parent enrols an authenticator | `[GAP]` | **BUILT** | per-user TOTP at claim |
-| 5 Delegate scopes, server-enforced | `[GAP]` | **BUILT** | scope enforcement at `/api/kms/unwrap`; J3-R11 is the requirement |
+| 5 Delegate scopes, server-enforced | `[GAP]` | **BUILT — and NARROWED to two scopes on 2026-08-21** | Enforcement is at `/api/kms/unwrap` and `requireScope`; J3-R11 is the requirement. `DELEGATE_SCOPES` is now exactly `items:create` and `people:propose` (`lib/people/delegation.ts`). `items:update` and `import:run` were **removed** that day — no handler had ever gated on either (`/api/import` and `PUT /api/vault/items/[id]` are owner-only), and `items:update` directly contradicted the consent panel the owner reads, which promises a helper can never *"change or delete an item once it is in"*. `policies:propose` went the same way on 2026-08-12. `delegation.test.ts` now fails if the list names a scope no handler gates on, in either direction. ⚠️ `KNOWN_DELEGATE_SCOPES` is deliberately wider: rows created before each withdrawal still carry the retired string, and `getActiveDelegation` has to be able to recognise one in order to drop it |
 | 6 Delegate runs J2 on the parent's vault | `[GAP]` | **BUILT** | `lib/people/delegate-workspace.ts` |
 | 7 Parent approval queue | `[GAP]` | **BUILT** | `lib/people/approvals.ts`, `src/app/(owner)/approvals/` |
 | 8 Monthly "what was done on your behalf" digest | `[GAP]` | **OPEN** | nothing schedules it |
@@ -323,7 +352,7 @@ shipped in sprints 1–4 and was walked on production on 2026-08-12.
 
 | Step | 08-06 tag | Today | Evidence |
 |---|---|---|---|
-| 1 One person, many roles | `[GAP]` (unification) | ~~**BUILT**~~ **READ-SIDE MERGE BUILT; SINGLE-ENTRY EXPERIENCE OPEN** (corrected 2026-08-21) | `lib/people/people.ts` merges the two tables on normalised email and its own header states J4-R1 as the motivation — but its only caller is `src/app/api/delegations/route.ts` (the role-concentration check). The **entry** experience is still two forms: `RecipientSection` (role select over `VALID_ROLES`, which has no `verifier`/`both`) and a separate `VerifierSection` in `src/app/(owner)/circle/PeopleSections.tsx`; there is no `POST /api/people`, and `/api/circle` reads recipients and verifiers as two lists |
+| 1 One person, many roles | `[GAP]` (unification) | ~~**BUILT**~~ ~~**READ-SIDE MERGE BUILT; SINGLE-ENTRY EXPERIENCE OPEN**~~ **BUILT — write side as well as read side** (this row moved TWICE on 2026-08-21; see the note below) | `POST /api/people` (`src/app/api/people/route.ts`) takes one submission and creates whichever hats are missing, over `lib/people/add-person.ts`; `src/app/(owner)/circle/AddPersonForm.tsx` is the single form that calls it, mounted above both sections in `CircleClient.tsx`. `RecipientSection` and `VerifierSection` no longer carry add forms at all — they list and remove — and `AddPersonForm.test.tsx` renders each of them and asserts *"renders no form of its own"*, so a second add form cannot come back unnoticed. The role select is `SELECTABLE_ROLES` (`VALID_ROLES` minus `executor`, narrowed the same day because estate is withdrawn). `listPeople` now has a second caller — `add-person.ts` — so the merge decides the write, not only the read. **Two things the previous correction named are unchanged and are not defects:** `/api/circle` still returns recipients and verifiers as two lists, and a dual-hat person still holds two roster rows, because claiming binds ONE row and each hat is claimed, confirmed and revoked separately — the route's header records that as a consequence of the storage model rather than papering over it |
 | 2 Auto-proposed policies | `[GAP]` | **BUILT** | `lib/rules/policy-proposals.ts` |
 | 3 Approve/edit in bulk → `access_rules` | `[GAP]` | **BUILT** | policies materialise as a diff |
 | 4 Coverage matrix | `[GAP]` | **BUILT** | `lib/rules/coverage.ts`, `src/app/(owner)/circle/CircleClient.tsx` |
@@ -331,6 +360,33 @@ shipped in sprints 1–4 and was walked on production on 2026-08-12.
 | 7 Recipients claim in calm, standby view | `[GAP]` / KYC `[P2]` | **BUILT except KYC** | the hybrid+6 standby account; `/claim` live. Identity verification stays `[P2]` |
 | 8 Verifiers claim with no account | `[GAP]` | **BUILT** | `/verify` surface |
 | 9 Explicit circle-complete state | `[GAP]` | **BUILT** | `lib/rules/coverage.ts` + `/api/circle` |
+
+⚠️ **STEP 1 WAS CORRECTED AND THEN FALSIFIED INSIDE ONE DAY — 2026-08-21. That is what the dates
+on this register are for.** In the morning an audit struck the row's bare **BUILT** and replaced it
+with *"READ-SIDE MERGE BUILT; SINGLE-ENTRY EXPERIENCE OPEN"*, on grounds that were exactly right at
+the time: `lib/people/people.ts` merged the two tables on the way out, its only caller was the
+role-concentration check, the circle screen carried two add forms, and there was no `POST
+/api/people`. In the afternoon the fix shipped and **every clause of that correction stopped being
+true.** Both statements were accurate when written; neither describes the product now.
+
+The strike-throughs are kept rather than tidied for the reason this whole register exists. **A row
+that has only ever held one answer reads as a fact. A row visibly rewritten twice in eight hours
+reads as what it is** — a measurement, with a date on it, taken against a tree that was moving. The
+method note above says each row names the file that settles it, and the file that settled this one
+did not exist when the row was last written.
+
+The contradiction was already visible in this file before the row was fixed: the automated-walk
+section at the top records the a11y re-run covering *"the new unified add-a-person form"* while this
+row said the form did not exist. **Two sections of one document, hundreds of lines apart,
+disagreeing about a screen that shipped that afternoon** — which is the same shape as the
+`relay_app` and KMS paragraphs in `CLAUDE.md`, and the reason a closure has to be carried back to
+every place that asserted the opposite, not only to the register.
+
+⚠️ **`built`, NOT live-proven — and specifically NOT covered by `verify:live`.** The UI walk visits
+`/account`, `/access` and `/vault` and never opens `/circle` (`scripts/e2e-ui.ts`), so no walk has
+typed a name into this form or watched one submission create two rows. The a11y run did load the
+page — 0 serious/critical, in the run recorded above — but that measures whether the screen is reachable
+and legible, not whether it works.
 
 ⚠️ **Invitations have TWO delivery arms, and this note used to describe only one** (corrected
 2026-08-21). ~~Was: *"Invitations are owner-delivered by design. `BETA_INVITE_CHANNEL = 'owner'`
@@ -350,7 +406,7 @@ built; **its delivery is owner-chosen, not manual-only.**
 |---|---|---|---|
 | 1 Passive liveness on ordinary actions | derivation `[GAP]` | **BUILT** | `lib/release/liveness.ts` on the main write paths |
 | 2 Per-trigger cadence | partial | ~~**BUILT**~~ **base cadence BUILT; PER-TRIGGER OPEN** (corrected 2026-08-21) | One cadence per OWNER: `users.checkin_interval_days` (`001_initial.sql`), read and written by `lib/release/release-list.ts`. `runHeartbeatSweep` selects overdue owners on that single interval and then arms `WHERE owner_id = $1 AND state = 'armed'` — **every** trigger type on the same clock (`lib/release/heartbeat.ts`). No migration gives `release_state` an interval column |
-| 3 Escalation ladder before any transition | `[GAP]` | **OPEN for J5's own case; BUILT for two adjacent ones** | `lib/release/escalation.ts` escalates when the OWNER goes quiet on a challenge (window lapses → verifiers asked) and `lib/release/silence-sweep.ts` + `quiet-channel.ts` when the VERIFIER channel goes quiet. What does not exist is a reminder ladder to the owner **before** `runHeartbeatSweep` advances ARMED → PENDING: an overdue owner is escalated by the transition itself |
+| 3 Escalation ladder before any transition | `[GAP]` | ~~**OPEN for J5's own case; BUILT for two adjacent ones**~~ **BUILT — the third case shipped 2026-08-21; one channel, and it does not gate the transition** | The two adjacent cases are unchanged: `lib/release/escalation.ts` (the OWNER goes quiet on a challenge → verifiers asked) and `lib/release/silence-sweep.ts` + `quiet-channel.ts` (the VERIFIER channel goes quiet). J5's own case was the missing one and is now `lib/release/checkin-reminder.ts` — two rungs at 0.75 and 0.9 of the owner's interval, deduped out of `audit_log` with no migration, swept from the heartbeat cron (`src/app/api/cron/heartbeat/route.ts`) over a set of owners **disjoint** from the sweep's, so ordering between them cannot matter. The ladder resets itself off `last_active_at`, which check-in and sign-in both stamp. ⚠️ Two limits, both deliberate and both in that file's header: it sends **email only**, so J5-R4's *"all registered owner channels"* means the one channel that exists; and it **cannot delay** ARMED → PENDING — a reminder that held back the dead-man's switch would make a genuinely absent owner's family wait longer. `wired`, not live-proven: no walk has let an interval elapse |
 | 4 Quarterly continuity review | `[GAP]` | **OPEN** | no occurrence of "quarterly" in the codebase |
 | 5 Life-event prompts | `[GAP]` | **OPEN** | — |
 | 6 Renewal as a value receipt | `[GAP]` | **OPEN** | — |
@@ -423,7 +479,7 @@ already carries the caveat. This is the single most valuable moment in the produ
 
 | Step | 08-06 tag | Today | Evidence |
 |---|---|---|---|
-| 1 Owner checks in or cancels | web `[BUILT]` | **BUILT (web)** | other channels open, and that is a channel question, not a journey gap |
+| 1 Owner checks in or cancels | web `[BUILT]` | **BUILT (web) — but "or cancels" is gone as of 2026-08-21** | Check-in and **stand-down** are the owner's two web controls. `POST /api/triggers/[id]/cancel` was retired that day (`docs/retired-surface.md`): CANCELLED is terminal and nothing re-provisions a cancelled row, so the control permanently retired the trigger type for that owner, while stand-down re-arms. Requirement 5.3 survives on stand-down. Other channels remain open, and that is a channel question, not a journey gap |
 | 4 Recipient sees a graceful close | `[GAP]` | **BUILT** | `lib/access/closure.ts`, 2026-08-08 |
 | 5 Reversal receipt | receipt `[GAP]` | **DROPPED** | `ratified.j9-5-7-dropped`, 2026-08-16 — enhancements to a complete journey |
 | 6 Re-arm confirmation | `[GAP]` | **DROPPED** | same ruling |
@@ -440,8 +496,10 @@ stands. Do not read those tags as a backlog.
 
 Everything above that is not BUILT, DROPPED or WITHDRAWN:
 
-1. **J5 retention** — the owner-reminder ladder before a heartbeat transition (the other two
-   escalation cases are built), quarterly review, life-event prompts, renewal receipt.
+1. **J5 retention** — ~~the owner-reminder ladder before a heartbeat transition (the other two
+   escalation cases are built),~~ (**SHIPPED 2026-08-21** — `lib/release/checkin-reminder.ts`, two
+   rungs, swept from the heartbeat cron; `wired`, and no walk has ever let a check-in interval
+   elapse) quarterly review, life-event prompts, renewal receipt.
    **J7-R13 rides here too**: per-verifier response rate and latency delivers *through* the
    quarterly review, so it is blocked on this line rather than independently buildable — the audit
    entries it would aggregate are already written.
@@ -453,8 +511,13 @@ Everything above that is not BUILT, DROPPED or WITHDRAWN:
    built and displayed (`lib/vault/readiness.ts`); only these two conditions are missing.
 4. **J8** — single-next-action card, ephemeral reveal, shared progress.
 5. **J3** — the monthly delegate digest.
-6. **J4 single entry** (added 2026-08-21) — one person, many roles, entered once. The read-side
-   merge exists; the two add forms are what J4-R1 is actually about.
+6. ~~**J4 single entry** (added 2026-08-21) — one person, many roles, entered once. The read-side
+   merge exists; the two add forms are what J4-R1 is actually about.~~
+   ✅ **CLOSED THE SAME DAY IT WAS ADDED — 2026-08-21.** `POST /api/people` and
+   `src/app/(owner)/circle/AddPersonForm.tsx` shipped that afternoon and the two add forms are gone
+   from `PeopleSections.tsx`; see the J4 step-1 row and its note above. Kept struck rather than
+   deleted because an item that appears and vanishes leaving no trace is how the same work gets
+   proposed again next month. `built`, not live-proven — no walk opens `/circle`.
 7. **J6 refinements** (added 2026-08-21) — evidence attachment on a request, channels beyond email,
    time remaining on the recipient's status.
 8. **KYC at claim** — `[P2]`, needs a vendor.
@@ -1064,7 +1127,7 @@ never imply that it is.
 | 2 | The parent is created as the **owner**; the buyer becomes a pending delegate. Consent invitation goes out by email, SMS, **or a printable one-pager** for a non-digital parent. | `[GAP]` |
 | 3 | Parent consents through the lowest-friction path that preserves evidence: one-tap link, in-person tap on the child's device, or a signed paper form the child uploads. **Consent is recorded in the audit log as a first-class artifact**, with method and timestamp. | `[GAP]` |
 | 4 | Parent enrols an authenticator, or explicitly elects an assisted-authentication mode that is flagged, time-limited, and revocable at any time. | `[GAP]` |
-| 5 | Delegate scopes activate: create/update items, propose recipients and policies, run imports. **Cannot** decrypt items they did not create, arm/disarm triggers, or designate themselves as a recipient. | `[GAP]` |
+| 5 | Delegate scopes activate: create ~~/update~~ items, propose recipients ~~and policies~~, ~~run imports~~. **Cannot** decrypt items they did not create, arm/disarm triggers, or designate themselves as a recipient. ⚠️ **Three of the five were REMOVED, not built** — `policies:propose` on 2026-08-12, `items:update` and `import:run` on 2026-08-21. The grant is now `items:create` + `people:propose`; see the 08-17 register row for why dropping was the safe direction. | `[GAP]` |
 | 6 | Delegate runs J2 against the parent's vault. | `[GAP]` — import mechanics are `[BUILT]`, but every route is owner-scoped today; running them in a delegate context is entirely net-new |
 | 7 | **Parent approval queue** — recipients, access policies, and *especially* any designation of the delegate as a recipient require the parent's explicit approval. One screen, plain language, large type. | `[GAP]` |
 | 8 | Parent receives a monthly "what was done on your behalf" digest, and can revoke delegation instantly from any surface. | `[GAP]` |
@@ -1338,7 +1401,9 @@ flowchart TD
 - **J5-R1** Liveness SHALL be derived from authenticated product activity. An explicit check-in ritual SHALL be a fallback, not the primary mechanism.
 - **J5-R2** `checkin_interval_days` SHALL accept 1–365, default 30, and reject out-of-range values.
 - **J5-R3** Cadence SHALL be configurable per trigger type.
-- **J5-R4** A full escalation ladder across all registered owner channels SHALL be exhausted before any `ARMED → PENDING` transition.
+- **J5-R4** A full escalation ladder across all registered owner channels SHALL be exhausted before any `ARMED → PENDING` transition. ✅ **THE LADDER SHIPPED 2026-08-21** — `lib/release/checkin-reminder.ts`, two rungs at 0.75 and 0.9 of the owner's own interval, swept from the heartbeat cron. Until then a living owner who missed one interval had their verifiers asked whether they were incapacitated with nothing said to them first, and the whole warning they received was the message saying it had already started. Two clauses need reading precisely, and both are argued in that file rather than here:
+  - *"All registered owner channels"* is **one channel today: email** — the same narrowing J6-R3 was amended for, and for the same reason. SMS is rung 5 in `docs/standby-architecture.md` §3.4 and parked on `ROADMAP` C4; push has no surface.
+  - *"Exhausted before"* is **deliberately not** implemented as a gate. The ladder writes nothing to `release_state` and sweeps a set of owners disjoint from `runHeartbeatSweep`'s, so it structurally cannot delay ARMED → PENDING. A reminder that could hold back the dead-man's switch would make a genuinely absent owner's family wait longer — a worse defect than the one being fixed, and invisible until the day it mattered. **If J5-R4 is meant to block the sweep, that is a defect in the requirement**: amend it deliberately, do not build it by reading the word "exhausted" literally.
 - **J5-R5** The scheduler SHALL evaluate all active owners at intervals no greater than one hour.
 - **J5-R6** Scheduler transient failures SHALL retry with exponential backoff (base 5s, max 3 attempts) and SHALL NOT halt evaluation of remaining owners.
 - **J5-R7** **The absence of a scheduler run SHALL raise an alert.** A successful run SHALL emit a heartbeat metric, and a no-signal-in-N-hours condition SHALL alarm.
@@ -1461,11 +1526,16 @@ sequenceDiagram
 - **J6-R5** Owner approval SHALL advance the release to `GRACE` via the existing `ARMED → PENDING → GRACE` transitions, suppressing verifier notification and auto-satisfying N-of-M, with the auto-satisfaction recorded as owner-consented in the audit log. **No new state transition SHALL be added to `PERMITTED_TRANSITIONS`.**
 - **J6-R6** Escalation to `PENDING` SHALL occur only after the owner-challenge window expires without response.
 - **J6-R7** The challenge window SHALL be configurable per trigger type.
-- **J6-R8** Requests SHALL be subject to velocity limits and a cooling-off period per recipient.
+- **J6-R8** Requests SHALL be subject to velocity limits and a cooling-off period per recipient. ✅ **BOTH HALVES BUILT as of 2026-08-21.** Velocity limits have been live since the surface shipped (walked 2026-08-08 — the 4th request in 24h refused); the **cooling-off** closed that day: `REFUSAL_COOLING_OFF_SECONDS = 12h` in `lib/release/access-request.ts`. Until then a refusal bought the owner nothing — the same recipient could ask again ten minutes later, which is the coercion the requirement exists to stop. Three properties are judgements rather than defaults, all argued in that file:
+  - **Per recipient**, so one refusal does not silence a second named contact whose clock never started.
+  - It counts **`denied_by_owner` only.** An escalated or unanswered request is *not* a refusal: `escalation.ts` holds that absence of an answer must never be read as consent, and the mirror is that absence must never be read as refusal either — barring an owner's silence would lock out the incapacity case the product is sold for.
+  - The clock runs **ask-to-ask** from `created_at`, because `access_requests` has no `resolved_at` and adding one is a migration for a rule that does not need it.
+  ⚠️ **`wired`, not live-proven.** Neither production walk has ever had an owner deny a request — see the J6 outcomes note in the step-level register — so the branch this rule hangs off has never run outside unit tests.
 - **J6-R9** All recipients and verifiers SHALL be notified that a request was made, regardless of outcome.
 - **J6-R10** The requesting recipient SHALL see accurate live status at all times, including time remaining. ⚠️ **PARTIAL as of 2026-08-21:** the status is accurate, honest and never a dead end — `StandbyClient.tsx` names the deadline, the case reference, and what happens if the owner does not answer — but it renders an **absolute** deadline, not time remaining. The countdown helper exists on the owner's side of the same event (`timeLeft`, `src/app/(owner)/challenge/ChallengeClient.tsx`); the recipient's side does not use it.
 - **J6-R11** Every request SHALL be assigned a case ID referenced in every subsequent notification to every actor (CC7).
-- **J6-R12** An owner SHALL be able to stop a release from any channel at any point before it commits. **The stop is state-dependent and SHALL respect the permitted transitions:** from `PENDING` the release returns to `ARMED`; explicit `CANCELLED` is reachable only from `GRACE`. `PENDING → CANCELLED` is not a permitted transition and SHALL NOT be added.
+- **J6-R12** An owner SHALL be able to stop a release from any channel at any point before it commits. **The stop is state-dependent and SHALL respect the permitted transitions:** from `PENDING` the release returns to `ARMED`; ~~explicit `CANCELLED` is reachable only from `GRACE`~~. `PENDING → CANCELLED` is not a permitted transition and SHALL NOT be added.
+  ⚠️ **AMENDED 2026-08-21 — the stop survives; the second half of it does not.** `CANCELLED` is still reachable only from `GRACE` *in the table*, and the edge is still permitted, but **no code takes it**: `POST /api/triggers/[id]/cancel` and `cancelTrigger` were deleted (`docs/retired-surface.md`). The requirement's substance — an owner can stop a release before it commits — is **unaffected and better served**: `POST /api/triggers/[id]/stand-down` covers `PENDING`, `GRACE` **and** `RELEASED`, and every one of them re-arms. What was removed is the owner's ability to stop a release *permanently*, which was never what this requirement asked for and was a one-way door out of a screen opened under stress.
 
 > **J6-R9 is an anti-abuse control.** Broadcasting that a request occurred makes covert access
 > attempts impossible, which is the deterrent that matters most in the family-dynamics context this
@@ -1756,8 +1826,8 @@ then: *"Sarah couldn't get into your pharmacy portal — it wasn't in the vault.
 
 | # | Step | State |
 |---|---|---|
-| 1 | Owner checks in or explicitly cancels. | web `[BUILT]`, other channels `[GAP]` |
-| 2 | CAS transition — `PENDING → ARMED`, `GRACE → ARMED`, `GRACE → CANCELLED`, or, when access was actually granted, **`RELEASED → ARMED`**. That last edge is the one that makes the reversibility claim true. **Estate is excluded — irreversible by design.** | `[BUILT]` |
+| 1 | Owner checks in, or ~~explicitly cancels~~ **stands down** (amended 2026-08-21 — the Cancel control was retired; see the note under the state machine below). | web `[BUILT]`, other channels `[GAP]` |
+| 2 | CAS transition — `PENDING → ARMED`, `GRACE → ARMED`, ~~`GRACE → CANCELLED`~~, or, when access was actually granted, **`RELEASED → ARMED`**. That last edge is the one that makes the reversibility claim true. **Estate is excluded — irreversible by design.** | `[BUILT]`; the struck edge is **permitted and has no caller** since 2026-08-21 |
 | 3 | **Recipient tokens die immediately.** The JWT carries `version`; the version bump invalidates every issued token within 60 seconds. | `[BUILT]` |
 | 4 | Recipient sees a **graceful close**, not an error: *"Margaret is back and has closed access. You had access to 34 items for 6 hours. Here's what you opened."* | `[GAP]` |
 | 5 | Owner receives the **reversal receipt** — what was accessed, by whom, for how long — hash-chain verifiable and exportable. | audit `[BUILT]`, receipt `[GAP]` |
@@ -1806,6 +1876,20 @@ stateDiagram-v2
 > **`CANCELLED` is terminal.** There is no `CANCELLED → ARMED` transition. Returning a cancelled
 > trigger to service is not a state transition — it requires a new `release_state` row. Any UI
 > offering "re-arm" after a cancel must be implemented that way.
+>
+> 🔴 **AND SINCE 2026-08-21 NOTHING REACHES IT.** `POST /api/triggers/[id]/cancel` was **retired**
+> — deleted, not parked — because being terminal was not a caveat, it was the defect: one two-tap
+> control permanently retired a trigger type for that owner, taking every access rule and recipient
+> hanging off it, with no owner-side recovery. The remedy the screen once offered ("recreate the
+> access rule") does not work either, because `ensureReleaseState` returns the existing cancelled
+> row. Stand-down covers the case Cancel was reached for, and it re-arms. Reason and replacement:
+> `docs/retired-surface.md`.
+>
+> **The `grace → cancelled` edge above stays in `PERMITTED_TRANSITIONS`, deliberately, with no
+> caller.** The diagram is not wrong. Narrowing the state machine is a separate decision from
+> removing a button, and `PERMITTED_TRANSITIONS` is still **seven** — the count a test asserts.
+> If the capability is ever wanted back, the shape is **re-provisioning** (a fresh ARMED row), which
+> is what the paragraph above already specifies; it is not an un-cancel edge.
 >
 > **`RELEASED → ARMED` is permitted for reversible triggers**, and it is the transition that makes
 > the entire reversibility claim true. Note that `requirements.md` R5.2 enumerates only six
@@ -2121,14 +2205,21 @@ What remains genuinely open is **refinement inside journeys that work**, not mis
 > withdrawn on 2026-08-14 as blocked on a gate; J8's row asked for a cache the architecture does not
 > want. The 2026-08-17 step register above is the finer-grained answer and wins on any disagreement;
 > `PROJECT.yaml → journeys` wins over both.
+>
+> ⚠️ **And two more rows moved later the same day** — J4's single entry and J5's owner-reminder
+> ladder both shipped after this table was rebuilt. That is not a second failure of the same kind:
+> the rebuild fixed rows describing *decisions* the table had never absorbed, and these two were
+> falsified by *code landing*, hours later, which no amount of care at write time prevents. It is
+> the argument for the dates rather than against them. What a closing summary can promise is that
+> it was true on its date and says which date that is; it cannot promise to be true now.
 
 | Journey | Still open |
 |---|---|
 | J1 | The behavioral qualifier and the latent-tier capture (J1-R2) — qualification is by channel allow-list today. The abandon-after-seed nurture branch is **undecided, not deferred** |
 | J2 | Review-by-exception; top-three gap framing; the two item-level continuity-ready conditions (`backup_note` on every root, no `CUSTODY_RISK` on an irreplaceable); document and email ingestion lanes (`[P2]`) |
 | J3 | The monthly "what was done on your behalf" digest — nothing schedules it |
-| J4 | Single-entry add-person across roles (read-side merge exists, two add forms remain); proposed N-of-M defaults per trigger type |
-| J5 | Owner-reminder ladder **before** a heartbeat transition (the two adjacent escalation cases are built), **per-trigger cadence (J5-R3)**, quarterly review packaging, life-event prompts, renewal receipt |
+| J4 | ~~Single-entry add-person across roles (read-side merge exists, two add forms remain)~~ **CLOSED 2026-08-21 — `POST /api/people` + one `AddPersonForm`; `built`, not walked.** Still open: proposed N-of-M defaults per trigger type |
+| J5 | ~~Owner-reminder ladder **before** a heartbeat transition (the two adjacent escalation cases are built)~~ **SHIPPED 2026-08-21 — `lib/release/checkin-reminder.ts`; `wired`, and no walk has let an interval elapse.** Still open: **per-trigger cadence (J5-R3)**, quarterly review packaging, life-event prompts, renewal receipt |
 | J6 | Evidence attachment on a request; channels beyond email; time-remaining on the recipient's status. ⚠️ **And the outcome branches — deny, approve, lapse-escalate — are `wired`, never walked on production** |
 | J7 | Per-verifier response rate and latency (J7-R13), which delivers through J5's quarterly review and is blocked on it |
 | J8 | ~~Precomputed triage plan~~ *(retired — met by read-time ordering, see J8-R4)*, single-next-action, ephemeral reveal, shared progress; mobile (`[P2]`) |

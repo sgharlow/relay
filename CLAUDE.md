@@ -32,6 +32,15 @@ Before changing release/crypto/OCC logic, read `design.md` **§Release State Mac
 permitted-transition table — seven edges, matching `PERMITTED_TRANSITIONS` exactly) and
 **§Correctness Properties**. Those two sections are authoritative. The rest of that file is not:
 
+> ⚠️ **One of the seven has NO CALLER, and that is deliberate — do not "clean it up".** `grace →
+> cancelled` lost its only caller on 2026-08-21 when `POST /api/triggers/[id]/cancel` was retired:
+> `cancelled` is the one terminal state a reversible trigger could reach, so a two-tap control on an
+> emergency screen permanently retired the trigger type for that owner. Stand-down covers the case
+> it was reached for and re-arms. The **edge** stays because production holds rows that took it and
+> narrowing the state machine is a separate decision from removing a button.
+> `lib/release/state-machine.ts` carries the argument in place, and a test asserts it is still seven.
+> Reason and replacement: `docs/retired-surface.md`.
+
 | For | Go to, not `design.md` |
 |---|---|
 | the schema | `db/migrations/*.sql`, re-measured live by `npm run verify:schema` |
@@ -233,14 +242,27 @@ will be one until G1 is decided, so least privilege is built from identity, not 
 | `.env.admin` | IAM `autospecai` → DB role `admin` | everything: migrations, roles, grants |
 | `.env.ro` | IAM `relay-ro` → DB role `relay_ro` | **SELECT on every table and nothing else.** No writes, no DDL, and its IAM policy carries `dsql:DbConnect` with **no KMS at all** |
 
+Those three are the **identities**. `ls .env*` also shows `.env.example` (the committed template)
+and `.env.dsql` (cluster endpoints and ARNs from `provision-dsql.sh` — gitignored, no credentials,
+not an identity). The table is the security model; it is not an inventory of files on disk.
+
 `.env.ro` exists because an agent running anywhere but this laptop could not check ANYTHING
 about the live system — the only credentials that existed could also write. Five of the seven
-read-only verifications talk only to the database and now run under it:
+read-only verifications talk only to the database and **can** run under it:
 
 ```bash
 npx tsx --env-file=.env.ro scripts/verify-schema.ts      # and verify-dogfood.ts,
 npx tsx --env-file=.env.ro scripts/disposable-sweep.ts   # flight-snapshot.ts, verify-roles.ts
 ```
+
+⚠️ **THE `npm run` SHORTCUTS DO NOT USE IT — spell the `.env.ro` path yourself.** Every one of
+`verify:schema`, `verify:dogfood`, `verify:orphans`, `flight:snapshot` and `verify:roles` is still
+declared in `package.json` as `--env-file=.env.local`, so `npm run verify:schema` connects as
+`relay_dev` — an identity that can write. This paragraph said those five "now run under it" on the
+day the role shipped, and `.env.ro`'s own header lists them by their **npm script names**, which
+reads as a promise the scripts do not keep. Corrected 2026-08-21. Switching `package.json` over is a
+one-line change per script and deliberately not made here: it belongs with whoever owns that file,
+and a doc quietly asserting it had already happened is the failure being fixed.
 
 ⚠️ **`verify:iam` and `verify:kms` are NOT unlocked by it** — they read the AWS API rather than
 the database, and a credential that lives in someone else's cloud has no business enumerating
@@ -268,6 +290,39 @@ you ever see that on the lead form, it is a grant, not a bug.
 > separate, explicit step"* for a day after that step was taken, while the `verify:roles` section
 > 110 lines below already said the cutover was done. One file, two answers, about which identity
 > the live site holds. Corrected 2026-08-16.
+
+### 🔴 `master` IS BRANCH PROTECTED — `git push origin master` will be REFUSED
+
+Enabled 2026-08-21. It sits beside the identity table because it is the same kind of rule — what a
+credential is *allowed* to do — and it is the one that surfaces as a git error rather than a
+database one: **an agent that does not know about it reads `protected branch hook declined` as a
+broken credential and starts debugging the wrong thing.** Work goes on a branch and through a PR.
+
+| Setting | Value | What it means for you |
+|---|---|---|
+| Pull request required | yes | no direct push, ever |
+| Required approvals | **0** | a solo operator self-merges; the gate is the checks, not a second human |
+| Required checks | **`verify`**, **`axe`** | the job names in `.github/workflows/ci.yml` and `a11y.yml`. Both run on `pull_request`, so both can actually report |
+| Strict | yes | the branch must be up to date with `master` before merge |
+| `enforce_admins` | **true** | it applies to Steve's own token too — deliberately, since a rule an admin routes around is a note, not a rule |
+| Force pushes / deletions | blocked | a history rewrite now needs protection lifted first, on purpose |
+
+**Read the required checks precisely: they are the gate, and `npm run gate` is not what they run.**
+`verify` runs `test:coverage` with the thresholds, plus the AI-co-authorship trailer check — see
+"Two gates" below. A PR that passes `gate` locally and fails `verify` on coverage is the expected
+failure mode, not a surprise.
+
+**Rollback, in one command**, because this is a change to a working repository and the policy that
+governs those requires the way back to be written down before it is needed:
+
+```bash
+gh api -X DELETE repos/sgharlow/relay/branches/master/protection   # removes protection entirely
+gh api repos/sgharlow/relay/branches/master/protection             # read the live settings
+```
+
+⚠️ **Read the live settings rather than trusting the table.** It is a GitHub-side setting that
+leaves no trace in this repo — exactly the shape `verify:roles` and `verify:iam` exist for, and
+nothing re-measures this one. The table is what was set on the day; the API is what is true now.
 
 ## Architecture — the non-obvious invariants
 
@@ -497,9 +552,24 @@ least-privilege split is enforced by GRANTs on a live cluster: `db/migrations/*.
 *intended* when each file ran, and anyone with admin can widen a role in one statement that appears
 in no diff, test run or build. It re-measures the thing itself — both regions, read-only — asserting
 that `relay_app` (the live site, IAM `relay-runtime`) has full DML including `caregiver_leads`, that
-`relay_dev` (a laptop) can read that table and not write it, that neither holds DDL, and that each is
+`relay_dev` (a laptop) can read that table and not write it, that **`relay_ro` (IAM `relay-ro`,
+migration 039) holds SELECT and writes NOTHING — no DML on any table, no DDL, and an IAM policy
+carrying `dsql:DbConnect` with no KMS at all**, that none of the three holds DDL, and that each is
 bound to exactly one IAM principal. Proven to fail in both directions by planting a widened
-`relay_dev` and a starved `relay_app`. ✅ **Cutover DONE 2026-08-16**: production connects as `relay_app`, and `dsql:DbConnectAdmin` has been
+`relay_dev` and a starved `relay_app`.
+
+> ⚠️ **This paragraph described a TWO-role check ending "neither holds DDL" while three roles were
+> being checked** — corrected 2026-08-21, the day `relay_ro` was added, and the same one-file-two-
+> answers shape as the `relay_app` cutover and KMS paragraphs. The Environment section above already
+> said `relay_ro` was watched here. The script fixed its own version of this on the same day: its OK
+> line is now **derived from `CONTRACT`** rather than spelled out, precisely because a summary that
+> silently stops describing what ran is the smallest version of the drift the whole file exists to
+> catch. **So do not restate the role list from here — run it and read what it prints.** The point
+> that generalises: a read-only role this instrument did not watch would be a wall that could be
+> widened silently, which is the argument for adding it to `CONTRACT` rather than trusting that
+> nobody grants it INSERT.
+
+✅ **Cutover DONE 2026-08-16**: production connects as `relay_app`, and `dsql:DbConnectAdmin` has been
 stripped from `relay-runtime-policy` (v2; v1 retained as rollback), so the live site can no longer
 obtain database admin by permission rather than by configuration. `docs/least-privilege-cutover.md`.
 
@@ -624,7 +694,12 @@ so a database compromise reaches it even though it reaches no vault contents.
 
 ## Notes
 
-- Git is initialized with remote `origin` → github.com/sgharlow/relay (branch `master`).
+- Git is initialized with remote `origin` → github.com/sgharlow/relay (branch `master`). **`master`
+  is protected and refuses a direct push** — the settings, the required checks and the rollback
+  command are in the Environment section, stated once, above.
+- `docs/retired-surface.md` is where a deleted endpoint's reason and replacement live, so *"it used
+  to be here"* has an answer other than `git log`. Check it before concluding a spec requirement is
+  unimplemented — the route may have been retired on purpose, with the requirement met elsewhere.
 - `README.md` is a real project README (rewritten 2026-06-19) — safe to read for project info.
 
 <!-- BEGIN:nextjs-agent-rules -->

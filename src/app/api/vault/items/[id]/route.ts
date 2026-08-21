@@ -1,7 +1,10 @@
 /**
  * /api/vault/items/[id] — single owner vault item.
  *
- *   GET    → full item incl. base64 ciphertext + wrapped key (owner edit view)
+ *   ~~GET~~ → RETIRED 2026-08-13. The header advertised it until 2026-08-21 while
+ *              the comment 70 lines below said it was gone and the module exported
+ *              no GET — one file, two answers, and the wrong one was the first
+ *              thing a reader met. See docs/retired-surface.md.
  *   PUT    → replace ciphertext + wrapped key, bump updated_at
  *   DELETE → cascade-delete access_rules, then the item
  *

@@ -448,7 +448,7 @@ POST   /api/rules                  create access rule
 PUT    /api/checkin                owner heartbeat / reset clock
 POST   /api/triggers/:type/initiate    start a trigger (manual emergency)
 POST   /api/triggers/:id/confirm       verifier confirmation (idempotent)
-POST   /api/triggers/:id/cancel        owner interrupt (reversible)
+POST   /api/triggers/:id/cancel        owner interrupt (reversible)    # ⚠️ RETIRED 2026-08-21 — route deleted; the owner interrupt is POST /api/triggers/:id/stand-down, which re-arms. docs/retired-surface.md. Do not rebuild it.
 GET    /api/access                  recipient: granted items (post-RELEASED only)
 GET    /api/audit                   owner: hash-chained audit log
 POST   /api/demo/simulate           fast-forward state machine (demo only)

@@ -561,6 +561,15 @@ Retry parameters: base 100 ms, jitter ±50 ms, max 1 000 ms per attempt, max 3 a
 
 Any transition not in this table is rejected at the application layer before attempting a DB write.
 
+⚠️ **`GRACE → CANCELLED` HAS NO CALLER since 2026-08-21, and the row stays anyway.** The edge is
+still in `PERMITTED_TRANSITIONS` — this table matches that constant exactly, seven edges, and that
+correspondence is the reason to leave the row alone. What is gone is the only thing that ever
+invoked it: `POST /api/triggers/[id]/cancel` and its button were retired (`docs/retired-surface.md`).
+So "owner explicit cancel" now names a transition the state machine permits and no owner can reach.
+Narrowing the state machine is a separate decision from removing a control, and it has not been
+taken — see the argument kept in `lib/release/state-machine.ts`. **Read this row as a capability of
+the state machine, never as a control that exists.**
+
 ---
 
 ## AI Agent Architecture
@@ -710,7 +719,7 @@ All route handlers live under `app/api/`. State-mutating endpoints use the OCC C
 | `PUT` | `/api/checkin` | Owner | Heartbeat — updates `last_active_at`; resets PENDING→ARMED for reversible triggers via CAS |
 | `POST` | `/api/triggers/:type/initiate` | Owner | Manual trigger initiation — ARMED→PENDING via CAS |
 | `POST` | `/api/triggers/:id/confirm` | Verifier (scoped JWT) | Idempotent confirmation — increments `received_confirmations` via CAS |
-| `POST` | `/api/triggers/:id/cancel` | Owner | Cancel release — GRACE→CANCELLED via CAS (reversible only) |
+| ~~`POST`~~ | ~~`/api/triggers/:id/cancel`~~ | ~~Owner~~ | ~~Cancel release — GRACE→CANCELLED via CAS (reversible only)~~ ⚠️ **RETIRED 2026-08-21** — this route no longer exists; Requirement 5.3 survives on `POST /api/triggers/[id]/stand-down`, which re-arms rather than ending anything. See `docs/retired-surface.md`. Do not rebuild it. |
 | `GET` | `/api/triggers/:type/state` | Owner | Read current release state for a trigger type |
 
 ### Recipient Access

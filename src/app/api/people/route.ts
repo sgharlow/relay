@@ -11,11 +11,14 @@
  * ⚠️ POST ONLY, AND DELIBERATELY SO. `GET /api/people` existed here once and was
  * RETIRED on 2026-08-13 as "superseded by /api/circle" — the retirement is
  * recorded in the `KNOWN_UNREACHABLE` comment in `lib/ops/api-reachability.ts`,
- * which lists it first of the six removed that day. (That comment says all six
- * went into `docs/retired-surface.md` with their reasons; three of them did.
- * Noted rather than fixed here — the doc is not this file's to edit — because a
+ * which lists it first of the six removed that day. (That comment said all six
+ * went into `docs/retired-surface.md` with their reasons. When this note was
+ * written only TWO had — and this said "three", which was wrong in the same
+ * direction as the claim it was correcting. All six have sections as of
+ * 2026-08-21, so the pointer now resolves. Kept rather than deleted because a
  * pointer that does not resolve is how the next person concludes the retirement
- * never happened.)
+ * never happened, and because getting a count wrong while correcting a count is
+ * worth remembering.)
  *
  * Reading the circle is still `/api/circle`'s job and there must not be two
  * answers to that question; this file adds the write that never existed, and
