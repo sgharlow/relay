@@ -2715,8 +2715,27 @@ deferred:
         the disposition, with the query string STRIPPED and script-sample absent — both privacy
         protections observed rather than assumed. The synthetic row was then deleted; the table
         starts empty so the first real window is uncontaminated.
-      # 🔴 THE ONE LINK NOT YET OBSERVED, AND IT IS THE ONE THAT WOULD LIE QUIETLY.
-      browser_delivery_is_unproven: >-
+      # ✅ RESOLVED 2026-08-20, LATER THE SAME DAY — delivery works.
+      browser_delivery_confirmed: >-
+        A real browser DID deliver. `csp_reports` holds a row written 2026-08-20T22:30:34Z:
+        disposition=report, directive=script-src-elem, blocked=inline,
+        document=https://relaystandby.com/security — the inline RSC script the stricter policy
+        targets, from a genuine page load, landing about a second after it. The whole chain is
+        proven: stricter policy fires -> browser posts -> endpoint stores -> durable row.
+        ⚠️ The earlier "zero rows after 90s" reading was not wrong, it was EARLY: those checks ran
+        before the /security navigation that produced this row. A negative result whose window
+        closed before the event is not evidence of absence — which is the same mistake the
+        caveat below was written to prevent, made while writing it.
+      # ⚠️ BUT DO NOT READ THIS TABLE AS A VIOLATION CENSUS.
+      delivery_is_lossy_by_design: >-
+        Three production pages were loaded, each carrying two un-nonced inline scripts, so six
+        violations occurred and ONE row exists. The Reporting API batches, delays, dedupes and
+        drops at the browser's discretion, and headless browsers are stingier still. So the table
+        proves violations HAPPEN and the pipeline WORKS; it does not count them. When the nonce
+        decision is finally taken, read this table for WHICH directives and WHICH sources appear —
+        never for how many, and never conclude "rare" from a low row count.
+      # 🔴 KEPT: the reasoning that produced the check, and it still binds for the next reader.
+      browser_delivery_was_unproven_until_then: >-
         The policy FIRES and the endpoint WORKS; what has not been observed is a browser
         DELIVERING a report between the two. Verified on production 2026-08-20: each page logs
         exactly two violations, matching its two inline RSC scripts — but they log at INFO level
