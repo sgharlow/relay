@@ -241,16 +241,33 @@ export async function standDownTrigger(
   // edge existed and processCheckin used it, but an owner home from hospital
   // looking at their own trigger saw no button to close anything.
   //
-  // The bookkeeping reset mirrors processCheckin exactly. Without it a re-armed
-  // trigger carries its old confirmation count and released_at forward, so the
-  // next emergency starts pre-confirmed — it would fire on fewer verifiers than
-  // the owner configured.
+  /*
+    The bookkeeping reset mirrors processCheckin exactly. Without it a re-armed
+    trigger carries its old confirmation count and released_at forward, so the
+    next emergency starts pre-confirmed — it would fire on fewer verifiers than
+    the owner configured.
+
+    🔴 THAT PARAGRAPH WAS TRUE AND THE CODE UNDER IT ONLY HALF DID IT, corrected
+    2026-08-21. The reset was conditional on `row.state === 'released'`, so
+    standing down from PENDING or GRACE — the ordinary false alarm, caught early,
+    which is the case this control was BUILT for — cleared nothing. A 2-of-3 with
+    Alice already confirmed went back to ARMED still carrying her vote, and the
+    next month's emergency opened the vault on one live confirmation plus a
+    stale one. The condition described the rarer path and the comment described
+    the intent; nothing described what ran.
+
+    `received_denials` is cleared here too, and could not be before: it was
+    missing from UPDATABLE_COLUMNS, so the state machine dropped the key.
+    Unconditional now — every re-arm, from every state, starts clean.
+  */
   const updated = await machine.transition(row.id, row.state, 'armed', row.version, {
     reversible: true,
-    updates:
-      row.state === 'released'
-        ? { received_confirmations: 0, grace_ends_at: null, released_at: null }
-        : undefined,
+    updates: {
+      received_confirmations: 0,
+      received_denials: 0,
+      grace_ends_at: null,
+      released_at: null,
+    },
   });
 
   await writeAuditEntry(ownerId, {
@@ -487,14 +504,37 @@ export async function submitConfirmation(params: SubmitConfirmationParams): Prom
     ? (params.method as ConfirmMethod)
     : 'app';
 
-  // Idempotency intent-read (Req 6.4).
+  /*
+    Idempotency intent-read (Req 6.4) — SCOPED TO THE CURRENT RELEASE INSTANCE.
+
+    🔴 IT WAS NOT, until 2026-08-21, and the consequence was the worst kind:
+    quiet, and on the second use. `release_state` is ONE PERMANENT ROW per
+    (owner, trigger_type) — `ensureReleaseState` returns the existing row and
+    nothing deletes it — and `verifier_confirmations` keys on that permanent id.
+    So this read asked "has this verifier EVER answered on this trigger", and
+    answered `duplicate` to somebody responding to a completely different
+    emergency months later. Their standby dashboard showed nothing waiting, the
+    token door said "Recorded", and the tally did not move. On a 1-of-1 roster —
+    which is the roster the beta actually has — the second emergency could never
+    reach quorum at all.
+
+    `initiated_at` is the instance marker and it already existed: all five paths
+    that start a release stamp it (owner initiate, owner-consent challenge, lapse
+    escalation, cron heartbeat, demo simulate). A NULL falls back to the old
+    unscoped behaviour, which is the conservative direction — the fallback can
+    only refuse an answer, never manufacture one.
+
+    The head read moved ABOVE this one because this one now depends on it.
+  */
+  const head = await readState(releaseStateId);
+
   const existing = await query<{ id: string }>(
     `SELECT id FROM verifier_confirmations
-       WHERE release_state_id = $1 AND verifier_id = $2 LIMIT 1`,
-    [releaseStateId, verifierId],
+       WHERE release_state_id = $1 AND verifier_id = $2
+         AND ($3::timestamptz IS NULL OR confirmed_at >= $3::timestamptz)
+       LIMIT 1`,
+    [releaseStateId, verifierId, head.initiated_at],
   );
-
-  const head = await readState(releaseStateId);
   if (existing.rowCount && existing.rows.length) {
     /*
       Requirement 16.5 names this as one of four integrity actions the audit log

@@ -112,14 +112,25 @@ export async function processCheckin(ownerId: string, machine: Machine): Promise
       continue;
     }
     try {
-      // Re-arm. For a RELEASED reversible trigger this closes the recipient's
-      // access; clear the release bookkeeping so it starts fresh next time.
+      /*
+        Re-arm. For a RELEASED reversible trigger this closes the recipient's
+        access; clear the release bookkeeping so it starts fresh next time.
+
+        🔴 UNCONDITIONAL SINCE 2026-08-21. It used to reset only when the state
+        was RELEASED, so checking in during PENDING or GRACE — the common case,
+        and the one the heartbeat exists to serve — re-armed a trigger that still
+        carried its confirmations and denials. The next emergency then started
+        part-way to quorum. Same defect as standDownTrigger's, in the sibling
+        path, with the same comment above it claiming otherwise.
+      */
       await machine.transition(row.id, row.state, 'armed', row.version, {
         reversible: true,
-        updates:
-          row.state === 'released'
-            ? { received_confirmations: 0, grace_ends_at: null, released_at: null }
-            : undefined,
+        updates: {
+          received_confirmations: 0,
+          received_denials: 0,
+          grace_ends_at: null,
+          released_at: null,
+        },
       });
       reset.push(row.trigger_type);
 

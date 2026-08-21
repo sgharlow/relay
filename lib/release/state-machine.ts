@@ -61,9 +61,19 @@ export interface ReleaseStateRow {
 }
 
 /** Columns a transition may set in addition to `state`/`version`. */
-const UPDATABLE_COLUMNS = new Set([
+export const UPDATABLE_COLUMNS = new Set([
   'required_confirmations',
   'received_confirmations',
+  /*
+    ADDED 2026-08-21. Its absence was silent: `applyUpdates` FILTERS against this
+    set, so a transition asking to clear `received_denials` had that key dropped
+    and reported success. Nothing could reset denials, on any path — old
+    objections counted toward unreachability forever and the objectors could
+    never re-vote. See lib/release/rearm-clears-the-ledger.test.ts, which pins
+    the membership rather than the behaviour, because the behaviour is a no-op
+    that looks like a fix.
+  */
+  'received_denials',
   'initiated_by',
   'initiated_at',
   'grace_ends_at',

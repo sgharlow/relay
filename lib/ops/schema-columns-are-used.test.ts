@@ -37,9 +37,18 @@ const UNREFERENCED_BY_DESIGN: Record<string, string> = {
   'release_state.first_access_at':
     'Superseded by audit_log — closure.ts derives first and last access from ' +
     'min(ts)/max(ts) by actor, which is hash-chained and cannot be back-dated.',
-  'verifier_confirmations.confirmed_at':
-    'Populated by its own DEFAULT now() on every insert, so the data is real. ' +
-    'Nothing displays it; the audit chain carries the same fact in order.',
+  /*
+    `verifier_confirmations.confirmed_at` WAS HERE until 2026-08-21, described as
+    "populated by its own DEFAULT now() ... nothing displays it". Both halves were
+    true and the conclusion drawn from them was the bug: because nothing read the
+    timestamp, the confirmation ledger had no way to say WHICH release a vote
+    belonged to, and `submitConfirmation`'s idempotency check answered "has this
+    verifier ever answered on this trigger" instead of "on this release". A
+    verifier could therefore answer exactly once in the lifetime of a trigger.
+    The column is now read by that scoped check, so this entry is deleted rather
+    than re-argued — which is this guard working in the direction nobody expects:
+    it noticed a dead column coming back to life.
+  */
   'consent_artifacts.recorded_at':
     'Populated by its own DEFAULT now(). The screen shows delegations.granted_at ' +
     'instead, which is the moment the delegation actually became active.',

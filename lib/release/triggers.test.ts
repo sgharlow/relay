@@ -342,18 +342,41 @@ describe('standDownTrigger', () => {
     await standDownTrigger('owner-1', 'rs-1', machine);
 
     expect(machine.transition.mock.calls[0][4]).toMatchObject({
-      updates: { received_confirmations: 0, grace_ends_at: null, released_at: null },
+      // `received_denials` joined this list on 2026-08-21; it could not be
+      // cleared before, because it was missing from UPDATABLE_COLUMNS and the
+      // state machine dropped the key without erroring.
+      updates: { received_confirmations: 0, received_denials: 0, grace_ends_at: null, released_at: null },
     });
   });
 
-  it('does NOT clear bookkeeping when standing down from GRACE — nothing was released', async () => {
-    mockQuery.mockResolvedValueOnce(qResult([makeRow({ state: 'grace' })]));
+  /*
+    🔴 THIS TEST USED TO ASSERT THE OPPOSITE, and it was wrong on 2026-08-21.
+
+    It read `does NOT clear bookkeeping when standing down from GRACE — nothing
+    was released`, and expected `updates` to be undefined. The reasoning in that
+    title is the error: nothing was RELEASED, but confirmations were RECORDED —
+    GRACE is precisely the window in which verifiers answer. Standing down a
+    false alarm therefore re-armed a trigger still carrying live votes, and the
+    next emergency opened part-way to quorum. A 2-of-3 with Alice already
+    confirmed needed only Bob next month, on a vote Alice cast about a different
+    event.
+
+    The test is corrected rather than deleted, because the deletion would leave
+    no record that this behaviour was once deliberate. Its sibling in
+    lib/release/rearm-clears-the-ledger.test.ts covers the whole defect class,
+    including the half no unit test could see: the confirmation LEDGER outliving
+    the release it belonged to.
+  */
+  it('clears bookkeeping when standing down from GRACE — confirmations arrive in that window', async () => {
+    mockQuery.mockResolvedValueOnce(qResult([makeRow({ state: 'grace', received_confirmations: 1 })]));
     const machine = machineStub();
     machine.transition.mockResolvedValueOnce(makeRow({ state: 'armed' }) as never);
 
     await standDownTrigger('owner-1', 'rs-1', machine);
 
-    expect((machine.transition.mock.calls[0][4] as { updates?: unknown }).updates).toBeUndefined();
+    expect(machine.transition.mock.calls[0][4]).toMatchObject({
+      updates: { received_confirmations: 0, received_denials: 0, grace_ends_at: null, released_at: null },
+    });
   });
 
   it('rejects a cross-owner stand-down (403)', async () => {
