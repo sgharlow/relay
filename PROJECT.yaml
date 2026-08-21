@@ -2789,6 +2789,31 @@ deferred:
       census that has learned to ignore orphans is the decorative-guard shape this project keeps
       catching."
 
+  - id: the-read-only-identity-is-not-in-the-cloud
+    owner: steve
+    opened: 2026-08-21
+    what: "`relay_ro` exists and works - IAM user `relay-ro` + `relay-ro-policy` (dsql:DbConnect and
+      nothing else, NO KMS), DB role via migration 039 in both regions, and the five database-only
+      verifications now run under `.env.ro`: verify:schema, verify:dogfood, verify:orphans,
+      flight:snapshot, verify:roles. But `.env.ro` exists ONLY on Steve's machine."
+    why_it_matters: "That is the entire point of building it, unrealised. An agent running anywhere
+      but that one laptop still verifies nothing beyond `npm run gate` - it cannot check whether the
+      schema matches the migrations, whether the owner's vault is populated, or whether a walk left
+      rows behind. The constraint this was built to remove is still in force everywhere it mattered."
+    ends_when: "The credential is a secret in the Claude Code cloud environment (or CI), and at
+      least one of the five verifications has been OBSERVED running there. Wired is not enough: the
+      whole reason this entry exists is that a thing which looks configured and was never exercised
+      is the shape this project keeps being wrong about."
+    what_it_does_NOT_unlock: "verify:iam and verify:kms. They read the AWS API rather than the
+      database, so a DB credential does nothing for them - and a credential living in someone
+      else's cloud has no business enumerating IAM. They stay admin-run, deliberately."
+    risk_accepted_when_it_lands: "It is a PRODUCTION credential and it reads PII - emails, display
+      names and vault item titles are plaintext columns. What it can never do is decrypt: with no
+      KMS grant the vault stays ciphertext with no key, and `verify:iam` now asserts that its policy
+      carries no `kms:*` action at all. Read-only is not harmless; it is bounded."
+    note: "Steve ruled 2026-08-21 to TRACK this rather than do it immediately, so it is here rather
+      than in a memory file - a sentence in a memory file is one session from being lost."
+
   - id: the-owners-vault-is-empty                              # "A0"
     owner: steve
     opened: 2026-08-20
