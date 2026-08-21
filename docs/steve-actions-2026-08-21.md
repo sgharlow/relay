@@ -79,9 +79,9 @@ are acceptable and have the census report them as a NOTICE — the way it alread
 ⚠️ **Do not close this by widening the census's ignore list without a ruling.** An orphan census
 that has learned to ignore orphans is a decorative guard.
 
-**Register:** `deferred → thirty-eight-rows-outlived-the-accounts-that-owned-them`
-(the id says 38; re-derive the count — it moved to 36 within an hour, because `auth_challenges`
-rows expire on their own.)
+**Register:** `deferred → rows-outlived-the-accounts-that-owned-them`
+(No count in the name, deliberately — it was `thirty-eight-…` until 2026-08-21 and read 36 within
+the hour. Re-derive with `npm run verify:orphans`.)
 
 ---
 
