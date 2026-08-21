@@ -224,6 +224,48 @@ describe('deleteAccount', () => {
     expect(sqlIssued().some((s) => /DELETE FROM webauthn_credentials/i.test(s))).toBe(true);
   });
 
+  it('counts the two hard-to-reach purges in the report the leaver is handed', async () => {
+    /*
+      🔴 REACHED BUT NOT REPORTED. The 2026-08-21 fix made
+      `verifier_confirmations` and `consent_artifacts` reachable at last — both
+      are keyed through a row this function deletes first, so every account
+      closed before that left them on the cluster. The purges landed and their
+      row counts were then thrown away: `purgeOne` returns a number and both
+      call sites discarded it, so `DeletionReport` accounted for neither.
+
+      That matters because the report is the ANSWER TO THE PERSON LEAVING —
+      `src/app/api/account/route.ts` returns it verbatim as the response body.
+      The file header names "a DeletionReport that never counted those rows" as
+      part of the defect being corrected; until this test, it still did not.
+    */
+    query.mockImplementation(async (sql: string) => {
+      if (/DELETE FROM verifier_confirmations/i.test(sql)) return { rows: [], rowCount: 3 };
+      if (/DELETE FROM consent_artifacts/i.test(sql)) return { rows: [], rowCount: 2 };
+      return { rows: [], rowCount: 0 };
+    });
+
+    const report = await deleteAccount('owner-1');
+
+    expect(report.verifierConfirmations, 'attestations purged but not accounted for').toBe(3);
+    expect(report.consentArtifacts, 'consent records purged but not accounted for').toBe(2);
+  });
+
+  it('reports zero for those two rather than omitting them when the tables are absent', async () => {
+    // 42P01 is tolerated, and a tolerated purge must still report a number: an
+    // absent field and a zero read the same in JSON to nobody's benefit.
+    query.mockImplementation(async (sql: string) => {
+      if (/DELETE FROM (verifier_confirmations|consent_artifacts)/i.test(sql)) {
+        throw Object.assign(new Error('relation does not exist'), { code: '42P01' });
+      }
+      return { rows: [], rowCount: 0 };
+    });
+
+    const report = await deleteAccount('owner-1');
+
+    expect(report.verifierConfirmations).toBe(0);
+    expect(report.consentArtifacts).toBe(0);
+  });
+
   it('leaves every OTHER circle this person stood by for', async () => {
     // The rows live in other owners' rosters, so `WHERE owner_id = $1` never
     // touched them. Production kept `standby_state = 'claimed'` pointing at a

@@ -7,13 +7,22 @@
 > verbatim re-opens the wall this project spent a sprint closing.** Four corrections, each also
 > marked in place at the step it belongs to:
 >
-> - 🔴 **`infra/iam-policy.json` still grants `dsql:DbConnectAdmin` and `kms:DescribeKey`.** The
->   live `relay-runtime-policy` grants **`dsql:DbConnect` and nothing more** (v2, 2026-08-16 —
->   `docs/least-privilege-cutover.md`), and `npm run verify:iam` exits 1 the moment the admin
->   action comes back, whether by name, by wildcard, or in an inline user policy. Creating a
->   policy from that file today hands the runtime principal the exact grant that check exists to
->   refuse — and the product keeps working, which is why nobody would notice. See §6 and the IAM
->   Policy Reference.
+> - 🔴 **`infra/iam-policy.json` still grants `dsql:DbConnectAdmin` and `kms:DescribeKey`.** Of the
+>   **DSQL** actions, the live `relay-runtime-policy` grants **`dsql:DbConnect` and nothing more**
+>   (v2, 2026-08-16 — `docs/least-privilege-cutover.md`), and `npm run verify:iam` exits 1 the
+>   moment the admin action comes back, whether by name, by wildcard, or in an inline user policy.
+>   Creating a policy from that file today hands the runtime principal the exact grant that check
+>   exists to refuse — and the product keeps working, which is why nobody would notice. See §6 and
+>   the IAM Policy Reference.
+>
+>   ⚠️ **Read "and nothing more" with the scope it was measured at.** The 2026-08-16 command in
+>   `docs/least-privilege-cutover.md` filters to statements whose `Sid` starts with `Dsql`, so it
+>   says nothing at all about the KMS statement — and the runtime **does** still hold
+>   `kms:GenerateDataKey` and `kms:Decrypt`, as the IAM Policy Reference table below records. A
+>   runtime policy stripped to the DSQL line alone cannot wrap or unwrap a data key: no vault item
+>   can be written and Reveal is dead for real people's credentials. (This bullet read
+>   *"grants `dsql:DbConnect` and nothing more"* unscoped until 2026-08-21, contradicting this
+>   file's own table 200 lines below.)
 > - **Production authenticates as an IAM *user*, not as the role step 7 creates.** Vercel holds
 >   static access keys for IAM `relay-runtime` and connects with `DSQL_ROLE=relay_app`. Nothing
 >   assumes `relay-backend-dsql`, and the Vercel-OIDC note under step 7 is a direction that was
@@ -170,9 +179,56 @@ Add `KMS_KEY_ID` to `.env.local` and Vercel.
 > - `kms:DescribeKey` is deliberately absent from the application's identity — that is why
 >   `npm run verify:kms` needs `.env.admin` rather than the runtime credential.
 >
-> Until the file is brought to the v2 shape, take the runtime policy from
-> `docs/least-privilege-cutover.md` (`"Action": ["dsql:DbConnect"]`) and use this document only
-> for the *admin* provisioning identity, which legitimately needs the wider grant.
+> Until the file is brought to the v2 shape, use this document only for the *admin* provisioning
+> identity, which legitimately needs the wider grant, and provision the **runtime** principal to
+> the shape below.
+>
+> 🔴 **Do not lift the runtime policy out of `docs/least-privilege-cutover.md`.** That document
+> holds no policy document — the line `"Action": ["dsql:DbConnect"]` there is a *fragment*,
+> explicitly scoped to "the `DsqlConnect` statement, dropping `dsql:DbConnectAdmin`, keeping both
+> cluster ARNs". Provisioning from it literally produces a runtime principal with `dsql:DbConnect`
+> and **no KMS grants at all**, so every `kms:GenerateDataKey` and `kms:Decrypt` is denied: no
+> vault item can be written and Reveal fails for real people's credentials. (This block said
+> exactly that until 2026-08-21 — written to prevent a provisioning mistake, and prescribing a
+> worse one.)
+>
+> **The whole v2 runtime shape, stated here rather than pointed at:**
+>
+> | Sid | Action | Notes |
+> |---|---|---|
+> | `DsqlConnect` | `dsql:DbConnect` | both cluster ARNs (us-east-1 primary + us-west-2 secondary); **no** `dsql:DbConnectAdmin`. Keep the `Sid` starting with `Dsql` — see the warning under the table |
+> | `AllowKmsEnvelopeEncryption` | `kms:GenerateDataKey`, `kms:Decrypt` | **no `kms:DescribeKey`** — `scripts/verify-kms.ts` is why: it reads KMS metadata and therefore needs `.env.admin` |
+> | `DenyKmsDecryptForAiRoles` | Deny `kms:Decrypt`, `kms:GenerateDataKey` | kept **verbatim** from `infra/iam-policy.json` — but **inert, and not protection today**: its `aws:PrincipalArn` condition matches a role nothing assumes. See the note under the IAM Policy Reference |
+>
+> ⚠️ **A renamed `Sid` makes the cutover doc's audit return `[]`, which reads as reassuring.** That
+> query filters on `starts_with(Sid, 'Dsql')`. The live statement must therefore be named
+> `Dsql…` — `infra/iam-policy.json` calls it **`AllowDsqlDbConnect`**, which would not match, and
+> the query would print an empty list rather than an error. An operator scanning for
+> `dsql:DbConnectAdmin` and seeing nothing would conclude the wall was intact. Use the unfiltered
+> command below when the answer matters.
+>
+> ⚠️ **`npm run verify:iam` will not catch a missing KMS statement.** It reads the DSQL actions and
+> nothing else — `grep -ci kms scripts/verify-iam.ts` returns `0` — so a runtime policy with the
+> KMS statement deleted passes it. The check that a KMS grant is intact is a **real wrap and
+> unwrap**: create a vault item and reveal it. Green from `verify:iam` here is a green light on the
+> half of the policy that was not the problem.
+>
+> Before trusting either half, read the live document **unfiltered** (the `Dsql`-scoped query in
+> `docs/least-privilege-cutover.md` is what produced the unscoped "and nothing more" claim this
+> block used to repeat). Export `AWS_CA_BUNDLE` first, as that file's command does:
+>
+> ```bash
+> ARN=arn:aws:iam::461293170793:policy/relay-runtime-policy
+> aws iam get-policy-version --profile autospecai --policy-arn "$ARN" \
+>   --version-id "$(aws iam get-policy --profile autospecai --policy-arn "$ARN" \
+>       --query 'Policy.DefaultVersionId' --output text)" \
+>   --query 'PolicyVersion.Document.Statement[].{Sid:Sid,Effect:Effect,Action:Action}' --output json
+> ```
+>
+> The DSQL half of the table above carries a dated measurement (2026-08-16, in the cutover doc).
+> The KMS half is the *design intent* recorded in `scripts/verify-kms.ts` and in the IAM Policy
+> Reference table below; the 2026-08-16 command could not have measured it. Run the command above
+> if you need it live rather than `wired`.
 
 The policy document is at `infra/iam-policy.json`. Before creating it, substitute the real cluster ARN:
 
@@ -361,7 +417,30 @@ actually holds each one today (2026-08-21)**, because the file and production ha
 > left as written because `infra/iam-policy.json` still says exactly that, and a reader comparing
 > the two should find the discrepancy explained rather than tidied away.
 
-The Deny statement in the policy (`DenyKmsDecryptForAiRoles`) ensures that any role matching `relay-ai-intake*` cannot call `kms:Decrypt` or `kms:GenerateDataKey`, enforcing the ZK boundary for the Intake Agent (Requirement 11.5).
+### The `DenyKmsDecryptForAiRoles` statement is **inert** — it is not the ZK boundary
+
+> **Was:** *"The Deny statement in the policy (`DenyKmsDecryptForAiRoles`) ensures that any role
+> matching `relay-ai-intake*` cannot call `kms:Decrypt` or `kms:GenerateDataKey`, enforcing the ZK
+> boundary for the Intake Agent (Requirement 11.5)."* **It does not, and it never has.** Corrected
+> 2026-08-21 — `infra/README.md` names this file, quoting that sentence, as one of two documents
+> that had to be fixed. It was still standing when the next reader came looking.
+
+The statement's condition is `aws:PrincipalArn` `ArnLike` `…:role/relay-ai-intake*`. **Nothing in
+this repository ever assumes a role** — no `AssumeRole`, no `fromTemporaryCredentials`, no
+`STSClient`. `runIntake()` runs in process under the single runtime principal, called from two
+route handlers, so the condition can never match and the Deny can never fire.
+
+Requirement 11.5 names two mechanisms and **only the second one is real**: the query-layer
+projection in `lib/ai/metadata-query.ts`. `lib/ops/zk-boundary.test.ts` is what enforces it — no
+SQL anywhere under `lib/ai/` may name `ciphertext`, `wrapped_data_key` or `kms_key_id` — because a
+projection module being careful is a convention, and four of the six modules there import `query`
+directly.
+
+**Keep the statement.** It costs nothing, it becomes correct the day a separate intake role exists,
+and deleting it would erase the only written trace of the intended design. Running intake under its
+own principal is new capability held behind demand, not work outstanding. What was obliged was that
+this file stop counting it as protection that exists today. `infra/README.md` holds the full
+account.
 
 ---
 

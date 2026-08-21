@@ -18,14 +18,15 @@
  *     "this recipient" that is affected — it is every recipient whose rule uses
  *     that trigger.
  *
- * docs/user-journeys.md:1598 specifies the other resolution (re-arming provisions
+ * the J9 state-machine note in docs/user-journeys.md ("CANCELLED is terminal")
+ * specifies the other resolution (re-arming provisions
  * a NEW release_state row). Nothing implements it. Until something does, the
  * screen says what the product actually does. This test is the guard, because
  * the copy and the state machine live in different files and drifted apart once
  * already.
  *
  * Feature: relay-h0-mvp
- * Requirements: J6-R12, J9 state-machine note (user-journeys.md:1598-1615)
+ * Requirements: J6-R12, the J9 state-machine note in docs/user-journeys.md
  */
 
 import { describe, it, expect } from 'vitest';

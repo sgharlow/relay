@@ -22,7 +22,7 @@
  * The promise and the implementation must agree, so the code follows the
  * document rather than the other way round.
  *
- * THE PURGE RULE, AND THE TWO WAYS IT WAS WRONG UNTIL 2026-08-21.
+ * THE PURGE RULE, AND THE THREE WAYS IT WAS WRONG ON 2026-08-21.
  *
  * 1. IT SWALLOWED EVERY ERROR. The optional deletes sat in a bare `catch` that
  *    named one cause — "table absent in this deployment" — while tolerating all
@@ -44,6 +44,16 @@
  *    and `auth_challenges` were simply missed. The fixture scripts were more
  *    thorough than the product: reset-demo.ts and family-arc.ts already cleared
  *    the confirmations with the exact subquery now used below.
+ *
+ * 3. IT REACHED THEM AND THEN DID NOT COUNT THEM — found by review the same
+ *    day, hours after (2) landed. Both new purges discarded what `purgeOne`
+ *    returns, so `DeletionReport` accounted for neither while (1) above was
+ *    already naming "a DeletionReport that never counted those rows" as part
+ *    of the defect being corrected. For half a day that sentence described
+ *    something still true. It is not cosmetic: this report IS the answer to
+ *    the person leaving — `src/app/api/account` returns it verbatim — so a
+ *    purge nobody counts is a purge nobody can see happened, on the one
+ *    operation that cannot be run again to check.
  *
  * The ordering rule that falls out of it: anything reachable only through
  * another row goes BEFORE that row, and `users` goes last of all.
@@ -154,6 +164,13 @@ export interface DeletionReport {
   passkeys: number;
   /** Other people's circles this account was standing by for, now released. */
   standbyRolesReleased: number;
+  /**
+   * The two purges reachable only THROUGH a row this function deletes first
+   * (THE PURGE RULE (2)). Always a number, never absent — a tolerated 42P01
+   * reports 0. Why they were missing from this report: see the call sites.
+   */
+  verifierConfirmations: number;
+  consentArtifacts: number;
 }
 
 /**
@@ -220,7 +237,7 @@ export async function deleteAccount(ownerId: string): Promise<DeletionReport> {
   const purge = (sql: string) => purgeOne(sql, ownerId);
 
   // BEFORE release_state — reachable only through it. See THE PURGE RULE (2).
-  await purge(
+  const verifierConfirmations = await purge(
     `DELETE FROM verifier_confirmations
       WHERE release_state_id IN (SELECT id FROM release_state WHERE owner_id = $1)`,
   );
@@ -240,7 +257,7 @@ export async function deleteAccount(ownerId: string): Promise<DeletionReport> {
   // Same reachability problem as verifier_confirmations: consent_artifacts has
   // no owner_id (009), and the delegations row is the only pointer to it. So it
   // goes BEFORE the delegations delete below, not after.
-  await purge(
+  const consentArtifacts = await purge(
     `DELETE FROM consent_artifacts
       WHERE id IN (SELECT consent_artifact_id FROM delegations
                     WHERE owner_id = $1 OR delegate_user_id = $1)`,
@@ -292,5 +309,7 @@ export async function deleteAccount(ownerId: string): Promise<DeletionReport> {
     auditEntriesRetained: Number(audit.rows[0]?.n ?? 0),
     passkeys,
     standbyRolesReleased: standbyRoles.rows.length,
+    verifierConfirmations,
+    consentArtifacts,
   };
 }

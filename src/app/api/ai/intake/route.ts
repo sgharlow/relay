@@ -66,6 +66,23 @@ export async function POST(): Promise<NextResponse> {
   const result = await runIntake(auth.ownerId);
   return NextResponse.json({
     scored: result.scored,
+    /*
+      🔴 THIS KEY WAS MISSING AND THE OWNER WAS MISREPORTED BECAUSE OF IT.
+      `runIntake` caps a run at 300 items (Req 11.10) and, since 2026-08-21,
+      returns what the cap left behind rather than dropping it in silence — but
+      this handler destructured `{ scored, warnings, results }`, so the number
+      reached nobody. A 312-item vault was told "looked at 300 items and
+      re-ordered them by what matters most" with nothing indicating twelve
+      accounts had not been looked at at all. The library had stopped lying and
+      the product had not been told; forwarding it is the other half.
+
+      `?? 0` rather than a passthrough: `remaining` is optional in IntakeResult
+      (hand-built fixtures outside lib/ai), and an absent key would leave the
+      screen unable to tell "nothing was left behind" from "this build cannot
+      say" — which is the silence this exists to end. Tightening the type to
+      required belongs with lib/ai/intake-agent.ts and its fixtures.
+    */
+    remaining: result.remaining ?? 0,
     warnings: result.warnings,
     results: result.results,
   });

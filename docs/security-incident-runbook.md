@@ -145,6 +145,13 @@ section exists in advance.
   faster, say so as an explicitly temporary commitment scoped to this incident ("while this is
   open we are answering within N hours"), and let it lapse back rather than editing the standing
   one under pressure.
+  - ⚠️ **That temporary figure must not be typed into a `src/app/**` surface.** The same guard
+    cited two lines above fails the build on *any* page or component that states a response time
+    without importing `SUPPORT_RESPONSE_TIME` — `/within (a few|\d+|one|two|three|24|48)
+    (hours?|days?|business days?)/i` — and an incident status page is exactly that. So put the
+    temporary commitment in the **emailed notice**, or render it from a scoped constant that
+    imports the standing one. Discovered 2026-08-21: this step handed an operator mid-incident a
+    remedy `npm run gate` refuses, at the worst possible hour to find that out.
 
   > **Was:** *"It has no stated response commitment … so if it is going to carry an incident it
   > needs one that day."* True when this runbook was written; C6 was ruled the same day and this

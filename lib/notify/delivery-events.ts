@@ -252,6 +252,79 @@ export function refusalMarker(errorClass: string): string {
   return `${REFUSED_PREFIX}${cls || 'unknown'}:${randomUUID()}`;
 }
 
+/**
+ * The class a marker was written with, or null if this is not a refusal marker.
+ *
+ * The counterpart of `refusalMarker`, and deliberately next to it: the format
+ * `refused:<class>:<uuid>` is one contract, and a reader that lived in
+ * `webhook-health.ts` would be a second place for it to drift.
+ *
+ * An ACCEPTED send stores Resend's own id, which is a UUID. So the prefix is
+ * required rather than assumed: splitting any provider id on ':' and taking the
+ * second field would invent a class for a message that was never refused.
+ */
+export function refusalClassOf(providerId: string): string | null {
+  if (!providerId.startsWith(REFUSED_PREFIX)) return null;
+  const cls = providerId.slice(REFUSED_PREFIX.length).split(':')[0];
+  return cls ? cls : null;
+}
+
+/**
+ * Refusal classes that say something about ONE MESSAGE, or about a moment,
+ * rather than about Relay's ability to send at all.
+ *
+ * 🔴 WHY THIS LIST EXISTS (added 2026-08-21, the day after refusals started
+ * being recorded at all). `webhook-health.ts` read *any* refusal with nothing
+ * accepted after it as "Relay is currently sending no mail at all — check
+ * RESEND_API_KEY first". But `email.ts` records a refusal on ANY `result.error`,
+ * and the commonest error Resend returns is per-message: a mistyped recipient
+ * address comes back as `validation_error`. At a product that sends rarely —
+ * production held zero recipients when this was written — ONE owner typo
+ * therefore latched the public health endpoint to 503 for up to the whole
+ * 30-day window, cleared only if some later message happened to be accepted,
+ * and pointed an operator at a key that was working. That is the alarm-fatigue
+ * failure both of these files are written against, arriving by the front door.
+ *
+ * ⚠️ A DENY-LIST, NOT AN ALLOW-LIST, and the direction is the point. Resend can
+ * add an error name tomorrow; an allow-list of known-bad classes would silently
+ * stop noticing whatever that name describes, which is the exact shape of defect
+ * the delivery switch has now been rebuilt for three times. So anything not
+ * named here is treated as an outage: loud, visible, and correctable by adding a
+ * line to this list once somebody has seen it.
+ *
+ * ⚠️ `validation_error` is the uncomfortable one and is here on purpose. Resend
+ * also uses it for a sandbox account that may only mail its own owner, which IS
+ * a total outage — but it is overwhelmingly a bad address, and a class that
+ * cries wolf on every typo is a class nobody reads. The recency rule in
+ * `webhook-health.ts` is what keeps that case visible: a non-systemic refusal
+ * still reports unhealthy while it is FRESH, it just does not latch for a month.
+ */
+export const NON_SYSTEMIC_REFUSAL_CLASSES: readonly string[] = [
+  // About the message we handed over.
+  'validation_error',
+  'invalid_parameter',
+  'missing_required_field',
+  'invalid_attachment',
+  'invalid_to_address',
+  'bounced',
+  'not_found',
+  'method_not_allowed',
+  'invalid_idempotency_key',
+  'invalid_idempotent_request',
+  'concurrent_idempotent_requests',
+  // The provider having a moment. The next message sails past.
+  'rate_limit_exceeded',
+  'internal_server_error',
+  'application_error',
+];
+
+const NON_SYSTEMIC = new Set(NON_SYSTEMIC_REFUSAL_CLASSES);
+
+/** Does this refusal class mean Relay cannot send at all? Unknown ⇒ yes. */
+export function isSystemicRefusalClass(errorClass: string): boolean {
+  return !NON_SYSTEMIC.has(errorClass);
+}
+
 export async function recordSendRefusal(errorClass: string): Promise<void> {
   try {
     await query(`INSERT INTO email_send_attempts (provider_id) VALUES ($1)`, [

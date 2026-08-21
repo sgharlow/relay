@@ -7,8 +7,18 @@
  *  3. If primaryPool.totalCount === 0 → use secondary (pool not yet established)
  *  4. Otherwise → use primary
  *
- * On a connection error inside query(), the primary is marked unhealthy and the
- * request is retried once against the secondary pool.
+ * On a connection error inside query(), the primary is marked unhealthy so
+ * SUBSEQUENT requests route to the secondary. The STATEMENT is replayed there
+ * only when replaying it is safe — a read, or an error that proves the
+ * statement never left. See `isPreSendConnectError`.
+ *
+ * ⚠️ This read *"the request is retried once against the secondary pool"*
+ * until 2026-08-21, which is what the code did and what was wrong with it: a
+ * WRITE that met a mid-flight reset was re-issued against a peer that had
+ * already applied it. The blanket sentence outlived the blanket behaviour by
+ * the length of one file — the correction was written 200 lines below and this
+ * summary, the part a reader meets first, still described the defect as the
+ * design. Corrected here the same day.
  *
  * Feature: relay-h0-mvp
  * Requirements: 14.2, 14.3
@@ -220,51 +230,92 @@ export function getPool(): pg.Pool {
 // Connection-error helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Connection errors come in two kinds and they must NOT be treated alike.
- *
- * 🔴 UNTIL 2026-08-21 THEY WERE. One predicate covered both, and `query()`
- * re-issued the IDENTICAL SQL against the secondary for any of them. But
- * ECONNRESET and a socket ETIMEDOUT can arrive AFTER the statement was sent and
- * committed, and the two endpoints are one logical cluster — the runbook says
- * so ("Regions are one logical cluster. A DELETE replicates to the peer"), and
- * the 2026-08-20 close-out recorded the secondary already holding the primary's
- * DDL. So the replay landed on the same data: a duplicate contact or vault
- * item, a denial counted twice toward the halt threshold, a second audit row at
- * the same seq.
- *
- * It failed in the flattering direction. The scenario the retry exists for — a
- * wobbling primary connection — is exactly the scenario in which the write has
- * already happened.
- *
- * PRE-SEND: the connection was never established, so the statement provably did
- * not run. Replaying it is an at-most-once write, and this is the failover the
- * demo switch and the runbook rely on. Unchanged.
- */
-function isPreSendConnectError(err: unknown): boolean {
-  if (!(err instanceof Error)) return false;
-  const code = (err as NodeJS.ErrnoException).code;
-  const msg = err.message.toLowerCase();
-  return (
-    code === 'ECONNREFUSED' ||
-    code === 'ENOTFOUND' ||
-    msg.includes('connection timeout') ||
-    msg.includes('timeout exceeded when trying to connect') ||
-    msg.includes('connect econnrefused') ||
-    msg.includes('connection refused')
-  );
-}
+/*
+  Connection errors come in two kinds and they must NOT be treated alike.
+
+  🔴 UNTIL 2026-08-21 THEY WERE. One predicate covered both, and `query()`
+  re-issued the IDENTICAL SQL against the secondary for any of them. But
+  ECONNRESET and a socket ETIMEDOUT can arrive AFTER the statement was sent and
+  committed, and the two endpoints are one logical cluster — the runbook says so
+  ("Regions are one logical cluster. A DELETE replicates to the peer"), and the
+  2026-08-20 close-out recorded the secondary already holding the primary's DDL.
+  So the replay landed on the same data: a duplicate contact or vault item, a
+  denial counted twice toward the halt threshold, a second audit row at the same
+  seq.
+
+  It failed in the flattering direction. The scenario the retry exists for — a
+  wobbling primary connection — is exactly the scenario in which the write has
+  already happened.
+
+  ⚠️ AND IT IS NOT PURE UPSIDE — say so, because the next reader will meet the
+  consequence before they meet the argument. A write that meets a reset or a
+  socket timeout mid-flight now surfaces to the caller: `withOccRetry` only
+  retries SQLSTATE 40001, so nothing above absorbs it and the request that
+  previously returned 200 (having possibly written twice) returns 500. That is
+  a real, user-visible availability loss, and it falls in exactly the
+  primary-wobble window the failover was built for. It is the right trade —
+  a visible failure the caller can retry beats a silent duplicate in a
+  hash-chained audit log — but it is a trade, not a free correction.
+*/
 
 /**
  * POST-SEND-POSSIBLE: the socket died and we cannot know whether the server
  * applied the statement. The primary is still marked unhealthy — so the next
  * call rotates and the failover story holds — but the statement itself is only
  * replayed when it is a read.
+ *
+ * Declared FIRST because it is the stronger signal: an errno set by the socket
+ * layer is evidence about what happened on the wire, where a message match is a
+ * guess about which library raised it. `isPreSendConnectError` defers to it.
  */
 function isPostSendConnectionError(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
   const code = (err as NodeJS.ErrnoException).code;
   return code === 'ECONNRESET' || code === 'ETIMEDOUT';
+}
+
+/**
+ * PRE-SEND: the connection was never established, so the statement provably did
+ * not run. Replaying it is an at-most-once write, and this is the failover the
+ * demo switch and the runbook rely on.
+ */
+function isPreSendConnectError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+
+  /*
+    🔴 THE ERRNO WINS OVER THE MESSAGE, AND UNTIL 2026-08-21 IT DID NOT.
+    This predicate matched on message as well as code, and `query()` asked it
+    FIRST — so an error carrying `code: 'ETIMEDOUT'` whose text contained
+    "connection timeout" was ruled pre-send and a WRITE was replayed on the
+    secondary regardless. ETIMEDOUT is one of the two codes the split names as
+    post-send-possible; for that code the split changed nothing, and the
+    repo's own tests build exactly that object (`connection.test.ts`, the
+    ETIMEDOUT cases) — they passed only because they issue `SELECT 1`, where
+    both branches replay and neither predicate is observable.
+
+    The guard belongs here, not at the call site: any future caller that asks
+    "was this pre-send?" gets the same answer, and there is no ordering rule
+    for a reader to remember. A socket errno is only ever ambiguous in the
+    direction of caution — a `connect ETIMEDOUT` really is pre-send, and
+    calling it post-send costs one replayed READ, not a duplicated write.
+  */
+  if (isPostSendConnectionError(err)) return false;
+
+  const code = (err as NodeJS.ErrnoException).code;
+  const msg = err.message.toLowerCase();
+  return (
+    code === 'ECONNREFUSED' ||
+    code === 'ENOTFOUND' ||
+    // pg-pool raises both of these when `connectionTimeoutMillis` expires, with
+    // NO `code` property (see node_modules/pg-pool/index.js — 'timeout exceeded
+    // when trying to connect' and 'Connection terminated due to connection
+    // timeout'). They are the reason the message arm is kept rather than
+    // deleted: without it a real connect timeout stops failing over.
+    msg.includes('connection timeout') ||
+    msg.includes('timeout exceeded when trying to connect') ||
+    msg.includes('connect econnrefused') ||
+    msg.includes('connection refused')
+  );
 }
 
 /**

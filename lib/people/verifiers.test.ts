@@ -54,18 +54,34 @@ describe('createVerifier', () => {
 
 describe('deleteVerifier', () => {
   it('removes verifier_confirmations before the verifier (Req 3.7)', async () => {
+    /*
+      ⚠️ THIS ASSERTION WAS WEAKENED TO LET THE NEW CASCADES THROUGH, and is put
+      back 2026-08-21. It was `toEqual(['withdraw','cascade-confirmations',
+      'delete-verifier'])`; when deleteVerifier grew the credential cascades it
+      was relaxed to three positional index checks — order[0], order[1] and
+      order[last] — which stops pinning that nothing unexpected happens in
+      between. Widening an exact array to match new behaviour is the correct
+      move and the sibling test (recipients.test.ts, 'cascade-deletes policies,
+      then rules, then the recipient') did exactly that; relaxing it to indices
+      buys the same green for less guard.
+    */
     const order: string[] = [];
     mockWithdraw.mockImplementation(async () => { order.push('withdraw'); return 0; });
-    mockCascade.mockImplementation(async () => { order.push('cascade-confirmations'); });
+    mockCascade.mockImplementation(async (table: string) => { order.push(`cascade-${table}`); });
     mockQuery.mockImplementation(async (sql: string) => {
       if (sql.startsWith('DELETE FROM verifiers')) order.push('delete-verifier');
       return qResult([]);
     });
     await deleteVerifier('owner-1', 'v1');
     expect(mockCascade).toHaveBeenCalledWith('verifier_confirmations', 'v1', 'verifier_id', 'owner-1');
-    expect(order[0]).toBe('withdraw');
-    expect(order[1]).toBe('cascade-confirmations');
-    expect(order[order.length - 1]).toBe('delete-verifier');
+    expect(order).toEqual([
+      'withdraw',
+      'cascade-verifier_confirmations',
+      'cascade-invitations',
+      'cascade-break_glass_codes',
+      'cascade-verifier_codes',
+      'delete-verifier',
+    ]);
   });
 
   it('takes back every credential issued FOR this verifier, before the roster row goes', async () => {

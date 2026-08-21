@@ -16,7 +16,9 @@
  */
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { parseCSV, parseCsvText, detectFormat, CSV_FORMATS, CsvError, type CsvFormat, type ParseResult } from '../../../../lib/import/csv-parser';
+import { CONTACT_MAILTO } from '../../../../lib/contact';
 import { encodeSecretPayload } from '../../../../lib/crypto/secret-payload';
 import { CryptoService } from '../../../../lib/crypto/crypto-service';
 import { apiSend } from '../_lib/api';
@@ -30,8 +32,16 @@ export default function ImportPage() {
     imported: number;
     skipped: number;
     duplicates: number;
-    /** Which rows were skipped, not just how many — see the report below. */
-    duplicateRows: Array<{ row: number; title: string }>;
+    /** How many rows the parser could read — what `position` below counts among. */
+    read: number;
+    /**
+     * Which rows were skipped, not just how many — see the report below.
+     *
+     * ⚠️ `position`, not `row`. It is an index into what was UPLOADED, which is
+     * `parsed.rows` — the rows that survived parsing. It is not the line in the
+     * file, and `parsed.skipped[].row` on this same screen is. See the route.
+     */
+    duplicateRows: Array<{ position: number; title: string; url: string | null }>;
     /** How many access rules the new items matched (J4-R4). */
     policiesMatched: number;
     /** True when the batch was too large to match inline, or matching failed. */
@@ -71,8 +81,23 @@ export default function ImportPage() {
     setError(null);
     setProgress(0);
     const svc = new CryptoService();
+    /*
+      🔴 ONE `catch` USED TO COVER BOTH HALVES OF THIS AND REPORTED THE WRONG ONE.
+      It said "Import aborted" for any failure — true of a row that fails to
+      encrypt, where nothing has left the browser (Req 10.4), and false the
+      moment the request has been sent. /api/import INSERTS every item before it
+      scores or covers anything, and its own comment says a timeout in the
+      coverage pass "would report a successful import as a failure". So an owner
+      whose request timed out after the writes read "aborted", imported again,
+      and finished with two of everything — and the second run is a real
+      re-import that dedupe has no memory of refusing.
+
+      Split deliberately rather than by re-wording one message: the two halves
+      know different things, and only the first one can honestly promise that
+      nothing was stored.
+    */
+    const items: Awaited<ReturnType<CryptoService['encryptForUpload']>>[] = [];
     try {
-      const items = [];
       for (let i = 0; i < parsed.rows.length; i++) {
         const row = parsed.rows[i];
         /*
@@ -99,11 +124,23 @@ export default function ImportPage() {
         items.push(payload);
         setProgress(Math.round(((i + 1) / parsed.rows.length) * 90)); // 0–90% = encrypt
       }
+    } catch (err) {
+      // The honest abort: nothing has been sent, so nothing was stored.
+      setError(
+        `Could not encrypt one of your rows, so nothing was uploaded and your vault is unchanged: ${String(
+          (err as Error).message,
+        )}`,
+      );
+      setProgress(null);
+      return;
+    }
+
+    try {
       setProgress(95);
       const res = await apiSend<{
         imported: number;
         duplicatesSkipped?: number;
-        duplicateRows?: Array<{ row: number; title: string }>;
+        duplicateRows?: Array<{ position: number; title: string; url: string | null }>;
         policiesMatched?: number;
         coverageDeferred?: boolean;
       }>('/api/import', 'POST', { items });
@@ -111,6 +148,7 @@ export default function ImportPage() {
       setReport({
         imported: res.imported,
         skipped: parsed.skipped.length,
+        read: parsed.rows.length,
         duplicates: res.duplicatesSkipped ?? 0,
         // Older deploys of the route answer without this. An absent list is
         // reported as no list rather than as no skips — the count is separate.
@@ -119,8 +157,17 @@ export default function ImportPage() {
         coverageDeferred: res.coverageDeferred ?? false,
       });
     } catch (err) {
-      // Abort: nothing uploaded if a row failed to encrypt (Req 10.4).
-      setError(`Import aborted: ${String((err as Error).message)}`);
+      /*
+        Sent, and no report came back. What the server did with it is genuinely
+        unknown from here — the items are written before the scoring and coverage
+        passes that are the likeliest things to time out — so this says that
+        rather than guessing, and points at the one check that settles it.
+      */
+      setError(
+        `Your items were sent, but no report came back (${String((err as Error).message)}). ` +
+          'They may already be saved — open your vault and look before importing this file again, ' +
+          'or you could end up with two of everything.',
+      );
     } finally {
       setProgress(null);
     }
@@ -257,11 +304,37 @@ export default function ImportPage() {
                 : `${report.policiesMatched} of these matched access rules you already had, and are now covered by them.`}
             </p>
           ) : null}
+          {/*
+            🔴 THIS SENTENCE USED TO SAY "Open Rules and re-apply your rules to
+            cover them", AND THERE IS NO SUCH CONTROL. Nothing in src or lib
+            re-applies existing policies across items — the only path that
+            materialises one over the whole vault is CREATING a policy, and
+            /circle offers that Accept button only while the owner holds none,
+            which is the opposite of the condition that gets you here. So the
+            branch handed an owner a screen and a button that does not exist, in
+            the same sprint whose charter was deleting copy that promises what
+            the product cannot do.
+
+            What is true: /rules grants one recipient access to one item, and
+            that is what makes an imported item reachable. It is per-item and
+            this fires above a hundred, so the copy says so rather than implying
+            a batch control, and offers the address instead of pretending the
+            owner should click a hundred times. `import-copy.test.ts` holds every
+            screen this paragraph names to being a route that exists.
+          */}
           {report.coverageDeferred ? (
             <p className="mt-2 text-t2 text-clay">
               These were imported, but they have <strong>not</strong> been matched against your
-              access rules yet — so nobody can reach them. Open Rules and re-apply your rules to
-              cover them.
+              access rules — so nobody can reach them yet. On{' '}
+              <Link href="/rules" className="underline">
+                Rules
+              </Link>{' '}
+              you can give someone access to an item, one at a time. There is no control that does a
+              whole import at once, so if this is more than you want to do by hand,{' '}
+              <a href={CONTACT_MAILTO} className="underline">
+                write to us
+              </a>{' '}
+              and we will sort it out with you.
             </p>
           ) : null}
           {/*
@@ -298,14 +371,26 @@ export default function ImportPage() {
             still merges, so a silent skip cannot happen again.
 
             J2 step 3: every skip reported with its row number and reason.
+
+            ⚠️ AND IT CLAIMED A LINE NUMBER IT DOES NOT HAVE. This said "by their
+            line in your file" over `position`, which counts among the rows that
+            SURVIVED parsing — while the unreadable-rows list further up this same
+            screen numbers by `dataRow`, which really is the line in the file. One
+            missing password in the export shifts every number here by one, and
+            the two lists then disagree under the same word. The address is what
+            actually identifies the account anyway, and it is what tells two
+            logins at one provider apart. Corrected 2026-08-21. Carrying the true
+            file line needs `dataRow` on `ParsedRow` in lib/import/csv-parser.ts.
           */}
           {report.duplicateRows.length ? (
             <div className="mt-2 text-t2 text-muted">
-              <p>Rows left out, by their line in your file:</p>
+              <p>Left out because they are already in your vault:</p>
               <ul className="mt-1 space-y-0.5">
                 {report.duplicateRows.map((d) => (
-                  <li key={d.row}>
-                    Row {d.row} &mdash; {d.title} &middot; already in your vault
+                  <li key={d.position}>
+                    {d.title}
+                    {d.url ? <> &middot; {d.url}</> : null} &mdash; item {d.position} of the{' '}
+                    {report.read} we could read
                   </li>
                 ))}
               </ul>

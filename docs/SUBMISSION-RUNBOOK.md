@@ -4,6 +4,15 @@
 **Deadline:** 2026-06-29 5:00pm PDT · **Submit-by target: June 27** (2-day buffer)
 **Sibling entry:** `orbis-exchange` (Track 3) shares this exact deadline.
 
+> ⚠️ **HISTORICAL RECORD — a cliff-day checklist for a deadline that has passed (noted 2026-08-21).**
+> The submission happened; Relay won "Most Impactful" and has been live on
+> <https://relaystandby.com> since. Read this as the record of how the H0 entry was assembled, not
+> as instructions. Two things in it are now actively wrong, and are marked in place: the ZK-boundary
+> line in Step 1 (the IAM Deny is **inert**), and the Vercel-OIDC preference beside it (production
+> authenticates as an IAM **user** with static keys — `docs/aws-setup.md` §7 and
+> `docs/least-privilege-cutover.md` are the identity model). The numbers in the snapshot below are
+> a dated measurement, not a current one: re-derive with the command in `PROJECT.yaml → derived`.
+
 > **Why this file exists:** the detailed docs are correct but scattered —
 > [`aws-setup.md`](aws-setup.md) (provisioning), [`e2e-verification.md`](e2e-verification.md)
 > (dogfood), [`../specs/Relay_Devpost_Submission.md`](../specs/Relay_Devpost_Submission.md)
@@ -41,7 +50,14 @@
 - [ ] Record `DSQL_PRIMARY_ENDPOINT`, `DSQL_SECONDARY_ENDPOINT`, `DSQL_CLUSTER_ARN`.
 - [ ] KMS CMK + alias `alias/relay-h0-mvp` → record `KMS_KEY_ID`.
 - [ ] IAM policy + role (`relay-backend-dsql`); prefer **Vercel AWS OIDC** over long-lived keys.
-      The policy's Deny on `relay-ai-intake*` enforces the ZK boundary (Intake Agent can't `kms:Decrypt`).
+      🔴 **Both halves of this line are now wrong (corrected 2026-08-21).** OIDC was never taken up
+      — production holds static access keys for the IAM *user* `relay-runtime`, rotated per
+      `docs/secret-rotation-runbook.md` §5. And the policy's Deny on `relay-ai-intake*` **does not**
+      enforce the ZK boundary: its `aws:PrincipalArn` condition matches a role nothing ever assumes,
+      so it can never fire. The boundary that is real is the query-layer projection, enforced by
+      `lib/ops/zk-boundary.test.ts`; `infra/README.md` records the true position and named this
+      sentence as one of two that had to be fixed. Provision the runtime principal from
+      `docs/aws-setup.md` §6, which now states the v2 shape inline.
 
 > Automated alternative: `scripts/provision-dsql.sh`.
 

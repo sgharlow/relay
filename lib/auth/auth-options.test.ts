@@ -29,7 +29,7 @@ vi.mock('./upsert-user', () => ({ upsertUser: vi.fn() }));
 vi.mock('./webauthn', () => ({ openChallenge: vi.fn(), finishAuthentication: vi.fn() }));
 vi.mock('../people/claim', () => ({ claimStandbyRole: vi.fn() }));
 vi.mock('../people/break-glass', () => ({ redeemBreakGlass: vi.fn() }));
-vi.mock('./session-epoch', () => ({ readSessionEpoch: vi.fn() }));
+vi.mock('./session-epoch', () => ({ readSessionEpoch: vi.fn(), isSessionCurrent: vi.fn() }));
 vi.mock('../db/connection', () => ({ query: vi.fn() }));
 vi.mock('./signin-throttle', () => ({
   checkSigninAllowed: vi.fn(),
@@ -48,7 +48,7 @@ import { upsertUser } from './upsert-user';
 import { openChallenge, finishAuthentication } from './webauthn';
 import { claimStandbyRole } from '../people/claim';
 import { redeemBreakGlass } from '../people/break-glass';
-import { readSessionEpoch } from './session-epoch';
+import { readSessionEpoch, isSessionCurrent } from './session-epoch';
 import { query } from '../db/connection';
 import {
   checkSigninAllowed,
@@ -66,6 +66,7 @@ const mockFinishAuth = vi.mocked(finishAuthentication);
 const mockClaim = vi.mocked(claimStandbyRole);
 const mockBreakGlass = vi.mocked(redeemBreakGlass);
 const mockEpoch = vi.mocked(readSessionEpoch);
+const mockCurrent = vi.mocked(isSessionCurrent);
 const mockQuery = vi.mocked(query);
 const mockGate = vi.mocked(checkSigninAllowed);
 const mockRecordFailure = vi.mocked(recordSigninFailure);
@@ -118,6 +119,8 @@ beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {});
   mockGate.mockResolvedValue({ allowed: true } as never);
   mockGetToken.mockResolvedValue(null as never);
+  // A cookie that opens belongs to a live session unless a test says otherwise.
+  mockCurrent.mockResolvedValue(true);
   mockQuery.mockResolvedValue(rows([userRow]));
 });
 
@@ -188,6 +191,120 @@ describe('a client cannot assert who it is', () => {
     expect(mockGetToken).toHaveBeenCalledWith(
       expect.objectContaining({ cookieName: '__Secure-next-auth.session-token' }),
     );
+  });
+
+  /*
+    🔴 A COOKIE THAT OPENS IS NOT A SESSION THAT IS STILL GOOD, and the first fix
+    here stopped at "opens". `callerUserId` decoded the JWE and returned
+    `ownerId ?? sub` with nothing consulted afterwards, while every other reader
+    of a Relay session goes through `getOwnerSession`, which also asks
+    `isSessionCurrent` — the revocation lever built after the 2026-08-12
+    incident, where a DELETED user's cookie was answered 200.
+
+    So the takeover survived in the one dimension the fix claimed to close.
+    Hold a stolen cookie; the owner presses "sign out everywhere" and the epoch
+    is bumped; POST any valid unclaimed invitation to the claim callback with
+    that dead cookie. `callerUserId` still returned the victim's id, the roster
+    row bound to it, and the `jwt` callback below stamps a FRESH `sessionEpoch`
+    read live from the database — laundering a revoked cookie into a current
+    session. A code to spend is obtainable by signing up and inviting yourself.
+  */
+  it('a REVOKED session cookie claims as a NEW identity — sign-out-everywhere is honoured here too', async () => {
+    mockGetToken.mockResolvedValue({ ownerId: 'signed-in-1', sessionEpoch: 3 } as never);
+    mockCurrent.mockResolvedValue(false); // The owner has since bumped the epoch.
+    mockClaim.mockResolvedValue({
+      userId: 'u-new',
+      ownerId: 'o-1',
+      personId: 'p-1',
+      personType: 'recipient',
+      linkedExisting: false,
+    });
+
+    await providerNamed('standby-claim').authorize(
+      { token: 'ABCDE-FGHIJ' },
+      req({ cookie: 'next-auth.session-token=stolen' }),
+    );
+
+    expect(mockCurrent).toHaveBeenCalledWith('signed-in-1', 3);
+    expect(mockClaim).toHaveBeenCalledWith({ token: 'ABCDE-FGHIJ', existingUserId: undefined });
+  });
+
+  // break-glass is the sharper of the two: it had no session-derived caller at
+  // all before 2026-08-21, and it is redeemed mid-emergency, disproportionately
+  // on a device somebody else was last signed in on.
+  it('break-glass honours the revocation too', async () => {
+    mockGetToken.mockResolvedValue({ ownerId: 'signed-in-1', sessionEpoch: 0 } as never);
+    mockCurrent.mockResolvedValue(false);
+    mockBreakGlass.mockResolvedValue({
+      userId: 'u-new',
+      ownerId: 'o-1',
+      personId: 'p-1',
+      personType: 'verifier',
+      linkedExisting: false,
+    } as never);
+
+    await providerNamed('break-glass').authorize(
+      { code: 'ABCD2345EFGH' },
+      req({ cookie: 'next-auth.session-token=stolen' }),
+    );
+
+    expect(mockBreakGlass).toHaveBeenCalledWith({
+      code: 'ABCD2345EFGH',
+      existingUserId: undefined,
+    });
+  });
+
+  /*
+    The other direction, and it is not decoration: a check that refuses
+    everything would pass the two tests above while breaking §3.7 rule 2 for
+    every legitimate multi-hat claimant — which mints the second `users` row
+    that severs every standby link they hold.
+  */
+  it('a session minted BEFORE the epoch shipped still links, rather than being refused', async () => {
+    mockGetToken.mockResolvedValue({ ownerId: 'signed-in-1' } as never); // no sessionEpoch
+    mockCurrent.mockResolvedValue(true);
+    mockClaim.mockResolvedValue({
+      userId: 'signed-in-1',
+      ownerId: 'o-1',
+      personId: 'p-1',
+      personType: 'recipient',
+      linkedExisting: true,
+    });
+
+    await providerNamed('standby-claim').authorize(
+      { token: 'ABCDE-FGHIJ' },
+      req({ cookie: 'next-auth.session-token=old' }),
+    );
+
+    expect(mockCurrent).toHaveBeenCalledWith('signed-in-1', undefined);
+    expect(mockClaim).toHaveBeenCalledWith({
+      token: 'ABCDE-FGHIJ',
+      existingUserId: 'signed-in-1',
+    });
+  });
+
+  /*
+    The revocation read is a DATABASE call, so it can fail — and the direction it
+    fails in is the whole argument of `callerUserId`'s header. A blip must not be
+    able to hand the claim an identity it could not verify.
+  */
+  it('a revocation lookup that throws claims as a NEW identity, not as the cookie', async () => {
+    mockGetToken.mockResolvedValue({ ownerId: 'signed-in-1', sessionEpoch: 1 } as never);
+    mockCurrent.mockRejectedValue(new Error('DSQL unreachable'));
+    mockClaim.mockResolvedValue({
+      userId: 'u-new',
+      ownerId: 'o-1',
+      personId: 'p-1',
+      personType: 'recipient',
+      linkedExisting: false,
+    });
+
+    await providerNamed('standby-claim').authorize(
+      { token: 'ABCDE-FGHIJ' },
+      req({ cookie: 'next-auth.session-token=fine' }),
+    );
+
+    expect(mockClaim).toHaveBeenCalledWith({ token: 'ABCDE-FGHIJ', existingUserId: undefined });
   });
 
   it('a session cookie that cannot be opened claims as a NEW identity, never someone else', async () => {

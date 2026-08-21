@@ -17,8 +17,10 @@
  */
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
+import { signInHref } from '../_lib/api';
 import {
   preparednessSentence,
   missingClause,
@@ -50,6 +52,25 @@ export default function ReadinessBanner() {
   const [data, setData] = useState<Readiness | null>(null);
   const [busy, setBusy] = useState(false);
   const [answerError, setAnswerError] = useState<string | null>(null);
+  /**
+   * 🔴 A 401 LOOKED EXACTLY LIKE A HEALTHY VAULT WITH NOTHING TO SAY. This
+   * component read `r.ok ? r.json() : null` and then `if (!data) return null`,
+   * so an owner whose session had ended — a tab left open overnight, a password
+   * change elsewhere, an epoch bump — lost the standing status line entirely and
+   * was told nothing. Every screen behind it kept rendering its stale content.
+   *
+   * `src/app/(owner)/_lib/api.ts` was taught to tell a 401 from an outage in the
+   * same sprint and exported `signInHref` for exactly this, and then no screen
+   * called it: the message improved and the door was never built. This is the
+   * door. It lives here because this component is in the owner layout and
+   * therefore renders on every owner screen — the seam, not six screens somebody
+   * has to remember.
+   *
+   * NOT a redirect. A session that ends mid-form is precisely when the owner has
+   * typed something, and navigating away from it for them loses that.
+   */
+  const [signedOut, setSignedOut] = useState(false);
+  const pathname = usePathname();
 
   /*
     Extracted so answering the prompt below can re-read it. The sentence and the
@@ -58,7 +79,18 @@ export default function ReadinessBanner() {
   */
   const load = useCallback(() => {
     return fetch('/api/readiness')
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => {
+        // Three outcomes, not two. A 401 is not a failure of anything and must
+        // not be swallowed with one; anything else non-2xx stays silent, because
+        // a transient 500 on a status banner is noise on top of whatever else is
+        // already going wrong.
+        if (r.status === 401) {
+          setSignedOut(true);
+          return null;
+        }
+        setSignedOut(false);
+        return r.ok ? r.json() : null;
+      })
       .then((d) => setData(d ?? null))
       .catch(() => setData(null));
   }, []);
@@ -103,6 +135,42 @@ export default function ReadinessBanner() {
   }
 
   const blockers = data?.blockers ?? null;
+
+  /*
+    Checked BEFORE `!data`, or it can never render — the same branch-ordering
+    defect that left /access's calm close unreachable for a fortnight
+    (see access-has-a-way-back.test.ts). A signed-out load leaves `data` null by
+    definition, so the null-return below would swallow this one too.
+  */
+  if (signedOut) {
+    return (
+      <div
+        className="mb-6"
+        style={{
+          borderRadius: 'var(--radius-owner)',
+          border: '1px solid var(--ochre)',
+          background: 'var(--ochre-soft)',
+          padding: 'var(--s3) var(--s4)',
+        }}
+      >
+        <p style={{ fontSize: 'var(--t3)', fontWeight: 600, color: 'var(--ink)' }}>
+          You are signed out
+        </p>
+        <p style={{ fontSize: 'var(--t2)', lineHeight: 1.55, color: 'var(--ink)', marginTop: 'var(--s1)' }}>
+          Nothing is wrong, and your vault is exactly as you left it — a session lasts a day, and
+          changing your password or signing out anywhere else ends it early. Anything on this screen
+          may be out of date until you are back.{' '}
+          <Link
+            href={signInHref(pathname ?? '/vault')}
+            className="inline-block min-h-[24px] px-1 py-0.5 font-medium underline"
+          >
+            Sign back in
+          </Link>{' '}
+          and you will return to this page.
+        </p>
+      </div>
+    );
+  }
 
   if (!data) return null;
 

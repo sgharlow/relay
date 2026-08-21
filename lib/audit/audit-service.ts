@@ -117,7 +117,20 @@ function isDuplicateKey(err: unknown): boolean {
 
 /**
  * Appends a hash-chained entry to the owner's audit log and returns the
- * persisted row. Reads the chain head and inserts in one OCC-retried block.
+ * persisted row.
+ *
+ * ⚠️ THIS LINE USED TO SAY *"Reads the chain head and inserts in one OCC-retried
+ * block"* — the exact sentence the file header above quotes and refutes as
+ * "false in both halves". The correction landed 2026-08-21 in the header and
+ * this copy of the falsehood survived ten lines below it, which is how a
+ * refuted claim goes on being read: the header is what an auditor opens, the
+ * jsdoc is what an editor hovers. Corrected in place 2026-08-21.
+ *
+ * There is no block. `appendOnce` issues a SELECT and an INSERT as two separate
+ * autocommits, and what serialises concurrent writers is the DERIVED primary
+ * key `auditEntryId(ownerId, seq)` — two writers holding the same head collide
+ * on one row. `withOccRetry` wraps the call and is a belt on top of that, not
+ * the mechanism.
  *
  * @throws {AuditWriteError} after {@link MAX_WRITE_ATTEMPTS} failed attempts.
  */
@@ -246,13 +259,49 @@ async function appendOnce(
       );
 
       if (existing.rows[0]?.entry_hash === entryHash) {
-        // It is OUR OWN statement, landed and then replayed. `query()` in
-        // lib/db/connection.ts retries a connection error against the SECONDARY
-        // pool with identical SQL, and ECONNRESET/ETIMEDOUT can arrive after the
-        // statement committed. Appending a second entry here would put a
-        // fabricated duplicate event into a log whose entire value is being
-        // trusted about what happened — so the write is reported as the success
-        // it already was.
+        /*
+          🔴 THIS COMPARES CONTENT AND THE COMMENT USED TO CLAIM IDENTITY. It
+          read "It is OUR OWN statement, landed and then replayed" — an
+          assertion the equality does not support. Equal `entry_hash` means the
+          stored row hashes the same payload; it does NOT mean this process
+          wrote it. Corrected 2026-08-21.
+
+          Two cases produce it and they are indistinguishable here:
+
+          (a) our own INSERT landed and was replayed, so the row IS ours; or
+          (b) a different writer, at the same seq off the same head, recorded a
+              genuinely distinct event with the same actor, action, entity,
+              entity_id, detail AND the same MILLISECOND `ts` — a double-submit
+              is the realistic shape.
+
+          In case (b) this returns success WITHOUT WRITING, so a real event
+          never enters the log and its caller is told it did. There is no local
+          state that separates them: `ts` is the only per-attempt value in the
+          payload and two requests can share a millisecond.
+
+          KEPT ANYWAY, because appending is the worse error: it would put a
+          fabricated duplicate into a log whose entire value is being trusted
+          about what happened, and case (a) is the one the deterministic key was
+          introduced to make survivable.
+
+          ⚠️ THE REASON IS SMALLER THAN IT WAS. lib/db/connection.ts stopped
+          replaying WRITES on post-send connection errors (same date), so the
+          replay this absorbs now only reaches here if a pre-send
+          classification was wrong. Re-examine this branch if that path
+          changes again — do not assume it is still earning its keep.
+
+          Closing it properly needs a per-attempt marker in the row so identity
+          is asserted rather than inferred. That is a schema change to an
+          append-only hash-chained table — a migration, and a sysadmin act, not
+          something this file can do. Until then the drop is at least RECORDED:
+          a trace, not an alarm (the stderr channel is the one this file was
+          corrected for over-describing, twenty lines up).
+        */
+        process.stderr.write(
+          `[audit] collision absorbed for owner ${ownerId} at seq ${seq}: an existing row ` +
+            `hashes identically. Either this statement was replayed, or a distinct ` +
+            `same-millisecond event was just dropped — they are indistinguishable here.\n`,
+        );
         return normaliseRow(id, payload, prevHash, entryHash);
       }
 

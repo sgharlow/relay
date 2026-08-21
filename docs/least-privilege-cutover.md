@@ -60,7 +60,21 @@ dependencies of `@aws-sdk/*` and are not declared in `package.json`**. Building 
 deps trades one silent failure for another.
 
 So: run this after any change to either runtime principal. Both must print `dsql:DbConnect` and
-nothing more.
+nothing more **of the DSQL actions** — which is the only thing this command can see.
+
+> ⚠️ **Three ways to misread the output below (noted 2026-08-21).**
+> 1. **It is `Sid`-filtered.** `starts_with(Sid, 'Dsql')` hides the KMS statement entirely. The
+>    runtime legitimately holds `kms:GenerateDataKey` and `kms:Decrypt`; this command says nothing
+>    about them, and "nothing more" has been quoted elsewhere as though it did.
+> 2. **A renamed `Sid` prints `[]`, not an error.** `infra/iam-policy.json` calls the statement
+>    `AllowDsqlDbConnect`, which would *not* match this filter. An empty list here means "I could
+>    not see the statement", and it looks exactly like "no admin grant". Read the document
+>    unfiltered — drop the `[?starts_with(...)]` predicate — whenever the answer matters.
+> 3. **The `"Action": ["dsql:DbConnect"]` line further down is a *fragment*, not a policy.**
+>    Provisioning a runtime principal from it produces an identity with no KMS grants at all: no
+>    vault item can be written and Reveal fails. `docs/aws-setup.md` §6 states the whole v2 runtime
+>    shape inline — use that. This document was cited as the source for the runtime policy until
+>    2026-08-21, which is the mistake this note exists to stop.
 
 ```bash
 export AWS_CA_BUNDLE="$HOME/.aws-certs/win-root-ca-<current>.pem"   # Norton rotates these

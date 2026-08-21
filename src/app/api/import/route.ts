@@ -107,14 +107,27 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     that (the parser already reports unreadable rows with theirs).
 
     Reference identity, not a recomputed key: `duplicates` holds the very objects
-    from `validated`, so the row number is exact and no second key derivation can
+    from `validated`, so the position is exact and no second key derivation can
     drift from the first.
+
+    🔴 `position`, NOT `row`, AND THE DIFFERENCE IS NOT PEDANTRY. This is an
+    index into the uploaded BATCH, and the batch is what SURVIVED parsing:
+    lib/import/csv-parser.ts drops rows for a missing service name or password
+    and for in-file duplicates, reporting those with `dataRow`, which is true to
+    the file. Called `row`, this number was rendered on the same screen, under
+    the same word, beside those — so one unreadable line above shifted every
+    number here by one and an owner comparing the two lists was sent to the
+    wrong line of their own export. Nothing in this payload carries a file line;
+    `ParsedRow` would have to carry `dataRow` through the client for that. Until
+    it does, the field says what it is, and the two things an owner can actually
+    search for — the label and the address — travel with it. `url` is what tells
+    two logins at one provider apart, which is the case this report exists for.
   */
   const skipped = new Set<unknown>(duplicates);
   const duplicateRows = validated
-    .map((v, i) => ({ row: i + 1, title: v.title, v }))
+    .map((v, i) => ({ position: i + 1, title: v.title, url: v.url ?? null, v }))
     .filter((r) => skipped.has(r.v))
-    .map(({ row, title }) => ({ row, title }))
+    .map(({ position, title, url }) => ({ position, title, url }))
     // A 1000-row export that is entirely a re-import would otherwise answer with
     // 1000 rows nobody reads. The count above stays exact either way.
     .slice(0, DUPLICATE_ROWS_REPORTED);

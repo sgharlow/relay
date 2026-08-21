@@ -554,6 +554,21 @@ export async function submitConfirmation(params: SubmitConfirmationParams): Prom
     only refuse an answer, never manufacture one.
 
     The head read moved ABOVE this one because this one now depends on it.
+
+    ⚠️ TWO THINGS THIS KEY IS NOT, both worth knowing before anyone "improves" it.
+    (1) `confirmed_at` comes from the DATABASE clock (its column DEFAULT) and
+    `initiated_at` from the APP clock. If the app clock ran AHEAD of the database
+    clock, a confirmation landing inside that skew window would not be seen by a
+    later duplicate read, and a double-tap could count twice. That is the risky
+    direction, and it is left rather than papered over with a fudge factor: the
+    gap between a release opening and a human answering is seconds to minutes,
+    NTP skew is milliseconds, and a tolerance constant would be a second thing to
+    get wrong. If confirmations are ever machine-generated, revisit this.
+    (2) `case_id` is NOT an alternative key. Provisioning sets it once
+    (`UPDATE ... WHERE case_id IS NULL`, lib/release/provisioning.ts), so it
+    identifies the TRIGGER, not the emergency — every release on a trigger shares
+    one case reference. A per-release id would need a column, therefore a
+    migration, therefore Steve; `initiated_at` is what exists today.
   */
   const head = await readState(releaseStateId);
 

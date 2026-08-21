@@ -5,6 +5,23 @@
 <!-- Without this, a phone renders the page at desktop width and the guide
      written for elderly readers arrives as micro-text. Found 2026-08-13. -->
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- THIS FILE IS GUARDED. Three tests read it, and a reader looking for what
+     protects the guide would otherwise find nothing beside it:
+       · src/app/security/guide-withdrawal.test.ts — the estate handover must be
+         described as withdrawn, never as delayed; and nothing may LINK
+         relay-guide.pdf while that PDF is older than this file.
+       · lib/ops/guide-claims.test.ts — the free-plan caps here must match
+         TIER_LIMITS, and the wording of the limitation must match /terms.
+       · lib/ops/support-reachability.test.ts — every screenshot referenced here
+         must exist, and something in the product must link /guide.
+     They live under src/ and lib/ because vitest collects only those two trees
+     (vitest.config.ts `include`), so a test placed in this directory would never
+     run. Edit this file and re-run them: `npx vitest --run src/app/security lib/ops`.
+
+     ⚠️ relay-guide.pdf IS PRINTED FROM THIS PAGE and does not follow it. Change
+     anything here and it is stale until someone runs
+     `npx next build && npx next start -p 3100` then `node scripts/guide-pdf.mjs`.
+     Until then /help does not offer the download — see the first guard above. -->
 <title>Relay — A Guide for You and Your Family</title>
 <style>
   @page { size: A4; margin: 16mm 14mm; }

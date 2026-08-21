@@ -288,6 +288,14 @@ export default function PrivacyPage() {
             account, so closing your account does not remove them; they are what stops us sending
             forever to a mailbox that no longer exists. And{' '}
             <strong className="font-semibold text-ink">backups</strong> of the database are kept for
+            {/*
+              ⚠️ 35 IS NOT A NUMBER TO EDIT HERE. It is the DSQL backup plan's
+              retention, recorded in docs/backup-restore-runbook.md's "What
+              exists now" table, and src/app/terms/legal-pages.test.ts reads that
+              row and fails if this page states a different one. Change the plan
+              and this sentence in the same commit — a stale number here is a
+              false statement about how long a deletion takes to reach every copy.
+            */}{' '}
             35 days, so a deletion is gone from every copy only once that window has passed.
           </p>
           <p className="mt-2">

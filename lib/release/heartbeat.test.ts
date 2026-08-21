@@ -33,6 +33,7 @@ import {
   notifyOwnerTriggerPending,
   notifyVerifiersForTrigger,
 } from '../notify/notifications';
+import { USER_SELECTABLE_TRIGGER_TYPES } from '../domain/enums';
 import { isOverdue, processCheckin, runHeartbeatSweep , resolveElapsedGrace } from './heartbeat';
 
 const mockQuery = vi.mocked(query);
@@ -426,5 +427,70 @@ describe('the sweep rings the bell after it arms', () => {
     // The transition still counts; the failure went to stderr, not the caller.
     expect(res.transitioned).toBe(1);
     expect(res.failures).toBe(0);
+  });
+});
+
+/**
+ * 🔴 THE SWEEP COULD START A TRIGGER THE PRODUCT NO LONGER OFFERS.
+ *
+ * `/api/triggers/[id]/initiate` refuses a withdrawn type with a 400, and the
+ * triggers screen tells an owner holding a legacy row "Relay no longer offers
+ * {trigger_type} arrangements and this trigger cannot be started". Both were
+ * true of the OWNER and false of the CRON: the armed-row read carried no
+ * trigger_type predicate, so an owner who went past their check-in interval had
+ * every armed row advanced — including an `estate` row predating the 2026-08-14
+ * withdrawal. Estate is not reversible: `processCheckin` reports it `blocked`,
+ * and stand-down and cancel are both gated on `reversible`, so the owner could
+ * not have stopped what their own screen told them could not begin.
+ *
+ * The guard belongs in the WHERE clause, beside `is_demo_account = false`, for
+ * the reason that exclusion records: a post-hoc filter in JS drifts the moment
+ * a second caller appears, and the closed list is then asserted by nothing.
+ */
+describe('the sweep never arms a withdrawn trigger type', () => {
+  it('asks the database for user-selectable types only, binding the closed list', async () => {
+    let armedSql = '';
+    let armedParams: unknown[] | undefined;
+    mockQuery.mockImplementation(async (sql: string, params?: unknown[]) => {
+      if (sql.includes('FROM users')) return qResult([{ id: 'owner-1', email: 'o@example.com' }]);
+      if (sql.includes("state = 'armed'")) {
+        armedSql = sql;
+        armedParams = params;
+        return qResult([]);
+      }
+      return qResult([]);
+    });
+
+    await runHeartbeatSweep({ transition: vi.fn() } as never, { sleep: async () => {} });
+
+    expect(armedSql).toMatch(/trigger_type\s*=\s*ANY\(\$2\)/);
+    // Bound from the shared constant, not retyped — a literal list here would be
+    // a second definition of the closed list and would not follow it.
+    expect(armedParams?.[1]).toEqual([...USER_SELECTABLE_TRIGGER_TYPES]);
+  });
+
+  it('leaves a legacy estate row alone and still arms the emergency row beside it', async () => {
+    // The mock honours $2 the way the database does, so this asserts the
+    // OUTCOME of the predicate rather than only its presence in the string.
+    mockQuery.mockImplementation(async (sql: string, params?: unknown[]) => {
+      if (sql.includes('FROM users')) return qResult([{ id: 'owner-1', email: 'o@example.com' }]);
+      if (sql.includes("state = 'armed'")) {
+        const allowed = (params?.[1] as string[] | undefined) ?? null;
+        const rows = [
+          { id: 'rs-estate', trigger_type: 'estate', version: '0' },
+          { id: 'rs-emergency', trigger_type: 'emergency', version: '0' },
+        ];
+        return qResult(allowed ? rows.filter((r) => allowed.includes(r.trigger_type)) : rows);
+      }
+      return qResult([]);
+    });
+    const transition = vi.fn(async (id: string) => ({ id, version: 1 }) as never);
+
+    const res = await runHeartbeatSweep({ transition } as never, { sleep: async () => {} });
+
+    expect(res.transitioned).toBe(1);
+    const touched = transition.mock.calls.map((c) => c[0]);
+    expect(touched).not.toContain('rs-estate');
+    expect(touched).toContain('rs-emergency');
   });
 });

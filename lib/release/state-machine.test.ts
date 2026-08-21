@@ -308,6 +308,52 @@ describe('safeResetToArmed', () => {
     expect(mockAudit).toHaveBeenCalledOnce();
     expect(mockAudit.mock.calls[0][1].action).toBe('release_safe_reset_armed');
   });
+
+  /*
+    THE SECOND CALLER, PINNED RATHER THAN INHERITED. The tally clear above was
+    argued for the denial halt only — "a halt is a re-arm" — but it lands on
+    `transition()`'s OCC-exhaustion path too, and that path includes
+    GRACE→RELEASED with a quorum already met. So a serialization storm at the
+    exact moment of release now discards confirmations verifiers legitimately
+    cast, where before this change they survived into the next emergency.
+
+    That is the RIGHT direction and the argument was missing, not wrong.
+    Discarding a met quorum re-asks people; preserving it would release on
+    answers nobody re-gave. It is also what makes the initiated_at-scoped
+    idempotency coherent (`lib/release/triggers.ts` — a confirmation only counts
+    as a duplicate if it lands at or after the current `initiated_at`): a
+    re-armed row stamps a NEW instant, so every verifier is asked again and
+    every fresh answer counts. Preserve the old tally and those fresh answers
+    increment ON TOP of it — a double count, and a release reached on half the
+    confirmations it claims.
+
+    An undiscussed second caller is how this class of change comes back as a
+    surprise, so it gets its own assertion rather than riding on the halt's.
+  */
+  it('clears the tally on the OCC-exhaustion caller too, not just the denial halt', async () => {
+    let resetSql = '';
+    mockQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes("SET state = 'armed'")) {
+        resetSql = sql;
+        return qResult([makeRow({ state: 'armed', version: '9' })]);
+      }
+      if (sql.includes('SELECT * FROM release_state')) {
+        return qResult([makeRow({ state: 'grace', version: '3' })]);
+      }
+      throw sqlState40001(); // every CAS UPDATE fails
+    });
+
+    await expect(
+      machine().transition('rs-1', 'grace', 'released', '3'),
+    ).rejects.toBeInstanceOf(OccExhaustedError);
+
+    expect(resetSql).toMatch(/received_confirmations\s*=\s*0/);
+    expect(resetSql).toMatch(/received_denials\s*=\s*0/);
+    expect(resetSql).toMatch(/grace_ends_at\s*=\s*NULL/i);
+    // And it is still bounded by the state predicate — a row that raced to
+    // RELEASED underneath the retry loop must be left alone.
+    expect(resetSql).toMatch(/state\s+IN\s*\(\s*'pending'\s*,\s*'grace'\s*\)/);
+  });
 });
 
 // ---------------------------------------------------------------------------

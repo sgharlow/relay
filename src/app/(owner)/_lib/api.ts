@@ -55,6 +55,15 @@ export class SignedOutError extends Error {
  * Anything that is not a single-slash-rooted path is dropped rather than
  * sanitised — a rejected callback costs one navigation, a permissive one costs a
  * credential.
+ *
+ * 🔴 IT HAD NO CALLER FOR ITS FIRST DAY, and the change that added it was
+ * reported as having given the owner side a door. It had not: this function and
+ * its own test were the only two places the name appeared, so the owner 401 was
+ * still a sentence with nothing to press — precisely the shape /standby and
+ * /helping had been fixed for. The door is `ReadinessBanner`, which renders on
+ * every owner screen because it sits in the layout;
+ * `_components/signed-out-door.test.ts` fails if this export goes back to having
+ * no caller. A helper only its test uses is not a fix, it is a plan.
  */
 export function signInHref(path: string): string {
   const safe = path.startsWith('/') && !path.startsWith('//');

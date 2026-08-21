@@ -94,19 +94,36 @@ export default function HelpPage() {
           Everything Relay does, written for you and the people you name — setting it up, living with
           it, the day it matters, and what to do when something goes wrong.
         </p>
+        {/*
+          🔴 THE PDF DOWNLOAD IS OFF WHILE THE PDF IS OUT OF DATE (2026-08-21).
+
+          A PDF is not a nicety here — CC8 asks for a printable fallback, the
+          wedge is elderly owners, and a guide you can put in the drawer with the
+          recovery codes is the form this one is most likely to be used in. It is
+          removed anyway, because the shipped copy is WRONG in the way that
+          matters most: public/guide/relay-guide.pdf was printed on 2026-08-18,
+          before public/guide/index.html was corrected, so it still describes the
+          permanently withdrawn estate handover as "not available to customers
+          yet" and "not offered today". That framing is what turns a withdrawal
+          back into a roadmap item in a reader's head, and this was the one copy
+          of it still being handed to people.
+
+          Regenerating needs a build and a server (`npx next build && npx next
+          start -p 3100`, then `node scripts/guide-pdf.mjs`), which is a step
+          nobody could take from here. The file still ships and nothing is lost;
+          RESTORE THIS LINK IN THE SAME COMMIT THAT REGENERATES IT.
+          src/app/security/guide-withdrawal.test.ts enforces exactly that pairing
+          — it fails while any page links a PDF older than the guide, and goes
+          quiet the moment the PDF is newer. The page below prints from a browser
+          in the meantime, which is what the drawer copy was always printed from.
+        */}
         <p className="mt-2" style={{ fontSize: 'var(--t2)' }}>
           <a href="/guide" className="underline">
             Read the guide
           </a>{' '}
-          ·{' '}
-          {/*
-            A PDF is not a nicety here. CC8 asks for a printable fallback, the
-            wedge is elderly owners, and a guide you can put in the drawer with
-            the recovery codes is the form this one is most likely to be used in.
-          */}
-          <a href="/guide/relay-guide.pdf" className="underline">
-            Download as PDF
-          </a>
+          <span style={{ color: 'var(--ink-muted)' }}>
+            &middot; it prints from your browser if you would like it on paper
+          </span>
         </p>
       </div>
 

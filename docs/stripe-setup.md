@@ -233,6 +233,14 @@ and clicking it once is how you would find out.
 immediately* vs *cancel at period end*. Nobody wrote down which was chosen; item 7h saw a working
 Cancel control and did not record its mode.
 
+> ~~"The terms page **deliberately does not promise either**; if you choose end-of-period, that is a
+> fact worth adding to the Payment section."~~ — the closing line of the 2026-08-09 section, struck
+> 2026-08-21. It was **wrong**, and in the direction that mattered: it said the timing question was
+> free to decide, so nobody read the screen. `/terms` had already promised one of the two answers,
+> in `REFUND_POLICY`, from the day it went live. Kept rather than deleted because the next reader's
+> first instinct will be the same one — *the terms are silent, so either setting is fine* — and this
+> records that that reading of `/terms` was checked and is false.
+
 That is not a neutral gap, because `/terms` is live and it leans one way. `lib/offer.ts`
 `REFUND_POLICY`, rendered on the terms page, says you can **"cancel at any time to stop the next
 one"** — whose plain reading is *your current year runs out, and you are not billed again*. If the

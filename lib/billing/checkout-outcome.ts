@@ -86,7 +86,17 @@ export function classifyCheckoutFailure(status: number | null): CheckoutFailure 
     case 429:
       return {
         kind: 'busy',
-        message: 'That went through more than once. Wait a moment and try again.',
+        /*
+          🔴 THIS READ "That went through more than once." On a $119 button,
+          "went through" is the phrase a person reads as *the charge succeeded* —
+          so the sentence for "you pressed too fast and nothing happened" was the
+          one most likely to be read as "you have been billed twice", on the one
+          failure that is REACHED by pressing twice. Corrected 2026-08-21.
+
+          Same shape as `failed` below, and for the same reason: what did NOT
+          happen, first.
+        */
+        message: 'That was pressed more than once — nothing has been charged. Wait a moment and try again.',
         retryable: true,
       };
 

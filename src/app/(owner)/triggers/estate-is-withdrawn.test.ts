@@ -28,6 +28,8 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 
+import { withdrawnNotice } from './TriggersPageClient';
+
 const CARD = 'src/app/(owner)/triggers/TriggersPageClient.tsx';
 
 /** Comments stripped — the file quotes the withdrawn copy to explain its removal. */
@@ -64,5 +66,60 @@ describe('the Triggers screen does not offer estate', () => {
   */
   it('says what happened instead of going silent', () => {
     expect(copy(CARD)).toMatch(/withdrawn/i);
+  });
+});
+
+/**
+ * 🔴 AND IT WENT SILENT AGAIN ON EVERY OTHER STATE, corrected 2026-08-21.
+ *
+ * The withdrawal notice above shipped gated `!reversible && rs.state ===
+ * 'armed'`. Stand-down and cancel are both gated on `reversible`, so a legacy
+ * row in PENDING, GRACE or RELEASED rendered a badge, no controls, and — after
+ * the fix — no explanation either. That is precisely the "a badge with no
+ * controls and no explanation reads as a bug rather than as a decision" failure
+ * the removal comment says it was avoiding: the fix restored the sentence for
+ * the one state where the owner has the least to worry about and withheld it
+ * from the three where something is actually in motion.
+ *
+ * The notice is a pure function now so the gate can be asserted per state
+ * rather than grepped for the word "withdrawn" anywhere in the file.
+ */
+describe('the withdrawal notice covers every state a legacy row can sit in', () => {
+  it('says nothing for a trigger the product still offers', () => {
+    for (const state of ['armed', 'pending', 'grace', 'released', 'cancelled']) {
+      expect(withdrawnNotice('emergency', state)).toBeNull();
+    }
+  });
+
+  it.each(['armed', 'pending', 'grace', 'released'])(
+    'explains a withdrawn trigger sitting in %s',
+    (state) => {
+      const text = withdrawnNotice('estate', state);
+      expect(text).toBeTruthy();
+      expect(text).toMatch(/no longer offers/i);
+      expect(text).toContain('estate');
+    },
+  );
+
+  /*
+    CANCELLED already has its own paragraph ("Retired for good…") which renders
+    for every trigger type. Two paragraphs saying overlapping things is how a
+    screen stops being read.
+  */
+  it('defers to the cancelled paragraph rather than doubling up', () => {
+    expect(withdrawnNotice('estate', 'cancelled')).toBeNull();
+  });
+
+  /*
+    ARMED is the state where the sweep was the live risk, and the sentence now
+    claims the schedule cannot start it either. That claim is only true because
+    runHeartbeatSweep binds USER_SELECTABLE_TRIGGER_TYPES — asserted in
+    lib/release/heartbeat.test.ts. Copy that states a safety property the code
+    does not enforce is the defect this whole file exists about.
+  */
+  it('does not promise a stand-down that is gated on reversible', () => {
+    for (const state of ['pending', 'grace', 'released']) {
+      expect(withdrawnNotice('estate', state)).toMatch(/checking in|cannot be stood down/i);
+    }
   });
 });

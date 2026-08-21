@@ -718,6 +718,22 @@ ratified:
       lib/seed/demo-data.ts with a test that fails on any seeded contact in a
       reserved domain. The demo OWNER stays demo@relay.test — that string is the
       identity auth_sub derives from, not a channel."
+    corrected:
+      date: 2026-08-21
+      by: claude
+      measured: "Read-only probe against the production cluster: `SELECT count(*) FROM users
+        WHERE is_demo_account = true` returns **0**, and exactly ONE user in the whole cluster
+        holds a totp_secret (the owner's own account, which is not demo-flagged)."
+      what_was_wrong: "This entry says 'a demo still advances through /api/demo/simulate ...
+        driven by a person'. Nobody can. There is no demo account to sign in as, and sign-in
+        requires TOTP or a passkey — neither of which can exist without an account to hold them.
+        The sentence describes a cluster that stopped existing at some point nobody recorded."
+      consequence: "FR9 'Simulate trigger' reads BUILT in every register while being unreachable
+        surface on production with a real CAS write path behind it. Whether to retire the route or
+        re-seed a demo account is Steve's call; what changed today is that the FACT is measured
+        rather than assumed. Recorded here rather than silently deleting the sentence, because the
+        reasoning that produced this entry — that a demo account must never be swept — is still
+        the right rule for the day one exists again."
 
   - id: csp-enforce-the-safe-four
     date: 2026-08-13
@@ -2860,6 +2876,22 @@ deferred:
       returns `CreateDate`. ⚠️ `@aws-sdk/client-iam` is NOT a dependency of this repo, so that is a
       CLI-side lookup and not a script to add. The Vercel-held secrets have no such record and
       need Steve.
+    closed:
+      date: 2026-08-21
+      by: claude
+      how: "Every row in docs/secret-rotation-runbook.md now carries a date. The ten Vercel-held
+        values were READ from the Vercel API (createdAt / updatedAt per key; values never
+        fetched) rather than asked of Steve — this entry's own note assumed no such record
+        existed, and one does. The three IAM keys were already dated from `aws iam
+        list-access-keys`. AUTH_SECRET is recorded as not set in production rather than unknown."
+      what_the_clock_now_says: "createdAt == updatedAt for all 26 production keys: NOTHING in
+        production has ever been rotated. The oldest — NEXTAUTH_SECRET, both JWT secrets,
+        CRON_SECRET, RESEND_API_KEY, OPENAI_API_KEY and the relay-runtime IAM key — date from
+        2026-06-24, 58 days on 2026-08-21. The runbook's own rules decide what that means; this
+        entry only supplies the starting point it lacked."
+      caveat: "a Vercel date is when a value was PLACED, not when the upstream credential was
+        ISSUED. That is the conservative direction for a rotation clock — a value older than its
+        placement is older, never younger — so the dates are a floor on age, not an estimate."
 
   - id: the-auth-and-react-lines-are-a-major-version-behind    # "D12"
     owner: claude

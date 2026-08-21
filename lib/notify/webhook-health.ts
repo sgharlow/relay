@@ -46,12 +46,17 @@
  *     never decides. Only total silence about every ripe send does.
  *   - IT CANNOT LATCH. The window is trailing, so a period of health cannot
  *     immunise the future the way `ever heard anything` did.
+ *   - A REFUSAL ABOUT ONE MESSAGE CANNOT LATCH EITHER. Added 2026-08-21 after
+ *     the refusal condition below shipped and was reviewed the same day: it
+ *     counted a mistyped recipient address the same as a revoked API key, so one
+ *     owner typo held the endpoint at 503 for a month with the wrong diagnosis
+ *     printed on it. Credential-shaped refusals still latch; the rest age out.
  *
  * Feature: relay-standby
  */
 
 import { query } from '../db/connection';
-import { REFUSED_PREFIX } from './delivery-events';
+import { REFUSED_PREFIX, refusalClassOf, isSystemicRefusalClass } from './delivery-events';
 
 /**
  * The LIKE pattern that separates refused attempts from accepted ones.
@@ -82,6 +87,34 @@ export const SETTLE_MS = 6 * 60 * 60 * 1000;
  */
 export const WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
+/**
+ * How long a refusal that is NOT about the credential keeps meaning something.
+ *
+ * A refusal Resend gave for one message — a mistyped recipient address, a 429 —
+ * is evidence about that message and about the minutes around it. Judged over
+ * `WINDOW_MS` it became evidence about the next month: one typo held the health
+ * endpoint at 503 until some later message happened to be accepted, which at
+ * this product's send volume can be never. Two days is long enough for the daily
+ * monitor to see it twice and short enough that it ages out on its own.
+ *
+ * ⚠️ IT DOES NOT APPLY TO THE CREDENTIAL CLASSES, and that asymmetry is the
+ * whole design. A revoked key never recovers, so ageing that out would be the
+ * monitor going quiet while the fault stands.
+ */
+export const RECENT_REFUSAL_MS = 48 * 60 * 60 * 1000;
+
+/**
+ * How many refusal rows are read back for classification.
+ *
+ * The NEWEST ones (`ORDER BY … DESC`), which is the direction that cannot hide
+ * the current fault: a cap taken from the oldest end could bury a dead
+ * credential behind a thousand older address typos, whereas capping from the
+ * newest end can only move the judged start LATER, which makes the alarm
+ * likelier rather than quieter. Relay sends rarely enough that reaching this at
+ * all would itself be the emergency.
+ */
+export const REFUSAL_SAMPLE_LIMIT = 1000;
+
 export interface DeliveryWebhookHealth {
   /** Has any provider event EVER arrived? False = the webhook is unproven. */
   everHeard: boolean;
@@ -93,12 +126,30 @@ export interface DeliveryWebhookHealth {
   ripeSends: number;
   /** How many of those we did hear about. The live half of the switch. */
   ripeSendsHeard: number;
-  /** Sends the provider refused, or could not be asked about, inside the window. */
+  /**
+   * Sends the provider refused, or could not be asked about, inside the window.
+   * Reported for a human; it is NOT what decides — see `systemicRefusals`.
+   * Capped at `REFUSAL_SAMPLE_LIMIT`.
+   */
   refusedSends: number;
   /**
-   * Sends accepted at or after the FIRST refusal in the window. Zero alongside a
-   * non-zero `refusedSends` means the provider stopped taking our mail and has
-   * not started again.
+   * How many of those say Relay cannot send AT ALL — a credential, an account or
+   * a sending-domain failure, rather than one bad recipient address or a 429.
+   * `lib/notify/delivery-events.ts` holds the classification and the argument
+   * for its direction.
+   */
+  systemicRefusals: number;
+  /**
+   * Sends accepted at or after the first refusal being JUDGED — the oldest
+   * systemic one, or the oldest recent non-systemic one, whichever came first.
+   * Zero alongside a non-zero refusal count means the provider stopped taking
+   * our mail and has not started again.
+   *
+   * ZERO WHEN NOTHING IS BEING JUDGED, structurally: the query is not asked. It
+   * used to fall back to the start of the whole window and count every accepted
+   * send in it, which was a number on a public payload that did not match this
+   * description. Nothing read it, so nothing failed — which is exactly how a
+   * payload field goes wrong quietly.
    */
   acceptedSinceFirstRefusal: number;
   /** Has the send-side recorder ever written a row? False = it is unproven. */
@@ -220,31 +271,89 @@ export async function getDeliveryWebhookHealth(
     `docs/secret-rotation-runbook.md` asserted the opposite: "RESEND_API_KEY fails
     loudly — all mail stops, and delivery-webhook-monitor.yml notices."
 
-    THE CONDITION IS "AND HAS NOT RECOVERED", not "any refusal at all". A single
-    429 that the next message sails past is a provider having a moment, and a
-    monitor that fires on it gets muted within a fortnight — the failure mode this
-    whole file is written around. A key that no longer works never recovers, so
-    the condition never clears on its own.
+    THE CONDITION IS "AND HAS NOT RECOVERED", not "any refusal at all". A key
+    that no longer works never recovers, so that condition never clears on its
+    own — which is right for a credential and, it turned out, wrong for
+    everything else.
 
-    NO SETTLE WINDOW, unlike the check above, and deliberately: a refusal is
-    already final. Nothing is going to arrive later and change what it means, so
-    there is nothing to wait for.
+    🔴 AND THAT IS THE SECOND DEFECT, found in review the same day. `email.ts`
+    records a refusal on ANY `result.error`, and the commonest error Resend
+    returns is per-message: a mistyped recipient address comes back as
+    `validation_error`. The condition was `refusedSends > 0 &&
+    acceptedSinceFirstRefusal === 0`, cleared ONLY by a later ACCEPTED send,
+    inside a 30-day window, at a product that sends almost nothing. So ONE owner
+    typo held `/api/health/delivery-webhook` at 503 for up to a month, told an
+    operator "Relay is currently sending no mail at all … check RESEND_API_KEY
+    first" about a key that was working, and re-alarmed the daily monitor every
+    morning until an unrelated message happened to be accepted. The comment here
+    said "a single 429 that the next message sails past is a provider having a
+    moment" — describing behaviour the code did not have, because at this volume
+    the next message may never come.
+
+    TWO POPULATIONS, THEREFORE, split on the class the marker already carried and
+    nothing ever read back (`refused:<class>:<uuid>`):
+
+      - SYSTEMIC — the credential, the account, the sending domain, or the
+        provider unreachable. Latches until a send is accepted, as before,
+        because it does not fix itself.
+      - EVERYTHING ELSE — one bad address, a 429. Judged over
+        `RECENT_REFUSAL_MS` instead, so it still reports while it is fresh (a
+        sandboxed account also answers `validation_error`, and that IS an
+        outage) and ages out on its own rather than latching for a month.
+
+    Unknown classes count as systemic; `delivery-events.ts` carries the argument
+    for that direction.
+
+    CLASSIFIED HERE RATHER THAN IN SQL, deliberately. The predicate is then
+    executed by tests instead of asserted as a substring — this file has already
+    shipped two monitors whose tests passed while the condition could not fire —
+    and the SQL stays the plainest form there is, which is what DSQL's subset of
+    PostgreSQL rewards.
+
+    NO SETTLE WINDOW, unlike the check above: a refusal is already final. Nothing
+    is going to arrive later and change what it means.
   */
   const windowStart = new Date(now.getTime() - WINDOW_MS);
-  const f = await query<{ refused: string; accepted_since: string }>(
-    `SELECT (SELECT count(*) FROM email_send_attempts
-              WHERE provider_id LIKE '${REFUSED_LIKE}' AND occurred_at >= $1)::text AS refused,
-            COALESCE((SELECT count(*) FROM email_send_attempts
-              WHERE provider_id NOT LIKE '${REFUSED_LIKE}'
-                AND occurred_at >= COALESCE((
-                  SELECT min(occurred_at) FROM email_send_attempts
-                   WHERE provider_id LIKE '${REFUSED_LIKE}' AND occurred_at >= $1
-                ), $1)), 0)::text AS accepted_since`,
+  const f = await query<{ provider_id: string; occurred_at: string }>(
+    `SELECT provider_id, occurred_at::text AS occurred_at
+       FROM email_send_attempts
+      WHERE provider_id LIKE '${REFUSED_LIKE}' AND occurred_at >= $1
+      ORDER BY occurred_at DESC
+      LIMIT ${REFUSAL_SAMPLE_LIMIT}`,
     [windowStart],
   );
 
-  const refusedSends = Number(f.rows[0]?.refused ?? 0);
-  const acceptedSinceFirstRefusal = Number(f.rows[0]?.accepted_since ?? 0);
+  const refusals = f.rows
+    .map((r) => ({
+      systemic: isSystemicRefusalClass(refusalClassOf(r.provider_id) ?? 'unknown'),
+      at: new Date(r.occurred_at).getTime(),
+    }))
+    // An unparseable timestamp cannot be placed in either window, and a refusal
+    // we cannot date cannot be judged. Same rule as `ageSeconds` above.
+    .filter((r) => !Number.isNaN(r.at))
+    .sort((a, b) => a.at - b.at); // Oldest first: "the first refusal" is [0].
+
+  const refusedSends = refusals.length;
+  const systemicRefusals = refusals.filter((r) => r.systemic).length;
+
+  /*
+    The refusal the judgement starts FROM. Not simply the oldest row: a bad
+    address a fortnight before the credential died would move the lower bound
+    back far enough to sweep up sends that predate the outage, and the alarm
+    would never fire.
+  */
+  const recentStart = now.getTime() - RECENT_REFUSAL_MS;
+  const firstJudged = refusals.find((r) => r.systemic || r.at >= recentStart);
+
+  let acceptedSinceFirstRefusal = 0;
+  if (firstJudged) {
+    const a = await query<{ n: string }>(
+      `SELECT count(*)::text AS n FROM email_send_attempts
+        WHERE provider_id NOT LIKE '${REFUSED_LIKE}' AND occurred_at >= $1`,
+      [new Date(firstJudged.at)],
+    );
+    acceptedSinceFirstRefusal = Number(a.rows[0]?.n ?? 0);
+  }
 
   /*
     THE TWO CONDITIONS THAT ARE UNAMBIGUOUSLY WRONG, and nothing else.
@@ -261,7 +370,7 @@ export async function getDeliveryWebhookHealth(
   const mute = writerProven && orphanEvents > 0;
   // `refusing` is the outage; `deaf` is only blindness about an outage. Named
   // first below because an operator reading this is looking for what to fix.
-  const refusing = refusedSends > 0 && acceptedSinceFirstRefusal === 0;
+  const refusing = firstJudged !== undefined && acceptedSinceFirstRefusal === 0;
   const healthy = everHeard && !refusing && !deaf && !mute;
 
   return {
@@ -272,6 +381,7 @@ export async function getDeliveryWebhookHealth(
     ripeSends,
     ripeSendsHeard,
     refusedSends,
+    systemicRefusals,
     acceptedSinceFirstRefusal,
     writerProven,
     orphanEvents,
@@ -280,13 +390,35 @@ export async function getDeliveryWebhookHealth(
       ? 'No delivery event has EVER arrived, so the Resend webhook is unconfigured or broken. ' +
         'DeliveryLine renders nothing without it, which reads to an owner as "no news" rather ' +
         'than "we cannot see". Run scripts/verify-delivery-webhook.ts.'
-      : refusing
-        ? `${refusedSends} send(s) were REFUSED by the provider and nothing has been accepted ` +
-          'since the first of them, so Relay is currently sending no mail at all — invitations, ' +
-          'verifier notices and access codes are all failing. Check RESEND_API_KEY first (a ' +
-          'revoked or wrongly-rotated key is the commonest cause and the one the rotation ' +
-          'runbook covers), then that the Resend account is not suspended and the sending ' +
-          'domain is still verified. docs/secret-rotation-runbook.md §RESEND_API_KEY.'
+      : refusing && systemicRefusals > 0
+        ? `${systemicRefusals} of ${refusedSends} refused send(s) point at the CREDENTIAL or the ` +
+          'account rather than at one message, and nothing has been accepted since the first of ' +
+          'them, so Relay is currently sending no mail at all — invitations, verifier notices ' +
+          'and access codes are all failing. Check RESEND_API_KEY first (a revoked or ' +
+          'wrongly-rotated key is the commonest cause and the one the rotation runbook covers), ' +
+          'then that the Resend account is not suspended and the sending domain is still ' +
+          // ⚠️ "§RESEND_API_KEY" until 2026-08-21. That heading does not exist —
+          // the key is covered under "§6 — the rest" — so an operator searching
+          // for the section they were handed, at 3am, found nothing. The
+          // delivery-webhook-monitor workflow inherited the error verbatim from
+          // this line, which is how a wrong pointer becomes two wrong pointers.
+          'verified. docs/secret-rotation-runbook.md §6.'
+        : refusing
+        ? /*
+             Deliberately NOT the key page. Every refusal here is one Resend
+             classifies as being about the message — overwhelmingly a recipient
+             address somebody typed — so sending an operator to rotate a working
+             credential is the wrong instruction, and the one that teaches them
+             to stop reading this line. It clears itself once these age past
+             RECENT_REFUSAL_MS; the sandbox case is the reason it reports at all.
+          */
+          `${refusedSends} recent send(s) were refused for a reason Resend attributes to the ` +
+          'MESSAGE rather than to us — most often a recipient address that cannot receive — and ' +
+          'nothing has been accepted since. Check the address on the affected contact in ' +
+          '/circle first; this clears itself once the refusals age out. If EVERY send is ' +
+          'failing rather than one, the Resend account may be restricted to mailing its own ' +
+          'owner (Resend calls that a validation error too) — that is a sending-domain ' +
+          'verification, in the Resend dashboard, not a credential to rotate.'
         : deaf
         ? `${ripeSends} message(s) were accepted by Resend more than ${SETTLE_MS / 3600_000}h ` +
           'ago and NOTHING has been reported back about any of them. Events arrived in the past, ' +
@@ -298,7 +430,13 @@ export async function getDeliveryWebhookHealth(
             'recordSendAttempt has stopped writing. It swallows its own failures by design, and ' +
             'without those rows this check silently reverts to reporting healthy no matter what ' +
             'happens to the mail. Look for a privilege or schema change on email_send_attempts ' +
-            '— migration 030 already locked the application out of it once.'
+            // ⚠️ "migration 030 already locked the application out of it once"
+            // until 2026-08-21, which sends a reader to the wrong file. 030
+            // created the role and its grant; `ON ALL TABLES` resolved once
+            // against the tables existing then; 031 created THIS table, so the
+            // first read of it failed; 032 is the fix and carries the account.
+            '— 031 created this table after 030 had already granted on "all" of them, and the ' +
+            'first read failed with permission denied. See db/migrations/032.'
           : writerProven
             ? 'Delivery events are arriving for the messages we send. A long age here is normal ' +
               '— this product sends rarely by design, and the judgement above is made against ' +

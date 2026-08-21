@@ -176,8 +176,57 @@ describe('/privacy states everything that survives a deletion', () => {
     expect(privacy()).toMatch(/delivery record|whether an email reached/i);
   });
 
-  it('names the backup window rather than leaving it unsaid', () => {
-    expect(privacy()).toMatch(/35 days|thirty-five days/i);
+  /*
+    🔴 AND THEN THE WINDOW ITSELF BECAME A HAND-COPIED NUMBER, IN THREE PLACES.
+    /privacy states it twice and this test asserted the literal `/35 days/` — so
+    the guard against a stale legal claim was itself a third copy of the fact it
+    was guarding. `docs/backup-restore-runbook.md` is where the backup plan is
+    described and where a change to it would be made; changing the DSQL retention
+    there would leave a privacy policy making a false statement about how long a
+    deletion takes to reach every copy, with a green suite.
+
+    The repo's rule is that a volatile number lives in exactly one place. There
+    is no importable constant for this — the runbook table IS the record — so the
+    page is compared against it rather than against a number typed here.
+  */
+  const RUNBOOK = 'docs/backup-restore-runbook.md';
+
+  /** `| Retention | 35 days |` → 35, or null if that row's shape changed. */
+  const retentionDays = (md: string): number | null => {
+    const m = /\|\s*Retention\s*\|\s*(\d+)\s*days?\s*\|/i.exec(md);
+    return m ? Number(m[1]) : null;
+  };
+
+  /** Does this prose state N days as the backup window? */
+  const statesWindow = (text: string, days: number): boolean =>
+    new RegExp(`backups?[^.]{0,160}?\\b${days} days\\b|\\b${days} days\\b[^.]{0,160}?backups?`, 'i').test(
+      text,
+    );
+
+  it('reads the retention window out of the runbook', () => {
+    expect(
+      retentionDays(readFileSync(RUNBOOK, 'utf8')),
+      `${RUNBOOK} no longer carries a "| Retention | N days |" row — move this guard to ` +
+        'wherever the backup window is now recorded',
+    ).toBeGreaterThan(0);
+  });
+
+  it('would notice a page stating a different window', () => {
+    // The check proven to fail, on a fixture rather than by editing the runbook:
+    // an assertion that cannot be wrong is decoration.
+    expect(statesWindow('backups of the database are kept for 35 days', 35)).toBe(true);
+    expect(statesWindow('backups of the database are kept for 7 days', 35)).toBe(false);
+  });
+
+  it('names the same backup window the runbook declares', () => {
+    const days = retentionDays(readFileSync(RUNBOOK, 'utf8'));
+    if (days === null) return; // shape changed — reported by the assertion above
+
+    expect(
+      statesWindow(privacy(), days),
+      `${RUNBOOK} says backups are kept ${days} days; /privacy must state that same number — ` +
+        'it is how long a deletion takes to reach every copy, and the page promises it',
+    ).toBe(true);
   });
 
   it('mentions the interest form, whose note has no deletion path', () => {

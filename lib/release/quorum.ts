@@ -31,7 +31,7 @@
  * never enrolled can still render a decision by single-use code."
  *
  * That sentence was withdrawn by the SECOND amendment the same day
- * (docs/user-journeys.md:1386-1402), for the reason this file's own rule
+ * (J7-R1, second amendment, docs/user-journeys.md §J7 requirements), for the reason this file's own rule
  * creates: once quorum counts only `confirmed` people, a code mailed to an
  * unconfirmed verifier buys a vote with no effect — full credential risk, zero
  * function. The classifier shipped that decision; four code comments kept

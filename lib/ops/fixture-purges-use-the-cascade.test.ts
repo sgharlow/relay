@@ -129,3 +129,62 @@ describe('the orphan census can see what a bad purge leaves behind', () => {
     expect(sweep).toMatch(/dangling/i);
   });
 });
+
+/**
+ * 🔴 AND THE CASCADE LEAVES SOMETHING BEHIND ON PURPOSE, WHICH A FIXTURE MUST NOT
+ * INHERIT.
+ *
+ * `deleteAccount()` writes an `account_deleted` entry, RETAINS the audit trail
+ * (privacy page; returned as `auditEntriesRetained`) and removes the users row
+ * LAST. For a real person that is correct — closing an account must not erase
+ * the record that it happened. For a throwaway fixture on the PRODUCTION cluster
+ * it is litter with a dangling owner_id, and it accumulates one run at a time.
+ *
+ * reset-demo.ts and family-arc.ts each worked this out and added an explicit
+ * `DELETE FROM audit_log` after the cascade, with the reasoning written down.
+ * capture-screens.ts, editing the same area in the same session, did not — so
+ * its backstop printed "purged leftover fixture user" while manufacturing
+ * exactly the retained-orphan rows that `disposable-sweep.ts` then has to treat
+ * as normal. Three scripts, one rule, two of them following it.
+ *
+ * This is the rule, applied where the mistake happens rather than left as a
+ * comment for the next author to notice.
+ */
+describe('a fixture purge also removes the audit trail the cascade keeps', () => {
+  /*
+    Keyed on the IMPORT, not on `deleteAccount(` appearing somewhere. The sweep
+    names the function inside a `console.log` string — advice to the operator
+    reading its output — and a substring match read that as a call, which is the
+    same "a mention is not a use" trap `codeOnly` was written for one layer down.
+  */
+  const callers = scripts.filter(([, src]) =>
+    /import\s*\{[^}]*\bdeleteAccount\b[^}]*\}\s*from/.test(src),
+  );
+
+  it('finds the scripts that call the cascade in process, so this is not vacuous', () => {
+    expect(
+      callers.map(([name]) => name),
+      'no script calls deleteAccount() any more — this guard has nothing to check',
+    ).not.toEqual([]);
+  });
+
+  it('every one of them clears audit_log afterwards', () => {
+    const offenders = callers
+      .filter(([, src]) => !/DELETE\s+FROM\s+audit_log/i.test(src))
+      .map(([name]) => name);
+
+    expect(
+      offenders,
+      offenders.length
+        ? 'These scripts close a fixture account and leave its audit trail behind:\n' +
+          offenders.map((o) => `  ${o}`).join('\n') +
+          '\n\ndeleteAccount() retains audit_log deliberately, and deletes the users row last, ' +
+          'so what survives is a row with a dangling owner_id on the PRODUCTION cluster. That ' +
+          'is right for a real person and wrong for a fixture: nobody is entitled to that ' +
+          'record and nothing will ever look at it. Follow the cascade with ' +
+          '`DELETE FROM audit_log WHERE owner_id = $1` for the ids you closed, as ' +
+          'reset-demo.ts and family-arc.ts do.'
+        : 'ok',
+    ).toEqual([]);
+  });
+});

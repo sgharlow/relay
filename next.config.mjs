@@ -211,7 +211,7 @@ const SECURITY_HEADERS = [
     and the top of this file said so ("✅ 2026-08-20: the full policy is now
     ENFORCED"). Two contradictory explanations of one header in one file, and
     the WRONG one was the one adjacent to the value, which is the copy a reader
-    trusts. `lib/entitlements.ts` records this class as worse than no comment:
+    trusts. `lib/billing/entitlements.ts` records this class as worse than no comment:
     somebody deciding whether it is safe to add an external origin would have
     read "connect-src is absent" and concluded the change was free.
 

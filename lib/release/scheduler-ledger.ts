@@ -123,6 +123,18 @@ export async function getSchedulerHealth(now: Date = new Date()): Promise<Schedu
     Owner-scoped identifiers are never returned. If this endpoint is ever
     tightened, tighten `transitioned`/`failures` in the same change — they are
     the same decision.
+
+    ⚠️ LADDER: `built`. NOT live-proven, and the length of the reasoning above is
+    not evidence to the contrary. This SQL has never been executed against the
+    real Aurora DSQL cluster — every test here feeds synthetic rows through a
+    mocked `query`, so the statement itself is pinned only by regexes asserting
+    it names both tables. Two correlated scalar sub-selects, each wrapping a
+    derived table with its own LIMIT, is the shape most likely to meet a DSQL
+    restriction, and the first run that meets one throws rather than returning a
+    verdict. `npm run verify:schema` does not exercise it; nothing does until
+    somebody hits the endpoint against production. Until that happens, treat a
+    green unit suite here as proof of the arithmetic and of nothing about the
+    query plan.
   */
 
   // A row is due the instant its window passes, and the cron is hourly, so

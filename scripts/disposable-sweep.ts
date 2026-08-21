@@ -208,6 +208,17 @@ async function main(): Promise<void> {
       `owner_id`, but the ones that belong to a PERSON rather than to a vault key
       on `user_id`, and asking the wrong column returns a clean zero instead of
       an error.
+
+      The list is derived from `deleteAccount()` — every table it purges by an
+      owner id, and both of `delegations`' two. Tables it reaches through a
+      subquery (`verifier_confirmations` by `release_state_id`,
+      `consent_artifacts` by the `delegations` row that points at it) are
+      absent because they carry no owner id at all: they cannot be censused this
+      way, and their orphans are reachable only by re-walking the pointers.
+      `disposable-sweep-matches-the-cascade.test.ts` fails if the cascade grows
+      an owner-scoped table this list does not carry — `delegations` was exactly
+      that omission, and it was invisible for the same reason everything else
+      here is.
     */
     const OWNER_COLUMNS: [table: string, column: string][] = [
       ['vault_items', 'owner_id'],
@@ -216,7 +227,6 @@ async function main(): Promise<void> {
       ['access_rules', 'owner_id'],
       ['release_state', 'owner_id'],
       ['invitations', 'owner_id'],
-      ['audit_log', 'owner_id'],
       ['access_requests', 'owner_id'],
       ['access_policies', 'owner_id'],
       ['approvals', 'owner_id'],
@@ -224,20 +234,48 @@ async function main(): Promise<void> {
       ['recipient_codes', 'owner_id'],
       ['verifier_codes', 'owner_id'],
       ['break_glass_codes', 'owner_id'],
+      ['delegations', 'owner_id'],
+      ['delegations', 'delegate_user_id'],
       ['webauthn_credentials', 'user_id'],
       ['recovery_codes', 'user_id'],
       ['auth_challenges', 'user_id'],
     ];
 
-    const dangling: [table: string, n: number][] = [];
-    for (const [table, column] of OWNER_COLUMNS) {
+    /*
+      🔴 `audit_log` WAS IN THE LIST ABOVE FOR ITS FIRST DAY, AND THAT MADE THIS
+      CENSUS FAIL ON A CLUSTER IN A PERFECTLY CORRECT STATE.
+
+      `deleteAccount()` writes an `account_deleted` entry, then RETAINS the audit
+      trail on purpose — it is stated on the privacy page and handed back as
+      `auditEntriesRetained`, so that closing a real person's account does not
+      erase the record that it happened — and it deletes the users row LAST. So
+      a dangling `audit_log.owner_id` is the DESIGNED END STATE of every correct
+      closure, not wreckage, and every one of them printed
+      `FAIL: N row(s) point at a user that no longer exists`.
+
+      An alarm that fires when nothing is wrong is an alarm that gets muted,
+      which is the failure this file's own header is written against — so it was
+      manufacturing the very shape it exists to prevent.
+
+      Counted anyway, and reported as a NOTICE. The number is worth having: it is
+      the only remaining trace of a closed account, and a jump in it is what a
+      purge looks like from here. It simply is not a defect, so it does not fail
+      the run.
+
+      (Fixture scripts are the exception, and they handle it themselves:
+      reset-demo.ts, family-arc.ts and capture-screens.ts each delete the audit
+      rows of the throwaway accounts they created, because a fixture's audit
+      trail is nobody's record.)
+    */
+    const RETAINED_BY_DESIGN: [table: string, column: string][] = [['audit_log', 'owner_id']];
+
+    const countDangling = async (table: string, column: string): Promise<number | null> => {
       try {
         const r = await client.query<{ n: string }>(
           `SELECT count(*)::text AS n FROM ${table}
             WHERE ${column} IS NOT NULL AND ${column} NOT IN (SELECT id FROM users)`,
         );
-        const n = Number(r.rows[0]?.n ?? 0);
-        if (n > 0) dangling.push([table, n]);
+        return Number(r.rows[0]?.n ?? 0);
       } catch (err) {
         /*
           NOT swallowed. A table this sweep cannot read is a table it cannot
@@ -247,22 +285,51 @@ async function main(): Promise<void> {
         */
         console.log(`  ! could not census ${table}.${column}: ${(err as Error).message}`);
         process.exitCode = 1;
+        return null;
       }
+    };
+
+    const dangling: [label: string, n: number][] = [];
+    for (const [table, column] of OWNER_COLUMNS) {
+      const n = await countDangling(table, column);
+      // Both columns of `delegations` are censused, so the label names which.
+      if (n !== null && n > 0) dangling.push([`${table}.${column}`, n]);
+    }
+
+    const retained: [label: string, n: number][] = [];
+    for (const [table, column] of RETAINED_BY_DESIGN) {
+      const n = await countDangling(table, column);
+      if (n !== null && n > 0) retained.push([`${table}.${column}`, n]);
     }
 
     console.log('');
     if (dangling.length === 0) {
-      console.log('Orphan census: no rows point at a user that no longer exists.');
+      /*
+        Worded around the audit trail deliberately. "No rows point at a user that
+        no longer exists" would be a lie printed directly above a NOTICE saying
+        some do — the retained ones — and a report that contradicts itself two
+        lines later teaches the reader to skim both halves.
+      */
+      console.log('Orphan census: nothing unowned in any table the cascade purges.');
     } else {
       const total = dangling.reduce((a, [, n]) => a + n, 0);
       console.log(`FAIL: ${total} row(s) point at a user that no longer exists:`);
-      for (const [table, n] of dangling) console.log(`  ${table}: ${n}`);
+      for (const [label, n] of dangling) console.log(`  ${label}: ${n}`);
       console.log('');
       console.log('Something deleted a users row without running the cascade. The rows are');
       console.log('unreachable through the application and invisible to the account census');
       console.log('above. Decide per table whether to purge them; deleteAccount() cannot help');
       console.log('once the users row is gone, which is the reason it deletes that row LAST.');
       process.exitCode = 1;
+    }
+
+    if (retained.length > 0) {
+      const total = retained.reduce((a, [, n]) => a + n, 0);
+      console.log('');
+      console.log(`NOTICE: ${total} retained row(s) belong to accounts that have been closed:`);
+      for (const [label, n] of retained) console.log(`  ${label}: ${n}`);
+      console.log('Expected. deleteAccount() keeps the audit trail on purpose and removes the');
+      console.log('users row last, so a closed account leaves exactly this behind. Not a failure.');
     }
   } finally {
     await client.end();

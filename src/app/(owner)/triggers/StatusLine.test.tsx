@@ -27,11 +27,21 @@ describe('StatusLine', () => {
     expect(out).toContain('Checked in.');
   });
 
+  /*
+    Asserted on the CLASS, not on the syllable. This read
+    `expect(out).not.toContain('sage')` until 2026-08-21 — a substring match on
+    rendered markup, and the English word "message" contains s-a-g-e. Any future
+    fixture whose text says "message" (overwhelmingly likely for an error
+    string) would have failed this test for a reason with nothing to do with
+    colour. It fails in the safe direction, so it was brittleness rather than a
+    hole, but substring-matching rendered markup is a shape this repo has been
+    bitten by before and the precise assertion costs nothing.
+  */
   it('NEVER paints a failure in the safe colour', () => {
     const out = renderToStaticMarkup(
-      <StatusLine msg={{ text: 'Request failed (401)', ok: false }} />,
+      <StatusLine msg={{ text: 'Request failed (401) — see the message below', ok: false }} />,
     );
-    expect(out).not.toContain('sage');
+    expect(out).not.toMatch(/class="[^"]*sage/);
     expect(out).toContain('text-clay');
   });
 

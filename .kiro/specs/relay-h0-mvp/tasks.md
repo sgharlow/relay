@@ -43,9 +43,34 @@
 > **What is actually true, derived rather than quoted:** every defined property from 2 to 20 is tagged
 > in the suite except **17** (covered, untagged — see the note in `design.md`). **Property 1 is
 > superseded**: it asserts uniqueness of a `vaults` row and no `vaults` table exists in any migration,
-> so it is struck in `design.md` rather than left looking uncovered. Re-derive the tag list with
+> so it is struck in `design.md` rather than left looking uncovered.
+>
+> ⚠️ **And its tasks were ticked anyway.** Task **31** carries `[x]` — which the legend above defines
+> as *checked against the code and found shipped* — for a guard and a property test that were never
+> written, against a migration (`002_vault_flag.sql`) that does not exist. Found and struck
+> 2026-08-21; see the block at task 31. It is the one box in this file the legend cannot vouch for,
+> and it is named here because a legend that quietly has an exception is worth less than no legend.
+>
+> Re-derive the tag list with
 > `grep -rno "Property [0-9]\+" lib src --include=*.test.ts | sed 's/.*Property /Property /' | sort -uV`
 > rather than trusting a count written into prose — that is how this paragraph went stale.
+>
+> 🔴 **ESTATE IS WITHDRAWN, AND THIS FILE STILL DESCRIBES BUILDING IT (noted 2026-08-21).** Estate was
+> removed from the product permanently on 2026-08-14 — `PROJECT.yaml → gates.g2-counsel-opinion.declined`;
+> the gate was closed by deleting the capability it guarded, not by satisfying it. `estate` is excluded
+> from `USER_SELECTABLE_TRIGGER_TYPES` (`lib/domain/enums.ts`) and `POST /api/rules` refuses it.
+> `grep -n estate` this file and read every hit as **a task from a plan that was later cancelled in
+> part**, never as work to finish. Two are worth naming because they read as instructions:
+>
+> - **27.1** — *"for `estate` trigger: append provider-specific guidance (Apple Legacy Contact, Google
+>   IAM, Meta memorialization)"*. That is FR13 / `requirements.md` 13.4, **struck** with the withdrawal.
+>   Its route was separately retired 2026-08-13 (`docs/retired-surface.md`).
+> - **12.3** — a rule builder whose reversible checkbox is *"disabled + tooltip for estate"*. There is
+>   no estate option to disable; the trigger type never reaches the picker.
+>
+> The tasks that assert estate's **irreversibility** — 11.3, 11.4 (Property 7), 16.1 and 16.4
+> (Property 10) — are different and still correct: they describe an enum branch that is still in the
+> code and still tested. The distinction throughout is *offering* estate versus *containing* it.
 
 ## Overview
 
@@ -355,14 +380,35 @@ sequenced last so slipping the schedule never endangers the four demo moments.
 
 ### Milestone 9 — Day 11: Design Polish, Seed Data, Demo Assets
 
-- [x] 31. Implement vault uniqueness property test and vault-creation guard
-  - [~] 31.1 Enforce single-vault-per-owner in `app/api/vault/items/route.ts` POST handler: SELECT COUNT(*) WHERE `owner_id = :ownerId` on `users` table vault flag; if vault already initialized return 409 conflict; add `vault_initialized` boolean column to `users` table via migration `002_vault_flag.sql`
-    - _Requirements: 1.1_
-  - [~] 31.2 Write property test for vault uniqueness per owner (Property 1)
-    - **Property 1: Vault uniqueness per owner — calling vault creation twice for the same owner ID must result in exactly one vault row; second call returns conflict error**
-    - Use `fc.uuid()` for owner ID; run create twice; assert second returns 409; assert DB row count = 1
-    - Run 200 iterations; tag `// Feature: relay-h0-mvp, Property 1`
-    - **Validates: Requirements 1.1**
+- [x] ~~31. Implement vault uniqueness property test and vault-creation guard~~ — **NOT BUILT, AND THE `[x]` WAS WRONG (corrected 2026-08-21)**
+
+  > 🔴 **This box is left ticked and struck rather than un-ticked, because the tick is the finding.**
+  > Per this file's own box legend, `[x]` means *"checked against the code by the 2026-08-13
+  > reconciliation and found shipped"*. Neither sub-task shipped, and neither could have: re-run
+  > `ls db/migrations/ | grep 002` — migration 002 is `002_unique_auth_sub.sql`, not the
+  > `002_vault_flag.sql` this task names — and `grep -rn "vault_initialized" db lib src` returns
+  > nothing. There is no vault flag, no 409 conflict path, and no `Property 1` tag in the suite.
+  > **A reconciliation that ticks a box for work that does not exist is worse than the unreconciled
+  > boxes it replaced**, because the disclaimer at the top of the file was removed on the strength
+  > of it.
+  >
+  > **It was not built because it should not be built.** `requirements.md` **Req 1.1** was amended
+  > on 2026-08-21 and `design.md`'s **Property 1** struck on the same day: there is no `vaults`
+  > entity, so there is no second creation to reject. Adding `vault_initialized` now would be
+  > inventing a flag so that a guard has something to guard. **Do not implement 31.1 or 31.2.**
+  > The invariant worth having is Req 5.1 (one `release_state` row per owner+trigger), which
+  > `ensureReleaseState` already holds in application logic.
+  >
+  > Kept in place, struck, with its `_Requirements:` link intact, so that a reader arriving here from
+  > Req 1.1 or from Property 1 lands on the same answer from any of the three directions.
+
+  - [~] ~~31.1 Enforce single-vault-per-owner in `app/api/vault/items/route.ts` POST handler: SELECT COUNT(*) WHERE `owner_id = :ownerId` on `users` table vault flag; if vault already initialized return 409 conflict; add `vault_initialized` boolean column to `users` table via migration `002_vault_flag.sql`~~
+    - _Requirements: 1.1 — amended 2026-08-21; see the block above_
+  - [~] ~~31.2 Write property test for vault uniqueness per owner (Property 1)~~
+    - ~~**Property 1: Vault uniqueness per owner — calling vault creation twice for the same owner ID must result in exactly one vault row; second call returns conflict error**~~
+    - ~~Use `fc.uuid()` for owner ID; run create twice; assert second returns 409; assert DB row count = 1~~
+    - ~~Run 200 iterations; tag `// Feature: relay-h0-mvp, Property 1`~~
+    - ~~**Validates: Requirements 1.1**~~
 
 - [x] 32. Build design polish — two-mode layout and completeness nudges
   - [~] 32.1 Finalize `OwnerLayout` (Owner mode): verify blue/neutral palette, sidebar nav, information-dense 14–16 px body, low saturation across all owner screens; add Completeness nudge banner to vault dashboard when `importance_score` average < 0.5 or any `is_root_credential` item has no Access_Rule

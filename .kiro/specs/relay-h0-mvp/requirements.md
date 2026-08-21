@@ -3,14 +3,18 @@
 > ## ⚠️ AMENDED IN PLACE — read this before citing a criterion (2026-08-21)
 >
 > This file is still authoritative for **what the product must do**, and it is the file every source
-> header cites (`Requirements: N.N`). It is *not* a snapshot of what is built. Six criteria were
-> amended on 2026-08-21 after an audit found the spec disagreeing with the shipped code, with the
-> withdrawn estate capability, or with itself. Each amendment is a dated block **beneath** the
-> criterion it corrects — the original wording is quoted inside it, because a spec that silently
-> changes its mind teaches a reader nothing.
+> header cites (`Requirements: N.N`). It is *not* a snapshot of what is built. The **Introduction,
+> two Glossary entries and seven criteria** were amended on 2026-08-21 after an audit found the spec
+> disagreeing with the shipped code, with the withdrawn estate capability, or with itself. This table
+> is the whole list — if a correction is not in it, it is not in this file. Each amendment is a dated block
+> **beneath** the passage it corrects — the original wording is quoted inside it, because a spec that
+> silently changes its mind teaches a reader nothing.
 >
-> | Criterion | What changed |
+> | Passage | What changed |
 > |---|---|
+> | **Introduction** | Still offered a "verified estate event" as a trigger and promised permanent estate handoffs. Corrected — **every release is reversible**. Added on the review pass; the first pass amended 13.4 for exactly this reason and walked past the paragraph above it. |
+> | **Glossary** — `Trigger_Type`, `Reversible_Trigger` | Both listed `estate` as an ordinary value. Annotated in place: it is in the enum, it is not selectable, and so every trigger a user can fire is reversible. |
+> | **1.1** | "Create exactly one vault … reject with a conflict error" describes an entity that has never existed. Amended, and `design.md`'s Property 1 now points here instead of ruling on this criterion from another file. `tasks.md` task 31 — ticked `[x]` for building the guard — is struck there. |
 > | **5.2** | The seventh permitted transition, `RELEASED → ARMED`, was missing. Added — it is the edge the reversibility promise rests on. |
 > | **6.6** | Marked unreachable: the grace window is `0` for every selectable trigger type. Mechanism intact, occasion gone. |
 > | **6.7** | 🔴 **Reversed.** It required release on an elapsed timer *below* quorum — the opposite of Req 5.5, Property 12, and every line of the code. |
@@ -21,10 +25,24 @@
 > **Where this file and `design.md` disagree, neither wins by default — check the code.** That is how
 > 6.7 was settled. `PROJECT.yaml` is authoritative for *build state*; this file is authoritative for
 > *obligation*; `db/migrations/*.sql` is authoritative for the schema.
+>
+> ⚠️ **Nothing mechanical reads this file.** The estate guard in `lib/ops/gates.test.ts` walks `src/`
+> and `lib/` only — deliberately, so that record files can quote withdrawn language under their own
+> banners — so a spec paragraph that offers estate trips no test, and the Introduction sat wrong for
+> a week after the ruling. The only thing keeping this file honest is that an amendment names the
+> code it was checked against, so a reader can re-run the check.
 
 ## Introduction
 
-Relay is a living-continuity platform that lets owners build an encrypted vault of accounts, credentials, documents, and instructions, then assign scoped, reversible access to trusted recipients under verified trigger conditions. When a trigger fires — a missed check-in, a manual emergency request, or a verified estate event — the system advances through a controlled release state machine (ARMED → PENDING → GRACE → RELEASED) using optimistic concurrency control. Emergencies are reversible: when the owner checks back in, access closes automatically. Estate handoffs are permanent.
+Relay is a living-continuity platform that lets owners build an encrypted vault of accounts, credentials, documents, and instructions, then assign scoped, reversible access to trusted recipients under verified trigger conditions. When a trigger fires — a missed check-in or a manual emergency request ~~, or a verified estate event~~ — the system advances through a controlled release state machine (ARMED → PENDING → GRACE → RELEASED) using optimistic concurrency control. **Every release is reversible**: when the owner checks back in, access closes automatically. ~~Estate handoffs are permanent.~~
+
+> 🔴 **AMENDED 2026-08-21 — this paragraph offered a capability the product refuses at the trust boundary.** It read: *"When a trigger fires — a missed check-in, a manual emergency request, or a verified estate event — … Emergencies are reversible: when the owner checks back in, access closes automatically. Estate handoffs are permanent."*
+>
+> **Estate was withdrawn permanently on 2026-08-14** — `PROJECT.yaml → gates.g2-counsel-opinion.declined`. The gate was closed by *removing the capability it guarded*, not by satisfying it: no counsel opinion is being sought, so there is nothing to wait for. `USER_SELECTABLE_TRIGGER_TYPES` in `lib/domain/enums.ts` lists `emergency`, `travel`, `caregiver`, `business` and not `estate`, `POST /api/rules` refuses it with a 400, and `lib/ops/gates.test.ts` fails if that list widens. **No user can select an estate trigger, so no trigger a user can fire is permanent, so every release is reversible.**
+>
+> **What did not change:** the `estate` value survives in the `Trigger_Type` enum (Glossary, and Req 5.10 / 13.4 / 3.5 / 4.5 below all still reference it) because rows written before the withdrawal must still parse and the irreversibility branch must still hold if anything ever reaches it. A criterion that guards on `trigger_type = 'estate'` is **unreachable, not wrong** — it describes an enum branch, never a product promise. Read every remaining `estate` mention in this file that way.
+>
+> **Why this was missed on the first amendment pass:** 13.4 was struck for exactly this reason on 2026-08-21, and the Introduction — three hundred lines above it and the first prose in the file — was not read in the same pass. A withdrawal has to sweep the *summary* paragraphs, not just the criteria that name the capability, because a summary is what a reader in a hurry quotes.
 
 The platform is built for the H0 hackathon, targeting Amazon Aurora DSQL (multi-region active-active) as the hero database, Next.js on Vercel as the frontend, and AWS KMS for client-side envelope encryption. The MVP covers all must-have functional requirements (FR1–FR9, FR17) and their supporting non-functional requirements, with AI-powered ingestion and importance scoring as high-priority additions.
 
@@ -43,7 +61,7 @@ The platform is built for the H0 hackathon, targeting Amazon Aurora DSQL (multi-
 - **Verifier**: A trusted third party who confirms a trigger condition via the N-of-M verification subsystem; Verifiers may overlap with Recipients but are modeled separately.
 - **Vault_Item**: An encrypted unit of information stored by the Owner. Types: `login`, `account`, `document`, `note`, `instruction`.
 - **Release_State**: A state-machine row per (owner, trigger_type) that advances through `ARMED → PENDING → GRACE → RELEASED` (or `CANCELLED`).
-- **Trigger_Type**: The class of life event that can initiate a release. Values: `emergency`, `travel`, `caregiver`, `business`, `estate`.
+- **Trigger_Type**: The class of life event that can initiate a release. Values: `emergency`, `travel`, `caregiver`, `business`, `estate` — but **`estate` is not selectable** (withdrawn 2026-08-14; see the Introduction). The four a user can choose are the first four, and they are the enum `USER_SELECTABLE_TRIGGER_TYPES` in `lib/domain/enums.ts`.
 - **OCC**: Optimistic Concurrency Control — Aurora DSQL's default isolation mechanism using snapshot isolation and serialization-failure codes (SQLSTATE 40001).
 - **CAS**: Compare-and-Set — a guarded UPDATE that checks both `state` and `version` columns before committing a state transition.
 - **N-of-M Verification**: A configurable threshold where N Verifiers out of M designated Verifiers must confirm a trigger before RELEASED is allowed.
@@ -63,7 +81,7 @@ The platform is built for the H0 hackathon, targeting Amazon Aurora DSQL (multi-
 - **Simulate_Trigger**: A demo-only control that fast-forwards the Release_State machine through all states without waiting for real time or real verifier confirmations.
 - **Scope**: The access level granted to a Recipient for a specific Vault_Item. Values: `view` (read only), `act` (can perform on behalf of Owner).
 - **ZK-preserving**: A processing mode in which the Importance_Engine and Ingestion subsystems operate only on non-secret metadata, never on decrypted secrets.
-- **Reversible_Trigger**: A trigger where the Release_State can be returned to ARMED or CANCELLED during GRACE; all trigger types except `estate` are reversible.
+- **Reversible_Trigger**: A trigger where the Release_State can be returned to ARMED or CANCELLED during GRACE; all trigger types except `estate` are reversible — and since `estate` cannot be selected, **every trigger a user can fire is reversible**.
 
 ---
 
@@ -77,7 +95,14 @@ The platform is built for the H0 hackathon, targeting Amazon Aurora DSQL (multi-
 
 #### Acceptance Criteria
 
-1. WHEN an authenticated Owner requests vault creation, THE Vault_System SHALL create exactly one vault associated with that Owner; IF the Owner already has a vault, THEN THE Vault_System SHALL reject the creation request with a conflict error.
+1. ~~WHEN an authenticated Owner requests vault creation, THE Vault_System SHALL create exactly one vault associated with that Owner; IF the Owner already has a vault, THEN THE Vault_System SHALL reject the creation request with a conflict error.~~ **AMENDED 2026-08-21 — there is no vault entity, and there never was one. THE Vault_System SHALL treat "an Owner's vault" as the set of `vault_items` rows carrying that `owner_id`; there is no creation request to make, and no conflict error to return.**
+
+   > **Measured against the schema, not assumed.** Re-run `grep -l "CREATE TABLE vaults" db/migrations/*.sql` and `grep -rn "FROM vaults\|INTO vaults" lib src` — both are empty, in every migration and in all source. `db/migrations/001_initial.sql` creates `users`, `recipients`, `verifiers`, `vault_items`, `access_rules`, `release_state`, `verifier_confirmations` and `audit_log`; nothing since has added a `vaults` table. `src/app/api/vault/` holds exactly one route group, `items` — there is no vault-creation endpoint to call. The vault is a *view over rows*, so "create it twice" is not a thing that can be attempted.
+   >
+   > **The invariant that actually holds in its place** is Req 5.1 — one `release_state` row per `(owner_id, trigger_type)`. Note precisely how it is held: `ensureReleaseState` (`lib/release/provisioning.ts`) does a read-then-insert and returns the existing row if one is found. That is application-level enforcement in the Req 16.1 / 16.4 shape, **not** a database constraint — `idx_release_state_owner_type` in migration 001 is a plain `CREATE INDEX ASYNC`, and no migration adds a UNIQUE on that pair. Do not cite it as one.
+   >
+   > **This is the counterpart to `design.md`'s struck Property 1**, and the direction matters. That file struck the property; the criterion it was validating lived here and went on stating an unimplemented SHALL. A design document may not settle the status of a criterion in the requirements document from the outside — a reader who lands on 1.1 first would never see the ruling. The correction is here, and `design.md` now points at this block.
+
 2. WHEN an Owner submits a new Vault_Item with a valid `type`, THE Vault_System SHALL accept items of type `login`, `account`, `document`, `note`, or `instruction`.
 3. IF an Owner submits a new Vault_Item with a `type` value not in the set [`login`, `account`, `document`, `note`, `instruction`], THEN THE Vault_System SHALL reject the request with a validation error and SHALL NOT persist any data.
 4. WHEN an Owner creates or updates a Vault_Item, THE Vault_System SHALL store `title` (1–200 characters), `service_name`, `url` (max 2048 characters), `category` (one of: `finance`, `health`, `government`, `utilities`, `communication`, `professional`, `personal`, `other`), `criticality` (one of: `critical`, `high`, `medium`, `low`), and `type` as non-secret metadata alongside the encrypted payload.
@@ -310,7 +335,7 @@ The platform is built for the H0 hackathon, targeting Amazon Aurora DSQL (multi-
 5. THE Triage_Agent SHALL operate exclusively on non-secret metadata and Vault_Item `title` fields; it SHALL never call KMS Decrypt or receive plaintext secret content.
 6. THE Triage_Agent output SHALL be accessible to the Owner for review and annotation before the first release event; Recipients SHALL see the same plan (plus any Owner annotations) at access time. **⚠️ NOT BUILT, AND NOT RULED ON — flagged 2026-08-21, owner: Steve.**
 
-   > **Measured, not assumed:** `grep -rl "annotat" lib src` reaches only `lib/ai/triage-agent.ts`, `lib/demo-tour/fixtures.ts` and two unrelated tests. There is no owner-facing plan preview and no annotation surface anywhere in the product; the recipient's plan is derived at access time by `rankAccessItems` (`lib/access/dashboard.ts`) from importance and dependency order, with no owner input in the loop.
+   > **Measured, not assumed — re-run `grep -rl "annotat" lib src` and read what it returns: every match is a comment, a fixture, or a test, and none of them is an owner-facing annotation surface.** There is no owner-facing plan preview anywhere in the product; the recipient's plan is derived at access time by `rankAccessItems` (`lib/access/dashboard.ts:126`) from importance and dependency order, with no owner input in the loop. (This line originally listed the four files the command returned on 2026-08-21. It returned five within a day — an unrelated lane added the word "annotated" to a comment in `lib/ops/coverage-scope.ts` — which made a true sentence read as false without the conclusion changing at all. A derivation is durable; its result set is not. That rule is stated in `design.md` and `tasks.md`, and this line was the one place in this pass that broke it.)
    >
    > **Why this needs saying out loud.** `docs/retired-surface.md` retired `POST /api/ai/triage` and named the criteria that retirement covers — *13.1–13.5 and 13.8*. 13.6 and 13.7 are outside that list, so this criterion is not retired, not built, not in `ROADMAP.md` §2-F, and not gated. It was simply absent, which is the one status that leaves no trace anywhere and is therefore the one worth marking.
    >

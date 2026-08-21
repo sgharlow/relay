@@ -21,6 +21,10 @@ import {
   attributableToRelay,
   recordDeliveryEvent,
   recordSendRefusal,
+  refusalMarker,
+  refusalClassOf,
+  isSystemicRefusalClass,
+  NON_SYSTEMIC_REFUSAL_CLASSES,
   classify,
   MAX_DETAIL_CHARS,
 } from './delivery-events';
@@ -263,5 +267,86 @@ describe('recordSendRefusal', () => {
   it('swallows a database failure — it is telemetry about an error, mid-error', async () => {
     mockQuery.mockRejectedValueOnce(new Error('DSQL unreachable'));
     await expect(recordSendRefusal('validation_error')).resolves.toBeUndefined();
+  });
+});
+
+/**
+ * 🔴 EVERY REFUSAL WAS THE SAME REFUSAL, and one of them is not an outage.
+ *
+ * `webhook-health.ts` read `refusedSends > 0 && acceptedSinceFirstRefusal === 0`
+ * as "Relay is currently sending no mail at all — check RESEND_API_KEY first".
+ * But `email.ts` records a refusal on ANY `result.error`, and Resend's commonest
+ * error is per-message: a bad recipient address. At a product that sends rarely,
+ * one owner typo therefore latched the public health endpoint to 503 for up to
+ * the whole 30-day window — clearing only if some later message happened to be
+ * accepted — and sent an operator to rotate a key that was working.
+ *
+ * The marker already carries the answer: `refused:<class>:<uuid>`, written by
+ * `refusalMarker` from the provider's own error name. It was never read back.
+ * These two functions are the reader, and they live HERE, beside the writer, so
+ * the marker format has exactly one definition.
+ */
+describe('reading a refusal marker back', () => {
+  it('recovers the class the writer put in', () => {
+    expect(refusalClassOf(refusalMarker('validation_error'))).toBe('validation_error');
+    expect(refusalClassOf(refusalMarker('  Rate Limit Exceeded '))).toBe('rate_limit_exceeded');
+  });
+
+  /*
+    An accepted send stores Resend's own id, which is a UUID. Reading a class out
+    of one would invent a refusal that never happened, so the parser refuses
+    anything without the marker prefix rather than splitting on ':' and hoping.
+  */
+  it('is not a refusal unless it carries the marker prefix', () => {
+    expect(refusalClassOf('4a3b2c1d-0000-4000-8000-000000000000')).toBeNull();
+    expect(refusalClassOf('')).toBeNull();
+    expect(refusalClassOf('refused:')).toBeNull();
+  });
+
+  it('classifies a bad recipient address as NOT an outage', () => {
+    expect(isSystemicRefusalClass('validation_error')).toBe(false);
+    expect(isSystemicRefusalClass('bounced')).toBe(false);
+    // The provider having a moment is not the provider refusing us either.
+    expect(isSystemicRefusalClass('rate_limit_exceeded')).toBe(false);
+  });
+
+  it('classifies the credential and account failures as an outage', () => {
+    for (const cls of [
+      'invalid_api_key',
+      'missing_api_key',
+      'restricted_api_key',
+      'restricted',
+      'not_authorized',
+      'invalid_from_address',
+      'daily_quota_exceeded',
+      // Ours, from email.ts: the provider could not be reached at all, and a
+      // 200 with no message id.
+      'transport',
+      'no_message_id',
+    ]) {
+      expect(isSystemicRefusalClass(cls), cls).toBe(true);
+    }
+  });
+
+  /*
+    THE DEFAULT IS TO ALARM, and it is the whole reason this is a deny-list of
+    known-harmless classes rather than an allow-list of known-bad ones. Resend
+    can add an error name tomorrow; an allow-list would silently stop noticing
+    the outage that name describes, which is the exact shape of defect this
+    monitor has now been rebuilt for three times. A name we do not recognise is
+    treated as an outage and reported, which is loud and correctable.
+  */
+  it('treats an error name nobody has seen before as an outage', () => {
+    expect(isSystemicRefusalClass('some_new_resend_error')).toBe(true);
+    expect(isSystemicRefusalClass('unknown')).toBe(true);
+  });
+
+  it('every entry in the deny-list is a class the writer could actually produce', () => {
+    // `refusalMarker` lowercases, collapses to [a-z0-9_] and truncates. A
+    // deny-list entry outside that alphabet can never match a stored marker, so
+    // it would be a rule that reads as active and is dead.
+    for (const cls of NON_SYSTEMIC_REFUSAL_CLASSES) {
+      expect(refusalClassOf(refusalMarker(cls)), cls).toBe(cls);
+    }
   });
 });

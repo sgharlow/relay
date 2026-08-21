@@ -273,6 +273,62 @@ describe('writeAuditEntry', () => {
     expect(entry.entry_hash).toBe(store[0].entry_hash);
   });
 
+  it('leaves a trace when it absorbs a content-identical collision, because it may be dropping a real event', async () => {
+    /*
+      🔴 THE BRANCH CANNOT TELL THE TWO CASES APART, and until 2026-08-21 it was
+      written as though it could. It compares the stored `entry_hash` to the one
+      just computed and, on a match, returns SUCCESS WITHOUT WRITING. Content
+      equality is standing in for statement identity, and they are not the same
+      claim: two genuinely distinct events for one owner with the same actor,
+      action, entity, entity_id, detail and the same MILLISECOND `ts` — a
+      double-submit is the realistic shape — hash identically, and the second is
+      silently discarded while its caller is told it succeeded.
+
+      That is a real event missing from a tamper-evident log, which is the one
+      kind of gap this table exists to make impossible.
+
+      The behaviour is KEPT — appending instead would fabricate a duplicate
+      event, and this file's other test ("recognises its own INSERT replayed…")
+      is the case that would break. What changes is that the drop is no longer
+      silent: it writes a line naming owner and seq, so a disputed log has
+      something to reconcile against.
+
+      ⚠️ A TRACE, NOT AN ALARM. It is a stderr write into Vercel runtime logs —
+      ~24h retention, read by nobody — exactly the channel this same file was
+      corrected for calling an "operator alert" a few lines above. Closing this
+      properly needs a distinguishing marker in the row, which is a migration
+      and a sysadmin act. Recorded, not claimed.
+    */
+    const owner = 'identical-owner';
+    const writes: string[] = [];
+    const spy = vi.spyOn(process.stderr, 'write').mockImplementation((chunk: unknown) => {
+      writes.push(String(chunk));
+      return true;
+    });
+
+    try {
+      let replayed = false;
+      const inMemory = mockQuery.getMockImplementation()!;
+      mockQuery.mockImplementation(async (sql: string, params?: unknown[]) => {
+        if (!replayed && sql.startsWith('INSERT INTO audit_log')) {
+          replayed = true;
+          await inMemory(sql, params);
+          throw duplicateKey();
+        }
+        return inMemory(sql, params);
+      });
+
+      await writeAuditEntry(owner, { actor: 'a', action: 'once', entity: 'e' });
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect(
+      writes.some((w) => w.includes('[audit]') && w.includes(owner) && w.includes('seq 0')),
+      'the branch returned success without writing and left no record that it had',
+    ).toBe(true);
+  });
+
   it('throws AuditWriteError after exhausting retries on persistent insert failure', async () => {
     mockQuery.mockReset();
     mockQuery.mockImplementation(async (sql: string) => {

@@ -46,12 +46,10 @@ vi.mock('@simplewebauthn/server', () => ({
 import { query } from '../db/connection';
 import { newChallengeId, recordChallenge, burnChallenge } from './challenge-store';
 import {
-  verifyRegistrationResponse,
-  verifyAuthenticationResponse,
-} from '@simplewebauthn/server';
-import {
   generateRegistrationOptions,
   generateAuthenticationOptions,
+  verifyRegistrationResponse,
+  verifyAuthenticationResponse,
 } from '@simplewebauthn/server';
 import {
   rpConfig,

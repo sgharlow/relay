@@ -39,10 +39,20 @@ permitted-transition table — seven edges, matching `PERMITTED_TRANSITIONS` exa
 | how a recipient is authenticated | `docs/standby-architecture.md` (hybrid+6, ratified 2026-08-11) |
 
 > ⚠️ This pointer used to read *"it defines the schema, state-transition table, and the demo spine"*,
-> and it sent people to a DDL block declaring **8 tables** when the migrations declare **27** —
-> missing `secret_kinds`, `factors_required`, `kms_context_era`, `received_denials` and
-> `session_epoch`, which are exactly the columns the release and crypto paths write. Narrowed
-> 2026-08-21. A pre-read named in an agent instruction file gets read; a stale one gets believed.
+> and it sent people to a DDL block declaring **8 tables** — frozen at migration 001, and that
+> number is fixed because the block is — when the migrations declare far more. Count them, don't
+> read a number here: `grep -hoiE '^ *CREATE TABLE (IF NOT EXISTS )?[a-z_]+' db/migrations/*.sql | awk '{print tolower($NF)}' | sort -u` — anchored to the start of the line on purpose, because an
+> unanchored grep also matches the phrase inside a comment in `029_auth_challenges.sql` and reports
+> a table called `if`. The DDL is also missing
+> `secret_kinds`, `factors_required`, `kms_context_era`, `received_denials` and `session_epoch`,
+> which are exactly the columns the release and crypto paths write. Narrowed 2026-08-21. A pre-read
+> named in an agent instruction file gets read; a stale one gets believed.
+>
+> ⚠️ **A count sat here too, from 2026-08-21 until later the same day.** This note said the
+> migrations declare "**27**" — accurate when written, and wrong the next time anyone adds a table,
+> two paragraphs above the one that bans hardcoded counts and explains that a hardcoded test count
+> "sat here drifting for weeks; that is why it is gone." The number was never the point; the gap
+> between 8 and *whatever it is now* is.
 
 ## Build state — commercialising, live at relaystandby.com
 
@@ -89,7 +99,8 @@ npm run build          # next build — production build
 npm run lint           # eslint . --max-warnings=0 (flat config: eslint.config.mjs)
 npm test               # vitest --run (one-shot, the default)
 npm run test:watch     # vitest watch mode
-npm run test:coverage  # vitest --coverage (v8; thresholds 80/80/70/80 lines/fn/branches/stmts)
+npm run test:coverage  # vitest --coverage (v8). The thresholds are declared in vitest.config.ts and
+                       # are enforced ONLY here and in CI, never by `npm run gate` — see "Two gates".
 
 npm run gate           # types + lint + test + build. No database, no server. ⚠️ NOT identical to
                        # CI — CI runs `test:coverage` where this runs `vitest --run`, so gate
@@ -324,8 +335,11 @@ same four stages on every push.
 
 > ⚠️ **BUT `gate` IS NOT WHAT CI RUNS, and this section claimed it was until 2026-08-21.** CI's test
 > step is **`npm run test:coverage`**; `gate:test` is **`vitest --run`**. Same suite, but coverage
-> instrumentation and the thresholds in `vitest.config.ts` (lines 80 / functions 80 / branches 70 /
-> statements 80) are evaluated only in CI. **So a green `gate` can be a red CI**: delete the last
+> instrumentation and **the thresholds declared in `vitest.config.ts`** are evaluated only in CI.
+> (The numbers are deliberately not repeated here — they live in that file, and this paragraph is
+> about *which command reads them*, not what they are. They were spelled out twice in this file
+> until 2026-08-21 — here and in the Commands block — which is once more than the repo's own
+> one-authoritative-place rule allows.) **So a green `gate` can be a red CI**: delete the last
 > test covering a branchy module and `gate` passes while CI fails on the threshold. CI also runs an
 > AI-co-authorship trailer check that `gate` has no equivalent for.
 >

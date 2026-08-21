@@ -8,8 +8,9 @@
  * (Req 11.6), and persists each item via withOccRetry. On classification failure
  * or timeout it defaults score 0.5 / is_root_credential false, lists the items in
  * `warnings`, and never blocks (Req 11.9). Batches are capped at 300 (Req 11.10)
- * and whatever the cap left behind is reported as `remaining` rather than
- * dropped in silence — see that field.
+ * and whatever the cap left behind is returned TO THE CALLER as `remaining`
+ * rather than dropped in silence — see that field, including the note that no
+ * caller forwards it to the owner yet.
  *
  * Feature: relay-h0-mvp
  * Requirements: 11.1–11.7, 11.9, 11.10
@@ -51,8 +52,19 @@ export interface IntakeResult {
    * no "never scored" marker to order by — `importance_score` is NOT NULL
    * DEFAULT 0.5, so an unscored item is indistinguishable from one scored at
    * exactly 0.5 — and adding one is a migration, which is a sysadmin act that
-   * lands separately from this code. What is fixed here is the claim; batching
-   * across runs needs that column first.
+   * lands separately from this code. Batching across runs needs that column
+   * first.
+   *
+   * ⚠️ AND THE OWNER STILL CANNOT SEE THIS — the claim is corrected HERE and
+   * nowhere the owner looks. `src/app/api/ai/intake/route.ts` returns
+   * `{ scored, warnings, results }` and does not forward `remaining`, so the
+   * API response and the screen above it still say `scored: 300` with nothing
+   * indicating anything was skipped. This field is `wired`, not `live-proven`:
+   * the library stopped lying, the product has not yet been told. Forwarding it
+   * is one key in that handler plus whatever renders it — until that lands,
+   * do not describe the silent-drop as fixed end to end. Corrected 2026-08-21,
+   * having first been written as though returning the number were the whole
+   * repair; the value of a number nothing reads is zero.
    *
    * ⚠️ OPTIONAL IN THE TYPE, ALWAYS SET BY `runIntake`. Fixtures outside this
    * module build an `IntakeResult` by hand, and making it required would fail

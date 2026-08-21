@@ -17,8 +17,14 @@
 --     to be satisfied from the index without touching the main heap
 --     (especially important for vault_items where ciphertext is large).
 --   • The audit_log table is INSERT-only; no UPDATE or DELETE is ever
---     issued against it. Monotonicity of seq is maintained by reading
---     MAX(seq)+1 inside the same OCC transaction.
+--     issued against it. Monotonic seq is held by a DERIVED PRIMARY KEY —
+--     see the long note above the audit_log DDL below, which is authoritative.
+--     🔴 THIS SUMMARY SAID "reading MAX(seq)+1 inside the same OCC
+--     transaction" until 2026-08-21. That mechanism does not exist and never
+--     did; the correction was written against the table 190 lines below and
+--     this copy of the refuted sentence was left standing in the file header,
+--     which is the half a reader meets first. A correction that lands in one
+--     place and not in its summary has not landed.
 -- ============================================================
 
 -- ------------------------------------------------------------------

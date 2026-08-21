@@ -22,8 +22,12 @@ import type Stripe from 'stripe';
 import { getStripe } from '../../../../../lib/billing/stripe';
 import { query } from '../../../../../lib/db/connection';
 import { writeAuditEntry } from '../../../../../lib/audit/audit-service';
-import { PRICE_YEARLY_CENTS } from '../../../../../lib/offer';
 import { COMP_COHORT, CONVERTED_FROM_COMP_COHORT } from '../../../../../lib/billing/entitlements';
+import {
+  amountsToWrite,
+  firstRecordedCents,
+  type StripeAmounts,
+} from '../../../../../lib/billing/subscription-amount';
 import {
   notifyRenewalFailed,
   notifySubscriptionLapsed,
@@ -34,34 +38,44 @@ import {
 export const dynamic = 'force-dynamic';
 
 /**
- * What Stripe says it charged, in cents.
+ * What Stripe says about money on this event, split by what it is evidence of.
  *
- * 🔴 THIS USED TO BE THE LITERAL `11900` INSIDE THE INSERT, which made the row
- * recording a payment a restatement of the list price rather than an
+ * 🔴 THE AMOUNT USED TO BE THE LITERAL `11900` INSIDE THE INSERT, which made the
+ * row recording a payment a restatement of the list price rather than an
  * observation of the payment. `PriceCard.tsx` reads a runtime price override on
  * purpose — "so a price test does not require a deploy (J1-R8)" — and G1's gate
  * is "click-to-intent AT A REAL PRICE POINT", so showing $99, charging $99 and
  * recording $119 was the intended operation meeting a hardcoded number.
  *
+ * 🔴 AND THE FIRST FIX FOR THAT COLLAPSED THE TWO READS INTO ONE, which put the
+ * same defect back on the UPDATE path: `unit_amount` was returned for every
+ * `customer.subscription.updated`, and every active one of those satisfies
+ * `recordsPayment`, so the list price overwrote a discounted charge the moment
+ * Stripe sent the next subscription event. They are kept apart here because
+ * only one of them is evidence that money moved —
+ * `lib/billing/subscription-amount.ts` holds the rule and the tests.
+ *
  * Stripe is the authority on what moved, so the row records Stripe. This is the
  * same move the status handling below already makes: read the truth at handling
  * time instead of trusting something we carried in.
  */
-function chargedCents(event: Stripe.Event): number | null {
+function amountsOn(event: Stripe.Event): StripeAmounts {
   const o = event.data.object as Partial<Stripe.Checkout.Session> & Partial<Stripe.Subscription>;
 
-  if (typeof o.amount_total === 'number') return o.amount_total;
-
   const unit = o.items?.data?.[0]?.price?.unit_amount;
-  return typeof unit === 'number' ? unit : null;
+
+  return {
+    paidCents: typeof o.amount_total === 'number' ? o.amount_total : null,
+    planCents: typeof unit === 'number' ? unit : null,
+  };
 }
 
 async function upsertSubscription(params: {
   ownerId: string;
   tier: 'free' | 'paid';
   status: 'active' | 'cancelled';
-  /** What Stripe charged. Falls back to the list price only when absent. */
-  priceCents?: number | null;
+  /** What this event says about money. See `lib/billing/subscription-amount.ts`. */
+  amounts: StripeAmounts;
   stripeCustomerId?: string | null;
   stripeSubscriptionId?: string | null;
   currentPeriodEnd?: string | null;
@@ -78,18 +92,34 @@ async function upsertSubscription(params: {
       forever — see CONVERTED_FROM_COMP_COHORT in lib/billing/entitlements.ts
       for why that is the most expensive row in the table to mislabel.
 
-      Both writes are conditional on money having actually moved, which is what
-      `recordsPayment` means: a paid tier carrying a Stripe subscription id.
-      Writing them unconditionally would be the same corruption in the other
-      direction — a `customer.subscription.deleted` carries the plan's
-      `unit_amount`, so an unconditional write would stamp $119 onto a comped
-      row at the moment it ENDED and turn the gift into revenue on its way out.
+      `recordsPayment` means "this row now carries a live paid Stripe
+      subscription" — a paid tier plus a subscription id. It deliberately does
+      NOT mean "somebody was charged just now", and the first version of this
+      fix conflated the two: it bound the event's amount to this flag, and every
+      active `customer.subscription.updated` satisfies it, so the plan's list
+      price overwrote a discounted charge on the next event Stripe sent.
+      `amountsToWrite` now separates the two, and there are two amount slots
+      rather than one:
 
-      The cohort swap is a CASE rather than a read-then-write because the row is
-      not read first; the comparison has to happen where the value is, or two
-      concurrent events could each decide from a stale copy.
+        $10 — observed. Overwrites `price_cents` outright. Null unless somebody
+              was seen paying, so a price list can never displace a charge.
+        $11 — the gift-clearing amount. Lands ONLY where the row still carries
+              the comp's `0`, because `isComped` reads that zero as "gift" and
+              clearing the cohort alone leaves the row still reading as one.
+
+      Both are null when `recordsPayment` is false, which is what stops a
+      `customer.subscription.deleted` — it carries the plan's `unit_amount` too —
+      from stamping $119 onto a comped row at the moment it ENDED and turning
+      the gift into revenue on its way out.
+
+      The comparisons are CASEs rather than read-then-write because the row is
+      not read first; they have to happen where the value is, or two concurrent
+      events could each decide from a stale copy. Postgres evaluates every SET
+      expression against the OLD row, so the `cohort` and `price_cents` legs
+      both still see the pre-update values and the two markers clear together.
     */
     const recordsPayment = params.tier === 'paid' && Boolean(params.stripeSubscriptionId);
+    const { observedCents, ifStillAGiftCents } = amountsToWrite({ ...params.amounts, recordsPayment });
 
     await query(
       `UPDATE subscriptions
@@ -97,7 +127,11 @@ async function upsertSubscription(params: {
               stripe_subscription_id = COALESCE($5, stripe_subscription_id),
               current_period_end = COALESCE($6, current_period_end),
               cohort = CASE WHEN $7::boolean AND cohort = $8::text THEN $9::text ELSE cohort END,
-              price_cents = CASE WHEN $7::boolean THEN COALESCE($10::int, price_cents) ELSE price_cents END,
+              price_cents = CASE
+                              WHEN $10::int IS NOT NULL THEN $10::int
+                              WHEN $11::int IS NOT NULL AND price_cents = 0 THEN $11::int
+                              ELSE price_cents
+                            END,
               updated_at = now()
         WHERE id = $1`,
       [
@@ -110,7 +144,8 @@ async function upsertSubscription(params: {
         recordsPayment,
         COMP_COHORT,
         CONVERTED_FROM_COMP_COHORT,
-        recordsPayment ? (params.priceCents ?? null) : null,
+        observedCents,
+        ifStillAGiftCents,
       ],
     );
     return;
@@ -124,8 +159,9 @@ async function upsertSubscription(params: {
       params.ownerId,
       params.tier,
       params.status,
-      // The list price is the FALLBACK, not the record. See chargedCents().
-      params.priceCents ?? PRICE_YEARLY_CENTS,
+      // No existing value to protect on a new row, so the plan price is usable
+      // and the list price is the fallback. See firstRecordedCents().
+      firstRecordedCents(params.amounts),
       params.stripeCustomerId ?? null,
       params.stripeSubscriptionId ?? null,
       params.currentPeriodEnd ?? null,
@@ -307,7 +343,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           ownerId,
           tier: 'paid',
           status: 'active',
-          priceCents: chargedCents(event),
+          amounts: amountsOn(event),
           stripeCustomerId: typeof s.customer === 'string' ? s.customer : s.customer?.id,
           stripeSubscriptionId: typeof s.subscription === 'string' ? s.subscription : s.subscription?.id,
         });
@@ -352,7 +388,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           ownerId,
           tier: active ? 'paid' : 'free',
           status: active ? 'active' : 'cancelled',
-          priceCents: chargedCents(event),
+          amounts: amountsOn(event),
           stripeSubscriptionId: sub.id,
         });
 

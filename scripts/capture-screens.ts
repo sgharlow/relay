@@ -545,6 +545,28 @@ async function main(): Promise<void> {
     check('the owner checks in and the release closes', checkin.status === 200, `HTTP ${checkin.status}`);
   } finally {
     console.log('\n── cleanup ──');
+    /*
+      Ids FIRST, while the users rows still exist. Both closure paths below
+      remove them, and the audit rows they leave behind (see the audit paragraph
+      at the end of this block) are keyed on an owner id that nothing can look up
+      once the users row is gone — which is the same reason deleteAccount()
+      deletes that row last.
+    */
+    const fixtureEmails = `relay-shoot-%-${stamp}@relay.test`;
+    let fixtureIds: string[] = [];
+    try {
+      fixtureIds = (
+        await query<{ id: string }>(`SELECT id FROM users WHERE email LIKE $1`, [fixtureEmails])
+      ).rows.map((r) => r.id);
+    } catch (e) {
+      /*
+        Caught, and it is the first statement in the cleanup block for a reason:
+        an unhandled throw HERE would skip every closure below and leave three
+        real accounts on production — trading a tidy audit trail for the exact
+        leftover this whole block exists to prevent. Reported, never silent.
+      */
+      console.log(`  cleanup: could not list fixture ids: ${(e as Error).message}`);
+    }
     try { await closeContact(sarah); } catch (e) { console.log(`  cleanup sarah: ${(e as Error).message}`); }
     try { await closeContact(patel); } catch (e) { console.log(`  cleanup patel: ${(e as Error).message}`); }
     try { await closeOwner(owner); } catch (e) { console.log(`  cleanup owner: ${(e as Error).message}`); }
@@ -576,13 +598,55 @@ async function main(): Promise<void> {
       and the message says so.
     */
     const leftovers = await query<{ id: string; email: string }>(
-      `SELECT id, email FROM users WHERE email LIKE $1`, [`relay-shoot-%-${stamp}@relay.test`],
+      `SELECT id, email FROM users WHERE email LIKE $1`, [fixtureEmails],
     );
     for (const row of leftovers.rows) {
       await deleteAccount(row.id);
       console.log(`  purged leftover fixture user: ${row.email}`);
     }
     if (!leftovers.rows.length) console.log('  cluster clean: no fixture rows remain');
+
+    /*
+      🔴 AND THEN THE AUDIT LOG, WHICH BOTH CLOSURE PATHS KEEP ON PURPOSE.
+      Decided 2026-08-21, after the orphan census was made to stop failing on it.
+
+      `deleteAccount()` writes an `account_deleted` entry and RETAINS audit_log —
+      correctly, for a real person: closing an account must not erase the record
+      that it happened, and the privacy page says as much. A fixture is not a
+      real person. Margaret, Sarah and Dr Patel are addresses on a reserved
+      domain that exist for the length of one run, and what survives them is a
+      set of hash-chained rows on the PRODUCTION cluster whose owner_id points at
+      nobody — one set per reshoot, accumulating.
+
+      So this run cleans up after itself the way reset-demo.ts and family-arc.ts
+      already do — same rule, same reason, written down in all three now rather
+      than in two. The census (`npm run verify:orphans`) reports retained audit
+      rows as a NOTICE rather than a failure, which means nothing would ever have
+      complained about these: the reason to remove them is that they are litter,
+      not that something alarms on them.
+
+      Scoped to ids this run is known to have created — the three captured before
+      the closures, PLUS anything the backstop just swept, because a user minted
+      by an abandoned claim appears only in that second list and leaves an audit
+      trail just the same. `WHERE owner_id = $1` per id rather than an `IN` list:
+      no way to widen the reach by getting one string wrong.
+    */
+    try {
+      const purgeIds = new Set([...fixtureIds, ...leftovers.rows.map((r) => r.id)]);
+      let auditRowsRemoved = 0;
+      for (const id of purgeIds) {
+        const r = await query(`DELETE FROM audit_log WHERE owner_id = $1`, [id]);
+        auditRowsRemoved += r.rowCount ?? 0;
+      }
+      console.log(
+        `  removed ${auditRowsRemoved} retained audit row(s) for ${purgeIds.size} fixture account(s)`,
+      );
+    } catch (e) {
+      // Reported, never fatal: the pools and the browser below still have to be
+      // closed, and a stranded audit row is litter where a stranded process is a
+      // hung run.
+      console.log(`  cleanup: audit trail not removed: ${(e as Error).message}`);
+    }
     rmSync(tmp, { recursive: true, force: true });
     await browser.close();
     await closeAllPools();

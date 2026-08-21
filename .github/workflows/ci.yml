@@ -75,10 +75,16 @@ jobs:
       # with instrumentation, and fails the job when a threshold is breached.
       # Adding a second step would run ~3000 tests twice to learn one more fact.
       #
-      # It was measured before being switched on and passed with margin, which is
-      # precisely why turning it on cost nothing today and would only ever have
-      # cost more later. Proven to fail by planting a threshold above the real
-      # figure, not by passing once.
+      # The scope was measured before being widened, and the widened figure
+      # clears — but read lib/ops/coverage-scope.ts before trusting that
+      # sentence: the blended number is arithmetic over two subset runs, not a
+      # single run of the shipped config, and statements has under two points of
+      # margin. THIS STEP IS THE FIRST THING THAT EVALUATES THE THRESHOLDS AT
+      # ALL — `npm run gate` runs `vitest --run`, which does not read them — so
+      # a breach shows up here, on master, and nowhere earlier. Run
+      # `npm run test:coverage` locally before pushing anything that moves
+      # coverage. Proven to fail by planting a threshold above the real figure,
+      # not by passing once.
       - name: Test (with coverage thresholds enforced)
         run: npm run test:coverage
 

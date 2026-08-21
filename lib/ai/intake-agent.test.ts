@@ -339,8 +339,15 @@ describe('the batch cap is reported, not silent', () => {
 
       There is no "never scored" marker to batch against — `importance_score` is
       NOT NULL DEFAULT 0.5, so an unscored item is indistinguishable from one
-      scored at exactly 0.5, and adding a marker is a migration. What is fixable
-      here without one is the lie: the result now says what was left.
+      scored at exactly 0.5, and adding a marker is a migration.
+
+      ⚠️ SCOPE, added 2026-08-21: this asserts the LIBRARY's return value and
+      that is all it can assert. `src/app/api/ai/intake/route.ts` still returns
+      only `{ scored, warnings, results }`, so an owner with 301 items is still
+      told "300 scored" and nothing more. This test going green does not mean
+      the drop is visible to anyone — it means the number exists for a caller
+      to forward. Written first as "the result now says what was left", which
+      invited exactly that misreading.
     */
     mockMeta.mockResolvedValue(
       Array.from({ length: 7 }, (_, i) => meta({ id: `i${i}`, title: `T${i}` })),

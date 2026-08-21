@@ -21,13 +21,24 @@
  * MEASURED BEFORE WIDENING, 2026-08-21, so this is a change of scope and not a
  * change of standard. `lib` alone: 92.55% statements / 85.65% branches / 91.54%
  * functions / 93.89% lines. The 75 route handlers alone: 50.54 / 42.13 / 49.34
- * / 53.26. Blended — which is what CI now checks — 81.90 / 74.96 / 85.70 /
- * 83.47, against thresholds of 80 / 70 / 80 / 80. Every one clears, and
- * statements is the binding one, with under two points of margin.
+ * / 53.26. Weighting those two by their statement counts gives 81.90 / 74.96 /
+ * 85.70 / 83.47 against thresholds of 80 / 70 / 80 / 80.
  *
- * Re-derive rather than quoting those figures: `npm run test:coverage`. They
- * are here as the evidence for a decision taken on a date, not as a claim about
- * today.
+ * ⚠️ THAT LAST SET OF FOUR IS ARITHMETIC, NOT A MEASUREMENT, and the difference
+ * matters here. It is two subset runs combined on paper; no single run of the
+ * shipped config has produced it. Statements is the binding figure and it has
+ * under two points of margin, so the blend being a little optimistic is the
+ * difference between a green CI and a red one.
+ *
+ * The one command that turns it into a measurement is `npm run test:coverage`,
+ * and the first thing that will actually evaluate these thresholds is CI's own
+ * `test:coverage` step — `npm run gate` runs `vitest --run`, which reads
+ * `coverage.thresholds` not at all. So RUN IT BEFORE PUSHING anything that
+ * moves coverage. If statements lands under 80 the answer is tests on the
+ * weakest handlers, never a smaller threshold; see the paragraph below.
+ *
+ * Re-derive rather than quoting any of these figures. They are the evidence for
+ * a decision taken on a date, not a claim about today.
  *
  * ⚠️ IF WIDENING THE SCOPE HAD BREACHED A THRESHOLD, THE ANSWER WOULD HAVE BEEN
  * TESTS, NOT A SMALLER NUMBER. Lowering a threshold so a newly-visible layer
@@ -69,9 +80,10 @@ export const COVERAGE_EXCLUDE = [
 export const COVERAGE_UNMEASURED: Record<string, string> = {
   /*
     🔴 MEASURED 2026-08-21, AND THE NUMBER IS THE REASON. Widening the scope to
-    these ten modules as well as the route handlers puts the blended figure at
-    79.30% statements — under the 80 threshold. Routes alone blend to 81.90%,
-    which is why they are in and these are not.
+    these modules as well as the route handlers put the blended figure at 79.30%
+    statements — under the 80 threshold. Routes alone blend to 81.90%, which is
+    why they are in and these are not. (Both of those are the paper blend the
+    header describes, not a single run.)
 
     That is the finding, not a reason to move the threshold: lowering 80 so a
     newly-visible layer fits inside it is precisely how this guard became
@@ -83,11 +95,14 @@ export const COVERAGE_UNMEASURED: Record<string, string> = {
     which fails if an unmeasured area ever swallows the request layer again.
   */
   'src/app/**/*.ts !src/app/api/**':
-    'Ten non-route modules under src/app — page copy, analytics helpers, robots and sitemap. ' +
-    'They sit at 49.95% statements measured on 2026-08-21, and including them would put the ' +
-    'blended figure at 79.30%, below the threshold. Left out with the number recorded rather ' +
-    'than let in with the threshold lowered; the answer is tests, and this entry goes when ' +
-    'they exist.',
+    'The non-route modules under src/app — page copy, analytics helpers, robots and sitemap. ' +
+    "(Count them: `find src/app -name '*.ts' ! -name '*.test.ts' ! -name route.ts | wc -l`. A " +
+    'number was written here as a standing fact on 2026-08-21 and was wrong the same day, in ' +
+    'the file whose whole purpose is to stop a stale figure being quoted as the project\'s.) ' +
+    'They sat at 49.95% statements measured on 2026-08-21, and including them then would have ' +
+    'put the blended figure at 79.30%, below the threshold. Left out with the number recorded ' +
+    'rather than let in with the threshold lowered; the answer is tests, and this entry goes ' +
+    'when they exist.',
   'src/app/**/*.tsx':
     'Pages, layouts and client components. Their tests assert rendered output and copy rather ' +
     'than executing the module under instrumentation, so a percentage over them would measure ' +

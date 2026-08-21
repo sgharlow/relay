@@ -226,11 +226,27 @@ things here, firing it once was the only honest verification.
 
 ## The drill cadence, and the fact that nothing enforces it
 
-**Next due: 2026-09-05.** Owner: **both** — the AWS admin credentials are
-Steve's, the walk is Claude's.
+Owner: **both** — the AWS admin credentials are Steve's, the walk is Claude's.
 
-A restore drill is only evidence of the criteria that existed when it ran, and
-the criteria changed on 2026-08-19. The next one must include, in this order:
+**When.** Two dates argue for themselves and neither is enforced by anything
+yet, so both are written as derivations rather than as a figure:
+
+- *The cadence:* last drill **2026-08-08** + one quarter = **2026-11-08**.
+- *The trigger:* the criteria changed on **2026-08-19** (step 6, the unwrap),
+  which retired the 2026-08-08 run as evidence for the half that matters. A
+  drill whose criteria have been superseded is not a drill that is three months
+  fresh — so the cadence date is the ceiling, not the target.
+
+> 🔴 **A BARE `Next due: 2026-09-05` STOOD HERE for one day, in the same
+> paragraph that argues a date nothing enforces is only a note.** It was derived
+> from neither of the two facts above — not the quarter, not the criteria change
+> — and it was recorded in no register, so it would have gone stale exactly the
+> way the "quarterly" it complains about did. Removed 2026-08-21. The date that
+> counts is the one in `PROJECT.yaml`; until it is there, this section is a
+> proposal and says so.
+
+A restore drill is only evidence of the criteria that existed when it ran. The
+next one must include, in this order:
 
 1. `node scripts/backup-now.mjs` → restore to a scratch cluster (steps 1–5 above).
 2. `npm run verify:kms` — the key every vault is wrapped under is still present,
@@ -247,8 +263,14 @@ schedule one; `docs/backlog.md` carries the line; **`PROJECT.yaml` has no entry
 at all**, and ROADMAP's own §5 note says a finding recorded only in that file is
 one session away from being lost. Until D3 exists in `PROJECT.yaml` as a dated
 gate — the form `lib/ops/gates.test.ts` can turn red on, and
-`.github/workflows/date-guards.yml` now runs daily — this date is a note, and a
-note is what the last one was.
+`.github/workflows/date-guards.yml` now runs daily — everything above is a note,
+and a note is what the last one was.
+
+**The register entry this section is asking for** (Steve's to ratify, since it
+commits AWS admin time): a `d3-restore-drill` gate with the two dates above as
+`target` and `ratify_by`, an owner, and the four steps as its criteria. That is
+the only form that goes red on its own. `PROJECT.yaml` is not edited from this
+lane.
 
 ## Still open
 

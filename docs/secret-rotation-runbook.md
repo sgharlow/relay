@@ -38,21 +38,35 @@ happened.
 
 | Secret | Protects | Blast radius when rotated | Last set |
 |---|---|---|---|
-| `NEXTAUTH_SECRET` | owner sessions, step-up elevation, WebAuthn ceremonies, recovery enrolment | **Signs out every owner in the world.** See §1 | unknown |
-| `AUTH_SECRET` | the fallback name for the same value | as above — and see the trap in §1 | unknown |
-| `RECIPIENT_JWT_SECRET` | scoped recipient links to an open release | **Every live recipient link stops working.** See §2 | unknown |
-| `VERIFIER_JWT_SECRET` | verifier confirmation links (72h TTL) | **Every live verifier link stops working.** See §2 | unknown |
-| `CRON_SECRET` | `/api/cron/heartbeat` — the release sweep | the sweep stops until Vercel's cron config matches. See §3 | unknown |
-| `STRIPE_SECRET_KEY` | checkout, portal, subscription reads | new checkouts fail until redeployed; existing subscriptions unaffected | unknown |
-| `STRIPE_WEBHOOK_SECRET` | verifying Stripe's callbacks | **billing state silently stops reconciling.** See §4 | unknown |
-| `RESEND_API_KEY` | every outbound email | all mail stops. Loud, and the monitors catch it | unknown |
-| `RESEND_WEBHOOK_SECRET` | verifying Resend's delivery events | delivery telemetry stops; `/circle` reads `unknown` again | unknown |
-| `OPENAI_API_KEY` | the importance engine | intake analysis degrades; the vault is unaffected | unknown |
+| `NEXTAUTH_SECRET` | owner sessions, step-up elevation, WebAuthn ceremonies, recovery enrolment | **Signs out every owner in the world.** See §1 | **2026-06-24** |
+| `AUTH_SECRET` | the fallback name for the same value | as above — and see the trap in §1 | **not set in Vercel** — the fallback name is unused in production |
+| `RECIPIENT_JWT_SECRET` | scoped recipient links to an open release | **Every live recipient link stops working.** See §2 | **2026-06-24** |
+| `VERIFIER_JWT_SECRET` | verifier confirmation links (72h TTL) | **Every live verifier link stops working.** See §2 | **2026-06-24** |
+| `CRON_SECRET` | `/api/cron/heartbeat` — the release sweep | the sweep stops until Vercel's cron config matches. See §3 | **2026-06-24** |
+| `STRIPE_SECRET_KEY` | checkout, portal, subscription reads | new checkouts fail until redeployed; existing subscriptions unaffected | **2026-08-08** |
+| `STRIPE_WEBHOOK_SECRET` | verifying Stripe's callbacks | **billing state silently stops reconciling.** See §4 | **2026-08-08** |
+| `RESEND_API_KEY` | every outbound email | all mail stops. Loud, and the monitors catch it | **2026-06-24** |
+| `RESEND_WEBHOOK_SECRET` | verifying Resend's delivery events | delivery telemetry stops; `/circle` reads `unknown` again | **2026-08-14** |
+| `OPENAI_API_KEY` | the importance engine | intake analysis degrades; the vault is unaffected | **2026-06-24** |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` (Vercel → IAM `relay-runtime`) | the IAM identity for DSQL **and** KMS in production | **the whole product**. See §5 | **2026-06-24** |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` (`.env.local` → IAM `relay-dev`) | a laptop's read/write on product tables. No DDL, cannot write `caregiver_leads` | local walks and scripts stop; production unaffected | **2026-08-16** |
 | IAM `autospecai` access key (`~/.aws/credentials`, used by `.env.admin`) | **database admin** — migrations, roles, grants — plus IAM and KMS reads | migrations and every `verify:*` that needs `.env.admin` stop. Production unaffected: it does not hold this identity | **2025-06-29** |
 
-> ⚠️ **"unknown" is a finding, not a blank.** Fill a cell the moment you rotate one, and the table
+> ✅ **FILLED 2026-08-21 — every cell now carries a date, and D11 is closed.** The ten
+> Vercel-held values were read from the Vercel API (`GET /v9/projects/{id}/env` — `createdAt`
+> and `updatedAt` per key; values were never fetched). **Every key has `createdAt ==
+> updatedAt`, so nothing in production has ever been rotated** — the six dated 2026-06-24 are
+> 58 days old as of 2026-08-21. `AUTH_SECRET` is not set in Vercel at all, which is recorded
+> rather than left as `unknown`.
+>
+> ⚠️ **A Vercel date is when the value was PLACED, not when the upstream credential was
+> ISSUED.** A Resend or OpenAI key may be older than the day it was pasted in. For a rotation
+> clock that is the conservative direction — a value older than its placement is older, never
+> younger — so the dates below are a floor on age, not an estimate of it.
+>
+> Re-derive: `npx vercel env ls production` (relative ages) or the API call above (exact dates).
+>
+> ⚠️ **"unknown" was a finding, not a blank.** Fill a cell the moment you rotate one, and the table
 > starts being able to answer "are any of these old?". That is the whole reason the column exists
 > before there is anything to put in it.
 >
@@ -76,7 +90,7 @@ happened.
 > is unusually *safe*, because production does not hold it: the blast radius is this laptop's ability
 > to run migrations, not the live site.
 >
-> **Every row still reading `unknown` is Vercel-held** — the three dated cells are the two AWS
+> ~~**Every row still reading `unknown` is Vercel-held**~~ — ✅ none now do; see the banner above.
 > access-key rows and the admin key, which is the whole of what IAM can answer for you. Vercel
 > records a last-updated timestamp per environment variable, so the rest are discoverable too —
 > `vercel env ls` once the CLI is installed (`npm i -g vercel`), or read off the dashboard.

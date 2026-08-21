@@ -34,6 +34,7 @@
 
 import { query } from '../db/connection';
 import { writeAuditEntry } from '../audit/audit-service';
+import { USER_SELECTABLE_TRIGGER_TYPES } from '../domain/enums';
 import {
   notifyRecipientsOfClosure,
   notifyRecipientsOfRelease,
@@ -229,11 +230,51 @@ export async function runHeartbeatSweep(machine: Machine, deps: SweepDeps = {}):
   let failures = 0;
 
   for (const owner of overdue.rows) {
+    /*
+      🔴 THE CRON COULD START A TRIGGER THE PRODUCT NO LONGER OFFERS, added
+      2026-08-21 by the release review.
+
+      `/api/triggers/[id]/initiate` refuses a withdrawn type with a 400, and the
+      triggers screen tells an owner holding a legacy row that Relay "no longer
+      offers" it and "this trigger cannot be started". Both statements were true
+      of the OWNER and false of THIS QUERY, which read every armed row for an
+      overdue owner with no trigger_type predicate. An `estate` row predating the
+      2026-08-14 withdrawal (`g2-counsel-opinion` declined, permanent) would have
+      been armed here, every verifier mailed, and released on quorum — and estate
+      is not reversible, so `processCheckin` reports it `blocked` and stand-down
+      and cancel are both gated on `reversible`. The owner could not have stopped
+      what their own screen told them could not begin. The copy was false in
+      exactly the case it was shown.
+
+      The predicate is in the WHERE clause for the reason the demo exclusion
+      above records: a post-hoc filter in JS loads the row anyway and drifts the
+      moment a second caller appears. This is the same closed list every other
+      release-starting boundary already binds — /api/rules, /api/policies,
+      /api/demo/simulate and the initiate route — so the sweep was the one start
+      boundary that did not consult it, not a new rule invented here.
+
+      ⚠️ DELIBERATELY NOT APPLIED to `resolveElapsedGrace` below, and the
+      asymmetry is the argument rather than an oversight. This guard stops a
+      withdrawn arrangement being STARTED. A legacy row already in GRACE with
+      quorum met has been started and answered; filtering it out of the resolver
+      would strand it in GRACE permanently, with no stand-down path and nobody
+      told — trading a visible completion for silent limbo. Finishing what is
+      already in flight is the safer direction; refusing to begin is where the
+      product's promise actually lives.
+
+      ⚠️ AND IT DOES NOT CLOSE THE HARDER GAP, so nobody mistakes it for cover:
+      an overdue owner's `emergency` row still arms, still releases, and nothing
+      auto-closes a released state — a deceased owner's emergency access opens
+      and stays open. That is the limitation `lib/domain/enums.ts` records, and
+      it is untouched by this. Narrowing the type list was never going to fix it.
+    */
     const armed = await query<ArmedRow>(
       `SELECT id, trigger_type, version
          FROM release_state
-        WHERE owner_id = $1 AND state = 'armed'`,
-      [owner.id],
+        WHERE owner_id = $1
+          AND state = 'armed'
+          AND trigger_type = ANY($2)`,
+      [owner.id, [...USER_SELECTABLE_TRIGGER_TYPES]],
     );
     for (const rs of armed.rows) {
       const ok = await armOne(machine, rs, owner.id, now, sleep);

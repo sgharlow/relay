@@ -60,19 +60,36 @@ same document, and `scripts/guide-pdf.mjs` exists because the two were able to d
 > Added 2026-08-21. **This is an open decision, not a finding with a fix**, and it belongs to Steve
 > before the flip rather than after it.
 
-`assertCanRelease` is called in exactly **one** place — `lib/release/triggers.ts:126`, inside
-`initiateTrigger`. Found by grepping `assertCanRelease` across `lib/`, `src/` and `scripts/`, the
-same way the three artifacts above were found. But `armed → pending` is reached from **four**
-places, and `lib/release/*.ts` imports nothing from `lib/billing` except that one file:
+`assertCanRelease` is called in exactly **one** place — inside `initiateTrigger`, in
+`lib/release/triggers.ts`. Found by grepping `assertCanRelease` across `lib/`, `src/` and
+`scripts/`, the same way the three artifacts above were found. But `armed → pending` is reached from
+**four** places, and `lib/release/*.ts` imports nothing from `lib/billing` except that one file:
 
-| # | Path | Where | Who starts it | Gated today |
-|---|---|---|---|---|
-| 1 | Owner presses Initiate | `lib/release/triggers.ts:135` | the owner, deliberately | ✅ yes |
-| 2 | Missed check-in | `lib/release/heartbeat.ts:287` | the **cron**, on silence | ❌ no |
-| 3 | Owner consents to an access request | `lib/release/challenge.ts:96` | a recipient asks, the owner agrees | ❌ no |
-| 4 | Owner silent on a challenge | `lib/release/escalation.ts:109` | **nobody** — the clock | ❌ no |
+| # | Path | File | Function | Who starts it | Gated today |
+|---|---|---|---|---|---|
+| 1 | Owner presses Initiate | `lib/release/triggers.ts` | `initiateTrigger` | the owner, deliberately | ✅ yes |
+| 2 | Missed check-in | `lib/release/heartbeat.ts` | the missed check-in sweep | the **cron**, on silence | ❌ no |
+| 3 | Owner consents to an access request | `lib/release/challenge.ts` | the consent handler | a recipient asks, the owner agrees | ❌ no |
+| 4 | Owner silent on a challenge | `lib/release/escalation.ts` | the escalation timeout | **nobody** — the clock | ❌ no |
 
-(`lib/release/simulate.ts:70` is a fifth transition and is not in scope: it is the demo control,
+Re-derive the list rather than trusting this table. The paths are the transitions out of `armed`,
+and finding them is two commands:
+
+```bash
+# every path that starts a release, and every place the gate is actually applied
+grep -rn "'armed', 'pending'" lib/release/ | grep -v '\.test\.'
+grep -rn "assertCanRelease" lib/ src/ scripts/ | grep -v '\.test\.'
+```
+
+> ⚠️ **This table carried line numbers when it was written on 2026-08-21, and two of them were
+> already wrong in the same working tree that produced them** — nine lines were added above
+> `assertCanRelease` by other work in the same sitting, so `triggers.ts:135` had moved from being
+> path 1's transition to being the gate call itself: the most confusing possible way to be wrong.
+> The offsets are gone rather than corrected, because a corrected offset buys a day at most — the
+> ruling this page is written for is dated **2026-10-01**. This is the repo's own "volatile numbers
+> live in one place" rule firing inside the commit that introduced the violation.
+
+(`lib/release/simulate.ts` holds a fifth transition and is not in scope: it is the demo control,
 route-gated to demo accounts, and `getEntitlement` resolves a demo account to `paid` regardless.)
 
 **So after the flip, a free or lapsed owner cannot press Initiate — and a missed check-in, an

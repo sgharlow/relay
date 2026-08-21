@@ -23,7 +23,7 @@ import { upsertUser, type UserRecord } from './upsert-user';
 import { openChallenge, finishAuthentication } from './webauthn';
 import { claimStandbyRole } from '../people/claim';
 import { redeemBreakGlass } from '../people/break-glass';
-import { readSessionEpoch } from './session-epoch';
+import { readSessionEpoch, isSessionCurrent } from './session-epoch';
 import { query } from '../db/connection';
 import {
   checkSigninAllowed,
@@ -67,10 +67,27 @@ function sourceAddress(headers: Record<string, unknown> | undefined): string | n
  * The multi-hat rule it was written for is real (§3.7 rule 2: a person who is
  * already someone here must LINK a second relationship, never mint a second
  * account, because a second `users` row severs every standby link they hold).
- * What was wrong was the SOURCE of the answer. `/api/invitations/[token]` already
- * had it right — it derives the id from `getOwnerSession()`. This is that same
- * rule, spelled for a place where there is no session helper: authorization is
- * read against the caller, never asserted by the caller.
+ * What was wrong was the SOURCE of the answer: authorization is read against the
+ * caller, never asserted by the caller.
+ *
+ * 🔴 AND A COOKIE THAT OPENS IS NOT A SESSION THAT IS STILL GOOD — the second
+ * half, added the same day after the first was reviewed. Until then this
+ * function decoded the JWE and returned `ownerId ?? sub`, and stopped. Every
+ * OTHER reader of a Relay session goes through `getOwnerSession`
+ * (lib/auth/session.ts), which does two things: it opens the token AND asks
+ * `isSessionCurrent` — the revocation lever built after the proven 2026-08-12
+ * incident, where a DELETED user's cookie was still answered 200. Doing only the
+ * first left the takeover open in exactly the dimension the fix claimed to
+ * close: hold a stolen cookie, let the owner press "sign out everywhere", then
+ * spend any valid unclaimed code with that dead cookie attached. The roster row
+ * bound to the victim's id and the `jwt` callback below stamped a FRESH
+ * `sessionEpoch` read live from the database — laundering a revoked cookie into
+ * a current session.
+ *
+ * ⚠️ It is NOT `getOwnerSession` itself, and cannot be: that helper reads the
+ * request out of `next/headers` and throws a `NextResponse`, neither of which
+ * belongs inside a NextAuth provider. This is the same two-step, spelled for a
+ * place where there is no session helper.
  *
  * ⚠️ NextAuth v4 hands `authorize` `{ query, body, headers, method }` and NO
  * `cookies`, and `getToken` reads `req.cookies` rather than parsing the header
@@ -78,8 +95,17 @@ function sourceAddress(headers: Record<string, unknown> | undefined): string | n
  *
  * FAILING TO READ A SESSION MEANS "NOT SIGNED IN", never "signed in as someone
  * else": every path out of here returns either an id the cookie cryptographically
- * proves or `undefined`, which mints a fresh identity — the behaviour every
- * browser claim already had.
+ * proves AND the database still honours, or `undefined`, which mints a fresh
+ * identity — the behaviour every browser claim already had.
+ *
+ * ⚠️ WHAT THIS STILL DOES NOT DECIDE, stated so nobody reads it as more than it
+ * is: whether the person at the keyboard MEANT to claim as whoever this browser
+ * is signed in as. `/claim` fires automatically on load, so on a shared device
+ * the answer here is "the owner" without anyone being asked. That is a real
+ * defect and it is open — the guard belongs where the mistake lands
+ * (lib/people/claim.ts and lib/people/break-glass.ts refusing a claimant who is
+ * the roster's own owner) and where the question can be asked
+ * (src/app/(access)/claim/ClaimClient.tsx). Reported, not fixed here.
  */
 async function callerUserId(
   headers: Record<string, unknown> | undefined,
@@ -116,7 +142,23 @@ async function callerUserId(
       secret: process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET,
     });
     const id = token?.ownerId ?? token?.sub;
-    return typeof id === 'string' && id ? id : undefined;
+    if (typeof id !== 'string' || !id) return undefined;
+
+    /*
+      Revocation, read live. `isSessionCurrent` denies for a deleted user and for
+      a session minted before the last epoch bump, and denies when the lookup
+      itself fails — so a database blip costs a claimant a link, never a stranger
+      an identity. An absent `sessionEpoch` (a session minted before that column
+      shipped) is honoured against an unbumped user, which is that function's own
+      documented rule and the reason one bump still signs those sessions out.
+
+      INSIDE the try on purpose: if this ever throws rather than returning false,
+      the catch below is the same fail direction, not a 500 on the claim path.
+    */
+    if (!(await isSessionCurrent(id, token?.sessionEpoch as number | undefined))) {
+      return undefined;
+    }
+    return id;
   } catch (err) {
     console.warn('[auth] could not read the caller session; claiming as a new identity:', err);
     return undefined;
@@ -301,6 +343,17 @@ export const authOptions: NextAuthOptions = {
      * their session cookie via `callerUserId` and NOT from an `existingUserId`
      * form field, which until 2026-08-21 it did — see that function's header for
      * the takeover it allowed.
+     *
+     * ⚠️ AND THAT LINKING IS NEW BEHAVIOUR IN THE BROWSER, not a restoration.
+     * The rule was implemented on `POST /api/invitations/[token]`, and nothing
+     * in the product has ever called it: `grep` over `src/` and `scripts/` finds
+     * only `/opened`, and `ClaimClient.tsx` claims through THIS provider. So
+     * before 2026-08-21 a signed-in browser claiming a second relationship got a
+     * second `users` row, and from that date it links. That is the intended rule
+     * finally running — and running for the first time, which is a different
+     * risk from a fix, because `/claim` fires `signIn()` from a `useEffect` on
+     * page load and therefore never asks the visitor who they are. See the tail
+     * of `callerUserId`'s header for the half of that still open.
      */
     CredentialsProvider({
       id: 'standby-claim',

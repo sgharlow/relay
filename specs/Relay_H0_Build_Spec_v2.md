@@ -57,11 +57,19 @@
 >
 > ### Still authoritative
 >
-> The positioning and one-liner (§1), the wedge argument (§23 "pick one wedge — the caregiver"), the
+> The positioning (§1), the wedge argument (§23 "pick one wedge — the caregiver"), the
 > crypto and zero-knowledge posture (§9), the competitive analysis (§25), and the functional
 > requirements other than FR13. Where this spec and a ratified decision disagree, **the ratified
 > decision wins** — `PROJECT.yaml → ratified` / `gates` is the contract file, and `ROADMAP.md` is the
 > current plan.
+>
+> ⚠️ **The §1 one-liner is the exception, and it was inside this list until 2026-08-21.** It ends
+> *"…a hospital stay, a trip, an emergency, or one day, your estate"* — customer-facing copy offering
+> the withdrawn capability, sitting under a heading declaring it current. **A supersession banner is
+> only as good as its "still authoritative" list**: naming a section as safe is a positive claim, and
+> this one endorsed the very copy the section above it withdraws. The clause is struck at §1 and the
+> live one-liner is `src/app/layout.tsx`'s `SITE_DESCRIPTION`, which `lib/ops/gates.test.ts` checks
+> for exactly this word.
 
 *Standby access for the people who'll need it — when you can't be there.*
 
@@ -98,7 +106,7 @@
 | **Hero database** | Amazon Aurora DSQL (multi-region active-active) |
 | **Frontend** | Next.js (App Router), deployed on Vercel |
 | **Crypto** | Client-side envelope encryption via AWS KMS (MVP); threshold secret-sharing (stretch) |
-| **One-liner** | "Set up standby access to everything that matters, so the right person can get in the moment you can't — a hospital stay, a trip, an emergency, or one day, your estate." |
+| **One-liner** | "Set up standby access to everything that matters, so the right person can get in the moment you can't — a hospital stay, a trip, an emergency ~~, or one day, your estate~~." **Estate clause struck 2026-08-21** (withdrawn 2026-08-14, `PROJECT.yaml → gates.g2-counsel-opinion.declined`). Do not paste this line anywhere with the clause restored; the shipping one-liner is `SITE_DESCRIPTION` in `src/app/layout.tsx`. |
 
 ---
 

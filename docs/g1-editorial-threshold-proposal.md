@@ -1,6 +1,21 @@
-# Editorial-instrument thresholds — PROPOSAL, deferred to 2026-11-30
+# Editorial-instrument thresholds — RATIFIED 2026-08-20
 
-> 🗓️ **RULED 2026-08-18 BY STEVE: DO NOT RATIFY YET. Revisit 2026-11-30.** The numbers below are
+> ✅ **RATIFIED 2026-08-20 BY STEVE, AS PROPOSED.** Pass ≥ 6% at N ≥ 50 cumulative · kill < 2%
+> at N ≥ 150 cumulative · no read below N = 50. Authority: `PROJECT.yaml →
+> gates.g1-arms-length-demand.editorial_instrument`, recorded by
+> `ratified.g1-editorial-thresholds-ratified`.
+>
+> **This REVERSES the 2026-08-18 deferral below**, on Steve's explicit confirmation after the
+> reversal was named as one rather than presented as a fresh decision. The 08-18 reasoning —
+> that every figure here is a prior rather than a measurement — is still true and is accepted:
+> a prior chosen blind is a threshold, a number chosen after the read is a rationalisation.
+>
+> ⚠️ **`GATE_LANES` is still empty. Ratifying the number does not declare a lane.** An `ed-*`
+> src enters `GATE_LANES` only in the commit that records a placement going live. From here
+> these numbers change only by a recorded ruling.
+
+
+> 🗓️ ~~**RULED 2026-08-18 BY STEVE: DO NOT RATIFY YET. Revisit 2026-11-30.**~~ **SUPERSEDED 2026-08-20 — see the banner at the top. Kept as the record of what was ruled and why.** The numbers below are
 > unchanged — the decision is about *when they become binding*, not about what they are. Recorded
 > in `PROJECT.yaml → ratified.g1-editorial-thresholds-deferred`, which is authoritative; this
 > banner points at it rather than restating its reasoning.
@@ -16,7 +31,7 @@
 > two honest moves: ratify these numbers in the same commit, or record why the lane counts without
 > them.
 
-> **Status: DRAFT — not ratified, not in force.** Written 2026-08-18 to close the open task
+> **Status: ~~DRAFT — not ratified, not in force.~~ RATIFIED 2026-08-20.** Written 2026-08-18 to close the open task
 > `PROJECT.yaml → gates.g1-caregiver-wtp.instrument_retired.thresholds_do_not_transfer`:
 > *"RE-DERIVING the threshold and N for the editorial instrument is an OPEN TASK owned by Steve,
 > and it must be done BEFORE the first placement goes live so the number cannot be

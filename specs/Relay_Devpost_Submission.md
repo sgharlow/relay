@@ -1,5 +1,27 @@
 # Relay — Devpost Submission Pack
 
+> ## ⛔ HISTORICAL — DO NOT PASTE THIS ANYWHERE NEW (banner added 2026-08-21)
+>
+> This is the copy that was submitted to H0 in June 2026 and it is kept as the record of that
+> submission. **It is not current marketing copy**, and it is the only file in `specs/` written to be
+> pasted verbatim into a public surface — which makes a stale line here more expensive than a stale
+> line in a design document.
+>
+> 🔴 **Every "estate" mention below describes a capability the product no longer has.** Estate was
+> withdrawn permanently on 2026-08-14 (`PROJECT.yaml → gates.g2-counsel-opinion.declined` — the gate
+> was closed by removing the capability it guarded, not by satisfying it). The `estate` trigger type
+> cannot be selected; `POST /api/rules` refuses it. So: *"a verified estate event"* as a trigger
+> (struck below), *"estate handoff as the final case of the same mechanism"*, *"a permanent estate
+> handoff"*, *"expands naturally into the estate handoff later"* and the activation-fee-on-estate
+> pricing line are all **withdrawn**, not roadmap.
+>
+> **If any of this text is reused** — a directory listing, an awards page, a pitch — take the current
+> wording from `src/app/layout.tsx` (`SITE_DESCRIPTION`) and the live site, not from here.
+> `lib/ops/gates.test.ts` guards those; it does not read `specs/`.
+>
+> Nothing below has been rewritten. A submission record that has been edited to look better in
+> hindsight stops being a record.
+
 Copy each block into the matching Devpost field. Track: **Monetizable B2C** (locked — the build spec's "Track 1 — Monetizable B2C" is the same track). AWS Database: **Amazon Aurora DSQL**.
 
 ---
@@ -13,7 +35,7 @@ Standby access for the people who'll need it — set up who can reach what, and 
 When someone is suddenly in surgery, traveling and unreachable, or gone, the people who depend on them hit a wall: they can't get into the bank, the insurance portal, the kids' school account, or the family documents — and the platforms each have their own slow, fragmented process. Existing tools are built around death, so people avoid them and never finish setup. We flipped it: Relay is about *living* continuity — emergencies, travel, caregiving, business continuity — with estate handoff as the final case of the same mechanism. That reframing is also what makes it something people actually use.
 
 ## What it does
-Relay lets you build an encrypted vault of accounts, credentials, documents, and instructions, then assign **scoped, reversible access** to the right people under rules you set. When a trigger fires — a missed check-in, a manual emergency request, or a verified estate event — Relay moves through a controlled release process (notify the owner, require N-of-M trusted verifiers, observe a grace window) and only then opens a guided, prioritized access dashboard to the recipient. Emergencies are reversible: when you recover and check in, access closes automatically.
+Relay lets you build an encrypted vault of accounts, credentials, documents, and instructions, then assign **scoped, reversible access** to the right people under rules you set. When a trigger fires — a missed check-in or a manual emergency request ~~, or a verified estate event~~ — Relay moves through a controlled release process (notify the owner, require N-of-M trusted verifiers, observe a grace window) and only then opens a guided, prioritized access dashboard to the recipient. Emergencies are reversible: when you recover and check in, access closes automatically.
 
 Two things make it more than a vault:
 - **An importance engine** turns a bulk import into focus. Import a password-manager export and dozens of accounts populate instantly; Relay ranks them by what matters in a crisis and surfaces the few that count — including the risk-graph insight that your primary email is the key that unlocks most password resets.

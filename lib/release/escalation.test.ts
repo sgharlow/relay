@@ -284,4 +284,33 @@ describe('escalateLapsedRequests — the sweep', () => {
     expect(out).toHaveLength(1);
     expect(out[0].requestId).toBe('req-2');
   });
+
+  /*
+    ...AND IT SAYS SO. The catch above was a bare `catch {}` until 2026-08-21:
+    an escalation that failed for every request on every run still produced a
+    healthy ledger row, because that row carries only the ARMED→PENDING
+    counters. The owner was never challenged, the verifiers were never asked,
+    and nothing anywhere said so.
+
+    The twin change in `heartbeat.ts` got a test for exactly this and this leg
+    did not, so nothing failed if somebody restored the bare catch — which is
+    the only regression the line exists to prevent. The string appearing
+    incidentally in the suite's stderr is not an assertion.
+
+    Both halves are asserted: WHICH request failed, and WHY. A log line naming
+    neither is a line an operator cannot act on.
+  */
+  it('writes the failure to stderr instead of swallowing it silently', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: 'req-1' }] } as never);
+    mockQuery.mockRejectedValueOnce(new Error('conflict'));
+    const stderr = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
+
+    const machine = machineStub();
+    await expect(escalateLapsedRequests(machine, now)).resolves.toHaveLength(0);
+
+    const written = stderr.mock.calls.map((c) => String(c[0])).join('');
+    stderr.mockRestore();
+    expect(written).toContain('req-1');
+    expect(written).toContain('conflict');
+  });
 });

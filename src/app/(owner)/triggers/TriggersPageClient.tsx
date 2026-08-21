@@ -285,6 +285,52 @@ function SimulatePanel({ onDone }: { onDone: () => Promise<void> }) {
   );
 }
 
+/**
+ * What a legacy row of a WITHDRAWN trigger type says about itself, per state.
+ * `null` means the state already explains itself elsewhere on the card.
+ *
+ * A pure function, and exported, so the gate can be asserted state by state
+ * rather than by grepping the file for the word "withdrawn" — the first version
+ * of this notice was gated `!reversible && rs.state === 'armed'` and a test that
+ * only looked for the word passed while PENDING, GRACE and RELEASED rendered a
+ * badge, no controls, and no explanation.
+ *
+ * ⚠️ EVERY SENTENCE HERE IS A CLAIM ABOUT CODE ELSEWHERE. "Cannot be started"
+ * holds because `/api/triggers/[id]/initiate` refuses a non-user-selectable type
+ * AND because `runHeartbeatSweep` binds `USER_SELECTABLE_TRIGGER_TYPES` in its
+ * armed-row read — it did not, until 2026-08-21, and this sentence was false on
+ * the cron path for the week it shipped. "Checking in will not stand it down"
+ * holds because `processCheckin` reports a non-reversible row as `blocked`. If
+ * either of those changes, this copy is a defect, not a stale comment.
+ */
+export function withdrawnNotice(triggerType: string, state: string): string | null {
+  if (triggerType !== 'estate') return null;
+  switch (state) {
+    case 'armed':
+      return (
+        `Withdrawn. Relay no longer offers ${triggerType} arrangements, and this trigger cannot ` +
+        `be started — not by you, and not by the check-in schedule. Nothing you set aside has ` +
+        `been changed or shared.`
+      );
+    case 'pending':
+    case 'grace':
+      return (
+        `Withdrawn. Relay no longer offers ${triggerType} arrangements. This one started before ` +
+        `that decision and is still running: checking in will not stand it down, because ` +
+        `${triggerType} was never reversible.`
+      );
+    case 'released':
+      return (
+        `Withdrawn. Relay no longer offers ${triggerType} arrangements. This one completed before ` +
+        `that decision, and the access it opened stays open — checking in does not close it, ` +
+        `because ${triggerType} was never reversible.`
+      );
+    // CANCELLED has its own paragraph, which renders for every trigger type.
+    default:
+      return null;
+  }
+}
+
 function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promise<void> }) {
   const reversible = rs.trigger_type !== 'estate';
   const [n, setN] = useState(String(rs.required_confirmations));
@@ -419,7 +465,8 @@ function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promi
         that owner — every rule that uses it, every recipient — not "this
         recipient".
 
-        docs/user-journeys.md:1598 specifies the other resolution: re-arming
+        The J9 state-machine note in docs/user-journeys.md ("CANCELLED is
+        terminal") specifies the other resolution: re-arming
         provisions a NEW release_state row. Nothing implements that, and building
         it is a state-model change, not a copy fix. Until someone rules on it,
         the screen describes what the product does. Guarded by
@@ -467,11 +514,31 @@ function TriggerCard({ rs, onChange }: { rs: ReleaseState; onChange: () => Promi
         a badge with no controls and no explanation reads as a bug rather than
         as a decision, so it says what happened. Guarded by
         estate-is-withdrawn.test.ts.
+
+        🔴 TWICE CORRECTED THE SAME DAY, and both corrections are the same
+        mistake in different clothes — a sentence asserting a safety property
+        nothing enforced.
+
+        (1) The replacement read "this trigger cannot be started", which was true
+        of the OWNER and false of the CRON: `runHeartbeatSweep` read every armed
+        row for an overdue owner with no trigger_type predicate, so the one case
+        this paragraph renders in — a legacy armed row — is the exact case where
+        the schedule could still fire it, mail every verifier, and release on
+        quorum with no stand-down available. Fixed where the mistake happens: the
+        sweep now binds `USER_SELECTABLE_TRIGGER_TYPES` in its WHERE clause
+        (lib/release/heartbeat.ts), so the sentence is now earned rather than
+        asserted, and it says "not by the check-in schedule" out loud.
+
+        (2) It was gated `!reversible && rs.state === 'armed'`, so PENDING, GRACE
+        and RELEASED — the three states where something is actually in motion and
+        stand-down and cancel are both gated on `reversible` — got the badge with
+        no controls and no explanation this very comment says it was avoiding.
+        The notice is `withdrawnNotice()` now, a pure function with a sentence per
+        state, so the gate is asserted per state instead of grepped for a word.
       */}
-      {!reversible && rs.state === 'armed' ? (
+      {withdrawnNotice(rs.trigger_type, rs.state) ? (
         <p className="mt-2 text-t1 leading-relaxed text-muted">
-          Withdrawn. Relay no longer offers {rs.trigger_type} arrangements and this trigger cannot
-          be started. Nothing you set aside has been changed or shared.
+          {withdrawnNotice(rs.trigger_type, rs.state)}
         </p>
       ) : null}
 

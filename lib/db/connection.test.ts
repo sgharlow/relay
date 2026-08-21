@@ -319,6 +319,61 @@ describe('query() connection-error failover', () => {
     expect(isPrimaryUnhealthy(), 'the rotation must still happen — only the replay is dropped').toBe(true);
   });
 
+  it('does NOT replay a WRITE after ETIMEDOUT, whatever the message says', async () => {
+    /*
+      🔴 THE FIX ABOVE LEAKED THROUGH ITS OTHER HALF, found 2026-08-21 by
+      review. `isPreSendConnectError` matched on MESSAGE as well as errno, and
+      `query()` consulted it FIRST — so an error carrying `code: 'ETIMEDOUT'`
+      whose text happened to contain "connection timeout" was classified
+      pre-send and the WRITE was replayed on the secondary anyway. ETIMEDOUT is
+      one of the two codes the change names as post-send-possible; for that code
+      the defect was still open.
+
+      The two tests above at "retries on secondary when primary throws
+      ETIMEDOUT" and "marks primary unhealthy after a connection error" build
+      exactly this error object and passed throughout, because both issue
+      `SELECT 1` — a replayable read takes the same branch either way and hides
+      which predicate answered. The errno now wins over the message heuristic,
+      inside `isPreSendConnectError` itself rather than at the call site.
+    */
+    const timedOut = Object.assign(new Error('connection timeout'), { code: 'ETIMEDOUT' });
+
+    const primary = makeMockPool({ totalCount: 1, query: vi.fn().mockRejectedValue(timedOut) });
+    const secondary = makeMockPool({ query: vi.fn().mockResolvedValue({ rows: [], rowCount: 1 }) });
+    _setPoolsForTesting(primary, secondary);
+    process.env.DSQL_USE_SECONDARY = 'false';
+
+    await expect(
+      query('INSERT INTO vault_items (owner_id, label) VALUES ($1, $2)', ['o', 'x']),
+    ).rejects.toThrow('connection timeout');
+
+    expect(
+      secondary.query,
+      'an ETIMEDOUT write was replayed — the message beat the errno',
+    ).not.toHaveBeenCalled();
+    expect(isPrimaryUnhealthy(), 'the rotation must still happen').toBe(true);
+  });
+
+  it("DOES replay a write on pg's real connect-timeout error, which carries no errno", async () => {
+    /*
+      The reason the message heuristic is kept rather than deleted. pg-pool
+      raises `new Error('Connection terminated due to connection timeout')` and
+      `new Error('timeout exceeded when trying to connect')` when
+      `connectionTimeoutMillis` expires — genuinely PRE-send, and neither
+      carries a `code`, so the errno rule above never sees them. Deleting the
+      substring would have turned a proven at-most-once failover into a 500.
+    */
+    const connectTimeout = new Error('Connection terminated due to connection timeout');
+
+    const primary = makeMockPool({ totalCount: 1, query: vi.fn().mockRejectedValue(connectTimeout) });
+    const secondary = makeMockPool({ query: vi.fn().mockResolvedValue({ rows: [], rowCount: 1 }) });
+    _setPoolsForTesting(primary, secondary);
+    process.env.DSQL_USE_SECONDARY = 'false';
+
+    await query('INSERT INTO vault_items (owner_id, label) VALUES ($1, $2)', ['o', 'x']);
+    expect(secondary.query).toHaveBeenCalledTimes(1);
+  });
+
   it('DOES replay a read on the secondary after ECONNRESET', async () => {
     // A SELECT is idempotent by construction, so the availability half of the
     // failover is kept where it costs nothing.

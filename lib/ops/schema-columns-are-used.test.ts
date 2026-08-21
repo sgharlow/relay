@@ -338,14 +338,29 @@ describe('a column the application only ever writes is not a column it uses', ()
   });
 
   it('the allow-list only lists columns that really are write-only', () => {
-    // The direction that rots: a listed column later given a reader leaves a
-    // stale claim behind that would hide the next regression on the same column.
+    /*
+      The direction that rots: a listed column later given a reader leaves a
+      stale claim behind that would hide the next regression on the same column.
+
+      ⚠️ AND IT IS A TRIPWIRE, ON PURPOSE, WHICH IS WORTH SAYING OUT LOUD. Five of
+      the seven entries name a surface that OWES the read — the passkey list, the
+      circle-readiness question, the billing page. The day one of them is built,
+      this test goes red on an improvement. That is the intended behaviour and
+      not a regression: the entry has become a false claim, and deleting it is
+      part of shipping the reader. The message below says so rather than leaving
+      whoever meets it to work out that the guard is congratulating them.
+    */
     const stillWriteOnly = new Set(writeOnly());
     const nowRead = Object.keys(WRITE_ONLY_BY_DESIGN).filter((k) => !stillWriteOnly.has(k));
     expect(
       nowRead,
-      'These are on the write-only allow-list but something reads them now — delete the entry: ' +
-        nowRead.join(', '),
+      nowRead.length
+        ? 'These are on the write-only allow-list and something reads them now:\n' +
+          nowRead.map((k) => `  ${k}`).join('\n') +
+          '\n\nTHE REPAIR IS TO DELETE THE ENTRY, not to debug the reader. Each entry is a claim ' +
+          'that nothing reads the column; a reader appearing means the claim expired, which is ' +
+          'the outcome the entry asked for. Nothing else in this file needs changing.'
+        : 'ok',
     ).toEqual([]);
   });
 

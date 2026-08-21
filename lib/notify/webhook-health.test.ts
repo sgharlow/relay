@@ -18,7 +18,12 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { getDeliveryWebhookHealth, SETTLE_MS, WINDOW_MS } from './webhook-health';
+import {
+  getDeliveryWebhookHealth,
+  SETTLE_MS,
+  WINDOW_MS,
+  REFUSAL_SAMPLE_LIMIT,
+} from './webhook-health';
 import { query } from '../db/connection';
 
 vi.mock('../db/connection', () => ({ query: vi.fn() }));
@@ -42,7 +47,12 @@ function state(opts: {
   heard?: number;
   attempts?: number;
   orphans?: number;
-  refused?: number;
+  /**
+   * The refusal ROWS, as the fourth query returns them: newest first, each one
+   * carrying the class `refusalMarker` wrote. Classes rather than a bare count,
+   * because which refusal it was is now the whole question.
+   */
+  refusals?: { cls: string; hoursAgo: number }[];
   acceptedSince?: number;
 }) {
   const {
@@ -56,16 +66,21 @@ function state(opts: {
     orphans = 0,
     // …and the provider is accepting. `acceptedSince` only means anything when
     // there is a refusal for it to be "since".
-    refused = 0,
+    refusals = [],
     acceptedSince = 0,
   } = opts;
+  const refusalRows = [...refusals]
+    .sort((a, b) => a.hoursAgo - b.hoursAgo) // newest first, as ORDER BY … DESC
+    .map((r, i) => ({
+      provider_id: `refused:${r.cls}:0000000${i}-0000-4000-8000-000000000000`,
+      occurred_at: agoHours(r.hoursAgo),
+    }));
   mockQuery
     .mockResolvedValueOnce(rows([{ n: String(totalEvents), newest }]))
     .mockResolvedValueOnce(rows([{ ripe: String(ripe), heard: String(heard) }]))
     .mockResolvedValueOnce(rows([{ attempts: String(attempts), orphans: String(orphans) }]))
-    .mockResolvedValueOnce(
-      rows([{ refused: String(refused), accepted_since: String(acceptedSince) }]),
-    );
+    .mockResolvedValueOnce(rows(refusalRows))
+    .mockResolvedValueOnce(rows([{ n: String(acceptedSince) }]));
 }
 
 beforeEach(() => mockQuery.mockReset());
@@ -259,24 +274,39 @@ describe('getDeliveryWebhookHealth', () => {
  * notices."
  *
  * The condition is "refusals happened and NOTHING has been accepted since the
- * first of them" — not "any refusal at all". A single 429 that the next message
- * sails past is a provider having a moment; a key that no longer works never
- * recovers, so the condition never clears on its own.
+ * first of them" — not "any refusal at all". A key that no longer works never
+ * recovers, so that condition never clears on its own.
  */
 describe('a provider that refuses everything', () => {
+  const DEAD_KEY = 'invalid_api_key';
+
   it('is UNHEALTHY when refusals happened and nothing has been accepted since', async () => {
-    state({ refused: 9, acceptedSince: 0, ripe: 0, heard: 0 });
+    state({
+      refusals: Array.from({ length: 9 }, () => ({ cls: DEAD_KEY, hoursAgo: 20 })),
+      acceptedSince: 0,
+      ripe: 0,
+      heard: 0,
+    });
     const h = await getDeliveryWebhookHealth(now);
 
     // Note ripe=0. Without this check that is indistinguishable from a quiet
     // week, which is exactly how a dead key stayed invisible.
     expect(h.healthy).toBe(false);
     expect(h.refusedSends).toBe(9);
+    expect(h.systemicRefusals).toBe(9);
     expect(h.meaning).toContain('RESEND_API_KEY');
   });
 
   it('does NOT alarm when a message was accepted after the refusals', async () => {
-    state({ refused: 2, acceptedSince: 5, ripe: 5, heard: 5 });
+    state({
+      refusals: [
+        { cls: DEAD_KEY, hoursAgo: 30 },
+        { cls: DEAD_KEY, hoursAgo: 29 },
+      ],
+      acceptedSince: 5,
+      ripe: 5,
+      heard: 5,
+    });
     const h = await getDeliveryWebhookHealth(now);
 
     expect(h.healthy).toBe(true);
@@ -285,8 +315,116 @@ describe('a provider that refuses everything', () => {
   });
 
   it('stays quiet when nothing has been refused at all', async () => {
-    state({ refused: 0, acceptedSince: 0, ripe: 3, heard: 3 });
+    state({ refusals: [], ripe: 3, heard: 3 });
+    const h = await getDeliveryWebhookHealth(now);
+    expect(h.healthy).toBe(true);
+
+    /*
+      …and `acceptedSinceFirstRefusal` is 0 because there is no first refusal for
+      it to be "since". It used to COALESCE its lower bound to the start of the
+      whole window and count every accepted send in it — a number on a public
+      payload that did not match the field's own description. Nothing read it
+      (`refusing` is guarded on the refusal count), so nothing failed; the fix is
+      that the question is no longer ASKED when there is nothing to ask about.
+    */
+    expect(h.acceptedSinceFirstRefusal).toBe(0);
+    expect(mockQuery).toHaveBeenCalledTimes(4);
+  });
+
+  /*
+    🔴 THE FIX THAT MADE THIS SWITCH SURVIVABLE (2026-08-21, same day, after
+    review). `email.ts` records a refusal on ANY `result.error`, and the
+    commonest error Resend returns is per-message: a mistyped recipient address
+    comes back as `validation_error`. The condition was `refusedSends > 0 &&
+    acceptedSinceFirstRefusal === 0`, and it cleared ONLY on a later ACCEPTED
+    send — inside a 30-day window, at a product that sends almost nothing.
+
+    So one owner typo latched /api/health/delivery-webhook to 503 for up to a
+    month, told an operator "Relay is currently sending no mail at all … check
+    RESEND_API_KEY first" about a key that was working, and re-alarmed the daily
+    monitor every morning until an unrelated message happened to be accepted.
+    That is the alarm-fatigue failure this whole file is written against.
+  */
+  it('does not latch on a stale per-message refusal', async () => {
+    state({ refusals: [{ cls: 'validation_error', hoursAgo: 24 * 10 }], acceptedSince: 0 });
+    const h = await getDeliveryWebhookHealth(now);
+
+    expect(h.healthy).toBe(true);
+    expect(h.refusedSends).toBe(1); // Still counted and still reported.
+    expect(h.systemicRefusals).toBe(0);
+  });
+
+  /*
+    But it is not simply ignored either. Resend also returns `validation_error`
+    for a sandbox account that may only mail its own owner, which IS a total
+    outage — so a fresh one still reports unhealthy. It ages out; it does not
+    latch. And it must not print the dead-key page, because the commonest cause
+    is an address the owner typed.
+  */
+  it('a FRESH per-message refusal still reports, and names the right cause', async () => {
+    state({ refusals: [{ cls: 'validation_error', hoursAgo: 3 }], acceptedSince: 0 });
+    const h = await getDeliveryWebhookHealth(now);
+
+    expect(h.healthy).toBe(false);
+    expect(h.systemicRefusals).toBe(0);
+    expect(h.meaning).not.toContain('RESEND_API_KEY');
+    expect(h.meaning.toLowerCase()).toContain('address');
+  });
+
+  /*
+    The comment this file carried — "a single 429 that the next message sails
+    past is a provider having a moment" — described behaviour the code did not
+    have: it cleared only on an ACCEPTED send, which at this volume might never
+    arrive. It is now true by construction rather than by hope.
+  */
+  it('a single 429 followed by silence does not alarm forever', async () => {
+    state({ refusals: [{ cls: 'rate_limit_exceeded', hoursAgo: 24 * 5 }], acceptedSince: 0 });
     expect((await getDeliveryWebhookHealth(now)).healthy).toBe(true);
+  });
+
+  /*
+    The other direction, and the one that matters more: a dead credential must
+    still latch. It never recovers on its own, so ageing it out would be the
+    monitor going quiet while the fault stands — the failure this repo fears
+    most, and the reason the recency rule applies ONLY to the classes that are
+    not about the credential.
+  */
+  it('a dead key still latches however long ago it was refused', async () => {
+    state({ refusals: [{ cls: DEAD_KEY, hoursAgo: 24 * 25 }], acceptedSince: 0 });
+    const h = await getDeliveryWebhookHealth(now);
+
+    expect(h.healthy).toBe(false);
+    expect(h.meaning).toContain('RESEND_API_KEY');
+  });
+
+  /*
+    An error name nobody has classified yet counts as an outage. An allow-list of
+    known-bad classes would let a new Resend error name switch this check off
+    silently, which is how the two previous versions of this file died.
+  */
+  it('treats an unrecognised refusal class as an outage', async () => {
+    state({ refusals: [{ cls: 'some_new_resend_error', hoursAgo: 24 * 12 }], acceptedSince: 0 });
+    expect((await getDeliveryWebhookHealth(now)).systemicRefusals).toBe(1);
+  });
+
+  /*
+    "Since the first" must mean the first one being JUDGED, not the first one
+    stored. A per-message refusal a fortnight before the credential died would
+    otherwise move the lower bound back far enough to sweep up sends that
+    predate the outage, and the alarm would never fire.
+  */
+  it('measures acceptance from the first refusal it is judging', async () => {
+    state({
+      refusals: [
+        { cls: 'validation_error', hoursAgo: 24 * 14 },
+        { cls: DEAD_KEY, hoursAgo: 24 * 2 },
+      ],
+      acceptedSince: 0,
+    });
+    await getDeliveryWebhookHealth(now);
+
+    const since = (mockQuery.mock.calls[4][1] as Date[])[0];
+    expect(since.getTime()).toBe(now.getTime() - 24 * 2 * 3600_000);
   });
 
   /*
@@ -297,18 +435,46 @@ describe('a provider that refuses everything', () => {
     the query has to keep the populations apart.
   */
   it('excludes refusals from the sends the webhook is judged on', async () => {
-    state({ refused: 4, acceptedSince: 0 });
+    state({ refusals: [{ cls: DEAD_KEY, hoursAgo: 4 }] });
     await getDeliveryWebhookHealth(now);
 
     expect(String(mockQuery.mock.calls[1][0])).toContain('NOT LIKE');
     expect(String(mockQuery.mock.calls[1][0])).toContain('refused:');
   });
 
-  it('bounds the refusal count to the same window as everything else', async () => {
-    state({ refused: 0 });
+  it('bounds the refusal sample to the same window as everything else', async () => {
+    state({ refusals: [] });
     await getDeliveryWebhookHealth(now);
 
     const params = mockQuery.mock.calls[3][1] as Date[];
     expect(params[0].getTime()).toBe(now.getTime() - WINDOW_MS);
+  });
+
+  /*
+    The sample is capped, so it takes the NEWEST rows and not the oldest. A cap
+    on the oldest could hide a credential failure behind a thousand older
+    address typos; taking the newest can only move the judged start later, which
+    makes the alarm likelier rather than quieter.
+  */
+  it('samples the newest refusals, so the cap cannot hide the current fault', async () => {
+    state({ refusals: [] });
+    await getDeliveryWebhookHealth(now);
+
+    const sql = String(mockQuery.mock.calls[3][0]);
+    expect(sql).toContain('DESC');
+    expect(sql).toContain(`LIMIT ${REFUSAL_SAMPLE_LIMIT}`);
+  });
+
+  it('ignores a refusal row whose timestamp will not parse', async () => {
+    mockQuery
+      .mockResolvedValueOnce(rows([{ n: '5', newest: agoHours(2) }]))
+      .mockResolvedValueOnce(rows([{ ripe: '0', heard: '0' }]))
+      .mockResolvedValueOnce(rows([{ attempts: '12', orphans: '0' }]))
+      .mockResolvedValueOnce(rows([{ provider_id: 'refused:transport:x', occurred_at: 'nonsense' }]))
+      .mockResolvedValueOnce(rows([{ n: '0' }]));
+
+    const h = await getDeliveryWebhookHealth(now);
+    expect(h.refusedSends).toBe(0);
+    expect(h.healthy).toBe(true);
   });
 });

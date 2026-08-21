@@ -17,6 +17,7 @@ import { rankItems, reasonFor } from '../../../../lib/vault/reason';
 import { buttonPrimary, buttonQuiet, card, errorText, h1, meta, muted } from '../_lib/ui';
 import { onFactorsDeclared } from '../../../../lib/vault/declare-factors';
 import { ItemControls } from './ItemControls';
+import { summariseAnalysis } from './analysis-summary';
 
 export default function VaultDashboardPage() {
   const [items, setItems] = useState<DashboardItem[] | null>(null);
@@ -92,15 +93,30 @@ export default function VaultDashboardPage() {
         return;
       }
       if (!res.ok) throw new Error(`Analysis failed (${res.status})`);
-      const data = (await res.json()) as { scored: number; warnings: string[] };
+      /*
+        🔴 `remaining` WAS NOT READ HERE AND WAS NOT SENT EITHER, so a run that
+        stopped at the 300-item cap (Req 11.10) reported itself as a whole one:
+        an owner with 312 accounts read "Looked at 300 items and re-ordered them
+        by what matters most", with twelve accounts unscored and unmentioned, on
+        the screen whose entire claim is that the order means something. The
+        library had recorded the number since 2026-08-21; the route dropped it
+        and this screen never asked. Both halves are fixed together, because
+        either one alone changes nothing an owner can see.
+      */
+      const data = (await res.json()) as {
+        scored: number;
+        remaining?: number;
+        warnings: string[];
+      };
       // Re-read rather than patch: the ordering is derived from every item, so a
       // reclassified vault has to re-rank, exactly as `load` exists to do.
       await load();
       setAnalysis(
-        data.scored === 0
-          ? 'Nothing to analyse yet — add an account first.'
-          : `Looked at ${data.scored} item${data.scored === 1 ? '' : 's'} and re-ordered them by what matters most.` +
-            (data.warnings.length > 0 ? ` ${data.warnings.length} could not be scored.` : ''),
+        summariseAnalysis({
+          scored: data.scored,
+          remaining: data.remaining,
+          warnings: data.warnings.length,
+        }),
       );
     } catch (e) {
       setError(String((e as Error).message ?? e));

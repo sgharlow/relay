@@ -137,6 +137,48 @@ describe('two accounts at the same provider, which is what a CSV actually produc
     const r = splitDuplicates([item('Chase', 'Chase')], [login('Chase', 'Chase', 'https://chase.com')]);
     expect(r.duplicates).toHaveLength(1);
   });
+
+  /*
+    🔴 THE URL-LESS ABSORPTION LEAKED INTO THE BATCH, and it undid the fix above
+    for the messiest exports — the ones most likely to hold two accounts at one
+    provider. `remember()` ran on incoming rows as well as existing ones, so ONE
+    incoming row with a blank url column set the bucket's `urlless` flag and
+    every later row at that label was judged a duplicate of it, url or no url.
+
+    The absorption is right against the EXISTING side and only there: a hand-made
+    /vault/new item carries no url, and re-import idempotence depends on it still
+    matching an export row that does. Nothing of the kind is true within one
+    batch — lib/import/csv-parser.ts has already keyed its own in-file dedupe on
+    `service_name|url` and kept both rows, so collapsing them here overrules a
+    decision that was made correctly one layer up.
+  */
+  it('keeps both when only ONE of two rows at a provider carries a url', () => {
+    const r = splitDuplicates(
+      [login('Google', 'Google', null), login('Google', 'Google', 'https://mail.google.com')],
+      [],
+    );
+    expect(r.fresh).toHaveLength(2);
+    expect(r.duplicates).toHaveLength(0);
+  });
+
+  it('keeps both in the other order too — the url-bearing row first', () => {
+    const r = splitDuplicates(
+      [login('Google', 'Google', 'https://mail.google.com'), login('Google', 'Google', null)],
+      [],
+    );
+    expect(r.fresh).toHaveLength(2);
+    expect(r.duplicates).toHaveLength(0);
+  });
+
+  it('an EXISTING url-less item still absorbs the whole label — unchanged', () => {
+    // The two rules differ per side, deliberately. This is the side that joins.
+    const r = splitDuplicates(
+      [login('Google', 'Google', 'https://mail.google.com'), login('Google', 'Google', null)],
+      [item('Google', 'Google')],
+    );
+    expect(r.fresh).toHaveLength(0);
+    expect(r.duplicates).toHaveLength(2);
+  });
 });
 
 describe('fail-open — never silently drop a secret', () => {

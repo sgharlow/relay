@@ -11,7 +11,7 @@
  *
  * 🔴 THAT SENTENCE USED TO SAY "so a verifier who never claimed still decides
  * via a single-use code", corrected 2026-08-21. J7-R1's SECOND amendment
- * (2026-08-12, docs/user-journeys.md:1386-1402) withdrew exactly that: an
+ * (2026-08-12, J7-R1 in docs/user-journeys.md §J7 requirements) withdrew exactly that: an
  * unconfirmed verifier is classified `not_counted` and is mailed no code at all
  * (lib/notify/verifier-notice-class.ts), because once quorum counts only
  * confirmed people, a code to an unconfirmed one buys a vote with no effect.

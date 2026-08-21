@@ -105,9 +105,42 @@ describe('the ages are recorded, or their absence is', () => {
     expect(runbook).toContain('Last set');
   });
 
-  it('says unknown rather than leaving a blank, and says why that is a finding', () => {
-    expect(runbook).toContain('unknown');
-    expect(runbook).toMatch(wrapped('"unknown" is a finding, not a blank'));
+  /*
+    🔴 THIS ASSERTED ONLY HALF THE PROPERTY, and the half it asserted expired.
+
+    It required the runbook to say `"unknown" is a finding, not a blank` — which
+    was exactly right while every age WAS unknown, and became a false requirement
+    on 2026-08-21 when the ten Vercel-held ages were read from the Vercel API and
+    the column was filled. A guard that fails when the defect it guards against
+    is FIXED is a guard that pressures the next person into un-fixing it.
+
+    What the describe block above actually promises is a disjunction: the ages are
+    recorded, OR their absence is explained. So that is what is checked now. It
+    cannot be satisfied by deleting the explanation and leaving blanks, and it
+    cannot be satisfied by filling some rows and quietly dropping the sentence
+    while others stay unknown — every remaining `unknown` still owes the reason.
+  */
+  it('records every age, or explains why an absent one is a finding', () => {
+    const rows = runbook.split('\n').filter((l) => /^\| `[A-Z_]+`/.test(l));
+    expect(rows.length, 'the secret table has no rows — the parser went blind').toBeGreaterThan(5);
+
+    const stillUnknown = rows.filter((l) => /\|\s*unknown\s*\|/i.test(l));
+
+    if (stillUnknown.length > 0) {
+      expect(
+        wrapped('"unknown" is a finding, not a blank').test(runbook),
+        `${stillUnknown.length} row(s) still read "unknown" and the runbook no longer explains ` +
+          'why that is a finding rather than a blank. Fill them, or restore the sentence.',
+      ).toBe(true);
+    } else {
+      // Every age is on record. The claim that replaces it must say WHERE the
+      // dates came from, because a date with no provenance is the next unknown.
+      expect(
+        runbook,
+        'every age is filled but nothing says how they were established — a dated cell with no ' +
+          'source is a number the next reader cannot check or refresh.',
+      ).toMatch(/Vercel API|list-access-keys/i);
+    }
   });
 });
 

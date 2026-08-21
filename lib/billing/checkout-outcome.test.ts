@@ -66,6 +66,30 @@ describe('classifyCheckoutFailure', () => {
     expect(classifyCheckoutFailure(500).message).toMatch(/not been charged/i);
   });
 
+  /*
+    🔴 THE RATE-LIMIT COPY SAID "That went through more than once." On a $119
+    button, "went through" is the phrase a person reads as *the charge
+    succeeded* — so the sentence for "you pressed too fast and nothing happened"
+    was the one most likely to be read as "you have been billed twice", on the
+    one failure that is REACHED by pressing twice.
+
+    The `failed` branch beside it already gets this right and says why in its own
+    comment: somebody who pressed a payment button and saw an error needs to know
+    they have not been charged before they need to know what to do next. That
+    reasoning is not weaker here; it is stronger.
+
+    Asserted on the wording rather than only on the kind, because this module's
+    stated job is being the one place these sentences live — a `kind` assertion
+    would have stayed green through the whole defect.
+  */
+  it('does not let a rate-limited press read as a double charge', () => {
+    const message = classifyCheckoutFailure(429).message;
+    expect(message, 'the reassurance comes first, as it does on `failed`').toMatch(
+      /not been charged|nothing has been charged|no charge/i,
+    );
+    expect(message, '"went through" reads as the money moved').not.toMatch(/went through/i);
+  });
+
   it('never tells a paying owner to buy anything', () => {
     const f = classifyCheckoutFailure(409);
     expect(f.message).not.toMatch(/sign ?up|\$|waitlist|invite/i);

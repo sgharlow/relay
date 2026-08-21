@@ -60,6 +60,44 @@ function tablesDeletedByOwner(src: string): Set<string> {
   return out;
 }
 
+/**
+ * Every `DELETE … WHERE <col> = $1` the cascade issues directly, as
+ * `table.column` pairs.
+ *
+ * Deliberately skips the two deletes that reach their rows through a subquery
+ * (`verifier_confirmations` by `release_state_id`, `consent_artifacts` by `id`):
+ * neither table carries an owner id, so neither can be censused by one, and
+ * demanding it would be demanding a column that does not exist. `users` is
+ * skipped because it IS the table every other row is compared against.
+ */
+function cascadePurgesByOwnerId(src: string): Set<string> {
+  const out = new Set<string>();
+  for (const [, statement] of src.matchAll(/`(DELETE FROM[\s\S]*?)`/g)) {
+    const flat = statement.replace(/\s+/g, ' ');
+    const table = /DELETE FROM (\w+)/.exec(flat)?.[1];
+    const where = flat.slice(flat.search(/\bWHERE\b/));
+    if (!table || table === 'users' || /\bSELECT\b/i.test(where)) continue;
+    for (const [, column] of where.matchAll(/(\w+) = \$1/g)) out.add(`${table}.${column}`);
+  }
+  return out;
+}
+
+/**
+ * A `[table, column][]` census list in the sweep, as `table.column` pairs.
+ * Returns null when the list is not there at all, so a renamed constant reads as
+ * "this guard has gone blind" rather than as "nothing is missing".
+ */
+function censusList(src: string, name: string): Set<string> | null {
+  // Tolerates both shapes the two lists are written in: one entry per line, and
+  // a single-line literal. A guard that only recognises today's formatting goes
+  // blind on a reformat and reports "nothing missing".
+  const block = new RegExp(`const ${name}[^=]*=\\s*\\[([\\s\\S]*?)\\]\\s*;`).exec(src);
+  if (!block) return null;
+  return new Set(
+    [...block[1].matchAll(/\[\s*'(\w+)',\s*'(\w+)'\s*\]/g)].map(([, t, c]) => `${t}.${c}`),
+  );
+}
+
 /** Tables the sweep counts rows in, from its OWNED_TABLES list. */
 function tablesCountedBySweep(src: string): Set<string> {
   const block = /const OWNED_TABLES = \[([\s\S]*?)\] as const;/.exec(src);
@@ -155,6 +193,107 @@ describe('the sweep and the cascade agree about what an account is', () => {
           'deleteAccount()\'s job — it cancels billing first and repairs standby roles held in ' +
           'other owners\' rosters, neither of which a DELETE here would do, on a schema with no ' +
           'foreign keys to catch the difference.'
+        : 'ok',
+    ).toEqual([]);
+  });
+});
+
+/**
+ * 🔴 THE CENSUS FAILED THE RUN ON A CLUSTER IN A PERFECTLY CORRECT STATE.
+ *
+ * The dangling-owner census added on 2026-08-21 listed `audit_log` among the
+ * tables whose orphan rows are wreckage. They are not. `deleteAccount()` writes
+ * an `account_deleted` entry, deliberately RETAINS the audit trail (it is stated
+ * on the privacy page and reported back as `auditEntriesRetained`), and deletes
+ * the users row LAST. So the designed end state of every correctly-closed
+ * account is at least one audit_log row whose owner_id points at a user that no
+ * longer exists — and `npm run verify:orphans` printed
+ * `FAIL: N row(s) point at a user that no longer exists` for it.
+ *
+ * That is the "monitor that cries wolf gets muted" shape the sweep's own header
+ * invokes, manufactured by the sweep. The lane knew the retention: reset-demo.ts
+ * and family-arc.ts each got an explicit `DELETE FROM audit_log` follow-up in the
+ * same session, with a comment explaining exactly this.
+ *
+ * These checks are anchored to lifecycle.ts, not to the word "audit_log", so if
+ * the cascade ever starts purging the audit trail the census is told to start
+ * failing on it again.
+ */
+describe('the census fails on wreckage, and not on what the cascade keeps', () => {
+  const code = codeOnly(LIFECYCLE);
+
+  it('the cascade really does retain the audit trail', () => {
+    expect(
+      /DELETE FROM audit_log/i.test(code),
+      'lib/account/lifecycle.ts now purges audit_log. The retention was the whole reason the ' +
+        'orphan census excludes it — if a closure no longer leaves audit rows behind, move ' +
+        'audit_log back into OWNER_COLUMNS in scripts/disposable-sweep.ts, because a dangling ' +
+        'owner_id there is then wreckage again.',
+    ).toBe(false);
+
+    expect(
+      /action: 'account_deleted'/.test(code),
+      'the cascade no longer writes an account_deleted audit entry — that entry is why a ' +
+        'closed account leaves a dangling audit row even when nothing went wrong.',
+    ).toBe(true);
+  });
+
+  it('audit_log is not in the list that fails the run', () => {
+    const fails = censusList(SWEEP, 'OWNER_COLUMNS');
+    expect(fails, 'OWNER_COLUMNS has gone from scripts/disposable-sweep.ts — this guard is blind').toBeTruthy();
+    expect(
+      [...(fails as Set<string>)].filter((k) => k.startsWith('audit_log.')),
+      'scripts/disposable-sweep.ts fails the run on dangling audit_log rows. Every correctly ' +
+        'closed account leaves one, by design, so verify:orphans reports FAIL on a healthy ' +
+        'cluster — and an alarm that fires when nothing is wrong is an alarm that gets muted.',
+    ).toEqual([]);
+  });
+
+  it('and is still counted, as a notice rather than a failure', () => {
+    /*
+      Excluding it must not mean forgetting it. A retained audit trail is still
+      worth a number — it is the only remaining trace of an account, and a count
+      that jumps says a purge ran — it is simply not a defect.
+    */
+    const retained = censusList(SWEEP, 'RETAINED_BY_DESIGN');
+    expect(
+      retained,
+      'scripts/disposable-sweep.ts no longer declares RETAINED_BY_DESIGN, so the audit rows a ' +
+        'closure leaves behind are now invisible rather than merely not-a-failure. Count them ' +
+        'and report them as a notice.',
+    ).toBeTruthy();
+    expect([...(retained as Set<string>)]).toContain('audit_log.owner_id');
+  });
+});
+
+/**
+ * The other direction, and the one that lets the census go quietly blind: a
+ * table the cascade purges by owner id that the census does not ask about.
+ *
+ * `delegations` was exactly that — the cascade removes it with
+ * `WHERE owner_id = $1 OR delegate_user_id = $1`, and the first census listed
+ * neither column, so a users-only delete left dangling delegation rows that the
+ * check written to find dangling rows could not see.
+ */
+describe('the census asks about every table the cascade purges by owner id', () => {
+  it('derives a plausible set from the cascade, so this guard is not vacuous', () => {
+    expect(cascadePurgesByOwnerId(codeOnly(LIFECYCLE)).size).toBeGreaterThan(10);
+  });
+
+  it('leaves no owner-scoped table uncensused', () => {
+    const censused = new Set([
+      ...(censusList(SWEEP, 'OWNER_COLUMNS') ?? []),
+      ...(censusList(SWEEP, 'RETAINED_BY_DESIGN') ?? []),
+    ]);
+    const missing = [...cascadePurgesByOwnerId(codeOnly(LIFECYCLE))].filter((k) => !censused.has(k)).sort();
+
+    expect(
+      missing,
+      missing.length
+        ? 'deleteAccount() purges these by owner id and the orphan census never asks about them:\n' +
+          missing.map((m) => `  ${m}`).join('\n') +
+          '\n\nSo a users-row-only delete leaves them dangling and verify:orphans reports a clean ' +
+          'cluster — the exact blindness the census was added to close, one table over.'
         : 'ok',
     ).toEqual([]);
   });

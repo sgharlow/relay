@@ -16,6 +16,9 @@
 > | **§Components and Interfaces 1 — Route Structure** and **§API Surface** | `src/app/api/**` as it stands | These list the handlers of the twelve-day build. The live tree is several times larger — count it with `find src/app/api -name route.ts \| wc -l` and `ls -d src/app/api/*/` rather than from here — and covers standby, claim, approvals, delegations, access-requests, fire-drill, webauthn, stripe, circle and people, none of which existed when this was written. Three entries also point at handlers that are **gone or never existed**: `POST /api/ai/prioritize` and `POST /api/ai/triage` were retired 2026-08-13 (`docs/retired-surface.md`), and `GET /api/vault/items/:id` has no GET export — that route serves `PUT`, `DELETE` and `PATCH` only. |
 > | **§Components and Interfaces 2 — Crypto Boundary** (the *recipient delivery* half only) | `docs/standby-architecture.md` — hybrid+6, ratified 2026-08-11 | The envelope-encryption boundary itself is unchanged and still correct. What changed is how a recipient is authenticated to it: minted `?token=` links are being demoted to a fallback for **unclaimed** contacts, and a claimed recipient signs in as themselves with the release resolved server-side. |
 > | **Overview — "Stack locked: Next.js 14"** | `package.json` | Next **16**. Also "three Next.js route handlers that call OpenAI" — one remains (`/api/ai/intake`). |
+> | **Overview — "Emergencies are reversible; estate handoffs are permanent"** | `PROJECT.yaml → gates.g2-counsel-opinion.declined` (2026-08-14) · `USER_SELECTABLE_TRIGGER_TYPES` in `lib/domain/enums.ts` | **Every release is reversible.** Estate was withdrawn permanently, the trigger type cannot be selected, and `lib/ops/gates.test.ts` fails if that list widens. Corrected in place at the sentence, and in `requirements.md`'s Introduction. Added on the review pass — the first pass reviewed this same Overview paragraph, flagged only the Next.js version, and left a withdrawn capability being offered one clause away. **A banner that names one defect in a paragraph implicitly clears the rest of it, so the sweep has to be per-sentence.** |
+>
+> 🔴 **`estate` still appears throughout this file** — in the DDL's `chk_estate_irreversible`, in the state diagram, in the transition table's "Yes (non-estate only)", and in Properties 7 and 10. Those are accurate descriptions of an **enum branch**, and the branch is still in the code. None of them is a product promise, because no user can select the type. Read every remaining mention that way; do not read any of them as a capability to finish.
 >
 > ### Still authoritative, and this is why the file is kept rather than archived
 >
@@ -34,7 +37,7 @@
 
 ## Overview
 
-Relay is a living-continuity platform. Owners build an encrypted vault of accounts, credentials, documents, and instructions, assign scoped access to recipients, and configure verified trigger conditions. When a trigger fires the system advances through a controlled release state machine (ARMED → PENDING → GRACE → RELEASED) guarded by optimistic concurrency control. Emergencies are reversible; estate handoffs are permanent.
+Relay is a living-continuity platform. Owners build an encrypted vault of accounts, credentials, documents, and instructions, assign scoped access to recipients, and configure verified trigger conditions. When a trigger fires the system advances through a controlled release state machine (ARMED → PENDING → GRACE → RELEASED) guarded by optimistic concurrency control. ~~Emergencies are reversible; estate handoffs are permanent.~~ **Every release is reversible** — corrected 2026-08-21; see the banner row above and `requirements.md`'s Introduction for why, and `PROJECT.yaml → gates.g2-counsel-opinion.declined` for the ruling itself.
 
 The MVP targets the H0 hackathon with four demo moments:
 1. Reversible emergency flow end-to-end
@@ -770,12 +773,23 @@ The following properties are drawn from acceptance criteria that are amenable to
 > this claim under either description.
 >
 > **The invariant that actually holds in its place** is one-`release_state`-row per
-> `(owner_id, trigger_type)` — Requirement 5.1, and a real uniqueness constraint the code does enforce.
+> `(owner_id, trigger_type)` — Requirement 5.1. ⚠️ Corrected 2026-08-21: this said "a real uniqueness
+> constraint the code does enforce", and *constraint* is the wrong word. `ensureReleaseState`
+> (`lib/release/provisioning.ts`) enforces it in application logic by reading before inserting;
+> `idx_release_state_owner_type` in migration 001 is a plain `CREATE INDEX ASYNC` and no migration
+> adds a UNIQUE on that pair. It is the Requirement 16.1 / 16.4 pattern, and it has to be: the only
+> `CREATE UNIQUE INDEX` anywhere in `db/migrations/` is `002_unique_auth_sub.sql`, **an unapplied
+> draft** — 022 and 029 both cite it by name as the reason they declare uniqueness in application
+> logic instead, because Aurora DSQL may not enforce UNIQUE on a secondary index at all. So no
+> invariant in this product is held by a database constraint outside a primary key. Do not cite one
+> as if it were.
 > The property numbering is left with a gap rather than renumbered: the numbers are cited by tag from
 > the test files, and renumbering a register that other files point into is how a traceability scheme
 > stops being traceable.
 
-**Validated: nothing. Requirement 1.1 is satisfied by the absence of the entity, not by a check.**
+**Validated: nothing — and the criterion this property was validating has been amended in the file that owns it.** See `requirements.md` **Req 1.1** (amended 2026-08-21), which now states that the vault is the set of `vault_items` rows carrying an `owner_id` rather than an entity that gets created.
+
+> ⚠️ **This line previously read "Requirement 1.1 is satisfied by the absence of the entity, not by a check"** — a ruling on a criterion in the *sibling* file, made from inside this one, while 1.1 went on stating an unimplemented SHALL with a conflict error nothing can return. That is the disagreement this file's own arbitration rule (`requirements.md` banner: *"Where this file and `design.md` disagree, neither wins by default — check the code"*) then had to resolve, created by the same pass that wrote the rule. A design document may record that a property is dead; only the requirements document may amend a requirement.
 
 ---
 

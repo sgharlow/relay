@@ -338,7 +338,8 @@ export class ReleaseStateMachine {
    * 🔴 IT WAS UNCONDITIONAL UNTIL 2026-08-21 — `WHERE id = $1` and nothing
    * else. That made it the single write in the release subsystem that ignored
    * PERMITTED_TRANSITIONS, and the ONLY path in the product that could move a
-   * committed RELEASED row backwards. design.md:513 specified it that way and
+   * committed RELEASED row backwards. design.md §OCC Transition Pattern (the
+   * retry-parameters paragraph) specified it that way and
    * Req 5.6 (every transition checks the expected state) and Req 5.10 (an
    * estate release never transitions back) both forbid it; the code followed
    * the design.
@@ -363,6 +364,19 @@ export class ReleaseStateMachine {
    * (rearm-clears-the-ledger.test.ts); this one used to carry the objections
    * that caused the halt forward forever, so the next release halted before
    * anyone answered it.
+   *
+   * ⚠️ AND THAT CLEAR LANDS ON BOTH CALLERS, which the rationale above argues
+   * for only one of. The OCC-exhaustion path includes GRACE→RELEASED with a
+   * quorum already met, so a serialization storm at the moment of release now
+   * discards confirmations verifiers legitimately cast, where before they
+   * survived. That is deliberate and it is the safe direction: discarding a met
+   * quorum re-asks people, whereas preserving it would release on answers
+   * nobody re-gave. It is also the only reading consistent with the
+   * initiated_at-scoped idempotency in `triggers.ts` — a re-armed row stamps a
+   * NEW instant, every verifier is asked again, and every fresh answer counts,
+   * so a preserved tally would be double-counted and a release reached on half
+   * the confirmations it claimed. Pinned by state-machine.test.ts rather than
+   * inherited from the halt's assertion.
    *
    * Requirements: 5.6, 5.9, 5.10, J7-R7
    */

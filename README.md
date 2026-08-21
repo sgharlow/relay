@@ -96,11 +96,23 @@ which goes red if the claim stops carrying its own evidence and a scope). It mea
 mechanism was walked end to end against production on a dated occasion — real Aurora
 DSQL, real KMS, live-mode Stripe checkout — **not** that Relay is in continuous use.
 
-Six sprints past the H0 MVP have shipped and are **`live-proven`, which is one rung
-below and is not the same claim**: self-serve signup with per-user TOTP, **WebAuthn
-passkeys**, access policies, delegation with consent, verifier deny/abstain, access
-requests, recovery codes, the heartbeat scheduler with an off-Vercel dead-man's switch,
-and **live-mode Stripe billing**. The standby-account direction
+Many sprints past the H0 MVP have shipped — **count them with
+`ls docs/sprint-reports/ | wc -l`, and read the newest for what landed most recently**
+(the same derivation `CLAUDE.md` uses, so the two front-door documents cannot disagree).
+Among them, at **`live-proven`, which is one rung below `dogfooded` and is not the same
+claim**: self-serve signup with per-user TOTP, **WebAuthn passkeys**, access policies,
+delegation with consent, verifier deny/abstain, access requests, recovery codes, and
+**live-mode Stripe billing**. The evidence for that rung is the 2026-08-13 production
+re-sweep at the top of [`docs/user-journeys.md`](docs/user-journeys.md), the same record
+`PROJECT.yaml → ladder_evidence` cites.
+
+One item on that list is **not** at that rung and is called out rather than folded in:
+the **heartbeat scheduler is `wired`** — `docs/user-journeys.md` J5 says "wired (it had
+never been scheduled)". Its off-Vercel dead-man's switch
+(`.github/workflows/scheduler-monitor.yml`) is proven in both directions as a *monitor*;
+that proves the monitor exists, not that a real trigger has fired for a real owner.
+
+The standby-account direction
 ([`docs/standby-architecture.md`](docs/standby-architecture.md)) is ratified and partly
 shipped. Estate and inheritance are **permanently withdrawn**, not pending.
 
@@ -115,7 +127,24 @@ drifted to under half the real number, in the first document a stranger reads �
 which is why the counts are commands now and not copies. It also opened
 *"Backend complete, all UI built"* — a bare completion claim with no ladder level, in
 the same sentence as the fixed numbers, which is the identical failure in words instead
-of digits. Corrected 2026-08-21.) Specs (the build contract):
+of digits. Corrected 2026-08-21.)
+
+> **Was, and corrected the same day the paragraph above was written (2026-08-21):**
+> - *"Six sprints past the H0 MVP have shipped"* — a hardcoded count, in the paragraph that ends
+>   *"which is why the counts are commands now and not copies"*, and by then `docs/sprint-reports/`
+>   held far more than six. It was hand-copied from `CLAUDE.md`, which was corrected the same day;
+>   the two front doors disagreed for as long as it took somebody to read both.
+> - The list was asserted **`live-proven` entire**, having dropped the qualifier its source carried:
+>   `CLAUDE.md` reads *"the **wired** heartbeat scheduler"*. Promoting a `wired` item one rung, in
+>   the paragraph explaining rungs, is the exact conflation it claims to fix. The scheduler is now
+>   named separately above.
+> - This Status section also used to read *"Deployed live and dogfooded end-to-end on Aurora DSQL +
+>   AWS KMS, submitted to H0, and awarded **Most Impactful**"*. That sentence is gone rather than
+>   corrected: the award is stated at the top of this file, and the dogfood basis is now stated in
+>   ladder language with its scope, which the old sentence did not have. Recorded here because the
+>   other deletion in this paragraph was marked and this one was not.
+
+Specs (the build contract):
 [`.kiro/specs/relay-h0-mvp/`](.kiro/specs/relay-h0-mvp/) and
 [`specs/Relay_H0_Build_Spec_v2.md`](specs/Relay_H0_Build_Spec_v2.md);
 Devpost write-up: [`specs/Relay_Devpost_Submission.md`](specs/Relay_Devpost_Submission.md).

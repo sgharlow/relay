@@ -190,6 +190,89 @@ describe('what the subscription row records about the money', () => {
 });
 
 /**
+ * The recorded amount is an OBSERVATION, and a plan price is not one.
+ *
+ * 🔴 THE FIRST FIX RE-INTRODUCED THE BUG IT WAS WRITTEN AGAINST, in the UPDATE
+ * path. `recordsPayment` is `tier === 'paid' && Boolean(stripeSubscriptionId)`,
+ * which is true for EVERY active `customer.subscription.updated`, not only for a
+ * checkout — and on that path `event.data.object` is a Subscription, so the
+ * amount read is `items.data[0].price.unit_amount`: the plan's list price. So a
+ * checkout that recorded a discounted `amount_total` at INSERT was overwritten
+ * with the list price by the first `subscription.updated` Stripe sent
+ * afterwards. That is verbatim the scenario the amount reader was
+ * written to prevent (`chargedCents` then; `amountsOn` plus
+ * `lib/billing/subscription-amount.ts` now) — "showing $99, charging $99 and recording $119".
+ *
+ * The guard shipped with the first fix only blocked the CANCELLATION direction.
+ * "Money moved" was derived from the tier, and the tier does not know whether
+ * anybody was charged.
+ *
+ * Live impact was nil (one subscription, no coupon), which is exactly why this
+ * needed a test rather than an eye: the corruption would appear months later in
+ * a revenue read nobody re-derives.
+ */
+describe('a plan price never overwrites what was actually charged', () => {
+  function existingRow() {
+    mockQuery.mockImplementation(async (sql: string) => {
+      if (/^\s*SELECT id FROM subscriptions/.test(sql)) {
+        return { rows: [{ id: 'sub-row-1' }], rowCount: 1 } as never;
+      }
+      return { rows: [], rowCount: 0 } as never;
+    });
+  }
+
+  function updateParams(): unknown[] {
+    const call = mockQuery.mock.calls.find(([sql]) => /UPDATE subscriptions/.test(String(sql)));
+    expect(call, 'no UPDATE was issued').toBeTruthy();
+    return call![1] as unknown[];
+  }
+
+  it('offers no charged amount at all on an active customer.subscription.updated', async () => {
+    existingRow();
+    subscriptionRetrieve.mockResolvedValue({ id: 'sub_1', status: 'active' });
+    constructEvent.mockReturnValue({
+      type: 'customer.subscription.updated',
+      data: {
+        object: {
+          id: 'sub_1',
+          status: 'active',
+          metadata: { owner_id: OWNER },
+          // The plan's list price. Nobody was charged by this event.
+          items: { data: [{ price: { unit_amount: 11900 } }] },
+        },
+      },
+    });
+
+    await POST(req());
+
+    expect(
+      updateParams()[9],
+      'a subscription event observed no payment, so it must offer no amount to overwrite one',
+    ).toBeNull();
+  });
+
+  it('still records the amount on the event that DID carry a payment', async () => {
+    // The other half: suppressing the plan price must not suppress the real one.
+    existingRow();
+    constructEvent.mockReturnValue({
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          metadata: { owner_id: OWNER },
+          amount_total: 9900,
+          customer: 'cus_1',
+          subscription: 'sub_1',
+        },
+      },
+    });
+
+    await POST(req());
+
+    expect(updateParams()[9], 'what Stripe charged must reach the row').toBe(9900);
+  });
+});
+
+/**
  * The security model, exercised rather than grepped.
  *
  * 🔴 UNTIL 2026-08-21 THE ONLY ASSERTION THAT THIS ENDPOINT VERIFIES SIGNATURES
@@ -525,6 +608,75 @@ describe('a comp that converts stops being a comp', () => {
   });
 
   /*
+    THE HOLE THE FIRST FIX LEFT. The single amount reader (`chargedCents`,
+    now split into `amountsOn`) returned null for a Checkout
+    Session with no `amount_total` — its second reader looks at `items`, and a
+    session's lines live under `line_items`, unexpanded by default. The UPDATE
+    then coalesced onto the existing value, so `cohort` flipped to
+    `converted-from-comp` while `price_cents` stayed at the comp's `0` — and
+    `isComped` answers true on EITHER marker, so the row still read as a gift.
+    Clearing one of two markers clears neither.
+
+    The row's own zero is the thing that must not survive, so the statement has
+    to carry an amount that can replace it. The INSERT path has always done
+    this; the UPDATE path did not.
+  */
+  it('does not leave the comp’s price_cents = 0 behind when the session carries no amount', async () => {
+    compRow();
+    constructEvent.mockReturnValue({
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          metadata: { owner_id: OWNER },
+          // No `amount_total`, and a session's lines are not under `items`.
+          customer: 'cus_real',
+          subscription: 'sub_real',
+        },
+      },
+    });
+
+    await POST(req());
+
+    const [, params] = updateCall()!;
+    const amountsOffered = params.slice(9).filter((p) => typeof p === 'number');
+    expect(
+      amountsOffered,
+      'nothing in this UPDATE can replace the comp’s price_cents = 0, so the row stays a gift',
+    ).not.toHaveLength(0);
+    expect(params[10], 'the list price is the fallback, exactly as on the INSERT').toBe(
+      PRICE_YEARLY_CENTS,
+    );
+  });
+
+  /*
+    A comp can also convert WITHOUT a Relay checkout — a founding family
+    invoiced or subscribed by hand in the Stripe dashboard produces
+    `customer.subscription.*` and never a `checkout.session.completed`. That is
+    the likelier shape for a hand-onboarded family, and it is the one path where
+    the subscription's own `unit_amount` is the best evidence available.
+  */
+  it('clears the comp’s zero from a subscription event too, using the plan’s own amount', async () => {
+    compRow();
+    subscriptionRetrieve.mockResolvedValue({ id: 'sub_real', status: 'active' });
+    constructEvent.mockReturnValue({
+      type: 'customer.subscription.updated',
+      data: {
+        object: {
+          id: 'sub_real',
+          status: 'active',
+          metadata: { owner_id: OWNER },
+          items: { data: [{ price: { unit_amount: 11900 } }] },
+        },
+      },
+    });
+
+    await POST(req());
+
+    const [, params] = updateCall()!;
+    expect(params[10], 'the plan’s amount may replace a gift marker').toBe(11900);
+  });
+
+  /*
     THE OTHER DIRECTION MUST NOT MOVE. A cancellation carries the plan's
     unit_amount, so writing price_cents unconditionally would stamp 11900 onto a
     comped row at the moment it ended — turning a gift into revenue on its way
@@ -561,9 +713,15 @@ describe('a comp that converts stops being a comp', () => {
     const guard = params[6];
     expect(guard, 'a cancellation must not be treated as a payment').toBe(false);
     expect(sql).toMatch(/cohort = CASE WHEN \$7/);
-    expect(sql).toMatch(/price_cents = CASE WHEN \$7/);
-    // And the amount is not even offered to the statement on this path.
-    expect(params[9], 'no charged amount on a cancellation').toBeNull();
+    /*
+      Both amount slots, not one. The statement now offers an OBSERVED amount
+      ($10) and a gift-clearing amount ($11), and a cancellation must supply
+      neither — the plan's unit_amount rides on `customer.subscription.deleted`
+      too, so a single offered value is all it takes to book a gift as revenue
+      on its way out.
+    */
+    expect(sql).toMatch(/price_cents = CASE/);
+    expect(params.slice(9), 'no amount of any kind on a cancellation').toEqual([null, null]);
   });
 });
 

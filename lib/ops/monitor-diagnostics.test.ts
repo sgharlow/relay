@@ -28,6 +28,14 @@
  * workflow that reports it being updated in the same change. That is the whole
  * defect: the condition was extended and the diagnosis was not.
  *
+ * ⚠️ AND THAT CHECK ITSELF PASSED VACUOUSLY ON ONE OF THE FOUR, for its first
+ * day. It asked `workflow.includes(c)` over the entire file, and the workflow
+ * already said "a monitor that cries wolf gets muted" in a comment — so `mute`
+ * was satisfied by a word about alarm fatigue rather than by a diagnosis. The
+ * search is now word-bounded and scoped to the text under `::error::` with
+ * comments stripped, and `discriminates: a condition named only in a comment
+ * does not count` proves it can say no.
+ *
  * Feature: relay-h0-mvp (CC9)
  */
 
@@ -97,6 +105,31 @@ describe('a canary check states a consequence that is still true', () => {
   });
 });
 
+/**
+ * The text an operator actually reads when the job fails: the `::error::` line
+ * and the checklist under it, with YAML comments removed.
+ *
+ * ⚠️ SCOPED AND COMMENT-STRIPPED BECAUSE THE FIRST VERSION OF THIS CHECK WAS
+ * SATISFIED VACUOUSLY. It asked `workflow.includes(c)` over the whole file, and
+ * `delivery-webhook-monitor.yml` carries the line *"a monitor that cries wolf
+ * gets muted, which is the failure this exists to prevent"* — a comment, about
+ * alarm fatigue, nowhere near the diagnosis. `'mute'` is a substring of
+ * `'muted'`, so one of the four conditions the check exists to police passed
+ * before the fix was written and would have gone on passing if the diagnosis had
+ * never mentioned it. The other three did go red, so the finding was real; the
+ * check was one prose word away from missing a quarter of it, and a short or
+ * common fifth condition name would slip through the same way.
+ */
+function failureText(workflow: string): string {
+  const start = workflow.indexOf('echo "::error::');
+  if (start === -1) return '';
+  return workflow
+    .slice(start)
+    .split('\n')
+    .filter((line) => !/^\s*#/.test(line))
+    .join('\n');
+}
+
 describe('the webhook monitor names every condition it can fire on', () => {
   const health = read('lib/notify/webhook-health.ts');
   const workflow = read('.github/workflows/delivery-webhook-monitor.yml');
@@ -104,30 +137,83 @@ describe('the webhook monitor names every condition it can fire on', () => {
   /**
    * The unhealthy conditions, read out of the one expression that defines them:
    * `const healthy = everHeard && !refusing && !deaf && !mute;`
+   *
+   * Nullable rather than asserted here. This runs while vitest is COLLECTING the
+   * suite, so an `expect` in it surfaces as a collection error with the message
+   * attached to no named test — the one presentation the message was written to
+   * avoid. The assertion lives in its own `it` below.
    */
-  const conditions = (() => {
+  const conditions: string[] | null = (() => {
     const m = health.match(/const healthy = ([^;]+);/);
-    expect(m, 'webhook-health.ts no longer has a single `const healthy = ...` expression — ' +
-      'this check reads the conditions out of it and can no longer do so.').toBeTruthy();
-    return [...(m as RegExpMatchArray)[1].matchAll(/!?([A-Za-z_]\w*)/g)].map((x) => x[1]);
+    if (!m) return null;
+    return [...m[1].matchAll(/!?([A-Za-z_]\w*)/g)].map((x) => x[1]);
   })();
 
+  /** The conditions, or a clear failure — never a silently empty list. */
+  function requireConditions(): string[] {
+    expect(
+      conditions,
+      'webhook-health.ts no longer has a single `const healthy = ...` expression — this check ' +
+        'reads the conditions out of it and can no longer do so. Restore the expression or ' +
+        'rewrite this derivation; leaving it is a guard that reports nothing missing because it ' +
+        'found nothing at all.',
+    ).not.toBeNull();
+    return conditions as string[];
+  }
+
   it('reads a plausible set of conditions, so this suite is not vacuous', () => {
-    expect(conditions.length).toBeGreaterThanOrEqual(3);
-    expect(conditions).toContain('everHeard');
+    const c = requireConditions();
+    expect(c.length).toBeGreaterThanOrEqual(3);
+    expect(c).toContain('everHeard');
   });
 
   it('every one of them appears in the failure text', () => {
-    const missing = conditions.filter((c) => !workflow.includes(c));
+    const text = failureText(workflow);
+    expect(
+      text.length,
+      'no `::error::` line found in delivery-webhook-monitor.yml, so there is no failure text ' +
+        'to check the conditions against.',
+    ).toBeGreaterThan(0);
+
+    const missing = requireConditions().filter((c) => !new RegExp(`\\b${c}\\b`).test(text));
     expect(
       missing,
       missing.length
         ? 'webhook-health.ts can report these unhealthy conditions and the monitor that ' +
           `alarms on them does not mention them:\n${missing.map((m) => `  ${m}`).join('\n')}\n\n` +
           'An operator reads the workflow log, not the JSON. Naming only the original ' +
-          'condition sends them to fix the wrong thing — which is worse than saying nothing.'
+          'condition sends them to fix the wrong thing — which is worse than saying nothing. ' +
+          '(Only the text under `::error::` counts, and comments in it do not — a condition ' +
+          'name that happens to appear in a header paragraph is not a diagnosis.)'
         : 'ok',
     ).toEqual([]);
+  });
+
+  it('discriminates: a condition named only in a comment does not count', () => {
+    /*
+      The check above is worth exactly as much as its ability to say no. Proven
+      against a fixture rather than against the real file, so editing a comment
+      in the workflow cannot quietly turn this case vacuous.
+    */
+    const fixture = [
+      '      - name: Probe',
+      '        run: |',
+      '          # a monitor that cries wolf gets mute, which is the failure this prevents',
+      '          echo "::error::Delivery telemetry is UNHEALTHY"',
+      '          echo "  everHeard=false  No delivery event has EVER arrived"',
+    ].join('\n');
+    const text = failureText(fixture);
+
+    expect(/\bmute\b/.test(fixture), 'the fixture does not contain the word it is testing').toBe(true);
+    expect(
+      /\bmute\b/.test(text),
+      'a condition named only in a comment satisfies the check — so a diagnosis can be missing ' +
+        'while the guard reports it present, which is how `mute` passed for its first day.',
+    ).toBe(false);
+    expect(/\beverHeard\b/.test(text), 'the scoping dropped the diagnosis it was meant to keep').toBe(true);
+
+    // And the boundary half: `mute` must not be satisfied by `muted`.
+    expect(/\bmute\b/.test('echo "::error::x"\necho "gets muted"')).toBe(false);
   });
 
   /*

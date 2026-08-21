@@ -52,6 +52,32 @@ it('runs intake for the owner and returns scored + warnings', async () => {
   expect(mockIntake).toHaveBeenCalledWith('owner-1');
 });
 
+/*
+  🔴 THE HANDLER DROPPED THE ONE NUMBER THE OWNER NEEDED. `runIntake` caps a run
+  at 300 items (Req 11.10) and returns whatever the cap left behind as
+  `remaining` — added 2026-08-21 so the library stopped reporting `scored: 300`
+  on a 312-item vault as though it had looked at all of it. This handler then
+  destructured `{ scored, warnings, results }` and dropped it, so the number
+  existed inside lib/ai and nowhere a caller, a screen or an owner could see it.
+  A field nothing forwards is worth exactly as much as the silence it replaced.
+*/
+it('forwards how many items the batch cap left behind', async () => {
+  mockIntake.mockResolvedValueOnce({ scored: 300, remaining: 12, warnings: [], results: [] });
+  const json = await (await POST()).json();
+  expect(json.scored).toBe(300);
+  expect(json.remaining, 'the batch cap must be visible outside lib/ai').toBe(12);
+});
+
+it('reports nothing left behind as zero, not as absent', async () => {
+  // `remaining` is optional in IntakeResult only because fixtures outside that
+  // module build one by hand (see the field's note). An absent value here would
+  // make "everything was scored" and "an old build that cannot tell you"
+  // indistinguishable on the screen, which is the shape of the original defect.
+  mockIntake.mockResolvedValueOnce({ scored: 3, warnings: [], results: [] });
+  const json = await (await POST()).json();
+  expect(json.remaining).toBe(0);
+});
+
 it('refuses with 429 once the owner has used their runs for the day', async () => {
   mockReserve.mockRejectedValueOnce(new IntakeBudgetError('used them all', 3600));
   const res = await POST();

@@ -146,8 +146,42 @@ it('names the rows it skipped, rather than only counting them', async () => {
   expect(body.imported).toBe(1);
   expect(body.duplicatesSkipped).toBe(1);
   expect(body.duplicateRows, 'the response should identify the skipped rows').toEqual([
-    { row: 2, title: 'Chase' },
+    { position: 2, title: 'Chase', url: 'https://chase.com' },
   ]);
+});
+
+/*
+  🔴 IT CALLED THIS A ROW AND THE SCREEN CALLED IT A LINE IN YOUR FILE, and it is
+  neither. The number is the item's index in the uploaded BATCH. The batch is
+  `parsed.rows` — what SURVIVED parsing — and lib/import/csv-parser.ts drops rows
+  for a missing service name or password, or for being an in-file duplicate,
+  reporting those with `dataRow`, which IS true to the file.
+
+  So the import screen showed two incompatible numbering bases under one word.
+  With a single unreadable row at data-row 2, a duplicate at data-row 3 was
+  reported as "Row 2" directly beneath a skip also labelled "Row 2". That is a
+  number an owner takes back to their export to go and look at a line, and on the
+  messy files that produce skips it points at the wrong one.
+
+  This route cannot answer with a file line: nothing in the payload carries one.
+  `ParsedRow` would have to carry `dataRow` through the client (lib/import is not
+  this file's to change). Until it does, the field is named for what it actually
+  is, and the two identifying fields an owner can act on — the label and the
+  address — are sent instead. `url` is what separates two logins at one provider,
+  which is the case the whole report exists for.
+*/
+it('does not call the batch position a row', async () => {
+  const res = await POST(
+    makeReq({
+      items: [item({ title: 'Chase', service_name: 'Chase' }), item({ title: 'Chase', service_name: 'Chase' })],
+    }),
+  );
+
+  const [skip] = (await res.json()).duplicateRows;
+  expect(
+    Object.keys(skip).sort(),
+    'a batch index named `row` invites the screen to print it as a file line',
+  ).toEqual(['position', 'title', 'url']);
 });
 
 it('compares against the vault on url too, so it must read the column', async () => {

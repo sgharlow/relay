@@ -133,13 +133,24 @@ jobs:
           echo "                   otherwise revert to reporting healthy no matter what."
           echo ""
           echo "Check, in the order the state implies:"
+          # 🔴 BOTH POINTERS BELOW WERE WRONG WHEN THIS TEXT WAS WRITTEN, and a
+          # pointer an operator cannot follow at 3am costs more than no pointer.
+          # (1) The runbook has no §RESEND_API_KEY heading — that key is covered
+          # in "§6 — the rest", and somebody searching for the § they were given
+          # finds nothing. (2) The lockout precedent is not in migration 030:
+          # 030's grant resolved once against the tables that existed then, 031
+          # created email_send_attempts, and the first read as relay_dev failed
+          # with `permission denied`. The account is in 032's header. Both errors
+          # were inherited verbatim from lib/notify/webhook-health.ts, which
+          # still carries them, and copying a line is not checking it.
           echo "  refusing -> RESEND_API_KEY first (revoked or wrongly rotated is the commonest"
           echo "              cause), then whether the Resend account is suspended and the sending"
-          echo "              domain still verified. docs/secret-rotation-runbook.md §RESEND_API_KEY."
+          echo "              domain still verified. docs/secret-rotation-runbook.md '§6 — the rest'."
           echo "  deaf     -> Resend dashboard -> Webhooks: does the endpoint exist and point at"
           echo "              https://relaystandby.com/api/resend/webhook ? Does RESEND_WEBHOOK_SECRET"
           echo "              in Vercel still match its signing secret? A rotation silently drops every event."
-          echo "  mute     -> a privilege or schema change on email_send_attempts; migration 030"
-          echo "              already locked the application out of that table once."
+          echo "  mute     -> a privilege or schema change on email_send_attempts. The"
+          echo "              031/032 default-privileges gap locked the application out of that"
+          echo "              exact table once: see db/migrations/032_relay_dev_default_privileges.sql."
           echo "  any      -> npx tsx --env-file=.env.local scripts/verify-delivery-webhook.ts <your-address>"
           exit 1

@@ -285,17 +285,32 @@ export default function AccessClient() {
         // data. If a real item fails here, being told it "may be demo data" is
         // worse than no message at all.
         /*
+          ⛔ DO NOT TIDY THIS COMMENT AWAY — CI READS IT. Deleting the quoted
+          address below turns lib/ops/support-commitment.test.ts red, and adding
+          it back outside a comment turns access-has-a-way-back.test.ts red. Two
+          guards, opposite directions, held apart by this paragraph. If you are
+          here to simplify, fix the guard first (next paragraph but one), then
+          delete this whole block in the same commit.
+
           The address comes from lib/contact.ts now. It was spelled out by hand
           here — was: "…tell us at hello@relaystandby.com so a person can look."
           — on the screen read under the most stress, and one of the two places
           that would have been missed the next time the address changed.
 
           ⚠️ The literal is left in this comment ON PURPOSE, and not only for the
-          history: lib/ops/support-commitment.test.ts asserts the file CONTAINS
-          the address rather than that it renders it, so removing the string
-          outright turned that guard red on a change that made the code better.
-          The guard should read the use, the way the way-back guard was taught to
-          (see its note about matching the use and not the import).
+          history: lib/ops/support-commitment.test.ts:112 asserts the file
+          CONTAINS the address rather than that it renders it, so removing the
+          string outright turned that guard red on a change that made the code
+          better. Meanwhile src/app/(access)/access/access-has-a-way-back.test.ts
+          forbids the literal in comment-stripped source, which is the rule that
+          is actually right.
+
+          THE FIX IS ONE LINE IN lib/ops/support-commitment.test.ts:
+          `expect(access).toContain('CONTACT_EMAIL')` — assert the reference, not
+          the value. That file's own note at its line 46 says it already learned
+          this for /about ("Assert the reference, not the value") and did not
+          carry the lesson down to this assertion. It is not this route group's
+          file to edit; reported to the lane that owns lib/ops on 2026-08-21.
         */
         setRevealed((r) => ({ ...r, [item.id]: { ok: false, message: `This one could not be opened just now. Try again — if it keeps happening, tell us at ${CONTACT_EMAIL} so a person can look.` } }));
       }

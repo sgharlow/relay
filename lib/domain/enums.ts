@@ -44,10 +44,15 @@ export type TriggerType = (typeof VALID_TRIGGER_TYPES)[number];
  *
  * ⚠️ AND THE HARD PART THIS DOES NOT SOLVE, so nobody mistakes it for cover:
  * closing the `estate` TRIGGER TYPE does not stop the product releasing after an
- * owner dies. runHeartbeatSweep arms every armed release for an overdue owner
- * with no trigger_type filter, and nothing auto-closes a released state — so a
- * deceased owner's `emergency` trigger releases and stays released. The
- * mitigations for that are disclosure and copy, not this list. See the
+ * owner dies. runHeartbeatSweep arms every armed release for an overdue owner —
+ * since 2026-08-21 restricted to the types in THIS list (`AND trigger_type =
+ * ANY($2)`, lib/release/heartbeat.ts), so a withdrawn type can no longer be
+ * started by the cron; this clause previously read "with no trigger_type filter"
+ * and that half is now false — and nothing auto-closes a released state. The
+ * conclusion is UNCHANGED and must not be softened: `emergency` is in this list,
+ * so a deceased owner's emergency trigger still arms, still releases, and stays
+ * released. The filter closed a withdrawn-capability leak, not this one. The
+ * mitigations for THIS remain disclosure and copy, not this list. See the
  * `declined:` block in PROJECT.yaml.
  */
 export const USER_SELECTABLE_TRIGGER_TYPES = [
