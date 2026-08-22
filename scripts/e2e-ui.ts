@@ -166,6 +166,7 @@ type LocatorLike = {
   click(): Promise<void>;
   fill(v: string): Promise<void>;
   first(): LocatorLike;
+  nth(i: number): LocatorLike;
   waitFor(o: { state: string; timeout?: number }): Promise<void>;
   getByLabel(r: RegExp): LocatorLike;
   getByRole(role: string, o: { name: RegExp }): LocatorLike;
@@ -571,6 +572,108 @@ async function main(): Promise<void> {
       promptedAfterRow === 0,
       `${promptedAfterRow} still prompted`,
     );
+
+    // =====================================================================
+    // PART 4 — /circle, and the form nothing automated had ever typed into
+    // =====================================================================
+    /*
+      🔴 WHY THIS PART EXISTS, added 2026-08-21. J4-R1's single entry shipped
+      that afternoon — `POST /api/people` plus one `AddPersonForm`, replacing the
+      two add forms on /circle — and `docs/user-journeys.md` recorded the gap in
+      its own header: the a11y run LOADED the new form as one of its pages, but
+      **a11y cover is not functional cover**, and this walk visited /account,
+      /access and /vault and never opened /circle. So nothing automated had ever
+      typed a name into the one form every owner meets first.
+
+      The discriminating assertion is the DISABLED SUBMIT. `noHat` disables the
+      button until at least one checkbox is ticked, and says why. A person with
+      no hat is a row that can do nothing; the server refuses it too. That guard
+      is pure client state — invisible to every HTTP walk in the chain, and the
+      exact class of thing PART 1 exists to catch on the other screen.
+    */
+    const circle = await (await contextFor(browser, owner.email)).newPage();
+    await circle.goto(`${BASE}/circle`, { waitUntil: 'networkidle' });
+
+    check('the circle page renders for a signed-in owner', await circle.locator('h1').isVisible());
+
+    const submit = circle.getByRole('button', { name: /Add this person/i });
+    check('the single add-a-person form is on the page', (await submit.count()) > 0);
+
+    const recipientBox = circle.locator('input[type="checkbox"]').first();
+    const verifierBox = circle.locator('input[type="checkbox"]').nth(1);
+
+    const personName = `Walked Contact ${stamp}`;
+    const personEmail = undeliverable(`relay-ui-circle-${stamp}@relay.test`);
+    await circle.locator('input[placeholder="Name"]').first().fill(personName);
+    await circle.locator('input[placeholder="Email"]').first().fill(personEmail);
+
+    /*
+      ⚠️ THE FORM SHIPS WITH "Step in" ALREADY TICKED (`EMPTY.recipient = true`),
+      and the first draft of this walk asserted a disabled button on a fresh page
+      and went red. That default is right — the common case is a recipient — so
+      the guard is only reachable by UNTICKING, which is also the realer gesture:
+      an owner adding somebody who will only confirm emergencies unticks the
+      first box before ticking the second, and passes through the dead state on
+      the way.
+    */
+    const enabledByDefault = await submit.first().evaluate((el) => (el as HTMLButtonElement).disabled);
+    check(
+      'the form opens ready to add a recipient — the common case needs no ticking',
+      enabledByDefault === false,
+      `disabled=${enabledByDefault}`,
+    );
+
+    await recipientBox.click();
+    const disabledWithNoHat = await submit.first().evaluate((el) => (el as HTMLButtonElement).disabled);
+    check(
+      '🔴 untick every hat and Add DISABLES — not a dead button that fails on click',
+      disabledWithNoHat === true,
+      `disabled=${disabledWithNoHat} — pure client state, invisible to every HTTP walk`,
+    );
+    check(
+      'and it says WHY, rather than leaving the owner to guess',
+      /Tick at least one/i.test(await circle.locator('body').innerText()),
+      'the refusal is stated before the click is wasted',
+    );
+
+    // Both hats on one person — the case the copy above the form exists to
+    // explain, and the one the two old forms made impossible without entering
+    // them twice.
+    await recipientBox.click();
+    await verifierBox.click();
+
+    const enabledNow = await submit.first().evaluate((el) => (el as HTMLButtonElement).disabled);
+    check('re-ticking a hat enables Add again', enabledNow === false, `disabled=${enabledNow}`);
+
+    await submit.first().click();
+    await circle.locator('[role="status"]').first().waitFor({ state: 'visible', timeout: 20_000 });
+    const said4 = await circle.locator('[role="status"]').first().innerText();
+    check(
+      '🔴 THE POINT: a name typed into the real form creates the person',
+      said4.length > 0 && new RegExp(personName.split(' ')[0], 'i').test(said4 + (await circle.locator('body').innerText())),
+      said4.slice(0, 90),
+    );
+
+    /*
+      And ONE person, not two rows. The whole reason the two forms were folded
+      into one is that a husband who both steps in and confirms is one human;
+      creating him twice is the defect the unified form was built to remove.
+    */
+    const bothHats = await query<{ n: string }>(
+      `SELECT
+         (SELECT count(*) FROM recipients r JOIN users u ON u.id = r.owner_id
+           WHERE u.email = $1 AND r.email = $2) AS rec,
+         (SELECT count(*) FROM verifiers v JOIN users u ON u.id = v.owner_id
+           WHERE u.email = $1 AND v.email = $2) AS ver`,
+      [owner.email, personEmail],
+    );
+    const row = bothHats.rows[0] as unknown as { rec: string; ver: string };
+    check(
+      'both hats landed — one person named once, in both roles',
+      Number(row.rec) === 1 && Number(row.ver) === 1,
+      `recipient rows=${row.rec} verifier rows=${row.ver}`,
+    );
+
   } finally {
     await browser.close().catch(() => {});
     console.log('');

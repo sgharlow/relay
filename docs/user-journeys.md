@@ -38,6 +38,14 @@
 > on production against the current build, with a disposable owner created and deleted for the
 > purpose. The 2026-08-08 table is kept as the historical record; where the two differ, the newer
 > section wins.
+>
+> ✅ **AMENDED 2026-08-21.** The 2026-08-13 HAND sweep is still the newest hand sweep, and it is
+> still ageing — that has not changed and a hand sweep always will. What changed is that the
+> journeys it was the *only* evidence for no longer depend on it: **J3, J6, J9 and J4 now have
+> automated cover that re-runs on demand**, so their staleness clock resets whenever anyone runs
+> `npm run verify:journeys` rather than whenever somebody remembers to click through the product.
+> That was the whole argument for building walks instead of re-walking by hand. See the
+> ✅ block in the automated-evidence section above.
 
 > 🔴 **J10 IS WITHDRAWN, NOT GATED — 2026-08-14.** Gate `g2-counsel-opinion` was **declined**
 > rather than met: no counsel opinion is being sought, so estate is out of the product
@@ -64,26 +72,54 @@ multi-owner isolation boundary, the owner screens in a real browser, the full de
 (J8 — plaintext returned byte for byte as labelled fields, with a TOTP code matching one computed
 independently), and the migration-035 factor declaration through the real stack.
 
-> 🔴 **THE GAP THIS DOES NOT CLOSE, stated so it is visible rather than accidental.**
-> **J3, J6 and J9 have no automated cover at all.** No walk exercises assisted setup for a parent
-> (J3), a recipient-initiated access request and the owner challenge (J6), or standing down and
-> re-arming (J9). Their most recent evidence remains the hand sweep of **2026-08-13** in the table
-> below. That matters more than it did last week, because the 2026-08-21 sprint changed code on all
-> three paths: J6 gained a cooling-off after a refused request, J9's Cancel control was retired
-> outright, and J3's delegate scopes were narrowed to what the handlers actually honour.
-> So the three journeys with the least automated cover are three of the ones that moved most
-> recently. Tracked as `PROJECT.yaml → deferred → the-journey-sweep-is-stale` (D10); whether they
-> gain walks or stay explicitly walk-only is a scope decision, not a documentation one.
+> ✅ **THAT GAP IS CLOSED — 2026-08-21, and by building walks rather than by re-dating a table.**
+> **J3, J6 and J9 now each have an automated walk, and J4's add-a-person form is driven in a real
+> browser.** They ran green against the deployed build on 2026-08-21. Per-walk counts, printed by
+> the walks themselves rather than copied here:
 >
-> ⚠️ **A FOURTH JOURNEY MOVED THE SAME DAY, and it is not in the sentence above: J4** (added
-> 2026-08-21, after this paragraph was written). J4-R1 single entry shipped that afternoon —
-> `POST /api/people` plus one `AddPersonForm`, replacing the two add forms on `/circle`. It is not
-> in the J3/J6/J9 list because it is not *uncovered*: the a11y re-run loaded the new form as one of
-> the pages it covers (the count is stated once, in the walk-evidence section above). But **a11y cover is not functional cover.** The UI walk visits `/account`, `/access`
-> and `/vault` and never opens `/circle` (`scripts/e2e-ui.ts`), so nothing automated has typed a
-> name into that form. The generalisation the paragraph above reaches for holds with four rather
-> than three: **the code that moved today is the code the walks do not touch**, which is the
-> ordinary consequence of walks being written for last month's product.
+> | journey | walk | command | checks |
+> |---|---|---|---|
+> | **J3** assisted setup for a parent | `scripts/e2e-delegate.ts` | `npm run verify:delegate` | 27 |
+> | **J6** someone requests access | `scripts/e2e-request.ts` | `npm run verify:request` | 31 |
+> | **J9** standing down · *differentiator* | `scripts/e2e-standdown.ts` | `npm run verify:standdown` | 23 |
+> | **J4** building the circle | folded into `scripts/e2e-ui.ts` | `npm run verify:ui` | 26 → **34** |
+>
+> All three new walks run as one chain: **`npm run verify:journeys`**.
+>
+> ⚠️ **IT IS A SEPARATE CHAIN FROM `verify:live`, AND THAT IS NOT TIDINESS.** `/api/auth/signup`
+> allows **10 per hour per IP**, and the existing five-walk chain performs **exactly 10 signups** —
+> it already runs at 100% of its own rate limit with no headroom. The three new walks add five
+> more, so a combined chain would die part-way through on the 11th signup as a bare `429`, which
+> reads exactly like a flaky test. **Run the two chains an hour apart, or restart `npm run dev`
+> between them** (the limiter is per-instance memory). Recorded as
+> `PROJECT.yaml → deferred → the-live-chain-sits-at-its-own-signup-limit`, with the options and the
+> reason raising `LIMIT` is the wrong fix.
+>
+> **What the new walks assert that no unit test could.** J3: a PENDING delegation grants nothing,
+> consent on paper activates it, the consent artifact reads back, retired scopes are dropped at
+> read time from a row that really carries one, and revocation bites immediately. J6: a stranger
+> cannot ask about a vault they are not named on and cannot tell a real owner id from a fabricated
+> one, denying stamps liveness, the twelve-hour cooling-off actually refuses and names the real
+> number of hours, and the budget is per recipient. J9: a verifier's vote does **not** survive a
+> stand-down (proven at a 2-of-2 quorum, standing down at 1/2 — the shape the 2026-08-21 fix was
+> about), standing down stamps liveness, a closed release really closes (the same recipient who
+> decrypted a moment earlier is refused), and `/cancel` is gone. J4: the Add button disables when
+> every hat is unticked and says why — pure client state, invisible to every HTTP walk — and one
+> person ticked for both roles lands as one person on both lists.
+>
+> 🔴 **AND THE WALKS FOUND SOMETHING, which is the point of building them.** An owner who has
+> named and invited a contact but has **not yet written an access rule** can be asked for access,
+> can deny, and **cannot approve** — and the failed approve **burns the request**, because the
+> status is committed before the lookup that throws. Ordinary setup order reaches it. Recorded as
+> `PROJECT.yaml → deferred → approve-is-unreachable-before-the-first-rule` with three options; it is
+> Steve's ruling, not a walk's to take. The two assertions covering it are written to go **red when
+> it is fixed**, so the fix cannot land without updating the record.
+>
+> ⚠️ **Escalation to verifiers is still uncovered, and deliberately.** J6's escalation when the
+> owner does not answer inside the challenge window is driven by elapsed time and the heartbeat
+> cron; a walk that slept out an emergency's window would take longer than the whole gate. It stays
+> unit-tested (`lib/release/escalation.test.ts`) and hand-walked. Stated here so the gap is visible
+> rather than assumed away.
 
 > ⚠️ **A walk is not a sweep.** The chain creates disposable accounts on a reserved domain and
 > exercises paths; it does not read a screen the way a person does, and it cannot notice that

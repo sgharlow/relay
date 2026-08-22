@@ -1,3 +1,12 @@
+> # SUPERSEDED BY docs/go-live-checklist-steve.md (2026-08-21)
+>
+> This page held four items. The replacement holds eleven sections and folds all four in whole,
+> re-derived rather than copied. It was written on resuming from the one-day park, when three more
+> Steve-court items were found by building the J3/J6/J9 walks.
+>
+> Kept rather than deleted because it is the record of what was owed on the morning of 2026-08-21.
+> **Do not work from this page.**
+
 # Steve's actions — written 2026-08-21
 
 > **One page, four items.** `PROJECT.yaml → deferred` is the register and stays authoritative; this
