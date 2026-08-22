@@ -25,6 +25,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 import { requireOwner, readJson, isResponse, mapError } from '../../../../../lib/http/owner-route';
 import { rateLimit } from '../../../../../lib/http/rate-limit';
+import { ValidationError } from '../../../../../lib/validation';
 import {
   mintStepUp,
   hasStepUp,
@@ -51,6 +52,69 @@ export const dynamic = 'force-dynamic';
  */
 const ATTEMPT_LIMIT = 6;
 const ATTEMPT_WINDOW_MS = 5 * 60 * 1000;
+
+/**
+ * Did this error mean "the factor did not check out", or did something break?
+ *
+ * 🔴 IT USED TO BE ONE UNANCHORED REGEX, AND IT MATCHED `ECONNREFUSED`.
+ * The test was `/challenge|expired|used|verified|jwt|signature/i` against the
+ * error MESSAGE, and `ECONNREFUSED` ends in the letters `used` — so the single
+ * most common database and network error string in this stack was classified as
+ * a failed proof. An owner trying to elevate during an outage was told *"That
+ * did not match. Try again."*: the product blaming a person for its own fault,
+ * on the screen in front of export, recovery-code reissue and account closure —
+ * and the operator seeing a rise in step-up refusals rather than an outage.
+ * Found on 2026-08-22 by the first test ever written against this handler, which
+ * asserted an infrastructure error is NOT swallowed and went red.
+ *
+ * That half fails in the SAFE direction — a refusal, never an elevation — which
+ * is why it survived: nothing an owner could report distinguishes it from a
+ * mistyped code. That is what made it invisible, not what made it harmless.
+ *
+ * 🔴 AND THE SAME LINE BROKE THE HEADER'S OTHER PROMISE, in the direction that
+ * is NOT safe. `finishAuthentication` refuses an unknown credential with *"That
+ * passkey is not recognised."*, which matches none of those six words — so it
+ * fell through to `mapError` and answered
+ * `{error:"ValidationError", message:"That passkey is not recognised.",
+ * field:"response"}` instead of the flat `StepUpFailed`. The header three
+ * paragraphs above says in terms that a wrong code, an account with no secret,
+ * an expired passkey challenge and a replayed one "all answer the same 400 …
+ * because the alternative is a probe that tells somebody which factor to
+ * attack". One of the four told them. The guarantee was stated in prose, was
+ * carried by a word list nobody could check against the messages it had to
+ * cover, and was false from the day it was written.
+ *
+
+ * STRUCTURE FIRST, STRING LAST. Both modules behind this path refuse with a
+ * typed `ValidationError` — `openChallenge` for a replayed, expired or
+ * misrouted nonce, `finishAuthentication` for an unrecognised or unverified
+ * passkey — so the common cases are decided by TYPE and no longer by prose that
+ * a library is free to reword. `jose` stamps every verification failure with an
+ * `ERR_JW*`/`ERR_JOSE*` code. A `SyntaxError` is the client's own `response`
+ * string failing to parse, which is a malformed proof and not a server fault;
+ * it used to fall through to a 500.
+ *
+ * The message test remains as the backstop for `@simplewebauthn`'s internal
+ * throws, which are plain `Error`s — but WORD-ANCHORED, which is the whole
+ * correction: `\bused\b` cannot match inside `ECONNREFUSED`.
+ *
+ * ⚠️ The anchored list is still a heuristic and can still be wrong in one
+ * direction — a TLS `certificate has expired` would read as a failed proof. That
+ * is a refusal during an outage rather than an elevation during one, so it stays
+ * on the safe side of the same line; do not widen it to buy tidiness.
+ */
+function isFailedProof(err: unknown): boolean {
+  if (err instanceof ValidationError) return true;
+  if (err instanceof SyntaxError) return true;
+
+  const code = (err as { code?: unknown } | null)?.code;
+  if (typeof code === 'string' && /^ERR_(JW|JOSE)/.test(code)) return true;
+
+  return (
+    err instanceof Error &&
+    /\b(challenge|expired|already used|verified|signature|assertion)\b/i.test(err.message)
+  );
+}
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const auth = await requireOwner();
@@ -133,7 +197,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   } catch (err) {
     // A replayed or expired passkey challenge arrives as a ValidationError from
     // openChallenge and must not be told apart from a wrong code.
-    if (err instanceof Error && /challenge|expired|used|verified|jwt|signature/i.test(err.message)) {
+    if (isFailedProof(err)) {
       return NextResponse.json(
         { error: 'StepUpFailed', message: 'That did not match. Try again.' },
         { status: 400 },
