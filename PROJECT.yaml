@@ -598,6 +598,43 @@ ratified:
       The custodial duty never paused, so nothing about it resumes. The backup absence alarm, the
       KMS wall watch, the scheduler monitor and CI ran throughout — which is the one thing the park
       got structurally right and is worth keeping as the template for the next one.
+    corrected:
+      date: 2026-08-22
+      by: claude
+      what_was_wrong: >-
+        THE KMS WALL WATCH DID NOT RUN THROUGHOUT. It does not run at all. Measured from
+        `.github/workflows/` at 1ce60f5: four workflows are scheduled — `production-canary` (*/15),
+        `scheduler-monitor` (*/30), `delivery-webhook-monitor` (daily), `date-guards` (daily) — and
+        `verify:kms` is in none of them. It exists only as
+        `npx tsx --env-file=.env.admin scripts/verify-kms.ts`, a command a person types on the one
+        laptop that holds `.env.admin`. The other three items on that list are accurate.
+      why_this_correction_is_sharper_than_the_one_below: >-
+        The superseded park entry claimed the watch was "still running and still expected to page",
+        and carries the same correction. This entry inherited the claim and STRENGTHENED it twice
+        over: from "expected to page" to the past-tense assertion that it "ran throughout", and
+        from a description into a RECOMMENDATION — "worth keeping as the template for the next one".
+        A false claim proposed as a template is how the next pause inherits the same hole. The
+        correction has to sit on the LIVE entry, not only on the superseded one, because a reader
+        who sees `superseded_by` stops reading there and would meet the claim without the fix.
+      what_is_actually_true: >-
+        Three of the four ran throughout, and the park's structural instinct was right — a park
+        should stop building and not watching. What is missing is the one whose failure is
+        PERMANENT: a CMK disabled, deleted, or with a key policy that stops naming the runtime
+        principal leaks nothing and makes every vault unreadable, and a key pending deletion still
+        decrypts for its whole waiting period, so every other signal stays green until the data is
+        gone. `docs/backup-restore-runbook.md` covers the database; a restored cluster is
+        ciphertext without the key.
+      compounding: >-
+        `deferred -> the-key-wall-could-not-run-its-own-command` (opened 2026-08-21) records that
+        `npm run verify:kms` could not run as documented either — `.env.admin` carried no
+        `KMS_KEY_ID`. Independent of this and compounding with it: unscheduled, AND until
+        2026-08-21 unrunnable by its own command. Do not treat a hand-run reminder as cover
+        without first confirming `.env.admin` carries the key id.
+      not_fixed_here: >-
+        Scheduling it needs `.env.admin` credentials in GitHub Actions secrets — an infrastructure
+        decision that is Steve's, under the policy `docs/kms-region-proposal.md` sits behind. The
+        park is over, so "building has stopped" is no longer the reason to leave it; the reason now
+        is simply that it is not mine to take. Recorded so the template is not reused as written.
     cost_actually_incurred: >-
       One day. The park's `consequences_accepted` priced 60 days of demand-lane stall
       (g1 runway ~18wk -> ~10wk, g3 -> ~6wk); at one day, those runways are materially unchanged
@@ -651,6 +688,62 @@ ratified:
     not_affected: >-
       Nothing in this entry touches report-bridge, domo-ssrs or the 2026-09-12 GO-LIVE, which are
       the work the park exists to make room for.
+    corrected:
+      date: 2026-08-22
+      by: claude
+      measured: >-
+        Read from `.github/workflows/` on the day this entry was written. FOUR workflows run on a
+        schedule: `production-canary.yml` (*/15), `scheduler-monitor.yml` (*/30),
+        `delivery-webhook-monitor.yml` (daily 08:17), `date-guards.yml` (daily 06:17 — it runs
+        gates.test.ts, verify-live-freshness.test.ts and ladder-claim.test.ts, which read repo
+        files and need no credentials). `npm run verify:kms` appears in NONE of them. It exists
+        only as a package script — `npx tsx --env-file=.env.admin scripts/verify-kms.ts` — and
+        `.env.admin` lives on one laptop.
+      what_was_wrong: >-
+        `what_does_NOT_pause` above lists "the KMS wall watch" among the things "still running and
+        still expected to page". It is not running and it cannot page: it is a command a person
+        types. Two of the four things on that list are accurate — the scheduler monitor is
+        `scheduler-monitor.yml`, and CI does run on every push. The KMS watch is the one that is
+        not, and this entry's own commit message names it as the one that matters most here,
+        "precisely because it is the one whose failure is invisible".
+      why_it_is_worse_during_a_park: >-
+        AWS KMS deletion has a waiting period of 7 to 30 days. The park is 60. So a deletion
+        scheduled at ANY point in the first month completes before anyone looks — and a key
+        pending deletion still decrypts for the whole waiting period, so every other signal here
+        (the canary, the scheduler monitor, the site itself) stays green throughout and then every
+        vault is permanently unreadable. `docs/backup-restore-runbook.md` covers the database; a
+        restored cluster is ciphertext without the key that opens it. This is the one failure in
+        the register with no rollback.
+      second_finding: >-
+        THE PARK IS EXACTLY THE AUTO-DISABLE WINDOW. `lib/ops/alarm-of-record.test.ts` recorded on
+        2026-08-21 that GitHub disables scheduled workflows in a PUBLIC repository after 60 days
+        with no repository activity, and that all four scheduled alarms plus `date-guards.yml`
+        share that fate. This entry was written the next day and commits to 60 days of deliberate
+        inactivity. So the four alarms `what_does_NOT_pause` relies on are themselves scheduled to
+        stop at about the moment the park ends. GitHub emails first, to the inbox the park exists
+        to leave alone.
+      not_fixed_here_and_why: >-
+        Scheduling `verify:kms` needs `.env.admin` credentials in GitHub Actions secrets, and the
+        off-GitHub heartbeat `alarm-of-record.test.ts` proposes needs a Route 53 health check or a
+        CloudWatch canary. Both are infrastructure changes with a cost and both need Steve, under
+        the same 5-gate policy `docs/kms-region-proposal.md` sits behind — and this is a park, in
+        which building is the thing that stopped. Recorded rather than taken. The cheap
+        interim is a calendar reminder to run `npm run verify:kms` by hand during the park;
+        that is a decision, not a commit.
+      re_verified: >-
+        2026-08-22, against master at 1ce60f5 (after #11 and #12 landed). The scheduled set is
+        unchanged — `production-canary`, `scheduler-monitor`, `delivery-webhook-monitor`,
+        `date-guards` — and `verify:kms` is still in none of them. The finding stands as written.
+      and_the_interim_had_its_own_hole: >-
+        ⚠️ READ THIS BEFORE RELYING ON THE HAND-RUN INTERIM ABOVE. #11 found, the same day, that
+        `npm run verify:kms` COULD NOT RUN AS DOCUMENTED: it invokes `--env-file=.env.admin`, and
+        that file carried the DSQL endpoints and `AWS_PROFILE` but never `KMS_KEY_ID` — so the one
+        check whose failure is permanent and unrecoverable was the one check that could not answer
+        by its own declared command. It failed CLOSED, so it was never a false green; it was simply
+        never going to run. The script now names the fix in its refusal
+        (`grep ^KMS_KEY_ID= .env.local >> .env.admin`). The two findings are independent and they
+        COMPOUND: unscheduled, and — until 2026-08-21 — unrunnable the documented way. Confirm
+        `.env.admin` carries the key id before treating a calendar reminder as cover.
   - id: refund-stance
     date: 2026-08-09
     decision: "30-day money-back guarantee on every charge (renewals included), then no refund of the unused part of a year"
@@ -2951,6 +3044,23 @@ deferred:
       names and vault item titles are plaintext columns. What it can never do is decrypt: with no
       KMS grant the vault stays ciphertext with no key, and `verify:iam` now asserts that its policy
       carries no `kms:*` action at all. Read-only is not harmless; it is bounded."
+    the_no_kms_claim_is_BUILT_not_live_proven:
+      date: 2026-08-22
+      by: claude
+      what: "The sentence above is a claim about the CHECKER, not yet about the ACCOUNT.
+        `lib/ops/iam-wall.ts -> READONLY_CONTRACT.forbidsServices` holds the rule and it is proven
+        against fixtures and by planted violation - but per the 2026-08-21 sprint report §3.9,
+        NOTHING HAS READ THE REAL `relay-ro-policy` THROUGH THIS CODE. It needs `.env.admin`."
+      why_it_is_recorded_here: "This is the load-bearing property of the whole three-file env split:
+        it is the only reason `.env.ro` may be placed somewhere less trusted than Steve's laptop -
+        which is what this very entry's `ends_when` asks for. So the entry that proposes putting the
+        credential in the cloud should not read as though the wall around it had been measured.
+        CLAUDE.md separately credited `verify:roles` with this check until 2026-08-22; it cannot
+        make it - it reads the database and never the IAM policy - and the correction is recorded
+        in place there."
+      ends_when: "`npm run verify:iam` has been run with `.env.admin` against the live account and
+        the `relay-ro` principal reads clean. One command, and it is a precondition of `ends_when`
+        above rather than a separate task."
     note: "Steve ruled 2026-08-21 to TRACK this rather than do it immediately, so it is here rather
       than in a memory file - a sentence in a memory file is one session from being lost."
 

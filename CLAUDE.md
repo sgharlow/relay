@@ -165,10 +165,19 @@ npm run verify:funnel  # is the G1 demand instrument alive? Drives a real browse
                        # retired 2026-08-16 (ratified.retire-paid-advertising) and that
                        # doc carries a ⛔ RETIRED banner, so a live command's only
                        # instructions pointed at a document telling you not to act on it.
-npm run verify:iam     # the OTHER half of the least-privilege wall — can the live site's IAM
-                       # principal still obtain a DSQL ADMIN token? Reads the live policy,
-                       # managed AND inline, wildcards included. verify:roles cannot see
-                       # this. Read-only; NEEDS .env.admin (an identity that can read IAM).
+npm run verify:iam     # the OTHER half of the least-privilege wall — can any of our IAM
+                       # principals still obtain a DSQL ADMIN token, and does the one that
+                       # must hold NO KMS still hold none? Reads each live policy, managed
+                       # AND inline, wildcards included, against its own contract in
+                       # lib/ops/iam-wall.ts → CONTRACTS. A principal absent from that list
+                       # is audited by NOTHING. verify:roles cannot see any of this — it
+                       # reads the database, so it sees which ARN is bound to a role and
+                       # never what that ARN's policy permits.
+                       # Read-only; NEEDS .env.admin (an identity that can read IAM).
+                       # ⚠️ This read "can the live site's IAM principal…", singular, from
+                       # 2026-08-21 — when it grew from one principal to three — until
+                       # 2026-08-22. `built`, NOT live-proven: no run has ever read the real
+                       # relay-ro-policy through it.
 npm run verify:kms     # the wall UNDERNEATH both of those, and the only one whose failure
                        # is permanent. Is the CMK every vault is wrapped under still there,
                        # enabled, not scheduled for deletion, rotation as intended, and does
@@ -299,6 +308,17 @@ columns, so this is still production PII. What it can never do is decrypt: with 
 vault stays ciphertext with no key, which is the property that makes it safe to put somewhere
 less trusted than this machine. `relay_ro` is watched by `npm run verify:roles` alongside the
 other two — a wall that instrument does not check is a wall that can be widened silently.
+
+⚠️ **BUT THE NO-KMS HALF IS `verify:iam`'S, NOT `verify:roles`'S**, and the difference decides what
+an unattended agent can actually establish. `verify:roles` connects to the database: it reads
+`sys.iam_pg_role_mappings`, so it proves which ARN is bound to `relay_ro` and what that ROLE may do
+once connected. Whether that ARN's POLICY carries a `kms:*` action is an IAM call it never makes —
+that rule lives in `lib/ops/iam-wall.ts → READONLY_CONTRACT.forbidsServices` and runs only under
+`.env.admin`, which is precisely the credential the read-only identity exists to avoid needing. So
+`.env.ro` proves the database half of its own safety story and cannot prove the half that makes it
+placeable at all. Corrected 2026-08-22; the table above and `docs/secret-rotation-runbook.md` both
+state the absence as fact, and `verify:iam` is the only thing that can make that true rather than
+aspirational — and it has never been run against the real policy.
 
 `.env.admin` holds **no secrets** — just `AWS_PROFILE`, so the key stays in `~/.aws/credentials`
 alone. Being a sysadmin is something you *choose* by naming that file, not a power you carry by
@@ -588,10 +608,24 @@ least-privilege split is enforced by GRANTs on a live cluster: `db/migrations/*.
 in no diff, test run or build. It re-measures the thing itself — both regions, read-only — asserting
 that `relay_app` (the live site, IAM `relay-runtime`) has full DML including `caregiver_leads`, that
 `relay_dev` (a laptop) can read that table and not write it, that **`relay_ro` (IAM `relay-ro`,
-migration 039) holds SELECT and writes NOTHING — no DML on any table, no DDL, and an IAM policy
-carrying `dsql:DbConnect` with no KMS at all**, that none of the three holds DDL, and that each is
-bound to exactly one IAM principal. Proven to fail in both directions by planting a widened
-`relay_dev` and a starved `relay_app`.
+migration 039) holds SELECT and writes NOTHING — no DML on any table, no DDL**, that none of the
+three holds DDL, and that each is bound to exactly one IAM principal. Proven to fail in both
+directions by planting a widened `relay_dev` and a starved `relay_app`.
+
+> ⚠️ **This sentence also credited `verify:roles` with checking that `relay_ro`'s IAM policy
+> carries "`dsql:DbConnect` with no KMS at all". IT DOES NOT, AND CANNOT — corrected 2026-08-22.**
+> This instrument connects to the database. It reads `sys.iam_pg_role_mappings`, so it can see
+> WHICH ARN is bound to a role; the ACTIONS in that ARN's policy are an IAM API call it never
+> makes. The no-KMS rule is `verify:iam`'s — `lib/ops/iam-wall.ts → READONLY_CONTRACT.forbidsServices`.
+> The two are one sentence apart in this file and they need `.env.ro` and `.env.admin`
+> respectively, so the misattribution had a cost rather than being untidy: it told an operator that
+> the check an agent CAN run proves the property, when the check that proves it needs the
+> credential nobody unattended has — and which, per the 2026-08-21 sprint report §3.9, **has never
+> read the real `relay-ro-policy`**. The most load-bearing claim in the three-file env split was
+> therefore recorded as measured by an instrument that does not measure it.
+> `scripts/verify-roles.ts` says the same thing correctly, in a comment *describing* the identity
+> rather than a rule it evaluates; a description a reader meets as an assertion is how this
+> happened.
 
 > ⚠️ **This paragraph described a TWO-role check ending "neither holds DDL" while three roles were
 > being checked** — corrected 2026-08-21, the day `relay_ro` was added, and the same one-file-two-
@@ -610,15 +644,44 @@ obtain database admin by permission rather than by configuration. `docs/least-pr
 
 **`npm run verify:iam` is the sixth, and it watches the half `verify:roles` structurally cannot.**
 The cutover has two walls. `verify:roles` re-measures what a role may do *once connected*, by
-reading the live catalog; the IAM policy decides something prior — whether the production principal
-can obtain an admin connection at all. One `aws iam create-policy-version` puts `dsql:DbConnectAdmin`
-back, in no diff, no test run and no build, and the app keeps working. This reads the live policy and
-refuses three ways it can return: the literal action, a wildcard (`dsql:*`, `*`) that confers it
-without naming it, and an **inline** user policy, which is a different API call entirely. It also
-asserts the positive half — a policy stripped to nothing grants no admin and takes the site down, and
-a check that is happiest when the product is broken is measuring the wrong thing. Proven in both
+reading the live catalog; the IAM policy decides something prior — whether a principal can obtain an
+admin connection at all. One `aws iam create-policy-version` puts `dsql:DbConnectAdmin` back, in no
+diff, no test run and no build, and the app keeps working. This reads the live policy and refuses
+three ways it can return: the literal action, a wildcard (`dsql:*`, `*`) that confers it without
+naming it, and an **inline** user policy, which is a different API call entirely. It also asserts
+the positive half — a policy stripped to nothing grants no admin and takes the site down, and a
+check that is happiest when the product is broken is measuring the wrong thing. Proven in both
 directions against real AWS data, with no IAM mutation: v1 is retained as the rollback and still
 carries the grant, so pointing the reader at it is a live negative control.
+
+**It audits THREE principals, each against its own contract**, and the per-principal part is the
+point rather than a detail. `lib/ops/iam-wall.ts → CONTRACTS` holds one entry per identity — what it
+must hold, what it must never hold, and *what a violation costs* — and `scripts/verify-iam.ts`
+iterates that list and audits nothing else, so **an IAM user absent from it is audited by nothing**.
+A single global rule set could not express the rule that matters most here: `relay-runtime`
+legitimately holds KMS, because the live site is what wraps and unwraps vault data keys, while
+`relay-ro` must hold **no `kms:*` action at all** — the one property that makes `.env.ro` placeable
+somewhere less trusted than Steve's laptop. The same document, `relay-runtime-policy` v2, reads
+healthy for one and as a breach for the other. Note the forbidden unit there is a whole **service**,
+not an action: a policy granting only `kms:DescribeKey` decrypts nothing, would pass a
+"does not confer `kms:Decrypt`" test, and still falsifies the sentence `.env.example`, the rotation
+runbook and `verify-roles.ts` all print. **Do not restate the principal list from here — run it and
+read what it prints**, the same rule the `verify:roles` note above arrives at.
+
+> ⚠️ **The two paragraphs above described a ONE-principal check** — "the live site's IAM
+> principal", "the production principal" — from 2026-08-21, when the script grew to three, until
+> 2026-08-22. The Commands block at the top of this file said the same. That is the identical
+> one-file-two-answers shape the `verify:roles` note fifteen lines up was written to correct, on the
+> same day, about the same change, and it was missed here because the sibling section was the one
+> being edited. A reader would have concluded `relay-ro` was unwatched at the IAM layer and gone
+> looking for how to watch it, which is the more expensive direction to be wrong in only because it
+> wastes the reader; the cheaper-sounding direction is the one the note above this section records.
+>
+> ⚠️ **LADDER: `built`, not live-proven, and that has not changed.** Every rule is proven against
+> fixtures copied verbatim from the live policies and by planted violation, but **nothing has read
+> the real `relay-ro-policy` through this code** (2026-08-21 sprint report §3.9). It needs
+> `.env.admin`. Run it before treating the no-KMS assertion as a fact about the account rather than
+> a fact about the checker.
 
 **`npm run verify:kms` is the seventh, added 2026-08-20, and it watches the layer under both of
 those.** `verify:roles` and `verify:iam` protect ACCESS to data that, if they fail, still exists.
