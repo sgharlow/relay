@@ -81,9 +81,21 @@ happened.
 >
 > ✅ **Three cells filled 2026-08-20, and they were free.** The AWS rows never needed anyone to
 > remember: IAM records a `CreateDate` per access key, so their ages are *discoverable* rather than
-> recalled. Re-derive at any time — no CLI needed, and the AWS CLI is in fact broken on this machine
-> (Norton's CA bundle at `~/.aws-certs` goes stale as Norton rotates); Node's SDK uses a different
-> trust store and works:
+> recalled. Re-derive at any time — no CLI needed, and Node's SDK uses a trust store of its own so
+> the one-liner below works unconditionally:
+>
+> ⚠️ **Corrected 2026-08-21.** This paragraph read "the AWS CLI is in fact broken on this machine".
+> That was true when written and is not any more: the CLI works when `AWS_CA_BUNDLE` points at
+> `~/.aws/win-roots.pem` rather than at the stale bundle the env var used to carry, and a weekly
+> self-healing task now keeps a current Norton root in place. Verified the same day by reading both
+> `CreateDate`s below through `aws iam list-access-keys --profile mgmt-sso`, which agreed exactly
+> with the dates in the table. Left as a correction rather than a deletion because "the CLI is
+> broken here" is the kind of claim that quietly stops the next session from trying.
+>
+> ⚠️ **`relay-dev` and `relay-ro` cannot read their own key ages** — neither carries
+> `iam:ListAccessKeys`, which is by design and is why `verify:iam` and `verify:kms` stay admin-run.
+> The lookup needs `.env.admin` (as below) or the `mgmt-sso` profile. Both users hold exactly one
+> Active key, with no orphaned second key left behind by a past rotation — checked 2026-08-21.
 >
 > ```bash
 > npx tsx --env-file=.env.admin -e "import('@aws-sdk/client-iam').then(async m => { \

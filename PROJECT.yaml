@@ -3174,3 +3174,56 @@ deferred:
         ⚠️ Until (a) is answered, the wiring cannot be proven by any local means."
       also_found: "`ratified.beta-free-release`'s 2026-10-01 paywall flip has this as a stated
         precondition. It is not met."
+    attempted_2:
+      date: 2026-08-21
+      by: claude
+      outcome: "STILL OPEN — but the blocker named in attempted.next_step (a) is CLOSED, and the
+        documented test method was found to be incapable of proving anything."
+      question_a_ANSWERED: "NO. Endpoint we_1U2IIGGs40KMmT4XAIradLoE enabled exactly three events —
+        checkout.session.completed, customer.subscription.updated, customer.subscription.deleted.
+        `invoice.payment_failed` was ABSENT, so Stripe never POSTed it and the handler at
+        src/app/api/stripe/webhook/route.ts:423 was unreachable code in production. The same
+        account's report-bridge endpoint (we_1TQJx6...) DID subscribe to it, so this was an
+        omission on relay's endpoint alone, not an account-level constraint.
+        ✅ FIXED 2026-08-21 and verified by independent re-read, not by the update's own echo.
+        ⚠️ TRAP: `--enabled-events` REPLACES the list. The update passed all four events; passing
+        only the new one would have silently dropped checkout and both subscription events."
+      the_documented_method_cannot_work: "docs/e1-stripe-lapse-proof.md's Steps 1-3 and its
+        four-box table cannot be ticked from a `stripe trigger` run, and this is now measured
+        rather than reasoned. `stripe trigger invoice.payment_failed` runs an invoiceitem+invoice
+        fixture — a ONE-OFF invoice, not a subscription renewal. On the real generated event
+        evt_1U74tnGs40KMmT4X2HnKgbPE: top-level `subscription` ABSENT, `parent` ABSENT. So
+        `subscriptionIdOnInvoice` returns undefined, the handler breaks on its FIRST line, and the
+        route answers 200 having written nothing — which is correct behaviour and is
+        indistinguishable from broken wiring. Second, independent reason: production holds exactly
+        ONE subscriptions row and it is a LIVE-mode id (sub_1U2MHx..., active, the owner's own
+        card); a test-mode trigger mints a test-namespace id that can never match it."
+      verified_in_passing: "Two things worth keeping, both read rather than assumed.
+        (1) THE EXTRACTOR IS VERSION-ROBUST, AND IT NEARLY MATTERED. The endpoint's `api_version`
+            is null, so Stripe delivers the ACCOUNT DEFAULT — measured as 2026-01-28.clover on the
+            captured event — while lib/billing/stripe.ts pins 2026-07-29.dahlia for OUTBOUND calls.
+            Different shapes. `subscriptionIdOnInvoice` reads BOTH candidates
+            (parent.subscription_details.subscription, then top-level subscription), so either
+            resolves. Had it read only the dahlia path, a real renewal failure would be dropped in
+            production AND the documented test would still have 'passed' by writing nothing.
+        (2) THE DEDUPE IS PROVABLE WITHOUT A MAILBOX. `sendOnce` writes the audit row REGARDLESS of
+            delivery (detail.delivered:false) and returns 'undelivered'. The mail leg and the
+            dedupe leg are separately testable; the four-box table conflates them."
+      what_is_still_unexplained: "attempted's nine-attempt symptom stands and is NOT explained by
+        the above — that run used a SPLICED, correctly-signed event carrying a RESOLVABLE
+        subscription id and reached `sendOnce` with n=0 from the dedupe check, then wrote no row
+        and logged no refusal. Every branch out of sendOnce writes something, so that is not a
+        state the source can produce. The stale-module explanation remains the most likely and is
+        still unproven. NEXT ATTEMPT MUST FIRST ESTABLISH WHICH BUILD IS ANSWERING — a structural
+        marker in the RESPONSE BODY, not a log line, since logs were the thing that disagreed."
+      next_step: "See docs/e1-stripe-lapse-proof.md section 5. Three honest routes, none a CLI
+        trigger: (1) a real live renewal failure — proves everything, not schedulable;
+        (2) a test-mode subscription created through relay's OWN checkout so
+            checkout.session.completed writes a real subscriptions row, then fail that invoice —
+            exercises the identical path, but leaves a test row in the production table whose
+            cleanup is a destructive production write and therefore Steve's call;
+        (3) splice a real captured payload with the live subscription id and POST it signed —
+            cheap, proves route+lookup+notice+dedupe, but NOT that Stripe's own delivery carries a
+            resolvable id. ⚠️ Calling (3) `live-proven` would overstate it; the honest label is
+            `wired + route-proven`.
+        RECOMMENDATION: (1), with (3) as an interim recorded as what it is."
