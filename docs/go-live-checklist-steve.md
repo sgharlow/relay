@@ -136,77 +136,75 @@ leaves the machine.
 
 ---
 
-# 4 · 🔵 Rule on the approve-before-first-rule defect · ⏱️ ~5 min to decide
+# 4 · ✅ RULED AND SHIPPED 2026-08-21 — the approve-before-first-rule defect
 
-**Found by a walk built on 2026-08-21, on its first run.** No unit test reaches it — it needs a
-real account in a real intermediate setup state.
+**You ruled option C — both halves — in the session it was found. It is fixed, tested and
+live-proven.** Kept here rather than deleted so the next reader sees what changed and why.
 
-### What happens
+### What was wrong
 
-`release_state` rows are provisioned by `POST /api/rules`, **not** by naming a recipient. The
-approve arm of `respondToChallenge` requires that row. So an owner who has named and invited
-somebody but written no access rule:
+`release_state` rows are provisioned by `POST /api/rules`, **not** by naming a recipient, and the
+approve arm required one. An owner who had named and invited somebody but written no rule could be
+*asked* for access, could *deny*, and **could not approve**. Worse: `claimRequest` committed
+`status = approved_by_owner` **before** the lookup that threw, and they were not in one transaction
+— so the failed approve **burned the request** and wrote an audit event saying the owner had
+approved something that never happened.
 
-- can be **asked** for access ✅
-- can **deny** ✅
-- **cannot approve** ❌ — HTTP 400 *"No release state for that trigger type"*
+### What shipped
 
-**And worse:** `claimRequest` commits `status = approved_by_owner` **before** the lookup that
-throws, and the two are not in one transaction. So the failed approve **burns the request** — it
-is no longer `awaiting_owner`, can never be answered, and the audit log now says the owner approved
-something that never happened.
+In `lib/release/challenge.ts`, the approve arm now peeks at the open request, calls
+`ensureReleaseState` (idempotent — unchanged for every owner who already has a row), and **only
+then** claims the request.
 
-Reachable in ordinary setup order: name → invite → claim → ask.
+⚠️ **The order is the half that outlives this bug.** There is no path back from
+`approved_by_owner` to `awaiting_owner`, so *any* throw between the claim and the first transition
+consumed the request forever, whatever caused it. Nothing is claimed now until the thing it is
+claimed for is known to exist.
 
-### Your options
+### Proof
 
-| | option | note |
-|---|---|---|
-| A | **Provision on approve** — call `ensureReleaseState` before the lookup | Smallest change; approve always works. ⚠️ Silently creates a release_state row as a side effect of answering a request |
-| B | **Refuse earlier and say something true** — check before `claimRequest`, so the request is not burned, with copy an owner can act on | Doesn't make approve work; stops it lying |
-| C | **Both** | ⭐ The burn is a correctness bug either way — the transaction-ordering half has no argument against it |
+- **Unit** — `lib/release/challenge.test.ts` gained three tests: the release read happens at a
+  lower call index than the claim; no `UPDATE access_requests` occurs when provisioning throws; an
+  unknown request id provisions nothing. **12 pass.**
+- **Live** — `scripts/e2e-request.ts` re-run against production: an owner with no rule approves
+  (200), the row is provisioned to `grace`, and answering twice is refused without a second row.
+  **33/33.**
 
-⚠️ **The two walk assertions covering this are written to go RED when it is fixed**, on purpose, so
-the fix cannot land without updating the record. If `verify:request` fails on them, that is the
-design working — read the register entry before "fixing" the walk.
+The two walk assertions were written **inverted**, asserting the defect, so fixing it would turn
+them red. It did. They now assert the fix and carry the history in place.
 
-**Register:** `deferred → approve-is-unreachable-before-the-first-rule`
+**Register:** `deferred → approve-is-unreachable-before-the-first-rule` (closed)
 
 ---
 
-# 5 · 🔵 Ratify the restore-drill gate · ⏱️ ~10 min to ratify · then ~2h + cluster cost to run
+# 5 · ✅ GATE RATIFIED 2026-08-21 · 🔴 **the drill itself has NOT run** · ⏱️ ~2h + cluster cost
 
-**Claude's half is done.** `npm run verify:kms` was found unable to run its own declared command
-(the key id was missing from `.env.admin`) — fixed and proven green both ways on 2026-08-21. So
-criterion 2 below is ready to use.
+**You ratified the gate in the session it was drafted.** `gates.d3-restore-drill` now exists —
+owner **steve**, due **2026-11-08**, four criteria, pointing at `docs/backup-restore-runbook.md`.
+Confirmed parsed by `lib/ops/gates.test.ts`, so it is now something that can turn **red on its own**
+when the date passes with no recorded decision.
 
-**What is left needs your AWS admin credentials and a paid scratch cluster**, which is why the
-runbook says the register entry is yours to ratify, not Claude's to write.
+⚠️ **Ratifying is not running.** What changed is that the absence is now *measured*. Before it,
+"quarterly" was a word in two planning documents with no owner, no trigger and no absence alarm —
+the exact dead-man's-switch failure this portfolio has a standing rule about.
 
-### The two candidate dates — derived, not chosen
+### What is still owed, and it is yours
 
-- **The cadence:** last drill 2026-08-08 + one quarter = **2026-11-08**.
-- **The trigger:** the criteria changed **2026-08-19** when `verify:kms` was folded in.
+| | criterion | state |
+|---|---|---|
+| 1 | `node scripts/backup-now.mjs` → restore to a **scratch** cluster | 🔵 needs AWS admin + cluster cost |
+| 2 | `npm run verify:kms` — CMK present, enabled, not scheduled for deletion | ✅ **ready** — it could not run its own command until 2026-08-21; now green |
+| 3 | **One real item through the reveal path** against the scratch endpoint | 🔵 ⚠️ override `DSQL_PRIMARY_ENDPOINT` in a **throwaway** env file — **never** by editing `.env.local`, which points at production and is the only copy |
+| 4 | Record the RTO **observed**, delete the scratch cluster, confirm both production clusters `ACTIVE` with deletion protection | 🔵 |
 
-⚠️ **The 2026-08-08 run no longer counts as evidence for the half that matters.** A restored cluster
-is ciphertext without the key, so a drill that never unwraps an item has proven a database restore,
-not a recovery. **The cadence date is the ceiling, not the target.**
+⚠️ **The 2026-08-08 run does not count toward this.** A restored cluster is ciphertext without the
+key; that run restored a database and never unwrapped an item, so it proved a database restore
+rather than a recovery. The criterion did not exist yet — but it means this gate starts with **no**
+satisfying evidence, not with evidence three months old. **2026-11-08 is the ceiling, not the
+target.**
 
-### The four criteria, in this order
-
-1. `node scripts/backup-now.mjs` → restore to a scratch cluster.
-2. `npm run verify:kms` — the key is present, enabled, not scheduled for deletion.
-3. **One real item through the product's own reveal path**, against the scratch endpoint. Override
-   `DSQL_PRIMARY_ENDPOINT` in a **throwaway env file** — ⚠️ **never** by editing `.env.local`, which
-   points at production and is the only copy.
-4. Record the RTO actually observed, delete the scratch cluster, confirm both production clusters
-   are still `ACTIVE` with deletion protection on.
-
-**What to ratify:** a `d3-restore-drill` gate under `PROJECT.yaml → gates` with an owner, those two
-dates as `target` and `ratify_by`, and those four steps as criteria. That is the only form
-`lib/ops/gates.test.ts` can turn red on and `.github/workflows/date-guards.yml` will notice.
-
-**Register:** `deferred → no-recurring-restore-drill-exists`
+**Register:** `deferred → no-recurring-restore-drill-exists` (closed) · **Gate:**
+`gates.d3-restore-drill` (live — read that, not this page, for current state)
 
 ---
 
@@ -343,3 +341,12 @@ Nothing below needs you. Listed only so the split is legible.
 - **The suite no longer goes red on machine load** — seven import-heavy tests were blowing a 5s
   budget under parallel load; two of three full runs were failing. Fixed without weakening any
   assertion; three consecutive clean runs since.
+- **Both of your rulings from 2026-08-21 are implemented** — the approve fix (§4) is shipped, unit
+  tested and live-proven, and the restore-drill gate (§5) is ratified and parsing.
+
+## What is left, in one line
+
+**Six items, and the first one has led every version of this list for two days:** fill the owner's
+vault (§1), four Stripe reads (§2), prove E1 (§3), rule on the orphans (§6), put `.env.ro` in the
+cloud (§7), rule on the signup ceiling (§8) — then the demand lane (§9), which is the only lane that
+moves a gate and has not moved in six sprints.

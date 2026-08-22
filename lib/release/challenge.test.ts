@@ -93,23 +93,86 @@ describe('respondToChallenge — deny', () => {
   });
 });
 
+const ARMED_ROW = {
+  id: 'rs-1',
+  owner_id: 'o-1',
+  trigger_type: 'emergency',
+  state: 'armed',
+  version: 0,
+  required_confirmations: 2,
+  received_confirmations: 0,
+};
+
 describe('respondToChallenge — approve', () => {
-  function approveSetup() {
-    claimReturns({ id: 'req-1', recipient_id: 'r-1', trigger_type: 'emergency', case_id: 'RLY-AAAA-BBBB' });
+  /*
+    🔴 THE CALL ORDER CHANGED ON 2026-08-21 AND THAT IS THE POINT OF THE FIX.
+
+    It used to be: claim the request, THEN look up release_state. The lookup
+    threw for any owner who had not yet written an access rule — and the claim
+    had already committed, so the request was burned and the audit log recorded
+    an approval that never happened. Steve ruled option C of
+    `deferred → approve-is-unreachable-before-the-first-rule`: provision the row,
+    and do it BEFORE the claim.
+
+    So the mock sequence below is now: (1) peek at the open request for its
+    trigger type, (2) `ensureReleaseState`'s existence SELECT, and only then
+    (3) the claim. If a future change reorders these, these tests fail on the
+    shape rather than passing quietly — which is the whole reason the sequence
+    is spelled out here instead of hidden behind a permissive mock.
+  */
+  function approveSetup(existingRelease: unknown = ARMED_ROW) {
+    // (1) the peek — is there an open request, and for which trigger type?
+    mockQuery.mockResolvedValueOnce({ rows: [{ trigger_type: 'emergency' }] } as never);
+    // (2) ensureReleaseState's existence read
     mockQuery.mockResolvedValueOnce({
-      rows: [
-        {
-          id: 'rs-1',
-          owner_id: 'o-1',
-          trigger_type: 'emergency',
-          state: 'armed',
-          version: 0,
-          required_confirmations: 2,
-          received_confirmations: 0,
-        },
-      ],
+      rowCount: existingRelease ? 1 : 0,
+      rows: existingRelease ? [existingRelease] : [],
     } as never);
+    // (3) the claim, which now happens only once the release row is known to exist
+    claimReturns({ id: 'req-1', recipient_id: 'r-1', trigger_type: 'emergency', case_id: 'RLY-AAAA-BBBB' });
   }
+
+  it('🔴 provisions the release row BEFORE claiming the request', async () => {
+    approveSetup();
+    await respondToChallenge({ requestId: 'req-1', ownerId: 'o-1', response: 'approve', machine: machineStub(), now });
+
+    const sql = mockQuery.mock.calls.map((c) => String(c[0]));
+    const releaseRead = sql.findIndex((q) => /SELECT \* FROM release_state/i.test(q));
+    const claim = sql.findIndex((q) => /UPDATE access_requests/i.test(q));
+
+    expect(releaseRead, 'release_state must be read').toBeGreaterThanOrEqual(0);
+    expect(claim, 'the request must be claimed').toBeGreaterThanOrEqual(0);
+    expect(releaseRead, 'the release row is established before the request is consumed').toBeLessThan(claim);
+  });
+
+  it('🔴 leaves the request ANSWERABLE when the release row cannot be established', async () => {
+    // The peek succeeds, then ensureReleaseState's read throws — a cluster
+    // hiccup, or anything else. The request must survive it.
+    mockQuery.mockResolvedValueOnce({ rows: [{ trigger_type: 'emergency' }] } as never);
+    mockQuery.mockRejectedValueOnce(new Error('DSQL unavailable') as never);
+
+    await expect(
+      respondToChallenge({ requestId: 'req-1', ownerId: 'o-1', response: 'approve', machine: machineStub(), now }),
+    ).rejects.toThrow(/DSQL unavailable/);
+
+    // The burn was an UPDATE on access_requests. There must not be one.
+    for (const call of mockQuery.mock.calls) {
+      expect(String(call[0])).not.toMatch(/UPDATE access_requests/i);
+    }
+  });
+
+  it('refuses an id that names no open request, without provisioning anything', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] } as never); // the peek finds nothing
+
+    await expect(
+      respondToChallenge({ requestId: 'nope', ownerId: 'o-1', response: 'approve', machine: machineStub(), now }),
+    ).rejects.toBeInstanceOf(ValidationError);
+
+    for (const call of mockQuery.mock.calls) {
+      expect(String(call[0])).not.toMatch(/INSERT INTO release_state/i);
+      expect(String(call[0])).not.toMatch(/UPDATE access_requests/i);
+    }
+  });
 
   it('reaches GRACE through ARMED -> PENDING -> GRACE, never a direct hop', async () => {
     approveSetup();

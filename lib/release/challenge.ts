@@ -17,12 +17,9 @@
 
 import { query } from '../db/connection';
 import { writeAuditEntry } from '../audit/audit-service';
-import {
-  isReversibleTrigger,
-  type ReleaseStateMachine,
-  type ReleaseStateRow,
-} from './state-machine';
+import { isReversibleTrigger, type ReleaseStateMachine } from './state-machine';
 import { graceWindowMs } from './triggers';
+import { ensureReleaseState } from './provisioning';
 import { ValidationError } from '../validation';
 
 export interface RespondParams {
@@ -77,18 +74,58 @@ export async function respondToChallenge(params: RespondParams): Promise<Respond
     return { state: 'armed', status: 'denied_by_owner' };
   }
 
-  // ---- Approve: walk the EXISTING transitions, quorum auto-satisfied ----
-  const req = await claimRequest(requestId, ownerId, 'approved_by_owner');
+  /*
+    ---- Approve: walk the EXISTING transitions, quorum auto-satisfied ----
 
-  const current = await query<ReleaseStateRow>(
-    `SELECT * FROM release_state WHERE owner_id = $1 AND trigger_type = $2 LIMIT 1`,
-    [ownerId, req.trigger_type],
+    🔴 THE ORDER OF THE NEXT TWO STATEMENTS IS THE FIX, ruled by Steve 2026-08-21
+    (option C of `deferred → approve-is-unreachable-before-the-first-rule`).
+
+    WHAT IT WAS. `claimRequest` ran FIRST, committing `status =
+    'approved_by_owner'`, and only then did the release_state lookup run and
+    throw `No release state for that trigger type`. The two are not in one
+    transaction, so the status change stuck. The result was the worst available
+    combination: the owner saw an error, the release never opened, and the
+    request was BURNED — no longer `awaiting_owner`, so it could never be
+    answered again — while the audit log recorded that the owner had approved
+    something that never happened. The owner's own record, which is the one
+    place they go to reconstruct what occurred, was left with a false event in
+    it.
+
+    WHO HIT IT. Anybody who had named and invited somebody but not yet written
+    an access rule, because `release_state` rows are provisioned by
+    `POST /api/rules` — not by naming a recipient. Ordinary setup order: name,
+    invite, claim, ask. Found by `scripts/e2e-request.ts` on its first run;
+    no unit test reached it, because it needs a real account in a real
+    intermediate state.
+
+    THE FIX IS BOTH HALVES, and they are one line apart.
+
+    (1) `ensureReleaseState` — so an owner who has not written a rule yet can
+    still approve. It is idempotent and returns the existing ARMED row
+    untouched when one is there, so this changes nothing for every owner who
+    already has one.
+
+    (2) It runs BEFORE `claimRequest`. That is the half that survives the next
+    unrelated failure: anything that throws while establishing the release row
+    now leaves the request `awaiting_owner` and answerable, instead of consuming
+    it. Nothing is claimed until the thing it is claimed FOR is known to exist.
+
+    ⚠️ Do not reorder these back. A failure between the claim and the first
+    transition is unrecoverable for that request — there is no path that returns
+    a row from `approved_by_owner` to `awaiting_owner`.
+  */
+  const peek = await query<{ trigger_type: string }>(
+    `SELECT trigger_type FROM access_requests
+      WHERE id = $1 AND owner_id = $2 AND status = 'awaiting_owner' LIMIT 1`,
+    [requestId, ownerId],
   );
-
-  const row = current.rows[0];
-  if (!row) {
-    throw new ValidationError('No release state for that trigger type', 'triggerType');
+  if (!peek.rows[0]) {
+    throw new ValidationError('No open request with that id', 'requestId');
   }
+
+  const row = await ensureReleaseState(ownerId, peek.rows[0].trigger_type);
+
+  const req = await claimRequest(requestId, ownerId, 'approved_by_owner');
 
   const reversible = isReversibleTrigger(req.trigger_type);
 
