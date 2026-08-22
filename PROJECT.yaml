@@ -693,6 +693,20 @@ ratified:
         which building is the thing that stopped. Recorded rather than taken. The cheap
         interim is a calendar reminder to run `npm run verify:kms` by hand during the park;
         that is a decision, not a commit.
+      re_verified: >-
+        2026-08-22, against master at 1ce60f5 (after #11 and #12 landed). The scheduled set is
+        unchanged — `production-canary`, `scheduler-monitor`, `delivery-webhook-monitor`,
+        `date-guards` — and `verify:kms` is still in none of them. The finding stands as written.
+      and_the_interim_had_its_own_hole: >-
+        ⚠️ READ THIS BEFORE RELYING ON THE HAND-RUN INTERIM ABOVE. #11 found, the same day, that
+        `npm run verify:kms` COULD NOT RUN AS DOCUMENTED: it invokes `--env-file=.env.admin`, and
+        that file carried the DSQL endpoints and `AWS_PROFILE` but never `KMS_KEY_ID` — so the one
+        check whose failure is permanent and unrecoverable was the one check that could not answer
+        by its own declared command. It failed CLOSED, so it was never a false green; it was simply
+        never going to run. The script now names the fix in its refusal
+        (`grep ^KMS_KEY_ID= .env.local >> .env.admin`). The two findings are independent and they
+        COMPOUND: unscheduled, and — until 2026-08-21 — unrunnable the documented way. Confirm
+        `.env.admin` carries the key id before treating a calendar reminder as cover.
   - id: refund-stance
     date: 2026-08-09
     decision: "30-day money-back guarantee on every charge (renewals included), then no refund of the unused part of a year"
