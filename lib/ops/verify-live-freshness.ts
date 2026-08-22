@@ -25,24 +25,20 @@ export const VERIFY_LIVE_LOG = 'docs/verify-live-runs.jsonl';
  * ⚠️ It is deliberately NOT tied to `due:` dates or to a release cadence. This
  * measures whether the check is ALIVE, not whether a release is due.
  *
- * 🅿️ **RAISED FROM 14 TO 70 ON 2026-08-22 — A DELIBERATE PAUSE, NOT A RELAXATION.**
- * Steve parked relay for 60 days (to ~2026-10-21) to focus on report-bridge and the John Morgan
- * relationship. Feature work stops; the custodial monitors do not. This number is raised because
- * `explain()` below tells the reader to do exactly this — "record that decision in PROJECT.yaml
- * with an owner and a date, and raise STALE_AFTER_DAYS in the same commit so the number matches
- * the decision" — and following your own alarm's instructions is the difference between a pause
- * and a check quietly switched off.
+ * 🅿️ **RAISED TO 70 ON 2026-08-22 FOR A 60-DAY PARK, AND RESTORED TO 14 ON 2026-08-21 WHEN THE
+ * PARK ENDED EARLY.** Steve resumed relay on 2026-08-21 — before the 2026-10-21 review, not at it —
+ * so the raised threshold outlived its reason by the width of one session. It is restored here in
+ * the same change that records the resumption in `PROJECT.yaml -> ratified.relay-resumed-2026-08-21`.
  *
- * **70 is chosen so the alarm fires ~9 days AFTER the park ends, not never.** Newest stamp
- * 2026-08-21 + 70 days ≈ 2026-10-30. A threshold that outlived the park would be the third
- * option this file exists to prevent: nobody noticing.
+ * ⚠️ **The lesson worth keeping is the shape, not the dates.** A threshold raised for a pause is
+ * only honest while the pause is real; the raise and the resumption have to move together or the
+ * alarm quietly measures nothing. The park entry said "RESTORE TO 14 WHEN THE PARK ENDS" and this
+ * is that restoration — done in the resumption's own commit rather than left for whoever noticed.
  *
- * ⚠️ **RESTORE THIS TO 14 WHEN THE PARK ENDS.** The pause is recorded in
- * `PROJECT.yaml → ratified.relay-parked-60-days-2026-08-22` with an owner and a review date;
- * that entry, not this constant, is the decision. If you are reading this after 2026-10-21 and
- * the park was not renewed, the correct change is `14`, plus a `verify:live` run to re-stamp.
+ * At 14 days and a newest stamp of 2026-08-21, the dead-man next fires ~2026-09-04. That is the
+ * design working: it says run the chain, or record another pause with an owner and a date.
  */
-export const STALE_AFTER_DAYS = 70;
+export const STALE_AFTER_DAYS = 14;
 
 export interface VerifyLiveRun {
   /** ISO-8601 UTC, written by the script at the moment the chain completed. */

@@ -82,7 +82,28 @@ function accountFromArn(arn: string | undefined): string | null {
 async function main(): Promise<void> {
   const keyId = process.env.KMS_KEY_ID;
   if (!keyId) {
-    console.error('[kms] ✗ KMS_KEY_ID is not set. Nothing to check.');
+    /*
+      🔴 THIS FIRED ON THE SCRIPT'S OWN DECLARED INVOCATION, 2026-08-21.
+      `npm run verify:kms` runs `--env-file=.env.admin`, and that file held the
+      DSQL endpoints and `AWS_PROFILE` but never `KMS_KEY_ID` — so the one check
+      in this repo whose failure is PERMANENT and unrecoverable was the one check
+      that could not run the way it is documented. It failed CLOSED (exit 1), so
+      it was never a false green; it was simply never going to answer. CLAUDE.md
+      meanwhile recorded it as live-proven on 2026-08-20, which it was — by
+      somebody supplying the key by hand, which is not what the command does.
+
+      The message now names the fix rather than the symptom. A refusal that does
+      not say what to do is a refusal somebody routes around.
+    */
+    console.error('[kms] ✗ KMS_KEY_ID is not set, so there is nothing to check.');
+    console.error('');
+    console.error('      This needs BOTH admin AWS credentials (for DescribeKey and');
+    console.error('      GetKeyPolicy) AND the key id. `.env.admin` carries the credentials;');
+    console.error('      make sure it carries the key id too — it is an identifier, not a');
+    console.error('      secret, and it already appears in .env.local:');
+    console.error('');
+    console.error('        grep ^KMS_KEY_ID= .env.local >> .env.admin');
+    console.error('');
     process.exit(1);
   }
 

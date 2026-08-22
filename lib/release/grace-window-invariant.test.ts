@@ -84,7 +84,26 @@ describe('the resolver a non-zero window depends on', () => {
    * the row. The estate ruling above is only safe because a scheduled resolver
    * picks those rows up.
    */
-  it('exists and is wired into the cron, not merely defined', async () => {
+  /*
+    ⚠️ 20s, NOT THE 5s DEFAULT — and the number is about CONTENTION, not about
+    this test being slow. Measured 2026-08-21: run alone, the whole file takes
+    ~1.1s and the `./heartbeat` import ~0.7s. Run inside the full suite, with 312
+    files transforming and importing in parallel, that same dynamic import
+    intermittently blew the 5s budget — it failed in two of three full-suite runs
+    while passing three of three in isolation.
+
+    🔴 THE REASON THIS IS A FIX AND NOT A PAPERING-OVER. The assertion is right
+    and must not be weakened: reading `heartbeat.ts` as TEXT instead of importing
+    it would match the name in a comment, which is precisely the "wired, not
+    merely defined" claim this test exists to make. So the assertion stays and
+    the budget moves. A gate that goes red on machine load teaches people that
+    red means nothing, which costs exactly what a false green costs — this repo
+    keeps recording the green half of that lesson and this is the red half.
+
+    If this ever fires again at 20s, the finding is that the module graph under
+    `./heartbeat` has grown, not that the timeout is still too small.
+  */
+  it('exists and is wired into the cron, not merely defined', { timeout: 20_000 }, async () => {
     const heartbeat = await import('./heartbeat');
     expect(Object.keys(heartbeat)).toContain('resolveElapsedGrace');
 
