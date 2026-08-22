@@ -1,5 +1,34 @@
 # Relay — Production Roadmap
 
+> # 🅿️ PARKED FOR 60 DAYS — to ~2026-10-21
+>
+> **Steve's direction, 2026-08-22: report-bridge and the John Morgan relationship take precedence.**
+> Everything below is **suspended where it stands** — not cancelled, not re-planned. Sprints 1, 2
+> and 3 were all open when the park began; none was started.
+>
+> **The authority for this is `PROJECT.yaml → ratified.relay-parked-60-days-2026-08-22`**, which
+> carries the owner, the review date and the accepted consequences. If this banner and that entry
+> disagree, the entry is right and this banner has a defect.
+>
+> **What does NOT pause: the custodial duty.** Relay is live, holds an encrypted vault and runs
+> live-mode billing. The backup absence alarm, the KMS wall watch, the scheduler monitor and CI all
+> keep running and are all still expected to page. **A park stops the building, not the watching.**
+>
+> ⚠️ **Two dated things fall INSIDE the park and must not be actioned on their original dates:**
+> - **2026-10-01 — `ratified.beta-free-release` paywall revisit.** Its stated precondition (E1′) is
+>   open and now known to be harder than believed. Flipping `TIER_LIMITS.free.canRelease` while
+>   parked would turn an expired card into a silently blocked release with nobody watching. **Moved
+>   to the 2026-10-21 review.**
+> - **2026-10-17 — competitor-price re-verification.** Deferred to the review with it.
+>
+> ⚠️ **`verify:live`'s freshness dead-man would have fired ~2026-09-04.** `STALE_AFTER_DAYS` was
+> raised 14 → 70 in the same commit as the ratified entry, exactly as that alarm's own `explain()`
+> instructs a pauser to do. It now fires ~2026-10-30 — **after** the park, on purpose. **Restore it
+> to 14 when the park ends.**
+>
+> **On resumption, re-derive before planning anything.** Every number in this file was live on
+> 2026-08-20/21 and none of it will be by then.
+
 **Revision 3 — 2026-08-20.** Written after sprints 1–4 (2026-08-19/20) landed on master, deployed,
 and were verified live. Revision 2 (2026-08-18) planned that work; this revision records what it
 changed, and re-sequences what is left.
