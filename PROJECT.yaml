@@ -118,6 +118,55 @@ derived:
 # — and one of the declined block's `revisit:` triggers is exactly that
 # conversation happening.
 gates:
+  # ─────────────────────────────────────────────────────────────────────────
+  # RATIFIED 2026-08-21 by Steve, on Claude's draft. This is the entry
+  # docs/backup-restore-runbook.md asks for in its own words: "until D3 exists
+  # in PROJECT.yaml as a dated gate — the form lib/ops/gates.test.ts can turn
+  # red on — everything above is a note, and a note is what the last one was."
+  # ─────────────────────────────────────────────────────────────────────────
+  - id: d3-restore-drill
+    metric: restore_drill_completed_against_current_criteria
+    target: "a restore drill run END TO END, including a DECRYPT, against the four criteria below"
+    kill: "n/a — this is an obligation, not a bet. It does not get killed; it gets done or it goes past due, loudly."
+    owner: steve
+    due: 2026-11-08
+    # ⚠️ BOTH DATES ARE DERIVED, NOT CHOSEN, and the derivations matter more than
+    # the numbers. THE CADENCE: last drill 2026-08-08 plus one quarter = 2026-11-08.
+    # THE TRIGGER: the success criteria CHANGED on 2026-08-19 when verify:kms was
+    # folded in, which retired the 2026-08-08 run as evidence for the half that
+    # matters. A drill whose criteria have been superseded is not a drill that is
+    # three months fresh — so `due` is the CEILING, not the target.
+    why_the_last_run_no_longer_counts: >-
+      A restored cluster is ciphertext without the key. The 2026-08-08 run restored a database and
+      never unwrapped an item, so it proved a database restore rather than a recovery. That is not a
+      criticism of the run — the criterion did not exist yet — but it means this gate starts with
+      NO satisfying evidence, not with evidence three months old.
+    criteria:
+      - "1. `node scripts/backup-now.mjs`, then restore to a SCRATCH cluster (runbook steps 1-5)."
+      - "2. `npm run verify:kms` — the CMK every vault is wrapped under is present, enabled, and not
+         scheduled for deletion. ⚠️ A key PENDING DELETION still decrypts, so this is the one signal
+         that stays green right up until the data is gone.
+         ✅ This criterion is READY: verify:kms could not run its own declared command until
+         2026-08-21 (deferred -> the-key-wall-could-not-run-its-own-command) and now can."
+      - "3. ONE REAL ITEM through the product's own reveal path, against the scratch endpoint.
+         Override DSQL_PRIMARY_ENDPOINT in a THROWAWAY env file. ⚠️ NEVER by editing .env.local,
+         which points at production and is the only copy."
+      - "4. Record the RTO actually OBSERVED — not estimated — then delete the scratch cluster and
+         confirm both production clusters are still ACTIVE with deletion protection on."
+    procedure: docs/backup-restore-runbook.md
+    ratified:
+      date: 2026-08-21
+      by: steve
+      note: >-
+        Ratified on the draft, in the same session that made criterion 2 runnable. Claude's half of
+        D3 is done; steps 1, 3 and 4 need AWS admin credentials and a paid scratch cluster, which is
+        why the runbook says this entry is Steve's to ratify rather than Claude's to write.
+      what_this_changes: >-
+        Nothing about the drill itself, which has still not run. What changes is that its absence is
+        now MEASURED: lib/ops/gates.test.ts turns red when 2026-11-08 passes with no recorded
+        decision, and .github/workflows/date-guards.yml runs daily. Before this entry, "quarterly"
+        was a word in two planning documents with no owner, no trigger and no absence alarm — which
+        is exactly the dead-man's-switch failure this portfolio has a standing rule about.
   - id: h0-verdict-disposition
     metric: post_judging_decision (H0 judging ends 2026-07-24; winners ~2026-07-31; DSQL/KMS teardown auto-fires 7-25)
     target: "explicit commercialize / park / archive decision recorded within a week of results"
@@ -3277,6 +3326,23 @@ deferred:
       Steve ratifies a `d3-restore-drill` gate under `gates` with an owner, the two dates above as
       target and ratify_by, and the four steps as its criteria - the only form `lib/ops/gates.test.ts`
       can turn red on, and the only form `.github/workflows/date-guards.yml` will notice.
+    closed:
+      date: 2026-08-21
+      ruled: "RATIFY NOW. Steve, same session."
+      what_shipped: >-
+        `gates.d3-restore-drill` - owner steve, due 2026-11-08 (the cadence date, recorded as the
+        CEILING rather than the target because the criteria changed on 2026-08-19), the four
+        criteria in order, and `procedure: docs/backup-restore-runbook.md`. Confirmed parsed by
+        `lib/ops/gates.test.ts`, which now has it in the list it can turn red on.
+      what_it_does_NOT_mean: >-
+        WARNING - the drill has still NOT RUN. This entry closes because the ABSENCE is now
+        measured, not because the obligation is discharged. Steps 1, 3 and 4 need AWS admin
+        credentials and a paid scratch cluster; step 2 is ready. Read `gates.d3-restore-drill`,
+        not this row, for the live state.
+      why_that_is_still_worth_closing: >-
+        Before it, "quarterly" was a word in two planning documents with no owner, no trigger and no
+        absence alarm - the exact dead-man's-switch failure this portfolio has a standing rule
+        about. A note nobody is measured against is what the LAST drill schedule was.
 
   - id: approve-is-unreachable-before-the-first-rule
     owner: steve
@@ -3318,6 +3384,31 @@ deferred:
       `scripts/e2e-request.ts` are inverted to assert the new behaviour in the same commit as the
       fix. They are written to go RED when this is fixed, on purpose, so the fix cannot land
       without updating the record.
+    closed:
+      date: 2026-08-21
+      ruled: "OPTION C - both halves. Steve, same session it was found."
+      what_shipped: >-
+        In `lib/release/challenge.ts`, the approve arm now (1) peeks at the open request for its
+        trigger type, (2) calls `ensureReleaseState` - idempotent, so it returns the existing ARMED
+        row untouched for every owner who already has one - and only then (3) claims the request.
+        The ORDER is the half that matters beyond this bug: nothing is claimed until the thing it
+        is claimed FOR is known to exist, so a failure while establishing the release row leaves the
+        request `awaiting_owner` and answerable instead of consuming it forever.
+      why_the_ordering_half_had_no_argument_against_it: >-
+        There is no path back from `approved_by_owner` to `awaiting_owner`. Any throw between the
+        claim and the first transition is unrecoverable for that request, whatever caused it. The
+        provisioning half fixes the known trigger; the ordering half fixes the class.
+      proven: >-
+        UNIT - `lib/release/challenge.test.ts` gained three tests, one asserting the release read
+        happens at a lower call index than the claim, one asserting no `UPDATE access_requests`
+        occurs when provisioning throws, and one asserting an unknown request id provisions nothing.
+        12 pass. LIVE - `scripts/e2e-request.ts` re-run against production: an owner with no access
+        rule approves (HTTP 200), the release row is provisioned to `grace`, answering the same
+        request twice is refused without a second row. 33/33.
+      the_assertions_did_their_job: >-
+        The two checks in the walk were written INVERTED, asserting the defect, so that fixing it
+        would turn them red. It did. They are now inverted back and carry the history in place -
+        which is the record working as designed rather than a silent edit.
 
   - id: the-live-chain-sits-at-its-own-signup-limit
     owner: steve

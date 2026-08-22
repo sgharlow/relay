@@ -318,53 +318,78 @@ async function main(): Promise<void> {
     const approveId = (otherPerson.body as { id?: string }).id;
 
     /*
-      🔴 A FINDING THIS WALK PRODUCED ON ITS FIRST RUN, 2026-08-21, and the
-      reason it is asserted rather than fixed here.
+      ✅ THE FINDING THIS WALK PRODUCED ON ITS FIRST RUN, NOW ASSERTED FIXED.
 
-      `release_state` rows are provisioned by `POST /api/rules` (and by setting a
-      quorum), NOT by naming a recipient. So an owner who has named and invited
-      somebody but has not yet written an access rule has NO release_state row —
-      and `respondToChallenge`'s approve arm requires one. That owner can be
-      asked for access, can DENY perfectly well, and cannot APPROVE: they get a
-      400 saying "No release state for that trigger type", which means nothing to
-      a person reading it on their phone about their own mother.
+      WHAT IT WAS, 2026-08-21. `release_state` rows are provisioned by
+      `POST /api/rules`, not by naming a recipient, and `respondToChallenge`'s
+      approve arm required one. So an owner who had named and invited somebody
+      but not yet written an access rule could be asked for access, could DENY
+      perfectly well, and could NOT APPROVE - HTTP 400 "No release state for that
+      trigger type". Worse, `claimRequest` committed `approved_by_owner` BEFORE
+      the lookup that threw, and the two were not in one transaction, so the
+      failed approve BURNED the request and wrote an audit event saying the owner
+      had approved something that never happened.
 
-      It is reachable in ordinary setup order — name, invite, claim, ask — and
-      that is exactly the anxious window this journey is for. Recorded in
-      `PROJECT.yaml → deferred → approve-is-unreachable-before-the-first-rule`,
-      because whether the fix is to provision on approve or to say something true
-      is a product decision and not a walk's to take.
+      Steve ruled option C the same day: provision the row on approve, AND do it
+      before the claim. `deferred -> approve-is-unreachable-before-the-first-rule`.
 
-      Asserted BOTH ways: the current behaviour below, then the working path once
-      a rule exists. If somebody fixes it, this check goes red and points at the
-      register entry rather than silently passing.
+      ⚠️ THESE TWO CHECKS WERE WRITTEN INVERTED ON PURPOSE - they asserted the
+      DEFECT, so that fixing it would turn them red and the fix could not land
+      without updating the record. It did, and this is that update. They now
+      assert the fix, and they are the reason this paragraph exists rather than
+      the change happening silently.
     */
-    const approveTooEarly = await owner.post(`/api/access-requests/${approveId}/respond`, {
+    const approveWithNoRule = await owner.post(`/api/access-requests/${approveId}/respond`, {
       response: 'approve',
     });
     R.check(
-      '🔴 FINDING: with no access rule yet, the owner CANNOT approve — only deny',
-      approveTooEarly.status === 400,
-      `HTTP ${approveTooEarly.status} "${String(approveTooEarly.body.message ?? '')}" ` +
-        `— see deferred → approve-is-unreachable-before-the-first-rule`,
+      '✅ with no access rule yet, the owner CAN now approve - the row is provisioned',
+      approveWithNoRule.status === 200,
+      `HTTP ${approveWithNoRule.status} ${String(approveWithNoRule.body.message ?? '')}`,
+    );
+
+    const provisionedByApprove = await query<{ state: string }>(
+      `SELECT state FROM release_state WHERE owner_id = $1 AND trigger_type = 'emergency'`,
+      [ownerId],
+    );
+    R.check(
+      'approving provisioned the release row that naming a recipient never did',
+      provisionedByApprove.rows[0]?.state === 'grace',
+      `state=${provisionedByApprove.rows[0]?.state}`,
     );
 
     /*
-      Now give the vault the rule it was missing, which is what provisions the
-      release_state row, and walk the approve path properly. The request above is
-      spent (`claimRequest` moved it out of `awaiting_owner` before it threw), so
-      a fresh one is needed — itself worth knowing: a failed approve BURNS the
-      request. That is the second half of the same finding.
+      🔴 THE HALF THAT SURVIVES THE NEXT UNRELATED FAILURE. The burn was a
+      transaction-ordering bug, not a provisioning bug: anything throwing between
+      the claim and the first transition consumed the request forever. Asserted
+      here through the one case a walk can reach - answering an id that names no
+      open request must leave every other request untouched and write nothing.
     */
-    const spent = await query<{ status: string }>(
-      `SELECT status FROM access_requests WHERE id = $1`,
-      [String(approveId)],
+    const answeredTwice = await owner.post(`/api/access-requests/${approveId}/respond`, {
+      response: 'approve',
+    });
+    R.check(
+      'answering the same request twice is refused, not double-applied',
+      answeredTwice.status >= 400,
+      `HTTP ${answeredTwice.status} ${String(answeredTwice.body.message ?? '')}`,
+    );
+
+    const stillOneRelease = await query<{ n: string }>(
+      `SELECT count(*) AS n FROM release_state WHERE owner_id = $1 AND trigger_type = 'emergency'`,
+      [ownerId],
     );
     R.check(
-      '🔴 and the failed approve BURNED the request — it is no longer answerable',
-      spent.rows[0]?.status === 'approved_by_owner',
-      `status=${spent.rows[0]?.status} while release_state was never touched`,
+      'and the refused second answer provisioned no second release row',
+      Number(stillOneRelease.rows[0]?.n) === 1,
+      `${stillOneRelease.rows[0]?.n} release_state row(s)`,
     );
+
+    // Stand the approved release back down, so the rest of the walk starts armed.
+    const openRow = await query<{ id: string }>(
+      `SELECT id FROM release_state WHERE owner_id = $1 AND trigger_type = 'emergency' LIMIT 1`,
+      [ownerId],
+    );
+    await owner.post(`/api/triggers/${openRow.rows[0]?.id}/stand-down`, {});
 
     // A rule needs something to point at, and the crypto boundary refuses a raw
     // write (fail-closed, proven by e2e-factors), so this goes the browser's way.
