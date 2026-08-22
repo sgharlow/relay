@@ -2821,6 +2821,23 @@ deferred:
       names and vault item titles are plaintext columns. What it can never do is decrypt: with no
       KMS grant the vault stays ciphertext with no key, and `verify:iam` now asserts that its policy
       carries no `kms:*` action at all. Read-only is not harmless; it is bounded."
+    the_no_kms_claim_is_BUILT_not_live_proven:
+      date: 2026-08-22
+      by: claude
+      what: "The sentence above is a claim about the CHECKER, not yet about the ACCOUNT.
+        `lib/ops/iam-wall.ts -> READONLY_CONTRACT.forbidsServices` holds the rule and it is proven
+        against fixtures and by planted violation - but per the 2026-08-21 sprint report §3.9,
+        NOTHING HAS READ THE REAL `relay-ro-policy` THROUGH THIS CODE. It needs `.env.admin`."
+      why_it_is_recorded_here: "This is the load-bearing property of the whole three-file env split:
+        it is the only reason `.env.ro` may be placed somewhere less trusted than Steve's laptop -
+        which is what this very entry's `ends_when` asks for. So the entry that proposes putting the
+        credential in the cloud should not read as though the wall around it had been measured.
+        CLAUDE.md separately credited `verify:roles` with this check until 2026-08-22; it cannot
+        make it - it reads the database and never the IAM policy - and the correction is recorded
+        in place there."
+      ends_when: "`npm run verify:iam` has been run with `.env.admin` against the live account and
+        the `relay-ro` principal reads clean. One command, and it is a precondition of `ends_when`
+        above rather than a separate task."
     note: "Steve ruled 2026-08-21 to TRACK this rather than do it immediately, so it is here rather
       than in a memory file - a sentence in a memory file is one session from being lost."
 
