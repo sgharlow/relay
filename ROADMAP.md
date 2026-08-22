@@ -1,33 +1,32 @@
 # Relay — Production Roadmap
 
-> # 🅿️ PARKED FOR 60 DAYS — to ~2026-10-21
+> # ▶️ RESUMED 2026-08-21 — the 60-day park ended after one day
 >
-> **Steve's direction, 2026-08-22: report-bridge and the John Morgan relationship take precedence.**
-> Everything below is **suspended where it stands** — not cancelled, not re-planned. Sprints 1, 2
-> and 3 were all open when the park began; none was started.
+> **Steve's direction, 2026-08-21: resume relay and drive the remaining go-live work to done.**
+> The park taken on 2026-08-22 stood for a single day. Sprints 1, 2 and 3 resume exactly where they
+> were suspended — none had started, so nothing is half-built and the sequencing below is unchanged.
 >
-> **The authority for this is `PROJECT.yaml → ratified.relay-parked-60-days-2026-08-22`**, which
-> carries the owner, the review date and the accepted consequences. If this banner and that entry
-> disagree, the entry is right and this banner has a defect.
+> **The authority is `PROJECT.yaml → ratified.relay-resumed-2026-08-21`**, which supersedes
+> `ratified.relay-parked-60-days-2026-08-22`. That park entry is kept rather than deleted: it is the
+> record of a decision really taken. If this banner and those entries disagree, the entries are right
+> and this banner has a defect.
 >
-> **What does NOT pause: the custodial duty.** Relay is live, holds an encrypted vault and runs
-> live-mode billing. The backup absence alarm, the KMS wall watch, the scheduler monitor and CI all
-> keep running and are all still expected to page. **A park stops the building, not the watching.**
+> **What the resumption restored, in its own commit:**
+> - `STALE_AFTER_DAYS` **70 → 14** in `lib/ops/verify-live-freshness.ts`. A threshold raised for a
+>   pause is an alarm switched off once the pause ends. At 14 days from the 2026-08-21 stamp the
+>   dead-man next fires ~2026-09-04.
+> - The **2026-10-01 paywall revisit** returns to its own date. ⚠️ Its precondition is unchanged and
+>   still unmet — E1′ is `wired`, not `live-proven`.
+> - The **2026-10-17 competitor-price clock** returns to its own date.
 >
-> ⚠️ **Two dated things fall INSIDE the park and must not be actioned on their original dates:**
-> - **2026-10-01 — `ratified.beta-free-release` paywall revisit.** Its stated precondition (E1′) is
->   open and now known to be harder than believed. Flipping `TIER_LIMITS.free.canRelease` while
->   parked would turn an expired card into a silently blocked release with nobody watching. **Moved
->   to the 2026-10-21 review.**
-> - **2026-10-17 — competitor-price re-verification.** Deferred to the review with it.
+> ⚠️ **Do not quote the park's runway arithmetic.** `consequences_accepted` priced sixty days of
+> demand-lane stall; one day was spent. Re-derive g1/g3 runway from `gates.*.due`.
 >
-> ⚠️ **`verify:live`'s freshness dead-man would have fired ~2026-09-04.** `STALE_AFTER_DAYS` was
-> raised 14 → 70 in the same commit as the ratified entry, exactly as that alarm's own `explain()`
-> instructs a pauser to do. It now fires ~2026-10-30 — **after** the park, on purpose. **Restore it
-> to 14 when the park ends.**
+> **What never paused: the custodial duty.** The backup absence alarm, the KMS wall watch, the
+> scheduler monitor and CI ran throughout. That is the one thing the park got structurally right.
 >
-> **On resumption, re-derive before planning anything.** Every number in this file was live on
-> 2026-08-20/21 and none of it will be by then.
+> **Re-derive before planning.** Every number in this file was live on 2026-08-20/21. The ones
+> re-derived on 2026-08-21 evening carry that date inline.
 
 **Revision 3 — 2026-08-20.** Written after sprints 1–4 (2026-08-19/20) landed on master, deployed,
 and were verified live. Revision 2 (2026-08-18) planned that work; this revision records what it
@@ -264,8 +263,11 @@ The section that dominated revision 2. **Eight of nine items closed in sprints 1
 | ~~D7~~ | ~~Unit economics are unmodelled~~ | ✅ **Closed 2026-08-19** — `docs/unit-economics.md`. Break-even ~3 owners; the Vercel-plan assumption behind it was **resolved with evidence 2026-08-20**: production cron runs hourly (59–61 min gaps over 12 runs) and Hobby caps cron at daily, so it is a paid plan |
 | ~~**D8**~~ | ~~The coverage gate is declared, passing, and enforced by nothing~~ | ✅ **Closed 2026-08-20** (`241955a`) — `test:coverage` runs in CI and the declared thresholds are evaluated on every push; proven by a planted violation. Re-derive the figures with `npm run test:coverage`, never from this row | `deferred → the-coverage-gate-is-declared-and-unenforced` |
 | ~~**D9**~~ | ~~The report-only CSP cannot accumulate the evidence its own next step needs~~ | ✅ **Closed 2026-08-20, option C** (`4499a56`, `ed59864`) — the safe four stay enforced, `script-src` moves to a stricter report-only rung, and reports are PERSISTED (migration 038 `csp_reports`, both regions; `lib/ops/csp-report-store.ts`, fail-open). A real browser delivered a row the same day. ⚠️ An empty `csp_reports` still has two opposite meanings — "nothing violates" and "reports never arrive" — so read it in a real browser before trusting it | `deferred → the-csp-report-sink-expires-before-anyone-reads-it` |
-| **D10** ⚠️ **NEW** | **The journey sweep is stale by a wide margin, and has been known to be.** `docs/user-journeys.md` records a walk of **2026-08-08** — **444 commits back** as measured 2026-08-20 (`git rev-list --count --since=2026-08-08 HEAD`). It was *already* flagged stale inside the document itself on 2026-08-13 ("five days and a great deal of function old", 264 commits back) and has not been re-walked in the 264 commits since that note. `verify:live` covers five walks and **J3, J6 and J9 are not among them**, so those three have no automated cover either | `docs/user-journeys.md` sweep table, and its own ⚠️ header |
+| ~~**D10**~~ | ~~The journey sweep is stale, and J3/J6/J9 have no automated cover~~ | ✅ **CLOSED 2026-08-21 — by building the walks, not by re-dating a table.** J3, J6 and J9 each gained a walk (`scripts/e2e-delegate.ts` 27 checks, `e2e-request.ts` 31, `e2e-standdown.ts` 23), chained as **`npm run verify:journeys`**. J4's `/circle` add-a-person form — the fourth gap, named in `docs/user-journeys.md`'s header and not in the register entry — gained real-browser cover inside `e2e-ui.ts`, 26 checks → 34. All green against the deployed build. ⚠️ **`verify:journeys` is a SEPARATE chain**: `verify:live` already performs exactly 10 signups against a 10/hour/IP limiter, so a combined chain dies mid-run on the 11th. 🔴 The walks **found two defects** — see D13 and D14 | `PROJECT.yaml → deferred → the-journey-sweep-is-stale` (resolved) |
 | ~~**D11**~~ | ~~Every secret's age is recorded as "unknown"~~ ✅ **CLOSED 2026-08-20/21** — every cell now carries a date. ⚠️ **Two claims in the original row were wrong and are corrected in the runbook**: `@aws-sdk/client-iam` **is** a devDependency (so the lookup is a `npx tsx` one-liner, not CLI-side), and `aws iam list-access-keys` is **not** runnable by just anyone here — `relay-dev` and `relay-ro` both lack `iam:ListAccessKeys` by design, so it needs `.env.admin` or the `mgmt-sso` profile. The oldest thing in the estate is the `autospecai` **admin** key | `docs/secret-rotation-runbook.md` |
+| **D13** 🔴 **NEW 2026-08-21** | **An owner who has named and invited somebody but written no access rule can be ASKED for access, can DENY, and CANNOT APPROVE.** `release_state` is provisioned by `POST /api/rules`, not by naming a recipient, and the approve arm requires that row — HTTP 400 *"No release state for that trigger type"*. **Worse:** `claimRequest` commits `status = approved_by_owner` *before* the lookup that throws, and they are not in one transaction, so the failed approve **burns the request** and writes an event saying the owner approved something that never happened. Reachable in ordinary setup order. Found by `e2e-request.ts` on its first run; three options recorded, Steve's ruling | `deferred → approve-is-unreachable-before-the-first-rule` |
+| **D14** ⚠️ **NEW 2026-08-21** | **The release gate's live half runs at 100% of its own rate limit.** `/api/auth/signup` allows 10/hour/IP; `verify:live` performs exactly 10 signups. Any new assertion needing an account breaks the chain **mid-run**, which is indistinguishable from a flaky test. It also cannot run twice in an hour without restarting `npm run dev`. ⚠️ **Raising `LIMIT` is the wrong fix** — it is the owner front door's abuse control | `deferred → the-live-chain-sits-at-its-own-signup-limit` |
+| ~~**D15**~~ 🔴 **NEW 2026-08-21** | ~~`npm run verify:kms` could not run its own declared command~~ — ✅ **CLOSED same day.** The script is declared `--env-file=.env.admin` and that file never held `KMS_KEY_ID`, so the one check whose failure is **permanent** (a deleted CMK makes every vault unreadable forever, and a key pending deletion still decrypts) exited 1 on its own invocation. It failed **closed**, so it was never a false green — but CLAUDE.md recorded it live-proven on 2026-08-20, which it was, by somebody supplying the key by hand. Key added to `.env.admin`; the refusal message now names the fix | `deferred → the-key-wall-could-not-run-its-own-command` |
 | **D12** ℹ️ **NEW — watch item, not work** | Dependency currency: patch/minor drift only and **0 advisories** as of 2026-08-20. Two structural facts worth a diary entry rather than a sprint: `next-auth ^4.24.15` is the legacy line (v5/Auth.js is current), and React 18 runs under Next 16. ⚠️ **A major upgrade here is barred** by the Infrastructure Change Policy absent a documented problem — recorded so the next reviewer does not "discover" it and start one | `npm outdated`, `npm audit` |
 
 ### E. Billing and subscription lifecycle
@@ -379,8 +381,8 @@ none of it waits on anyone. It is small.
 |---|---|---|---|
 | ~~**3.1**~~ | ~~Coverage gate into CI (D8)~~ ✅ **Closed 2026-08-20** (`241955a`), proven by a planted violation | S | ⚠️ This row was still listed as open in revision 3 while §2-D already showed D8 struck through — **the two halves of this file disagreed.** Corrected 2026-08-21 |
 | ~~**3.2**~~ | ~~Decide the CSP report sink (D9)~~ ✅ **Closed 2026-08-20, option C** (`4499a56`, `ed59864`) — reports persisted, migration 038 both regions | S | Same contradiction as 3.1, same correction |
-| 3.3 | Re-walk the journey sweep (D10); decide whether J3/J6/J9 join `verify:live` or are explicitly walk-only | M | The staleness figure is derived, never copied |
-| 3.4 | Restore drill scheduled and run once, **with `verify:kms` folded into its success criteria** (D3 + B4) | M | A drill that never unwraps an item has not proven a recovery |
+| ~~**3.3**~~ | ~~Re-walk the journey sweep (D10); decide whether J3/J6/J9 join `verify:live` or are explicitly walk-only~~ | ✅ **DONE 2026-08-21** | **The decision was taken and it is the expensive half: they got walks.** Plus J4, which this row did not name. They join a NEW chain (`verify:journeys`) rather than `verify:live`, because that chain is already at its signup ceiling (D14). 81 new live assertions; two defects found (D13, D14) |
+| 3.4 ⚠️ | **Restore drill (D3 + B4) — HALF DONE 2026-08-21, and the open half is Steve's.** ✅ Claude's half: `verify:kms` is now runnable *as declared* and green (it was not — D15), so criterion 2 is ready. 🔵 Open: the drill itself needs AWS admin time and a paid scratch cluster, and the runbook says the register entry is Steve's to ratify. **A `d3-restore-drill` gate is drafted with its two derived dates and four criteria** — it needs ratifying, not writing | M | A drill that never unwraps an item has not proven a recovery. `deferred → no-recurring-restore-drill-exists` |
 | ~~3.5~~ | ~~Secret ages (D11)~~ ✅ **Closed 2026-08-20/21** — every cell in `docs/secret-rotation-runbook.md` carries a date; the ten Vercel-held values came from the Vercel API, the AWS rows from IAM `CreateDate`. **Independently re-confirmed 2026-08-21** via `mgmt-sso`: `relay-dev` 2026-08-16, `relay-ro` 2026-08-21, one Active key each, no orphaned second keys | S | ⚠️ This row and D11 below were both stale — closed the day after revision 3 was written |
 | 3.6 ⚠️ | **E1's live proof — RE-SCOPED 2026-08-21, and the prescribed method does not work.** ✅ The blocker beneath it is fixed: the live endpoint was **not subscribed to `invoice.payment_failed`** and now is. 🔴 But `stripe trigger` mints a **one-off invoice with no subscription**, so the handler correctly ignores it and answers 200 having written nothing — indistinguishable from broken wiring | M | **Steve's court, and no longer S.** Read `docs/e1-stripe-lapse-proof.md` §5 for the three viable routes before attempting; the four-box table in that doc's top half **cannot be ticked from a trigger run** |
 

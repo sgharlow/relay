@@ -521,9 +521,52 @@ post_event_plan: "h0-verdict-disposition gate + auto-scheduled teardown (CCR tri
 # Decisions ratified by Steve, recorded here so they stop reading as open items
 # in the pre-ads blocker list. Each one had been authored but never confirmed.
 ratified:
+  - id: relay-resumed-2026-08-21
+    date: 2026-08-21
+    owner: steve
+    supersedes: relay-parked-60-days-2026-08-22
+    decision: >-
+      THE 60-DAY PARK IS ENDED EARLY, on the day after it was taken. Steve's direction, 2026-08-21:
+      resume relay and drive the remaining go-live work to completion. The park entry below is NOT
+      deleted — it is the record of a decision that was really taken, and the consequences it
+      accepted were really accepted for the day it stood. This entry ends it; that entry explains
+      what it cost.
+    review_on: 2026-10-21
+    what_this_restores:
+      - "`STALE_AFTER_DAYS` back to 14 in lib/ops/verify-live-freshness.ts, in this entry's own
+         commit — the park raised it to 70 and a raised threshold that outlives its pause is an
+         alarm quietly switched off. At 14 days from the 2026-08-21 stamp the dead-man next fires
+         ~2026-09-04."
+      - "`ratified.beta-free-release`'s 2026-10-01 paywall revisit returns to its OWN date. ⚠️ Its
+         stated precondition is unchanged and still unmet: E1' (the renewal-failure notice) is
+         `wired`, not `live-proven`, and flipping the paywall over an unproven lapse notice turns
+         an expired card into a silently blocked release. The date is restored; the precondition
+         still governs."
+      - "The 2026-10-17 competitor-price re-verification clock returns to its own date."
+      - "ROADMAP Sprints 1, 2 and 3 resume where they were suspended. None had started, so nothing
+         is half-built; the sequencing in ROADMAP §3 is unchanged."
+    what_did_not_change: >-
+      The custodial duty never paused, so nothing about it resumes. The backup absence alarm, the
+      KMS wall watch, the scheduler monitor and CI ran throughout — which is the one thing the park
+      got structurally right and is worth keeping as the template for the next one.
+    cost_actually_incurred: >-
+      One day. The park's `consequences_accepted` priced 60 days of demand-lane stall
+      (g1 runway ~18wk -> ~10wk, g3 -> ~6wk); at one day, those runways are materially unchanged
+      and the entry's arithmetic should NOT be quoted as though it happened. Re-derive both from
+      `gates.*.due` rather than from that list.
+    not_affected: >-
+      report-bridge, domo-ssrs and the 2026-09-12 GO-LIVE keep their precedence. Resuming relay is
+      not a re-ranking of those; it is the resumption of a lane that was stopped for one day.
   - id: relay-parked-60-days-2026-08-22
     date: 2026-08-22
     owner: steve
+    superseded_by: relay-resumed-2026-08-21
+    superseded_note: >-
+      ENDED EARLY ON 2026-08-21, one day after it was taken. Kept in full because it is the record
+      of a decision that was really made and really acted on (STALE_AFTER_DAYS was raised, the
+      ROADMAP banner was written, two dated obligations were moved). Read everything below as
+      history. In particular, `consequences_accepted` prices SIXTY days of stall and only ONE was
+      spent — do not quote its runway arithmetic as though it happened.
     decision: >-
       RELAY IS PARKED FOR 60 DAYS, to ~2026-10-21. Steve's direction, taken 2026-08-22: report-bridge
       and the John Morgan relationship take precedence for that window. FEATURE WORK STOPS —
@@ -3088,6 +3131,229 @@ deferred:
       The sweep is re-walked and its table re-dated, AND a decision is recorded for J3/J6/J9:
       either they join `verify:live`, or they are explicitly walk-only with that stated in the
       table so the gap is visible rather than accidental.
+    resolved: 2026-08-21
+    resolution: >-
+      CLOSED BY BUILDING THE WALKS, not by re-dating a table. The scope decision `ends_when` asked
+      for was taken, and it is the expensive half: J3, J6 and J9 each gained an automated walk
+      (`scripts/e2e-delegate.ts` 27 checks, `scripts/e2e-request.ts` 31, `scripts/e2e-standdown.ts`
+      23), chained as `npm run verify:journeys`. J4's `/circle` add-a-person form — the fourth gap,
+      named in `docs/user-journeys.md`'s own header and NOT in this entry — gained real-browser
+      cover inside `scripts/e2e-ui.ts`, which went from 26 checks to 34. All four ran green against
+      the deployed build on 2026-08-21. A hand sweep would have gone stale again within weeks, and
+      that is the failure this entry records, so re-walking alone was rejected as the fix.
+    not_in_verify_live_and_why: >-
+      WARNING - `verify:journeys` is a SEPARATE chain and deliberately not appended to
+      `verify:live`. `/api/auth/signup` allows 10 per hour per IP, and the existing five-walk chain
+      performs EXACTLY 10 signups: it already sits at its own ceiling with zero headroom. The three
+      new walks add 5 more, so a combined chain would fail part-way through on the 11th signup as a
+      bare 429, which reads exactly like a flaky test. Tracked as
+      `the-live-chain-sits-at-its-own-signup-limit`.
+    what_it_found: >-
+      Two product findings, both entered here as their own rows rather than quietly fixed inside a
+      verification change: `approve-is-unreachable-before-the-first-rule` and
+      `the-live-chain-sits-at-its-own-signup-limit`. Three of the walks' OWN first-draft assertions
+      were also wrong in the flattering direction, and are corrected in place with the reason
+      written down: `ownerChallenged` reports mail success rather than that a challenge exists; a
+      `kind: policy` post was refused by the kind check and read as a scope refusal (a false green,
+      now asserted through the accessor instead); and `/circle`'s Add button is enabled by default
+      because the recipient hat is pre-ticked, so the guard is only reachable by unticking.
+
+  - id: the-suite-went-red-on-machine-load
+    owner: claude
+    opened: 2026-08-21
+    found_by: >-
+      Running the full suite repeatedly while verifying this session's work. It failed in two of
+      three runs, on a DIFFERENT test each time.
+    what: >-
+      Seven tests dynamically import a heavy module graph - the six dependency smoke tests in
+      `lib/setup.test.ts` (openai, resend, next-auth, the AWS SDK, pg, fast-check) and the
+      cron-wiring assertion in `lib/release/grace-window-invariant.test.ts`. Alone, each takes well
+      under a second. Inside the full suite, with 312 files transforming and importing in parallel,
+      they intermittently blew vitest's 5s default and the suite went RED with nothing wrong.
+    why_it_matters: >-
+      A gate that goes red on machine load teaches people that red means nothing, and that costs
+      exactly what a false green costs. This repo has recorded the green half of that lesson many
+      times (a health check that never renders, a log that resets, a monitor counting its own
+      traffic); this is the red half, and it had no entry. It is also the worst possible shape for
+      a release gate on a branch-protected repo, where CI is the merge condition: a re-run makes it
+      pass, which trains everyone to re-run rather than read.
+    ends_when: >-
+      The full suite passes repeatedly, and the fix does not weaken any assertion.
+    closed:
+      date: 2026-08-21
+      what_shipped: >-
+        An explicit 20s timeout on those seven tests, with the measurement and the reasoning written
+        in place. NOTHING ELSE CHANGED - the assertions are identical.
+      why_not_weaken_the_assertion: >-
+        The obvious cheap fix for the grace-window one is to read `heartbeat.ts` as TEXT instead of
+        importing it. That was rejected: the name would then match inside a COMMENT, which destroys
+        the exact claim the test exists to make ("wired into the cron, not merely defined"). The
+        assertion is right; the time budget was wrong. Move the budget.
+      proven: >-
+        Three consecutive full-suite runs green after the change - 3647 passed, 1 skipped - against
+        two failures in the three runs before it.
+      the_signal_if_it_returns: >-
+        If these fire again at 20s, the finding is that a dependency's import cost has grown
+        materially, which is worth knowing. It is NOT a reason to raise the number again.
+
+  - id: the-key-wall-could-not-run-its-own-command
+    owner: claude
+    opened: 2026-08-21
+    found_by: >-
+      Running `npm run verify:kms` while preparing the restore drill (D3 + B4). It exited
+      immediately: "KMS_KEY_ID is not set. Nothing to check."
+    what: >-
+      `npm run verify:kms` is declared as `--env-file=.env.admin`, and `.env.admin` carried the
+      DSQL endpoints and AWS_PROFILE but never KMS_KEY_ID. So the one check in this repo whose
+      failure is PERMANENT and unrecoverable - a CMK disabled, deleted or scheduled for deletion
+      makes every vault unreadable forever, and a key pending deletion still decrypts, so every
+      other signal stays green for the whole waiting period - was the one check that could not run
+      the way it is documented.
+    why_it_was_not_a_false_green: >-
+      It failed CLOSED, exit 1. Nobody was being told the wall held; nobody was being told
+      anything. That is the correct failure direction and it is why this is a defect rather than an
+      incident. CLAUDE.md meanwhile records it as LIVE-PROVEN on 2026-08-20, which it was - by
+      somebody supplying the key by hand. The proof was real and the command was not.
+    ends_when: >-
+      `npm run verify:kms` runs green from its own declared command, with no variable supplied by
+      hand, and its refusal path names the fix rather than only the symptom.
+    closed:
+      date: 2026-08-21
+      what_shipped: >-
+        Two halves. (1) KMS_KEY_ID added to `.env.admin` - it is an identifier rather than a
+        secret, it already appears in `.env.local`, and the file is gitignored. (2) The refusal
+        message in `scripts/verify-kms.ts` now prints the exact fix
+        (`grep ^KMS_KEY_ID= .env.local >> .env.admin`) instead of only the symptom, because a
+        refusal that does not say what to do is one somebody routes around.
+      proven_both_ways: >-
+        POSITIVE - `npm run verify:kms`, no hand-set variables, reports the wall holding: CMK
+        b3af288c... in us-east-1, Enabled, CUSTOMER-managed, SYMMETRIC_DEFAULT, not pending
+        deletion, rotation off matching ROTATION_INTENDED, and the key policy still granting
+        arn:aws:iam::461293170793:user/relay-runtime GenerateDataKey and Decrypt.
+        NEGATIVE - `KMS_KEY_ID= npx tsx --env-file=.env.admin scripts/verify-kms.ts` still exits 1,
+        and now prints the remedy.
+      still_true: >-
+        WARNING - `.env.admin` is gitignored and local to one machine, so this is fixed HERE and
+        not everywhere. Any other host running `verify:kms` hits the same wall, and now gets told
+        how to clear it. The general shape belongs with
+        `the-read-only-identity-is-not-in-the-cloud`.
+
+  - id: no-recurring-restore-drill-exists
+    owner: steve
+    opened: 2026-08-21
+    what: >-
+      A restore has run exactly once - 2026-08-08, timed - and no recurring drill exists.
+      `docs/backup-restore-runbook.md` asks in its own words for a `d3-restore-drill` gate in this
+      file with the two candidate dates as target and ratify_by, and says plainly that until that
+      entry exists "everything above is a note, and a note is what the last one was". ROADMAP
+      section 2-D (D3) and section 5 both say to schedule one. This file had no entry at all, which
+      is the gap the runbook names.
+    why_the_2026_08_08_run_no_longer_counts: >-
+      The success criteria CHANGED on 2026-08-19, when `verify:kms` was folded in. A restored
+      cluster is ciphertext without the key, so a drill that never unwraps an item has not proven a
+      recovery - it has proven a database restore. The 2026-08-08 run predates that criterion and
+      is therefore evidence for a drill that no longer exists. A drill whose criteria have been
+      superseded is not a drill that is three months fresh.
+    the_two_candidate_dates: >-
+      Derived, not chosen. THE CADENCE: last drill 2026-08-08 plus one quarter = 2026-11-08. THE
+      TRIGGER: the criteria changed 2026-08-19, which retired the previous run as evidence for the
+      half that matters. The cadence date is the CEILING, not the target.
+    the_four_steps_it_must_include: >-
+      In this order, from the runbook: (1) `node scripts/backup-now.mjs`, then restore to a scratch
+      cluster; (2) `npm run verify:kms` - now runnable as declared, see
+      `the-key-wall-could-not-run-its-own-command`; (3) ONE REAL ITEM through the product's own
+      reveal path against the scratch endpoint, overriding DSQL_PRIMARY_ENDPOINT in a throwaway env
+      file and NEVER by editing .env.local, which points at production and is the only copy;
+      (4) record the RTO actually observed, delete the scratch cluster, and confirm both production
+      clusters are still ACTIVE with deletion protection on.
+    why_it_is_steve_and_not_claude: >-
+      It commits AWS admin time and it spends money on a scratch cluster. The runbook is explicit
+      that PROJECT.yaml is not edited from that lane. Claude has done the half that needed no
+      approval: `verify:kms` is proven runnable and green, so step 2 is ready. Steps 1, 3 and 4
+      need credentials Claude should not use unattended and a cost only Steve can authorise.
+    ends_when: >-
+      Steve ratifies a `d3-restore-drill` gate under `gates` with an owner, the two dates above as
+      target and ratify_by, and the four steps as its criteria - the only form `lib/ops/gates.test.ts`
+      can turn red on, and the only form `.github/workflows/date-guards.yml` will notice.
+
+  - id: approve-is-unreachable-before-the-first-rule
+    owner: steve
+    opened: 2026-08-21
+    found_by: >-
+      `scripts/e2e-request.ts`, on its first run - the J6 walk built to close D10. No unit test
+      reaches it: it needs a real account in a real intermediate setup state.
+    what: >-
+      `release_state` rows are provisioned by `POST /api/rules` (and by setting a quorum), NOT by
+      naming a recipient. `respondToChallenge`'s APPROVE arm requires one. So an owner who has
+      named and invited somebody but has not yet written an access rule can be asked for access,
+      can DENY perfectly well, and CANNOT APPROVE - they get HTTP 400 "No release state for that
+      trigger type".
+    and_worse: >-
+      `claimRequest` sets status to `approved_by_owner` BEFORE the release_state lookup, and the
+      two are not in one transaction. So the failed approve COMMITS the status change and then
+      throws. The request is burned: it is no longer `awaiting_owner`, so it can never be answered
+      again, and the audit record says the owner approved something that never happened.
+    why_it_matters: >-
+      It is reachable in ordinary setup order - name, invite, claim, ask - which is exactly the
+      anxious window J6 exists for. The message means nothing to a person reading it on their phone
+      about their own mother, and the second half puts a false event in the owner's own record: the
+      one place they go to reconstruct what occurred.
+    reachability: >-
+      Requires a CLAIMED contact, so the owner did invite somebody. Not hypothetical, and not yet
+      observed in production only because production has one owner and no claimed contacts.
+    options:
+      - "PROVISION ON APPROVE - call ensureReleaseState in the approve arm before the lookup.
+         Smallest change, and makes approve always work. WARNING: it silently creates a
+         release_state row as a side effect of answering a request, which is a state change the
+         owner did not ask for."
+      - "REFUSE EARLIER AND SAY SOMETHING TRUE - check for the row BEFORE claimRequest, so the
+         request is not burned, and answer with copy an owner can act on. Does not make approve
+         work; stops it lying."
+      - "BOTH - refuse-before-burn is a correctness fix regardless of which way the product
+         decision goes on provisioning. The transaction-ordering half has no argument against it."
+    ends_when: >-
+      Steve rules on which of the three, and the two FINDING assertions in
+      `scripts/e2e-request.ts` are inverted to assert the new behaviour in the same commit as the
+      fix. They are written to go RED when this is fixed, on purpose, so the fix cannot land
+      without updating the record.
+
+  - id: the-live-chain-sits-at-its-own-signup-limit
+    owner: steve
+    opened: 2026-08-21
+    found_by: >-
+      Hit four times in one session while building the D10 walks - each time as a bare
+      "ERROR: signup begin 429" part-way through a run, which reads as a flaky test and is not one.
+      CLAUDE.md documents the arithmetic; nothing enforces or monitors it.
+    what: >-
+      `/api/auth/signup` allows LIMIT = 10 per WINDOW_MS = 1h, keyed on IP
+      (`lib/http/rate-limit.ts` clientKey), held in per-instance memory. One full `verify:live`
+      chain performs EXACTLY 10 signups. The release gate's live half therefore runs at 100% of its
+      own rate limit, with zero headroom.
+    why_it_matters: >-
+      Any new assertion that needs an account breaks the chain, and breaks it MID-RUN rather than
+      at the start - so the walks that already passed are wasted and the failure is
+      indistinguishable from a real defect. It also means the chain cannot be run twice in an hour
+      from one host, and the only workaround is restarting `npm run dev` to clear an in-memory
+      limiter, which is a thing a person has to know. The constraint has now shaped the
+      architecture of the verification (it is why `verify:journeys` is separate), and that should
+      be a decision taken deliberately rather than inherited from an unexamined constant.
+    do_not: >-
+      Raise LIMIT to make the tests fit. It is the owner front door's abuse control, and loosening
+      a security constant so a fixture chain fits inside it is the wrong direction of fit.
+    options:
+      - "LEAVE IT AND SAY SO - verify:journeys stays separate and the split is documented. Costs
+         nothing, and is what shipped 2026-08-21. The two chains must then be run an hour apart, or
+         with a dev restart between."
+      - "EXEMPT THE RESERVED DOMAINS - skip the limiter for .test/.invalid/.localhost addresses,
+         which undeliverable() already refuses to let anything else use. WARNING: it puts a bypass
+         in an abuse control keyed on caller-suppliable input; it would need the reserved check to
+         be the same one the mail seam uses, plus a test proving a real address never takes the
+         exemption."
+      - "A SEPARATE TEST CLUSTER - the standing answer to the whole class
+         (verify-live-cannot-enter-ci, ruled deferred until the first paying customer). It solves
+         this too, and it costs money."
+    ends_when: >-
+      Steve rules, or the separate-cluster decision is revisited and swallows it.
 
   - id: every-secrets-age-is-unknown                           # "D11"
     owner: steve

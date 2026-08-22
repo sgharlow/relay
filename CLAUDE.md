@@ -115,6 +115,23 @@ npm run gate           # types + lint + test + build. No database, no server. �
                        # CI — CI runs `test:coverage` where this runs `vitest --run`, so gate
                        # evaluates NO coverage threshold. See "Two gates" below.
 npm run verify:live    # the five E2E walks. NEEDS .env.local AND `npm run dev` running.
+                       # ⚠️ It performs EXACTLY 10 signups and the signup limiter allows 10
+                       # per hour per IP — so it runs at 100% of its own ceiling with NO
+                       # headroom, and cannot be run twice in an hour without restarting
+                       # `npm run dev` (the limiter is per-instance memory). That is why
+                       # verify:journeys below is a SEPARATE chain rather than more walks
+                       # appended here. deferred → the-live-chain-sits-at-its-own-signup-limit.
+npm run verify:journeys # the three walks added 2026-08-21 for the journeys `verify:live` never
+                       # covered: J3 (assisted setup + consent), J6 (access request, owner
+                       # challenge, cooling-off) and J9 (stand down and re-arm). Same needs as
+                       # verify:live — .env.local and a running server — and 5 more signups, so
+                       # run it an HOUR APART from verify:live or restart the dev server between.
+                       # Individually: verify:delegate / verify:request / verify:standdown.
+                       # Each prints its own count; do not trust a number written in prose.
+                       # 🔴 Two of its assertions are written to go RED when a defect is
+                       # FIXED — the approve-before-first-rule finding. If they fail, read
+                       # deferred → approve-is-unreachable-before-the-first-rule before
+                       # "fixing" the walk: it is the record, working as designed.
 npm run verify:reveal  # the fourth walk, alone: an owner stores a structured secret with a
                        # TOTP seed, a recipient claims, a verifier confirms, and Reveal is
                        # pressed. Asserts the plaintext returns byte for byte as LABELLED
@@ -255,14 +272,23 @@ npx tsx --env-file=.env.ro scripts/verify-schema.ts      # and verify-dogfood.ts
 npx tsx --env-file=.env.ro scripts/disposable-sweep.ts   # flight-snapshot.ts, verify-roles.ts
 ```
 
-⚠️ **THE `npm run` SHORTCUTS DO NOT USE IT — spell the `.env.ro` path yourself.** Every one of
-`verify:schema`, `verify:dogfood`, `verify:orphans`, `flight:snapshot` and `verify:roles` is still
-declared in `package.json` as `--env-file=.env.local`, so `npm run verify:schema` connects as
-`relay_dev` — an identity that can write. This paragraph said those five "now run under it" on the
-day the role shipped, and `.env.ro`'s own header lists them by their **npm script names**, which
-reads as a promise the scripts do not keep. Corrected 2026-08-21. Switching `package.json` over is a
-one-line change per script and deliberately not made here: it belongs with whoever owns that file,
-and a doc quietly asserting it had already happened is the failure being fixed.
+✅ **THE `npm run` SHORTCUTS DO USE IT, since 2026-08-21.** All five — `verify:schema`,
+`verify:dogfood`, `verify:orphans`, `flight:snapshot` and `verify:roles` — are declared in
+`package.json` as `--env-file=.env.ro`, so `npm run verify:schema` connects as `relay_ro`, an
+identity that cannot write. Re-derive rather than trusting this line:
+
+```bash
+node -e "const p=require('./package.json');for(const k of ['verify:schema','verify:dogfood','verify:orphans','flight:snapshot','verify:roles'])console.log(k,p.scripts[k].match(/--env-file=[^ ]+/)[0])"
+```
+
+> ⚠️ **THIS PARAGRAPH HAS NOW BEEN WRONG IN BOTH DIRECTIONS, which is worth more than either
+> correction.** It first said the five "now run under it" on the day the role shipped, while
+> `package.json` still said `.env.local` — a doc asserting a change that had not happened. It was
+> then corrected to say the shortcuts do NOT use it… and `package.json` was switched over, leaving
+> the correction stale in the opposite direction: a warning telling every future session to work
+> around a problem that no longer exists. **A stale warning costs more than a stale claim**, because
+> it is obeyed. The fix both times is the same and is now in place: state the command that derives
+> the answer, not the answer.
 
 ⚠️ **`verify:iam` and `verify:kms` are NOT unlocked by it** — they read the AWS API rather than
 the database, and a credential that lives in someone else's cloud has no business enumerating
@@ -427,15 +453,24 @@ same four stages on every push.
 > `npm run test:coverage` rather than `npm run gate`.**
 
 **`npm run verify:live` is the other half**: five walks that drive the running app —
-`e2e-stepup` (17 assertions over HTTP), `e2e-multiowner` (14), `e2e-ui` (26, in a real browser),
-`e2e-reveal` (20) and `e2e-factors` (17). Start `npm run dev` first.
+`e2e-stepup` and `e2e-multiowner` (HTTP), `e2e-ui` (in a real browser), `e2e-reveal` and
+`e2e-factors`. Start `npm run dev` first. **Each walk prints its own count — read it there.**
 
-> ⚠️ Those five counts are the volatile-number trap this repo's own rules name, and one of
-> them had already sprung it: `e2e-factors` read **15** until 2026-08-18, when the walk was
-> run and printed 17. The walk had grown and the line had not. **Each walk prints its own
-> count on every run — read it there, not here.** The numbers are kept only so a wildly
-> different total is noticeable; a difference of one or two means this line is stale, not
-> that something is broken.
+**And since 2026-08-21 there is a second chain, `npm run verify:journeys`**, covering the three
+journeys `verify:live` never touched: `e2e-delegate` (J3), `e2e-request` (J6) and `e2e-standdown`
+(J9). Together the two chains are eight walks. They are **separate on purpose** — see the signup-
+ceiling note in the Commands block, and `deferred → the-live-chain-sits-at-its-own-signup-limit`.
+`e2e-ui` also gained `/circle` cover in the same change, so J4's single add-a-person form is
+finally typed into by something other than a person.
+
+> ⚠️ **THE COUNTS THAT USED TO BE IN THAT PARAGRAPH ARE GONE, 2026-08-21, and the history is the
+> argument.** It listed each walk's assertion count — 17, 14, 26, 20, 17 — and twice they went
+> stale on the page: `e2e-factors` read **15** until 2026-08-18, when the walk was run and printed
+> 17; then `e2e-ui` read **26** until 2026-08-21, when `/circle` cover took it to 34. The same
+> paragraph that carried the numbers also said "each walk prints its own count on every run — read
+> it there, not here", and kept them anyway "so a wildly different total is noticeable". That
+> hedge is what kept springing the trap. **The numbers are removed rather than corrected.** Run the
+> chain and read what it prints.
 
 > ⚠️ **A LOCAL GREEN IS NOT A CI GREEN FOR ANYTHING THAT READS A CLOCK.** CI runs in
 > **UTC**; this laptop does not. On 2026-08-18 a `snapshotDate` test asserted that the
