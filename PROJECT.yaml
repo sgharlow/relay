@@ -3131,32 +3131,34 @@ deferred:
       The sweep is re-walked and its table re-dated, AND a decision is recorded for J3/J6/J9:
       either they join `verify:live`, or they are explicitly walk-only with that stated in the
       table so the gap is visible rather than accidental.
-    resolved: 2026-08-21
-    resolution: >-
-      CLOSED BY BUILDING THE WALKS, not by re-dating a table. The scope decision `ends_when` asked
-      for was taken, and it is the expensive half: J3, J6 and J9 each gained an automated walk
-      (`scripts/e2e-delegate.ts` 27 checks, `scripts/e2e-request.ts` 31, `scripts/e2e-standdown.ts`
-      23), chained as `npm run verify:journeys`. J4's `/circle` add-a-person form — the fourth gap,
-      named in `docs/user-journeys.md`'s own header and NOT in this entry — gained real-browser
-      cover inside `scripts/e2e-ui.ts`, which went from 26 checks to 34. All four ran green against
-      the deployed build on 2026-08-21. A hand sweep would have gone stale again within weeks, and
-      that is the failure this entry records, so re-walking alone was rejected as the fix.
-    not_in_verify_live_and_why: >-
-      WARNING - `verify:journeys` is a SEPARATE chain and deliberately not appended to
-      `verify:live`. `/api/auth/signup` allows 10 per hour per IP, and the existing five-walk chain
-      performs EXACTLY 10 signups: it already sits at its own ceiling with zero headroom. The three
-      new walks add 5 more, so a combined chain would fail part-way through on the 11th signup as a
-      bare 429, which reads exactly like a flaky test. Tracked as
-      `the-live-chain-sits-at-its-own-signup-limit`.
-    what_it_found: >-
-      Two product findings, both entered here as their own rows rather than quietly fixed inside a
-      verification change: `approve-is-unreachable-before-the-first-rule` and
-      `the-live-chain-sits-at-its-own-signup-limit`. Three of the walks' OWN first-draft assertions
-      were also wrong in the flattering direction, and are corrected in place with the reason
-      written down: `ownerChallenged` reports mail success rather than that a challenge exists; a
-      `kind: policy` post was refused by the kind check and read as a scope refusal (a false green,
-      now asserted through the accessor instead); and `/circle`'s Add button is enabled by default
-      because the recipient hat is pre-ticked, so the guard is only reachable by unticking.
+    closed:
+      date: 2026-08-21
+      what_shipped: >-
+        CLOSED BY BUILDING THE WALKS, not by re-dating a table. The scope decision `ends_when`
+        asked for was taken, and it is the expensive half: J3, J6 and J9 each gained an automated
+        walk (`scripts/e2e-delegate.ts` 27 checks, `scripts/e2e-request.ts` 31,
+        `scripts/e2e-standdown.ts` 23), chained as `npm run verify:journeys`. J4's `/circle`
+        add-a-person form - the fourth gap, named in `docs/user-journeys.md`'s own header and NOT
+        in this entry - gained real-browser cover inside `scripts/e2e-ui.ts`, which went from 26
+        checks to 34. All four ran green against the deployed build on 2026-08-21. A hand sweep
+        would have gone stale again within weeks, and that is the failure this entry records, so
+        re-walking alone was rejected as the fix.
+      not_in_verify_live_and_why: >-
+        WARNING - `verify:journeys` is a SEPARATE chain and deliberately not appended to
+        `verify:live`. `/api/auth/signup` allows 10 per hour per IP, and the existing five-walk chain
+        performs EXACTLY 10 signups: it already sits at its own ceiling with zero headroom. The three
+        new walks add 5 more, so a combined chain would fail part-way through on the 11th signup as a
+        bare 429, which reads exactly like a flaky test. Tracked as
+        `the-live-chain-sits-at-its-own-signup-limit`.
+      what_it_found: >-
+        Two product findings, both entered here as their own rows rather than quietly fixed inside a
+        verification change: `approve-is-unreachable-before-the-first-rule` and
+        `the-live-chain-sits-at-its-own-signup-limit`. Three of the walks' OWN first-draft assertions
+        were also wrong in the flattering direction, and are corrected in place with the reason
+        written down: `ownerChallenged` reports mail success rather than that a challenge exists; a
+        `kind: policy` post was refused by the kind check and read as a scope refusal (a false green,
+        now asserted through the accessor instead); and `/circle`'s Add button is enabled by default
+        because the recipient hat is pre-ticked, so the guard is only reachable by unticking.
 
   - id: the-suite-went-red-on-machine-load
     owner: claude
