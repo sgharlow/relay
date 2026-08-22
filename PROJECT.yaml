@@ -521,6 +521,44 @@ post_event_plan: "h0-verdict-disposition gate + auto-scheduled teardown (CCR tri
 # Decisions ratified by Steve, recorded here so they stop reading as open items
 # in the pre-ads blocker list. Each one had been authored but never confirmed.
 ratified:
+  - id: relay-parked-60-days-2026-08-22
+    date: 2026-08-22
+    owner: steve
+    decision: >-
+      RELAY IS PARKED FOR 60 DAYS, to ~2026-10-21. Steve's direction, taken 2026-08-22: report-bridge
+      and the John Morgan relationship take precedence for that window. FEATURE WORK STOPS —
+      ROADMAP Sprints 1, 2 and 3 are suspended where they are, not cancelled and not re-planned.
+    review_on: 2026-10-21
+    what_does_NOT_pause: >-
+      THE CUSTODIAL DUTY. Relay is live, holds an encrypted vault, and runs live-mode Stripe
+      billing; none of that pauses because the roadmap does. Still running and still expected to
+      page: the backup absence alarm, the KMS wall watch (a key pending deletion still decrypts for
+      its whole waiting period, so the product looks fine right up until the data is gone), the
+      scheduler monitor, and CI on every push. A park is a decision to stop BUILDING, not a
+      decision to stop WATCHING.
+    consequences_accepted:
+      - "`verify:live` freshness dead-man would have fired ~2026-09-04, inside the park.
+         STALE_AFTER_DAYS raised 14 -> 70 IN THE SAME COMMIT as this entry, which is what
+         lib/ops/verify-live-freshness.ts `explain()` instructs a pauser to do. 70 puts the alarm
+         at ~2026-10-30 — about 9 days AFTER the park ends, deliberately, so it prompts a
+         resumption rather than staying silent. RESTORE TO 14 WHEN THE PARK ENDS."
+      - "`ratified.beta-free-release`'s 2026-10-01 paywall revisit falls INSIDE the park. It must
+         NOT be actioned during it — E1' is its stated precondition and E1' is open, unproven, and
+         now known to be harder than a 15-minute job. Flipping the paywall on schedule while
+         parked would convert an expired card into a silently blocked release with nobody watching.
+         The revisit moves to the 2026-10-21 review."
+      - "Sprint 1 (the owner's vault) lapses unstarted, so `ladder: dogfooded` continues to
+         describe 2026-06-27 rather than the present. That is now a 60-day-old claim rather than a
+         two-week-old one. It is recorded, not fixed — see deferred -> the-owners-vault-is-empty."
+      - "The demand lane does not move for 60 days. `g1-arms-length-demand` (due 2026-12-31)
+         therefore has ~10 weeks of runway left when the park ends, not ~18. `g3-b2b2c-pilot-loi`
+         (due 2026-11-30, measured on MEETINGS TAKEN) has ~6 weeks. Both are still reachable; both
+         get materially tighter, and that is the real cost of the park."
+      - "The 2026-10-17 competitor-price re-verification clock lands inside the park and is
+         deferred to the review with it."
+    not_affected: >-
+      Nothing in this entry touches report-bridge, domo-ssrs or the 2026-09-12 GO-LIVE, which are
+      the work the park exists to make room for.
   - id: refund-stance
     date: 2026-08-09
     decision: "30-day money-back guarantee on every charge (renewals included), then no refund of the unused part of a year"
@@ -3191,3 +3229,56 @@ deferred:
         ⚠️ Until (a) is answered, the wiring cannot be proven by any local means."
       also_found: "`ratified.beta-free-release`'s 2026-10-01 paywall flip has this as a stated
         precondition. It is not met."
+    attempted_2:
+      date: 2026-08-21
+      by: claude
+      outcome: "STILL OPEN — but the blocker named in attempted.next_step (a) is CLOSED, and the
+        documented test method was found to be incapable of proving anything."
+      question_a_ANSWERED: "NO. Endpoint we_1U2IIGGs40KMmT4XAIradLoE enabled exactly three events —
+        checkout.session.completed, customer.subscription.updated, customer.subscription.deleted.
+        `invoice.payment_failed` was ABSENT, so Stripe never POSTed it and the handler at
+        src/app/api/stripe/webhook/route.ts:423 was unreachable code in production. The same
+        account's report-bridge endpoint (we_1TQJx6...) DID subscribe to it, so this was an
+        omission on relay's endpoint alone, not an account-level constraint.
+        ✅ FIXED 2026-08-21 and verified by independent re-read, not by the update's own echo.
+        ⚠️ TRAP: `--enabled-events` REPLACES the list. The update passed all four events; passing
+        only the new one would have silently dropped checkout and both subscription events."
+      the_documented_method_cannot_work: "docs/e1-stripe-lapse-proof.md's Steps 1-3 and its
+        four-box table cannot be ticked from a `stripe trigger` run, and this is now measured
+        rather than reasoned. `stripe trigger invoice.payment_failed` runs an invoiceitem+invoice
+        fixture — a ONE-OFF invoice, not a subscription renewal. On the real generated event
+        evt_1U74tnGs40KMmT4X2HnKgbPE: top-level `subscription` ABSENT, `parent` ABSENT. So
+        `subscriptionIdOnInvoice` returns undefined, the handler breaks on its FIRST line, and the
+        route answers 200 having written nothing — which is correct behaviour and is
+        indistinguishable from broken wiring. Second, independent reason: production holds exactly
+        ONE subscriptions row and it is a LIVE-mode id (sub_1U2MHx..., active, the owner's own
+        card); a test-mode trigger mints a test-namespace id that can never match it."
+      verified_in_passing: "Two things worth keeping, both read rather than assumed.
+        (1) THE EXTRACTOR IS VERSION-ROBUST, AND IT NEARLY MATTERED. The endpoint's `api_version`
+            is null, so Stripe delivers the ACCOUNT DEFAULT — measured as 2026-01-28.clover on the
+            captured event — while lib/billing/stripe.ts pins 2026-07-29.dahlia for OUTBOUND calls.
+            Different shapes. `subscriptionIdOnInvoice` reads BOTH candidates
+            (parent.subscription_details.subscription, then top-level subscription), so either
+            resolves. Had it read only the dahlia path, a real renewal failure would be dropped in
+            production AND the documented test would still have 'passed' by writing nothing.
+        (2) THE DEDUPE IS PROVABLE WITHOUT A MAILBOX. `sendOnce` writes the audit row REGARDLESS of
+            delivery (detail.delivered:false) and returns 'undelivered'. The mail leg and the
+            dedupe leg are separately testable; the four-box table conflates them."
+      what_is_still_unexplained: "attempted's nine-attempt symptom stands and is NOT explained by
+        the above — that run used a SPLICED, correctly-signed event carrying a RESOLVABLE
+        subscription id and reached `sendOnce` with n=0 from the dedupe check, then wrote no row
+        and logged no refusal. Every branch out of sendOnce writes something, so that is not a
+        state the source can produce. The stale-module explanation remains the most likely and is
+        still unproven. NEXT ATTEMPT MUST FIRST ESTABLISH WHICH BUILD IS ANSWERING — a structural
+        marker in the RESPONSE BODY, not a log line, since logs were the thing that disagreed."
+      next_step: "See docs/e1-stripe-lapse-proof.md section 5. Three honest routes, none a CLI
+        trigger: (1) a real live renewal failure — proves everything, not schedulable;
+        (2) a test-mode subscription created through relay's OWN checkout so
+            checkout.session.completed writes a real subscriptions row, then fail that invoice —
+            exercises the identical path, but leaves a test row in the production table whose
+            cleanup is a destructive production write and therefore Steve's call;
+        (3) splice a real captured payload with the live subscription id and POST it signed —
+            cheap, proves route+lookup+notice+dedupe, but NOT that Stripe's own delivery carries a
+            resolvable id. ⚠️ Calling (3) `live-proven` would overstate it; the honest label is
+            `wired + route-proven`.
+        RECOMMENDATION: (1), with (3) as an interim recorded as what it is."
