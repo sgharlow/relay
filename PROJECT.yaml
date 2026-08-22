@@ -521,6 +521,44 @@ post_event_plan: "h0-verdict-disposition gate + auto-scheduled teardown (CCR tri
 # Decisions ratified by Steve, recorded here so they stop reading as open items
 # in the pre-ads blocker list. Each one had been authored but never confirmed.
 ratified:
+  - id: relay-parked-60-days-2026-08-22
+    date: 2026-08-22
+    owner: steve
+    decision: >-
+      RELAY IS PARKED FOR 60 DAYS, to ~2026-10-21. Steve's direction, taken 2026-08-22: report-bridge
+      and the John Morgan relationship take precedence for that window. FEATURE WORK STOPS —
+      ROADMAP Sprints 1, 2 and 3 are suspended where they are, not cancelled and not re-planned.
+    review_on: 2026-10-21
+    what_does_NOT_pause: >-
+      THE CUSTODIAL DUTY. Relay is live, holds an encrypted vault, and runs live-mode Stripe
+      billing; none of that pauses because the roadmap does. Still running and still expected to
+      page: the backup absence alarm, the KMS wall watch (a key pending deletion still decrypts for
+      its whole waiting period, so the product looks fine right up until the data is gone), the
+      scheduler monitor, and CI on every push. A park is a decision to stop BUILDING, not a
+      decision to stop WATCHING.
+    consequences_accepted:
+      - "`verify:live` freshness dead-man would have fired ~2026-09-04, inside the park.
+         STALE_AFTER_DAYS raised 14 -> 70 IN THE SAME COMMIT as this entry, which is what
+         lib/ops/verify-live-freshness.ts `explain()` instructs a pauser to do. 70 puts the alarm
+         at ~2026-10-30 — about 9 days AFTER the park ends, deliberately, so it prompts a
+         resumption rather than staying silent. RESTORE TO 14 WHEN THE PARK ENDS."
+      - "`ratified.beta-free-release`'s 2026-10-01 paywall revisit falls INSIDE the park. It must
+         NOT be actioned during it — E1' is its stated precondition and E1' is open, unproven, and
+         now known to be harder than a 15-minute job. Flipping the paywall on schedule while
+         parked would convert an expired card into a silently blocked release with nobody watching.
+         The revisit moves to the 2026-10-21 review."
+      - "Sprint 1 (the owner's vault) lapses unstarted, so `ladder: dogfooded` continues to
+         describe 2026-06-27 rather than the present. That is now a 60-day-old claim rather than a
+         two-week-old one. It is recorded, not fixed — see deferred -> the-owners-vault-is-empty."
+      - "The demand lane does not move for 60 days. `g1-arms-length-demand` (due 2026-12-31)
+         therefore has ~10 weeks of runway left when the park ends, not ~18. `g3-b2b2c-pilot-loi`
+         (due 2026-11-30, measured on MEETINGS TAKEN) has ~6 weeks. Both are still reachable; both
+         get materially tighter, and that is the real cost of the park."
+      - "The 2026-10-17 competitor-price re-verification clock lands inside the park and is
+         deferred to the review with it."
+    not_affected: >-
+      Nothing in this entry touches report-bridge, domo-ssrs or the 2026-09-12 GO-LIVE, which are
+      the work the park exists to make room for.
   - id: refund-stance
     date: 2026-08-09
     decision: "30-day money-back guarantee on every charge (renewals included), then no refund of the unused part of a year"
