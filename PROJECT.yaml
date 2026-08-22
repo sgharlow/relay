@@ -559,6 +559,48 @@ ratified:
     not_affected: >-
       Nothing in this entry touches report-bridge, domo-ssrs or the 2026-09-12 GO-LIVE, which are
       the work the park exists to make room for.
+    corrected:
+      date: 2026-08-22
+      by: claude
+      measured: >-
+        Read from `.github/workflows/` on the day this entry was written. FOUR workflows run on a
+        schedule: `production-canary.yml` (*/15), `scheduler-monitor.yml` (*/30),
+        `delivery-webhook-monitor.yml` (daily 08:17), `date-guards.yml` (daily 06:17 — it runs
+        gates.test.ts, verify-live-freshness.test.ts and ladder-claim.test.ts, which read repo
+        files and need no credentials). `npm run verify:kms` appears in NONE of them. It exists
+        only as a package script — `npx tsx --env-file=.env.admin scripts/verify-kms.ts` — and
+        `.env.admin` lives on one laptop.
+      what_was_wrong: >-
+        `what_does_NOT_pause` above lists "the KMS wall watch" among the things "still running and
+        still expected to page". It is not running and it cannot page: it is a command a person
+        types. Two of the four things on that list are accurate — the scheduler monitor is
+        `scheduler-monitor.yml`, and CI does run on every push. The KMS watch is the one that is
+        not, and this entry's own commit message names it as the one that matters most here,
+        "precisely because it is the one whose failure is invisible".
+      why_it_is_worse_during_a_park: >-
+        AWS KMS deletion has a waiting period of 7 to 30 days. The park is 60. So a deletion
+        scheduled at ANY point in the first month completes before anyone looks — and a key
+        pending deletion still decrypts for the whole waiting period, so every other signal here
+        (the canary, the scheduler monitor, the site itself) stays green throughout and then every
+        vault is permanently unreadable. `docs/backup-restore-runbook.md` covers the database; a
+        restored cluster is ciphertext without the key that opens it. This is the one failure in
+        the register with no rollback.
+      second_finding: >-
+        THE PARK IS EXACTLY THE AUTO-DISABLE WINDOW. `lib/ops/alarm-of-record.test.ts` recorded on
+        2026-08-21 that GitHub disables scheduled workflows in a PUBLIC repository after 60 days
+        with no repository activity, and that all four scheduled alarms plus `date-guards.yml`
+        share that fate. This entry was written the next day and commits to 60 days of deliberate
+        inactivity. So the four alarms `what_does_NOT_pause` relies on are themselves scheduled to
+        stop at about the moment the park ends. GitHub emails first, to the inbox the park exists
+        to leave alone.
+      not_fixed_here_and_why: >-
+        Scheduling `verify:kms` needs `.env.admin` credentials in GitHub Actions secrets, and the
+        off-GitHub heartbeat `alarm-of-record.test.ts` proposes needs a Route 53 health check or a
+        CloudWatch canary. Both are infrastructure changes with a cost and both need Steve, under
+        the same 5-gate policy `docs/kms-region-proposal.md` sits behind — and this is a park, in
+        which building is the thing that stopped. Recorded rather than taken. The cheap
+        interim is a calendar reminder to run `npm run verify:kms` by hand during the park;
+        that is a decision, not a commit.
   - id: refund-stance
     date: 2026-08-09
     decision: "30-day money-back guarantee on every charge (renewals included), then no refund of the unused part of a year"
