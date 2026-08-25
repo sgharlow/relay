@@ -2238,6 +2238,33 @@ deferred:
         'single-Region CMK: DSQL fails over between regions and this key does not move with it' — as
         a NOTE, not a failure, because the fix is an infrastructure decision and a check that fails
         on a knowingly-accepted limitation is a check somebody disables."
+      # 🔴 THE CLOSURE ABOVE WAS TRUE AND THE MONITOR DID NOT EXIST, corrected 2026-08-24.
+      scheduled_2026_08_24: >-
+        THIS ENTRY WAS CLOSED FOR FOUR DAYS ON A CHECK THAT NOTHING RAN. Every claim in the block
+        above is accurate and the `ends_when` was met as written — "wired into the pre-release list"
+        is a list a person reads. But scripts/verify-kms.ts describes ITSELF as "a scheduled
+        re-measurement rather than a note asking somebody to look", and it was the note. Measured
+        2026-08-24 against .github/workflows/: verify:kms appeared in NONE of the six. It ran when a
+        person typed it on the one laptop holding .env.admin.
+        The cost was not hypothetical. ratified.relay-parked-60-days-2026-08-22 listed the KMS wall
+        watch among the custodial monitors "still running and still expected to page", and
+        ratified.relay-resumed-2026-08-21 — the LIVE entry — asserts it "ran throughout" and holds
+        that arrangement up as "the template for the next one". Both sentences were false, and they
+        were written into the record BY the closure above. An ends_when weaker than the thing's own
+        stated design is how a decorative guard gets counted as protection in the exact review that
+        should have caught it.
+        NOW REALLY SCHEDULED: .github/workflows/kms-wall.yml, daily, merged in ce776ef. GitHub OIDC
+        to IAM role relay-kms-wall-ci — no stored secret; trust pinned to
+        repo:sgharlow/relay:ref:refs/heads/master because this repo is PUBLIC; permissions are
+        DescribeKey + GetKeyPolicy + GetKeyRotationStatus on the one CMK and nothing else, so it
+        cannot Decrypt. Daily because AWS's minimum key-deletion waiting period is 7 days, so a
+        daily check sees a scheduled deletion at least six times before it is irreversible. Proven
+        BOTH ways on the day: green against the real key, and exit 1 against a dispatched bogus key
+        id via the workflow_dispatch key_id input, which exists so the alarm can be proven red
+        without a commit.
+        WARNING - it inherits the trap all five scheduled workflows share: GitHub disables scheduled
+        workflows in a public repository after 60 days with no repository activity, so this watchdog
+        has the same failure mode as the thing it watches - a quiet owner.
 
 
   - id: tenant-separation-at-the-kms-boundary-is-not-cryptographic   # "B5"
