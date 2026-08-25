@@ -3126,6 +3126,48 @@ deferred:
       `--anyway` proceeds while printing exactly what is being overridden, so a defensible early
       invitation (naming a verifier before the vault is filled) stays possible and visible rather
       than driving someone to delete the check.
+    sprint_1_calendar_lapsed:
+      date: 2026-08-24
+      measured: >-
+        `npm run verify:dogfood` on 2026-08-24 reads NOT READY — 5 pieces missing: at least one
+        vault item, one recipient, one verifier, one access rule, a configured release trigger.
+        That is the SAME five, unchanged since this entry was opened on 2026-08-20. The `what:`
+        block above is four days old and still exactly true, which is the finding.
+      what_lapsed: >-
+        ROADMAP.md sprint 1 carried the calendar `now -> 2026-08-24`. That window closed today with
+        items 1.1 (the owner's vault holds real items) and 1.2 (a recipient, a verifier, an access
+        rule pointing at real items) unmet. The sprint's own "Done when" — that the production
+        counts are no longer zero — is not satisfied.
+      the_court: >-
+        1.1 and 1.2 are Steve's and cannot be moved: they need REAL values, and
+        `scripts/reset-demo.ts` is barred by name in ROADMAP.md §6 and by `explicitly_not` above.
+        1.3 and 1.5 are Claude's but have nothing to act on until 1.1 and 1.2 exist — a release
+        configuration with no items to release, and an orphan census over a walk that never ran.
+        1.4 is the one item that is DONE: the ladder re-stamp was recorded 2026-08-20 in
+        `ladder_evidence` and is enforced by `lib/ops/ladder-claim.ts`, not by prose.
+      why_it_lapsed: >-
+        Not neglect, and the distinction is the point. Steve ruled on 2026-08-24 that relay is
+        resumed but that report-bridge's 2026-09-12 GO-LIVE keeps precedence for his attention,
+        with relay's Steve-hands items queuing behind it rather than competing with it. This lapse
+        is the direct and intended consequence of that ruling. It is recorded anyway, because a
+        deferral that is ruled and a deferral that is forgotten look identical in a month, and this
+        is the third time the cohort has been pushed — ROADMAP.md sprint 2 item 2.6 says in its
+        own words that an unrecorded third deferral is not a legitimate one.
+      revisit: 2026-09-12
+      revisit_basis: >-
+        NOT chosen. It is the report-bridge GO-LIVE date that outranked this, so it is the first
+        day the ruling above stops applying. `__project-docs/relay-vault-checklist-SPRINT-1.md`
+        (6 screens, written 2026-08-22, still unexecuted) is the 20 minutes this needs.
+      this_is_a_note_and_not_a_dead_man: >-
+        ⚠️ Nothing turns red on 2026-09-12. `lib/ops/gates.test.ts` parses the `gates:`
+        section ONLY, and no guard in this repo reads a `revisit:` on a `deferred:` entry —
+        `date-guards.yml` runs three test files and none of them looks here. So this record has
+        exactly the strength of the thing `nothing-watches-the-key` was closed on four days ago,
+        and it is written down as such rather than described as protection. Closing it properly
+        means either promoting A0 to a dated `gates:` entry, where the existing guard reads its
+        `due:` for free, or teaching a guard to read `revisit:` on deferred entries. Both are real
+        work, neither was asked for today, and the choice is Steve's — because promoting this to
+        a gate is promoting it past report-bridge, which is the thing the ruling above declined.
 
   - id: the-coverage-gate-is-declared-and-unenforced           # "D8"
     owner: claude

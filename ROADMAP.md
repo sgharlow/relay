@@ -328,7 +328,7 @@ Effort labels: **S** ≤ a day · **M** ≤ a week · **L** longer. Court: who m
 what, not by importance: Sprint 1 is small and gates Sprint 2; Sprint 2 is the only lane that moves a
 gate; Sprint 3 depends on neither and can proceed whenever Claude has a session.
 
-### Sprint 1 — Make the claim true again *(calendar: now → 2026-08-24 · mixed court · gates Sprint 2)*
+### Sprint 1 — Make the claim true again *(calendar: now → 2026-08-24 — 🔴 **LAPSED 2026-08-24, unmet** · revisit 2026-09-12 · mixed court · gates Sprint 2)*
 
 **Why first:** it is the cheapest sprint in the document and it unblocks the cohort. An empty vault
 cannot host recipients, and `ladder: dogfooded` should describe the system as it is.
@@ -347,6 +347,19 @@ something to stand by for.
 ⚠️ **Not a fixture run.** `scripts/reset-demo.ts` exists and would produce numbers that satisfy the
 table above while proving nothing. The point of this sprint is that the owner's vault is *real* — if
 it is seeded, the claim ladder has not moved and the entry in 1.4 must say so.
+
+🔴 **The calendar closed on 2026-08-24 with 1.1 and 1.2 unmet, and this line is the record.**
+`npm run verify:dogfood` read NOT READY that day — the same 5 missing pieces as when the item was
+opened on 2026-08-20. 1.4 is the one row that is done (recorded in `PROJECT.yaml` `ladder_evidence`
+2026-08-20, enforced by `lib/ops/ladder-claim.ts`); 1.3 and 1.5 are Claude's but have nothing to act
+on until 1.1 and 1.2 exist. **It lapsed by ruling, not by neglect:** Steve ruled 2026-08-24 that
+report-bridge's 2026-09-12 GO-LIVE keeps precedence and that relay's Steve-hands items queue behind
+it. Revisit **2026-09-12**, the first day that ruling stops applying —
+`__project-docs/relay-vault-checklist-SPRINT-1.md` is the 20 minutes it needs.
+
+⚠️ **Nothing turns red on that date.** No guard reads a sprint calendar or a `revisit:` on a
+`deferred:` entry. The full record, including what would make it a real dead-man, is
+`PROJECT.yaml` → `deferred` → `the-owners-vault-is-empty` → `sprint_1_calendar_lapsed`.
 
 ### Sprint 2 — The demand lane, actually fired *(calendar: now → 2026-09-01 · Steve's court)*
 
