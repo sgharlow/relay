@@ -103,6 +103,28 @@ export const VAULT_MAX_JSON_BYTES = 1024 * 1024;
  * request declares nothing at all. So the stream is also counted as it arrives
  * and abandoned the moment it crosses the cap. Either check alone is a hole.
  *
+ * 🔴 IT NEVER RETURNS `null`, AND THAT IS A FIX RATHER THAN A DETAIL.
+ * `JSON.parse('null')` succeeds, so a four-byte body of `null` used to come back
+ * as the value `null` — past the `isResponse` check, into a handler written as
+ * `const body = parsed as { code?: unknown }`, and straight into
+ * `TypeError: Cannot read properties of null` on the following line. Six
+ * handlers carried that shape and four of them are PUBLIC: `/api/access/code`,
+ * `/api/access/resend`, `/api/verify/code` and `/api/verify/resend` — the typed
+ * code doors into a live release. An unhandled 500 where a 400 was intended,
+ * from a body anyone could send.
+ *
+ * The hazard was already known: `readJsonOptional` below has ended `?? {}` since
+ * it was written, with a comment saying exactly why. Normalising there and not
+ * here left every caller of this one to remember, and six did not — a guard that
+ * lives in a helper is a guard on the helper. Fixed 2026-08-22, at the helper
+ * rather than at six call sites, and held to the same contract as its sibling by
+ * `read-json-null-body.test.ts`.
+ *
+ * ⚠️ ONLY `null`/`undefined` are normalised. An array survives as an array
+ * (/api/import posts one) and so does every falsy scalar — `0`, `false`, `""` —
+ * because "callers can dereference the result" is the claim being made, not
+ * "everything is an object".
+ *
  * @param maxBytes override for a route that legitimately sends more; see
  *   /api/import, which posts a whole password-manager export.
  */
@@ -118,6 +140,14 @@ export async function readJson(
       },
       { status: 413 },
     );
+
+  /**
+   * The single exit for a successfully parsed body. There are TWO of them — the
+   * no-stream fallback and the metered path — and `?? {}` is applied here rather
+   * than written out at each, because a fix applied to one of two return sites
+   * is the same defect one layer down.
+   */
+  const parsed = (v: unknown): unknown => v ?? {};
 
   /*
     Optional chaining on both because this is called with request DOUBLES in
@@ -135,7 +165,7 @@ export async function readJson(
     // Nothing to meter — an empty body, a test double, or a runtime that does
     // not expose a stream. The declared-length check above is then the only
     // guard, which is correct: there is no stream to read.
-    if (!body) return await req.json();
+    if (!body) return parsed(await req.json());
 
     const reader = body.getReader();
     const chunks: Uint8Array[] = [];
@@ -157,7 +187,7 @@ export async function readJson(
       joined.set(c, at);
       at += c.byteLength;
     }
-    return JSON.parse(new TextDecoder().decode(joined));
+    return parsed(JSON.parse(new TextDecoder().decode(joined)));
   } catch {
     return NextResponse.json({ error: 'BadRequest', message: 'Invalid JSON body' }, { status: 400 });
   }
