@@ -1,0 +1,134 @@
+# Is the key every vault depends on still there, still usable, and still ours?
+#
+# 🔴 WHY THIS FILE EXISTS. `scripts/verify-kms.ts` was written on 2026-08-19 and
+# its own header calls itself "a scheduled re-measurement rather than a note
+# asking somebody to look". Nothing scheduled it. For three days
+# `ratified.relay-parked-60-days-2026-08-22` and then the live entry that
+# superseded it, `relay-resumed-2026-08-21`, both listed the KMS wall watch among
+# the custodial monitors that "ran throughout" — and the resume entry held that
+# arrangement up as "the template for the next one". It ran when a person typed
+# it on one laptop. Measured 2026-08-24: `verify:kms` appeared in none of the six
+# workflows here.
+#
+# That is the decorative-guard shape this repository keeps catching, in the one
+# place where the failure is PERMANENT: a disabled key, a scheduled deletion, or
+# a key policy that stops naming the runtime principal leaks nothing and makes
+# every vault unreadable forever. And a key pending deletion STILL DECRYPTS for
+# its whole waiting period, so the canary, the scheduler monitor, the health
+# endpoint and every page stay green for the entire window and then the data is
+# gone. There is no rollback and no backup that helps — `backup-restore-runbook`
+# covers the database, and a restored cluster is ciphertext without this key.
+#
+# ⚠️ THE SCRIPT'S HEADER SAYS "NOT IN CI: CI has no AWS credentials". That was
+# true when written and is no longer. This job holds NO stored secret: it mints a
+# short-lived GitHub OIDC token and exchanges it for `relay-kms-wall-ci`, whose
+# trust policy names exactly one subject — `repo:sgharlow/relay:ref:refs/heads/master`
+# — and whose only permissions are `kms:DescribeKey`, `kms:GetKeyPolicy` and
+# `kms:GetKeyRotationStatus` on the single CMK. It cannot Decrypt, it cannot
+# GenerateDataKey, and it cannot touch any other key. Pinning the subject to the
+# master ref is what keeps a fork's pull request from ever assuming it, which
+# matters because sgharlow/relay is PUBLIC.
+#
+# 🔴 IT SHARES THE TRAP EVERY SCHEDULED ALARM HERE SHARES. GitHub disables
+# scheduled workflows in a public repository after 60 days with no repository
+# activity. This watchdog therefore has the same failure mode as the other four:
+# a quiet owner. GitHub emails before disabling and that email is the only
+# warning. See .github/workflows/date-guards.yml for the full account.
+#
+# ⚠️ UNLIKE THE CANARY, THIS ONE HAS AN INSTALL STEP, and that is a way to fail
+# that the canary deliberately does not have. It is unavoidable: the check speaks
+# to the KMS API, so it needs `@aws-sdk/client-kms`. Kept as small as possible —
+# `--omit=dev` installs the runtime dependency and nothing else.
+
+name: KMS wall watch
+
+on:
+  schedule:
+    # Daily. The cadence is set by what it protects against rather than by taste:
+    # AWS's minimum key-deletion waiting period is 7 days, so a daily check sees
+    # a scheduled deletion at least six times before it becomes irreversible.
+    # Anything slower than weekly could miss the whole window.
+    - cron: '43 6 * * *'
+
+  # 🔴 THE DISPATCH INPUT EXISTS SO THE ALARM CAN BE PROVEN TO FIRE.
+  # `production-canary.yml` carries the account of what happens without one: its
+  # `workflow_dispatch` comment claimed for its whole life that the alarm could be
+  # proven on demand, and it could not — the step took no argument, so a manual
+  # run could only ever pass, and in ~1,200 runs it was never once red. B4's own
+  # bar is that a checker which has only ever passed has not been seen to work.
+  # Dispatch this with a key id that does not exist and confirm it exits 1 and
+  # that the notification reaches a watched inbox.
+  workflow_dispatch:
+    inputs:
+      key_id:
+        description: 'CMK to check. Point it at a key that does not exist to prove the alarm fires.'
+        required: false
+        default: 'b3af288c-0e0f-46ec-bccd-9b53776ffbb8'
+
+  # So a change to the checker is exercised by the checker.
+  push:
+    branches: [master]
+    paths:
+      - 'lib/ops/kms-wall.ts'
+      - 'scripts/verify-kms.ts'
+      - '.github/workflows/kms-wall.yml'
+
+concurrency:
+  group: kms-wall
+  cancel-in-progress: false
+
+# `id-token: write` is what lets the job mint the OIDC token. It is not a write
+# to anything in this repository. `contents: read` is the checkout.
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  wall:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Assume the read-only metadata role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::461293170793:role/relay-kms-wall-ci
+          role-session-name: kms-wall-watch
+          aws-region: us-east-1
+
+      # Runtime dependency only. `@aws-sdk/client-kms` is a production dependency
+      # and comes from the lockfile; nothing else is needed to make three
+      # read-only API calls.
+      - run: npm ci --omit=dev
+
+      # ⚠️ NOT `npm run verify:kms`. That script is declared
+      # `--env-file=.env.admin`, which is a gitignored file on one laptop and
+      # does not exist here. The env below supplies the same two values the
+      # script reads, and the credentials come from the OIDC session above
+      # rather than from a profile.
+      - name: Check the wall
+        env:
+          KMS_KEY_ID: ${{ inputs.key_id || 'b3af288c-0e0f-46ec-bccd-9b53776ffbb8' }}
+          AWS_REGION: us-east-1
+        run: npx --yes tsx@4 scripts/verify-kms.ts
+
+      - name: Explain a failure
+        if: failure()
+        run: |
+          echo "::error::THE KMS WALL DID NOT HOLD. Every vault in this product is ciphertext plus a data key wrapped by this CMK."
+          echo "This is the failure with no rollback. In order:"
+          echo "  1. Read the check step — it names which of the four rules broke."
+          echo "  2. If the key is PENDING DELETION, cancel it NOW:"
+          echo "     aws kms cancel-key-deletion --key-id b3af288c-0e0f-46ec-bccd-9b53776ffbb8"
+          echo "     A key pending deletion still decrypts, so nothing else will look wrong until it is gone."
+          echo "  3. If the key is DISABLED: aws kms enable-key --key-id <id>"
+          echo "  4. If the POLICY stopped naming relay-runtime, the app can no longer wrap or unwrap."
+          echo "     Nothing is lost yet — restore the statement before anyone notices as an outage."
+          echo "  5. If this step failed to ASSUME THE ROLE, the wall is unmeasured, not broken."
+          echo "     Role: arn:aws:iam::461293170793:role/relay-kms-wall-ci (master ref only, read-only)."
