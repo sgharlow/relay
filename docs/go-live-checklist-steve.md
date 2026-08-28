@@ -1,3 +1,14 @@
+> # SUPERSEDED BY ROADMAP.md §6 — THE MANUAL CHECKLIST (2026-08-27)
+>
+> Revision 4 of `ROADMAP.md` carries the single checklist of every manual step that cannot be
+> automated, organised by sitting and dated from `PROJECT.yaml`. This page is kept as the record of
+> what was owed on 2026-08-21 and is **not to be worked from**: it omits four rulings (FR9, the
+> paywall's 1-of-4 paths, the three chosen numbers + self-naming, the A0 dead-man) and carries
+> defects the register corrected — the lapse-notice dedupe key is the INVOICE id, not the event id;
+> the DMARC batch dated ~09-10 was already rescued while the Gmail filter was never created and
+> `_dmarc` now carries no `rua=`; Stripe reads #1/#2 are CLI-readable; `verify:kms` runs daily in CI
+> via OIDC; the ladder describes 2026-08-08, not 2026-06-27.
+
 # Relay — the go-live checklist · everything that needs Steve
 
 > **Written 2026-08-21, on resuming from the one-day park.** This supersedes

@@ -1,3 +1,12 @@
+> # SUPERSEDED BY ROADMAP.md §3 (revision 4, 2026-08-27)
+>
+> This queue is exhausted: every sprint here ran (2026-08-19/20) and the only unfinished row (S4-3,
+> the KMS EncryptionContext build) is gated by Steve's 2026-08-20 ruling. `/sprint` resolves this
+> file first, so it is banner-ed rather than deleted: the live queue is `ROADMAP.md §3` (Sprint 0 is
+> Claude's court). Known stale claims below: migrations 036/037 ARE applied to both regions; S1-5
+> shipped as `docs/security-incident-runbook.md`; S3-1's box cites "the existing webhook test harness" — that is `src/app/api/stripe/webhook/route.test.ts`
+> (added 2026-08-15); the 2026-08-20 sprint-3 report's "that route has no test file" was wrong when written.
+
 # Backlog — the execution queue for `/sprint`
 
 > **Written 2026-08-19.** This is the **sequencing view** of the Claude-court work already

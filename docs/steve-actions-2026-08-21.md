@@ -1,3 +1,8 @@
+> # SUPERSEDED BY ROADMAP.md §6 — THE MANUAL CHECKLIST (2026-08-27)
+>
+> Via `docs/go-live-checklist-steve.md`, which this page was folded into on 2026-08-21 and which is
+> itself superseded by `ROADMAP.md §6`. Do not work from this page.
+
 > # SUPERSEDED BY docs/go-live-checklist-steve.md (2026-08-21)
 >
 > This page held four items. The replacement holds eleven sections and folds all four in whole,
