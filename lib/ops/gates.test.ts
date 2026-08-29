@@ -57,7 +57,7 @@ function walkSource(dirs = ['src', 'lib'], out: string[] = []): string[] {
  *              therefore closed PERMANENTLY, not pending. This is the strongest
  *              lock in the file, not the absence of one.
  */
-type Disposition = 'open' | 'met' | 'declined';
+type Disposition = 'open' | 'met' | 'declined' | 'superseded';
 
 interface Gate {
   id: string;
@@ -67,6 +67,8 @@ interface Gate {
   proposed: boolean;
   /** The date a PROPOSED gate owes an answer by. Earlier than `due` by design. */
   ratifyBy: string | null;
+  /** The gate that replaced this one, if any — `superseded_by:`. */
+  supersededBy: string | null;
   /** The recorded block body, so a declined gate can be held to its own terms. */
   block: string;
 }
@@ -108,13 +110,36 @@ function gates(): Gate[] {
         recorded reason is a legitimate act, but the gate is still open and
         still owes an answer.
       */
+      /*
+        B30, added 2026-08-29. A gate REPLACED by another one is a stopped clock,
+        and until this existed it was not: `g1-caregiver-wtp` carries
+        `superseded_by: g1-arms-length-demand` and `due: 2026-10-02` with no
+        outcome of its own, so on 2026-10-03 the overdue check below would have
+        failed — taking `date-guards` AND the required `verify` check red, on a
+        date, with no code change and nothing actually wrong. A superseded gate
+        cannot record a `met:` or a `declined:` honestly, because neither
+        happened: the question moved to a different instrument.
+
+        🔴 IT IS NOT ENOUGH TO SEE THE KEY. `superseded_by:` naming a gate that
+        does not exist would be a one-line way to silence any gate in this file
+        forever, which is precisely the drift this test exists to catch — so the
+        pointer is RESOLVED against the parsed set below, and an unresolvable one
+        is a finding rather than a stopped clock. The parse cannot do that itself
+        (it does not yet know the other gates), so the disposition is provisional
+        here and confirmed in `supersessionsResolve` below.
+      */
+      const supersededBy =
+        /^\s{4}superseded_by:\s*["']?([a-z0-9-]+)/m.exec(block)?.[1] ?? null;
+
       const disposition: Disposition = /^\s{4}met:/m.test(block)
         ? 'met'
         : /^\s{4}declined:/m.test(block)
           ? 'declined'
-          : 'open';
+          : supersededBy
+            ? 'superseded'
+            : 'open';
 
-      return { id, due, disposition, proposed, ratifyBy, block };
+      return { id, due, disposition, proposed, ratifyBy, supersededBy, block };
     });
 }
 
@@ -125,11 +150,78 @@ describe('gates', () => {
     for (const gate of g) expect(gate.id).toMatch(/^[a-z0-9-]+$/);
   });
 
+  /**
+   * The half that makes `superseded_by:` safe to honour.
+   *
+   * Stopping a clock is exactly the power somebody reaches for when a gate is
+   * about to go red for an uncomfortable reason. So a supersession has to point
+   * at something real: a gate that EXISTS in this file, is not the gate itself,
+   * and has not itself been superseded away. Otherwise "superseded" degrades
+   * into "ignored", one line at a time, and this whole file stops meaning
+   * anything.
+   */
+  it('every `superseded_by:` resolves to a real, live gate — a stopped clock must point somewhere', () => {
+    const all = gates();
+    const byId = new Map(all.map((g) => [g.id, g]));
+
+    const broken = all
+      .filter((g) => g.supersededBy)
+      .map((g) => {
+        const target = byId.get(g.supersededBy!);
+        if (!target) return `${g.id} -> ${g.supersededBy} (no such gate)`;
+        if (target.id === g.id) return `${g.id} -> itself`;
+        if (target.disposition === 'superseded') {
+          return `${g.id} -> ${target.id}, which is itself superseded (chain)`;
+        }
+        return null;
+      })
+      .filter((x): x is string => x !== null);
+
+    expect(
+      broken,
+      'A `superseded_by:` that does not resolve is not a stopped clock, it is a silenced gate:\n' +
+        broken.map((b) => `  ${b}`).join('\n') +
+        '\n\nPoint it at a gate that exists and is live, or record a real `met:`/`declined:` ' +
+        'on the original instead.',
+    ).toEqual([]);
+  });
+
   /*
     The check itself. `due` is read from the file rather than from a constant so
     a moved date takes effect the moment it is written down — which is the only
     way moving a date and recording why can be the same act.
   */
+  /**
+   * B30, the regression this fix exists for — asserted against a FIXED future
+   * date, because the bug was scheduled rather than present.
+   *
+   * `g1-caregiver-wtp` carries `due: 2026-10-02` and no outcome of its own. Before
+   * 2026-08-29 the check below would have gone red on 2026-10-03 and taken
+   * `date-guards` and the required `verify` check with it — on a date, with no
+   * code change, and nothing actually wrong. This pins the behaviour so a future
+   * edit to the parser cannot quietly re-arm it.
+   */
+  it('a SUPERSEDED gate with a past due date is not overdue — pinned at 2026-10-03', () => {
+    const AFTER_THE_DUE_DATE = '2026-10-03';
+    const overdue = gates().filter(
+      (g) => g.disposition === 'open' && g.due && g.due < AFTER_THE_DUE_DATE,
+    );
+
+    expect(
+      overdue.map((g) => `${g.id} (due ${g.due})`),
+      'These would fail the suite on 2026-10-03. A gate that is genuinely open and genuinely ' +
+        'past due SHOULD appear here — that is the check working. What must never appear is a ' +
+        'gate whose question moved to a different instrument.',
+    ).toEqual([]);
+
+    // And the specific one, by name, so the pin cannot pass vacuously.
+    const wtp = gates().find((g) => g.id === 'g1-caregiver-wtp');
+    expect(wtp, 'g1-caregiver-wtp is gone — if it was deleted, delete this test with it').toBeDefined();
+    expect(wtp!.disposition).toBe('superseded');
+    expect(wtp!.supersededBy).toBe('g1-arms-length-demand');
+    expect(wtp!.due).toBe('2026-10-02');
+  });
+
   it('no gate is past due without a recorded decision', () => {
     const today = new Date().toISOString().slice(0, 10);
     const overdue = gates().filter((g) => g.disposition === 'open' && g.due && g.due < today);
