@@ -56,6 +56,13 @@ const PROVIDED_BY_THE_PLATFORM = new Set([
   // the pair is deliberately split across both lists rather than being treated
   // as one thing.
   'VERCEL_GIT_COMMIT_SHA',
+  // Supplied by the GitHub Actions runner to every job. Read by
+  // scripts/check-cadence.ts (B12.i). GITHUB_TOKEN is the job's own scoped
+  // token — it is never a value a person sets, and putting it in .env.example
+  // would invite somebody to paste a real PAT into a file the repo tracks.
+  'GITHUB_TOKEN',
+  'GITHUB_REPOSITORY',
+  'GITHUB_API_URL',
 ]);
 
 function variablesReadByCode(): Set<string> {

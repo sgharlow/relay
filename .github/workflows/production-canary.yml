@@ -65,12 +65,24 @@ on:
     #   ... | cut -dT -f1 | sort | uniq -c
     #
     # 🔴 AND IT IS WORSE RIGHT NOW THAN THAT AVERAGE. Per-day scheduled runs
-    # were 40–55 through 2026-08-25, then 24 on 08-26, and **2 on 08-27, 3 on
-    # 08-28** — coincident with the account's Actions minutes hitting 100% on
-    # 2026-08-28 (reset 2026-09-01; relay is public and free, so it does not
-    # consume them, but the account-level exhaustion is the only coincident
-    # change). B11.1 re-measures on 2026-09-02, after the reset. Until then this
-    # canary is running roughly twice a day, not 96 times.
+    # were 40–55 through 2026-08-25, then 24 on 08-26, and 2 on 08-27, 3 on
+    # 08-28, 4 on 08-29. This canary is running about four times a day, not 96.
+    #
+    # ⚠️ THIS COMMENT BLAMED THE ACCOUNT'S ACTIONS MINUTES UNTIL 2026-08-29 AND
+    # THAT WAS WRONG. Re-measured that day across all five scheduled workflows:
+    # every DAILY one (delivery-webhook-monitor, date-guards, kms-wall) delivered
+    # 1/1 on exactly the days these high-frequency ones collapsed. Minutes
+    # exhaustion would have starved those too. So would nothing about a transient
+    # 08-26/27 incident explain a collapse still present on 08-29. The real
+    # pattern is FREQUENCY-SELECTIVE: sub-hourly schedules are dropped, daily
+    # ones are not.
+    #
+    # That mattered practically: the planned response was to put a payment method
+    # on the GitHub account, which would have bought nothing.
+    #
+    # Watched since 2026-08-29 by `.github/workflows/cadence-watch.yml` (daily —
+    # the reliable tier watching the unreliable one) and re-derivable any time
+    # with `npm run check:cadence`. B11.1 still re-measures on 2026-09-02.
     - cron: '*/15 * * * *'
   # 🔴 THIS SAID `workflow_dispatch: {} # so the alarm can be proven to work on
   # demand` FOR ITS WHOLE LIFE AND THE COMMENT WAS FALSE. The probe step ran the

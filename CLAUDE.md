@@ -187,6 +187,43 @@ npm run verify:csp     # what has the CSP actually caught? Reads `csp_reports` (
                        # Wired as an npm script 2026-08-29 (B21.1); it existed and was
                        # reachable only by typing the path, which is how D9 came to be
                        # closed on a sink nothing read.
+npm run verify:sweep   # watch the DEAD-MAN'S SWITCH fire. The one walk that proves
+                       # the product's central promise: a trigger advancing because
+                       # an owner went silent, with nobody calling anything.
+                       # 🔴 It does NOT invoke the sweep. It creates a disposable
+                       # owner, gives them a confirmed verifier and an ARMED trigger,
+                       # backdates last_active_at, and then WAITS for production's own
+                       # hourly Vercel cron to find them. CRON_SECRET lives only in
+                       # Vercel, so there is no way to shortcut it — which is the
+                       # point. Budget ~45-75 min of real waiting.
+                       # ⚠️ SAFETY: runHeartbeatSweep is not scoped to one owner, so
+                       # the walk REFUSES to run if any other owner is already overdue
+                       # — the tick it waits for would fire their release too.
+                       # ⚠️ The resting state is `grace`, NOT `pending`, and that is
+                       # correct: GRACE_WINDOW_MS is 0, so armOne stamps an already-
+                       # elapsed grace_ends_at and resolveElapsedGrace advances it in
+                       # the SAME cron request. PENDING is real but momentary — it
+                       # exists in the audit chain and never in a poll, which is why
+                       # the walk asserts on the hash-chained log rather than on a
+                       # state it would be racing.
+                       # Run `npm run verify:orphans` after, like the other walks.
+npm run check:cadence  # are the scheduled monitors actually RUNNING? Counts each
+                       # high-frequency workflow's scheduled runs over the trailing 24h
+                       # and fails below 25% of nominal. No credentials — reads the
+                       # Actions API with the runner's own GITHUB_TOKEN.
+                       # 🔴 RED as of 2026-08-29, correctly: the canary is delivering
+                       # ~5 runs/day against a designed 96, so production has no
+                       # effective synthetic monitoring and a broken deploy would be
+                       # caught hours late. Known: deferred.the-scheduled-monitors-are-
+                       # collapsing (B11).
+                       # ⚠️ The two causes that entry recorded — Actions minutes, and a
+                       # GitHub incident — are BOTH DISPROVEN. Every DAILY workflow
+                       # delivered 100% on exactly the days the sub-hourly ones fell to
+                       # ~3%. Minutes exhaustion would have starved the daily tier too.
+                       # The pattern is frequency-selective, which is also why the
+                       # watcher (.github/workflows/cadence-watch.yml) is DAILY: the
+                       # reliable tier watching the unreliable one.
+                       # It does NOT close B12 — it lives inside what it watches.
 npm run incident:evidence # Step 0 of the security incident runbook, as a command
                        # instead of a paragraph (B24). Verifies the hash-chained audit
                        # log per owner and STAMPS the result, then — with an email —

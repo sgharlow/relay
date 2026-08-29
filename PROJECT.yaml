@@ -3906,6 +3906,54 @@ deferred:
       is recorded, not shrugged at — or shows it still collapsed, in which case B12 stops being a
       proposal and becomes the fix.
     revisit: 2026-09-02
+    re_measured_2026_08_29_and_BOTH_CAUSES_ARE_DISPROVEN: >-
+      This entry warned "do not settle on either without the re-measure. Two plausible causes are
+      how a wrong one gets adopted." Re-measured 2026-08-29, four days early, and the discriminator
+      turned out not to be the calendar but the CADENCE TIER. Scheduled runs per day,
+      2026-08-24..29:
+      production-canary (nominal 96) 36, 38, 24, 2, 3, 4 ·
+      scheduler-monitor (nominal 48) 25, 26, 17, 3, 2, 4 ·
+      delivery-webhook-monitor (nominal 1) 1, 1, 1, 1, 1, 1 ·
+      date-guards (nominal 1) 1, 1, 1, 1, 1, 1 ·
+      kms-wall (nominal 1) 1, 1, 1, 1, 1.
+      **Every DAILY workflow delivered 100% on precisely the days the high-frequency ones fell to
+      about 3%.**
+      CAUSE (1), Actions-minutes exhaustion, is DISPROVEN: it would starve the daily tier too, and
+      the daily tier is untouched. It was always the weaker hypothesis - this entry says so itself,
+      because relay is public and its runs should be free - and the frequency split settles it.
+      CAUSE (2), the 08-26/27 GitHub incident, is DISPROVEN: an incident is transient and this
+      persisted through 08-29, three days later, unchanged.
+      What the data shows instead is FREQUENCY-SELECTIVE delivery: sub-hourly schedules are being
+      dropped and daily ones are not.
+    why_this_matters_more_than_the_cause: >-
+      The planned response was the money half - a payment method or plan on the GitHub account.
+      That would have bought nothing, because minutes are not what is being withheld. Adopting the
+      wrong cause would have cost real money AND left the defect in place, which is exactly the
+      outcome this entry's own warning was written to prevent.
+    the_operational_state_while_this_is_open: >-
+      Production has NO EFFECTIVE SYNTHETIC MONITORING. At 4-5 canary runs a day the detection
+      window for a broken deploy is 5-6 hours, against the quarter of an hour the cron asks for and
+      the repo's prose still claims in several places. Measured live 2026-08-29 by
+      `npm run check:cadence`: canary 5 runs/24h, scheduler-monitor 4.
+    what_shipped_2026_08_29_b12i: >-
+      `.github/workflows/cadence-watch.yml` - a DAILY workflow counting each high-frequency
+      monitor's scheduled runs over the trailing 24h and failing below a floor of 25% of nominal
+      (24/day canary, 12/day scheduler-monitor). Verdict logic in `lib/ops/cadence-wall.ts`,
+      proven against the three measured populations; live half in `scripts/check-cadence.ts`,
+      run live 2026-08-29 and correctly reporting the collapse (exit 1).
+      The daily tier watches the sub-hourly tier BECAUSE of the measurement above - it is not an
+      assumption that GitHub schedules work, it is the narrow finding that daily ones currently do.
+      ⚠️ It will be RED on its first scheduled run, because the monitors are collapsed as it ships.
+      That is the alarm being correct. Its text says so and points here, so a reader does not
+      investigate a known defect from scratch.
+      ⚠️ It does NOT fire on the day a collapse BEGINS. 2026-08-26 measured exactly 24 and passes;
+      a floor set to catch it would sit inside the healthy population and fire on ordinary days.
+      That trade-off is pinned by a test rather than left to be rediscovered.
+    what_is_still_open: >-
+      The cause, and the fix. Neither is closed by watching. The 2026-09-02 re-measure still has a
+      question to answer - whether the minutes reset changes anything - but it is now a narrow one,
+      because the minutes hypothesis is already disproven by the frequency split. And B12 is
+      strengthened rather than satisfied: this watcher shares fate with what it watches.
 
   - id: the-alarms-live-inside-the-thing-they-watch           # ROADMAP B12
     owner: steve                          # infra + cost, 5-gate; claude builds after the ruling
@@ -4333,6 +4381,51 @@ deferred:
       the result recorded, AND Steve has ratified the three numbers (or replaced them) and ruled
       on owner self-naming. Until then `README.md`'s "verifier deny/abstain" rung overstates what
       is proven.
+    b15_1_the_transition_has_now_been_WATCHED:
+      date: 2026-08-29
+      by: claude
+      state: "LIVE-PROVEN. `npm run verify:sweep` (`scripts/e2e-sweep.ts`), 11/11 checks."
+      what_was_observed: >-
+        A disposable owner was created through the ordinary signup API, given a CONFIRMED verifier
+        and an ARMED `emergency` release_state (v1), then backdated to overdue. Nothing local
+        called the sweep - `CRON_SECRET` lives only in Vercel, so there is no way to. The walk then
+        waited, polling once a minute, and at **2026-08-29T21:00:08Z the production Vercel cron
+        ticked on its own** and the row moved `armed v1` -> `grace v3`.
+        The hash-chained audit log records both halves, written by `system`:
+        `release_transition_pending` then `release_transition_grace`. The OCC version advanced by
+        exactly two, one bump per transition. This is the transition this entry says "has never
+        been OBSERVED for a real owner, disposable or otherwise". It has now.
+      the_resting_state_is_grace_and_that_is_correct: >-
+        ⚠️ The walk FAILED on its first run asserting `state === 'pending'`, against a system doing
+        exactly the right thing - kept here because it is an easy mistake to make twice.
+        `GRACE_WINDOW_MS` is 0, so `armOne` transitions armed -> pending AND stamps a
+        `grace_ends_at` that is already elapsed; `resolveElapsedGrace`, called by the SAME cron
+        request immediately after the sweep, then advances pending -> grace. One tick, two
+        transitions. PENDING is real but MOMENTARY: it exists in the audit chain and never in a
+        poll, so asserting on the resting state was asserting on a race with the poll interval.
+        The walk now reads the audit log, which is the honest witness.
+      the_safety_check_that_had_to_come_first: >-
+        `runHeartbeatSweep` is NOT scoped to one owner - it reads every active non-demo owner. So
+        the walk refuses to run if anybody else is already overdue, because the tick it waits for
+        would fire their release too. Verified read-only before anything was created: exactly one
+        real owner exists (`sgharlow+relaycardtest@gmail.com`, 30-day interval, idle 19.6 days),
+        and 0 owners were sweepable. A walk that fires a live customer's release is not a walk.
+      🔴_a_dated_consequence_found_while_checking_that: >-
+        The one real owner reaches 30 days idle on approximately **2026-09-09**, at which point
+        this same sweep will find them overdue and arm their triggers - unattended, at night, for
+        real. `npm run beta:status` reports their circle as EMPTY (nobody named), so what happens
+        at quorum 0 with no verifiers to ask has never been established. This was not on any list.
+        It is 11 days out and it is the live paying subscriber.
+      what_this_does_NOT_close: >-
+        B15.2 (verifier deny / abstain / halt) and B15.3 (the J6 4c escalation walk) are still
+        unexercised, B15.5 (`verifier-context.ts` action fix) is unbuilt, and B15.4 remains
+        Steve's ratification rather than a build. This entry stays OPEN. What changed is that the
+        single most load-bearing claim under it - that the dead-man's switch actually fires - is
+        no longer an inference from unit tests.
+      cleanup: >-
+        Four walk attempts in total (three failed on setup, one green). `npm run verify:orphans`
+        after: 0 reserved-domain accounts remain, and the dangling-row total is 28 - unchanged
+        from before the walks, so the cascade held across every attempt.
 
   - id: dr-copy-jobs-have-no-absence-alarm                    # ROADMAP B17
     owner: steve                          # ~$0.10/mo, 5-gate; claude builds after the ruling
