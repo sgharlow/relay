@@ -74,7 +74,7 @@ async function connect(): Promise<Client> {
   if (!endpoint) {
     throw new Error(
       `${useSecondary ? 'DSQL_SECONDARY_ENDPOINT' : 'DSQL_PRIMARY_ENDPOINT'} is not set — ` +
-        'run with --env-file=.env.local',
+        'run `npm run verify:csp`, which supplies --env-file=.env.ro',
     );
   }
 

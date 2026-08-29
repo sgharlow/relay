@@ -35,8 +35,22 @@
  * `.env.admin`, whose whole design is that being a sysadmin is something you
  * choose by naming the file.
  *
- * NOT IN CI: CI has no AWS credentials, the same reason verify:schema,
- * verify:roles, verify:iam and verify:live are not.
+ * ✅ IT IS IN CI, DAILY, and this paragraph said the opposite until 2026-08-29.
+ * `.github/workflows/kms-wall.yml` runs it on a schedule via GitHub OIDC into the
+ * role `relay-kms-wall-ci` — no stored secret, and proven green AND red on
+ * 2026-08-24. The old text ("NOT IN CI: CI has no AWS credentials") was written
+ * before that workflow existed and was left behind by it.
+ *
+ * ⚠️ That is the expensive direction for this particular claim: it says the
+ * safety net does not exist when it does, so the next reader either builds a
+ * second one or, worse, treats the key as unwatched and compensates elsewhere.
+ * The workflow does NOT invoke `npm run verify:kms` — that script is declared
+ * `--env-file=.env.admin`, a gitignored file on one laptop — it calls
+ * `npx tsx scripts/verify-kms.ts` with the two values supplied from the OIDC
+ * session. Derive rather than trust: `grep -rn verify-kms .github/workflows/`.
+ *
+ * `verify:iam`, `verify:schema`, `verify:roles` and `verify:live` remain out of
+ * CI, for the reason this paragraph originally gave.
  *
  * ⚠️ RUN IT ONCE AGAINST A DELIBERATE NEGATIVE. Every rule is unit-proven
  * against planted fixtures in lib/ops/kms-wall.test.ts, but the WIRING here —

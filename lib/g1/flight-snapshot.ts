@@ -18,11 +18,17 @@
  * and the lead notes, quoted — are expected to carry the decision. Those two
  * lines are read from this table and nowhere else.
  *
- * READ-ONLY BY CONSTRUCTION, and by privilege as well as by intent: the script
- * connects as whatever `.env.local` configures, which is the `relay_dev` role,
- * and `caregiver_leads` is the ONE table in the product that role cannot write
- * (sprint 5 AC2 — `S---` against `relay_app`'s `SIUD`). A stray write here is
- * refused by the database, not by a careful author.
+ * READ-ONLY BY CONSTRUCTION, and by privilege as well as by intent: `npm run
+ * flight:snapshot` connects as **`relay_ro`** (`--env-file=.env.ro`), which holds
+ * SELECT on every table and no DML anywhere. A stray write here is refused by the
+ * database, not by a careful author.
+ *
+ * ⚠️ This paragraph said `.env.local` / `relay_dev` until 2026-08-29, and the
+ * argument it made was narrower than the one now available. Under `relay_dev` the
+ * safety rested on `caregiver_leads` being the ONE table that role cannot write
+ * (sprint 5 AC2 — `S---` against `relay_app`'s `SIUD`), so the protection was
+ * table-specific and would not have survived this script reading a second table.
+ * Under `relay_ro` it is a property of the identity rather than of one grant.
  *
  * Feature: relay-g1-wtp
  */
