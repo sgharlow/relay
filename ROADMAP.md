@@ -138,7 +138,7 @@ lane's order of work, B10's premise, A7.0's prescription). What remains:
 - 🟡 **README's "verifier deny/abstain" rung** overstates what is proven: B15.2 and B15.3 remain
   unexercised.
 
-### 🔴 The one imminent, customer-facing risk — 2.8 days out
+### 🔴 The reminder ladder — never fired, and UNREACHABLE for the only owner
 
 The check-in reminder ladder (J5-R4) has **never fired for anyone**: `owner_checkin_reminder_first`
 and `owner_checkin_reminder_final` have **zero rows in `audit_log`, ever**. The live paying owner
@@ -152,8 +152,42 @@ was last active 2026-08-10 on a 30-day interval, so:
 
 `sweepCheckinReminders()` is called by the cron and **never throws, by design** ("belt and braces").
 So its failure mode is a 200, a healthy `scheduler_runs` ledger, and a customer who is never
-reminded. That is B15.1's unexercised half, it is three days away, and it is walkable now with a
-disposable owner — the same pattern that proved the sweep on 08-29.
+reminded. That is B15.1's unexercised half, and it is walkable with a disposable owner — the same
+pattern that proved the sweep on 08-29.
+
+> 🔴 **CORRECTED WITHIN THE HOUR, 2026-08-29 — THE 09-01 FIRING WILL NOT HAPPEN, and the reason
+> makes the vacuity finding above complete.**
+>
+> `CANDIDATE_SQL` in `lib/release/checkin-reminder.ts` does not read every owner in the timing
+> window. It requires, as its last clause, that the owner hold an **armed `release_state` of a
+> user-selectable type**. The live owner holds none. Measured, not reasoned — the real query, run
+> read-only against production:
+>
+> - reminder candidates right now: **0**
+> - the same query with the armed-release clause removed: **1** (the live owner)
+>
+> So the owner is in the 50–100% window exactly as computed, and is **not a candidate**. No
+> reminder fires on 09-01, 09-06, or at all.
+>
+> ⚠️ **This is the second overstatement in this area in one session, and both had the same shape:
+> arithmetic done correctly on a gate that was never checked.** The first said the sweep would arm
+> their triggers on 09-09 (it iterates an empty set). The second said the ladder would fire on
+> 09-01 (they are not a candidate). §0.0's own lesson — *a finding is proven when the thing it
+> describes has been looked at, not when it was written down carefully* — was written in this file
+> and then broken twice in the same file, by the same author, within the hour. The rule is easy to
+> state and evidently hard to keep.
+>
+> **What the correction leaves is stronger, not weaker.** The live paying owner receives NOTHING
+> from any part of the custodial machinery: no reminder (not a candidate), no sweep transition (no
+> armed rows), no release, no verifier notice. The product is completely inert for its only user,
+> and every one of those traces to A0.
+>
+> ✅ **AND IT MAKES A0 SELF-PROVING.** The owner is already at ~79% of a 30-day interval, past the
+> 75% rung. The moment A0 configures a trigger, they become a candidate **while already past the
+> first rung** — so the first check-in reminder this product has ever sent fires on the next hourly
+> cron, to a real address, unprompted. A0 is therefore not only the thing that makes the guarantees
+> non-vacuous; it is the cheapest live proof of the reminder ladder available, and it costs one
+> email to Steve's own inbox.
 
 ⚠️ **A correction to an earlier reading of this, recorded rather than quietly fixed.** It was first
 stated that on ~09-09 the sweep would "arm their triggers, unattended, at night, for real". That is
@@ -596,23 +630,30 @@ justified by a forecast. Everything in P0–P2 is obliged. Nothing in §2-F or �
 
 ---
 
-### P0 — before 2026-09-01 (three days) · Claude's court · the only imminent customer-facing risk
+### P0 — now · the reminder ladder, and the A0 that makes it reachable
 
 **P0.1 — Walk the check-in reminder ladder (B15.1's unexercised half).**
-The ladder has never fired for anyone and fires for the live paying owner on **2026-09-01 16:32Z**.
-`sweepCheckinReminders()` never throws, so a failure is a 200, a healthy ledger and a customer who
-is never reminded.
+The ladder has never fired for anyone, and — corrected 2026-08-29 — it is currently **unreachable**
+for the live owner, who is not a candidate because `CANDIDATE_SQL` requires an armed
+`release_state` they do not have. `sweepCheckinReminders()` never throws, so a failure is a 200, a
+healthy ledger and a customer who is never reminded.
 *Method:* the pattern proven on 08-29 — a disposable owner, `last_active_at` backdated to ~80% of a
 short interval, then **wait for production's own hourly cron** and assert the audit row
 (`owner_checkin_reminder_first`) and the send attempt. Add it to `scripts/e2e-sweep.ts` or as a
 sibling walk; the safety refusal (no other owner overdue) applies unchanged.
 *Done when:* an `owner_checkin_reminder_*` audit row exists that a cron wrote, and the mail leg is
 either confirmed or its refusal (`DEV_MAIL_ALLOWLIST`) is recorded as the reason.
-*Why it cannot wait:* after 09-01 the first-ever firing will have happened to a real customer,
-observed or not, and the chance to see it under controlled conditions is gone until the next owner.
+*Why it still matters, now that 09-01 is not a deadline:* A0 makes the live owner a candidate
+**while they are already past the 75% rung**, so the first-ever firing happens on the next hourly
+cron after A0 — to a real address, whether anybody is watching or not. Walking it with a disposable
+owner first is how that firing gets observed rather than merely survived.
 
-**P0.2 — Decide whether to check in on the owner's behalf, or let the ladder run.**
-Steve's, one line. Letting it run is the more informative choice and costs one email to himself.
+**P0.2 — A0, with Steve co-piloting (moved up from P2.1 on 2026-08-29).**
+It was already the highest ratio of unblocking to minutes in this file. The correction above adds a
+second reason: it is the cheapest live proof of the reminder ladder available, and it costs one
+email to Steve's own inbox. Five steps, in the order `verify:dogfood` names them —
+`/vault/new`, `/circle` (recipient), `/circle` (verifier), `/rules`, `/triggers` — with
+`verify:dogfood` re-run after each.
 
 ---
 
@@ -1036,10 +1077,10 @@ be re-derived rather than trusted.
 
 | date | what | owner | basis |
 |---|---|---|---|
-| **2026-09-01 16:32Z** | 🔴 **The check-in reminder ladder fires for the live paying owner — the FIRST time this product has ever sent one** (`owner_checkin_reminder_first`; zero such rows exist in `audit_log`, ever). `sweepCheckinReminders()` never throws, so failure is silent. **P0.1 walks it first.** | claude (walk); steve (whether to check in) | `users.last_active_at` 2026-08-10 + 0.75 × 30 d; `lib/release/checkin-reminder.ts` |
+| ~~**2026-09-01 16:32Z**~~ | ~~the reminder ladder fires for the live owner~~ — 🔴 **CORRECTED SAME DAY: IT WILL NOT.** `CANDIDATE_SQL` requires an armed `release_state` and the owner has none; live candidate count is **0**. The rung arithmetic was right and the gate was never checked. It becomes reachable the moment A0 lands — and the owner is already past the 75% rung, so the first-ever reminder fires on the next hourly cron after A0 | claude (walk); steve (A0) | `lib/release/checkin-reminder.ts` CANDIDATE_SQL, run read-only 08-29 |
 | 2026-09-01 | ~~GitHub Actions minutes reset~~ — **the cause it was watched for is DISPROVEN** (§0.0 row 2). G1/G3 `/daily-priority` revisits still begin | — | `gates.g3.revisit`; B30 retired the `g1-caregiver-wtp` revisit (closed 08-29) |
 | 2026-09-02 | B11.1 re-measure the cadence — now a NARROW question (does the frequency-selective pattern persist?), because the minutes hypothesis is dead. **B12 is the fix either way** | claude | `deferred.the-scheduled-monitors-are-collapsing.re_measured_2026_08_29...` |
-| 2026-09-06 04:32Z | the reminder ladder's **90% rung** for the live owner | — | `last_active_at` + 0.90 × 30 d |
+| ~~2026-09-06 04:32Z~~ | ~~the 90% rung~~ — same correction: not a candidate until A0 | — | as above |
 | ~~**~2026-09-08**~~ | ~~`verify:live` freshness dead-man~~ — **SUPERSEDED: the chain was run 2026-08-29**, so it now fires **2026-09-12 07:45Z** | claude | `tail -1 docs/verify-live-runs.jsonl` + 14 d |
 | 2026-09-09 04:32Z | the live owner goes **overdue**. The sweep selects them and **transitions nothing** — they hold 0 `release_state` rows. Recorded because the opposite was briefly believed | — | `heartbeat.ts` inner query; `relay_ro` read 08-29 |
 | **2026-09-12 07:45Z** | `verify:live` freshness dead-man fires (14 d from the 08-29 stamp) | claude | `lib/ops/verify-live-freshness.ts` |
