@@ -3097,6 +3097,20 @@ deferred:
       were left by something that never ran it: a hand-written `DELETE FROM users`, during the
       manual fixture cleanup of 08-08 to 08-14. That is this repo's recorded trap, having actually
       happened."
+    reconfirmed_2026_08_29: "Re-derived after BOTH chains were run against production on Steve's
+      say-so — `verify:live` (10 disposable accounts) and `verify:journeys` (5 more), 15 created
+      and closed in one evening. The dangling total was 28 before and 28 after: **ZERO new
+      dangling rows**, and the account census read `0 reserved-domain accounts` both times, so
+      nothing was left behind at either level. Per-table min/max of `created_at` over rows whose
+      owner is absent: `verifier_codes` 2026-08-08 → 2026-08-13 (17), `break_glass_codes`
+      2026-08-12 → 2026-08-13 (10), `recipient_codes` 2026-08-14 (1). The NEWEST is 2026-08-14,
+      a fortnight old. That is the second independent confirmation that both cascades work and
+      this is residue rather than an active leak.
+      ✅ AND THE ENTRY'S OWN PREDICTION CAME TRUE. It said `auth_challenges` rows 'are single-use
+      nonces that also expire', and named the table as one of four. It is now ABSENT from the
+      sweep's output entirely — those ten orphans expired on their own, exactly as predicted, and
+      the number that cannot be quoted here went from four tables to three without anyone acting.
+      A prediction that was recorded and then came true is worth more than the count."
     why_it_is_steve_s: "Purging is a destructive write against production with no undo, on rows
       nobody can reach. Not urgent, and not a thing to do unilaterally."
     risk_if_left: "Low, and stated rather than waved away. `auth_challenges` are single-use nonces
@@ -3954,6 +3968,15 @@ deferred:
         `d710b06`), on the same narrow terms as the single hand line in
         `docs/verify-live-runs.jsonl`: a dated third-party record of the run already existed.
         The first real run supersedes it. Next fires ~2026-09-12.
+      ladder_raised_same_day: >-
+        ✅ **LIVE-PROVEN 2026-08-29, hours after it shipped.** `npm run verify:journeys` was run
+        against production on Steve's say-so: delegate (J3), request (J6) and standdown (J9) all
+        green — the standdown walk alone printing 23/23 — and `verify:stamp:journeys` wrote the
+        FIRST script-written line to `docs/verify-journeys-runs.jsonl`
+        (2026-08-29T07:53:10.158Z @ 79dc3d8). The log now holds 2 entries: the backfill and a real
+        run. So the mechanism is no longer `built` — the stamp has been observed being written as
+        a side effect of three walks exiting 0, which is the only thing that was ever in doubt.
+        Dead-man now next fires ~2026-09-19 (21 days from this run).
 
   - id: web-analytics-collects-but-cannot-be-read             # ROADMAP A7.0
     owner: steve                          # a dashboard toggle; Claude cannot enable it
@@ -4092,6 +4115,16 @@ deferred:
       A `date-guards` run has concluded `failure` with its `Explain a failure` step executed, by
       any of the three routes, and the run id is recorded in the workflow header beside the other
       three proofs.
+    ruling_2026_08_29: >-
+      Steve chose option (3), WAIT — neither route that goes around the pre-push hook is taken.
+      ⚠️ And the same sitting chose to run both walk chains, which pushes the wait out: both
+      freshness clocks were reset that evening, so `verify-live-freshness` next fires ~2026-09-12
+      and the journeys dead-man ~2026-09-19. The natural red is therefore no earlier than
+      2026-09-12, and only if nobody runs `verify:live` before then — which the D1 cadence exists
+      to make sure somebody does. Said plainly because the two decisions were made in one sitting
+      and they pull against each other: choosing to wait for an alarm to fire, and then feeding
+      the thing that stops it firing. The honest reading is that this proof is now DEFERRED rather
+      than scheduled, and if it still matters in mid-September it needs option (1) or (2).
 
   - id: shipped-but-unproven-release-guards                   # ROADMAP B15
     owner: claude                         # B15.4 is steve's: it is a ratification, not a build
