@@ -52,6 +52,7 @@ on:
       - '.github/workflows/date-guards.yml'
       - 'lib/ops/gates.test.ts'
       - 'lib/ops/verify-live-freshness.test.ts'
+      - 'lib/ops/verify-journeys-freshness.test.ts'
       - 'lib/ops/ladder-claim.test.ts'
 
 concurrency:
@@ -83,6 +84,7 @@ jobs:
           npx vitest --run \
             lib/ops/gates.test.ts \
             lib/ops/verify-live-freshness.test.ts \
+            lib/ops/verify-journeys-freshness.test.ts \
             lib/ops/ladder-claim.test.ts
 
       - name: Explain a failure
@@ -92,6 +94,8 @@ jobs:
           echo "Nothing changed in the code — a date passed. Which one:"
           echo "  gates.test.ts                 a gate in PROJECT.yaml is past its ratify_by with no decision recorded."
           echo "  verify-live-freshness.test.ts the five live walks have not been run inside the staleness window."
+          echo "  verify-journeys-freshness.test.ts  the THREE journey walks (J3/J6/J9) have not run inside theirs."
+          echo "                                (21 days, not 14 — the two chains cannot share an hour.)"
           echo "  ladder-claim.test.ts          PROJECT.yaml's ladder claim is older than SCOPE_REQUIRED_AFTER_DAYS"
           echo "                                and no longer says what it still covers."
           echo ""

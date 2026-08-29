@@ -132,6 +132,11 @@ npm run verify:journeys # the three walks added 2026-08-21 for the journeys `ver
                        # FIXED — the approve-before-first-rule finding. If they fail, read
                        # deferred → approve-is-unreachable-before-the-first-rule before
                        # "fixing" the walk: it is the record, working as designed.
+                       # Ends in verify:stamp:journeys, added 2026-08-29 (B14) — so
+                       # this chain, like verify:live, records that it ran and
+                       # lib/ops/verify-journeys-freshness.test.ts can alarm on its
+                       # ABSENCE. Threshold 21 days, not verify:live's 14, and the
+                       # difference is the signup ceiling written down as a number.
 npm run verify:reveal  # the fourth walk, alone: an owner stores a structured secret with a
                        # TOTP seed, a recipient claims, a verifier confirms, and Reveal is
                        # pressed. Asserts the plaintext returns byte for byte as LABELLED
@@ -482,6 +487,33 @@ journeys `verify:live` never touched: `e2e-delegate` (J3), `e2e-request` (J6) an
 ceiling note in the Commands block, and `deferred → the-live-chain-sits-at-its-own-signup-limit`.
 `e2e-ui` also gained `/circle` cover in the same change, so J4's single add-a-person form is
 finally typed into by something other than a person.
+
+> 🔴 **AND IT SHIPPED WITHOUT THE DEAD-MAN THE OTHER CHAIN HAD BEEN GIVEN TWO DAYS EARLIER.**
+> `verify:live` got `verify:stamp` plus `lib/ops/verify-live-freshness.test.ts` on 2026-08-19, with
+> a header explaining that a check whose success signal is a side effect must have that signal's
+> ABSENCE monitored. On 2026-08-21 this second chain shipped — same credentials, same production
+> cluster, same "somebody must remember" weakness — with neither, and **D10 was closed on the
+> walks' construction rather than on a run**. So from 2026-08-22 these three walks could have been
+> dead and the register would still have read closed. The pattern was written down, in the same
+> directory, and simply not inherited.
+>
+> ✅ **Closed 2026-08-29 (B14)**, and closed structurally rather than carefully:
+> `verify:stamp:journeys` → `docs/verify-journeys-runs.jsonl` → the dead-man in
+> `lib/ops/verify-journeys-freshness.test.ts`, **plus `lib/ops/chain-dead-man.test.ts`**, which
+> fails when any multi-walk `verify:*` script in `package.json` is not declared with a stamp, a
+> log and a dead-man. A third chain cannot now ship the way the second one did. Both halves are
+> proven by planted violation (an undeclared chain; a stamp that is not the final step).
+>
+> ⚠️ **Its first line is BACKFILLED, and the row says so.** `verify-live-runs.jsonl` carries
+> exactly one hand-written line, backfilled with its evidence cited; this log carries one on the
+> same terms — `backfilled: true` and a `source` quoting
+> `PROJECT.yaml → deferred.the-journey-sweep-is-stale.closed` ("All four ran green against the
+> deployed build on 2026-08-21") and commit `d710b06`, whose message records the runs that found a
+> flake in these very walks. Timestamp is that commit's authored time, the closest defensible
+> moment. **The bar is narrow on purpose: a backfill needs a dated third-party record of the run,
+> and "I am fairly sure it ran" is not one.** Every line after it is script-written. At 21 days
+> from 2026-08-22, the dead-man next fires **~2026-09-12** — which is the day Sprint 1 opens, so
+> the honest way to keep it green is to run the chain, not to raise the number.
 
 > ⚠️ **THE COUNTS THAT USED TO BE IN THAT PARAGRAPH ARE GONE, 2026-08-21, and the history is the
 > argument.** It listed each walk's assertion count — 17, 14, 26, 20, 17 — and twice they went

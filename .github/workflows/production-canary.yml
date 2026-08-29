@@ -40,24 +40,69 @@ name: Production canary
 
 on:
   schedule:
-    # Every 15 minutes. ("Fast enough that a broken deploy is caught before much
-    # paid traffic lands on it" until 2026-08-21 — paid advertising was retired
-    # on 2026-08-16.) The cadence stands on its own: a broken deploy is caught
-    # within a quarter of an hour of landing, and this stays far inside free
-    # minutes.
+    # Every 15 minutes REQUESTED. ("Fast enough that a broken deploy is caught
+    # before much paid traffic lands on it" until 2026-08-21 — paid advertising
+    # was retired on 2026-08-16. Then "a broken deploy is caught within a
+    # quarter of an hour of landing" until 2026-08-28, when it was measured.)
+    #
+    # 🔴 THE REQUESTED CADENCE IS NOT THE DELIVERED CADENCE, AND THE GAP IS NOT
+    # SMALL. Measured 2026-08-29 over the workflow's whole life (2026-08-09 →
+    # 2026-08-29, 19.94 days): 684 scheduled runs against a nominal 1,914 —
+    # a 35.7% delivery rate. Gap between consecutive scheduled runs:
+    # median 31 min, p90 65 min, p99 211 min, MAX 697 min (11.6 h). Only 30 of
+    # 683 gaps were the ≤16 min the cron asks for.
+    #
+    # So the honest claim is: a broken deploy is *typically* caught within about
+    # half an hour, and the tail is hours. Anything that needs a bounded
+    # detection latency cannot be built on a GitHub schedule — that is B12's
+    # case, not a tuning problem, and lowering the cron interval does not fix it
+    # (GitHub drops runs, it does not queue them: `created_at == run_started_at`).
+    #
+    # Re-derive rather than trust; this comment is a measurement, not a fact:
+    #   gh api "repos/sgharlow/relay/actions/workflows/production-canary.yml/runs?per_page=100" \
+    #     --paginate --jq '.workflow_runs[] | select(.event=="schedule") | .created_at'
+    # then diff consecutive timestamps. Per-day counts (the B11 collapse view):
+    #   ... | cut -dT -f1 | sort | uniq -c
+    #
+    # 🔴 AND IT IS WORSE RIGHT NOW THAN THAT AVERAGE. Per-day scheduled runs
+    # were 40–55 through 2026-08-25, then 24 on 08-26, and **2 on 08-27, 3 on
+    # 08-28** — coincident with the account's Actions minutes hitting 100% on
+    # 2026-08-28 (reset 2026-09-01; relay is public and free, so it does not
+    # consume them, but the account-level exhaustion is the only coincident
+    # change). B11.1 re-measures on 2026-09-02, after the reset. Until then this
+    # canary is running roughly twice a day, not 96 times.
     - cron: '*/15 * * * *'
   # 🔴 THIS SAID `workflow_dispatch: {} # so the alarm can be proven to work on
   # demand` FOR ITS WHOLE LIFE AND THE COMMENT WAS FALSE. The probe step ran the
   # canary with no argument, so a manual run could only ever hit production and
   # could only ever pass; making it go red needed a commit, which is exactly what
-  # nobody does to test an alarm. In ~1,200 scheduled runs since 2026-08-08 this
-  # workflow has never been red once, and B4's own bar is that a checker which
-  # has only ever passed has not been seen to work.
+  # nobody does to test an alarm. In 684 scheduled runs between 2026-08-09 and
+  # 2026-08-29 (not the "~1,200" this line claimed until 2026-08-29 — that
+  # number was the nominal schedule, never counted) this workflow was never red
+  # once, and B4's own bar is that a checker which has only ever passed has not
+  # been seen to work.
   #
   # `scripts/canary.ts` already accepted a base URL — `argv[2]`, then
   # CANARY_BASE_URL — and this file simply never passed one. Dispatch it against
   # an unreachable host to force every check to fail and confirm the resulting
   # GitHub notification actually reaches a watched inbox.
+  #
+  # ✅ PROVEN RED 2026-08-29, run 33237399208 (`workflow_dispatch`,
+  # base_url `https://relay-proof-of-red.invalid` — RFC 2606 reserves
+  # `.invalid`, so nothing resolves and no packet reaches anybody else's host).
+  # All 6 checks failed, the `Explain a failure` step ran, `::error::` was
+  # emitted, conclusion `failure`. That is the FIRST red in this workflow's
+  # life; the "~1,200 runs, never red" line above was replaced the same day.
+  #
+  # What that proof does and does not cover, precisely. It exercised the
+  # request-failed path (fetch throws → `failures` → exit 1). It did NOT
+  # exercise `evaluateCheck` returning not-ok, because DNS failed before any
+  # response existed to evaluate. That branch — the one that catches a boundary
+  # quietly answering 200 — is covered by unit tests instead
+  # (`lib/ops/canary.test.ts:40` status mismatch, `:47` body-missing-on-200),
+  # and both branches join the same two lines that set the exit code. Said out
+  # loud because "proven red" without saying WHICH red is how a half-proof gets
+  # remembered as a whole one.
   workflow_dispatch:
     inputs:
       base_url:

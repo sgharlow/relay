@@ -3881,6 +3881,44 @@ deferred:
       The sweep writes a stamp line and a freshness assertion fails when it goes stale, in the
       shape `verify:live` already uses — and the chain is kept SEPARATE from the live chain,
       because merging them would push the combined run through the signup rate ceiling (D14).
+    closed:
+      date: 2026-08-29
+      what_shipped: >-
+        All three, plus the half `ends_when` did not ask for. `verify:journeys` now ends in
+        `verify:stamp:journeys` (`scripts/stamp-verify-journeys.ts`) writing
+        `docs/verify-journeys-runs.jsonl`; `lib/ops/verify-journeys-freshness.ts` holds the
+        threshold and this chain's own prose; `lib/ops/verify-journeys-freshness.test.ts` is the
+        dead-man. The chains stay separate and the module says why in the threshold's own comment.
+      the_parse_logic_is_not_copied: >-
+        `verify-journeys-freshness.ts` imports `assess` from `verify-live-freshness.ts` rather
+        than restating it. What a log MEANS — corrupt is not `never`, a future stamp is not fresh,
+        the newest entry decides — is one contract, and a second copy is a second thing to get
+        wrong. Four tests re-assert that contract THROUGH the journeys entry point, so an edit
+        that quietly gives this chain its own copy fails rather than drifts.
+      threshold_is_21_not_14_and_the_number_is_the_ceiling: >-
+        `JOURNEYS_STALE_AFTER_DAYS = 21` against `verify:live`'s 14. The two chains cannot share
+        an hour (D14: `verify:live` performs exactly 10 signups into a 10/hour limiter, this
+        chain 5 more), so equal thresholds would demand a two-part sitting every fortnight — and
+        a gate that is expensive to satisfy gets its threshold raised instead of being run. Kept
+        under a month because two assertions here go RED when the approve-before-first-rule
+        defect is fixed, and a chain that has not run since before a fix reports a stale finding
+        as a live one. Both bounds are asserted by test, not left as prose.
+      the_recurrence_is_closed_structurally: >-
+        The finding was never "this chain lacks a dead-man" — it was that `verify:live` was given
+        one on 2026-08-19 and the chain shipped 2026-08-21 did not inherit it. A third chain
+        would do the same. `lib/ops/chain-dead-man.test.ts` fails when ANY multi-walk `verify:*`
+        script in package.json is not declared with a stamp, a log and a dead-man, and when a
+        declared chain's stamp is not its FINAL step (a stamp anywhere earlier would be written
+        even when a later walk fails, which is the one thing it must never do). Proven by two
+        planted violations; both caught, both restored green.
+      ladder: >-
+        `live-proven` for the guard, `built` for the chain's own freshness. The dead-man, the
+        structural check and every state of `explainJourneys` are exercised; what has NOT
+        happened is a script-written stamp. The log's only line is BACKFILLED and says so in the
+        row (`backfilled: true` + a `source` quoting this entry's D10 sibling and commit
+        `d710b06`), on the same narrow terms as the single hand line in
+        `docs/verify-live-runs.jsonl`: a dated third-party record of the run already existed.
+        The first real run supersedes it. Next fires ~2026-09-12.
 
   - id: shipped-but-unproven-release-guards                   # ROADMAP B15
     owner: claude                         # B15.4 is steve's: it is a ratification, not a build
