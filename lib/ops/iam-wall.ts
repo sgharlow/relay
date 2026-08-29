@@ -120,10 +120,62 @@ export interface ForbiddenService {
   consequence: string;
 }
 
+/**
+ * What a role's trust policy must say.
+ *
+ * A ROLE differs from a user in a way that matters more than the API call: a
+ * user is reached with a key, a role is reached by satisfying a trust policy.
+ * Auditing `relay-kms-wall-ci`'s PERMISSIONS and not its TRUST would check the
+ * smaller half -- the permissions are three read-only KMS calls, and the thing
+ * actually worth protecting is who may assume it. A trust policy widened from
+ * one branch of one repo to `repo:owner/relay:*` grants those calls to every
+ * pull request, including one opened by a stranger against a public repo.
+ */
+export interface TrustContract {
+  /** e.g. `token.actions.githubusercontent.com` — the only federation allowed. */
+  provider: string;
+  /**
+   * The EXACT `sub` the trust policy must pin, e.g.
+   * `repo:sgharlow/relay:ref:refs/heads/master`. A `StringLike` with a wildcard
+   * is a finding even when it contains this string.
+   */
+  subject: string;
+  consequence: string;
+}
+
+/**
+ * Whether this principal's grants must name their targets.
+ *
+ * Added 2026-08-29 (B16.3), and only after a reading. The header called this a
+ * blind spot in plain words -- "the verdict reads actions, not `Resource`. A
+ * `dsql:DbConnect` widened from the two cluster ARNs to `*` passes" -- and left
+ * it open rather than guessing at what the account held. The first live run
+ * printed every Resource: all four principals grant on explicit ARNs, the two
+ * DSQL cluster ARNs and one CMK, with no wildcard anywhere. So the rule is
+ * pinned from what is there, which is the discipline the relay-dev KMS note
+ * spent a week arguing for.
+ */
+export interface ResourceScope {
+  /** A bare `*` (or an absent Resource) on an Allow is a finding. */
+  mustNotBeWildcard: true;
+  consequence: string;
+}
+
 /** What one IAM principal is expected to hold, and expected never to hold. */
 export interface PrincipalContract {
-  /** The IAM user name, as the account has it. */
+  /**
+   * User or role. Added 2026-08-29 (B16.4): this file audited users only, so
+   * `relay-kms-wall-ci` -- an OIDC role in a PUBLIC repo -- was audited by
+   * nothing, which is the same shape as `relay-ro` being unwatched on 08-21.
+   * Roles are collected through a different set of API calls entirely, exactly
+   * like inline policies, and "a different API call" is this file's recurring
+   * blind-spot shape.
+   */
+  kind: 'user' | 'role';
+  /** The IAM user OR role name, as the account has it. */
   user: string;
+  /** Roles only: what the assume-role policy must say. */
+  trust?: TrustContract;
   /** One sentence: what this identity is for, and where its credential lives. */
   purpose: string;
   /**
@@ -138,6 +190,8 @@ export interface PrincipalContract {
   requiresConsequence: string;
   forbids: ForbiddenAction[];
   forbidsServices?: ForbiddenService[];
+  /** Must every Allow name its target ARNs? See `ResourceScope`. */
+  resourceScope?: ResourceScope;
   /**
    * True things this contract deliberately does NOT assert, printed on every
    * run. A blind spot nobody can see is indistinguishable from coverage.
@@ -174,39 +228,81 @@ const ADMIN_TOKEN_CONSEQUENCE =
 
 /** The identity Vercel authenticates as. The only one that serves customer traffic. */
 export const RUNTIME_CONTRACT: PrincipalContract = {
+  kind: 'user',
   user: 'relay-runtime',
   purpose: 'the live site — Vercel authenticates as this, and only this one serves customer traffic',
-  requires: ['dsql:DbConnect'],
+  /*
+    🆕 2026-08-29 (B16.6) — THE KMS HALF IS REQUIRED, NOT MERELY PERMITTED.
+    This list read `['dsql:DbConnect']`, and the note below said the KMS grant was
+    "legitimate and is not forbidden here". Both true, and together they meant a
+    policy stripped of kms:GenerateDataKey and kms:Decrypt PASSED. That is exactly
+    the failure this file's header names for the connect grant — "a policy stripped
+    to nothing grants no admin and takes the site down; reporting that as secure
+    would be a check that is happiest when the product is broken" — applied to the
+    half that had only ever been discussed in prose.
+
+    Pinned from a live read, not from the docs: `npm run verify:iam` on 2026-08-29
+    printed relay-runtime-policy v2 granting exactly
+    `dsql:DbConnect, kms:GenerateDataKey, kms:Decrypt`.
+  */
+  requires: ['dsql:DbConnect', 'kms:GenerateDataKey', 'kms:Decrypt'],
   requiresConsequence:
-    'That is not a secure state, it is a broken one — the live site cannot reach its database at ' +
-    'all. A wall check that is happiest when the product is down is checking the wrong thing.',
+    'That is not a secure state, it is a broken one. Without dsql:DbConnect the live site cannot ' +
+    'reach its database at all; without kms:GenerateDataKey it cannot WRITE a vault item, and ' +
+    'without kms:Decrypt it cannot REVEAL one — the product loses the feature it exists for while ' +
+    'every other check stays green. A wall check that is happiest when the product is down is ' +
+    'checking the wrong thing.',
+  resourceScope: {
+    mustNotBeWildcard: true,
+    consequence:
+      'A grant on Resource "*" is a different grant from the one this account actually makes. ' +
+      'Read live on 2026-08-29, every policy here names its targets: the two DSQL cluster ARNs ' +
+      'and the one CMK. Widening to "*" reaches every cluster and every key in the account — ' +
+      'including any created later, which nobody would think to re-audit — while the ACTION list ' +
+      'this file spent a year getting right stays word-for-word identical. That is the whole ' +
+      'shape of a silent widening.',
+  },
   forbids: [{ action: 'dsql:DbConnectAdmin', consequence: ADMIN_TOKEN_CONSEQUENCE }],
   notes: [
-    'Its KMS grant is legitimate and is not forbidden here: the live site is what wraps and ' +
-      'unwraps vault data keys, so kms:GenerateDataKey and kms:Decrypt are the product working. ' +
-      'Only relay-ro is held to an ABSENCE of KMS.',
+    'Its KMS grant is legitimate and is now REQUIRED here rather than merely unforbidden: the ' +
+      'live site is what wraps and unwraps vault data keys. Only relay-ro is held to an ABSENCE ' +
+      'of KMS.',
   ],
 };
 
 /** A laptop. `.env.local` authenticates as this and maps to DB role `relay_dev`. */
 export const LAPTOP_CONTRACT: PrincipalContract = {
+  kind: 'user',
   user: 'relay-dev',
   purpose:
     'a laptop — .env.local authenticates as this, mapped to DB role relay_dev: read/write on ' +
     'product tables, no DDL, and it cannot write caregiver_leads',
-  requires: ['dsql:DbConnect'],
+  /*
+    🆕 2026-08-29 (B16.2) — PINNED FROM THE FIRST LIVE READ. The note this replaces
+    said the KMS action list "was never written down anywhere in this repo", that
+    pinning a guess would make the first live run fail on the checker instead of on
+    the account, and that the fix was to read it once and pin it from the output.
+    `npm run verify:iam` on 2026-08-29 printed relay-dev-policy v1 granting exactly
+    `dsql:DbConnect, kms:GenerateDataKey, kms:Decrypt` — the same shape as the
+    runtime identity. Requiring it makes relay-ro's ABSENCE of KMS a measured
+    distinction on both sides of the comparison instead of only one.
+  */
+  requires: ['dsql:DbConnect', 'kms:GenerateDataKey', 'kms:Decrypt'],
   requiresConsequence:
-    'Local walks and scripts stop. Production is unaffected, so this is a broken instrument ' +
+    'Local walks and scripts stop, and the reveal path stops in a way that reads like a product ' +
+    'bug rather than a missing grant. Production is unaffected, so this is a broken instrument ' +
     'rather than an exposure — but it is broken, not safe.',
+  resourceScope: {
+    mustNotBeWildcard: true,
+    consequence:
+      'A grant on Resource "*" is a different grant from the one this account actually makes. ' +
+      'Read live on 2026-08-29, every policy here names its targets: the two DSQL cluster ARNs ' +
+      'and the one CMK. Widening to "*" reaches every cluster and every key in the account — ' +
+      'including any created later, which nobody would think to re-audit — while the ACTION list ' +
+      'this file spent a year getting right stays word-for-word identical. That is the whole ' +
+      'shape of a silent widening.',
+  },
   forbids: [{ action: 'dsql:DbConnectAdmin', consequence: ADMIN_TOKEN_CONSEQUENCE }],
-  notes: [
-    'ITS KMS GRANT IS DELIBERATELY NOT ASSERTED. It holds one — docs/sprint-reports/' +
-      '2026-08-15-sprint.md records the provisioning as "dsql:DbConnect only + KMS" — and that ' +
-      'grant is exactly what makes relay-ro\'s absence of KMS a real distinction rather than a ' +
-      'formality. But the ACTION LIST was never written down anywhere in this repo, and pinning a ' +
-      'guess would make the first live run fail on the checker instead of on the account. The run ' +
-      'prints every action it reads: pin it from that, in a commit, and this note goes away.',
-  ],
 };
 
 /**
@@ -214,6 +310,7 @@ export const LAPTOP_CONTRACT: PrincipalContract = {
  * `relay_ro` via migration 039, both regions).
  */
 export const READONLY_CONTRACT: PrincipalContract = {
+  kind: 'user',
   user: 'relay-ro',
   purpose:
     'the read-only verification identity — .env.ro, mapped to DB role relay_ro: SELECT on every ' +
@@ -223,6 +320,16 @@ export const READONLY_CONTRACT: PrincipalContract = {
     'The five database-only verifications stop — verify:schema, verify:dogfood, verify:orphans, ' +
     'flight:snapshot and verify:roles. Nothing serves customer traffic with this identity, so ' +
     'this is an outage of the instruments rather than of the product. Still broken, not safe.',
+  resourceScope: {
+    mustNotBeWildcard: true,
+    consequence:
+      'A grant on Resource "*" is a different grant from the one this account actually makes. ' +
+      'Read live on 2026-08-29, every policy here names its targets: the two DSQL cluster ARNs ' +
+      'and the one CMK. Widening to "*" reaches every cluster and every key in the account — ' +
+      'including any created later, which nobody would think to re-audit — while the ACTION list ' +
+      'this file spent a year getting right stays word-for-word identical. That is the whole ' +
+      'shape of a silent widening.',
+  },
   forbids: [{ action: 'dsql:DbConnectAdmin', consequence: ADMIN_TOKEN_CONSEQUENCE }],
   forbidsServices: [
     {
@@ -251,10 +358,85 @@ export const READONLY_CONTRACT: PrincipalContract = {
  * unwatched wall gets built, so the list is the contract: the script iterates it
  * and audits nothing else.
  */
+/**
+ * The OIDC role the KMS wall watch assumes from GitHub Actions, added to this
+ * file on 2026-08-29 (B16.4).
+ *
+ * 🔴 WHY A ROLE NEEDED A CONTRACT AT ALL. Every principal above is reached with
+ * a long-lived key that lives on a machine Steve controls. This one is reached
+ * by *satisfying a trust policy* from a workflow in a **public** repository, and
+ * it was audited by nothing — the same hole `relay-ro` sat in until 08-21, and
+ * `verify-roles.ts` before that. The pattern is now three for three: a new
+ * identity gets created for a good reason, and the instrument that watches
+ * identities is not told about it.
+ *
+ * THE PERMISSIONS ARE THE SMALLER HALF. `kms:DescribeKey`, `kms:GetKeyPolicy`
+ * and `kms:GetKeyRotationStatus` read metadata; none of them turns a ciphertext
+ * into a secret, which is the whole reason the wall watch may run unattended in
+ * public CI. `kms:Decrypt` or `kms:GenerateDataKey` arriving here would end
+ * that, so both are forbidden by naming the actions rather than the service —
+ * the service is exactly what this role legitimately touches, so the `relay-ro`
+ * shape would be wrong here and would fail on the first run.
+ */
+export const KMS_WALL_CI_CONTRACT: PrincipalContract = {
+  kind: 'role',
+  user: 'relay-kms-wall-ci',
+  purpose:
+    'the GitHub Actions OIDC role for the KMS wall watch — assumed by a workflow in a PUBLIC ' +
+    'repo, so it holds KMS metadata reads and nothing that can decrypt',
+  requires: ['kms:DescribeKey', 'kms:GetKeyPolicy', 'kms:GetKeyRotationStatus'],
+  requiresConsequence:
+    'The KMS wall watch cannot read the key it watches, so it reports nothing and the absence of ' +
+    'an alarm becomes the absence of a check. It has been proven green AND red since 2026-08-24; ' +
+    'losing a read turns that proof into a daily green that means nothing.',
+  resourceScope: {
+    mustNotBeWildcard: true,
+    consequence:
+      'A grant on Resource "*" is a different grant from the one this account actually makes. ' +
+      'Read live on 2026-08-29, every policy here names its targets: the two DSQL cluster ARNs ' +
+      'and the one CMK. Widening to "*" reaches every cluster and every key in the account — ' +
+      'including any created later, which nobody would think to re-audit — while the ACTION list ' +
+      'this file spent a year getting right stays word-for-word identical. That is the whole ' +
+      'shape of a silent widening.',
+  },
+  forbids: [
+    {
+      action: 'kms:Decrypt',
+      consequence:
+        '🔴 This role is assumed from a PUBLIC repository. Decrypt here means a workflow — ' +
+        'including one a stranger could influence if the trust policy ever widened past a branch ' +
+        '— can turn vault ciphertext into plaintext. The wall watch needs to READ the key policy, ' +
+        'never to USE the key.',
+    },
+    {
+      action: 'kms:GenerateDataKey',
+      consequence:
+        'Wrapping is the other half of the vault. A role that can mint data keys can write items ' +
+        'that look legitimate, from CI, in a public repo.',
+    },
+    { action: 'dsql:DbConnectAdmin', consequence: ADMIN_TOKEN_CONSEQUENCE },
+  ],
+  trust: {
+    provider: 'token.actions.githubusercontent.com',
+    subject: 'repo:sgharlow/relay:ref:refs/heads/master',
+    consequence:
+      '🔴 THE TRUST POLICY IS THE REAL WALL FOR A ROLE, and it is the half an actions-only audit ' +
+      'misses entirely. Widened to `repo:sgharlow/relay:*`, every pull request against a PUBLIC ' +
+      'repo — including one opened by a stranger — can assume this role. The permissions would ' +
+      'still read exactly as clean as they do today.',
+  },
+  notes: [
+    'Its permissions are read-only KMS metadata BY DESIGN, so kms: is not forbidden as a service ' +
+      'here the way it is on relay-ro — the two named write actions are. Forbidding the service ' +
+      'would fail this role on the first run for doing its job.',
+  ],
+};
+
 export const CONTRACTS: PrincipalContract[] = [
   RUNTIME_CONTRACT,
   LAPTOP_CONTRACT,
   READONLY_CONTRACT,
+  KMS_WALL_CI_CONTRACT,
 ];
 
 function lower(v: string | string[] | undefined): string[] {
@@ -328,6 +510,7 @@ export function readWall(contract: PrincipalContract, policies: NamedPolicy[]): 
     ...f,
     service: f.service.toLowerCase(),
   }));
+  const scope = contract.resourceScope;
 
   /* One consequence per rule that fired, in the order it fired — a failure that
      repeats the same paragraph five times is a failure people stop reading. */
@@ -339,6 +522,33 @@ export function readWall(contract: PrincipalContract, policies: NamedPolicy[]): 
     for (const s of document.Statement ?? []) {
       if ((s.Effect ?? 'Allow') !== 'Allow') continue;
       const where = `${source} · ${s.Sid ?? 'unnamed'}`;
+
+      /*
+        Resource scoping is checked on the STATEMENT, before actions, because
+        the question is about the statement's reach rather than about any one
+        action in it. An Allow with no Resource at all is treated as a wildcard:
+        IAM rejects such an identity policy, so meeting one means we are reading
+        something other than what we think, and calling that "scoped" would be
+        the flattering reading.
+      */
+      /*
+        Only statements that GRANT something are scoped. A statement with
+        neither Action nor NotAction confers nothing, so it cannot over-reach,
+        and flagging its missing Resource would be a false positive on a shape
+        IAM does return — caught by the "empty or odd document" test, which is
+        exactly what that test is for.
+      */
+      const grants = s.Action !== undefined || s.NotAction !== undefined;
+      if (scope && grants) {
+        const resources = lower(s.Resource);
+        if (resources.length === 0) {
+          violations.push(`${where} · Allow with no Resource at all`);
+          explain(scope.consequence);
+        } else if (resources.includes('*')) {
+          violations.push(`${where} · granted on Resource "*"`);
+          explain(scope.consequence);
+        }
+      }
 
       if (s.NotAction !== undefined) {
         const excluded = lower(s.NotAction);
@@ -419,4 +629,106 @@ export function readWall(contract: PrincipalContract, policies: NamedPolicy[]): 
       `${contract.user}: ${contract.requires.join(', ')} granted, ` +
       `${barred.join(' and ')} unreachable — its half of the wall holds`,
   };
+}
+
+/**
+ * Reads a ROLE's trust policy — who may assume it — against its contract.
+ *
+ * Kept separate from `readWall` on purpose. `readWall` answers "what may this
+ * principal DO"; this answers "who may BECOME it", and for a role reached from
+ * a public repository the second question is the sharper one. Merging them
+ * would let one green line stand for two unrelated properties.
+ *
+ * Pure, like everything else here: it takes the document AWS returns.
+ */
+export function readTrust(contract: PrincipalContract, doc: TrustPolicyDocument): WallVerdict {
+  const trust = contract.trust;
+  const violations: string[] = [];
+
+  if (!trust) {
+    return {
+      ok: true, user: contract.user, violations: [], missing: [],
+      reason: `${contract.user}: no trust contract declared`,
+    };
+  }
+
+  const statements = doc.Statement ?? [];
+  const allows = statements.filter((s) => (s.Effect ?? 'Allow') === 'Allow');
+
+  if (allows.length === 0) {
+    /* Not "secure". A role nothing may assume is a watch that cannot run. */
+    return {
+      ok: false, user: contract.user, violations: ['trust policy allows nobody'], missing: [],
+      reason: `${contract.user}'s trust policy allows no principal at all — that is a broken watch, not a safe one. ${contract.requiresConsequence}`,
+    };
+  }
+
+  for (const s of allows) {
+    const where = s.Sid ?? 'unnamed';
+
+    /* Federated is the only shape this role is allowed to use. An IAM-principal
+       or account-root Allow re-opens assumption to anyone in the account with
+       sts:AssumeRole, which the OIDC pin says nothing about. */
+    const federated = lower(s.Principal?.Federated);
+    const others = [
+      ...lower(s.Principal?.AWS).map((v) => `AWS=${v}`),
+      ...lower(s.Principal?.Service).map((v) => `Service=${v}`),
+    ];
+    if (others.length) violations.push(`${where} · trusts a non-federated principal: ${others.join(', ')}`);
+    if (federated.length && !federated.some((f) => f.endsWith(trust.provider.toLowerCase()))) {
+      violations.push(`${where} · federated provider is ${federated.join(', ')}, not ${trust.provider}`);
+    }
+
+    /*
+      🔴 THE ONE THAT MATTERS. StringEquals on the exact sub is the pin.
+      StringLike is a wildcard match by definition, so a StringLike whose value
+      happens to CONTAIN the exact subject is still a finding: `repo:o/r:*`
+      contains nothing of the sort, and `repo:o/r:ref:refs/heads/*` matches
+      every branch. Checking the operator, not just the value, is what makes
+      "pinned to master" a measurement.
+    */
+    const cond = s.Condition ?? {};
+    const equals = cond.StringEquals ?? {};
+    const like = cond.StringLike ?? {};
+    const subKey = 'token.actions.githubusercontent.com:sub';
+    const pinned = lower(equals[subKey]);
+    const loose = lower(like[subKey]);
+
+    if (loose.length) {
+      violations.push(`${where} · sub is matched with StringLike (${loose.join(', ')}) — a wildcard, not a pin`);
+    }
+    if (!pinned.includes(trust.subject.toLowerCase())) {
+      violations.push(
+        pinned.length
+          ? `${where} · sub pinned to ${pinned.join(', ')}, not ${trust.subject}`
+          : `${where} · no StringEquals on ${subKey} — the branch is not pinned at all`,
+      );
+    }
+  }
+
+  if (violations.length) {
+    return {
+      ok: false, user: contract.user, violations, missing: [],
+      reason: `${contract.user}'s trust policy does not hold: ${violations.join('; ')}. ${trust.consequence}`,
+    };
+  }
+
+  return {
+    ok: true, user: contract.user, violations: [], missing: [],
+    reason: `${contract.user}: assumable only by ${trust.provider} with sub == ${trust.subject} — the trust half holds`,
+  };
+}
+
+/** An assume-role document. Its statements differ in shape from a permission policy's. */
+export interface TrustPolicyDocument {
+  Version?: string;
+  Statement?: TrustStatement[];
+}
+
+/** The assume-role document's statement shape, which differs from a permission policy's. */
+export interface TrustStatement {
+  Sid?: string;
+  Effect?: string;
+  Principal?: { Federated?: string | string[]; AWS?: string | string[]; Service?: string | string[] };
+  Condition?: Record<string, Record<string, string | string[]>>;
 }
