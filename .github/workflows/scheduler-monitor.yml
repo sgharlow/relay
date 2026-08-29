@@ -45,6 +45,16 @@ on:
   # `health_url` exists so the alarm can be pointed somewhere dead. A host under
   # `.invalid` (RFC 2606) never resolves, so the probe fails without sending a
   # single packet to anybody else's server.
+  #
+  # ✅ PROVEN RED ON DEMAND 2026-08-29, run 33237979699. Both attempts returned
+  # HTTP 000, the 30s retry happened rather than being skipped, `::error::` was
+  # emitted with the checklist, exit 1.
+  #
+  # What it does NOT cover: HTTP 000 is a request that never completed, so the
+  # `payload`/`head -c 400` branch never ran. A monitor that reaches the endpoint
+  # and reads an UNHEALTHY body is a different path, and the only way to exercise
+  # it for real is an actually-stale scheduler. Named because the canary's header
+  # makes the same distinction, for the same reason.
   workflow_dispatch:
     inputs:
       health_url:

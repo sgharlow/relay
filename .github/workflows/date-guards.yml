@@ -46,6 +46,45 @@ on:
     # day rather than up to a week late, and three test files cost seconds.
     - cron: '17 6 * * *'
   workflow_dispatch: {} # so a date question can be asked on demand
+
+  # 🔴 THIS WORKFLOW HAS NEVER BEEN RED, AND B13'S PRESCRIBED PROOF CANNOT BE
+  # EXECUTED FROM THIS MACHINE. 8 runs, 0 failures. The plan was: branch, plant a
+  # past-due gate in PROJECT.yaml, push, dispatch here, watch it fail, delete the
+  # branch. Attempted 2026-08-29 and blocked at the push.
+  #
+  # The blocker is structural rather than incidental. `~/.claude/hooks/pre-push-
+  # check.sh` runs the full suite on every `git push` for this project and refuses
+  # a red one — and the planted violation makes the suite red BY CONSTRUCTION,
+  # because the guard this workflow runs IS a test in that suite. So the local
+  # gate that stops broken code reaching GitHub also stops the deliberate breakage
+  # that would prove the date alarm fires. Confirmed rather than assumed: the plant
+  # was made, `gates.test.ts` reported `d3-restore-drill — due 2026-01-15` exactly
+  # as designed, and the push was refused with "Tests failed in relay."
+  #
+  # No timezone workaround exists, which was checked: `gates.test.ts` computes
+  # today from `new Date().toISOString()`, so a local run and a CI run agree on the
+  # date and there is no window in which one is green and the other red.
+  #
+  # What IS proven, and it is not nothing: the three sibling alarms were forced red
+  # on 2026-08-29 (canary run 33237399208, scheduler-monitor 33237979699,
+  # delivery-webhook-monitor 33237980971), and each of those workflows executed the
+  # same shape this one has — a failing step, then an `if: failure()` step that
+  # prints the diagnosis. What is unproven here is specifically that THIS file's
+  # `Explain a failure` step runs, and that a red from a dated guard produces a
+  # notification.
+  #
+  # Three ways to close it, none of which should be taken unilaterally because two
+  # of them route around somebody's guard:
+  #   1. Create the throwaway ref server-side (`gh api` on refs + contents), which
+  #      never invokes `git push` and so never invokes the hook. Fastest, and the
+  #      one to ask about first.
+  #   2. Have the hook skip branches matching `throwaway/*` — a change to Steve's
+  #      tooling, not this repo's.
+  #   3. Wait. `verify-live-freshness` next fires ~2026-09-08 and the journeys
+  #      dead-man ~2026-09-12; if neither chain is run, this workflow goes red on
+  #      its own and the proof arrives for free. Slowest, and it proves the alarm
+  #      by letting the thing it watches actually lapse.
+  # Tracked as `deferred.date-guards-has-never-been-red`.
   push:
     branches: [master]
     paths:

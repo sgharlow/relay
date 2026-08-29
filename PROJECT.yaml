@@ -3920,6 +3920,68 @@ deferred:
         `docs/verify-live-runs.jsonl`: a dated third-party record of the run already existed.
         The first real run supersedes it. Next fires ~2026-09-12.
 
+  - id: web-analytics-collects-but-cannot-be-read             # ROADMAP A7.0
+    owner: steve                          # a dashboard toggle; Claude cannot enable it
+    opened: 2026-08-29
+    what: >-
+      Measured 2026-08-29. The Vercel query API refuses the relay project with
+      `web_analytics_not_enabled` (400), while the edge serves
+      `/_vercel/insights/script.js` (200, 2,495 bytes) and the collector answers **200 OK** to
+      both `POST /_vercel/insights/view` and `POST /_vercel/insights/event`. So the site looks
+      instrumented from outside, every beacon succeeds, and there is nothing readable.
+    why_it_matters_on_exactly_one_day: >-
+      Placement day. The number cannot be re-collected afterwards, and the failure presents as an
+      empty dashboard beside a site that appears to be reporting correctly. This is the
+      precondition ROADMAP A7.0 suspected and this measurement confirms - Sprint 5 cannot start
+      until the toggle is thrown.
+    it_disproves_the_check_the_roadmap_asked_for: >-
+      A7.0 prescribed extending `verify:funnel` to assert the collector accepts the event - a 2xx
+      on the `/_vercel/insights/event` POST - rather than only that `window.vaq` filled. BOTH
+      halves are already true on a project that collects nothing readable, so that check would
+      pass today. A stricter version of an instrument that measures the wrong thing measures the
+      wrong thing more confidently. The discriminating read is the QUERY side (rows, or
+      `web_analytics_not_enabled`), which needs a Vercel API token and therefore does not belong
+      inside a browser walk as written. Recorded, not built: where it lives is a scope decision
+      and the toggle has to be thrown first regardless.
+    evidence: docs/g1-flight-log.md - section "A7.0 - WEB ANALYTICS IS NOT COLLECTING ANYTHING READABLE", with the four probes and their commands
+    ends_when: >-
+      Web Analytics is enabled for the `relay` project, the API probe returns a count instead of
+      `web_analytics_not_enabled`, and a decision is recorded about where the queryability
+      assertion lives.
+
+  - id: date-guards-has-never-been-red                        # ROADMAP B13, residue
+    owner: steve                          # the blocker is a hook in ~/.claude, not a file in this repo
+    opened: 2026-08-29
+    what: >-
+      `date-guards.yml` has run 8 times and failed 0. Its three sibling alarms were forced red on
+      2026-08-29 (canary 33237399208, scheduler-monitor 33237979699, delivery-webhook-monitor
+      33237980971); this one could not be, and the reason is structural rather than incidental.
+    why_the_prescribed_proof_cannot_run: >-
+      B13's method was: branch, plant a past-due gate, push, dispatch, watch it fail, delete the
+      branch. `~/.claude/hooks/pre-push-check.sh` runs the full suite on every `git push` for
+      relay and refuses a red one — and the planted violation makes the suite red BY
+      CONSTRUCTION, because the guard this workflow runs IS a test in that suite. The local gate
+      that stops broken code reaching GitHub also stops the deliberate breakage that would prove
+      the date alarm fires. Attempted and confirmed, not assumed: the plant was made,
+      `gates.test.ts` reported `d3-restore-drill — due 2026-01-15`, the push was refused with
+      "Tests failed in relay.", and the plant was reverted.
+    no_timezone_workaround: >-
+      Checked, because CLAUDE.md documents a local-green/CI-red class for dates. `gates.test.ts`
+      computes today from `new Date().toISOString()`, which is UTC on both sides, so no window
+      exists in which the local suite is green and CI is red. That option does not exist.
+    options: >-
+      (1) Create the throwaway ref server-side with `gh api` on refs + contents, which never
+      invokes `git push` and so never invokes the hook — fastest, and it routes around Steve's
+      guard, so it is his call not Claude's. (2) Teach the hook to skip `throwaway/*` — a change
+      to Steve's tooling rather than to this repo. (3) Wait: `verify-live-freshness` next fires
+      ~2026-09-08 and the journeys dead-man ~2026-09-12, so if neither chain is run this workflow
+      goes red on its own and the proof arrives free — slowest, and it proves the alarm by
+      letting the thing it watches actually lapse.
+    ends_when: >-
+      A `date-guards` run has concluded `failure` with its `Explain a failure` step executed, by
+      any of the three routes, and the run id is recorded in the workflow header beside the other
+      three proofs.
+
   - id: shipped-but-unproven-release-guards                   # ROADMAP B15
     owner: claude                         # B15.4 is steve's: it is a ratification, not a build
     opened: 2026-08-28

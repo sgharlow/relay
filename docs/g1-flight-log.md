@@ -105,6 +105,65 @@ they could disagree — see "Corrections applied before the flight" below.
 4. **Per-lane:** each of the above, filtered to one `src`. This is what the paid budget exists
    to buy; it is only computable because both events share the channel vocabulary.
 
+## 🔴 A7.0 — WEB ANALYTICS IS NOT COLLECTING ANYTHING READABLE (measured 2026-08-29)
+
+**Answer: enabling Web Analytics is a HARD precondition of a placement, and it is a dashboard
+toggle nobody has thrown.** The measurement also disproves the check the roadmap proposed for it,
+which is the more useful half.
+
+Four probes, all read-only except the last two, which POST a synthetic event marked `src=qa`:
+
+| Probe | Result |
+|---|---|
+| Query API — `get_web_analytics` (Vercel MCP), `prj_VYyOXbThp35KaCQpJs3mhmASJf18` | **400 `web_analytics_not_enabled`** |
+| `GET /_vercel/insights/script.js` | **200**, `application/javascript`, 2,495 bytes |
+| `POST /_vercel/insights/view` | **200 `OK`** |
+| `POST /_vercel/insights/event` (with `en` + `ed.src=qa`) | **200 `OK`** |
+
+Re-derive rather than trust:
+
+```bash
+node -e 'fetch("https://relaystandby.com/_vercel/insights/script.js").then(r=>console.log(r.status))'
+node -e 'fetch("https://relaystandby.com/_vercel/insights/view",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({o:"https://relaystandby.com/?src=qa",ts:Date.now(),r:"",sv:"1.0.0",sdkn:"@vercel/analytics",sdkv:"1.0.0"})}).then(async r=>console.log(r.status, await r.text()))'
+# and the API half, via the Vercel MCP: get_web_analytics(projectId, teamId, mode:'count', since, until)
+```
+
+### Why this is worse than "analytics is off"
+
+The edge serves the collector script and **answers 200 to every event it is sent**, while the
+query API refuses the project outright. So the page looks instrumented from the outside, the
+browser's network tab shows successful beacons, and there is nothing to read. On placement day —
+the one day the number matters and cannot be re-collected — the failure would present as a
+dashboard with no rows and a site that appears to be reporting correctly.
+
+### ⚠️ This disproves the check ROADMAP A7.0 asked for
+
+The roadmap's prescription was to *"extend `verify:funnel` to assert the collector accepts the
+event (a 2xx on the `/_vercel/insights/event` POST), not only that `window.vaq` was filled."*
+**That check would pass today, on a project that collects nothing readable.** Both halves are
+already true: `window.vaq` fills, and the collector returns 200. A stricter version of an
+instrument that measures the wrong thing measures the wrong thing more confidently.
+
+The check that actually discriminates is the **query** side, not the collect side: a read that
+returns rows, or `web_analytics_not_enabled`. That is a Vercel API call with a token, not a
+browser assertion, so it does not belong inside `verify:funnel` as written — it is either a
+separate scripted read or a line on the placement-day checklist. Recorded rather than built,
+because choosing between those is a scope decision and the toggle has to be thrown first
+regardless.
+
+### What has to happen, in order
+
+1. **Steve** enables Web Analytics for the `relay` project (Vercel dashboard → the project →
+   Analytics). Sitting E. Until then Sprint 5 cannot start — this is the precondition the roadmap
+   suspected and this measurement confirms.
+2. Re-run the API probe. `web_analytics_not_enabled` must become a count.
+3. Only then is it worth deciding where the queryability assertion lives.
+
+⚠️ The two POSTs above sent one pageview and one event named `a7.0-collector-probe`, both carrying
+`src=qa`. They are gate-excluded by `ratified.g1-n-is-an-allow-list` and, since nothing is being
+retained, are almost certainly not stored at all — but if a count ever appears that includes them,
+that is the offset to subtract.
+
 ## Known offsets — subtract before reading
 
 Every event we caused ourselves goes here. An offset that is not written down on the day it

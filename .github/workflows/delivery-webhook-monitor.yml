@@ -60,6 +60,22 @@ on:
   # `health_url` exists so the alarm can be pointed somewhere dead. A host under
   # `.invalid` (RFC 2606) never resolves, so the probe fails without sending a
   # single packet to anybody else's server.
+  #
+  # ✅ PROVEN RED ON DEMAND 2026-08-29, run 33237980971 — the first red in this
+  # workflow's 14-run life. Both attempts returned HTTP 000, the 30s retry
+  # happened, `::error::` was emitted, and the diagnosis block printed its four
+  # conditions for the first time ever.
+  #
+  # 🔴 What it does NOT cover, and here the gap is the interesting half. HTTP 000
+  # is a request that never completed, so the `jq -r '.meaning'` extraction never
+  # ran — and `meaning` is the whole point of this monitor. The condition this
+  # exists to catch is `refusing`: a revoked RESEND_API_KEY, where the endpoint
+  # answers perfectly well and says the provider is rejecting every send. That
+  # path returns a 200-shaped body with an unhealthy verdict, which is NOT what
+  # a dead host produces. `lib/ops/monitor-diagnostics.test.ts` derives the
+  # condition names from webhook-health.ts and fails if this text stops naming
+  # them, so the diagnosis cannot silently fall behind — but the extraction
+  # itself is still proven only by test, never by a run.
   workflow_dispatch:
     inputs:
       health_url:
