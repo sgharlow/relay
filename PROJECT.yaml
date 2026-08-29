@@ -4336,11 +4336,54 @@ deferred:
     owner: steve                          # only he can reach Search Console and request a review
     opened: 2026-08-29
     severity: >-
-      🔴 HIGHEST OPEN ITEM IN THIS FILE. Every Chrome, Firefox, Safari and Edge user meets a
-      full-page red interstitial - "Dangerous site ... recently found phishing" - instead of the
-      product. Nobody can sign up, sign in, reach the demo, or read /terms. This outranks A0, the
-      monitoring collapse and every gate: the site is, in effect, unreachable to ordinary users
-      while it stands, and no amount of custodial correctness is visible from behind it.
+      🟠 SERIOUS BUT NARROW - and the first version of this line said the opposite, which is the
+      part worth keeping. Corrected 2026-08-29 by driving a real browser at every public page.
+      **ONLY `/vault/new` IS BLOCKED.** Everything else loads normally.
+    ⚠️_the_first_severity_assessment_was_WRONG_and_this_is_the_third_of_its_kind_today: >-
+      It read: "Every Chrome, Firefox, Safari and Edge user meets a full-page red interstitial
+      instead of the product. Nobody can sign up, sign in, reach the demo, or read /terms." That
+      was extrapolated from ONE observation - Steve's screenshot of `/vault/new` - to the whole
+      site, without testing the whole site.
+      Measured in a real Chrome via the browser plugin, 2026-08-29: `/` loads · `/auth/signin`
+      loads · `/auth/signup` loads · `/demo` loads · `/caregivers` loads · `/terms` loads ·
+      **`/vault/new` BLOCKED, reproducibly.**
+      🔴 This is the THIRD overstatement in one session, all the same shape: a correct observation
+      generalised to a category that was never checked. The sweep would "arm their triggers" (it
+      iterates an empty set); the ladder "fires on 09-01" (the owner is not a candidate); the site
+      is "unreachable" (one page is). ROADMAP §0.0's lesson was written today and broken three
+      times by its author on the same day. The corrective is mechanical, not attitudinal: when a
+      claim has the shape "X is true of ALL of Y", enumerate Y before writing it down.
+    what_the_corrected_picture_actually_is: >-
+      Signup, sign-in, the demo, the caregivers landing and the terms page ALL WORK. So the demand
+      lane is NOT blocked - an op-ed could drive readers to `/caregivers` today and they would
+      convert normally. What IS blocked is the owner adding a vault item, which is A0, which is
+      the single highest-leverage action in ROADMAP §2.5. So this stops the one thing that matters
+      most and almost nothing else.
+    the_diagnosis_the_three_reads_together_support: >-
+      Search Console -> Security Issues: **No issues detected.**
+      Safe Browsing Transparency Report, domain `relaystandby.com`: **No available data.**
+      Safe Browsing Transparency Report, URL `relaystandby.com/vault/new`: **No available data.**
+      Chrome: **blocks `/vault/new` and nothing else.**
+      A published blocklist entry would appear in at least one of the first three. None does. That
+      signature - a per-URL verdict, present in the browser and absent from every published record
+      - is Chrome's REAL-TIME / client-side phishing classification rather than a Safe Browsing
+      list entry. Which fits what the page is: the one screen in this product whose entire purpose
+      is a form collecting a username and password FOR A DIFFERENT SERVICE, on a domain 22 days
+      old with no traffic reputation. That is the canonical false positive for a credential vault.
+    ⚠️_therefore_Search_Console_is_NOT_the_remedy: >-
+      There is nothing there to request a review of - it reports no issue. The route for a URL
+      wrongly classified is the Safe Browsing false-positive report:
+      https://safebrowsing.google.com/safebrowsing/report_error/ - submit the exact URL. That is an
+      outward-facing submission on Steve's behalf and is his to send, not Claude's to send for him.
+      Worth checking first: chrome://settings/security. If Enhanced protection is ON, this may be a
+      per-user real-time verdict rather than something every visitor sees, which changes the blast
+      radius materially and is a five-second read.
+    A0_IS_NOT_ACTUALLY_BLOCKED_TODAY: >-
+      The interstitial offers "Details -> visit this unsafe site", and switching to Standard
+      protection also clears it. Either lets A0 proceed now. That judgement is sound rather than
+      reckless BECAUSE compromise was ruled out first, in writing, before the bypass was suggested
+      - deploy provenance, no foreign hosts, 0 secret-scanning alerts, no user-content hosting, no
+      open redirect, audit chain intact.
     what: >-
       Reported by Steve from his own browser on 2026-08-29 (~16:00 local) at
       `relaystandby.com/vault/new`. Chrome's interstitial cites Google Safe Browsing and the phrase
@@ -4388,16 +4431,20 @@ deferred:
       typically resolved in days rather than weeks, but the clock does not start until it is asked.
       Cross-check, no login needed:
       https://transparencyreport.google.com/safe-browsing/search?url=relaystandby.com
-    why_this_reorders_everything_again: >-
-      A0 cannot proceed - Steve met this interstitial trying to reach `/vault/new` to do it. The
-      demand lane cannot fire: an op-ed driving readers to a site Chrome calls dangerous is worse
-      than not publishing. G1's instrument is moot. The beta cohort cannot be invited. Every item
-      in ROADMAP §2.5 P0-P3 is downstream of this being lifted.
+    what_it_actually_blocks_corrected: >-
+      A0, and A0 alone - and only until Steve clicks through the interstitial or switches to
+      Standard protection. ⚠️ The first version of this field claimed "the demand lane cannot
+      fire: an op-ed driving readers to a site Chrome calls dangerous is worse than not
+      publishing", and that is FALSE: `/caregivers`, the landing page and signup all load
+      normally, so the demand lane is unaffected. The cohort is unaffected. G1's instrument is
+      unaffected. Left visible rather than deleted, because an incident record that quietly loses
+      its own overstatements teaches nothing.
     ends_when: >-
-      Search Console reports no security issue, a review has been requested and returned clean, and
-      the interstitial is gone from a real browser - checked by loading the site, not by reading a
-      dashboard. If the cause turns out to be content we control, the fix ships first and the
-      review is requested after.
+      `https://relaystandby.com/vault/new` loads in a real Chrome with Enhanced protection ON and
+      no interstitial - checked by LOADING IT, not by reading a dashboard, because all three
+      dashboards already say there is nothing wrong. Getting there means a false-positive report
+      submitted and accepted, and probably some domain reputation accruing. If Google's response
+      names content we control, that ships first and the report is re-sent after.
 
   - id: the-reminder-ladder-has-never-fired                   # ROADMAP B15.1, the ladder half
     owner: claude                         # the walk; steve decides whether to check in
