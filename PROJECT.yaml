@@ -4332,6 +4332,73 @@ deferred:
       Closed. If another property in this repo generates key material with `fc.string()`, it needs
       the same byte-level filter — this was the only one (`grep -rn "a !== b" lib/ --include=*.test.ts`).
 
+  - id: google-safe-browsing-flags-the-site-as-phishing       # INCIDENT, 2026-08-29
+    owner: steve                          # only he can reach Search Console and request a review
+    opened: 2026-08-29
+    severity: >-
+      🔴 HIGHEST OPEN ITEM IN THIS FILE. Every Chrome, Firefox, Safari and Edge user meets a
+      full-page red interstitial - "Dangerous site ... recently found phishing" - instead of the
+      product. Nobody can sign up, sign in, reach the demo, or read /terms. This outranks A0, the
+      monitoring collapse and every gate: the site is, in effect, unreachable to ordinary users
+      while it stands, and no amount of custodial correctness is visible from behind it.
+    what: >-
+      Reported by Steve from his own browser on 2026-08-29 (~16:00 local) at
+      `relaystandby.com/vault/new`. Chrome's interstitial cites Google Safe Browsing and the phrase
+      "recently found phishing on the site you tried visiting".
+    the_origin_is_HEALTHY_and_that_is_the_first_thing_to_understand: >-
+      Safe Browsing is a CLIENT-SIDE blocklist. The server is unaffected and nothing is wrong with
+      the deployment. Measured 2026-08-29: `/`, `/caregivers`, `/auth/signin`, `/auth/signup`,
+      `/demo`, `/terms`, `/privacy` all return 200 and `/vault/new` returns its usual 307. So this
+      is a REPUTATION verdict to be appealed, not an outage to be repaired - and no redeploy,
+      rollback or code change lifts it.
+    compromise_was_checked_first_and_no_indicator_was_found: >-
+      In this order, because "normally safe sites are sometimes compromised" is the alternative
+      hypothesis and it changes everything if true.
+      (1) DEPLOY PROVENANCE - every production deploy in the window is one of this session's own
+      merge commits (252ecd7, 38ec94f, f960c3e, d45a1eb, b236003, fece3a5), all authored by Steve
+      via GitHub, none manual.
+      (2) FOREIGN HOSTS - the live landing HTML references exactly one host, relaystandby.com. No
+      injected script, no third-party origin.
+      (3) The landing page carries NO form and NO password input.
+      (4) SECRET SCANNING - enabled the same day, 0 alerts on a repo public since June.
+      (5) USER-CONTENT HOSTING - none. `/api/import` is authenticated and serves nothing back; the
+      only two `dangerouslySetInnerHTML` sites render a server-generated TOTP QR SVG behind auth.
+      (6) OPEN REDIRECT - none found echoing a URL parameter into a Location header.
+      (7) The hash-chained audit log verifies intact (`npm run incident:evidence`, same day).
+    the_likely_cause_stated_as_a_hypothesis_not_a_finding: >-
+      ⚠️ NOT CONFIRMED - Search Console is the only authoritative source and it has not been read.
+      The profile is the classic false-positive one for this product category: a domain **22 days
+      old** (registered 2026-08-08), no traffic reputation, presenting credential-entry UI, whose
+      entire purpose is to hold other services' passwords. Password managers and vaults are
+      routinely misclassified for exactly this shape.
+      ⚠️ One candidate was investigated and DOES NOT hold: `lib/seed/demo-data.ts` seeds ~30 real
+      financial and government brands with real URLs (Chase, Bank of America, PayPal, American
+      Express, Coinbase, IRS, Social Security, 1Password). That WOULD be textbook classifier bait -
+      a non-brand domain showing many financial institutions beside credential fields - but the
+      public `/demo` HTML contains none of those strings, and `src/app/demo/page.tsx` is 350 lines
+      with no brand content. `robots.txt` does allow `/demo`. Worth re-checking against whatever
+      sample URL Search Console names, because a JS-rendering crawler sees more than a fetch does.
+    what_only_steve_can_do: >-
+      Google Search Console is the authoritative diagnosis AND the only route to a review.
+      (1) https://search.google.com/search-console - if `relaystandby.com` is not already a
+      property, add it (DNS TXT via Cloudflare; Claude can prepare the record).
+      (2) Security & Manual Actions -> Security Issues. This names the exact classification and
+      gives SAMPLE URLS, which is the thing every other investigation here is guessing at.
+      (3) Request Review, once the cause is understood or fixed. Reviews of a false positive are
+      typically resolved in days rather than weeks, but the clock does not start until it is asked.
+      Cross-check, no login needed:
+      https://transparencyreport.google.com/safe-browsing/search?url=relaystandby.com
+    why_this_reorders_everything_again: >-
+      A0 cannot proceed - Steve met this interstitial trying to reach `/vault/new` to do it. The
+      demand lane cannot fire: an op-ed driving readers to a site Chrome calls dangerous is worse
+      than not publishing. G1's instrument is moot. The beta cohort cannot be invited. Every item
+      in ROADMAP §2.5 P0-P3 is downstream of this being lifted.
+    ends_when: >-
+      Search Console reports no security issue, a review has been requested and returned clean, and
+      the interstitial is gone from a real browser - checked by loading the site, not by reading a
+      dashboard. If the cause turns out to be content we control, the fix ships first and the
+      review is requested after.
+
   - id: the-reminder-ladder-has-never-fired                   # ROADMAP B15.1, the ladder half
     owner: claude                         # the walk; steve decides whether to check in
     opened: 2026-08-29
