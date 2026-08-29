@@ -1589,6 +1589,24 @@ ratified:
       days does not change that argument, and the argument is why this entry exists rather than
       the date quietly moving."
     revisit: 2026-08-23
+    third_deferral_recorded_2026_08_29: >-
+      A3.7. The 2026-08-23 revisit LAPSED, unremarked, and is recorded six days late rather than
+      moved. Measured 2026-08-29, not recalled: `.relay-cohort.json` is still on disk with its
+      2026-08-18 18:17 mtime and is still UNTRACKED (`git log -- .relay-cohort.json` is empty);
+      `.relay-cohort-codes.json` does not exist, so `invite:cohort --commit` has never run and no
+      invitation has ever been issued; `npm run verify:dogfood` still reports NOT READY with the
+      same five pieces missing. Phase 0 claim conversion is N = 0, where it has been since
+      2026-08-12.
+      ⚠️ THE PATTERN, WHICH IS NOW THE POINT. This is the third deferral of the same item and the
+      first one nobody made — the first two were decisions with dates, this one is a date that
+      passed. A deferral that is recorded is a decision; a revisit that lapses is the thing the
+      register exists to stop, and it lapsed anyway because nothing FIRES on a `revisit:` field.
+      That mechanism gap is A0.dm/E4.4 and it is not fixed, so the next date will lapse the same
+      way unless it is made to ring.
+      ⚠️ AND THE BLOCKER IS NOT THE DATE. `invite:cohort` refuses an empty vault BY DESIGN, so
+      this cannot move until A0 (the owner's vault) is done — which is Steve's, is ~20 minutes,
+      and is Sitting A. Deferring it again without doing A0 changes nothing; that is why no new
+      `revisit:` is set here. The honest next state is Sitting A, not a fourth date.
 
 # Per-journey build state — THE one authoritative record, added 2026-08-13.
 #
@@ -4082,6 +4100,62 @@ deferred:
       Steve mints a restricted read-only key (Webhook Endpoints: read, Billing Portal: read — and
       NEVER the secret key, on a shared account), it is set where the check runs, and the check is
       scheduled. Until then this is `live-proven` as an instrument and `built` as a guard.
+
+  - id: two-debts-carried-five-sprints                        # ROADMAP D27
+    owner: claude
+    opened: 2026-08-29
+    closed:
+      date: 2026-08-29
+      what_shipped: >-
+        Both filed, and both MEASURED rather than filed on the strength of the sentence that
+        raised them. `docs/sprint-reports/2026-08-15-sprint-4-telemetry.md` listed them in an
+        "accepted" table and nothing carried them forward, so they were accepted in a document
+        nobody re-reads - which is how a debt stops being a debt without being paid.
+    debt_1_email_send_attempts_retention: >-
+      ACCEPTED, with the number. The worry was "one row per outbound message, forever". Measured
+      read-only 2026-08-29 under `relay_ro`: **4 rows total**, oldest 2026-08-16, newest
+      2026-08-19 - **nothing in the ten days since** - which is 0.30 rows/day and projects to
+      ~108 rows/year. Retention is not a problem at this volume and would not be at a hundred
+      times it. The revisit trigger is concrete rather than a feeling: if outbound volume ever
+      reaches a point where this table is measured in six figures, it becomes a retention
+      question. Nothing else changes it.
+      ✅ AND THE CONSUMER IS CORRECTLY CLOCK-INDEPENDENT, which was worth checking while here.
+      `/api/health/delivery-webhook` reads this table and returned `healthy: true` on ten days of
+      silence - deliberately: `ripeSends: 4, ripeSendsHeard: 4`, and its own `meaning` says "a
+      long age here is normal - this product sends rarely by design, and the judgement above is
+      made against sends, not against the clock." A monitor over a rarely-written table that
+      judged by age would page every quiet week and be muted within a month.
+    debt_2_scrollable_regions_raw_css: >-
+      FILED, and a LIVE INSTANCE was found in the filing - which is the argument for filing
+      rather than accepting. `lib/ops/scrollable-regions.test.ts` reads utility classes in
+      markup, and states its own blind spot: "scrolling introduced from CSS rather than a utility
+      class, and vertical regions (`overflow-y-auto`)".
+      The vertical half is EMPTY - `grep -rn "overflow-y-auto" src/ --include=*.tsx` returns 0, so
+      that part of the debt is theoretical today.
+      The raw-CSS half is NOT. `src/app/(owner)/_components/SidebarNav.tsx:124` sets
+      `overflowX: 'var(--nav-overflow)'`, and `globals.css:161` resolves that variable to `auto`
+      below 720px. So the owner navigation IS a horizontally-scrolling region on mobile, and the
+      check cannot see it.
+      ⚠️ IT IS NOT A DEFECT, AND THE REASON IS AN ARGUMENT RATHER THAN AN ACCIDENT. The element
+      is a `<nav>` with `aria-label="Owner navigation"`, so it is named and is already a landmark
+      (no `role="region"` needed). It carries no `tabIndex={0}` - and does not need one, because
+      every child is a `<Link>`: tabbing through them scrolls each into view, so a keyboard user
+      reaches every destination. That is exactly the exemption the test file names - "whose
+      keyboard story is usually carried by the focusable content inside them" - and it is a
+      judgement a markup-reading check cannot make.
+      So the honest state is: the gap is real, one instance exists, that instance is fine, and
+      the reason it is fine is not checkable by the cheap guard. `scripts/a11y-audit.mjs` on the
+      rendered tree is the thing that would catch a future instance whose children are NOT
+      focusable.
+    why_this_entry_exists_at_all: >-
+      Neither debt is serious, and that is the point worth keeping. They sat in a sprint report's
+      "accepted" table for five sprints, where "accepted" meant "written down once". Filing them
+      cost one read-only query and one grep, and the grep found something the sentence that
+      raised the debt did not know about.
+    ends_when: >-
+      Closed. Debt 1 is accepted with a measured trigger; debt 2 is recorded with its live
+      instance and the reason that instance passes. Neither owes further work unless outbound
+      volume changes or a scrolling region appears whose children are not focusable.
 
   - id: date-guards-has-never-been-red                        # ROADMAP B13, residue
     owner: steve                          # the blocker is a hook in ~/.claude, not a file in this repo

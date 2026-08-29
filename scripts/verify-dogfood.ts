@@ -2,7 +2,13 @@
  * scripts/verify-dogfood.ts — can the owner's vault host a cohort invitation?
  * Read-only. Primary region.
  *
- *   npx tsx --env-file=.env.local scripts/verify-dogfood.ts    (npm run verify:dogfood)
+ *   npm run verify:dogfood       (runs as `relay_ro` via --env-file=.env.ro)
+ *
+ * ⚠️ This said `--env-file=.env.local` until 2026-08-29. `package.json` runs it on
+ * `.env.ro` (`relay_ro`). A stale warning costs more than a stale claim because it
+ * is obeyed — this one sent an operator for the credential that can WRITE in order
+ * to run a read-only check. It was NOT on the ROADMAP H list; a grep for
+ * `env-file=.env.local` across scripts/ found it.
  *
  * WHY THIS EXISTS. ROADMAP.md sprint 1 exists because production was measured on
  * 2026-08-20 and held one owner account, zero vault items, zero recipients, zero

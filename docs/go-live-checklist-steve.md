@@ -321,6 +321,34 @@ entries as readers arrive.
 | 10.2 🟠 | **Outlook sender support** | Resend ticket, then the Microsoft form. Ready-to-send; ⚠️ the evidence must not be touched. `docs/outlook-sender-support-submission.md` |
 | 10.3 🔵 | **DMARC step-up** (`p=none`→`quarantine`, `~all`→`-all`) | **Only after** reports accumulate post-10.1. Doing it first blinds you |
 
+> ⚠️ **RE-MEASURED 2026-08-29 (C1.4). Two things above are wrong, and the second one ends this
+> lane until a DNS record is fixed.**
+>
+> **1. Nothing is in Trash, and no rescue deadline is running.** All **10** aggregate reports for
+> `relaystandby.com` are retained and carry the `DMARC` label — none carries `TRASH`
+> (`from:(dmarcreport@microsoft.com OR noreply-dmarc-support@google.com) in:trash` returns
+> nothing at all, across every domain). The 08-11..13 batch was rescued on 2026-08-15, and the
+> 08-14..17 reports that a superseded note recorded as "in Trash now, expiring ~2026-09-14..16"
+> are labelled and safe. **There is no two-minute rescue left to do and no clock counting down.**
+>
+> **2. 🔴 THE FEED IS DEAD. `_dmarc.relaystandby.com` no longer carries `rua=`.** Found 2026-08-27
+> and re-measured 2026-08-29: the record is exactly `v=DMARC1; p=none`. No aggregate report can
+> arrive from any receiver. The mailbox evidence agrees independently and is the more convincing
+> half — **the newest report of the ten is 2026-08-17**, and nothing has arrived in the twelve days
+> since, on a domain that had been receiving them daily from both Google and Microsoft.
+>
+> So the order of work in this lane is inverted from what is written above: **fix the DNS record
+> first (C1.0)**. A Gmail filter protects a stream that has stopped, and the step-up to
+> `quarantine`/`-all` would be taken blind no matter how long anyone waits for data.
+>
+> Re-derive rather than trust either claim:
+> ```bash
+> node -e 'fetch("https://cloudflare-dns.com/dns-query?name=_dmarc.relaystandby.com&type=TXT",{headers:{accept:"application/dns-json"}}).then(r=>r.json()).then(d=>console.log((d.Answer||[]).map(x=>x.data).join(" ")))'
+> # 2026-08-29: "v=DMARC1; p=none"   <- no rua=
+> ```
+> Gmail (read-only): `from:(dmarcreport@microsoft.com OR noreply-dmarc-support@google.com) to:dmarc@relaystandby.com`
+> — count them, and read the newest date. That date is the health of the feed.
+
 ---
 
 # 11 · 🅿️ Deliberately parked — listed so they are not rediscovered as new

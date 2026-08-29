@@ -68,6 +68,20 @@
  * NOT IN CI: CI has no AWS credentials, the same reason verify:schema,
  * verify:roles and verify:live are not.
  *
+ * ✅ CHECKED 2026-08-29 and STILL TRUE — recorded because the ROADMAP H list
+ * flagged this header alongside verify-kms.ts's as stale, and only that one was.
+ * This sentence never listed verify:kms, so it did not go stale when
+ * `.github/workflows/kms-wall.yml` put that script on a daily schedule. Noting
+ * the non-finding, because "it was on a list of suspected staleness" is exactly
+ * how a correct line gets edited into a wrong one.
+ *
+ * ⚠️ WHAT DID CHANGE is that the pattern now exists. kms-wall.yml reaches AWS
+ * from a runner with NO STORED SECRET, via GitHub OIDC into `relay-kms-wall-ci`.
+ * An equivalent role scoped to the IAM reads in `CONTRACTS` would put this wall
+ * on a schedule too — which is the whole distance between `verify:iam` being a
+ * check that runs and a check somebody remembers to run. Recorded rather than
+ * built: a new IAM role is an infrastructure change and Steve's call.
+ *
  * Feature: relay-h0-mvp
  */
 

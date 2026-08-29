@@ -2,7 +2,15 @@
  * scripts/flight-snapshot.ts — the G1 flight's daily read, and the pre-flight
  * line that had no command.
  *
- *   npx tsx --env-file=.env.local scripts/flight-snapshot.ts   (npm run flight:snapshot)
+ *   npm run flight:snapshot      (runs as `relay_ro` via --env-file=.env.ro)
+ *
+ * ⚠️ This line read `--env-file=.env.local` until 2026-08-29 (H stale-description
+ * list) while `package.json` has run it on `.env.ro` since 2026-08-21. That is the
+ * expensive direction to be stale in: CLAUDE.md's own lesson is that **a stale
+ * warning costs more than a stale claim, because it is obeyed** — this one told an
+ * operator to reach for the credential that can WRITE in order to run a read-only
+ * check. Derive the truth rather than trusting any header:
+ *   node -e "const p=require('./package.json');console.log(p.scripts['flight:snapshot'])"
  *
  * WHY THIS EXISTS. `docs/g1-sitting-sheet.md` lists three things to run before
  * the card comes out. Two were commands. The third — "live `caregiver_leads`
@@ -77,7 +85,7 @@ async function connect(): Promise<Client> {
   if (!endpoint) {
     throw new Error(
       `${useSecondary ? 'DSQL_SECONDARY_ENDPOINT' : 'DSQL_PRIMARY_ENDPOINT'} is not set — ` +
-        `run with --env-file=.env.local`,
+        `run \`npm run flight:snapshot\`, which supplies --env-file=.env.ro`,
     );
   }
 

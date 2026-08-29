@@ -1,4 +1,18 @@
 ============================================================
+!! HISTORICAL H0 ARTEFACT - DO NOT PASTE THIS ANYWHERE.
+!! IT SELLS A CAPABILITY RELAY DOES NOT HAVE.
+============================================================
+
+Estate and inheritance were withdrawn from Relay PERMANENTLY on 2026-08-14 (PROJECT.yaml -> gates.g2-counsel-opinion.declined). Relay offers no estate or inheritance capability and confers no legal authority on anyone. The `estate` trigger type survives in the domain enum for compatibility only and is excluded from USER_SELECTABLE_TRIGGER_TYPES.
+
+This file is named PASTE-READY and contains five estate mentions, which is
+the whole problem: its name is an instruction. The Devpost submission it was
+written for is closed (Relay won "Most Impactful", 2026-08-05).
+
+So the copy below is HISTORICAL and must not be reused, quoted, or pasted anywhere. Bannered rather than rewritten because these are records of what was published during H0, and editing them would destroy the record without changing anything a reader has already seen. Bannered 2026-08-29 (B39).
+============================================================
+
+============================================================
 RELAY - DEVPOST SUBMISSION (PASTE-READY)
 ============================================================
 Hackathon: H0 - Hack the Zero Stack with Vercel and AWS Databases
