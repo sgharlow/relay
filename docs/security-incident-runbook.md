@@ -56,6 +56,37 @@ happened, and its value in an investigation is exactly its integrity.
   `scheduler_runs`, and `email_send_attempts`. Vercel log retention is finite — pull first, reason
   second.
 
+### The command (B24, 2026-08-29)
+
+Every bullet above was a sentence until 2026-08-29, and nothing scripted any of it. At 3am a
+runbook step with no command is a step that gets approximated.
+
+```bash
+npm run incident:evidence                    # every owner — chain check only, stamped
+npm run incident:evidence -- <email>         # one owner — chain + telemetry bundle
+npm run incident:evidence -- <email> --since 24h
+```
+
+Read-only, under `.env.ro` (`relay_ro`: SELECT everywhere, no DML, no DDL, **no KMS grant at
+all**). It cannot repair a chain, and there is no repair path here by design. Exit **0** every
+chain verified · **1** a chain is BROKEN (a finding, not a script failure) · **2** could not look.
+
+It prints **counts and windows, never `detail` values** — an evidence bundle that quotes vault
+data is a vault export with an official-sounding filename.
+
+> 🔴 **Run it FIRST, before anything else touches anything.** The bullet above says a break found
+> at the start is evidence and a break found later "is a question about what you did". The script
+> stamps `verified_at` on every run, and that timestamp is the artefact — the same output produced
+> an hour into an investigation is worth strictly less, and nothing about the output would say so.
+
+> ⚠️ **It does NOT pull the Vercel logs, and it says so on every run.** Those need a Vercel token
+> rather than a database credential, and theirs is the only part of the bundle with a clock on it
+> (~24h retention). That half stays human: `vercel logs relay --prod`, or the dashboard's Logs
+> tab. A clean report from this script does not mean the bundle is complete.
+
+> **It also doubles as the pre-release chain check**, which is why the no-argument form sweeps
+> every owner rather than demanding one.
+
 ## Step 1 — containment
 
 **Do these in the order given.** Each one is cheap and reversible; the order is about not locking

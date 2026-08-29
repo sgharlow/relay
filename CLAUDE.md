@@ -187,6 +187,25 @@ npm run verify:csp     # what has the CSP actually caught? Reads `csp_reports` (
                        # Wired as an npm script 2026-08-29 (B21.1); it existed and was
                        # reachable only by typing the path, which is how D9 came to be
                        # closed on a sink nothing read.
+npm run incident:evidence # Step 0 of the security incident runbook, as a command
+                       # instead of a paragraph (B24). Verifies the hash-chained audit
+                       # log per owner and STAMPS the result, then — with an email —
+                       # captures scheduler_runs, email_send_attempts and the audit
+                       # actions in the window. Read-only, `.env.ro`.
+                       # 🔴 Run it FIRST. The runbook's own rule: a chain break found
+                       # at the start is EVIDENCE; a break found later "is a question
+                       # about what you did". The `verified_at` stamp is the artefact.
+                       # Counts and windows only, never `detail` values — an evidence
+                       # bundle that quotes vault data is a vault export with an
+                       # official-sounding filename.
+                       # ⚠️ It cannot pull Vercel runtime logs (they need a Vercel
+                       # token, not a DB credential) and that is the only part of the
+                       # bundle with a clock on it — ~24h retention. It says so on
+                       # every run rather than letting a clean report imply the bundle
+                       # is complete.
+                       # 0 = all chains verified · 1 = a chain is BROKEN, which is a
+                       # finding not a failure · 2 = could not look.
+                       # Doubles as the pre-release chain check.
 npm run beta:status    # where is an account in the journey, right now? Read-only, `.env.ro`.
                        # Prints states, counts and dates — never a code, a token or anything
                        # from a vault. `-- <email>` for one account.
