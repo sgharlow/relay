@@ -50,7 +50,38 @@ name: Delivery webhook monitor
 on:
   schedule:
     - cron: '17 8 * * *' # daily, off the hour so it does not collide with everything else
-  workflow_dispatch: {} # so the alarm can be proven to work on demand
+  # 🔴 THIS SAID `workflow_dispatch: {} # so the alarm can be proven to work on
+  # demand` UNTIL 2026-08-28 AND THE COMMENT WAS FALSE. The probe step hard-codes
+  # HEALTH_URL, so a manual run could only ever hit production and could only
+  # ever pass. 14 runs, 0 red — this alarm has never been seen to work, and its
+  # diagnosis block (the one `monitor-diagnostics.test.ts` guards) has never once
+  # been printed by a real run.
+  #
+  # `health_url` exists so the alarm can be pointed somewhere dead. A host under
+  # `.invalid` (RFC 2606) never resolves, so the probe fails without sending a
+  # single packet to anybody else's server.
+  #
+  # ✅ PROVEN RED ON DEMAND 2026-08-29, run 33237980971 — the first red in this
+  # workflow's 14-run life. Both attempts returned HTTP 000, the 30s retry
+  # happened, `::error::` was emitted, and the diagnosis block printed its four
+  # conditions for the first time ever.
+  #
+  # 🔴 What it does NOT cover, and here the gap is the interesting half. HTTP 000
+  # is a request that never completed, so the `jq -r '.meaning'` extraction never
+  # ran — and `meaning` is the whole point of this monitor. The condition this
+  # exists to catch is `refusing`: a revoked RESEND_API_KEY, where the endpoint
+  # answers perfectly well and says the provider is rejecting every send. That
+  # path returns a 200-shaped body with an unhealthy verdict, which is NOT what
+  # a dead host produces. `lib/ops/monitor-diagnostics.test.ts` derives the
+  # condition names from webhook-health.ts and fails if this text stops naming
+  # them, so the diagnosis cannot silently fall behind — but the extraction
+  # itself is still proven only by test, never by a run.
+  workflow_dispatch:
+    inputs:
+      health_url:
+        description: 'Health endpoint to probe. Point it somewhere dead to prove the alarm fires.'
+        required: false
+        default: 'https://relaystandby.com/api/health/delivery-webhook'
 
 concurrency:
   group: delivery-webhook-monitor
@@ -63,7 +94,10 @@ jobs:
     steps:
       - name: Probe /api/health/delivery-webhook
         env:
-          HEALTH_URL: https://relaystandby.com/api/health/delivery-webhook
+          # `inputs.health_url` is empty on a scheduled run, so the fallback is
+          # what the schedule uses and the dispatch default is only there to make
+          # the manual form self-explanatory. Scheduled behaviour is unchanged.
+          HEALTH_URL: ${{ inputs.health_url || 'https://relaystandby.com/api/health/delivery-webhook' }}
         run: |
           set -uo pipefail
 

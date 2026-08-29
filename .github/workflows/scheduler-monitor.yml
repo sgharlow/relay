@@ -35,7 +35,32 @@ on:
     # so this samples well inside the window and an outage is caught long before
     # a real trigger could be missed.
     - cron: '*/30 * * * *'
-  workflow_dispatch: {} # so the alarm can be proven to work on demand
+  # 🔴 THIS SAID `workflow_dispatch: {} # so the alarm can be proven to work on
+  # demand` UNTIL 2026-08-28 AND THE COMMENT WAS FALSE, in exactly the way the
+  # canary's was. The probe step hard-codes HEALTH_URL, so a manual run could
+  # only ever hit production and could only ever pass. In 485 runs this workflow
+  # has been red once (2026-08-18, a real staleness) — which is one more than
+  # the canary, and still not a red anybody asked for.
+  #
+  # `health_url` exists so the alarm can be pointed somewhere dead. A host under
+  # `.invalid` (RFC 2606) never resolves, so the probe fails without sending a
+  # single packet to anybody else's server.
+  #
+  # ✅ PROVEN RED ON DEMAND 2026-08-29, run 33237979699. Both attempts returned
+  # HTTP 000, the 30s retry happened rather than being skipped, `::error::` was
+  # emitted with the checklist, exit 1.
+  #
+  # What it does NOT cover: HTTP 000 is a request that never completed, so the
+  # `payload`/`head -c 400` branch never ran. A monitor that reaches the endpoint
+  # and reads an UNHEALTHY body is a different path, and the only way to exercise
+  # it for real is an actually-stale scheduler. Named because the canary's header
+  # makes the same distinction, for the same reason.
+  workflow_dispatch:
+    inputs:
+      health_url:
+        description: 'Health endpoint to probe. Point it somewhere dead to prove the alarm fires.'
+        required: false
+        default: 'https://relaystandby.com/api/health/scheduler'
 
 concurrency:
   group: scheduler-monitor
@@ -48,7 +73,10 @@ jobs:
     steps:
       - name: Probe /api/health/scheduler
         env:
-          HEALTH_URL: https://relaystandby.com/api/health/scheduler
+          # `inputs.health_url` is empty on a scheduled run, so the fallback is
+          # what the schedule uses and the dispatch default is only there to make
+          # the manual form self-explanatory. Scheduled behaviour is unchanged.
+          HEALTH_URL: ${{ inputs.health_url || 'https://relaystandby.com/api/health/scheduler' }}
         run: |
           set -uo pipefail
 
