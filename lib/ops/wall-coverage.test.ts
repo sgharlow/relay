@@ -55,6 +55,18 @@ function usersWatchedByVerifyRoles(): string[] {
   return [...new Set(found)].sort();
 }
 
+/**
+ * The IAM principals that also have a database identity — i.e. everything the
+ * two walls can meaningfully be compared across.
+ *
+ * A ROLE is excluded by KIND, not by name: `verify:roles` reads
+ * `sys.iam_pg_role_mappings`, and a principal that never connects to the
+ * database has no row there to read.
+ */
+function dbPrincipals(): string[] {
+  return CONTRACTS.filter((c) => c.kind === 'user').map((c) => c.user).sort();
+}
+
 describe('the database wall and the IAM wall watch the same identities', () => {
   it('finds a contract list in verify-roles.ts at all', () => {
     // If the regex stops matching — the script is renamed, the field is renamed,
@@ -65,20 +77,41 @@ describe('the database wall and the IAM wall watch the same identities', () => {
   });
 
   it('every identity verify:roles watches is also audited by verify:iam', () => {
-    const iam = CONTRACTS.map((c) => c.user).sort();
+    const iam = CONTRACTS.map((c) => c.user).sort();  // roles included — a DB identity may never be missing from IAM
     const missing = usersWatchedByVerifyRoles().filter((u) => !iam.includes(u));
 
     expect(missing, `add a PrincipalContract to lib/ops/iam-wall.ts CONTRACTS for: ${missing.join(', ')}`).toEqual([]);
   });
 
-  it('every identity verify:iam audits is also watched by verify:roles', () => {
+  it('every DATABASE identity verify:iam audits is also watched by verify:roles', () => {
     const roles = usersWatchedByVerifyRoles();
-    const missing = CONTRACTS.map((c) => c.user).filter((u) => !roles.includes(u));
+    const missing = dbPrincipals().filter((u) => !roles.includes(u));
 
     expect(missing, `add a RoleContract to scripts/verify-roles.ts CONTRACT for: ${missing.join(', ')}`).toEqual([]);
   });
 
-  it('the two lists are the same set, not merely overlapping', () => {
-    expect(CONTRACTS.map((c) => c.user).sort()).toEqual(usersWatchedByVerifyRoles());
+  it('the ONLY principals excluded from that comparison are IAM roles, and they are named', () => {
+    /*
+      🆕 2026-08-29 (B16.4). `relay-kms-wall-ci` is an IAM ROLE that reads KMS
+      metadata from GitHub Actions. It never connects to the database, so it has
+      no `sys.iam_pg_role_mappings` row and cannot have a verify:roles contract
+      — demanding one would mean inventing a database identity to satisfy a test.
+
+      The exclusion is scoped to `kind === 'role'` rather than to a name list, and
+      it is asserted rather than assumed: silently narrowing a set-equality guard
+      is precisely how the hole this file was written for gets re-opened. Adding a
+      database USER still fails the tests above; only a role is exempt, and this
+      case names every one that is.
+    */
+    const excluded = CONTRACTS.filter((c) => !dbPrincipals().includes(c.user));
+    expect(excluded.every((c) => c.kind === 'role')).toBe(true);
+    expect(excluded.map((c) => c.user)).toEqual(['relay-kms-wall-ci']);
+  });
+
+  it('the two lists are the same set of DATABASE identities, not merely overlapping', () => {
+    // Set equality, not "each is a subset of the other by accident". Scoped to
+    // users since 2026-08-29 — see the exclusion case above, which asserts that
+    // the only thing this scoping drops is an IAM role with no database half.
+    expect(dbPrincipals()).toEqual(usersWatchedByVerifyRoles());
   });
 });

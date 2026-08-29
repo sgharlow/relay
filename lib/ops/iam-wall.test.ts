@@ -22,7 +22,9 @@ import { describe, it, expect } from 'vitest';
 
 import {
   readWall,
+  readTrust,
   CONTRACTS,
+  KMS_WALL_CI_CONTRACT,
   RUNTIME_CONTRACT,
   LAPTOP_CONTRACT,
   READONLY_CONTRACT,
@@ -94,11 +96,23 @@ const RO_LIVE: NamedPolicy = {
   },
 };
 
-/** RO_LIVE with one extra statement — the planted violation, built the same way each time. */
+/**
+ * RO_LIVE with one extra statement — the planted violation, built the same way each time.
+ *
+ * ⚠️ The planted statement carries a REAL Resource ARN (2026-08-29). It used to
+ * carry none, which IAM rejects on an identity policy — so every planted
+ * violation was a shape the account cannot produce, and the resource-scope rule
+ * added in B16.3 flagged all of them. A fixture that cannot exist tests the
+ * checker against fiction; worse, it would have hidden the new rule behind
+ * failures that looked like the rule being wrong.
+ */
 function roPlus(sid: string, action: string | string[]): NamedPolicy[] {
   return [
     RO_LIVE,
-    { source: 'managed relay-ro-policy v2', document: { Statement: [{ Sid: sid, Effect: 'Allow', Action: action }] } },
+    {
+      source: 'managed relay-ro-policy v2',
+      document: { Statement: [{ Sid: sid, Effect: 'Allow', Action: action, Resource: 'arn:aws:kms:us-east-1:461293170793:key/b3af288c-0e0f-46ec-bccd-9b53776ffbb8' }] },
+    },
   ];
 }
 
@@ -125,7 +139,7 @@ describe('the IAM half of the least-privilege wall — relay-runtime', () => {
   */
   it('catches a service wildcard, which confers admin without naming it', () => {
     const v = readWall(RUNTIME_CONTRACT, [
-      { source: 'managed x', document: { Statement: [{ Effect: 'Allow', Action: 'dsql:*' }] } },
+      { source: 'managed x', document: { Statement: [{ Effect: 'Allow', Action: 'dsql:*', Resource: 'arn:aws:dsql:us-east-1:461293170793:cluster/frt34buqso4inluojgnj6horuy' }] } },
     ]);
     expect(v.ok).toBe(false);
     expect(v.violations[0]).toContain('dsql:*');
@@ -133,7 +147,7 @@ describe('the IAM half of the least-privilege wall — relay-runtime', () => {
 
   it('catches a bare star', () => {
     const v = readWall(RUNTIME_CONTRACT, [
-      { source: 'managed x', document: { Statement: [{ Effect: 'Allow', Action: ['*'] }] } },
+      { source: 'managed x', document: { Statement: [{ Effect: 'Allow', Action: ['*'], Resource: 'arn:aws:dsql:us-east-1:461293170793:cluster/frt34buqso4inluojgnj6horuy' }] } },
     ]);
     expect(v.ok).toBe(false);
   });
@@ -143,7 +157,7 @@ describe('the IAM half of the least-privilege wall — relay-runtime', () => {
       V2_LIVE,
       {
         source: 'inline dsql-extra',
-        document: { Statement: [{ Sid: 'Oops', Effect: 'Allow', Action: 'dsql:DbConnectAdmin' }] },
+        document: { Statement: [{ Sid: 'Oops', Effect: 'Allow', Action: 'dsql:DbConnectAdmin', Resource: 'arn:aws:dsql:us-east-1:461293170793:cluster/frt34buqso4inluojgnj6horuy' }] },
       },
     ]);
     expect(v.ok).toBe(false);
@@ -152,7 +166,7 @@ describe('the IAM half of the least-privilege wall — relay-runtime', () => {
 
   it('catches NotAction, the way an allow-list check is defeated without naming the action', () => {
     const v = readWall(RUNTIME_CONTRACT, [
-      { source: 'managed x', document: { Statement: [{ Effect: 'Allow', NotAction: 's3:*' }] } },
+      { source: 'managed x', document: { Statement: [{ Effect: 'Allow', NotAction: 's3:*', Resource: 'arn:aws:dsql:us-east-1:461293170793:cluster/frt34buqso4inluojgnj6horuy' }] } },
     ]);
     expect(v.ok).toBe(false);
     expect(v.violations[0]).toMatch(/NotAction/);
@@ -175,12 +189,13 @@ describe('the IAM half of the least-privilege wall — relay-runtime', () => {
     const v = readWall(RUNTIME_CONTRACT, [{ source: 'managed x', document: { Statement: [] } }]);
     expect(v.ok).toBe(false);
     expect(v.reason).toMatch(/broken one/);
-    expect(v.missing).toEqual(['dsql:dbconnect']);
+    // All three, since B16.6: the KMS half is required, not merely unforbidden.
+    expect(v.missing).toEqual(['dsql:dbconnect', 'kms:generatedatakey', 'kms:decrypt']);
   });
 
   it('is case-insensitive, because IAM is', () => {
     const v = readWall(RUNTIME_CONTRACT, [
-      { source: 'managed x', document: { Statement: [{ Effect: 'Allow', Action: 'DSQL:DBCONNECTADMIN' }] } },
+      { source: 'managed x', document: { Statement: [{ Effect: 'Allow', Action: 'DSQL:DBCONNECTADMIN', Resource: 'arn:aws:dsql:us-east-1:461293170793:cluster/frt34buqso4inluojgnj6horuy' }] } },
     ]);
     expect(v.ok).toBe(false);
   });
@@ -239,7 +254,7 @@ describe('the IAM half of the least-privilege wall — relay-ro, whose whole gua
   it('catches KMS arriving on an INLINE policy', () => {
     const v = readWall(READONLY_CONTRACT, [
       RO_LIVE,
-      { source: 'inline ro-extra', document: { Statement: [{ Effect: 'Allow', Action: ['kms:Decrypt'] }] } },
+      { source: 'inline ro-extra', document: { Statement: [{ Effect: 'Allow', Action: ['kms:Decrypt'], Resource: 'arn:aws:dsql:us-east-1:461293170793:cluster/frt34buqso4inluojgnj6horuy' }] } },
     ]);
     expect(v.ok).toBe(false);
     expect(v.violations[0]).toContain('inline ro-extra');
@@ -247,7 +262,7 @@ describe('the IAM half of the least-privilege wall — relay-ro, whose whole gua
 
   it('catches a NotAction that excludes only kms:Decrypt — it still allows the rest of KMS', () => {
     const v = readWall(READONLY_CONTRACT, [
-      { source: 'managed x', document: { Statement: [{ Effect: 'Allow', NotAction: 'kms:Decrypt' }] } },
+      { source: 'managed x', document: { Statement: [{ Effect: 'Allow', NotAction: 'kms:Decrypt', Resource: 'arn:aws:dsql:us-east-1:461293170793:cluster/frt34buqso4inluojgnj6horuy' }] } },
     ]);
     expect(v.ok).toBe(false);
     expect(v.violations.some((x) => x.includes('the whole kms: service'))).toBe(true);
@@ -255,7 +270,7 @@ describe('the IAM half of the least-privilege wall — relay-ro, whose whole gua
 
   it('does NOT report the service on a NotAction that excludes the whole of KMS — but still catches the admin grant it hands over', () => {
     const v = readWall(READONLY_CONTRACT, [
-      { source: 'managed x', document: { Statement: [{ Effect: 'Allow', NotAction: 'kms:*' }] } },
+      { source: 'managed x', document: { Statement: [{ Effect: 'Allow', NotAction: 'kms:*', Resource: 'arn:aws:dsql:us-east-1:461293170793:cluster/frt34buqso4inluojgnj6horuy' }] } },
     ]);
     expect(v.ok).toBe(false);
     expect(v.violations.some((x) => x.includes('kms: service'))).toBe(false);
@@ -291,10 +306,22 @@ describe('the contract is per-principal, which is the point of the change', () =
     expect(asReadOnly.violations.some((x) => x.includes('kms: service'))).toBe(true);
   });
 
-  it('audits all three principals, and names relay-ro among them', () => {
+  it('audits every principal, including the OIDC ROLE that nothing watched until B16.4', () => {
     // The script iterates CONTRACTS and audits nothing else, so an identity
-    // missing from this list is an unwatched wall — the exact hole this closed.
-    expect(CONTRACTS.map((c) => c.user)).toEqual(['relay-runtime', 'relay-dev', 'relay-ro']);
+    // missing from this list is an unwatched wall — the exact hole this closed,
+    // twice now: relay-ro on 2026-08-21 and relay-kms-wall-ci on 2026-08-29.
+    expect(CONTRACTS.map((c) => c.user)).toEqual([
+      'relay-runtime',
+      'relay-dev',
+      'relay-ro',
+      'relay-kms-wall-ci',
+    ]);
+    // A role is reached by satisfying a trust policy, not with a key, so the
+    // kind is what decides which API calls collect it. Getting it wrong audits
+    // the role's permissions against a user that does not exist.
+    expect(CONTRACTS.filter((c) => c.kind === 'role').map((c) => c.user)).toEqual([
+      'relay-kms-wall-ci',
+    ]);
   });
 
   it('every contract asserts both halves — something required and the admin action forbidden', () => {
@@ -317,14 +344,44 @@ describe('the contract is per-principal, which is the point of the change', () =
     // relay-dev holds KMS too. It is not asserted, and the contract says why
     // rather than leaving the omission to look like coverage.
     expect(LAPTOP_CONTRACT.forbidsServices ?? []).toEqual([]);
-    expect(LAPTOP_CONTRACT.notes?.join(' ')).toMatch(/NOT ASSERTED/);
+    // B16.2 (2026-08-29): relay-dev's KMS grant is now REQUIRED, pinned from the
+    // first live read. The note that said it was deliberately unasserted is gone
+    // because the reason it gave — "the ACTION LIST was never written down" — no
+    // longer holds. The role is the only principal that forbids KMS by ACTION.
+    expect(LAPTOP_CONTRACT.requires).toContain('kms:GenerateDataKey');
+    expect(LAPTOP_CONTRACT.requires).toContain('kms:Decrypt');
+    expect(LAPTOP_CONTRACT.notes ?? []).toEqual([]);
   });
 
-  it('passes relay-dev on the shape docs/least-privilege-cutover.md recorded for it', () => {
-    // Verified 2026-08-16: relay-dev → ["dsql:DbConnect"]. The KMS grant it also
-    // holds is not in that record and is not asserted here.
+  it('passes relay-dev on the shape the account actually returned on 2026-08-29', () => {
+    // Was: the shape docs/least-privilege-cutover.md recorded on 2026-08-16,
+    // ["dsql:DbConnect"] alone, with the KMS grant unasserted. B16.1 read the
+    // live policy and B16.2 pinned it, so the fixture is now relay-dev-policy v1
+    // verbatim — a fixture that lags the account is how a green check stops
+    // describing the account.
     const v = readWall(LAPTOP_CONTRACT, [
-      { source: 'managed relay-dev-policy v1', document: { Statement: [{ Effect: 'Allow', Action: ['dsql:DbConnect'] }] } },
+      {
+        source: 'managed relay-dev-policy v1',
+        document: {
+          Statement: [
+            {
+              Sid: 'DsqlConnect',
+              Effect: 'Allow',
+              Action: ['dsql:DbConnect'],
+              Resource: [
+                'arn:aws:dsql:us-east-1:461293170793:cluster/frt34buqso4inluojgnj6horuy',
+                'arn:aws:dsql:us-west-2:461293170793:cluster/fjt34b2el5yoh7pvcm4knbkyvi',
+              ],
+            },
+            {
+              Sid: 'KmsEnvelope',
+              Effect: 'Allow',
+              Action: ['kms:GenerateDataKey', 'kms:Decrypt'],
+              Resource: 'arn:aws:kms:us-east-1:461293170793:key/b3af288c-0e0f-46ec-bccd-9b53776ffbb8',
+            },
+          ],
+        },
+      },
     ]);
     expect(v.ok, v.reason).toBe(true);
   });
@@ -338,13 +395,17 @@ describe('the contract is per-principal, which is the point of the change', () =
       { source: 'managed odd', document: { Statement: [{ Sid: 'NoVerbs' }] } },
     ]);
     expect(v.ok).toBe(false);
+    // No violations is the assertion that matters here. A statement with neither
+    // Action nor NotAction grants nothing, so the B16.3 resource rule must NOT
+    // fire on its missing Resource — it did in the first draft, which is what
+    // this case caught.
     expect(v.violations).toEqual([]);
-    expect(v.missing).toEqual(['dsql:dbconnect']);
+    expect(v.missing).toEqual(['dsql:dbconnect', 'kms:generatedatakey', 'kms:decrypt']);
   });
 
   it('treats a statement with no Effect as Allow, because IAM does', () => {
     const v = readWall(READONLY_CONTRACT, [
-      { source: 'managed x', document: { Statement: [{ Action: ['dsql:DbConnect', 'kms:Decrypt'] }] } },
+      { source: 'managed x', document: { Statement: [{ Action: ['dsql:DbConnect', 'kms:Decrypt'], Resource: 'arn:aws:dsql:us-east-1:461293170793:cluster/frt34buqso4inluojgnj6horuy' }] } },
     ]);
     expect(v.ok).toBe(false);
     expect(v.violations.some((x) => x.includes('kms: service'))).toBe(true);
@@ -352,9 +413,190 @@ describe('the contract is per-principal, which is the point of the change', () =
 
   it('catches the admin grant on relay-dev as well — a laptop superuser is still a superuser', () => {
     const v = readWall(LAPTOP_CONTRACT, [
-      { source: 'managed relay-dev-policy v2', document: { Statement: [{ Effect: 'Allow', Action: ['dsql:DbConnect', 'dsql:DbConnectAdmin'] }] } },
+      { source: 'managed relay-dev-policy v2', document: { Statement: [{ Effect: 'Allow', Action: ['dsql:DbConnect', 'dsql:DbConnectAdmin'], Resource: 'arn:aws:dsql:us-east-1:461293170793:cluster/frt34buqso4inluojgnj6horuy' }] } },
     ]);
     expect(v.ok).toBe(false);
     expect(v.reason).toMatch(/ADMIN token/);
+  });
+});
+
+/* ────────────────────────────────────────────────────────────────────────────
+   B16.3 — RESOURCE SCOPING. The blind spot this file's header described in
+   words and left open, closed on 2026-08-29 once a live read showed every
+   policy in this account names its target ARNs.
+   ──────────────────────────────────────────────────────────────────────────── */
+describe('resource scoping — a grant widened to "*" keeps the same action list', () => {
+  const WIDENED: NamedPolicy = {
+    source: 'managed relay-runtime-policy v3',
+    document: {
+      Statement: [
+        { Sid: 'DsqlConnect', Effect: 'Allow', Action: ['dsql:DbConnect'], Resource: '*' },
+        {
+          Sid: 'KmsEnvelope',
+          Effect: 'Allow',
+          Action: ['kms:GenerateDataKey', 'kms:Decrypt'],
+          Resource: 'arn:aws:kms:us-east-1:461293170793:key/b3af288c-0e0f-46ec-bccd-9b53776ffbb8',
+        },
+      ],
+    },
+  };
+
+  it('catches Resource "*" even though every ACTION is exactly what the contract requires', () => {
+    // This is the whole point. An actions-only verdict passes this document —
+    // the action list is byte-identical to the live one. What changed is that
+    // dsql:DbConnect now reaches every cluster in the account, including any
+    // created after this was last reviewed.
+    const v = readWall(RUNTIME_CONTRACT, [WIDENED]);
+    expect(v.ok).toBe(false);
+    expect(v.violations.join(' ')).toContain('Resource "*"');
+    expect(v.missing).toEqual([]);
+  });
+
+  it('catches an Allow that names no Resource at all', () => {
+    const v = readWall(READONLY_CONTRACT, [
+      {
+        source: 'inline oops',
+        document: { Statement: [{ Sid: 'NoScope', Effect: 'Allow', Action: 'dsql:DbConnect' }] },
+      },
+    ]);
+    expect(v.ok).toBe(false);
+    expect(v.violations.join(' ')).toContain('no Resource at all');
+  });
+
+  it('passes the live documents, which is what makes the rule pinned rather than guessed', () => {
+    expect(readWall(RUNTIME_CONTRACT, [V2_LIVE]).ok).toBe(true);
+    expect(readWall(READONLY_CONTRACT, [RO_LIVE]).ok).toBe(true);
+  });
+
+  it('every contract carries the scope rule — one that opted out would be silently unscoped', () => {
+    for (const c of CONTRACTS) {
+      expect(c.resourceScope?.mustNotBeWildcard, `${c.user} has no resourceScope`).toBe(true);
+    }
+  });
+});
+
+/* ────────────────────────────────────────────────────────────────────────────
+   B16.4 — THE TRUST HALF. For a role assumed from a PUBLIC repository, who may
+   BECOME it matters at least as much as what it may do, and an actions-only
+   audit sees none of it.
+   ──────────────────────────────────────────────────────────────────────────── */
+describe('the trust policy of relay-kms-wall-ci', () => {
+  const SUB = 'token.actions.githubusercontent.com:sub';
+  const OIDC = 'arn:aws:iam::461293170793:oidc-provider/token.actions.githubusercontent.com';
+
+  /** The live document, read from the account on 2026-08-29. */
+  const LIVE_TRUST = {
+    Statement: [
+      {
+        Effect: 'Allow',
+        Principal: { Federated: OIDC },
+        Action: 'sts:AssumeRoleWithWebIdentity',
+        Condition: {
+          StringEquals: {
+            'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
+            [SUB]: 'repo:sgharlow/relay:ref:refs/heads/master',
+          },
+        },
+      },
+    ],
+  };
+
+  it('passes the trust policy the account actually has', () => {
+    const t = readTrust(KMS_WALL_CI_CONTRACT, LIVE_TRUST);
+    expect(t.ok, t.reason).toBe(true);
+  });
+
+  it('catches the widening that matters — StringLike on any ref of the repo', () => {
+    // repo:sgharlow/relay:* lets EVERY pull request against a public repo assume
+    // this role. The permissions read exactly as clean as they did before.
+    const t = readTrust(KMS_WALL_CI_CONTRACT, {
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: { Federated: OIDC },
+          Condition: { StringLike: { [SUB]: 'repo:sgharlow/relay:*' } },
+        },
+      ],
+    });
+    expect(t.ok).toBe(false);
+    expect(t.violations.join(' ')).toContain('StringLike');
+  });
+
+  it('catches a StringLike that CONTAINS the pinned subject — the operator is the wildcard', () => {
+    // The value looks right. ref:refs/heads/* matches every branch, so a check
+    // comparing only the string would pass this.
+    const t = readTrust(KMS_WALL_CI_CONTRACT, {
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: { Federated: OIDC },
+          Condition: { StringLike: { [SUB]: 'repo:sgharlow/relay:ref:refs/heads/*' } },
+        },
+      ],
+    });
+    expect(t.ok).toBe(false);
+  });
+
+  it('catches a trust policy with no sub condition at all — that is any repo on GitHub', () => {
+    const t = readTrust(KMS_WALL_CI_CONTRACT, {
+      Statement: [{ Effect: 'Allow', Principal: { Federated: OIDC } }],
+    });
+    expect(t.ok).toBe(false);
+    expect(t.violations.join(' ')).toContain('not pinned at all');
+  });
+
+  it('catches an account-root Allow sitting beside the federated one', () => {
+    // sts:AssumeRole from an IAM principal is a completely different door, and
+    // the OIDC pin says nothing whatever about it.
+    const t = readTrust(KMS_WALL_CI_CONTRACT, {
+      Statement: [
+        ...LIVE_TRUST.Statement,
+        { Sid: 'Backdoor', Effect: 'Allow', Principal: { AWS: 'arn:aws:iam::461293170793:root' } },
+      ],
+    });
+    expect(t.ok).toBe(false);
+    expect(t.violations.join(' ')).toContain('non-federated');
+  });
+
+  it('refuses to call a role nobody can assume "secure" — that is a dead watch', () => {
+    const t = readTrust(KMS_WALL_CI_CONTRACT, { Statement: [] });
+    expect(t.ok).toBe(false);
+    expect(t.reason).toContain('broken watch');
+  });
+
+  it('forbids the two KMS actions that USE the key, not the service — it must READ it', () => {
+    // relay-ro's shape (forbid the whole service) would fail this role on its
+    // first run for doing its job. That distinction is why this is a contract.
+    expect(KMS_WALL_CI_CONTRACT.forbidsServices ?? []).toEqual([]);
+    const forbidden = KMS_WALL_CI_CONTRACT.forbids.map((f) => f.action);
+    expect(forbidden).toContain('kms:Decrypt');
+    expect(forbidden).toContain('kms:GenerateDataKey');
+    expect(KMS_WALL_CI_CONTRACT.requires).toContain('kms:DescribeKey');
+  });
+
+  it('catches kms:Decrypt arriving on the CI role', () => {
+    const v = readWall(KMS_WALL_CI_CONTRACT, [
+      {
+        source: 'inline read-key-metadata-only',
+        document: {
+          Statement: [
+            {
+              Sid: 'Meta',
+              Effect: 'Allow',
+              Action: [
+                'kms:DescribeKey',
+                'kms:GetKeyPolicy',
+                'kms:GetKeyRotationStatus',
+                'kms:Decrypt',
+              ],
+              Resource:
+                'arn:aws:kms:us-east-1:461293170793:key/b3af288c-0e0f-46ec-bccd-9b53776ffbb8',
+            },
+          ],
+        },
+      },
+    ]);
+    expect(v.ok).toBe(false);
+    expect(v.violations.join(' ')).toContain('kms:decrypt');
   });
 });

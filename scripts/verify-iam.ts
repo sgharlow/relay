@@ -78,16 +78,37 @@ import {
   GetPolicyVersionCommand,
   ListUserPoliciesCommand,
   GetUserPolicyCommand,
+  ListGroupsForUserCommand,
+  ListAttachedGroupPoliciesCommand,
+  ListGroupPoliciesCommand,
+  GetGroupPolicyCommand,
+  ListAttachedRolePoliciesCommand,
+  ListRolePoliciesCommand,
+  GetRolePolicyCommand,
+  GetRoleCommand,
 } from '@aws-sdk/client-iam';
 
 import {
   readWall,
+  readTrust,
   CONTRACTS,
   RUNTIME_CONTRACT,
   type NamedPolicy,
   type PolicyDocument,
   type PrincipalContract,
+  type TrustPolicyDocument,
 } from '../lib/ops/iam-wall';
+
+/**
+ * Roles this run REPORTS ON but does not audit — B16.5.
+ *
+ * `relay-backend-dsql` is an H0-era leftover whose template granted
+ * `dsql:DbConnectAdmin`. Whether it still exists was recorded nowhere, and
+ * "probably gone" is not an inventory. Deleting it is Steve's call, so this
+ * prints presence or absence and never acts: an inventory that could delete is
+ * a different tool with a different risk profile.
+ */
+const INVENTORY_ONLY = ['relay-backend-dsql'];
 
 /**
  * Points the runtime check at a different user name, for an account that names
@@ -106,6 +127,44 @@ function decode(doc: string | undefined): PolicyDocument {
   return JSON.parse(decodeURIComponent(doc)) as PolicyDocument;
 }
 
+/** Resolve a managed policy ARN to its in-force (default-version) document. */
+async function managed(iam: IAMClient, arn: string, name: string): Promise<NamedPolicy> {
+  /*
+    Only the DEFAULT version is read, and that is the correct choice rather than
+    a shortcut. Old versions are retained deliberately as rollbacks — v1 of
+    relay-runtime-policy still carries the admin grant and is supposed to. What
+    is in force is what the default version says.
+  */
+  const meta = await iam.send(new GetPolicyCommand({ PolicyArn: arn }));
+  const version = meta.Policy?.DefaultVersionId;
+  const doc = await iam.send(new GetPolicyVersionCommand({ PolicyArn: arn, VersionId: version }));
+  return { source: `managed ${name} ${version}`, document: decode(doc.PolicyVersion?.Document) };
+}
+
+/**
+ * Everything that grants a ROLE anything — B16.4.
+ *
+ * A different set of API calls from the user path, which is exactly why the
+ * user path could not see this role at all.
+ */
+async function collectRole(iam: IAMClient, role: string): Promise<NamedPolicy[]> {
+  const policies: NamedPolicy[] = [];
+
+  const attached = await iam.send(new ListAttachedRolePoliciesCommand({ RoleName: role }));
+  for (const p of attached.AttachedPolicies ?? []) {
+    if (!p.PolicyArn) continue;
+    policies.push(await managed(iam, p.PolicyArn, p.PolicyName ?? p.PolicyArn));
+  }
+
+  const inline = await iam.send(new ListRolePoliciesCommand({ RoleName: role }));
+  for (const name of inline.PolicyNames ?? []) {
+    const doc = await iam.send(new GetRolePolicyCommand({ RoleName: role, PolicyName: name }));
+    policies.push({ source: `inline ${name}`, document: decode(doc.PolicyDocument) });
+  }
+
+  return policies;
+}
+
 async function collect(iam: IAMClient, user: string): Promise<NamedPolicy[]> {
   const policies: NamedPolicy[] = [];
 
@@ -118,15 +177,7 @@ async function collect(iam: IAMClient, user: string): Promise<NamedPolicy[]> {
       v1 of relay-runtime-policy still carries the admin grant and is supposed
       to. What is in force is what the default version says.
     */
-    const meta = await iam.send(new GetPolicyCommand({ PolicyArn: p.PolicyArn }));
-    const version = meta.Policy?.DefaultVersionId;
-    const doc = await iam.send(
-      new GetPolicyVersionCommand({ PolicyArn: p.PolicyArn, VersionId: version }),
-    );
-    policies.push({
-      source: `managed ${p.PolicyName} ${version}`,
-      document: decode(doc.PolicyVersion?.Document),
-    });
+    policies.push(await managed(iam, p.PolicyArn, p.PolicyName ?? p.PolicyArn));
   }
 
   /*
@@ -140,6 +191,38 @@ async function collect(iam: IAMClient, user: string): Promise<NamedPolicy[]> {
     policies.push({ source: `inline ${name}`, document: decode(doc.PolicyDocument) });
   }
 
+  /*
+    🆕 2026-08-29 (B16.3) — GROUPS, the blind spot this file's own header
+    described and left open. A policy attached to a group the user belongs to
+    grants exactly as hard as an attached user policy, and it is a THIRD set of
+    API calls — the same "a different API call entirely" shape as the inline
+    policies above, which is this instrument's recurring near-miss.
+
+    It was left open on 08-21 for a stated reason: the script could not be run
+    without .env.admin, and adding an unexercised read path to a check that IS
+    proven live trades a working instrument for an untested one. That reason
+    expired the moment the run happened, so it is closed in the same session as
+    the first live run rather than deferred again. None of the principals is in
+    a group today, so this reads empty — and an empty read that CAN see is a
+    different thing from no read at all.
+  */
+  const groups = await iam.send(new ListGroupsForUserCommand({ UserName: user }));
+  for (const g of groups.Groups ?? []) {
+    const name = g.GroupName;
+    if (!name) continue;
+    const gAttached = await iam.send(new ListAttachedGroupPoliciesCommand({ GroupName: name }));
+    for (const p of gAttached.AttachedPolicies ?? []) {
+      if (!p.PolicyArn) continue;
+      const m = await managed(iam, p.PolicyArn, p.PolicyName ?? p.PolicyArn);
+      policies.push({ ...m, source: `group ${name} · ${m.source}` });
+    }
+    const gInline = await iam.send(new ListGroupPoliciesCommand({ GroupName: name }));
+    for (const pn of gInline.PolicyNames ?? []) {
+      const doc = await iam.send(new GetGroupPolicyCommand({ GroupName: name, PolicyName: pn }));
+      policies.push({ source: `group ${name} · inline ${pn}`, document: decode(doc.PolicyDocument) });
+    }
+  }
+
   return policies;
 }
 
@@ -150,9 +233,12 @@ function isAboutTheCaller(message: string): boolean {
 
 /** @returns true when this principal's wall holds. */
 async function audit(iam: IAMClient, contract: PrincipalContract): Promise<boolean> {
-  console.log(`[iam] ${contract.user} — ${contract.purpose}`);
+  console.log(`[iam] ${contract.kind} ${contract.user} — ${contract.purpose}`);
 
-  const policies = await collect(iam, contract.user);
+  const policies =
+    contract.kind === 'role'
+      ? await collectRole(iam, contract.user)
+      : await collect(iam, contract.user);
 
   if (policies.length === 0) {
     console.error(`[iam] ✗ ${contract.user} has no policies at all — that is broken, not secure.`);
@@ -160,11 +246,21 @@ async function audit(iam: IAMClient, contract: PrincipalContract): Promise<boole
   }
 
   for (const p of policies) {
-    const actions = (p.document.Statement ?? [])
-      .flatMap((s) => (Array.isArray(s.Action) ? s.Action : s.Action ? [s.Action] : []))
-      .join(', ');
     console.log(`      ${p.source}`);
-    console.log(`          ${actions || '(no Action — see NotAction)'}`);
+    for (const st of p.document.Statement ?? []) {
+      const actions = (Array.isArray(st.Action) ? st.Action : st.Action ? [st.Action] : []).join(', ');
+      /*
+        🆕 2026-08-29 (B16.3) — RESOURCE IS PRINTED. The verdict still reads
+        actions only, and the header says so; a dsql:DbConnect widened from the
+        two cluster ARNs to `*` still passes. Printing it is the honest half-step:
+        it puts the value where a reader can see it and where a future rule can
+        be pinned FROM A READING rather than from a guess — which is the mistake
+        the relay-dev KMS note spent a week warning about.
+      */
+      const resource = (Array.isArray(st.Resource) ? st.Resource : st.Resource ? [st.Resource] : []);
+      console.log(`          ${actions || '(no Action — see NotAction)'}`);
+      console.log(`            on ${resource.length ? resource.join(', ') : '(no Resource)'}`);
+    }
   }
 
   const verdict = readWall(contract, policies);
@@ -173,11 +269,54 @@ async function audit(iam: IAMClient, contract: PrincipalContract): Promise<boole
     return false;
   }
 
+  /* A role's permissions holding says nothing about who may assume it. */
+  if (contract.kind === 'role' && contract.trust) {
+    const role = await iam.send(new GetRoleCommand({ RoleName: contract.user }));
+    const trustDoc = decode(role.Role?.AssumeRolePolicyDocument) as unknown as TrustPolicyDocument;
+    const t = readTrust(contract, trustDoc);
+    console.log(`      trust ${JSON.stringify(trustDoc.Statement ?? [])}`);
+    if (!t.ok) {
+      console.error(`[iam] ✗ ${t.reason}`);
+      return false;
+    }
+    console.log(`[iam] ✓ ${t.reason}`);
+  }
+
   console.log(`[iam] ✓ ${verdict.reason}`);
   /* Printed on every pass, not only on failure: what a green result does NOT cover. */
   for (const note of contract.notes ?? []) console.log(`[iam]   note: ${note}`);
   console.log();
   return true;
+}
+
+/**
+ * B16.5 — report on roles nobody has looked at. Never acts.
+ *
+ * A NotFound here is the good answer and is printed as such: "absent" is an
+ * inventory result, not an error, and the difference is why this is a separate
+ * pass rather than a fourth contract that would fail the run for a role that is
+ * correctly gone.
+ */
+async function inventory(iam: IAMClient): Promise<void> {
+  for (const name of INVENTORY_ONLY) {
+    try {
+      const role = await iam.send(new GetRoleCommand({ RoleName: name }));
+      const attached = await iam.send(new ListAttachedRolePoliciesCommand({ RoleName: name }));
+      const inline = await iam.send(new ListRolePoliciesCommand({ RoleName: name }));
+      console.log(`[iam] ⚠️  inventory: role ${name} STILL EXISTS (created ${role.Role?.CreateDate?.toISOString() ?? '?'})`);
+      console.log(`[iam]     attached: ${(attached.AttachedPolicies ?? []).map((p) => p.PolicyName).join(', ') || 'none'}`);
+      console.log(`[iam]     inline:   ${(inline.PolicyNames ?? []).join(', ') || 'none'}`);
+      console.log('[iam]     its H0-era template granted dsql:DbConnectAdmin. Deleting it is Steve’s call (ROADMAP B16.5); this pass never acts.');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (/NoSuchEntity|cannot be found|not found/i.test(message)) {
+        console.log(`[iam] ✓ inventory: role ${name} is absent — nothing to delete (B16.5 closed by measurement)`);
+      } else {
+        console.log(`[iam] ⚠️  inventory: could not read ${name}: ${message}`);
+      }
+    }
+  }
+  console.log();
 }
 
 async function main(): Promise<void> {
@@ -214,6 +353,8 @@ async function main(): Promise<void> {
     console.error(`[iam] ${failures} of ${CONTRACTS.length} principal(s) FAILED.`);
     process.exit(1);
   }
+
+  await inventory(iam);
 
   console.log(`[iam] ✓ all ${CONTRACTS.length} principals hold their contract`);
   console.log('[iam]   the other half is npm run verify:roles — this one cannot see it');
