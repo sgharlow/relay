@@ -1,3 +1,11 @@
+> ⛔ **HISTORICAL H0 ARTEFACT — DO NOT REUSE THIS COPY. IT SELLS A CAPABILITY RELAY DOES NOT HAVE.**
+>
+> Estate and inheritance were withdrawn from Relay PERMANENTLY on 2026-08-14 (PROJECT.yaml -> gates.g2-counsel-opinion.declined). Relay offers no estate or inheritance capability and confers no legal authority on anyone. The `estate` trigger type survives in the domain enum for compatibility only and is excluded from USER_SELECTABLE_TRIGGER_TYPES.
+>
+> PUBLICATION STATUS UNRECORDED — nobody has confirmed whether this thread was ever posted. If it was, the live copy sells estate to the public and Steve decides whether to delete or correct it.
+>
+> So the copy below is HISTORICAL and must not be reused, quoted, or pasted anywhere. Bannered rather than rewritten because these are records of what was published during H0, and editing them would destroy the record without changing anything a reader has already seen. Bannered 2026-08-29 (B39).
+
 # Relay — X (Twitter) bonus build post
 
 **Purpose:** H0 hackathon bonus "build post" (+ attribution + `#H0Hackathon`).

@@ -87,7 +87,10 @@ const CONSUMED_ELSEWHERE: Record<string, string> = {
     'No application code names it, and none should.',
   AWS_SECRET_ACCESS_KEY: 'Same as AWS_ACCESS_KEY_ID — the SDK credential chain reads it.',
   DSQL_CLUSTER_ARN:
-    'Written by scripts/provision-dsql.sh and pushed to Vercel by scripts/go-live.sh. ' +
+    'Written by scripts/provision-dsql.sh and pushed to Vercel by scripts/go-live.sh ' +
+    '(that script is BANNERED HISTORICAL as of 2026-08-29 — B37 — because running it now ' +
+    'would seed demo data into production and force-overwrite live secrets; it is cited here ' +
+    'as the historical provenance of this variable, not as something to run). ' +
     'Shell, which this TypeScript scan does not read. The application never uses it.',
 };
 

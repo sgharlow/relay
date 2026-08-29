@@ -20,7 +20,7 @@ Fetched from each vendor's own pricing page on the derivation date, not recalled
 | Aurora DSQL | **$8 per million DPU**; **$0.33/GB-month** storage; free tier **100,000 DPU + 1 GB/month**; multi-Region writes incur extra DPU **equal to the originating writes**; idle scales to zero |
 | AWS KMS | **$1/month per key** (prorated hourly), **each multi-Region replica charged separately**; **$0.03 per 10,000 requests**; free tier **20,000 requests/month**; enabling rotation adds **$1/month** for the first and second rotation, then capped |
 | Resend | Free: **3,000/month, 100/day**. Pro: **$20/month for 50,000**, then **$0.90 per 1,000** |
-| Vercel | Plan not verified — see the assumption below |
+| Vercel | **`pro`** — VERIFIED 2026-08-29, team `steves-projects-a71becf4`. Derive: Vercel MCP `list_teams` → `.teams[].plan`, or `vercel teams ls`. Pro is **$20/seat/month**, one seat |
 | OpenAI | Not fetched; `gpt-4o-mini` per-token cost is assumed below and is immaterial at this scale |
 
 ## Assumptions, named as assumptions
@@ -30,7 +30,7 @@ not have. Where a number is a guess it says so.
 
 | # | Assumption | Basis | If wrong |
 |---|---|---|---|
-| A1 | **Vercel is on a paid plan at ~$20/month** | The account hosts several projects; plan tier was not verified | This is the single largest fixed cost — see "the honest headline" |
+| ~~A1~~ | ~~**Vercel is on a paid plan at ~$20/month**~~ **NO LONGER AN ASSUMPTION — measured 2026-08-29.** The plan is `pro`, so ~$20/month was right | Vercel MCP `list_teams` → `plan: "pro"` | Nothing: the assumption and the measurement agree. Kept struck rather than deleted, because the *number* being right is not the same as it having been *known*, and this row is the record of which it was |
 | A2 | An owner holds **~25 vault items** | The demo seeds 25; the prompted checklist is 8; the free cap is 10 | Storage and KMS both scale linearly and both are negligible either way |
 | A3 | A vault item is **~2 KB** of ciphertext + metadata | AES-GCM over short credentials, plus the row | 25 items ≈ 50 KB per owner — 20,000 owners fit inside DSQL's free 1 GB |
 | A4 | A dormant owner produces **~50 DPU/day** | Hourly heartbeat sweep amortised, plus occasional reads. **Weakest number here** | Dominates nothing until thousands of owners; see break-even |
@@ -87,11 +87,29 @@ carrying out of this page: there is no scenario in which serving a customer is e
 | Fixed cost | Annual |
 |---|---|
 | KMS customer master key ($1/mo × 1 key) | **$12** |
-| Vercel (A1 — **unverified**) | **~$240** |
+| Vercel (`pro`, **verified** 2026-08-29) | **~$240** |
 | Resend (free tier holds to ~200 owners at A5) | **$0** |
 | Domain | ~$15 |
 | GitHub Actions (public repo) | **$0** |
 | **Total** | **≈ $267/yr** |
+
+> ⚠️ **THE VERCEL AND RESEND LINES ARE SHARED COSTS BOOKED ENTIRELY TO RELAY, and that is the
+> bigger distortion than the plan tier ever was.** Added 2026-08-29 (D18/B40).
+>
+> The `pro` plan is an **account-level** subscription on a team that hosts several projects, not a
+> Relay line item — the same account that carries report-bridge, skillcrossroads and second-brain.
+> Charging Relay the full ~$240/yr overstates its cost; charging it nothing would understate it.
+> Neither is written down as a decision anywhere, so the total above is precise about arithmetic
+> and silent about allocation.
+>
+> **Resend is the same shape and is still unmeasured** (B40): which product carries the
+> Transactional Pro line, at what amount, on what renewal day, is read from the receipts and has
+> not been. The table above books Resend at **$0** on the free tier, which is right only if Relay
+> is not the product paying for Pro.
+>
+> **What to do with this:** an allocation rule is a decision, not a calculation, and it is Steve's.
+> Until one exists, read the total as *"what Relay would cost standalone"* rather than *"what
+> Relay costs today"*. The two differ by most of the Vercel line.
 
 At the current price and a typical owner's ~$0.27 of variable cost, contribution per owner is
 essentially the whole subscription.

@@ -1,4 +1,20 @@
 /**
+ * 🔴 HISTORICAL — DO NOT RUN. Bannered 2026-08-29 (B37).
+ *
+ * This drove the H0 demo. It cannot work now, and the reason is worth stating
+ * rather than leaving as a runtime error: it requires `RELAY_OWNER_COOKIE`, an
+ * authenticated session cookie for a DEMO OWNER — an account shape that no
+ * longer exists. Owner sign-in has enforced per-user TOTP since self-serve
+ * signup shipped, and the shared `TOTP_SECRET` this depended on was retired on
+ * 2026-08-13. There is no way to mint the cookie it asks for.
+ *
+ * It also drives FR9 (the region-failover moment) against whatever
+ * `RELAY_BASE_URL` names, which today would be production.
+ *
+ * Retirement is tracked with D25. Kept rather than deleted because git keeps it
+ * either way and a deleted file cannot warn anyone; the live walks that replaced
+ * it are `npm run verify:live` and `npm run verify:journeys`.
+ *
  * Demo run script (task 33.2) — documents the four demo moments as executable
  * steps against a deployed Relay instance. Run: `npx tsx scripts/demo-run.ts`.
  *

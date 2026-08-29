@@ -1,21 +1,68 @@
 {
-  "branch": "sprint/2026-08-20-5",
-  "backlogSource": "ROADMAP.md §3 Sprint 1 (read from the main checkout; rev 3 is uncommitted there)",
-  "iterationsUsed": 5,
-  "iterationCap": 5,
-  "baseline": { "start": "build RED (worktree node_modules junction, not a repo defect)", "end": "green" },
-  "items": [
-    { "id": "S1-I1", "title": "the ladder claim argues for itself", "axis": "correctness", "status": "shipped", "commit": "53ef5bf" },
-    { "id": "S1-I2", "title": "verify:dogfood readiness probe", "axis": "wiring", "status": "shipped", "commit": "f799db8" },
-    { "id": "S1-I3", "title": "seven findings into the register", "axis": "completeness", "status": "shipped", "commit": "d84a7e5" },
-    { "id": "S1-I4", "title": "coverage thresholds enforced in CI", "axis": "correctness", "status": "shipped", "commit": "241995a" },
-    { "id": "S1-I5", "title": "invite:cohort refuses an empty vault", "axis": "security", "status": "shipped", "commit": "a2886e1" },
-    { "id": "S1-1.1/1.2/1.3", "title": "populate the owner's vault", "status": "blocked", "reason": "credentials + content only Steve has" },
-    { "id": "S1-1.5", "title": "verify:orphans after the walk", "status": "blocked", "reason": "credentials" }
+  "_comment": [
+    "Rewritten 2026-08-29 (D17). The previous contents described sprint/2026-08-20-5, a branch",
+    "that no longer exists (deleted with 15 other fully-merged refs under D16), cited ROADMAP",
+    "revision 3 as 'uncommitted there' when revision 4 has since been merged, and listed three",
+    "verifications as owed when two of them had run. A state file that describes a deleted branch",
+    "is worse than an absent one: /sprint resolves it first and would have resumed into nothing.",
+    "",
+    "DO NOT hand-edit the shipped list to look tidy. This records what ran, and its value is that",
+    "it can be checked against `git log` — every entry below carries the merged PR."
   ],
-  "verificationOwedFromMainCheckout": [
-    "npm run verify:dogfood (never run against a real cluster; smoke-run only)",
-    "npm run invite:cohort past its input check",
-    "npm run verify:orphans"
+  "branch": "master",
+  "backlogSource": "ROADMAP.md §3 Sprint 0 (revision 4, merged 2026-08-27 in PR #17; progress notes appended 2026-08-29 in PR #23)",
+  "sprint": "Sprint 0 — Truthful alarms, truthful record",
+  "calendar": "now → 2026-09-12, when the report-bridge precedence ruling stops applying",
+  "court": "claude — needs at most a nod or an in-session authorisation, never Steve's hands",
+  "rowsClosed": [
+    { "row": "0.1", "title": "roadmap rev 4 + the register commit", "pr": 17, "date": "2026-08-28" },
+    { "row": "0.2", "title": "B16 — the IAM wall reads the real account", "pr": 19, "date": "2026-08-29" },
+    { "row": "0.3", "title": "B13 proof-of-red, B14 dead-man, A7.0, B10.d", "pr": 20, "date": "2026-08-29" },
+    { "row": "0.4", "title": "E1.6 reads, E1.7 verify:stripe, E1.1 build marker", "pr": 21, "date": "2026-08-29" }
+  ],
+  "rowsPartlyClosed": [
+    {
+      "row": "0.6",
+      "done": "D1 — verify:live and verify:journeys both run against production and stamped, verify:orphans clean after each",
+      "pr": 22,
+      "date": "2026-08-29",
+      "open": [
+        "B11.1 — re-measure the scheduled-monitor cadence on 2026-09-02, after the Actions-minutes reset",
+        "B12.i — the interim off-GitHub run-count alarm (Task Scheduler, read-only `gh api`)"
+      ]
+    },
+    {
+      "row": "0.7",
+      "done": "D16 — 12 local and 4 remote fully-merged branches deleted; the repo is master-only",
+      "open": "the rest of the hygiene list; see ROADMAP.md §3 row 0.7"
+    }
+  ],
+  "rowsOpen": [
+    {
+      "row": "0.5",
+      "title": "B15.1/2/3/5/6 live proofs",
+      "note": "OFFERED AND NOT TAKEN on 2026-08-29 — Steve chose the two walk chains without the B15 ladder walks. These need disposable production rows AND hours of elapsed time, because the reminder intervals must actually elapse across hourly ticks. Re-offer rather than assume."
+    },
+    {
+      "row": "0.8",
+      "title": "the rulings pack — the Sitting D list as a batched AskUserQuestion series",
+      "note": "so Sitting D costs Steve minutes rather than re-derivation"
+    }
+  ],
+  "verificationOwedFromMainCheckout": [],
+  "_verificationNote": [
+    "Empty as of 2026-08-29, and that is a measurement rather than a tidy-up.",
+    "`npm run verify:orphans` — RUN twice on 2026-08-29, after each walk chain. Clean of accounts",
+    "  both times; the 28 dangling rows are pre-existing residue (newest 2026-08-14), registered as",
+    "  deferred.dangling-rows-on-production and Steve's to purge.",
+    "`npm run verify:dogfood` — run under relay_ro; it reports NOT READY, which is a status and not",
+    "  a defect. The owner's vault is empty and no commit here changes that (A0, Sitting A).",
+    "`npm run invite:cohort` past its input check — still blocked, and correctly so: the script",
+    "  refuses an empty vault by design, so this stays blocked until A0 is done."
+  ],
+  "blockedOnSteve": [
+    { "id": "A7.0", "what": "enable Vercel Web Analytics for the relay project", "why": "hard precondition of Sprint 5; the collector answers 200 to every beacon while the query API refuses the project", "where": "ROADMAP.md §6 Sitting E" },
+    { "id": "E1.7", "what": "mint a restricted read-only Stripe key", "why": "verify:stripe is live-proven but unschedulable; the CLI fallback expires 2026-10-07", "where": "ROADMAP.md §6 Sitting E" },
+    { "id": "B10.d", "what": "connect the Claude browser extension", "why": "delivery is proven working; the relay-alarm filter itself has never been read, so nobody can say why", "where": "ROADMAP.md §6 Sitting E" }
   ]
 }

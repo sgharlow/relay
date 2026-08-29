@@ -1,8 +1,14 @@
 /**
  * scripts/disposable-sweep.ts — count the throwaway accounts the walks left behind.
  *
- *   npx tsx --env-file=.env.local scripts/disposable-sweep.ts        (npm run verify:orphans)
- *   npx tsx --env-file=.env.local scripts/disposable-sweep.ts --hours 72
+ *   npm run verify:orphans       (runs as `relay_ro` via --env-file=.env.ro)
+ *   npm run verify:orphans -- --hours 72
+ *
+ * ⚠️ This said `--env-file=.env.local` until 2026-08-29. `package.json` runs it on
+ * `.env.ro` (`relay_ro`). A stale warning costs more than a stale claim because it
+ * is obeyed — this one sent an operator for the credential that can WRITE in order
+ * to run a read-only check. It was NOT on the ROADMAP H list; a grep for
+ * `env-file=.env.local` across scripts/ found it.
  *
  * WHY THIS EXISTS, in D4's own words (`PROJECT.yaml → deferred →
  * verify-live-cannot-enter-ci`): *"a separate test cluster would make the walks
@@ -77,7 +83,7 @@ async function connect(): Promise<Client> {
   if (!endpoint) {
     throw new Error(
       `${useSecondary ? 'DSQL_SECONDARY_ENDPOINT' : 'DSQL_PRIMARY_ENDPOINT'} is not set — ` +
-        'run with --env-file=.env.local',
+        'run `npm run verify:orphans`, which supplies --env-file=.env.ro',
     );
   }
 
