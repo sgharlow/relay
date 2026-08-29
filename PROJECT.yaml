@@ -3813,6 +3813,41 @@ deferred:
       (`gh workflow run kms-wall.yml -f key_id=<bogus>` — read-only KMS calls) is observed
       arriving with an INBOX label, by a read-only Gmail search, not by assuming the removal
       worked. Both halves, or this is not closed.
+    measured_2026_08_29: >-
+      🔴 THE PREMISE OF THIS ENTRY IS FALSE AS WRITTEN, and the second half of `ends_when` is
+      MET three times over. Measured by read-only Gmail search on 2026-08-29, after three
+      deliberate red runs were dispatched for B13.
+      DELIVERY WORKS TODAY. All three notifications reached the INBOX, labelled `relay-alarm`
+      (`Label_779648277632189340`), starred and unread — Production canary run 33237399208
+      (mail +37s), Scheduler heartbeat monitor 33237979699 (+23s), Delivery webhook monitor
+      33237980971 (+23s). A red workflow reaches a watched inbox in well under a minute.
+      THE ~20 HISTORICAL THREADS ARE NOT IN TRASH — THEY ARE ARCHIVED. `to:relay@noreply.github.com
+      subject:"Run failed"` returns 23 threads outside Trash and 2 inside. The 20 older ones carry
+      `relay-alarm` + `IMPORTANT` and NO `INBOX` label, which is archived-and-labelled, not
+      trashed. `relay-alarm` holds exactly 23 messages, 14 unread — and "about half unread" is
+      the detail this entry recorded, so the same threads were being looked at and their state
+      was read as TRASH when the distinguishing label was the ABSENCE of INBOX.
+      THE CITED EVIDENCE MAIL IS NOT IN TRASH EITHER. This entry names
+      `Run failed: KMS wall watch - master (ce776ef)`, 2026-08-25, "labels TRASH+UNREAD". The live
+      labels on that thread are `UNREAD, relay-alarm, IMPORTANT` — no TRASH. Either it was
+      misread, or it was untrashed between 2026-08-27 and now; the two threads that ARE in Trash
+      (2026-08-13, 2026-08-28) are both consistent with hand deletion, and the 2026-08-28 one is
+      starred, which a filter would not do on its way to the bin.
+      SO `the_evidence_expires` IS MOOT — nothing is counting down to a purge.
+    what_is_still_unknown_and_why_it_matters: >-
+      WHY it now works. The filter itself was NOT read: B10.d prescribed reading Settings →
+      Filters / Blocked addresses via Claude-in-Chrome, and the browser extension is not connected
+      ("Browser extension is not connected"), so the rule that applies `relay-alarm` — and whether
+      it still carries "Skip the Inbox" — is unnamed. That is the difference between "delivery
+      works" and "delivery works for a reason that will keep holding". Something changed between
+      2026-08-25 (archived, unstarred) and 2026-08-29 (inbox, starred); nothing in this repo
+      records what, and a fix nobody can name is a fix that can be undone by the same unrecorded
+      hand.
+    revised_ends_when: >-
+      The `relay-alarm` filter is read and named — its conditions and whether "Skip the Inbox" is
+      set — by Claude-in-Chrome once the extension is connected, or by Steve reading it out. The
+      delivery half is already proven and does not need re-proving. Owner moves to CLAUDE for the
+      read; it stops being Steve's the moment no rule needs deleting.
 
   - id: the-scheduled-monitors-are-collapsing                 # ROADMAP B11
     owner: claude                         # measurement; steve owns the money half
