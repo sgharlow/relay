@@ -475,7 +475,7 @@ minutes, not hours.
 | 0.5 | **B15.1/2/3/5/6** live proofs: J5-R4 ladder walk (disposable owner, short interval, hourly ticks); verifier deny/abstain/halt walk; J6 4c escalation walk; `verifier-context.ts` action fix; step-up fault injection. Schedule around the signup ceiling (D14): one chain per hour, `verify:live` first (D1) | M | write disposable production rows — tell Steve first; `verify:orphans` after each |
 | 0.6 | 🟡 **PART DONE 2026-08-29** (PR #22 — D1 done; B11.1 waits for 09-02, B12.i open). **D1** `verify:live` + `verify:orphans` before **~2026-09-08**; **B11.1** re-measure monitor cadence on **2026-09-02**; **B12.i** the interim off-GitHub run-count alarm (Task Scheduler, read-only `gh api`) | S | the freshness stamp commit also resets the 60-day clock |
 | 0.7 | **Hygiene**: D16 branches; D17 `sprint-state.json`; D18 unit-economics (pro; the Resend receipts read via the connector — B40's facts); B37 `go-live.sh`/`demo-run.ts` banners; B39 estate banners on six files; ~~the three owed supersession banners (H)~~ **DONE 2026-08-28**; B21.1 `verify:csp` npm script; B24 incident step-0 tool; D22 `/api/health` note; C1.4's three files; **C1.3** read the trashed 08-17 report via the connector (read works on Trash); **A3.7** record the third cohort deferral on `beta-cohort-deferred-four-days`; **B18.4** `DSQL_PASSWORD` empty check (`vercel env ls production`, names only); **D27** file-or-accept the two unfiled debts; **B33** turn the recovery-code check into a read-only NOTICE; **B27** enable secret scanning + Dependabot alerts and **B31** disable the sibling backup plan — both on an in-session nod; the H stale-description list; **B30 fix B** prepared as a PR (parser treats `superseded_by:` as a stopped clock — merge on Steve's nod, before 2026-10-03) | M | every edit is docs/tests/scripts/repo settings; no production write |
-| 0.8 | **The rulings pack**: draft the Sitting D list as a batched `AskUserQuestion` series (≤4–5 per call, recommended default first, D-1 before D-2), with candidate causes for B10 from B10.d, and the C1.0 DNS change under `/safe-execute` (snapshot, rollback, DoH proof) ready to execute on Steve's request | S | so Sitting D costs Steve minutes, not re-derivation |
+| 0.8 | ✅ **DONE 2026-08-29** — `docs/rulings-pack-sitting-d.md`. **The rulings pack**: draft the Sitting D list as a batched `AskUserQuestion` series (≤4–5 per call, recommended default first, D-1 before D-2), with candidate causes for B10 from B10.d, and the C1.0 DNS change under `/safe-execute` (snapshot, rollback, DoH proof) ready to execute on Steve's request | S | so Sitting D costs Steve minutes, not re-derivation |
 
 > **Progress, 2026-08-29 — rows 0.3 and 0.4 closed, 0.6's D1 half closed. Three PRs (#20, #21,
 > #22), all merged. Several findings, and three of them change this plan rather than executing it.**
@@ -872,6 +872,21 @@ Derived on 2026-08-27. Each row names its basis so it can be re-derived rather t
       draft contains a false sentence. — 📝 register entry created by rev 4
 
 ### Sitting D — the rulings pack · two sittings · basis: the superseded checklist measured ~5 min per ruling
+
+> ✅ **DRAFTED AND READY, 2026-08-29 — `docs/rulings-pack-sitting-d.md`.** The list below is the
+> inventory; that file is the thing to run. Every question in it carries the measurement that makes
+> it answerable, a recommended default, and what happens if it is parked — which is the whole point
+> of row 0.8, that this sitting costs minutes rather than re-derivation.
+>
+> ⚠️ **Four items on the list below have MOVED since revision 4 wrote it**, and the pack opens by
+> saying so rather than letting the sitting spend its first ten minutes on them: **B30 is CLOSED**
+> (PR #25, 2026-08-29 — comes off D-1); **B10's premise was false** and its question changed
+> entirely, because delivery is proven working and nothing is being trashed; **D21's precondition is
+> met**; **B27 and B31 were executed** on a nod the same day.
+>
+> The pack also carries the **C1.0 DNS change prepared under `/safe-execute`** — snapshot, rollback,
+> and the DoH proof before and after — ready to execute on request, and explicitly *prepared rather
+> than proposed*.
 
 Each is a *decision*; "park with a revisit date" is always a legitimate answer, silence is not.
 Delivered as a batched `AskUserQuestion` series (≤4–5 per call, recommended default first). Claude

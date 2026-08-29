@@ -4225,6 +4225,47 @@ deferred:
         Closed. If learningai is ever rebuilt it needs its own plan pointing at the new instance,
         and the definition above is the starting point.
 
+  - id: a-property-test-that-failed-on-a-correct-product     # found 2026-08-29, not on any list
+    owner: claude
+    opened: 2026-08-29
+    closed:
+      date: 2026-08-29
+      what_shipped: >-
+        `lib/auth/recipient-token.test.ts` — the two-secret property now filters on the ENCODED
+        BYTES rather than on string inequality. A test defect; nothing about the product changed.
+    how_it_surfaced: >-
+      One failure in a full-suite run on a DOCS-ONLY branch, in
+      `property: tokens from one secret are always rejected by a different secret`. Two subsequent
+      full runs were clean, and the file passed in isolation — the shape that gets called flaky,
+      re-run, and forgotten.
+    the_cause_is_exact: >-
+      `signingKey()` does `Buffer.from(secret, 'utf8')`, so what decides the outcome is the KEY
+      BYTES. The property generated two secrets with `fc.string()` and filtered them with
+      `a !== b`, which is STRING inequality. `fc.string()` can emit lone surrogates, and every
+      unpaired surrogate encodes to U+FFFD — the same three bytes, `EF BF BD`. So '\uD800' and
+      '\uDC00' are different strings that produce byte-identical keys: the filter lets the pair
+      through, the token verifies correctly under "the other" secret, `threw` stays false, and the
+      property reports a failure.
+      Proven outside fast-check before touching the test:
+      `Buffer.from('a\uD800','utf8').equals(Buffer.from('a\uDC00','utf8'))` is **true**.
+    what_it_was_NOT: >-
+      Not a product defect, and that was checked rather than assumed. The first hypothesis was a
+      CACHED secret — if `recipient-token.ts` read `RECIPIENT_JWT_SECRET` once at module load,
+      rotating it would not take effect until redeploy, which would falsify
+      `docs/secret-rotation-runbook.md` §2. It does not: the secret is read per call, inside
+      `signingKey()`. The second hypothesis was a cross-file `process.env` race — five test files
+      write that variable — but vitest isolates per file, so that was not it either. Both were
+      eliminated by reading, not by re-running until green.
+    why_it_is_worth_an_entry_at_all: >-
+      Because it failed a REQUIRED check on a branch that changed only markdown, and because the
+      honest reading of "flaky" is usually "a test whose notion of DIFFERENT sits at a different
+      level from the code's". Re-running until green would have left an intermittent red in the
+      gate that guards every merge, and the next person to meet it would have started from zero.
+      Hammered 8 consecutive runs after the fix.
+    ends_when: >-
+      Closed. If another property in this repo generates key material with `fc.string()`, it needs
+      the same byte-level filter — this was the only one (`grep -rn "a !== b" lib/ --include=*.test.ts`).
+
   - id: date-guards-has-never-been-red                        # ROADMAP B13, residue
     owner: steve                          # the blocker is a hook in ~/.claude, not a file in this repo
     opened: 2026-08-29
