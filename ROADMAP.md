@@ -1,5 +1,11 @@
 # Relay — Production Roadmap
 
+**Revision 5 — 2026-08-29.** An IN-PLACE revision of revision 4, not a rewrite: §8 asks that a
+closing sprint be struck "with a date and a commit, in place", and most of revision 4's body is
+still accurate. What changed is concentrated in §0.0 (which of revision 4's own claims survived
+being looked at), §0.5 (the gap to production, restated), §3 (Sprint 0 closed) and §4 (four dated
+rows were wrong). Read those four; the rest of revision 4 stands.
+
 **Revision 4 — 2026-08-27.** Written from a nine-lane read-only sweep of the repository, the
 register, every planning document, the CI estate, the memory files and the live system, taken on
 2026-08-27 (HEAD `618095c`, working tree clean at sweep time, production deploy
@@ -23,6 +29,138 @@ that cannot be automated** (§6).
 > attention** (ruled 2026-08-24): Claude-court and custodial work proceeds now; every Steve-hands item
 > queues to **2026-09-12**, the first day that ruling stops applying. This roadmap is built around
 > that date.
+
+---
+
+## 0.0 The question revision 4 left — which "proven" claims had been SEEN?
+
+Revision 4 closed §8 by instructing its successor: *"The next revision should open by asking which
+of its own 'proven' claims have been **seen**."* This is that answer. Nine claims were tested
+against live evidence on 2026-08-29. **Six did not survive.**
+
+| # | The claim, as recorded | How it was "proven" | What was SEEN, 2026-08-29 | Verdict |
+|---|---|---|---|---|
+| 1 | The alarm of record delivers to Gmail **Trash** (B10) | one mailbox read, 08-27 | three deliberate red runs reached the **INBOX** in 23–37 s, labelled and starred; `in:trash` returns nothing on any domain; the cited evidence mail carries no TRASH label | 🔴 **premise false** |
+| 2 | The monitors collapsed because of **Actions minutes** or a GitHub incident (B11) | two coincident events | every **daily** workflow delivered 100% on precisely the days the sub-hourly ones fell to ~3% | 🔴 **both causes disproven** — and the planned response was to spend money |
+| 3 | The canary is **proven red** | exit code 1 in a unit test | it had never been red in 688 runs; forced red for the first time on 08-29. The other two monitors **could not be forced red at all** | 🔴 true of an exit code, not of an alarm |
+| 4 | A broken deploy is caught **within a quarter of an hour** | the cron expression | 35.7% delivery over the canary's life; median gap 31 min, max 697 min; **~5 runs/day right now** | 🔴 **false by an order of magnitude** |
+| 5 | `verify:kms` is **NOT IN CI** | the script header | it has run daily via GitHub OIDC since 2026-08-24 | 🔴 false in the expensive direction: it said the safety net did not exist |
+| 6 | **D10** (the journey sweep) is **closed** | the walks were built | nothing scheduled or aged them; the chain could have been dead from the day after and the register would still have read closed | 🔴 closed on construction, not on a run |
+| 7 | Three DMARC reports sit in Trash, expiring mid-September | a memory read | **nothing is in Trash.** The feed is dead at the DNS record instead — `_dmarc` carries no `rua=`, and the newest of ten reports is 2026-08-17 | 🔴 **wrong problem entirely** |
+| 8 | Extending `verify:funnel` to assert the collector returns **2xx** would prove the demand instrument is alive (A7.0's own prescription) | reasoning | the collector answers **200 to everything** while the query API refuses the project outright | 🔴 the prescribed check would pass on an instrument that collects nothing readable |
+| 9 | The **dead-man's switch** works | unit tests calling `runHeartbeatSweep` directly | ARMED → PENDING observed for the first time, driven by production's own cron at 2026-08-29T21:00:08Z, both transitions in the hash-chained audit log | ✅ **now genuinely seen** |
+
+**The generalisable lesson, sharpened.** Revision 4 wrote: *a monitor is proven when its failure has
+been seen by a human, not when its process has been seen to exit 1.* Row 7 extends it — **a finding
+is proven when the thing it describes has been looked at, not when it was written down carefully.**
+Rows 1, 2 and 7 were all recorded with dates, evidence citations and confident prose, and all three
+were about a state of the world that had already changed or never existed.
+
+---
+
+## 0.5 The gap to production, restated against §1
+
+§1 defines production as three things. Measured 2026-08-29, here is the distance to each.
+
+### 🔴 The frame that reorders everything: the custodial obligation is currently owed to NOBODY
+
+The one live, paying, non-demo owner holds **0 vault items, 0 recipients, 0 verifiers, 0 access
+rules and 0 `release_state` rows** (`relay_ro`, 2026-08-29). Every guarantee this document tracks —
+envelope encryption, the release state machine, verifier quorum, the dead-man's switch, the audit
+chain — is presently doing nothing for the only person relying on the product.
+
+That is not an argument for doing less custodial work; the obligation binds from the first
+stranger's first credential and the stranger is what the demand lane exists to produce. It is an
+argument about **A0's priority**. A0 has been carried as "the thing that unblocks the cohort". It is
+larger than that: **A0 is what makes every other guarantee in this file non-vacuous.** Until the
+owner's own vault is real, the entire custodial programme is a set of promises about an empty box,
+and the restore drill, the reminder ladder and the release machinery are all being verified against
+fixtures because there is nothing else to verify them against.
+
+### 1. `dogfooded` → `customer-used` — gate `g1-arms-length-demand`, due 2026-12-31
+
+**Distance: one Steve sitting, then a fortnight of sends.** Unchanged in four revisions, and the
+reason is unchanged: A0 blocks it, A0 is ~20 minutes, and A0 has not happened.
+
+| blocker | state 2026-08-29 | owner |
+|---|---|---|
+| A0 the owner's vault | empty; `verify:dogfood` NOT READY, same five pieces missing | steve, Sitting A |
+| A1 op-ed → caregiver.com | unsent; §1a third-person ruling still owed (D-1 item 1) | steve |
+| A3 beta cohort | `.relay-cohort.json` untouched since 08-18 18:17, still untracked; no codes file; **third deferral lapsed unrecorded** | steve |
+| A7.0 the instrument | 🔴 collects nothing readable — see below | steve (one toggle) |
+
+### 2. `customer-used` → `revenue-proven`
+
+**Distance: two rulings and a key, all dated.** E4.1 (are releases billing-gated on all four
+ARMED→PENDING paths, or only Initiate?) must precede the 2026-10-01 paywall revisit; E4.2 is that
+revisit; `verify:stripe` is live-proven but **unschedulable** until a restricted read-only key
+exists, and its only other read path — the paired Stripe CLI — **expires 2026-10-07**, after which
+the billing contract has no read path at all.
+
+### 3. The custodial obligation — the four clauses, scored
+
+> *"the front door holds, the key material cannot be lost, a failure is noticed by a machine before
+> a customer, and what the product says about itself is true."*
+
+**"The front door holds" — substantially true, with one asymmetry.** `verify:live` (5 walks) and
+`verify:journeys` (3 walks) both ran green against production on 08-29 and both now carry freshness
+dead-mans. The IAM wall read the real account (B16). Secret scanning and push protection are on, 0
+alerts on a repo public since June.
+🔴 **The asymmetry: `verify:kms` runs daily in CI; `verify:iam` runs when somebody remembers.** An
+`aws iam create-policy-version` putting `dsql:DbConnectAdmin` back is exactly what that check
+exists to catch, and it would be invisible until a human ran it. The obstacle used to be that CI
+had no AWS credentials — `kms-wall.yml` disproved that on 08-24 by reaching AWS from a runner with
+**no stored secret**, via OIDC. The precedent now exists and the wall is still unwatched.
+
+**"The key material cannot be lost" — the watching is real, the recovery is untested.**
+`verify:kms` is daily, live-proven, and has been seen to fail three ways. But
+**`gates.d3-restore-drill` has never run** (due 2026-11-08, a ceiling), so "the data is gone" is the
+one runbook in this repo that has never been exercised — and its criterion 3 is itself blocked on
+A0. The single-region CMK limitation (B3) remains knowingly accepted.
+
+**"A failure is noticed by a machine before a customer" — 🔴 THIS IS THE LARGEST OBLIGED GAP.**
+Production has **no effective synthetic monitoring**. The canary delivers ~5 scheduled runs a day
+against a designed 96; the detection window for a broken deploy is 5–6 hours, not the quarter-hour
+the cron asks for. `cadence-watch.yml` (2026-08-29) now *reports* this daily — but reporting is not
+repair, and the repair is no longer optional-shaped: the money option was the plan and it is
+disproven, so **B12 (an off-GitHub heartbeat) is now the only remaining fix rather than one of
+two.** Secondary: `date-guards` has never been seen red, blocked structurally by the pre-push hook.
+
+**"What the product says about itself is true" — much repaired, three holes left.**
+Fifteen false or stale statements were corrected on 08-29 (the canary's cadence claims, seven
+credential headers sending operators to the write identity, `verify-kms`'s "NOT IN CI", the DMARC
+lane's order of work, B10's premise, A7.0's prescription). What remains:
+- 🔴 **A7.0** — the site looks instrumented and collects nothing readable. On placement day this
+  presents as an empty dashboard beside a site that appears to be reporting correctly, and the
+  number cannot be re-collected. Hard precondition of Sprint 5.
+- 🔴 **E1′** — the lapse notice is `wired`, not `live-proven`; `/terms` and the paywall decision
+  both rest on it.
+- 🟡 **README's "verifier deny/abstain" rung** overstates what is proven: B15.2 and B15.3 remain
+  unexercised.
+
+### 🔴 The one imminent, customer-facing risk — 2.8 days out
+
+The check-in reminder ladder (J5-R4) has **never fired for anyone**: `owner_checkin_reminder_first`
+and `owner_checkin_reminder_final` have **zero rows in `audit_log`, ever**. The live paying owner
+was last active 2026-08-10 on a 30-day interval, so:
+
+| when | what | derived from |
+|---|---|---|
+| **2026-09-01 16:32Z** | the **75% rung** fires — first reminder this product has ever sent | `last_active_at + 0.75 × 30d` |
+| 2026-09-06 04:32Z | the 90% rung | `× 0.90` |
+| 2026-09-09 04:32Z | the owner goes overdue; the sweep selects them and **transitions nothing**, because they hold 0 `release_state` rows | `heartbeat.ts` inner query |
+
+`sweepCheckinReminders()` is called by the cron and **never throws, by design** ("belt and braces").
+So its failure mode is a 200, a healthy `scheduler_runs` ledger, and a customer who is never
+reminded. That is B15.1's unexercised half, it is three days away, and it is walkable now with a
+disposable owner — the same pattern that proved the sweep on 08-29.
+
+⚠️ **A correction to an earlier reading of this, recorded rather than quietly fixed.** It was first
+stated that on ~09-09 the sweep would "arm their triggers, unattended, at night, for real". That is
+**wrong**: the owner has no `release_state` rows at all, so the sweep finds them overdue, iterates
+an empty set and does nothing. The true finding is smaller in blast radius and sharper in meaning —
+nothing fires because there is nothing configured, which is the vacuity described at the top of
+this section.
 
 ---
 
@@ -447,6 +585,115 @@ being lost (§8).
 
 ---
 
+## 2.5 THE PLAN — what to do next, and in what order (revision 5, 2026-08-29)
+
+Sprint 0 is **closed**: every row is done or explicitly not taken (§3). So this is not a re-plan of
+Sprint 0; it is the sequencing of what §0.5 found still standing between here and production.
+
+**The ordering principle, restated because it decides every row below:** obliged work is justified
+by a property of the live system and would still be justified if no new user arrived; barred work is
+justified by a forecast. Everything in P0–P2 is obliged. Nothing in §2-F or §2-G may start.
+
+---
+
+### P0 — before 2026-09-01 (three days) · Claude's court · the only imminent customer-facing risk
+
+**P0.1 — Walk the check-in reminder ladder (B15.1's unexercised half).**
+The ladder has never fired for anyone and fires for the live paying owner on **2026-09-01 16:32Z**.
+`sweepCheckinReminders()` never throws, so a failure is a 200, a healthy ledger and a customer who
+is never reminded.
+*Method:* the pattern proven on 08-29 — a disposable owner, `last_active_at` backdated to ~80% of a
+short interval, then **wait for production's own hourly cron** and assert the audit row
+(`owner_checkin_reminder_first`) and the send attempt. Add it to `scripts/e2e-sweep.ts` or as a
+sibling walk; the safety refusal (no other owner overdue) applies unchanged.
+*Done when:* an `owner_checkin_reminder_*` audit row exists that a cron wrote, and the mail leg is
+either confirmed or its refusal (`DEV_MAIL_ALLOWLIST`) is recorded as the reason.
+*Why it cannot wait:* after 09-01 the first-ever firing will have happened to a real customer,
+observed or not, and the chance to see it under controlled conditions is gone until the next owner.
+
+**P0.2 — Decide whether to check in on the owner's behalf, or let the ladder run.**
+Steve's, one line. Letting it run is the more informative choice and costs one email to himself.
+
+---
+
+### P1 — before 2026-09-12 (precedence lifts) · Claude's court
+
+**P1.1 — B11.1, the re-measure, on or after 09-02.** Now a narrow question, because the minutes
+hypothesis is disproven: does the frequency-selective pattern persist past the reset? Command in
+`deferred.the-scheduled-monitors-are-collapsing`. Whatever it shows, **B12 is the fix** — record the
+answer either way.
+
+**P1.2 — B15.2 and B15.3**, the two remaining unexercised guards: verifier deny / abstain / halt,
+and the J6 4c escalation walk. Both are walks against a disposable owner, both are the same pattern
+as 08-29. Closing them is what makes `README.md`'s "verifier deny/abstain" rung true.
+
+**P1.3 — B15.5**, the `verifier-context.ts` action fix. Small, and it sits under B15.2.
+
+**P1.4 — D1 cadence.** `verify:live` dead-man fires **2026-09-12 07:45Z**, `verify:journeys`
+**2026-09-19 07:53Z**. Run the chains before those dates or record a dated pause.
+
+**P1.5 — Prepare, do not execute, the `verify:iam` OIDC role.** Draft the trust policy and the
+minimal read-only permission set so Sitting D can rule on it in one line. `kms-wall.yml` is the
+working template. Not built without Steve — a new IAM role is infrastructure.
+
+---
+
+### P2 — 2026-09-12, the day precedence lifts · Steve's hands · sized in minutes
+
+Order matters here and it is not the order the sittings were written in.
+
+**P2.1 — Sitting A: A0, the owner's vault. ~20 minutes. Do this first, before the rulings.**
+§0.5 raises this above "unblocks the cohort": until it happens, every custodial guarantee in this
+file protects an empty box, the restore drill's criterion 3 cannot be satisfied, `invite:cohort`
+refuses to run by design, and the reminder ladder and release machinery have nothing real to act on.
+It is the highest ratio of unblocking to minutes anywhere in this document.
+
+**P2.2 — Sitting E: three toggles, ~10 minutes.** A7.0 Web Analytics (hard precondition of Sprint 5
+— the instrument currently collects nothing readable); the restricted read-only Stripe key (before
+the CLI expires 2026-10-07); connect the browser extension (so the `relay-alarm` filter can finally
+be read, closing the "why does delivery work" question).
+
+**P2.3 — Sitting D-1: the rulings pack, ~25 minutes.** Ready to run at
+`docs/rulings-pack-sitting-d.md`, with B30 struck (closed 08-29) and B10's question rewritten.
+**A1.3 goes first** — it heads Sprint 2's critical path and nothing in the demand lane can be
+drafted until it is answered.
+
+**P2.4 — B12, the off-GitHub heartbeat: the decision this analysis forces.** Previously one of two
+options behind the 09-02 re-measure. The other option — money on the GitHub account — is disproven,
+so this is now the only route to "a failure is noticed by a machine". 5-gate, Sitting H to build.
+
+---
+
+### P3 — 2026-09-12 → 2026-10-01 · the fortnight the whole plan exists for
+
+Sprint 2 unchanged: the demand lane fires. A1 → A2 → A3 → A6, with A7.0 confirmed collecting first.
+**This is the fourth revision to say the demand lane is the binding constraint.** The three before
+it were right and it did not move, because the engineering lane needs nobody and the demand lane
+needs Steve. P2.1 is deliberately placed before the rulings for that reason: a 20-minute action that
+has slipped for a month does not slip because it is hard.
+
+---
+
+### P4 — dated, after 2026-10-01
+
+E4.1 ruling → E4.2 paywall decision (10-01) · E1.8 Stripe CLI re-pair (10-07) · B30's date passes
+harmlessly now (10-03, closed) · `gates.d3-restore-drill` (11-08, and its criterion 3 needs A0) ·
+`gates.g3-b2b2c-pilot-loi` (11-30) · `gates.g1-arms-length-demand` (12-31).
+
+---
+
+### Explicitly NOT in this plan, and why
+
+| item | why not |
+|---|---|
+| **B5** KMS encryption context | Steve ruled DEFER 2026-08-20; `reopens_when` conditions unmet |
+| **D2** requirable factors | HELD — waits on evidence owners answer the first question |
+| Auth/React major versions | barred by the portfolio Infrastructure Change Policy |
+| Everything in **§2-F** and **§2-G** | barred until their named event; starting early is the defect |
+| Purging the 28 dangling rows | Steve's, destructive, and twice confirmed as inert residue |
+
+---
+
 ## 3. The sprints
 
 Effort: **S** ≤ a day · **M** ≤ a week · **L** longer. Sprints 0–4 are **calendar-anchored** (each
@@ -459,6 +706,20 @@ Sprint 2 is the demand lane, fired in one fortnight; Sprints 3 and 4 are the two
 with dated gates behind them. Nothing in Sprints 5–8 is scheduled by a date.
 
 ### Sprint 0 — Truthful alarms, truthful record *(calendar: now → 2026-09-12 · Claude's court · needs at most a nod or an in-session authorisation, never Steve's hands)*
+
+> ✅ **SPRINT 0 IS CLOSED, 2026-08-29.** Rows 0.1–0.4 and 0.6–0.8 are done (PRs #17, #19–#28);
+> **0.5 was offered and NOT taken** — the B15 ladder walks need production writes and hours of
+> elapsed time, and Steve chose the two chains instead. B15.1's sweep half was subsequently proven
+> anyway (§0.0 row 9); its ladder half is now **P0.1** and is dated, because it fires for a real
+> customer on 2026-09-01.
+>
+> **What Sprint 0 was designed to do, it did:** spend the engineering lane down so that 09-12 has
+> only the demand lane and one sitting left. **What it also did, unplanned:** disprove six of
+> revision 4's own recorded claims (§0.0). That was not on the plan and is the more valuable half.
+>
+> ⚠️ **What it did NOT do: repair the largest gap.** The monitor collapse is now *measured, watched
+> and correctly diagnosed* — and unfixed. `cadence-watch.yml` reports it daily; only B12 repairs it.
+> Converting a silent defect into a reported one is real progress and is not the same as progress.
 
 **Why first:** the custodial obligation's "noticed by a machine" clause is false today at its last
 hop (B10, B11), several guards are decorative (B13, B14), the IAM wall has never read the account
@@ -763,24 +1024,37 @@ quarter from B5). **G3** as scale demands.
 
 ## 4. Dated obligations calendar — a rendering; `PROJECT.yaml` and the named files win
 
-Derived on 2026-08-27. Each row names its basis so it can be re-derived rather than trusted.
+Derived on 2026-08-27, **re-derived 2026-08-29 (revision 5)**. Each row names its basis so it can
+be re-derived rather than trusted.
+
+> 🔴 **FOUR ROWS OF THIS TABLE WERE WRONG, and they are corrected in place below rather than
+> silently.** A calendar is the one artefact in this file whose whole value is that it can be
+> trusted at a glance, so its errors are worth naming: the two DMARC/Trash rows described a state
+> that does not exist; the 09-08 dead-man row was superseded by an actual run; and the 09-01
+> Actions-minutes row named a cause that has since been disproven. Struck rows are kept, because a
+> reader who remembers the old date needs to see it retired rather than absent.
 
 | date | what | owner | basis |
 |---|---|---|---|
-| 2026-09-01 | GitHub Actions minutes reset; G1/G3 `/daily-priority` revisits begin | — | GitHub billing mail; `gates.g3.revisit`, `gates.g1-caregiver-wtp.revisit` (retire the latter — B30) |
-| 2026-09-02 | B11.1 re-measure the scheduled-monitor cadence | claude | the day after the reset |
-| **~2026-09-08** | `verify:live` freshness dead-man fires — derive: `tail -1 docs/verify-live-runs.jsonl` + 14 d | claude | `lib/ops/verify-live-freshness.ts:41` |
+| **2026-09-01 16:32Z** | 🔴 **The check-in reminder ladder fires for the live paying owner — the FIRST time this product has ever sent one** (`owner_checkin_reminder_first`; zero such rows exist in `audit_log`, ever). `sweepCheckinReminders()` never throws, so failure is silent. **P0.1 walks it first.** | claude (walk); steve (whether to check in) | `users.last_active_at` 2026-08-10 + 0.75 × 30 d; `lib/release/checkin-reminder.ts` |
+| 2026-09-01 | ~~GitHub Actions minutes reset~~ — **the cause it was watched for is DISPROVEN** (§0.0 row 2). G1/G3 `/daily-priority` revisits still begin | — | `gates.g3.revisit`; B30 retired the `g1-caregiver-wtp` revisit (closed 08-29) |
+| 2026-09-02 | B11.1 re-measure the cadence — now a NARROW question (does the frequency-selective pattern persist?), because the minutes hypothesis is dead. **B12 is the fix either way** | claude | `deferred.the-scheduled-monitors-are-collapsing.re_measured_2026_08_29...` |
+| 2026-09-06 04:32Z | the reminder ladder's **90% rung** for the live owner | — | `last_active_at` + 0.90 × 30 d |
+| ~~**~2026-09-08**~~ | ~~`verify:live` freshness dead-man~~ — **SUPERSEDED: the chain was run 2026-08-29**, so it now fires **2026-09-12 07:45Z** | claude | `tail -1 docs/verify-live-runs.jsonl` + 14 d |
+| 2026-09-09 04:32Z | the live owner goes **overdue**. The sweep selects them and **transitions nothing** — they hold 0 `release_state` rows. Recorded because the opposite was briefly believed | — | `heartbeat.ts` inner query; `relay_ro` read 08-29 |
+| **2026-09-12 07:45Z** | `verify:live` freshness dead-man fires (14 d from the 08-29 stamp) | claude | `lib/ops/verify-live-freshness.ts` |
 | **2026-09-12** | report-bridge precedence lifts → **Sprint 1** (A0, mailbox, rulings) and **Sprint 2** open. ⚠️ Nothing turns red on this date (A0.dm) | steve | `deferred.the-owners-vault-is-empty.sprint_1_calendar_lapsed.revisit` |
-| **~2026-09-14..16** | The three DMARC reports purge from Gmail Trash (30 d from 08-15/16/17) — **not** ~09-10 | steve | memory 2026-08-24 read; `docs/deliverability-options-3-and-5.md:281` (the rule, not the date) |
-| ~2026-09-24 | The 2026-08-25 KMS-wall red-proof mail purges from Trash (B10 evidence) | steve | Gmail 30-day rule |
+| ~~**~2026-09-14..16**~~ | ~~three DMARC reports purge from Trash~~ — 🔴 **FALSE. Nothing is in Trash**; all 10 reports are retained and labelled. There is no rescue left and no clock. The real finding: `_dmarc` carries no `rua=`, so **the feed is dead** and the newest report is 2026-08-17 | steve (the DNS record) | `in:trash` returns nothing; DoH read 08-29 |
+| ~~~2026-09-24~~ | ~~the 08-25 KMS-wall red-proof mail purges from Trash~~ — 🔴 **FALSE.** That thread carries no TRASH label; B10's premise was wrong and delivery is proven working (§0.0 row 1) | — | Gmail read 08-29 |
+| **2026-09-19 07:53Z** | `verify:journeys` freshness dead-man fires (21 d from the 08-29 stamp) | claude | `lib/ops/verify-journeys-freshness.ts` |
 | 2026-09-30 | `gates.g2-counsel-opinion.due` — **declined**; the date survives as a record | — | register |
 | **2026-10-01** | `ratified.beta-free-release` revisit → E4.2 decision; **E4.1 must precede it**; Sprint 2's send-by (derived, Steve to confirm) | steve | register; §3 Sprint 2 |
-| **2026-10-02 → 10-03** | `gates.g1-caregiver-wtp.due` — superseded but **reads overdue to the parser from 10-03** → CI red unless B30 lands | steve/claude | `lib/ops/gates.test.ts:82-135` |
+| ~~**2026-10-02 → 10-03**~~ | ~~CI goes red unless B30 lands~~ — ✅ **CLOSED 2026-08-29 (PR #25).** The parser treats `superseded_by:` as a stopped clock, pinned by a test asserting against 2026-10-03 specifically | — | `lib/ops/gates.test.ts` |
 | **2026-10-07** | Stripe CLI session keys expire — `stripe login` | steve | `~/.config/stripe/config.toml` |
 | ~2026-10-08 | Devpost prize chase if nothing has arrived (claim 08-09 + 60 d) | steve | memory `project_h0_hackathon_orbis_relay` |
 | **2026-10-17** | Competitor-price re-verification clock (+ Proton) | claude | `market.competitors_doc` (60 d from 2026-08-18) |
 | 2026-10-21 | `ratified.relay-resumed-2026-08-21.review_on` — what it reviews is unstated (D23) | steve | register |
-| ~2026-10-24 | GitHub's 60-day public-repo schedule auto-disable window (from the 2026-08-25 push; **any push resets it** — every `verify:live` stamp does) | — | `date-guards.yml` header; `gh api repos/sgharlow/relay --jq .pushed_at` |
+| ~2026-10-28 | GitHub's 60-day public-repo schedule auto-disable window — **re-derived 08-29** (`pushed_at` 2026-08-29T21:08Z + 60 d; any push resets it) | — | `gh api repos/sgharlow/relay --jq .pushed_at` |
 | **2026-11-08** | `gates.d3-restore-drill.due` — a ceiling; `gates.test.ts` red on 11-09 with nothing recorded | steve | register |
 | **2026-11-30** | `gates.g3-b2b2c-pilot-loi.due` — kill measured on **meetings** | steve | register |
 | **2026-12-31** | `gates.g1-arms-length-demand.due` — ONE arms-length person | steve | register |
@@ -1130,8 +1404,31 @@ exit codes and green runs. The generalisable lesson, added to the portfolio's li
 proven when its failure has been seen by a human, not when its process has been seen to exit 1.**
 The next revision should open by asking which of its own "proven" claims have been *seen*.
 
-**Re-derive before planning.** Every number in this file was live on 2026-08-27. The register
+**The weakness revision 5 records against itself — two, and the second is the uncomfortable one.**
+
+*First:* this revision answered revision 4's question honestly and found six false claims, but its
+own output is once again **instruments rather than outcomes**. Sprint 0 produced a cadence watcher,
+a billing-contract wall, an incident-evidence tool, a chain dead-man, a structural guard against the
+next missing dead-man, and a great deal of corrected prose. Production still has no effective
+synthetic monitoring; the fix for that is B12 and B12 is not built. **A defect that is now reported
+daily is a better-understood defect, not a smaller one.**
+
+*Second, and it reorders the file:* the custodial obligation this document is largely organised
+around is, today, **owed to nobody**. The one live owner holds an empty vault — 0 items, 0 people,
+0 rules, 0 release_state rows. Four revisions have tracked the guarantees owed to a first stranger
+while the 20-minute action that makes those guarantees non-vacuous (A0) has not been taken. The
+engineering lane has been spent, twice over, verifying machinery against fixtures because there is
+nothing real for it to act on. **The next revision should open by asking whether A0 happened, and
+if it did not, why a 20-minute task outlived a month of week-long ones.**
+
+**Re-derive before planning.** Every number in this file was live on 2026-08-27, and the numbers in
+§0.0, §0.5, §2.5 and §4 were re-derived on 2026-08-29. The register
 command (§0.2), `npm run verify:dogfood`, `npm run verify:orphans`, `tail -1
 docs/verify-live-runs.jsonl`, `npm run flight:snapshot`, `ls .relay-cohort*.json`, and
 `gh api repos/sgharlow/relay/actions/workflows/<wf>/runs?created=<day> --jq .total_count` are the
 seven reads that decide whether anything above has moved.
+
+**Revision 5 adds two, both of which found something the seven did not.** `npm run check:cadence`
+(is the monitoring alive at all?) and a `relay_ro` read of the live owner's
+`vault_items / recipients / verifiers / access_rules / release_state` counts (is there anything for
+the custodial machinery to protect?). The second is the one that changed this revision's ordering.
