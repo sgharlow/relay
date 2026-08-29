@@ -23,6 +23,7 @@
     "verify:delegate": "npx tsx --env-file=.env.local scripts/e2e-delegate.ts",
     "verify:request": "npx tsx --env-file=.env.local scripts/e2e-request.ts",
     "verify:standdown": "npx tsx --env-file=.env.local scripts/e2e-standdown.ts",
+    "verify:sweep": "npx tsx --env-file=.env.local scripts/e2e-sweep.ts",
     "verify:schema": "npx tsx --env-file=.env.ro scripts/verify-schema.ts",
     "verify:funnel": "npx tsx scripts/verify-funnel.ts",
     "verify:stepup": "npx tsx --env-file=.env.local scripts/e2e-stepup.ts",

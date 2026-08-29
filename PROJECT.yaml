@@ -4381,6 +4381,51 @@ deferred:
       the result recorded, AND Steve has ratified the three numbers (or replaced them) and ruled
       on owner self-naming. Until then `README.md`'s "verifier deny/abstain" rung overstates what
       is proven.
+    b15_1_the_transition_has_now_been_WATCHED:
+      date: 2026-08-29
+      by: claude
+      state: "LIVE-PROVEN. `npm run verify:sweep` (`scripts/e2e-sweep.ts`), 11/11 checks."
+      what_was_observed: >-
+        A disposable owner was created through the ordinary signup API, given a CONFIRMED verifier
+        and an ARMED `emergency` release_state (v1), then backdated to overdue. Nothing local
+        called the sweep - `CRON_SECRET` lives only in Vercel, so there is no way to. The walk then
+        waited, polling once a minute, and at **2026-08-29T21:00:08Z the production Vercel cron
+        ticked on its own** and the row moved `armed v1` -> `grace v3`.
+        The hash-chained audit log records both halves, written by `system`:
+        `release_transition_pending` then `release_transition_grace`. The OCC version advanced by
+        exactly two, one bump per transition. This is the transition this entry says "has never
+        been OBSERVED for a real owner, disposable or otherwise". It has now.
+      the_resting_state_is_grace_and_that_is_correct: >-
+        ⚠️ The walk FAILED on its first run asserting `state === 'pending'`, against a system doing
+        exactly the right thing - kept here because it is an easy mistake to make twice.
+        `GRACE_WINDOW_MS` is 0, so `armOne` transitions armed -> pending AND stamps a
+        `grace_ends_at` that is already elapsed; `resolveElapsedGrace`, called by the SAME cron
+        request immediately after the sweep, then advances pending -> grace. One tick, two
+        transitions. PENDING is real but MOMENTARY: it exists in the audit chain and never in a
+        poll, so asserting on the resting state was asserting on a race with the poll interval.
+        The walk now reads the audit log, which is the honest witness.
+      the_safety_check_that_had_to_come_first: >-
+        `runHeartbeatSweep` is NOT scoped to one owner - it reads every active non-demo owner. So
+        the walk refuses to run if anybody else is already overdue, because the tick it waits for
+        would fire their release too. Verified read-only before anything was created: exactly one
+        real owner exists (`sgharlow+relaycardtest@gmail.com`, 30-day interval, idle 19.6 days),
+        and 0 owners were sweepable. A walk that fires a live customer's release is not a walk.
+      🔴_a_dated_consequence_found_while_checking_that: >-
+        The one real owner reaches 30 days idle on approximately **2026-09-09**, at which point
+        this same sweep will find them overdue and arm their triggers - unattended, at night, for
+        real. `npm run beta:status` reports their circle as EMPTY (nobody named), so what happens
+        at quorum 0 with no verifiers to ask has never been established. This was not on any list.
+        It is 11 days out and it is the live paying subscriber.
+      what_this_does_NOT_close: >-
+        B15.2 (verifier deny / abstain / halt) and B15.3 (the J6 4c escalation walk) are still
+        unexercised, B15.5 (`verifier-context.ts` action fix) is unbuilt, and B15.4 remains
+        Steve's ratification rather than a build. This entry stays OPEN. What changed is that the
+        single most load-bearing claim under it - that the dead-man's switch actually fires - is
+        no longer an inference from unit tests.
+      cleanup: >-
+        Four walk attempts in total (three failed on setup, one green). `npm run verify:orphans`
+        after: 0 reserved-domain accounts remain, and the dangling-row total is 28 - unchanged
+        from before the walks, so the cascade held across every attempt.
 
   - id: dr-copy-jobs-have-no-absence-alarm                    # ROADMAP B17
     owner: steve                          # ~$0.10/mo, 5-gate; claude builds after the ruling
