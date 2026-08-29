@@ -170,6 +170,25 @@ npm run verify:funnel  # is the G1 demand instrument alive? Drives a real browse
                        # retired 2026-08-16 (ratified.retire-paid-advertising) and that
                        # doc carries a ⛔ RETIRED banner, so a live command's only
                        # instructions pointed at a document telling you not to act on it.
+npm run verify:stripe  # the BILLING contract, and the only wall here that somebody
+                       # else's operator can move. Two read-only GETs: does the live
+                       # webhook endpoint's `enabled_events` still cover every event
+                       # the handler has a `case` for, and does the DEFAULT billing
+                       # portal still cancel `at_period_end` — which is what /terms
+                       # promises in lib/offer.ts REFUND_POLICY.
+                       # ⚠️ The account is SHARED with report-bridge, skillcrossroads
+                       # and second-brain, and the portal configuration is
+                       # ACCOUNT-level: another product's operator can make /terms a
+                       # false statement to Relay's paying customers in one click,
+                       # with no commit, no deploy and no alarm. That is the rule
+                       # this exists for; the event-list half is the one that already
+                       # bit (invoice.payment_failed was a handled case for nine days
+                       # before anyone could say whether Stripe would ever send it).
+                       # Reads via STRIPE_READONLY_KEY if set — a RESTRICTED key,
+                       # never the secret key — else falls back to the paired Stripe
+                       # CLI, which is Steve's browser pairing and EXPIRES 2026-10-07.
+                       # Only the key path can be scheduled. Exit 0 holds, 1 finding,
+                       # 2 could-not-look; the third is deliberately not the first.
 npm run verify:iam     # the OTHER half of the least-privilege wall — can any of our IAM
                        # principals still obtain a DSQL ADMIN token, and does the one that
                        # must hold NO KMS still hold none? Reads each live policy, managed

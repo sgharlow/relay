@@ -3984,6 +3984,82 @@ deferred:
       `web_analytics_not_enabled`, and a decision is recorded about where the queryability
       assertion lives.
 
+  - id: the-billing-contract-had-no-guard                     # ROADMAP E1.6 + E1.7 + E1.1
+    owner: claude
+    opened: 2026-08-29
+    closed:
+      date: 2026-08-29
+      what_shipped: >-
+        `npm run verify:stripe` — `lib/ops/stripe-wall.ts` (pure verdicts, no credentials) +
+        `scripts/verify-stripe.ts` (the live half), in the split `iam-wall`/`kms-wall` established.
+        LIVE-PROVEN against the real account 2026-08-29, exit 0, and proven to fail in all three
+        directions.
+    e1_6_both_reads_answered_and_they_were_never_steve_s: >-
+      Read #1 — `stripe webhook_endpoints retrieve we_1U2IIGGs40KMmT4XAIradLoE --live`:
+      `status enabled`, `livemode true`, `enabled_events` = the four
+      (`checkout.session.completed`, `customer.subscription.updated`,
+      `customer.subscription.deleted`, `invoice.payment_failed`), matching the handler's four
+      `case`s exactly. Read #2 — `stripe billing_portal configurations list --live`:
+      `bpc_1Tu3WlGs40KMmT4X7RYjcEXF`, `is_default true`, `active true`,
+      `subscription_cancel.enabled true`, **`mode at_period_end`** — so `/terms` is TRUE as
+      written and NO copy change is owed.
+      ⚠️ `docs/stripe-setup.md` had addressed read #1 to Steve as "one dashboard checkbox" since
+      2026-08-21, saying "it cannot be read from this repo: there is no Stripe key in any local
+      env, by design." True about the repo and false about the machine: a paired CLI answers it
+      read-only in one command, and had been able to the whole time. An item sat in somebody
+      else's court for eight days because the tool that answers it was not on the list of tools
+      considered.
+    e1_7_the_rule_that_is_not_ours_to_break: >-
+      The portal configuration is ACCOUNT-LEVEL on an account shared with report-bridge,
+      skillcrossroads and second-brain. Another product's operator flipping cancellation to
+      `immediately` makes `/terms` a false statement to Relay's paying customers — no commit, no
+      deploy, no test, no alarm — and a customer cancelling on day 31 loses the eleven months they
+      paid for with the refund window already closed. That is why this is a standing check rather
+      than the paragraph it used to be.
+    proven_in_every_direction: >-
+      17 unit tests, fixtures copied verbatim from the live objects. Planted violations caught: a
+      handled event the endpoint will not send; a disabled endpoint; a test-mode endpoint audited
+      as live; the shared-account flip to `immediately`; cancellation switched off; a non-default
+      configuration audited by mistake; an inactive default. Asserted NOT to fire on an enabled
+      event with no handler (that falls to `default: break` — noise, and a rule half made of noise
+      gets muted), and asserted to report a disabled cancel control ONCE rather than twice.
+      Live exit codes all three demonstrated - 0 holding, 1 with a planted `case 'invoice.paid'`
+      in the real route, 2 with a bogus key (which also exercised the STRIPE_READONLY_KEY branch
+      before that key exists).
+    the_pin_cannot_outlive_its_sentence: >-
+      `TERMS_IMPLY_CANCEL_MODE` is pinned to `at_period_end` BECAUSE `REFUND_POLICY` says "cancel
+      at any time to stop the next one". If that copy is rewritten, a pinned constant would go on
+      comparing the live portal against a promise nobody makes, and go on passing. So the clause
+      itself is asserted — the clause, not the sentence, so ordinary copy edits do not break it.
+    e1_1_the_build_marker_and_why_process_env_would_not_do: >-
+      The webhook now answers `{received:true, build:{sha,loadedAt,instance}}`
+      (`lib/ops/build-marker.ts`), behind signature verification, so it reaches Stripe and the
+      holder of the endpoint secret and nobody else. `loadedAt` and `instance` are captured at
+      MODULE LOAD, not per request: a marker read from `process.env` each time would print the
+      same string from a stale module as from a fresh one and would prove nothing, and a stale
+      module is the leading unproven explanation for the nine deliveries that reached `sendOnce`
+      with n=0 and wrote nothing. `RELAY_BUILD_SHA` exists because route 3 runs against a LOCAL
+      production build where Vercel's variable does not.
+      ⚠️ A defect was found by its own test, not by inspection - `??` accepted an EMPTY string
+      from a bare `RELAY_BUILD_SHA=` line, yielding `sha: ""`, a present-but-falsy field that
+      reads as a broken marker rather than an unset one. Fixed to treat empty as absent.
+    three_repo_guards_fired_while_this_was_built: >-
+      Worth recording, because each one caught something a careful author had already missed:
+      `env-example.test.ts` refused `STRIPE_READONLY_KEY` and then `RELAY_BUILD_SHA` until both
+      were documented (and `VERCEL_GIT_COMMIT_SHA` classified as platform-set);
+      `secrets-have-a-rotation-procedure.test.ts` refused `STRIPE_READONLY_KEY` until
+      `docs/secret-rotation-runbook.md` gained a row and section §8. The structural checks in
+      `lib/ops/` are doing the job their headers claim.
+    what_is_NOT_closed: >-
+      Scheduling. `STRIPE_READONLY_KEY` is unminted, so this runs only when somebody runs it —
+      the exact weakness the dead-mans elsewhere exist for. The CLI fallback is Steve's browser
+      pairing and expires 2026-10-07 (E1.8), which is a HARDER deadline than it looks: after that
+      date, with no restricted key, this check has no read path at all.
+    ends_when: >-
+      Steve mints a restricted read-only key (Webhook Endpoints: read, Billing Portal: read — and
+      NEVER the secret key, on a shared account), it is set where the check runs, and the check is
+      scheduled. Until then this is `live-proven` as an instrument and `built` as a guard.
+
   - id: date-guards-has-never-been-red                        # ROADMAP B13, residue
     owner: steve                          # the blocker is a hook in ~/.claude, not a file in this repo
     opened: 2026-08-29
@@ -4384,6 +4460,18 @@ deferred:
         RECOMMENDATION: (1), with (3) as an interim recorded as what it is."
     ends_when_restated:
       date: 2026-08-28
+      reachability_closed_2026_08_29: >-
+        ⚠️ ONE PREMISE UNDER ALL THREE ROUTES WAS UNVERIFIED WHEN THIS WAS WRITTEN, and it is now
+        closed. `docs/stripe-setup.md` carried an open 🔴 saying the live endpoint might not be
+        subscribed to `invoice.payment_failed` at all — in which case Stripe would never POST it,
+        `lib/billing/lapse-notice.ts` would be unreachable in production however correct the code,
+        and every route below would have been proving a path that production cannot take. Measured
+        read-only 2026-08-29 (`stripe webhook_endpoints retrieve we_1U2IIGGs40KMmT4XAIradLoE
+        --live`): `enabled_events` carries all four, including `invoice.payment_failed`, and the
+        handler's `case` list is the same four. Stripe WILL send it. The section had been addressed
+        to Steve as "one dashboard checkbox" since 2026-08-21 and never needed him — a paired CLI
+        answers it in one read-only command. `npm run verify:stripe` (E1.7) now re-measures it
+        rather than leaving it to be re-asked.
       why_restated: >-
         ROADMAP §2-H item E1.9. This entry's original `ends_when` asked for `live-proven`, and the
         three routes above establish that `live-proven` is reachable by exactly one route — a REAL
