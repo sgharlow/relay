@@ -1,8 +1,14 @@
 /**
  * scripts/verify-csp.ts — read the CSP violation reports the policy has collected.
  *
- *   npx tsx --env-file=.env.local scripts/verify-csp.ts            (last 14 days)
- *   npx tsx --env-file=.env.local scripts/verify-csp.ts --days 30
+ *   npm run verify:csp                    (last 14 days)
+ *   npm run verify:csp -- --days 30
+ *
+ * ⚠️ Wired on `.env.ro` (the read-only `relay_ro` identity), NOT `.env.local`, and
+ * these two lines said `.env.local` until 2026-08-29 (B21.1) — a header telling
+ * an operator to reach for the credential that can also WRITE, for a script whose
+ * own paragraph below says it performs one SELECT. `relay_ro` is exactly the
+ * identity this belongs to, and it is the identity an unattended agent can hold.
  *
  * 🔴 WHY THIS EXISTS. Migration 038 created `csp_reports` so the report-only
  * policy's stated plan could execute: "observe real traffic, remove what nothing

@@ -170,6 +170,31 @@ npm run verify:funnel  # is the G1 demand instrument alive? Drives a real browse
                        # retired 2026-08-16 (ratified.retire-paid-advertising) and that
                        # doc carries a ⛔ RETIRED banner, so a live command's only
                        # instructions pointed at a document telling you not to act on it.
+npm run verify:csp     # what has the CSP actually caught? Reads `csp_reports` (one
+                       # SELECT, read-only, `.env.ro`) and splits the answer in two,
+                       # which is the whole value of it:
+                       #   ENFORCED   the LIVE policy blocked it — a real person met a
+                       #              broken page. These are defects, not evidence.
+                       #   REPORT-ONLY the stricter policy WOULD have blocked it.
+                       #              Nothing broke. This is the evidence for whether
+                       #              the next rung can be taken.
+                       # ⚠️ An empty result has TWO OPPOSITE meanings — "nothing violates
+                       # the policy" or "reports are not reaching the endpoint" — and the
+                       # script says so on every zero rather than guessing. Headless
+                       # Chromium logs CSP violations at INFO and delivers none, so a
+                       # browser-driven check once saw a clean table and concluded the
+                       # wrong thing.
+                       # Wired as an npm script 2026-08-29 (B21.1); it existed and was
+                       # reachable only by typing the path, which is how D9 came to be
+                       # closed on a sink nothing read.
+npm run beta:status    # where is an account in the journey, right now? Read-only, `.env.ro`.
+                       # Prints states, counts and dates — never a code, a token or anything
+                       # from a vault. `-- <email>` for one account.
+                       # Carries the B33 NOTICE: recovery codes all created in one instant
+                       # with none ever used is the signature of codes generated at enrolment
+                       # and never regenerated. It does NOT prove they were lost, and it never
+                       # fails the script — whether the owner still holds them is unknowable
+                       # from the database, and a check no commit can satisfy is a status.
 npm run verify:stripe  # the BILLING contract, and the only wall here that somebody
                        # else's operator can move. Two read-only GETs: does the live
                        # webhook endpoint's `enabled_events` still cover every event
@@ -840,6 +865,29 @@ called from exactly one place, so signing everybody out means rotating `NEXTAUTH
 a global outage as well as a containment. And **the zero-knowledge claim does not cover owner
 authenticator seeds**: `users.totp_secret` is plaintext server-side and is not wrapped by the CMK,
 so a database compromise reaches it even though it reaches no vault contents.
+
+## `/api/health` is 404, on purpose — do not "fix" it
+
+Recorded 2026-08-29 (D22), because this is the shape of thing a well-meaning session adds in five
+minutes and nobody removes. **The health surface is `/api/health/scheduler` and
+`/api/health/delivery-webhook`.** Both answer 200 and both mean something. A bare `/api/health`
+returning 200 would mean only that Next.js is running, which is the exact signal
+`lib/ops/canary.ts` opens by arguing is worthless:
+
+> *"Every page in this app returned 200 for the entire time that verifier link was broken."*
+
+Re-derive rather than trust this paragraph:
+
+```bash
+node -e 'Promise.all(["/api/health","/api/health/scheduler","/api/health/delivery-webhook"].map(p=>fetch("https://relaystandby.com"+p,{redirect:"manual"}).then(r=>console.log(p,r.status))))'
+# 2026-08-29: 404, 200, 200
+```
+
+⚠️ **If a portfolio-level live-probe or a `/verify` convention wants one URL for this project,
+point it at `/api/health/scheduler`** — the route whose 200 is a claim about the scheduler having
+run inside its staleness threshold, not about a process being alive. A probe pointed at
+`/api/health` would report this project as down while it is healthy, which is the failure that
+teaches an operator to ignore the probe.
 
 ## Notes
 

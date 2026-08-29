@@ -6,8 +6,13 @@
  * the beta walk has a visible half (a screen said yes) and a real half (a row
  * exists), and this product's recurring defect is the two disagreeing.
  *
- *   npx tsx --env-file=.env.local scripts/beta-status.ts              # every account
- *   npx tsx --env-file=.env.local scripts/beta-status.ts <email>      # one
+ *   npm run beta:status                    # every account
+ *   npm run beta:status -- <email>         # one
+ *
+ * ⚠️ Wired on `.env.ro` (the read-only `relay_ro` identity) as of 2026-08-29, not
+ * `.env.local`. It only SELECTs, so the credential that can also write was never
+ * the right one — and running it under `relay_ro` is what lets an unattended
+ * agent answer these questions at all.
  *
  * READ-ONLY. Prints states, counts and dates — never a code, a token, a
  * fingerprint phrase or anything from a vault. A status tool that printed a
@@ -33,8 +38,20 @@ async function one(o: OwnerRow): Promise<void> {
 
   const [items, codes, sub, people, invites, releases] = await Promise.all([
     query<{ n: string }>(`SELECT count(*)::text n FROM vault_items WHERE owner_id=$1`, [o.id]),
-    query<{ n: string }>(
-      `SELECT count(*)::text n FROM recovery_codes WHERE user_id=$1 AND used_at IS NULL`, [o.id]),
+    /*
+      B33: `n` alone cannot tell "8 codes, freshly generated, safely stored" from
+      "8 codes generated once at signup and lost at that moment" — and for the one
+      live paying owner it is the second. So the shape is read too: when the oldest
+      and newest were created, and how many have ever been spent. Still one SELECT,
+      still read-only.
+    */
+    query<{ n: string; total: string; oldest: string | null; newest: string | null; used: string }>(
+      `SELECT count(*) FILTER (WHERE used_at IS NULL)::text n,
+              count(*)::text total,
+              min(created_at)::text oldest,
+              max(created_at)::text newest,
+              count(used_at)::text used
+         FROM recovery_codes WHERE user_id=$1`, [o.id]),
     query<{ tier: string; status: string; cohort: string | null; price_cents: number | null }>(
       `SELECT tier, status, cohort, price_cents FROM subscriptions
         WHERE owner_id=$1 ORDER BY updated_at DESC LIMIT 1`, [o.id]),
@@ -61,6 +78,41 @@ async function one(o: OwnerRow): Promise<void> {
   console.log(`${tick(Boolean(o.display_name))}name set${o.display_name ? `: ${o.display_name}` : ' — contacts will see the email address instead'}`);
   console.log(`${tick(Number(items.rows[0].n) > 0)}vault items: ${items.rows[0].n}`);
   console.log(`${tick(Number(codes.rows[0].n) > 0)}unused recovery codes: ${codes.rows[0].n}`);
+  /*
+    B33 — a read-only NOTICE, so this question stops needing a human with a SQL
+    client. It never fails the script: whether the owner still holds the codes is
+    unknowable from the database, and a check that cannot be satisfied by any
+    commit is a status, not a gate. Same reasoning as verify:dogfood's not-ready.
+  */
+  {
+    const c = codes.rows[0];
+    const spread = c.oldest && c.newest ? Date.parse(c.newest) - Date.parse(c.oldest) : 0;
+    /*
+      60 seconds, and the number was MEASURED rather than guessed. The first
+      attempt used 1000 ms and did not fire on the very account it was written
+      for: the live owner's 8 codes span 1391 ms, because they are INSERTed one
+      row at a time. Anything under a minute is one enrolment event; a genuine
+      regeneration weeks later shows a spread of days, so the gap between the two
+      readings is enormous and the exact threshold inside it does not matter.
+    */
+    const ONE_ENROLMENT_EVENT_MS = 60_000;
+    const neverRegenerated =
+      Number(c.total) > 0 && Number(c.used) === 0 && spread < ONE_ENROLMENT_EVENT_MS;
+    if (neverRegenerated) {
+      console.log(
+        `    NOTICE: all ${c.total} codes were created in the same instant (${c.oldest}) and ` +
+        'none has ever been used.',
+      );
+      console.log(
+        '    That is the signature of codes generated once at enrolment and never regenerated ' +
+        'since. It does NOT prove they were lost — only that nothing has happened to them.',
+      );
+      console.log(
+        '    If the owner cannot produce them, regenerate from /account (needs step-up/TOTP). ' +
+        'Only the owner can answer that; this script can only say the row has not changed.',
+      );
+    }
+  }
   const s = sub.rows[0];
   const comped = s ? s.cohort === 'founding-comp' || s.price_cents === 0 : false;
   console.log(`${tick(true)}tier: ${s ? `${s.tier} (${s.status})${comped ? ' — COMPED, never revenue' : ''}` : 'free (no row)'}`);

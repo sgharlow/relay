@@ -37,6 +37,8 @@
     "invite:cohort": "npx tsx --env-file=.env.local scripts/invite-cohort.ts",
     "verify:factors": "npx tsx --env-file=.env.local scripts/e2e-factors.ts",
     "verify:orphans": "npx tsx --env-file=.env.ro scripts/disposable-sweep.ts",
+    "beta:status": "npx tsx --env-file=.env.ro scripts/beta-status.ts",
+    "verify:csp": "npx tsx --env-file=.env.ro scripts/verify-csp.ts",
     "verify:stripe": "npx tsx scripts/verify-stripe.ts",
     "verify:stamp": "npx tsx scripts/stamp-verify-live.ts",
     "verify:stamp:journeys": "npx tsx scripts/stamp-verify-journeys.ts"

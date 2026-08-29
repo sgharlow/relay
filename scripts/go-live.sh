@@ -1,5 +1,38 @@
 #!/usr/bin/env bash
 # =============================================================================
+# 🔴🔴 HISTORICAL — DO NOT RUN. Bannered 2026-08-29 (B37).
+#
+# This is the H0 bring-up script from 2026-06-19, kept because it records how
+# the estate was originally provisioned. Relay has been live at
+# relaystandby.com since then, and running this against the current world does
+# two things that are not recoverable by re-running anything:
+#
+#   1. STEP 5 SEEDS DEMO DATA INTO PRODUCTION. `npx tsx db/seeds/demo-seed.ts`
+#      writes demo@relay.test and its fixtures to whatever cluster .env.local
+#      points at — and .env.local points at PRODUCTION, because Relay has no
+#      dev database. There is no separate demo cluster for it to land in.
+#
+#   2. STEP 8 OVERWRITES LIVE SECRETS. The `push` loop runs
+#      `vercel env add --force` over NEXTAUTH_SECRET, RECIPIENT_JWT_SECRET,
+#      VERIFIER_JWT_SECRET, CRON_SECRET, OPENAI_API_KEY, RESEND_API_KEY — with
+#      whatever happens to be in the local .env.local. Rotating NEXTAUTH_SECRET
+#      signs out every owner in the world (see docs/secret-rotation-runbook.md
+#      §1); rotating the JWT secrets breaks every live recipient and verifier
+#      link (§2). It also pushes TOTP_SECRET, which was RETIRED on 2026-08-13
+#      and is read by nothing.
+#
+# So the failure mode is not "the script errors" — it is a successful run that
+# seeds test data into the live vault and signs out the paying customer.
+#
+# It is BANNERED RATHER THAN DELETED because git keeps the history either way,
+# and a deleted file cannot warn anybody. What makes this dangerous is not that
+# it exists, it is that it reads like an instruction: a session following the
+# repo's own scripts would find it and run it.
+#
+# If you are provisioning a NEW environment, read this for the sequence and run
+# the steps by hand, with a .env.local that does not point at production.
+# =============================================================================
+#
 # go-live.sh — one-shot Relay H0 provision → migrate → seed → deploy.
 #
 # Orchestrates the pieces that already exist (provision-dsql.sh, the migration
