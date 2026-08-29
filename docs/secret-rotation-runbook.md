@@ -45,6 +45,7 @@ happened.
 | `CRON_SECRET` | `/api/cron/heartbeat` — the release sweep | the sweep stops until Vercel's cron config matches. See §3 | **2026-06-24** |
 | `STRIPE_SECRET_KEY` | checkout, portal, subscription reads | new checkouts fail until redeployed; existing subscriptions unaffected | **2026-08-08** |
 | `STRIPE_WEBHOOK_SECRET` | verifying Stripe's callbacks | **billing state silently stops reconciling.** See §4 | **2026-08-08** |
+| `STRIPE_READONLY_KEY` | `npm run verify:stripe` reading two Stripe objects | **nothing customer-facing breaks.** The billing-contract check stops running. See §8 | **never minted** (2026-08-29) |
 | `RESEND_API_KEY` | every outbound email | all mail stops. Loud, and the monitors catch it | **2026-06-24** |
 | `RESEND_WEBHOOK_SECRET` | verifying Resend's delivery events | delivery telemetry stops; `/circle` reads `unknown` again | **2026-08-14** |
 | `OPENAI_API_KEY` | the importance engine | intake analysis degrades; the vault is unaffected | **2026-06-24** |
@@ -270,6 +271,37 @@ against the cluster the app uses).
 - ⚠️ **If you find a value in it, that is the finding**, not a chore. Somebody worked around an auth
   failure by pasting a token instead of fixing the identity, and §5 is the thing that actually
   needed attention.
+
+## §8 — `STRIPE_READONLY_KEY` · the one whose loss is silent and harmless, until it isn't
+
+**Not yet minted.** Listed because it is declared in `.env.example` and read by
+`scripts/verify-stripe.ts`, and a secret that exists in code but not in this table is exactly the
+gap this document's own test exists to catch.
+
+**What it is.** A Stripe RESTRICTED key with **read** on Webhook Endpoints and **read** on Billing
+Portal, and nothing else. It exists so E1.7's contract check can be SCHEDULED. Without it the
+check falls back to the paired Stripe CLI, which works from Steve's laptop and cannot run
+unattended — the session key is a browser pairing that expires **2026-10-07** (E1.8).
+
+**Blast radius of losing it: none, immediately.** No customer path touches it, no deploy depends on
+it, nothing 500s. What stops is the re-measurement — and the thing being re-measured is a setting
+on a SHARED account that another product's operator can change without touching this repo. So the
+failure shape is the familiar one: everything looks fine, and the wall stopped being watched.
+
+**Rotation.** Create a new restricted key in the Stripe dashboard with those two read scopes, set
+`STRIPE_READONLY_KEY` wherever the check runs, confirm with `npm run verify:stripe` (it prints
+which read path it used — `STRIPE_READONLY_KEY (schedulable)` vs the CLI), then revoke the old key.
+There is no redeploy: this is not a runtime variable.
+
+🔴 **Never substitute `STRIPE_SECRET_KEY` here.** It would work, and it would put a key that can
+create charges and modify subscriptions on three other products' account into a scheduled job for
+the sake of two GETs. If a sufficiently narrow restricted key cannot be minted, leave this unset
+and keep the CLI fallback — a check that runs less often is better than a credential that can do
+more than it needs to.
+
+⚠️ **Rotating it is not the same as rotating `STRIPE_SECRET_KEY`**, which the table's own header
+rule covers: never roll `STRIPE_SECRET_KEY`, because report-bridge and skillcrossroads use it. This
+key is Relay's alone, so it is the one Stripe credential here that can be rolled freely.
 
 ## What is NOT rotatable, and must never be treated as though it were
 

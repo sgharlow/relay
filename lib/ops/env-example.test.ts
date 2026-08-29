@@ -51,6 +51,11 @@ const PROVIDED_BY_THE_PLATFORM = new Set([
   'USERPROFILE',
   'PATH',
   'PLAYWRIGHT_MODULE',
+  // Set automatically on every Vercel build. Its LOCAL counterpart,
+  // RELAY_BUILD_SHA, is a person's to set and IS documented in .env.example —
+  // the pair is deliberately split across both lists rather than being treated
+  // as one thing.
+  'VERCEL_GIT_COMMIT_SHA',
 ]);
 
 function variablesReadByCode(): Set<string> {

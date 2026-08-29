@@ -19,9 +19,37 @@ would only have accrued delivery failures.
 Events, **as configured on 2026-08-08**: `checkout.session.completed`,
 `customer.subscription.updated`, `customer.subscription.deleted`.
 
-### 🔴 The code now handles a FOURTH event the endpoint may not be subscribed to
+### ~~🔴 The code now handles a FOURTH event the endpoint may not be subscribed to~~ — SETTLED 2026-08-29 (E1.6, read #1)
 
-> Added 2026-08-21. **Steve's, and it is one dashboard checkbox.**
+> ✅ **RESOLVED 2026-08-29 by a read-only Stripe CLI retrieve, not by a dashboard visit.** The
+> endpoint WAS widened and nobody wrote it down — the first of the two possibilities below. Kept
+> rather than deleted, because the *class* it names is still open and is now guarded (see the
+> `verify:stripe` note at the end of this section).
+>
+> ```
+> stripe webhook_endpoints retrieve we_1U2IIGGs40KMmT4XAIradLoE --live
+> ```
+>
+> Live, 2026-08-29 — `status: enabled`, `livemode: true`,
+> `url: https://relaystandby.com/api/stripe/webhook`, and `enabled_events` is **exactly four**:
+> `checkout.session.completed`, `customer.subscription.updated`,
+> `customer.subscription.deleted`, `invoice.payment_failed`.
+>
+> The handler's `case` list is the same four —
+> `src/app/api/stripe/webhook/route.ts:338, :378, :379, :423. **The two definitions agree today.**
+> So `lib/billing/lapse-notice.ts` IS reachable in production: Stripe will POST
+> `invoice.payment_failed` to it. That closes the reachability question and leaves E1-prime's
+> remaining question narrower than it was — not *can the notice fire*, but *has anyone watched it
+> fire*.
+>
+> ⚠️ **This section was addressed to Steve as "one dashboard checkbox" and it never needed him.**
+> It says plainly: *"it cannot be read from this repo: there is no Stripe key in any local env, by
+> design."* True about the repo, false about the machine — a paired Stripe CLI session key reads
+> it in one command, read-only, and had been available the whole time. An item can sit in
+> somebody's court for eight days because the tool that answers it was not on the list of tools
+> considered.
+
+> Added 2026-08-21. **~~Steve's, and it is one dashboard checkbox.~~** Claude's, and it was one CLI read.
 
 `invoice.payment_failed` has been a handled case in `src/app/api/stripe/webhook/route.ts` since
 2026-08-20 — it is what sends the renewal-failure notice. **Nothing records the live endpoint's
@@ -225,9 +253,32 @@ banner above). The rest stands as the description of a failure mode: if that con
 reset, every subscriber who clicks "Manage or cancel subscription" gets an error, and signing in
 and clicking it once is how you would find out.
 
-### 🟡 OPEN — cancellation timing is a dashboard setting, and `/terms` implies one of the two answers
+### ~~🟡 OPEN — cancellation timing is a dashboard setting~~ — SETTLED 2026-08-29 (E1.6, read #2)
 
-> Steve's, read-only, one screen. Recorded 2026-08-21.
+> ✅ **RESOLVED: the portal cancels AT PERIOD END, so `/terms` is TRUE as written.** Read-only,
+> 2026-08-29:
+>
+> ```
+> stripe billing_portal configurations list --live
+> ```
+>
+> `bpc_1Tu3WlGs40KMmT4X7RYjcEXF` — `is_default: true`, `active: true`,
+> `features.subscription_cancel.enabled: true`, **`mode: "at_period_end"`**,
+> `proration_behavior: "none"`.
+>
+> That is the first of the two acceptable outcomes below: the plain reading of `REFUND_POLICY`'s
+> *"cancel at any time to stop the next one"* — your current year runs out and you are not billed
+> again — is what the portal actually does. **No copy change is owed.** The unacceptable outcome
+> (leaving it unread) is closed.
+>
+> ⚠️ **`is_default: true` is the load-bearing half, and it belongs to somebody else.** This is a
+> SHARED Stripe account (skillcrossroads, report-bridge, second-brain). The default portal
+> configuration is account-level: another product's operator can flip this to `immediately` in one
+> click, in a dashboard this repo cannot see, and `/terms` becomes false with no commit, no test
+> and no alarm. That is why E1.7 exists and why it is a standing check rather than this
+> paragraph.
+
+> ~~Steve's, read-only, one screen.~~ Answered by Claude read-only via the CLI. Recorded 2026-08-21, settled 2026-08-29.
 
 **The portal's cancellation timing is set in the dashboard, not in this code** — *cancel
 immediately* vs *cancel at period end*. Nobody wrote down which was chosen; item 7h saw a working

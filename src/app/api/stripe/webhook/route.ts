@@ -20,6 +20,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import type Stripe from 'stripe';
 
 import { getStripe } from '../../../../../lib/billing/stripe';
+import { buildMarker } from '../../../../../lib/ops/build-marker';
 import { query } from '../../../../../lib/db/connection';
 import { writeAuditEntry } from '../../../../../lib/audit/audit-service';
 import { COMP_COHORT, CONVERTED_FROM_COMP_COHORT } from '../../../../../lib/billing/entitlements';
@@ -442,5 +443,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'HandlerFailed' }, { status: 500 });
   }
 
-  return NextResponse.json({ received: true });
+  /*
+    E1.1 — the build marker. `{received:true}` alone cannot answer the question
+    the next E1-prime attempt has to answer FIRST: is the code answering me the
+    code I just built? Nine spliced deliveries once reached `sendOnce` with n=0
+    and wrote nothing, which the source cannot do, and the leading explanation
+    (a stale module) was unfalsifiable because every response looked identical.
+
+    `loadedAt` and `instance` are captured at MODULE LOAD, not per request, so a
+    carried-over module reports the older time and a different id. A marker read
+    from process.env on each request would print the same string from a stale
+    module as from a fresh one and would have proven nothing.
+
+    This is behind signature verification — an unsigned or wrongly-signed request
+    is already 400 above — so it reaches Stripe and the holder of the endpoint
+    secret, and nobody else.
+  */
+  return NextResponse.json({ received: true, build: buildMarker() });
 }
