@@ -4340,7 +4340,26 @@ deferred:
       and `owner_checkin_reminder_final` have **zero rows in `audit_log`, ever** (read under
       `relay_ro`, 2026-08-29). It is wired - `sweepCheckinReminders()` is called by
       `/api/cron/heartbeat` on every hourly tick - and has simply never had an owner reach a rung.
-    it_stops_being_hypothetical_on_2026_09_01: >-
+    🔴_corrected_same_day_it_does_NOT_fire_on_2026_09_01: >-
+      Measured after this entry was first written, and it overturns the entry's own headline.
+      `CANDIDATE_SQL` does not read every owner in the timing window - its last clause requires an
+      **armed `release_state` of a user-selectable type**, and the live owner holds none. The real
+      query run read-only against production returns **0 candidates**; the same query with that one
+      clause removed returns **1** (the live owner). So the owner is in the 50-100% window exactly
+      as computed and is NOT a candidate. No reminder fires on 09-01, on 09-06, or at all.
+      ⚠️ Second overstatement in this area in one session, same shape both times: arithmetic done
+      correctly on a gate never checked. The first claimed the sweep would arm their triggers on
+      09-09 (it iterates an empty set). ROADMAP §0.0's own lesson - a finding is proven when the
+      thing it describes has been LOOKED AT - was written and then broken twice within the hour.
+    what_the_correction_leaves_is_stronger: >-
+      The live paying owner receives NOTHING from any part of the custodial machinery: no reminder
+      (not a candidate), no sweep transition (no armed rows), no release, no verifier notice. The
+      product is completely inert for its only user, and all of it traces to A0.
+      ✅ And it makes A0 SELF-PROVING: the owner is already at ~79% of a 30-day interval, past the
+      75% rung, so the moment A0 configures a trigger they become a candidate while already past
+      it - and the first check-in reminder this product has ever sent fires on the next hourly
+      cron, to a real address. A0 is the cheapest live proof of this ladder available.
+    superseded_timing_note: >-
       The live paying owner was last active 2026-08-10 on a 30-day interval, so the rungs land at
       **2026-09-01 16:32Z (75%)** and 2026-09-06 04:32Z (90%), with overdue on 2026-09-09 04:32Z.
       The first reminder this product has ever sent will therefore be sent to a real customer, and
