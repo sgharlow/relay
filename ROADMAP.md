@@ -470,12 +470,104 @@ minutes, not hours.
 |---|---|---|---|
 | 0.1 | **This revision**: rewrite `ROADMAP.md`; banner the four checklists; move the vault checklist into `docs/` — all drafted in this change, **landing via PR** (`master` is protected). Then, in the next commit: the 📝 register entries, the register corrections and pointer notes (H), and the three remaining banners | S | **DONE 2026-08-28.** The register commit landed: 16 📝 entries (each with `owner` + `ends_when`), the register corrections, the four broken pointers, and the three owed banners — see the Done-when note below |
 | 0.2 | **B16.1–B16.6** | S | ✅ **DONE 2026-08-29** — all six closed against the real account, read-only. See the note below; **D21's precondition is met** |
-| 0.3 | **B13** proof-of-red: dispatch the canary at a dead host; dispatch `date-guards` on a throwaway branch with a planted past-due gate; PR adding `health_url` inputs to the two monitors; fix the canary header. **B14** `verify:journeys` stamp + dead-man. **B10.d** read the Gmail filter / blocked-address rules via Claude-in-Chrome (read-only) and name the one that trashes GitHub mail. **A7.0** establish whether Web Analytics is collecting (one `get_web_analytics` read after a `src=qa` visit) and extend `verify:funnel` to assert the collector's 2xx | S | inbox half waits for B10 |
-| 0.4 | **E1.1** build marker in the webhook response body; **E1.6** record Stripe reads #1/#2; **E1.9** re-state E1′'s `ends_when`; **E1.7** the `verify:stripe` contract script (scheduling waits for a key) | S | all credential-free except the CLI reads already taken |
+| 0.3 | ✅ **DONE 2026-08-29** (PR #20). **B13** proof-of-red: dispatch the canary at a dead host; dispatch `date-guards` on a throwaway branch with a planted past-due gate; PR adding `health_url` inputs to the two monitors; fix the canary header. **B14** `verify:journeys` stamp + dead-man. **B10.d** read the Gmail filter / blocked-address rules via Claude-in-Chrome (read-only) and name the one that trashes GitHub mail. **A7.0** establish whether Web Analytics is collecting (one `get_web_analytics` read after a `src=qa` visit) and extend `verify:funnel` to assert the collector's 2xx | S | inbox half waits for B10 |
+| 0.4 | ✅ **DONE 2026-08-29** (PR #21). **E1.1** build marker in the webhook response body; **E1.6** record Stripe reads #1/#2; **E1.9** re-state E1′'s `ends_when`; **E1.7** the `verify:stripe` contract script (scheduling waits for a key) | S | all credential-free except the CLI reads already taken |
 | 0.5 | **B15.1/2/3/5/6** live proofs: J5-R4 ladder walk (disposable owner, short interval, hourly ticks); verifier deny/abstain/halt walk; J6 4c escalation walk; `verifier-context.ts` action fix; step-up fault injection. Schedule around the signup ceiling (D14): one chain per hour, `verify:live` first (D1) | M | write disposable production rows — tell Steve first; `verify:orphans` after each |
-| 0.6 | **D1** `verify:live` + `verify:orphans` before **~2026-09-08**; **B11.1** re-measure monitor cadence on **2026-09-02**; **B12.i** the interim off-GitHub run-count alarm (Task Scheduler, read-only `gh api`) | S | the freshness stamp commit also resets the 60-day clock |
+| 0.6 | 🟡 **PART DONE 2026-08-29** (PR #22 — D1 done; B11.1 waits for 09-02, B12.i open). **D1** `verify:live` + `verify:orphans` before **~2026-09-08**; **B11.1** re-measure monitor cadence on **2026-09-02**; **B12.i** the interim off-GitHub run-count alarm (Task Scheduler, read-only `gh api`) | S | the freshness stamp commit also resets the 60-day clock |
 | 0.7 | **Hygiene**: D16 branches; D17 `sprint-state.json`; D18 unit-economics (pro; the Resend receipts read via the connector — B40's facts); B37 `go-live.sh`/`demo-run.ts` banners; B39 estate banners on six files; ~~the three owed supersession banners (H)~~ **DONE 2026-08-28**; B21.1 `verify:csp` npm script; B24 incident step-0 tool; D22 `/api/health` note; C1.4's three files; **C1.3** read the trashed 08-17 report via the connector (read works on Trash); **A3.7** record the third cohort deferral on `beta-cohort-deferred-four-days`; **B18.4** `DSQL_PASSWORD` empty check (`vercel env ls production`, names only); **D27** file-or-accept the two unfiled debts; **B33** turn the recovery-code check into a read-only NOTICE; **B27** enable secret scanning + Dependabot alerts and **B31** disable the sibling backup plan — both on an in-session nod; the H stale-description list; **B30 fix B** prepared as a PR (parser treats `superseded_by:` as a stopped clock — merge on Steve's nod, before 2026-10-03) | M | every edit is docs/tests/scripts/repo settings; no production write |
 | 0.8 | **The rulings pack**: draft the Sitting D list as a batched `AskUserQuestion` series (≤4–5 per call, recommended default first, D-1 before D-2), with candidate causes for B10 from B10.d, and the C1.0 DNS change under `/safe-execute` (snapshot, rollback, DoH proof) ready to execute on Steve's request | S | so Sitting D costs Steve minutes, not re-derivation |
+
+> **Progress, 2026-08-29 — rows 0.3 and 0.4 closed, 0.6's D1 half closed. Three PRs (#20, #21,
+> #22), all merged. Several findings, and three of them change this plan rather than executing it.**
+>
+> **B13 — three of four alarms proven red.** Canary run `33237399208` (first red in 688 runs),
+> scheduler-monitor `33237979699`, delivery-webhook-monitor `33237980971` (first red in 14 runs;
+> its four-condition diagnosis block printed for the first time ever). The two monitors could not
+> be forced red at all before: both carried `workflow_dispatch: {}` with the comment *"so the
+> alarm can be proven to work on demand"* while hard-coding `HEALTH_URL` — the canary's own false
+> comment, copied. Each file now records which red it proved and which it did not: all three
+> failed at DNS, so none exercised its body-reading branch, and for the delivery monitor that is
+> the interesting gap, since `meaning` is the whole point of it.
+>
+> 🔴 **The canary's cadence claim was never counted, and the real number is not close.** The header
+> said "~1,200 scheduled runs" and "caught within a quarter of an hour". Measured over its whole
+> life: **684 scheduled runs against a nominal 1,914 — 35.7%**; median gap 31 min, p90 65, p99
+> 211, **max 697 (11.6 h)**; only 30 of 683 gaps were the ≤16 min the cron asks for. "~1,200" was
+> the nominal schedule written as if it were a count. The derivation command is now in the file.
+>
+> ⚠️ **`date-guards` cannot be proven red from this machine, and it is structural.**
+> `~/.claude/hooks/pre-push-check.sh` runs the full suite on every push and refuses a red branch —
+> and the planted past-due gate makes the suite red *by construction*, because the guard this
+> workflow runs IS a test in that suite. Attempted, confirmed (`gates.test.ts` reported
+> `d3-restore-drill — due 2026-01-15`), reverted. No timezone workaround: `gates.test.ts` uses
+> `toISOString()`. **Steve ruled 2026-08-29: wait for it to fire naturally** — and the same sitting
+> ruled to run both chains, which resets the clocks whose lapse would make it red. The natural red
+> is now no earlier than **2026-09-12**. That proof is deferred, not scheduled.
+>
+> **B14 — closed, and closed structurally.** `verify:journeys` ends in `verify:stamp:journeys` →
+> `docs/verify-journeys-runs.jsonl` → a dead-man at **21 days** (not 14; the chains cannot share an
+> hour, and both bounds are asserted by test). `lib/ops/chain-dead-man.test.ts` fails when ANY
+> multi-walk `verify:*` script lacks a stamp, a log and a dead-man, or when a stamp is not the
+> final step — so a third chain cannot ship the way the second did. **Live-proven the same day**:
+> the real chain run that evening wrote the first script-written stamp.
+>
+> 🔴 **A7.0 disproves the check this roadmap asked for.** Vercel's query API refuses the project
+> (`web_analytics_not_enabled`) while the edge serves the collector and answers **200 OK** to both
+> `/_vercel/insights/view` and `/_vercel/insights/event`. §2-A's A7.0 prescribed extending
+> `verify:funnel` to assert the collector returns 2xx — **that check would pass today on a project
+> that collects nothing readable.** A stricter version of an instrument that measures the wrong
+> thing. The discriminating read is the QUERY side, which needs an API token and so does not
+> belong in a browser walk as written. Recorded, not built; the toggle comes first (Sitting E).
+>
+> 🔴 **B10's premise is false, and delivery is proven.** All three deliberate red runs reached the
+> **INBOX** — labelled `relay-alarm`, starred — in 23–37 seconds. The ~20 historical threads are
+> **archived, not trashed** (`relay-alarm` + `IMPORTANT`, no `INBOX` label); the `relay-alarm`
+> label holds exactly 23 messages, 14 unread, and "about half unread" is B10's own detail, so the
+> same threads were being read — what was misread is that the distinguishing feature is the
+> *absence* of INBOX. The specific mail B10 cites as TRASH+UNREAD carries no TRASH live, so
+> `the_evidence_expires` and its 2026-09-24 purge date are moot. B10's `ends_when` asked for one
+> fresh deliberate failure observed arriving with an INBOX label; it has three. **Still unknown:
+> why it works** — the filter was never read (the browser extension is not connected).
+>
+> **E1.6 — both reads answered, and neither needed Steve.** The live endpoint carries all four
+> events including `invoice.payment_failed`, matching the handler's four `case`s, so
+> `lib/billing/lapse-notice.ts` is NOT dead code — open since 08-20. The default portal cancels
+> **`at_period_end`**, so `/terms` is true as written and no copy change is owed.
+> ⚠️ `docs/stripe-setup.md` had addressed the first to Steve as "one dashboard checkbox" since
+> 08-21, on the grounds that it "cannot be read from this repo". True about the repo, false about
+> the machine: a paired CLI answers it read-only in one command. **An item sat in someone else's
+> court for eight days because the tool that answers it was not on the list of tools considered.**
+>
+> **E1.7 — `npm run verify:stripe`, live-proven, exit 0.** The rule that matters is the one that
+> is not ours to break: the portal configuration is ACCOUNT-level on an account shared with three
+> other products, so another operator can make `/terms` a false statement to Relay's paying
+> customers in one click. Fixtures verbatim from the live objects; every rule planted
+> and caught (`npx vitest --run lib/ops/stripe-wall.test.ts` prints the count); exit codes
+> 0/1/2 all demonstrated live. NOT scheduled —
+> `STRIPE_READONLY_KEY` is unminted and the CLI fallback expires 2026-10-07.
+>
+> **E1.9 was already done** in the 08-28 register commit — verified, not redone. What it could not
+> have is now added: reachability is closed by measurement.
+>
+> **E1.1 — the build marker** is in the webhook response behind signature verification.
+> `loadedAt`/`instance` are captured at MODULE LOAD, because a marker read from `process.env` per
+> request prints the same string from a stale module as from a fresh one — and a stale module is
+> the leading unproven explanation for the nine deliveries. Its own test found a defect inspection
+> had not: `??` accepts an empty string, yielding `sha: ""`.
+>
+> **D1 — both chains run against production** on Steve's say-so. `verify:live` green and stamped
+> (next ~09-12); `verify:journeys` green and stamped (next ~09-19). `verify:orphans` after each:
+> **0 reserved-domain accounts** both times and the dangling total **28 before, 28 after** — 15
+> disposable accounts created and closed, zero new dangling rows, second independent confirmation
+> that both cascades work. And `deferred.dangling-rows-on-production`'s own prediction came true:
+> `auth_challenges` is now absent from the sweep entirely, its ten orphans having expired on their
+> own.
+>
+> **Three repo guards fired during this work**, each catching something already missed —
+> `date-guards-are-scheduled` refused the new dated guard until it was scheduled;
+> `env-example.test.ts` refused two new variables until documented;
+> `secrets-have-a-rotation-procedure.test.ts` refused the Stripe key until the runbook gained §8.
+> The structural checks in `lib/ops/` are doing what their headers claim.
 
 > **Progress, 2026-08-29 — 0.2 closed. The IAM wall has now read the account.**
 > B16.1 ran with in-session authorisation: four principals, read-only, exit 0. Everything
@@ -843,8 +935,39 @@ records every ruling the same session and executes them in blocking order over t
 - [ ] **E1.5 #3** Stripe → Settings → Emails: "Successful payments" customer receipts ON? (read only —
       shared account; no API exposes it; Claude-in-Chrome can read the page in your session)
 - [ ] **E1.5 #4** Stripe → Webhooks: endpoint-failure notifications ON, to which address? (read only)
-- [ ] **A7.0** If Sprint 0 found Vercel Web Analytics **off** for the relay project: enable it
-      (dashboard toggle) — **hard precondition of Sprint 5**; without it the G1 instrument has no sink
+- [ ] 🔴 **A7.0 — MEASURED 2026-08-29, AND IT IS WORSE THAN "OFF". ENABLE WEB ANALYTICS.**
+      Vercel dashboard → the `relay` project → **Analytics** → enable. ~1 min.
+      **This is no longer conditional and it is a hard precondition of Sprint 5.** The API refuses
+      the project (`web_analytics_not_enabled`) while the edge serves the collector script (200)
+      and answers **200 OK** to every beacon — `POST /_vercel/insights/view` and
+      `POST /_vercel/insights/event` both. So the site looks instrumented, the browser's network
+      tab shows success, and nothing is readable. On placement day that presents as an empty
+      dashboard beside a site that appears to be reporting correctly, and the number cannot be
+      re-collected afterwards.
+      Claude re-runs the API probe straight after to confirm it became a count. Evidence and the
+      four commands: `docs/g1-flight-log.md` → "A7.0 — WEB ANALYTICS IS NOT COLLECTING ANYTHING
+      READABLE"; register `deferred.web-analytics-collects-but-cannot-be-read`.
+- [ ] 🔑 **E1.7 — mint a RESTRICTED read-only Stripe key.** Stripe dashboard → Developers → API
+      keys → **Create restricted key**. ~3 min.
+      Scopes: **Webhook Endpoints: read** and **Billing Portal: read**. Nothing else, and
+      🔴 **never the secret key** — this account is shared with report-bridge, skillcrossroads and
+      second-brain, so a key with more power than it needs carries their blast radius too. If it
+      cannot be minted that narrowly, say so and leave it unset: the CLI fallback is the better
+      answer, not the worse one.
+      Then set `STRIPE_READONLY_KEY` wherever the check runs and Claude confirms with
+      `npm run verify:stripe` (it prints which read path it used).
+      **Why it is dated:** the check is live-proven but unschedulable without this, and its only
+      other read path is your Stripe CLI browser pairing, which **expires 2026-10-07** (E1.8).
+      After that date, with no restricted key, `verify:stripe` has no read path at all.
+      Procedure and the never-substitute rule: `docs/secret-rotation-runbook.md` §8.
+- [ ] 🌐 **B10.d — connect the Claude browser extension**, so the `relay-alarm` Gmail filter can be
+      read. ~2 min, and it unblocks a read rather than a change.
+      Delivery is already PROVEN WORKING — three deliberate red runs on 2026-08-29 reached the
+      INBOX in 23–37 s, labelled `relay-alarm` and starred — so B10's "every alarm goes to Trash"
+      premise is false and nothing needs deleting. What is unknown is **why** it works: the filter
+      itself has never been read, and something changed between 2026-08-25 (archived, unstarred)
+      and 2026-08-29 (inbox, starred) that nothing records. That is the distance between "delivery
+      works" and "delivery works for a reason that will keep holding".
 - [ ] **B33** Regenerate the recovery codes for the live paying owner account from `/account`
       (step-up/TOTP) — **verified NOT done** on 2026-08-27 (8 codes, all created 2026-08-09T01:36Z,
       none since, none used)
