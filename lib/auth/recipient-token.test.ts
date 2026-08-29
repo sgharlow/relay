@@ -352,11 +352,31 @@ describe('recipient-token — property tests', () => {
         fc.uuid(),
         fc.uuid(),
         fc.bigInt({ min: 0n, max: 100n }),
-        // Two distinct non-empty secrets
+        /*
+          Two secrets that are distinct AS KEY MATERIAL — which is not the same
+          thing as being distinct as JS strings, and the gap between those two
+          made this property fail intermittently until 2026-08-29.
+
+          🔴 `signingKey()` does `Buffer.from(secret, 'utf8')`, so the comparison
+          that decides the outcome is over BYTES. `fc.string()` can generate lone
+          surrogates, and EVERY unpaired surrogate encodes to U+FFFD — the same
+          three bytes, `EF BF BD`. So '\uD800' and '\uDC00' are different strings
+          that produce byte-identical keys: the filter `a !== b` lets the pair
+          through, the token verifies correctly under "the other" secret, `threw`
+          stays false, and the property reports a failure in a product that did
+          exactly the right thing.
+
+          Reproduce the collision without fast-check:
+            Buffer.from('a\uD800','utf8').equals(Buffer.from('a\uDC00','utf8'))  // true
+
+          Filtering on the ENCODED BYTES puts the test's notion of "different" at
+          the same level as the code's. This was a TEST defect — nothing about the
+          product changed, and the product was right on the failing run.
+        */
         fc.tuple(
           fc.string({ minLength: 8, maxLength: 32 }),
           fc.string({ minLength: 8, maxLength: 32 }),
-        ).filter(([a, b]) => a !== b),
+        ).filter(([a, b]) => !Buffer.from(a, 'utf8').equals(Buffer.from(b, 'utf8'))),
         async (recipientId, releaseStateId, version, [secretA, secretB]) => {
           process.env.RECIPIENT_JWT_SECRET = secretA;
           const token = await issueRecipientToken(recipientId, releaseStateId, version);
