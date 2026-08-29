@@ -1,3 +1,25 @@
+> # SUPERSEDED IN PART BY ROADMAP.md §2-A + PROJECT.yaml `gates` (2026-08-28)
+>
+> The gate this plan pre-committed branches for is **DECIDED**: `h0-verdict-disposition` closed on
+> the WIN branch — H0 "Most Impactful" ($2k cash + $2k AWS credits), decision `commercialize`.
+> Kept as the record of how that decision was pre-committed rather than improvised, which was the
+> whole point of writing it before verdict day.
+>
+> **Two of its invariants are now FALSE and must not be worked from:**
+>
+> 1. **"Every branch runs G1 before any park/archive decision."** G1 as this plan means it — a
+>    ~$250 two-week PAID-traffic test — cannot be run at all. `ratified.retire-paid-advertising`
+>    and `gates.g1-caregiver-wtp.instrument_retired` (2026-08-16) record why: the three channels
+>    were measured at $0 and none can reach the wedge. The question survives; the instrument does
+>    not. The live instrument is editorial — ROADMAP §2-A, `docs/g1-editorial-lane.md`.
+> 2. **"It survives the 7-25 teardown / needs NO database."** That described the static landing
+>    page. Relay now runs a live Aurora DSQL cluster, live-mode Stripe, a KMS CMK and five
+>    scheduled monitors. Nothing here survives a teardown untouched, and no decision should be
+>    taken on the assumption that it would.
+>
+> The estate branch is also narrower than this plan assumed: `gates.g2-counsel-opinion` withdrew
+> Relay from wills/trusts/directives permanently.
+
 # H0 verdict disposition plan — pre-committed W/L/Z branches (2026-07-03)
 
 > Gate `h0-verdict-disposition` (due **2026-08-07**): an explicit commercialize / park / archive
