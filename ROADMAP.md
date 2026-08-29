@@ -541,8 +541,9 @@ minutes, not hours.
 > **E1.7 — `npm run verify:stripe`, live-proven, exit 0.** The rule that matters is the one that
 > is not ours to break: the portal configuration is ACCOUNT-level on an account shared with three
 > other products, so another operator can make `/terms` a false statement to Relay's paying
-> customers in one click. 17 tests, fixtures verbatim from the live objects; seven planted
-> violations caught; exit codes 0/1/2 all demonstrated live. NOT scheduled —
+> customers in one click. Fixtures verbatim from the live objects; every rule planted
+> and caught (`npx vitest --run lib/ops/stripe-wall.test.ts` prints the count); exit codes
+> 0/1/2 all demonstrated live. NOT scheduled —
 > `STRIPE_READONLY_KEY` is unminted and the CLI fallback expires 2026-10-07.
 >
 > **E1.9 was already done** in the 08-28 register commit — verified, not redone. What it could not
