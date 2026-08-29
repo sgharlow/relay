@@ -4157,6 +4157,74 @@ deferred:
       instance and the reason that instance passes. Neither owes further work unless outbound
       volume changes or a scrolling region appears whose children are not focusable.
 
+  - id: repo-security-settings-were-all-off                   # ROADMAP B27
+    owner: claude
+    opened: 2026-08-29
+    closed:
+      date: 2026-08-29
+      what_shipped: >-
+        Enabled on Steve's nod, and VERIFIED by re-reading the API rather than by trusting the
+        PATCH response: `secret_scanning: enabled`, `secret_scanning_push_protection: enabled`,
+        and Dependabot **vulnerability alerts** (`PUT .../vulnerability-alerts` -> 204).
+        Re-derive: `gh api repos/sgharlow/relay --jq .security_and_analysis` and
+        `gh api repos/sgharlow/relay/vulnerability-alerts -i` (204 = on, 404 = off).
+      the_state_it_was_in: >-
+        A PUBLIC repository with every one of them disabled: secret scanning, push protection,
+        validity checks, non-provider patterns, Dependabot security updates. On a public repo a
+        leaked credential is public the instant it lands, so push protection is the one with real
+        blast radius - it refuses the commit rather than reporting it afterwards.
+      the_good_news_worth_recording: >-
+        `gh api repos/sgharlow/relay/secret-scanning/alerts` returns **0** on first scan. The
+        history has been public since June and carries no detected credential. That is a
+        measurement, not a guarantee - scanning finds provider-recognised patterns, so a
+        home-rolled token shape is still invisible to it.
+      deliberately_NOT_enabled: >-
+        `dependabot_security_updates` (the automatic version-update PRs) stays OFF, on Steve's
+        instruction: ALERTS only. Major-version upgrades of infrastructure components are barred
+        by the portfolio Infrastructure Change Policy, and a bot that opens them trains everyone
+        to close its PRs unread - which would cost the alert feed its credibility too.
+        `npm audit` in CI was offered and declined for now: it needs a severity threshold decided
+        first, or one transitive advisory turns every PR red and the step is deleted within a
+        fortnight.
+      ends_when: >-
+        Closed. The remaining choices - validity checks, non-provider patterns, npm audit in CI -
+        are open decisions rather than gaps, and each needs a threshold or a tolerance set before
+        it would be an improvement.
+
+  - id: a-dead-instance-was-paging-nightly                    # ROADMAP B31
+    owner: claude                         # executed on steve's nod; another product's footprint
+    opened: 2026-08-29
+    closed:
+      date: 2026-08-29
+      what_shipped: >-
+        Deleted the AWS Backup plan `learningai365-ec2-daily` and its selection, in account
+        461293170793 / **us-west-2**, on Steve's explicit nod.
+      why_it_mattered_to_RELAY: >-
+        It is another product's footprint and it was degrading THIS product's only working alarm
+        channel. SNS mail is the one path that reaches a human, and a nightly FAILED that means
+        nothing is how a reader learns to skim the folder that also carries a real one. Measured
+        rather than assumed - last COMPLETED 2026-08-23, then FAILED every night 08-24, 08-25,
+        08-26, 08-27, 08-28 with "The instance i-0d87d0fe92fde2c3d is not available or does not
+        exist", which matches the learningai Strapi decommission of 2026-08-24.
+      the_definition_recorded_so_the_delete_is_reversible: >-
+        plan `learningai365-ec2-daily`; rule `DailyBackup`; vault `learningai365-ec2-backups`;
+        schedule `cron(0 2 * * ? *)` Etc/UTC; StartWindow 60m; CompletionWindow 120m;
+        Lifecycle DeleteAfterDays 7; tags `backup=daily`, `project=learningai365`.
+        Selection `EC2-Instance-Selection`; role
+        `arn:aws:iam::461293170793:role/learningai365-backup-role`; resource
+        `arn:aws:ec2:us-west-2:461293170793:instance/i-0d87d0fe92fde2c3d`. Recreating it is a
+        ten-line call - and would be pointless while the instance does not exist.
+      what_was_checked_before_deleting_and_after: >-
+        BEFORE: the instance is genuinely gone (`describe-instances` returns nothing), and two
+        recovery points survive (2026-08-22, 2026-08-23, both COMPLETED). Deleting a backup PLAN
+        never deletes recovery points - they live in the vault independently - and the rule's own
+        `DeleteAfterDays: 7` ages them out regardless.
+        AFTER: us-west-2 lists NO backup plans; relay's own `relay-dsql-daily` in us-east-1 is
+        untouched; both recovery points still present. Each of those was read, not assumed.
+      ends_when: >-
+        Closed. If learningai is ever rebuilt it needs its own plan pointing at the new instance,
+        and the definition above is the starting point.
+
   - id: date-guards-has-never-been-red                        # ROADMAP B13, residue
     owner: steve                          # the blocker is a hook in ~/.claude, not a file in this repo
     opened: 2026-08-29
