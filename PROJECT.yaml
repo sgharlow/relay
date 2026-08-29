@@ -3193,6 +3193,24 @@ deferred:
   - id: the-owners-vault-is-empty                              # "A0"
     owner: steve
     opened: 2026-08-20
+    measured_2026_08_29_and_it_is_emptier_than_recorded: >-
+      Re-read under `relay_ro` on 2026-08-29. The one live, paying, non-demo owner holds
+      **0 vault_items, 0 recipients, 0 verifiers, 0 access_rules AND 0 release_state rows**. The
+      last count is the one nobody had written down: with no `release_state`, there is no ARMED row
+      for the sweep to find, so the dead-man's switch - the product's central promise - is INERT for
+      the only real account.
+    why_this_reorders_the_roadmap: >-
+      A0 has been carried as "the thing that unblocks the cohort". It is larger. Until it happens,
+      every custodial guarantee this register tracks - envelope encryption, the release state
+      machine, verifier quorum, the dead-man's switch, the audit chain - is protecting an empty box,
+      and the engineering lane is verifying machinery against fixtures because there is nothing real
+      for it to act on. **A0 is what makes every other guarantee in this file non-vacuous.** It is
+      ~20 minutes and it has outlived a month of week-long tasks.
+    a_correction_worth_keeping: >-
+      It was briefly stated on 2026-08-29 that the sweep would "arm their triggers, unattended, at
+      night" when the owner goes overdue on ~2026-09-09. That is WRONG and the correction is the
+      point: the sweep selects them as overdue, iterates an empty set of armed rows, and does
+      nothing. Nothing fires because nothing is configured.
     what: >-
       Measured against production on 2026-08-20: one owner account, ZERO vault items, zero
       recipients, zero verifiers, zero invitations, zero claims, and no release that has ever
@@ -4313,6 +4331,61 @@ deferred:
     ends_when: >-
       Closed. If another property in this repo generates key material with `fc.string()`, it needs
       the same byte-level filter — this was the only one (`grep -rn "a !== b" lib/ --include=*.test.ts`).
+
+  - id: the-reminder-ladder-has-never-fired                   # ROADMAP B15.1, the ladder half
+    owner: claude                         # the walk; steve decides whether to check in
+    opened: 2026-08-29
+    what: >-
+      The J5-R4 check-in reminder ladder has NEVER FIRED, for anyone. `owner_checkin_reminder_first`
+      and `owner_checkin_reminder_final` have **zero rows in `audit_log`, ever** (read under
+      `relay_ro`, 2026-08-29). It is wired - `sweepCheckinReminders()` is called by
+      `/api/cron/heartbeat` on every hourly tick - and has simply never had an owner reach a rung.
+    it_stops_being_hypothetical_on_2026_09_01: >-
+      The live paying owner was last active 2026-08-10 on a 30-day interval, so the rungs land at
+      **2026-09-01 16:32Z (75%)** and 2026-09-06 04:32Z (90%), with overdue on 2026-09-09 04:32Z.
+      The first reminder this product has ever sent will therefore be sent to a real customer, and
+      the first time the mechanism runs in anger will be unobserved unless it is walked first.
+    the_failure_mode_is_silent_by_design: >-
+      `sweepCheckinReminders()` NEVER THROWS - the cron route says so in place, "belt and braces",
+      and that is the right call for a sweep that must not let one owner block the rest. The
+      consequence is that a failure presents as a 200 from the cron, a healthy `scheduler_runs`
+      ledger, and a customer who is never reminded. This is the exact shape B15 names and the exact
+      shape the 2026-08-29 sweep proof was built to eliminate for the OTHER half of the ladder.
+    how_to_prove_it_and_the_pattern_exists: >-
+      Identical to the sweep walk proven on 2026-08-29 (`scripts/e2e-sweep.ts`): a disposable owner,
+      `last_active_at` backdated to ~80% of a short interval, then WAIT for production's own hourly
+      cron - nothing local may call the sweep, because `CRON_SECRET` is Vercel-only. Assert the
+      `owner_checkin_reminder_first` audit row and the send attempt. The walk's safety refusal (no
+      other owner already overdue) applies unchanged.
+    ends_when: >-
+      An `owner_checkin_reminder_*` audit row exists that a production cron wrote, and the mail leg
+      is either confirmed delivered or its refusal (the `DEV_MAIL_ALLOWLIST` guard) is recorded as
+      the reason. Then B15.1 is closed in both halves.
+
+  - id: the-iam-wall-is-the-only-wall-nothing-schedules     # ROADMAP B16, residue
+    owner: steve                          # a new IAM role is infrastructure; claude builds after
+    opened: 2026-08-29
+    what: >-
+      `verify:kms` runs DAILY in CI (`.github/workflows/kms-wall.yml`, GitHub OIDC into
+      `relay-kms-wall-ci`, no stored secret, proven green and red). `verify:iam` runs when somebody
+      remembers. One `aws iam create-policy-version` putting `dsql:DbConnectAdmin` back is exactly
+      what that check exists to catch, and it would be invisible until a human ran the command.
+    the_obstacle_was_removed_and_nobody_noticed: >-
+      Both script headers gave the same reason for being out of CI - "CI has no AWS credentials".
+      `kms-wall.yml` disproved that on 2026-08-24 by reaching AWS from a runner with NO STORED
+      SECRET. So the reason `verify:iam` is unscheduled stopped being true five days ago, and the
+      wall this repo describes as the one that "leaves no trace in this repo" is the one still
+      watched by nothing on a schedule.
+    what_it_needs: >-
+      An OIDC role scoped to the IAM READS in `lib/ops/iam-wall.ts -> CONTRACTS` -
+      ListAttachedUserPolicies, ListUserPolicies, GetUserPolicy, GetPolicyVersion,
+      ListGroupsForUser, ListAttachedGroupPolicies, ListGroupPolicies, GetRole and the role
+      equivalents. Read-only, no write action anywhere. `kms-wall.yml` is the working template,
+      including the trust-policy pin: `StringEquals` on
+      `repo:sgharlow/relay:ref:refs/heads/master`, never `StringLike`.
+    ends_when: >-
+      `verify:iam` runs on a schedule against the real account with no stored secret, and has been
+      seen both green and red - the same bar `kms-wall` met.
 
   - id: date-guards-has-never-been-red                        # ROADMAP B13, residue
     owner: steve                          # the blocker is a hook in ~/.claude, not a file in this repo
