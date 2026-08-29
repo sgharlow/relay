@@ -68,7 +68,8 @@ ladder_evidence:
     left `armed` — that account holds a paid subscription and an empty vault. The rung is therefore
     a claim about a demonstration, not about ongoing use. It stays `dogfooded` because promotion to
     `customer-used` needs an arms-length person and G1 gates that.
-    ⚠️ Re-earning it present-tense is ROADMAP.md sprint 1 items 1.1-1.3, and it needs Steve: the
+    ⚠️ Re-earning it present-tense is ROADMAP.md §2 A0 / §6 Sitting A (was "sprint 1 items
+    1.1-1.3" before the rev-4 renumbering of 2026-08-27), and it needs Steve: the
     owner's vault has to hold something real before the beta cohort can be invited to stand by
     for it. Seeding it with `scripts/reset-demo.ts` fixtures would satisfy a count and prove
     nothing, which is why ROADMAP.md §6 bars it explicitly.
@@ -212,6 +213,11 @@ gates:
       new_instrument: "Editorial. Op-eds on caregiver and elder-care platforms (caregiver.com,
         AARP, Next Avenue and comparable), each placement carrying its own ed-<outlet> src.
         Plan: docs/g1-editorial-lane.md."
+      # 📍 POINTER ADDED 2026-08-28 (ROADMAP §2-H). NOT an edit to the ratified block above.
+      # Where this block still reads as though the editorial thresholds were an OPEN task to be
+      # re-derived, they are not: `ratified.g1-editorial-thresholds-ratified` settled them on
+      # 2026-08-20. The re-derivation is done; what is open is running the instrument, which is
+      # ROADMAP §2-A (A1/A2 authorship and send, Steve's court).
       # ⚠️ THE OPEN TASK NOBODY SHOULD SKIP.
       thresholds_do_not_transfer: "2% click-to-intent and N >= 100 were calibrated against BOUGHT
         CLICKS. An editorial reader arrives having read a whole article about the problem and is a
@@ -548,6 +554,15 @@ market:
     (props were being dropped by a wrong payload shape; the channel key was `channel` where the
     landing page uses `src`). Re-probe if the instrument is touched — a 200 response proves
     nothing about attribution."
+  demand_signal: none
+    # ADDED 2026-08-28 (ROADMAP §2-H). The portfolio rule requires this field by name, and until
+    # today it existed in this file only as prose inside four comments — which is exactly the
+    # shape the rule bans, because a field a tool can read and a sentence a human might notice
+    # are not the same guarantee. It reads `none` because it is none: zero arms-length people.
+    # The owner's own purchase is not a demand signal, and a free beta user is not one either.
+    # ⚠️ Do NOT flip this to a value because a conversation felt encouraging. `gates.g1-arms-length-demand`
+    # defines what counts and `ratified` A8 gives Steve the ruling; this field is set BY that
+    # ruling, never ahead of it. On pass, A8 sets `wtp_evidence` and this field in the same edit.
   wtp_evidence: none                     # UNCHANGED and load-bearing. One purchase by the owner is
     # not arms-length demand, and caregiver_leads held ZERO rows as of 2026-08-09. G1 is still the
     # test; COMPETITORS.md implication: test at/above Everplans' $99/yr, lead with reversibility.
@@ -630,6 +645,13 @@ ratified:
         `KMS_KEY_ID`. Independent of this and compounding with it: unscheduled, AND until
         2026-08-21 unrunnable by its own command. Do not treat a hand-run reminder as cover
         without first confirming `.env.admin` carries the key id.
+      # 📍 POINTER ADDED 2026-08-28 (ROADMAP §2-H). NOT an edit to the ratified text below.
+      # Where this block reasons that scheduling `verify:kms` would require a STORED long-lived
+      # secret, that premise is superseded: the KMS wall runs on a schedule as of 2026-08-24
+      # through the public-repo OIDC role `relay-kms-wall-ci`, with no stored credential at all,
+      # and it has been proven both green AND red. The conclusion the block reached was right for
+      # the reason it gave; the reason has since stopped applying. `.github/workflows/kms-wall.yml`
+      # is the shape, and it is the pattern D21 should prefer over placing a stored `.env.ro`.
       not_fixed_here: >-
         Scheduling it needs `.env.admin` credentials in GitHub Actions secrets — an infrastructure
         decision that is Steve's, under the policy `docs/kms-region-proposal.md` sits behind. The
@@ -722,6 +744,10 @@ ratified:
         inactivity. So the four alarms `what_does_NOT_pause` relies on are themselves scheduled to
         stop at about the moment the park ends. GitHub emails first, to the inbox the park exists
         to leave alone.
+      # 📍 POINTER ADDED 2026-08-28 (ROADMAP §2-H). NOT an edit to the ratified text below.
+      # Same supersession as on `relay-resumed`: the stored-secret premise under the `verify:kms`
+      # scheduling argument no longer holds. Scheduled since 2026-08-24 via the OIDC role
+      # `relay-kms-wall-ci`, no stored secret, proven green and red.
       not_fixed_here_and_why: >-
         Scheduling `verify:kms` needs `.env.admin` credentials in GitHub Actions secrets, and the
         off-GitHub heartbeat `alarm-of-record.test.ts` proposes needs a Route 53 health check or a
@@ -1089,6 +1115,27 @@ ratified:
       - "outlet guidelines research for caregiver.com, Next Avenue, AgingCare and DailyCaring —
         step 1 of docs/g1-editorial-lane.md, and it gates the first pitch"
       - "angle 3 draft, queued behind that research by Steve's ruling"
+    also_deferred_same_session_corrected:
+      date: 2026-08-28
+      what_was_wrong: >-
+        All three items above read as OPEN and none of them is. The outlet-guidelines research was
+        done (`docs/g1-editorial-lane.md` carries the per-outlet routes the A1/A2 lane now works
+        from); the angle-3 draft exists at `docs/oped-angle-3-draft.md`; and the g1 thresholds
+        that the due-date proposal was queued behind were ratified 2026-08-20
+        (`ratified.g1-editorial-thresholds-ratified`). The list was written on 2026-08-12 and
+        never revisited.
+      what_is_actually_still_open: >-
+        Only the FIRST item, and only in part: `gates.g1-arms-length-demand.due` 2026-12-31 is
+        still a derived proposal Steve has not confirmed. The other two are done and belong to
+        the A-lane's live state, not to a deferral list.
+      why_this_is_recorded_rather_than_deleted: >-
+        A stale deferral list is worse than none: it makes finished work look blocked, and it is
+        the specific way a lane gets re-planned around obstacles that were cleared weeks ago. The
+        list stays visible with this correction beside it so the next reader sees the failure
+        mode, not just the tidy version.
+      the_rule_it_breaks: >-
+        Same rule as the volatile numbers: a status recorded in two places drifts in one of them.
+        A deferral list is a status. It needs a revisit or it needs to not exist.
     revisit: "at the next /daily-priority. ⚠️ Per the Steve's-Court protocol a parked item is
       re-raised, never silently dropped — and this one has now been ready-and-unstarted since
       2026-08-12."
@@ -1484,6 +1531,14 @@ ratified:
       is this repo's most-cited shape: if the candidate query is rejected, the sweep logs to stderr
       and returns empty, the cron still answers 200, the scheduler ledger still records a healthy
       run, and the reminder simply never exists."
+    # 📍 POINTER ADDED 2026-08-28 (ROADMAP §2-H). NOT an edit to the ratified text above, which
+    # stands as ratified. The `ladder:` sentence "NOTHING here is live-proven" was true when it
+    # was ratified on 2026-08-21 and is now too strong: `e2e-request.ts` walks the 12-hour
+    # cooling-off and `e2e-ui.ts` covers `/circle`, both against production. What genuinely
+    # remains unproven is narrower and is the part the sentence's own failure-mode paragraph is
+    # about — the J5-R4 reminder ladder (cron-only, no walk covers it, and its failure mode is a
+    # healthy-looking 200 with no reminder) and owner self-naming. Read the sentence as scoped to
+    # those two. B15.1 and B15.4 in ROADMAP §2-B are the work that would retire it outright.
     awaiting_ratification: "Three numbers were CHOSEN and documented, not measured, and each is a
       one-line edit with no migration: the reminder rungs (75% and 90% of the interval) and the
       12-hour cooling-off. A fourth question is open and NOT built: an owner can currently name
@@ -2019,8 +2074,8 @@ deferred:
   # ⚠️ THEY LIVED IN ROADMAP.md AND NOWHERE ELSE FOR A DAY, which is the drift
   # this list exists to prevent: ROADMAP.md is SUBSIDIARY to this file, and a
   # debt item recorded only in a subsidiary document is one session away from
-  # being lost. ROADMAP.md §7 recorded that weakness against itself; this is the
-  # fix it named.
+  # being lost. ROADMAP.md §8 recorded that weakness against itself; this is the
+  # fix it named. (Was §7 before the rev-4 renumbering of 2026-08-27.)
   #
   # None of these is a feature. Each makes an EXISTING promise true, which is why
   # they are not held by the demand gate — that gate bars horizontal build, and
@@ -2611,6 +2666,12 @@ deferred:
         27 cents a year to serve and an owner in an ACTIVE RELEASE — the moment the product exists
         for — costs about 35 cents. Fixed costs are roughly $267/yr, so BREAK-EVEN IS ABOUT THREE
         PAYING OWNERS. Margin is not the question at this price, in either direction."
+      # ⚠️ SUPERSEDED IN PART, 2026-08-28. A1 IS now verified: the Vercel account is on the `pro`
+      # plan, read from the API on 2026-08-27. The paragraph below is left as written because it
+      # is the closure's own reasoning and the record of what was unknown when the closure was
+      # made — but the "one assumption NOT verified" clause is no longer true, and the free-plan
+      # branch ("break-even is closer to ONE") is now a counterfactual, not a live risk.
+      # Re-derive rather than trusting either number here.
       the_weakest_link_is_named: "The break-even is dominated by A1 — that Vercel is on a ~$20/month
         plan — which is the one assumption NOT verified, because a sprint worktree holds no
         credentials. On the free plan break-even is closer to ONE. Verifying that single figure is
@@ -2990,7 +3051,8 @@ deferred:
   # Added 2026-08-20, from the post-sprint review that produced ROADMAP.md rev 3.
   #
   # ⚠️ THESE WENT IN BECAUSE THEY EXISTED IN EXACTLY ONE PLACE AND IT WAS AN
-  # UNCOMMITTED FILE. ROADMAP.md §7 states the rule — "a finding recorded only in
+  # UNCOMMITTED FILE. ROADMAP.md §8 states the rule (was §7 before the rev-4
+  # renumbering of 2026-08-27) — "a finding recorded only in
   # this file is one session away from being lost" — and the rev-3 rewrite that
   # states it was itself sitting uncommitted in a working tree when these were
   # written. Every entry below is therefore self-contained: it must be readable
@@ -3042,7 +3104,12 @@ deferred:
       so redemption cannot complete — but they are the sharper ones, because a code is an
       access-granting artifact and 'cannot resolve' is a claim about today's code rather than a
       property of the data."
-    ends_when: "The 38 rows are purged and the dangling census exits 0, OR a ruling is recorded
+    # ⚠️ `ends_when` below said "The 38 rows" until 2026-08-28 — the exact count this entry's own
+    # `what:` block bans, and the reason the entry was RENAMED off a count in the first place. The
+    # ban was written and then broken four lines later, in the same entry, by the same session.
+    # Corrected in place because an `ends_when` is a test a future session runs, and a test keyed
+    # to a number that moves on its own cannot be run at all.
+    ends_when: "The rows the census reports are purged and the dangling census exits 0, OR a ruling is recorded
       that orphans of these kinds are acceptable and the census reports them as a NOTICE — the way
       it already does for the audit_log rows deleteAccount keeps ON PURPOSE."
     note: "Do NOT close this by widening the census's ignore list without a ruling. An orphan
@@ -3151,9 +3218,14 @@ deferred:
         with relay's Steve-hands items queuing behind it rather than competing with it. This lapse
         is the direct and intended consequence of that ruling. It is recorded anyway, because a
         deferral that is ruled and a deferral that is forgotten look identical in a month, and this
-        is the third time the cohort has been pushed — ROADMAP.md sprint 2 item 2.6 says in its
+        is the third time the cohort has been pushed — ROADMAP.md §2 A3 says in its
         own words that an unrecorded third deferral is not a legitimate one.
+        (Was "sprint 2 item 2.6" before the rev-4 renumbering of 2026-08-27.)
       revisit: 2026-09-12
+      # 📍 The out-of-repo checklist this basis names now has an IN-REPO copy that is the one to
+      # read: `docs/vault-checklist-sprint-1.md`. The `__project-docs/` copy carries a PARKED
+      # banner pointing here. Moved 2026-08-27 for the reason this file keeps recording: a
+      # checklist that lives outside the repo is not covered by the repo's own guards.
       revisit_basis: >-
         NOT chosen. It is the report-bridge GO-LIVE date that outranked this, so it is the first
         day the ruling above stops applying. `__project-docs/relay-vault-checklist-SPRINT-1.md`
@@ -3647,6 +3719,22 @@ deferred:
       returns `CreateDate`. ⚠️ `@aws-sdk/client-iam` is NOT a dependency of this repo, so that is a
       CLI-side lookup and not a script to add. The Vercel-held secrets have no such record and
       need Steve.
+    note_corrected:
+      date: 2026-08-28
+      what_was_wrong: >-
+        The sentence above is FALSE and has been since before this entry closed:
+        `@aws-sdk/client-iam` IS in `package.json` — `devDependencies`, `^3.1111.0`. The note is
+        left standing rather than overwritten, because the reasoning built on top of it ("so that
+        is a CLI-side lookup and not a script to add") is what a later reader would otherwise
+        inherit without seeing where it came from.
+      why_it_matters_beyond_pedantry: >-
+        The note talked a future session out of writing a script, on a premise that was not
+        checked. The AWS CLI is Norton-blocked on this machine (recorded against D3.1, which
+        reaches for the Node signer for the same reason), so "just use the CLI" is the advice
+        that does not work here, and the SDK that does work was present the whole time. The
+        general shape: a note that forecloses an option must carry the command that proves the
+        premise, not a recollection of it.
+      derive_it: "`node -e \"const p=require('./package.json');console.log(p.devDependencies['@aws-sdk/client-iam'])\"`" 
     closed:
       date: 2026-08-21
       by: claude
@@ -3681,6 +3769,362 @@ deferred:
       A security advisory affects the pinned line, or a feature the product actually needs
       requires the newer one. Either reopens it as a real change under the 5-gate policy; neither
       has happened.
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Added 2026-08-28, from ROADMAP.md §2-H (rev 4, 2026-08-27).
+  #
+  # ⚠️ EVERY ENTRY BELOW EXISTED ONLY IN ROADMAP.md UNTIL THIS COMMIT. That file
+  # states the rule against itself in §8 — "a finding recorded only in this file
+  # is one session away from being lost" — and rev 4 found, on its own sweep,
+  # that the rule had not been applied to rev 4's own findings. This is the
+  # commit §2-H names as the fix.
+  #
+  # Each carries `owner` and `ends_when`, because those are the two fields that
+  # make an entry actionable by someone who never read the ROADMAP: who can move
+  # it, and what would have to be true for it to stop existing. The ROADMAP row
+  # holds the detail; these hold the obligation.
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  - id: the-alarm-of-record-delivers-to-trash                 # ROADMAP B10
+    owner: steve                          # the filter removal; claude re-proves delivery after
+    opened: 2026-08-28
+    found: 2026-08-27
+    what: >-
+      Every `[sgharlow/relay] Run failed` mail since 2026-08-08 lands in Gmail TRASH — roughly
+      twenty threads, about half of them never read, INCLUDING both deliberate red-proofs. The
+      alarms fire, the workflows exit 1 correctly, and no human is told.
+    why_this_outranks_the_alarms_it_breaks: >-
+      `kms-wall.yml` writes its own acceptance bar into its header: it is proven only when it
+      "exits 1 AND the notification reaches a watched inbox". Half of that bar has never been met.
+      Every other scheduled alarm in this repo inherits the same defect, so B4's "proven red" and
+      the canary's "proven red" are, today, claims about an exit code and nothing else. A custodian
+      whose alarms go to Trash has no alarms — and this project's whole premise is custody.
+    why_it_is_steve_s: >-
+      The Gmail connector is READ-ONLY at its OAuth scope and Gmail exposes no filter API at any
+      scope, so no tool available here can delete the rule. Claude can NAME it (Settings → Filters
+      / Blocked addresses, read-only via Claude-in-Chrome) and can re-prove delivery afterwards;
+      removing it is a human click in Steve's signed-in session.
+    the_evidence_expires: >-
+      The 2026-08-25 evidence mail purges around 2026-09-24 under Gmail's 30-day Trash policy. This
+      is not a deadline on the fix — it is a deadline on being able to SHOW the fault to anyone
+      who doubts it. Capture the thread list before then if the rule is not removed first.
+    ends_when: >-
+      The filter or block rule is removed AND a fresh deliberate failure
+      (`gh workflow run kms-wall.yml -f key_id=<bogus>` — read-only KMS calls) is observed
+      arriving with an INBOX label, by a read-only Gmail search, not by assuming the removal
+      worked. Both halves, or this is not closed.
+
+  - id: the-scheduled-monitors-are-collapsing                 # ROADMAP B11
+    owner: claude                         # measurement; steve owns the money half
+    opened: 2026-08-28
+    what: >-
+      Between 2026-08-18 and 2026-08-27 the production canary ran 45 times on the first day and 2
+      on the last; the scheduler monitor went 30 → 3. Designed cadence is 96/day and 48/day. This
+      is not queueing: `created_at == run_started_at` on the runs that did happen, so GitHub is
+      not delaying the jobs, it is not CREATING them.
+    two_coincident_causes_neither_confirmed: >-
+      (1) the account's 2,000 Actions minutes read 100% used on 2026-08-28, resetting 2026-09-01 —
+      private repos consume them and relay is public, so relay's own runs should be free, which is
+      why this is a suspicion rather than a finding; (2) a GitHub Actions incident on 08-26/27.
+      ⚠️ Do not settle on either without the re-measure. Two plausible causes are how a wrong one
+      gets adopted.
+    why_it_matters_beyond_cadence: >-
+      Every "the monitors run every 15 minutes" sentence in this repo is currently false, and the
+      absence-alarm design assumes a run rate it is not getting. An alarm that fires on absence,
+      whose own schedule is absent, cannot distinguish a dead product from a dead scheduler.
+      This is also the strongest argument on the record FOR B12 (an off-GitHub heartbeat).
+    ends_when: >-
+      A per-day run count is re-measured on or after 2026-09-02 (the billing-reset date named in
+      GitHub's own mail) and either shows the designed cadence restored — in which case the cause
+      is recorded, not shrugged at — or shows it still collapsed, in which case B12 stops being a
+      proposal and becomes the fix.
+    revisit: 2026-09-02
+
+  - id: the-alarms-live-inside-the-thing-they-watch           # ROADMAP B12
+    owner: steve                          # infra + cost, 5-gate; claude builds after the ruling
+    opened: 2026-08-28
+    what: >-
+      Every alarm relay has is a GitHub Actions schedule. There is no heartbeat outside GitHub, so
+      a GitHub outage, a billing lapse, a load-shed, or a park silences the entire alarm estate at
+      once and nothing reports the silence. Proposed in three separate documents and taken in none.
+    the_second_expiry_nobody_has_dated_in_a_guard: >-
+      GitHub auto-disables schedules on public repos after 60 quiet days. From the 2026-08-25 push
+      that is roughly 2026-10-24. Every `verify:live` stamp commit resets the clock, which is why
+      it has never bitten — the protection is a side effect of an unrelated cadence, which is not
+      a protection.
+    the_shape: >-
+      A Route 53 health check or CloudWatch Synthetics canary → SNS NotifyMe: the one path in this
+      estate proven to reach a human. B12.i is the interim that needs no AWS change and no ruling —
+      a Windows Task Scheduler job beside the existing devsync one, which is worth having on its
+      own merits because it also survives a GitHub outage.
+    why_it_is_steve_s: >-
+      It is an infrastructure change with a recurring cost against a working system, so it takes
+      the 5-gate path in full. The interim does not, and should not wait for it.
+    ends_when: >-
+      Either an off-GitHub heartbeat exists and has been proven to reach a human inbox once, or
+      Steve records the decision to accept single-provider alarm risk with a stated residual risk
+      and a revisit date. An undated "not yet" is the one illegitimate outcome.
+
+  - id: the-journey-sweep-has-no-freshness-dead-man           # ROADMAP B14
+    owner: claude
+    opened: 2026-08-28
+    what: >-
+      `verify:journeys` walks J3, J6 and J9 and each walk prints its own count — but nothing
+      schedules it and nothing ages it. D10 was closed by BUILDING the walks, and building a walk
+      is not the same as keeping it true.
+    why_this_is_the_repo_s_own_recurring_shape: >-
+      A check that never runs is indistinguishable from a check that passes, and this file already
+      carries several entries about exactly that. `verify:live` has a stamp line and a
+      `STALE_AFTER_DAYS` assertion; the journey sweep has neither, so the 2026-08-21 walks are
+      decorative from the day after they ran.
+    ends_when: >-
+      The sweep writes a stamp line and a freshness assertion fails when it goes stale, in the
+      shape `verify:live` already uses — and the chain is kept SEPARATE from the live chain,
+      because merging them would push the combined run through the signup rate ceiling (D14).
+
+  - id: shipped-but-unproven-release-guards                   # ROADMAP B15
+    owner: claude                         # B15.4 is steve's: it is a ratification, not a build
+    opened: 2026-08-28
+    what: >-
+      Three guards are shipped, believed correct, and have never been exercised against a real
+      transition. B15.1 the J5-R4 owner-reminder ladder (cron-only), whose failure mode is a 200
+      response, a healthy scheduler ledger, and no reminder — the exact silent shape this repo
+      keeps catching elsewhere. B15.2 verifier deny / abstain / halt, never exercised. B15.4 the
+      numbers under all of it.
+    the_transition_nobody_has_watched: >-
+      The sweep's ARMED → PENDING transition has never been OBSERVED for a real owner, disposable
+      or otherwise. Proving it needs a disposable short-interval owner and the patience to let the
+      interval actually elapse across hourly ticks — not a unit test that calls the function.
+    b15_4_is_a_ratification_not_a_build: >-
+      Three numbers were CHOSEN and documented, never measured: the reminder rungs at 75% and 90%
+      of the interval, and the 12-hour cooling-off. A fourth question is open and unbuilt — an
+      owner can name THEMSELVES as their own recipient or verifier. `isEligibleVerifier` already
+      refuses to count an owner toward quorum, so the runtime hole is closed; what is open is that
+      the row can still be created and the roster reads as fuller than it is.
+    ends_when: >-
+      Each of the three guards has been walked once against production with a disposable owner and
+      the result recorded, AND Steve has ratified the three numbers (or replaced them) and ruled
+      on owner self-naming. Until then `README.md`'s "verifier deny/abstain" rung overstates what
+      is proven.
+
+  - id: dr-copy-jobs-have-no-absence-alarm                    # ROADMAP B17
+    owner: steve                          # ~$0.10/mo, 5-gate; claude builds after the ruling
+    opened: 2026-08-28
+    what: >-
+      `relay-backup-absent` watches PRIMARY backup completions only. A cross-Region COPY action
+      that silently stops raises no `COPY_JOB_FAILED` and no absence alarm — so the estate would
+      keep reporting healthy backups while the DR half quietly stopped existing.
+    the_gap_between_the_runbook_and_the_estate: >-
+      The runbook claims cross-Region coverage. The alarms cover one Region. Nobody has re-read
+      the LIVE `relay-backup-absent` alarm definition since it was created, so its actual scope is
+      inferred rather than known — which is the same class of error the alarm exists to prevent.
+    the_fix_is_small_and_that_is_the_point: >-
+      An `AWS/Backup NumberOfCopyJobsCompleted` alarm on NotifyMe with `TreatMissingData: breaching`,
+      forced to ALARM once to prove it fires. Roughly ten cents a month. It is Steve's only because
+      it is an infrastructure change, and it belongs bundled into the D3 admin session rather than
+      opening its own.
+    ends_when: >-
+      The copy-job alarm exists, has been forced to ALARM once and observed reaching a human, and
+      the live `relay-backup-absent` definition has been READ and its scope recorded — or Steve
+      records that single-Region backup alarming is accepted and the runbook is corrected to match.
+
+  - id: no-secret-rotation-cadence-and-nothing-rotated        # ROADMAP B18
+    owner: steve                          # B18.0 ratification; B18.1-3 co-pilot; B18.4-5 claude
+    opened: 2026-08-28
+    what: >-
+      All 26 production keys have `createdAt == updatedAt`: nothing in this estate has ever been
+      rotated. Six app secrets and the `relay-runtime` key date to 2026-06-24. The `autospecai`
+      admin key dates to 2025-06-29 — 424 days old at the time of the sweep, and the most powerful
+      credential in the estate.
+    the_runbook_exists_which_is_the_uncomfortable_part: >-
+      `docs/secret-rotation-runbook.md` was written and closed as a deferred item, and every row in
+      it now carries a real date. A runbook nobody has executed is a plan, not a control — and the
+      entry that closed it (`no-secret-rotation-runbook`) closed on the runbook existing, which was
+      the honest scope at the time and is not the same as rotation happening.
+    why_a_cadence_before_a_rotation: >-
+      B18.0 is "ratify a cadence OR record 'none until first customer'". Either is legitimate and
+      the second may well be right for a pre-revenue product. What is not legitimate is the
+      current state, which is neither — no cadence and no decision not to have one, so the age
+      just accumulates and nobody is accountable for it.
+    ends_when: >-
+      A cadence is ratified or "none until first customer" is recorded WITH a revisit, AND the
+      `autospecai` admin key has been rotated on a two-keys-valid overlap. ⚠️ No secret in chat,
+      ever — Claude executes on request against an env var or a gitignored path.
+    note: >-
+      ⚠️ Do NOT invent a deadline for this. The ROADMAP row says so explicitly. An invented date
+      on a credential item produces either a rushed rotation or a missed date that teaches everyone
+      to ignore the next one.
+
+  - id: the-iam-template-can-re-open-the-wall                 # ROADMAP B20
+    owner: steve                          # the ruling; claude edits
+    opened: 2026-08-28
+    what: >-
+      `infra/iam-policy.json` still grants `dsql:DbConnectAdmin` and `kms:DescribeKey`. Re-applying
+      the template — the ordinary thing to do on a re-provision — would silently undo the
+      2026-08-16 least-privilege cutover.
+    why_the_audit_would_not_catch_it: >-
+      The offending statement's Sid does not begin with `Dsql`, and the cutover document's audit
+      is Sid-filtered on that prefix. So the audit prints `[]` and reads as clean over a template
+      that re-opens the wall. A guard whose filter cannot see the thing it guards against is worse
+      than no guard, because it is trusted.
+    ends_when: >-
+      The template matches the live v2 shape, the README says what it grants and why, and Steve
+      has ruled on the one genuinely open sub-question — whether the runtime identity keeps
+      `kms:DescribeKey` at all. The Sid-filtered audit is either widened or replaced in the same
+      change, because leaving it is leaving the blind spot.
+
+  - id: the-domain-can-lapse-without-anyone-noticing          # ROADMAP B35
+    owner: steve
+    opened: 2026-08-28
+    what: >-
+      `relaystandby.com` is registered at Cloudflare. Nobody has confirmed auto-renew is ON with a
+      current card. If it lapses, every custodial promise this product makes fails at once and in
+      the worst possible way: silently, to the people who were told to rely on it.
+    why_this_is_in_the_register_at_all: >-
+      It is a two-minute check, which is exactly why it never gets done and never gets written
+      down. Relay's failure mode is not a bug — it is an owner's family reaching a domain that has
+      expired. A dead-man's switch on the alarms (B12) does not cover the registrar.
+    ends_when: >-
+      Auto-renew is confirmed ON with a card that has not expired, the expiry date is recorded
+      here, and — if a mechanism exists that does not depend on a human remembering — the renewal
+      failure raises an alarm on the same path as everything else.
+
+  - id: no-budget-alarm-on-the-aws-estate                     # ROADMAP B36
+    owner: steve                          # 5-gate; default yes
+    opened: 2026-08-28
+    what: >-
+      There is no AWS Budget on relay's estate. A runaway cost — a misconfigured Synthetics canary,
+      a KMS request loop, a restore drill left running — is discovered by reading a bill.
+    the_shape: >-
+      A Budget at roughly 2× the fixed monthly cost, alerting to SNS NotifyMe: the same path B12
+      and B17 use, so a human actually receives it. Default yes; it belongs to a sitting with the
+      other console items rather than opening one of its own.
+    ends_when: >-
+      A budget alarm exists and has been proven to reach a human once, OR Steve records that the
+      estate is small enough not to warrant one — with the figure that makes that true, so the
+      next reader can check whether it still is.
+
+  - id: the-privacy-page-may-be-missing-two-subprocessors     # ROADMAP B38
+    owner: steve                          # a ruling about a published legal page
+    opened: 2026-08-28
+    what: >-
+      `/privacy` does not name Cloudflare (mail forwarding) or Google (Gmail). Both handle mail
+      that carries product content. The question is whether they belong on the subprocessor list.
+      Default answer: yes.
+    why_it_is_not_merely_paperwork: >-
+      This is the same class as `stripe-is-missing-from-the-subprocessor-list`, which was opened
+      and closed for the same reason: a published privacy page is a promise about who touches the
+      data, and a promise that omits a party who touches it is not an oversight, it is wrong. The
+      product's entire proposition is custodial trust.
+    ends_when: >-
+      Either both are named on `/privacy`, or Steve records why a forwarder and a mailbox provider
+      are out of scope for this list — a defensible position, but one that has to be written down
+      rather than assumed.
+
+  - id: releases-may-or-may-not-be-billing-gated              # ROADMAP E4.1
+    owner: steve                          # a ruling, and it has a hard date
+    opened: 2026-08-28
+    what: >-
+      `assertCanRelease` guards ONE of the four ARMED → PENDING paths — the manual Initiate. It
+      does not guard the missed-check-in sweep, owner consent to an access request, or silence on
+      a challenge. So "releases are billing-gated" is true of a quarter of the ways a release can
+      happen, and nobody has decided whether that is the design.
+    why_it_has_to_be_ruled_before_the_paywall_flips: >-
+      E4.2 flips `TIER_LIMITS.free.canRelease` at the first revisit from 2026-10-01. Flipping it
+      without this ruling ships whichever behaviour the code happens to have, and the answer
+      differs by a factor of four in how often a free owner meets a paywall — at the worst possible
+      moment, since three of the four paths are the ones that fire when an owner is unreachable.
+    the_documents_are_silent_and_one_must_change: >-
+      `/terms` and guide §2.7 say nothing about paths 2–4. Whichever way this is ruled, one of them
+      is edited in the same commit as the flip. Today the whole question exists only in a `docs/`
+      file, which is why it is here.
+    ends_when: >-
+      Steve records "only the manual path" or "all four", and the corresponding sentence lands in
+      `/terms` or the guide in the same commit as the `canRelease` flip.
+    revisit: 2026-10-01
+
+  - id: sales-tax-has-never-been-considered                   # ROADMAP E7
+    owner: steve
+    opened: 2026-08-28
+    what: >-
+      Relay charges $119/yr in live-mode Stripe and nobody has looked at sales tax: not whether to
+      register, not where the thresholds are, not whether Stripe Tax should be switched on.
+    why_it_is_here_rather_than_ignored: >-
+      "Accepted until first revenue" is a perfectly reasonable answer for a product with one
+      subscriber who is the owner. It stops being reasonable the moment G1 passes, and that is the
+      moment nobody will be thinking about tax. Recording the acceptance now, with a revisit tied
+      to first arms-length revenue, is the cheap version of this.
+    ends_when: >-
+      Steve records one of: registered; Stripe Tax enabled; or "accepted until first revenue" WITH
+      a revisit. Undated acceptance is the illegitimate outcome, as everywhere else in this file.
+
+  - id: fr9-demo-simulate-is-reachable-by-nobody              # ROADMAP D25
+    owner: steve                          # the ruling; claude executes either branch
+    opened: 2026-08-28
+    what: >-
+      `/api/demo/simulate` is exercisable by no account — zero demo-flagged users exist, and the
+      cluster holds exactly one `totp_secret` — yet it is code-reachable: `TriggersPageClient.tsx`
+      posts to it from a `SimulatePanel` rendered when `isDemo`, and there is a real CAS write path
+      behind it.
+    why_a_route_nobody_can_reach_is_still_a_finding: >-
+      It makes the FR9 build state dishonest in both directions. Claiming FR9 is built overstates
+      it, because nothing can run it; deleting it quietly understates what was built. And a
+      privileged write path that no test exercises and no user can reach is the kind of thing that
+      becomes reachable by accident three refactors later.
+    the_two_branches_are_both_legitimate: >-
+      Retire it — route, `route.test.ts`, the `SimulatePanel` / `isDemo` plumbing,
+      `scripts/demo-run.ts` and the CLAUDE.md reset-demo instruction, all in one change. Or keep
+      it and make it reachable by a demo account that actually exists. What is not legitimate is
+      the present state, where the docs and the build disagree.
+    ends_when: >-
+      Steve picks a branch and it is executed in full, including the CLAUDE.md instruction, which
+      is the piece most likely to be left behind.
+
+  - id: nothing-turns-red-when-a-revisit-lapses               # ROADMAP A0.dm + E4.4
+    owner: steve                          # the ruling; claude builds, effort S
+    opened: 2026-08-28
+    what: >-
+      No guard reads a `revisit:` field. On 2026-09-12 the owner's-vault revisit lapses and nothing
+      goes red; on 2026-10-01 the beta-free-release revisit lapses and nothing goes red. Two dates,
+      one missing mechanism — which is why they are one entry.
+    why_this_is_the_load_bearing_one: >-
+      This file's entire discipline rests on dated revisits, and a date that nothing enforces is a
+      note. `gates.test.ts` already reads `gates[].due` for free, which is why every dated thing in
+      this repo that actually fires is a gate. Everything recorded as a `revisit:` — and there are
+      many — is currently on the honour system.
+    the_two_options_and_their_costs: >-
+      (a) promote A0 to a dated `gates:` entry, which `date-guards` reads for free — but that
+      promotes the owner's vault PAST report-bridge in the ranking, which contradicts the 2026-08-24
+      precedence ruling. (b) teach a guard to read `revisit:` on `deferred` and `ratified` entries,
+      which costs more and is the general fix. This plan leans (b) precisely because there are two
+      dates and there will be more.
+    ends_when: >-
+      A guard fails when a `revisit:` date passes with no recorded disposition, proven by planting
+      a past-due revisit on a throwaway branch and watching the guard go red — the same standard
+      B13 demands of every other alarm. Wired is not proven.
+    revisit: 2026-09-12
+
+  - id: no-entity-and-no-insurance                            # ROADMAP G6
+    owner: steve
+    opened: 2026-08-28
+    what: >-
+      Relay operates as an individual. `ratified.relay-operator-is-an-individual` records that as a
+      deliberate choice, and it carries NO revisit — so the choice, once made, has no trigger that
+      re-opens it.
+    why_a_deliberate_choice_still_needs_a_trigger: >-
+      The choice is right today and becomes wrong on a specific event: arms-length money moving, or
+      a distribution partner running diligence. Both are things this project is actively trying to
+      cause — A8 and A6 respectively. A decision that is correct until the moment the project
+      succeeds needs the success to be its trigger, or it will be revisited by a counterparty
+      rather than by Steve.
+    what_would_actually_be_needed: >-
+      Not researched here, deliberately: an entity form and E&O / cyber cover appropriate to a
+      custodial service holding other people's credentials. Researching it before there is a
+      counterparty asking is the horizontal-build shape the demand gate exists to stop.
+    ends_when: >-
+      A trigger is attached to `ratified.relay-operator-is-an-individual` — "on the first
+      arms-length payment, or the first partner diligence request, re-decide" — so that the next
+      person to read it knows what re-opens it. Forming an entity is NOT required to close this.
 
   - id: the-lapse-notice-is-wired-not-live-proven              # "E1-prime"
     owner: steve
@@ -3803,3 +4247,24 @@ deferred:
             resolvable id. ⚠️ Calling (3) `live-proven` would overstate it; the honest label is
             `wired + route-proven`.
         RECOMMENDATION: (1), with (3) as an interim recorded as what it is."
+    ends_when_restated:
+      date: 2026-08-28
+      why_restated: >-
+        ROADMAP §2-H item E1.9. This entry's original `ends_when` asked for `live-proven`, and the
+        three routes above establish that `live-proven` is reachable by exactly one route — a REAL
+        renewal failure — which is not schedulable and may not occur before the paywall decision
+        it was meant to inform. An `ends_when` that can only be satisfied by luck is not a test; it
+        is a way for an entry to stay open forever while real progress goes unrecorded.
+      restated: >-
+        This entry closes when the lapse notice reaches `route-proven` — a real captured
+        `invoice.payment_failed` payload, spliced with the live subscription id, correctly signed,
+        POSTed at a LOCAL PRODUCTION BUILD (`next build && next start` on a free port, never
+        `next dev`, since a stale dev module is the leading explanation of the nine-attempt
+        symptom), writing exactly one audit row, silent on re-POST — AND the honest label
+        `wired + route-proven` is written wherever the claim appears. Reaching `live-proven` later,
+        from a real renewal failure, is recorded as an upgrade to a closed entry rather than
+        held over it.
+      what_this_deliberately_does_not_do: >-
+        It does not relax the LABEL. Calling route-proven "live-proven" would still be an
+        overstatement and this file says so in three places. What changes is which label closes
+        the entry, not what the labels mean.

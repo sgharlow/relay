@@ -1,3 +1,20 @@
+> # SUPERSEDED IN PART BY ROADMAP.md §2-C (2026-08-28)
+>
+> **Items 1–2 of this assessment have been RULED and are closed.** The identity-as-a-provider gap
+> it names was answered: `ratified.relay-operator-is-an-individual` records operating as an
+> individual as a deliberate choice, and `gates.g2-counsel-opinion` records that no counsel is
+> engaged and estate is narrowed out of the product. Do not re-open them from this page.
+>
+> **What genuinely remains from this assessment is the editor kit** — the material an editor
+> checks before publishing, and a reader checks before handing a stranger their family's
+> passwords. That work is live in ROADMAP §2-A (A1/A2, the op-ed lane) and §2-C (trust, identity
+> and communications), where it is dated and owned.
+>
+> ⚠️ Two things this page could not have known, both now open findings in ROADMAP §2-C:
+> `_dmarc.relaystandby.com` carries no `rua=` (C1.0), and Outlook sender support was never
+> actually contacted (C2). Editorial outreach that assumes mail arrives is assuming the thing
+> most in doubt.
+
 # Is the product complete and polished enough for editorial outreach?
 
 > Assessment run 2026-08-16, prompted by `ratified.retire-paid-advertising`: op-eds in AARP,

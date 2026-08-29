@@ -1,3 +1,21 @@
+> # SUPERSEDED BY ROADMAP.md §2-E (2026-08-28)
+>
+> **This document's sequencing has been overtaken by events and is no longer a plan to work from.**
+> It says billing is built only after G1 passes and that no live charge is taken before the G2
+> counsel opinion. Both of its gates were resolved the other way round from what it assumed:
+>
+> - **Billing was built and charged first.** A real card was charged on relaystandby.com on
+>   2026-08-08; `monetization_path: stripe_live_annual` has been the live state since. Checkout,
+>   the reconciling webhook, entitlements and self-serve cancellation all ship.
+> - **G2 will not produce an opinion.** `gates.g2-counsel-opinion` records the decision that no
+>   counsel will be engaged; estate was narrowed OUT of the product instead. So the "pre-revenue
+>   requirement" this document treats as absolute no longer gates anything.
+> - **G1 is still open** and the $119/yr price it ratified is the live price — that part holds.
+>
+> The live billing work lives in ROADMAP §2-E: E1′ (the lapse notice), E4.1 (are releases
+> billing-gated at all — a ruling owed before 2026-10-01), E4.2 (the paywall decision at the first
+> revisit from 2026-10-01) and E7 (sales tax). Read those, not this.
+
 # G4 — Billing MVP design (docs-only; NO build until G1 passes)
 
 > Drafted 2026-07-03 on `exp/g1-caregiver-landing` (in-lock relay prep). Turns spec
