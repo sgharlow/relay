@@ -116,3 +116,52 @@ export const COVERAGE_UNMEASURED: Record<string, string> = {
     'The Next.js runtime hook. It is invoked by the framework at process start and by nothing a ' +
     'test can call; the error reporting it delegates to is covered in lib/ops.',
 };
+
+/**
+ * The request layer's OWN floor, separate from the blended thresholds in
+ * `vitest.config.ts`.
+ *
+ * 🔴 WHY A SECOND NUMBER IS NEEDED AT ALL. The header above records that the
+ * route handlers were brought INTO the measured scope on 2026-08-21, which was
+ * right and which stopped a whole layer being absent from the denominator. What
+ * it could not do is stop that layer's shortfall being absorbed by a larger one.
+ * `lib/**` carries ~5,000 statements and the request layer ~1,600, so on
+ * 2026-08-30 the blended figure read 87.61% while the layer that decides who is
+ * authenticated, what they may reach and what status a refusal gets sat at
+ * 66.15% statements / 59.17% branches — with 26 of 76 handlers executing no test
+ * at all. Every threshold in this repo was green throughout.
+ *
+ * A blended average is a weighted one. This is the weight removed.
+ *
+ * MEASURED 2026-08-30 after the T1 sprint: 86.81% statements, 79.45% branches
+ * over `src/app/api/**` alone. The floors below sit a little under that on
+ * purpose — a floor set exactly at the measured value turns any unrelated
+ * refactor into a red build, which is how a guard acquires a reputation for
+ * crying wolf and then gets lowered. The margin is small enough that losing a
+ * handler's tests still fails.
+ *
+ * ⚠️ RATCHET UPWARD, NEVER DOWN. `request-layer-floor.test.ts` fails if either
+ * number is reduced below the baseline recorded there. If a change puts the
+ * layer under the floor, the answer is tests on the handler that dropped — the
+ * same rule the header above states for the blended thresholds, and the same
+ * reason: lowering a number so a newly-visible gap fits inside it is precisely
+ * how this guard became decorative the first time.
+ *
+ * Read by `scripts/check-route-coverage.ts`, which CI runs immediately after
+ * `test:coverage`.
+ */
+export const REQUEST_LAYER_FLOOR = {
+  /** Glob prefix, matched against paths relative to the repo root. */
+  prefix: 'src/app/api/',
+  statements: 85,
+  branches: 78,
+} as const;
+
+/**
+ * Below this many measured handler files, the coverage report is not describing
+ * the request layer — the include globs changed, or the run was partial. That is
+ * a "could not look", which is a different answer from "passed" and gets its own
+ * exit code. Deliberately well under the real count so it never fires on a
+ * legitimately removed route.
+ */
+export const REQUEST_LAYER_MIN_FILES = 60;

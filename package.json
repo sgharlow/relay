@@ -48,7 +48,8 @@
     "verify:csp": "npx tsx --env-file=.env.ro scripts/verify-csp.ts",
     "verify:stripe": "npx tsx scripts/verify-stripe.ts",
     "verify:stamp": "npx tsx scripts/stamp-verify-live.ts",
-    "verify:stamp:journeys": "npx tsx scripts/stamp-verify-journeys.ts"
+    "verify:stamp:journeys": "npx tsx scripts/stamp-verify-journeys.ts",
+    "check:route-coverage": "npx tsx scripts/check-route-coverage.ts"
   },
   "dependencies": {
     "@aws-sdk/client-kms": "3.1072.0",
