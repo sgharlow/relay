@@ -2286,6 +2286,13 @@ deferred:
       # harder. The CAUSE is untouched: the walks still write to production.
     stand_in_made_real:
       date: 2026-08-30
+      proven_red_2026_08_30: "The alarm has now been SEEN to fire, not merely written.
+        Dispatched against a dead URL (run 33340734898): two attempts, 404 each, the 30s retry
+        working as designed, the triage guidance printed, and the job exiting 1. The emitted
+        annotation interpolates correctly - `Rows were left on the PRODUCTION cluster, or the
+        probe could not look (HTTP 404)` - checked rather than assumed, because a message that
+        reads `HTTP $code` at 3am is a message that has never been run. This closes the gap
+        PR #35 recorded against itself: the red path was unit-proven only."
       what_shipped: "/api/health/orphans, lib/ops/orphan-health.ts and a daily
         orphan-monitor workflow. Alarms on a reserved-domain account older than a day;
         counts dangling rows against a recorded baseline rather than against zero, because
@@ -4189,6 +4196,17 @@ deferred:
       lesson: "A finding is disproved by measuring the thing it CLAIMS, not something
         adjacent to it. This entry claimed 'the alarm mail ends up in Trash'; the disproof
         measured 'the alarm mail arrives quickly'. Both are true at once."
+      mechanism_narrowed_2026_08_30: "The filter was READ, in Steve's browser:
+        `from:(notifications@github.com) subject:([sgharlow/relay] Run failed)` -> Star it, Apply
+        label relay-alarm, Never send it to Spam, Mark it as important. NO DELETE ACTION. Five
+        filters exist and none deletes, so the trashing is not a rule. Seven relay-alarm mails
+        were restored the same session, verified two ways.
+        OBSERVED THE SAME EVENING AND IT NARROWS THE CAUSE: a forced-red Orphan monitor alarm at
+        23:03Z landed in the INBOX, labelled and starred, while two Vercel comment mails from
+        21:47Z and 22:00Z were ALREADY in TRASH. Recent mail untouched, older mail gone - the
+        signature of PERIODIC mailbox hygiene rather than a rule. So the seven restored mails are
+        likely to be swept again and this entry stays OPEN. The durable fix is not a filter edit;
+        it is B12, an alert path that does not depend on this mailbox at all."
 
   - id: the-scheduled-monitors-are-collapsing                 # ROADMAP B11
     owner: claude                         # measurement; steve owns the money half
