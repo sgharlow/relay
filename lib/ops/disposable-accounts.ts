@@ -182,3 +182,65 @@ export function formatSweepReport(judged: Judged[], now: Date, maxAgeHours = 24)
 
   return lines.join('\n');
 }
+
+/**
+ * Every (table, column) that points at a `users` row, as `deleteAccount()`'s
+ * cascade knows them.
+ *
+ * 🔴 THIS LIVED INSIDE `scripts/disposable-sweep.ts` UNTIL 2026-08-30, and moving
+ * it is the point rather than tidying. On that date a second consumer appeared —
+ * `lib/ops/orphan-health.ts`, which answers the same question unattended — and a
+ * list of eighteen table/column pairs copied into two files is a contract
+ * expressed twice. The portfolio rule is explicit: one authoritative definition
+ * per cross-boundary contract, never re-expressed at a second call site. A table
+ * added to one copy and not the other would mean the monitor and the operator's
+ * own sweep disagreeing about what an orphan is, silently, in the direction
+ * where the monitor sees less.
+ *
+ * Order is `deleteAccount()`'s, so a reader comparing the two sees the same
+ * sequence.
+ */
+export const OWNER_COLUMNS: ReadonlyArray<readonly [table: string, column: string]> = [
+  ['vault_items', 'owner_id'],
+  ['recipients', 'owner_id'],
+  ['verifiers', 'owner_id'],
+  ['access_rules', 'owner_id'],
+  ['release_state', 'owner_id'],
+  ['invitations', 'owner_id'],
+  ['access_requests', 'owner_id'],
+  ['access_policies', 'owner_id'],
+  ['approvals', 'owner_id'],
+  ['subscriptions', 'owner_id'],
+  ['recipient_codes', 'owner_id'],
+  ['verifier_codes', 'owner_id'],
+  ['break_glass_codes', 'owner_id'],
+  ['delegations', 'owner_id'],
+  ['delegations', 'delegate_user_id'],
+  ['webauthn_credentials', 'user_id'],
+  ['recovery_codes', 'user_id'],
+  ['auth_challenges', 'user_id'],
+] as const;
+
+/**
+ * Rows that OUTLIVE their user on purpose, and must never be counted as orphans.
+ *
+ * `deleteAccount()` keeps the audit trail deliberately — it is stated on the
+ * privacy page and handed back as `auditEntriesRetained`, so that closing a real
+ * person's account does not erase the record that it happened — and it removes
+ * the `users` row LAST. So a dangling `audit_log.owner_id` is the DESIGNED END
+ * STATE of every correct closure, not wreckage.
+ *
+ * ⚠️ THIS DISTINCTION WAS ONCE GOT WRONG IN THE OTHER DIRECTION, and the sweep's
+ * header records it: every correct account closure printed
+ * `FAIL: N row(s) point at a user that no longer exists`. An alarm that fires
+ * when nothing is wrong is an alarm that gets muted, so the count is kept and
+ * reported and does not fail anything.
+ */
+export const RETAINED_BY_DESIGN: ReadonlyArray<readonly [table: string, column: string]> = [
+  ['audit_log', 'owner_id'],
+] as const;
+
+/** `table.column`, the label both the sweep and the probe report under. */
+export function danglingLabel(table: string, column: string): string {
+  return `${table}.${column}`;
+}
