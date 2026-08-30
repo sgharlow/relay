@@ -170,14 +170,24 @@ type LocatorLike = {
   waitFor(o: { state: string; timeout?: number }): Promise<void>;
   getByLabel(r: RegExp): LocatorLike;
   getByRole(role: string, o: { name: RegExp }): LocatorLike;
+  /** Narrow a set of matches by their text — used to ask what COLOUR a sentence is painted in. */
+  filter(o: { hasText: RegExp }): LocatorLike;
   evaluate<T>(fn: (el: HTMLElement) => T): Promise<T>;
 };
 interface PageLike {
   goto(url: string, o?: { waitUntil?: string }): Promise<unknown>;
   locator(sel: string): LocatorLike;
   getByRole(role: string, o: { name: RegExp }): LocatorLike;
+  /** By ACCESSIBLE NAME. A control found this way goes red when its label regresses. */
+  getByLabel(r: RegExp): LocatorLike;
   screenshot(o: { path: string }): Promise<unknown>;
   waitForTimeout(ms: number): Promise<void>;
+  /** Wait on a condition rather than a timer — a sleep long enough to be safe is a slow walk. */
+  waitForFunction(
+    fn: () => boolean,
+    arg?: unknown,
+    o?: { timeout?: number },
+  ): Promise<unknown>;
   evaluate<T>(fn: () => T): Promise<T>;
 }
 
@@ -673,6 +683,121 @@ async function main(): Promise<void> {
       Number(row.rec) === 1 && Number(row.ver) === 1,
       `recipient rows=${row.rec} verifier rows=${row.ver}`,
     );
+
+    // =====================================================================
+    // PART 5 — /triggers, and whether an owner can SEE an unsatisfiable quorum
+    // =====================================================================
+    /*
+      🔴 THE STATE THIS WALKS IS THE LIVE SYSTEM'S OWN. On 2026-08-30 the one
+      real owner holds N = 1 against M = 0 eligible verifiers: a person was
+      named, has not accepted, and `isEligibleVerifier` counts only `confirmed`.
+      A trigger firing reaches GRACE and stops there for good. Nothing leaks —
+      GRACE is where verifiers are asked, not where access opens — but the plan
+      cannot complete, and no screen says so.
+
+      The owner built in PART 4 is in exactly that state: one person wearing both
+      hats, `invited`, never confirmed. So this asks the question the product's
+      only user is currently living inside.
+
+      ⚠️ WHAT THE SERVER ALREADY GUARANTEES, AND WHY THAT IS NOT ENOUGH.
+      `assertQuorumSatisfiable` refuses N > M, and `PUT /api/triggers/[id]/config`
+      is unit-tested to feed it the right rows — unconfirmed people excluded, a
+      verifier who is also a recipient excluded, one human holding two rows
+      counted once. So the REFUSAL is proven. What no HTTP test can see is
+      whether the refusal ever reaches a person: the screen renders
+      `received/required` and NEVER RENDERS M, so an owner learns how many people
+      could actually answer only by asking for too many and reading what comes
+      back. If that sentence is swallowed, or painted in the reassuring colour,
+      an owner is left believing they set a quorum that cannot complete.
+
+      That is the same defect class `StatusLine.test.tsx` pins — an error arriving
+      in sage, the colour this product uses for "closed, safe" — and it is pure
+      client state, invisible to every walk in both chains.
+    */
+    const triggers = await (await contextFor(browser, owner.email)).newPage();
+    await triggers.goto(`${BASE}/triggers`, { waitUntil: 'networkidle' });
+
+    check('the triggers page renders for a signed-in owner', await triggers.locator('h1').isVisible());
+
+    /*
+      Located by ACCESSIBLE NAME, not by position. axe flagged this control as
+      `label` (critical) once already — the text beside the box named it for
+      somebody looking at it and for nobody using a screen reader — and the fix
+      was an explicit `aria-label` that also names the trigger, because the page
+      renders one of these per trigger and two controls both called "people who
+      must agree" are not distinguishable. Finding it this way means the walk
+      goes red if that name regresses, which is the half axe cannot check on a
+      screen it has no credentials to reach.
+    */
+    const quorumBox = triggers.getByLabel(/People who must agree first/i).first();
+    const quorumCount = await triggers.getByLabel(/People who must agree first/i).count();
+    check(
+      'the quorum control carries an accessible name, not just adjacent text',
+      quorumCount > 0,
+      `controls found by accessible name: ${quorumCount}`,
+    );
+
+    if (quorumCount > 0) {
+      const before = await triggers.locator('body').innerText();
+      check(
+        '🔴 the screen never tells the owner how many people COULD answer',
+        !/could answer/i.test(before),
+        'recorded, not asserted as desirable — it is why the refusal below is the ' +
+          'only place M appears, and therefore why it has to be readable',
+      );
+
+      await quorumBox.fill('5');
+      await triggers.getByRole('button', { name: /^Set$/ }).first().click();
+
+      // The refusal is a round trip; wait for the sentence rather than a timer.
+      await triggers
+        .waitForFunction(() => /could answer|confirm/i.test(document.body.innerText), undefined, {
+          timeout: 15_000,
+        })
+        .catch(() => {});
+
+      const after = await triggers.locator('body').innerText();
+      check(
+        '🔴 asking for more confirmations than anyone can give is REFUSED, in words',
+        /could answer/i.test(after),
+        after.split('\n').find((l) => /could answer/i.test(l))?.trim() ?? 'no such sentence',
+      );
+      check(
+        'the refusal names BOTH numbers, so the owner learns M from it',
+        /5 people to confirm/i.test(after) && /only 0 could answer/i.test(after),
+        'the screen shows received/required and never M — this sentence is the only place it appears',
+      );
+
+      /*
+        THE COLOUR, which is the half a text assertion misses. StatusLine paints
+        `ok: false` in clay and `ok: true` in sage; sage is this product's colour
+        for "closed, safe". A refusal arriving in sage, beside a number the owner
+        just set, reads as confirmation that it saved.
+      */
+      const sageOnRefusal = await triggers
+        .locator('.text-sage-text')
+        .filter({ hasText: /could answer/i })
+        .count();
+      check(
+        '🔴 and it is NOT painted in the colour this product uses for "safe"',
+        sageOnRefusal === 0,
+        `elements matching .text-sage-text containing the refusal: ${sageOnRefusal}`,
+      );
+
+      // And it must not have saved. The refusal is a refusal, not a warning.
+      const stored = await query<{ n: string }>(
+        `SELECT coalesce(max(required_confirmations), 0)::text AS n
+           FROM release_state rs JOIN users u ON u.id = rs.owner_id
+          WHERE u.email = $1`,
+        [owner.email],
+      );
+      const storedN = Number((stored.rows[0] as unknown as { n: string })?.n ?? 0);
+      check(
+        'nothing was written — an impossible quorum is refused, not stored',
+        storedN !== 5,
+        `required_confirmations in release_state = ${storedN}`,
+      );
+    }
 
   } finally {
     await browser.close().catch(() => {});
