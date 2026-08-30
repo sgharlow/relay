@@ -31,7 +31,7 @@
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
-import { apiGet, apiSend, SignedOutError, signInHref } from './api';
+import { apiGet, apiSend, SignedOutError, signInHref, onOwnerWrite, announceOwnerWrite } from './api';
 
 function stubFetch(status: number, body: unknown = {}) {
   vi.stubGlobal(
@@ -124,5 +124,61 @@ describe('signInHref', () => {
     */
     expect(signInHref('https://evil.example/x')).toBe('/auth/signin');
     expect(signInHref('//evil.example/x')).toBe('/auth/signin');
+  });
+});
+
+
+/**
+ * The banner that reads `/api/readiness` lives in the owner LAYOUT, which App
+ * Router does not remount between pages. Without an announcement it kept its
+ * first answer for the whole session — on 2026-08-29 that told a real owner
+ * "Your vault is empty" while the page beneath listed the item he had just
+ * added. These pin the announcement so it cannot be quietly dropped.
+ */
+describe('owner-write announcements', () => {
+  it('announces after a successful write', async () => {
+    let heard = 0;
+    const off = onOwnerWrite(() => { heard += 1; });
+    globalThis.fetch = (async () => new Response(JSON.stringify({ ok: true }), { status: 200 })) as typeof fetch;
+
+    await apiSend('/api/recipients', 'POST', { name: 'April' });
+
+    expect(heard).toBe(1);
+    off();
+  });
+
+  /*
+    The ordering that matters. Announcing a failed write would refresh the banner
+    into showing the same unchanged state, which reads exactly like success —
+    the same trap `setFactorsRequired` documents for the same reason.
+  */
+  it('does NOT announce when the write failed', async () => {
+    let heard = 0;
+    const off = onOwnerWrite(() => { heard += 1; });
+    globalThis.fetch = (async () => new Response(JSON.stringify({ message: 'nope' }), { status: 400 })) as typeof fetch;
+
+    await expect(apiSend('/api/recipients', 'POST', {})).rejects.toThrow('nope');
+
+    expect(heard).toBe(0);
+    off();
+  });
+
+  it('does NOT announce when the session has expired', async () => {
+    let heard = 0;
+    const off = onOwnerWrite(() => { heard += 1; });
+    globalThis.fetch = (async () => new Response('{}', { status: 401 })) as typeof fetch;
+
+    await expect(apiSend('/api/recipients', 'POST', {})).rejects.toBeInstanceOf(Error);
+
+    expect(heard).toBe(0);
+    off();
+  });
+
+  it('unsubscribes cleanly, so a remounted banner does not double-fetch', () => {
+    let heard = 0;
+    const off = onOwnerWrite(() => { heard += 1; });
+    off();
+    announceOwnerWrite();
+    expect(heard).toBe(0);
   });
 });

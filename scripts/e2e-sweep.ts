@@ -42,8 +42,57 @@
  * would also transition somebody real — and a walk that fires a live customer's
  * release is not a walk. Checked before anything is created.
  *
+ * TWO MODES, ONE SETUP. The setup below - a disposable owner, a confirmed
+ * verifier, an ARMED trigger, a backdated `last_active_at` - is identical for
+ * both things the hourly cron does to a quiet owner. Only how far it is
+ * backdated, and what is then asserted, differs. Sharing the setup is the point:
+ * two scripts would drift, and the second one would be the one nobody re-reads.
+ *
+ *   --mode sweep     (default) backdate PAST the interval. Asserts the
+ *                    ARMED -> PENDING transition. Proven 2026-08-29.
+ *   --mode reminder  backdate to ~80% of the interval - past the 75% rung and
+ *                    short of overdue. Asserts the J5-R4 check-in reminder
+ *                    ladder fires. NEVER PROVEN: `owner_checkin_reminder_first`
+ *                    and `_final` have zero rows in `audit_log`, ever.
+ *
+ * 🔴 WHY THE REMINDER HALF MATTERS AND WHY IT IS HARDER TO TRUST.
+ * `sweepCheckinReminders()` is called by the same cron and NEVER THROWS, by
+ * design ("belt and braces" - one owner must not block the rest). So its failure
+ * mode is a 200 from the cron, a healthy `scheduler_runs` ledger, and an owner
+ * who is simply never warned. Nothing anywhere would go red. The live owner's
+ * first rung lands 2026-09-21, and it will be the first reminder this product
+ * has ever sent to anybody.
+ *
+ * 🔴 AND THE REMINDER MODE CANNOT ACTUALLY PROVE THE LADDER. This paragraph used
+ * to claim it asserted "the AUDIT ROW, not delivery ... what is being proven is
+ * that the ladder RUNS and RECORDS". That was wrong, and the walk was run before
+ * anyone checked it - it reported a red FAIL against a product that had done
+ * nothing wrong (2026-08-29).
+ *
+ * `sweepCheckinReminders` writes its audit row ONLY on successful delivery:
+ *
+ *     if (!delivered) continue;
+ *     await writeAuditEntry(...)
+ *
+ * and that ordering is deliberate, with its reason in place - the row is a
+ * do-not-repeat marker, so "nothing was delivered" must leave nothing to repeat
+ * and let the next sweep try again. Meanwhile `lib/notify/email.ts` refuses
+ * reserved TLDs unconditionally ("`.test` is reserved and can never receive
+ * mail"). A disposable owner therefore CANNOT produce the row, by two correct
+ * designs meeting.
+ *
+ * So reminder mode proves the PRECONDITIONS - that such an owner is a candidate,
+ * is in the right window, and is NOT escalated - and it stops there, loudly,
+ * rather than asserting something it structurally cannot observe.
+ *
+ * ⚠️ THE REAL PROOF IS DATED AND BELONGS TO A REAL OWNER. The ladder's first
+ * firing will be the live owner's 75% rung, 2026-09-21T15:49Z, to a deliverable
+ * address. That is the only way this mechanism can be seen working, and the
+ * thing worth building before then is something that NOTICES whether it fired.
+ *
  * Usage:
  *   npx tsx --env-file=.env.local scripts/e2e-sweep.ts
+ *   npx tsx --env-file=.env.local scripts/e2e-sweep.ts --mode reminder
  *   npx tsx --env-file=.env.local scripts/e2e-sweep.ts --wait 90   (minutes)
  *
  * Feature: relay-h0-mvp
@@ -54,6 +103,24 @@ import { query, closeAllPools } from '../lib/db/connection';
 import { Actor, Results, signUp, signIn, claim, closeAll, undeliverable, BASE } from './walk-harness';
 
 const R = new Results();
+
+const MODE: 'sweep' | 'reminder' = (() => {
+  const i = process.argv.indexOf('--mode');
+  return i !== -1 && process.argv[i + 1] === 'reminder' ? 'reminder' : 'sweep';
+})();
+
+/*
+  How far back to push `last_active_at`, as a multiple of a one-day interval.
+
+  sweep    3 days on a 1-day interval - comfortably overdue, so the sweep's
+           `now() - last_active_at > interval` predicate is unambiguous.
+  reminder 0.8 days on a 1-day interval - past the 75% rung, short of 100%.
+           It has to be BOTH: `CANDIDATE_SQL` reads only owners between 50% and
+           100% of their interval, so an owner who is already overdue is not a
+           reminder candidate at all. The window this walk needs is narrow and it
+           is the reason the wait is capped well under the remaining 0.2 days.
+*/
+const BACKDATE = MODE === 'reminder' ? '0.8 days' : '3 days';
 
 const WAIT_MINUTES = (() => {
   const i = process.argv.indexOf('--wait');
@@ -182,20 +249,44 @@ async function main(): Promise<void> {
     await query(
       `UPDATE users
           SET checkin_interval_days = 1,
-              last_active_at = now() - INTERVAL '3 days'
+              last_active_at = now() - $2::interval
         WHERE email = $1`,
-      [owner.email],
+      [owner.email, BACKDATE],
     );
-    const chk = await query<{ overdue: boolean }>(
-      `SELECT (now() - last_active_at > (checkin_interval_days * INTERVAL '1 day')) AS overdue
+    const chk = await query<{ overdue: boolean; frac: string }>(
+      `SELECT (now() - last_active_at > (checkin_interval_days * INTERVAL '1 day')) AS overdue,
+              round(EXTRACT(EPOCH FROM (now() - last_active_at))
+                    / (checkin_interval_days * 86400), 3)::text AS frac
          FROM users WHERE email = $1`,
       [owner.email],
     );
-    R.check(
-      'the owner is now overdue by the sweep\'s own predicate',
-      chk.rows[0]?.overdue === true,
-      'interval 1d, last active 3d ago',
-    );
+    const frac = Number(chk.rows[0]?.frac ?? 0);
+
+    if (MODE === 'sweep') {
+      R.check(
+        "the owner is now overdue by the sweep's own predicate",
+        chk.rows[0]?.overdue === true,
+        `interval 1d, elapsed ${frac} of it`,
+      );
+    } else {
+      /*
+        Both halves matter and the second is the one that is easy to get wrong.
+        `CANDIDATE_SQL` reads only owners between 50% and 100% of their interval,
+        so an owner who has tipped past 100% is NOT a reminder candidate - the
+        ladder would go silent for exactly the reason this walk is trying to
+        disprove, and the walk would report a false failure.
+      */
+      R.check(
+        'the owner is past the 75% rung',
+        frac >= 0.75,
+        `elapsed ${frac} of the interval`,
+      );
+      R.check(
+        'and NOT yet overdue — past 100% and they stop being a reminder candidate at all',
+        chk.rows[0]?.overdue === false,
+        `elapsed ${frac} < 1.0`,
+      );
+    }
 
     const tickBefore = await lastSchedulerRun();
     console.log(`\n  last scheduler run before waiting: ${tickBefore ?? '(none)'}`);
@@ -213,7 +304,13 @@ async function main(): Promise<void> {
       ticked = await lastSchedulerRun();
       const mins = Math.round((deadline - Date.now()) / 60_000);
       console.log(`  [${new Date().toISOString().slice(11, 19)}] state=${after?.state} v${after?.version} · last tick ${ticked ?? '-'} · ${mins} min left`);
-      if (after && after.state !== 'armed') break;
+      /*
+        In sweep mode the state change IS the event, so stop as soon as it lands.
+        In reminder mode nothing about `release_state` changes - the event is an
+        audit row - so the loop runs until a tick has actually happened.
+      */
+      if (MODE === 'sweep' && after && after.state !== 'armed') break;
+      if (MODE === 'reminder' && ticked !== tickBefore) break;
     }
 
     R.check(
@@ -221,6 +318,64 @@ async function main(): Promise<void> {
       ticked !== tickBefore,
       `${tickBefore ?? '-'} -> ${ticked ?? '-'}`,
     );
+
+    if (MODE === 'reminder') {
+      /*
+        The reminder half. The trigger must NOT have moved - an owner short of
+        their interval is being nudged, not escalated, and a transition here
+        would mean the sweep is arming people early, which is a far worse
+        finding than a missing reminder.
+      */
+      const reminders = await query<{ action: string; actor: string; ts: string }>(
+        `SELECT a.action, a.actor, a.ts::text
+           FROM audit_log a JOIN users u ON u.id = a.owner_id
+          WHERE u.email = $1
+            AND a.action IN ('owner_checkin_reminder_first', 'owner_checkin_reminder_final')
+          ORDER BY a.seq DESC`,
+        [owner.email],
+      );
+
+      R.check(
+        'the trigger did NOT move — a nudge is not an escalation',
+        after?.state === 'armed',
+        `state=${after?.state}`,
+      );
+
+      /*
+        Everything above this point is provable with a disposable owner. The
+        firing itself is not, and saying so is the honest end of this walk rather
+        than a red check against a blameless product.
+      */
+      const undeliverable = /\.(test|invalid|example|localhost)$/i.test(owner.email.split('@')[1] ?? '');
+      R.check(
+        'the reminder audit row is absent — EXPECTED, and not a defect',
+        !reminders.rows.length && undeliverable,
+        undeliverable
+          ? 'reserved TLD: no delivery is possible, so no do-not-repeat row is written'
+          : `unexpected: ${reminders.rows.map((r) => r.action).join(',') || 'none'}`,
+      );
+
+      console.log('\n' + '='.repeat(72));
+      console.log('WHAT THIS WALK CAN AND CANNOT SHOW');
+      console.log('='.repeat(72));
+      console.log('  PROVEN: an owner in the 50-100% window, holding an ARMED trigger, is a');
+      console.log('    reminder candidate and is NOT escalated by the tick that passes over them.');
+      console.log('  NOT PROVEN, and not provable here: that the ladder SENDS. The audit row is');
+      console.log('    written only on successful delivery (checkin-reminder.ts, deliberately),');
+      console.log('    and email.ts refuses reserved TLDs unconditionally. Two correct designs');
+      console.log('    meet, and a disposable owner can never satisfy both.');
+      console.log('  THE REAL PROOF: the live owner\'s 75% rung, 2026-09-21T15:49Z, to a');
+      console.log('    deliverable address. Build something that NOTICES it before then.');
+      console.log('='.repeat(72));
+
+      /*
+        Return into the shared `finally`, which owns cleanup. An earlier version
+        cleaned up here AND fell through to the finally, so every account was
+        closed twice and the second attempt logged a 401 - harmless, and exactly
+        the sort of noise that trains a reader to skim a cleanup block.
+      */
+      return;
+    }
 
     R.check(
       '🔴 THE POINT: the sweep moved the trigger OFF armed with nobody calling it',

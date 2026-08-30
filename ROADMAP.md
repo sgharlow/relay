@@ -62,12 +62,24 @@ were about a state of the world that had already changed or never existed.
 
 §1 defines production as three things. Measured 2026-08-29, here is the distance to each.
 
-### 🔴 The frame that reorders everything: the custodial obligation is currently owed to NOBODY
+### ~~🔴 The frame that reorders everything: the custodial obligation is currently owed to NOBODY~~ — ✅ **RESOLVED 2026-08-29**
 
 The one live, paying, non-demo owner holds **0 vault items, 0 recipients, 0 verifiers, 0 access
 rules and 0 `release_state` rows** (`relay_ro`, 2026-08-29). Every guarantee this document tracks —
 envelope encryption, the release state machine, verifier quorum, the dead-man's switch, the audit
 chain — is presently doing nothing for the only person relying on the product.
+
+> ✅ **A0 WAS DONE THE SAME DAY THIS WAS WRITTEN, and this section is kept as the argument that
+> moved it rather than deleted as stale.** `verify:dogfood` reads READY: 1 vault item with real
+> ciphertext and a wrapped KMS key, April as recipient, Ben as verifier, one reversible access rule
+> under `emergency`, and an ARMED `release_state`. The custodial machinery is no longer protecting
+> an empty box.
+>
+> 🔴 **But the plan still cannot COMPLETE a release.** `countEligibleVerifiers` returns **M = 0**
+> against **N = 1**, because Ben has not accepted and only `confirmed` verifiers count. A trigger
+> firing today would reach GRACE and stop there for good. Nothing leaks — GRACE is where verifiers
+> are asked, not where access opens — but "the vault is set up" and "the plan would work" are two
+> different claims, and only the first is now true.
 
 That is not an argument for doing less custodial work; the obligation binds from the first
 stranger's first credential and the stranger is what the demand lane exists to produce. It is an
@@ -84,7 +96,7 @@ reason is unchanged: A0 blocks it, A0 is ~20 minutes, and A0 has not happened.
 
 | blocker | state 2026-08-29 | owner |
 |---|---|---|
-| A0 the owner's vault | empty; `verify:dogfood` NOT READY, same five pieces missing | steve, Sitting A |
+| ~~A0 the owner's vault~~ | ✅ **DONE** — `verify:dogfood` READY, all six green. ⚠️ quorum still unsatisfiable (M=0 vs N=1) until Ben accepts and is confirmed | steve, **closed** |
 | A1 op-ed → caregiver.com | unsent; §1a third-person ruling still owed (D-1 item 1) | steve |
 | A3 beta cohort | `.relay-cohort.json` untouched since 08-18 18:17, still untracked; no codes file; **third deferral lapsed unrecorded** | steve |
 | A7.0 the instrument | 🔴 collects nothing readable — see below | steve (one toggle) |

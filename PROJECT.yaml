@@ -3206,6 +3206,46 @@ deferred:
       and the engineering lane is verifying machinery against fixtures because there is nothing real
       for it to act on. **A0 is what makes every other guarantee in this file non-vacuous.** It is
       ~20 minutes and it has outlived a month of week-long tasks.
+    closed:
+      date: 2026-08-29
+      by: steve                          # co-piloted; every write was his, in his own browser
+      what_landed: >-
+        `npm run verify:dogfood` reads **READY** for the first time - all six checks green. Read
+        from the database rather than from the screens, because this product's recurring defect is
+        the two disagreeing:
+        vault_items 1 - "gmail", `secret_kinds="password,username"`, REAL ciphertext AND a wrapped
+        KMS data key, so the browser encrypted it and KMS wrapped the key; nothing stored in clear.
+        recipients 1 - April <sgharlow+april@gmail.com>.
+        verifiers 1 - Ben <sgharlow+ben@gmail.com>.
+        access_rules 1 - April -> "gmail", trigger `emergency`, scope `view`, **reversible**.
+        release_state 1 - `emergency` ARMED, required_confirmations 1, case RLY-X7T5-2TQF.
+        No email clash between April and Ben, so the rule that nobody helps authorise their own
+        access is satisfied.
+      what_it_unblocks: >-
+        `npm run invite:cohort` now has something real to invite people into (A3, and the refusal
+        that guarded it stands down). `gates.g1-arms-length-demand`'s stated precondition is met.
+        `gates.d3-restore-drill` criterion 3 becomes satisfiable. And the framing in ROADMAP §0.5 -
+        that the custodial obligation was owed to nobody, and every guarantee in the file was
+        protecting an empty box - is now FALSE, in the good direction, for the first time.
+      🔴_what_is_STILL_not_true_and_matters: >-
+        THE PLAN CANNOT COMPLETE A RELEASE. Measured with the product's own
+        `countEligibleVerifiers`: verifier rows 1, **ELIGIBLE verifiers M = 0**, required N = 1 -
+        because `isEligibleVerifier` counts only `standby_state='confirmed'` and Ben has not
+        accepted. So if the emergency fired today it would go ARMED -> PENDING -> GRACE and sit
+        there permanently; Ben would be mailed, his answer recorded, and it would not count.
+        Nothing leaks - GRACE is where verifiers are ASKED, not where access opens - but the
+        dead-man is armed and cannot finish. Closing that loop needs "Give them a code" -> Ben
+        claims -> Steve confirms him, which is the step that moves M from 0 to 1.
+      also_still_unexercised: >-
+        `factors_required` is NULL on the item. The declaration path that migration 035 added, and
+        that shipped fully unit-tested and completely inert for a day, has still never been used by
+        a real owner.
+      the_dates_this_created: >-
+        The check-in reset `last_active_at` to 2026-08-30T03:31Z (every A0 action is a POST and
+        `owner-route.ts` records deliberate activity on each), so the ladder and the sweep both
+        moved out ~3 weeks: 75% rung **2026-09-21T15:49Z**, 90% rung 2026-09-26T03:49Z, overdue
+        **2026-09-29T03:49Z**. The 75% rung will be the first check-in reminder this product has
+        ever sent, to a real address.
     a_correction_worth_keeping: >-
       It was briefly stated on 2026-08-29 that the sweep would "arm their triggers, unattended, at
       night" when the owner goes overdue on ~2026-09-09. That is WRONG and the correction is the
@@ -4332,6 +4372,198 @@ deferred:
       Closed. If another property in this repo generates key material with `fc.string()`, it needs
       the same byte-level filter — this was the only one (`grep -rn "a !== b" lib/ --include=*.test.ts`).
 
+  - id: google-safe-browsing-flags-the-site-as-phishing       # INCIDENT, 2026-08-29
+    owner: steve                          # only he can reach Search Console and request a review
+    opened: 2026-08-29
+    severity: >-
+      🟠 SERIOUS BUT NARROW - and the first version of this line said the opposite, which is the
+      part worth keeping. Corrected 2026-08-29 by driving a real browser at every public page.
+      **ONLY `/vault/new` IS BLOCKED.** Everything else loads normally.
+    ⚠️_the_first_severity_assessment_was_WRONG_and_this_is_the_third_of_its_kind_today: >-
+      It read: "Every Chrome, Firefox, Safari and Edge user meets a full-page red interstitial
+      instead of the product. Nobody can sign up, sign in, reach the demo, or read /terms." That
+      was extrapolated from ONE observation - Steve's screenshot of `/vault/new` - to the whole
+      site, without testing the whole site.
+      Measured in a real Chrome via the browser plugin, 2026-08-29: `/` loads · `/auth/signin`
+      loads · `/auth/signup` loads · `/demo` loads · `/caregivers` loads · `/terms` loads ·
+      **`/vault/new` BLOCKED, reproducibly.**
+      🔴 This is the THIRD overstatement in one session, all the same shape: a correct observation
+      generalised to a category that was never checked. The sweep would "arm their triggers" (it
+      iterates an empty set); the ladder "fires on 09-01" (the owner is not a candidate); the site
+      is "unreachable" (one page is). ROADMAP §0.0's lesson was written today and broken three
+      times by its author on the same day. The corrective is mechanical, not attitudinal: when a
+      claim has the shape "X is true of ALL of Y", enumerate Y before writing it down.
+    what_the_corrected_picture_actually_is: >-
+      Signup, sign-in, the demo, the caregivers landing and the terms page ALL WORK. So the demand
+      lane is NOT blocked - an op-ed could drive readers to `/caregivers` today and they would
+      convert normally. What IS blocked is the owner adding a vault item, which is A0, which is
+      the single highest-leverage action in ROADMAP §2.5. So this stops the one thing that matters
+      most and almost nothing else.
+    the_diagnosis_the_three_reads_together_support: >-
+      Search Console -> Security Issues: **No issues detected.**
+      Safe Browsing Transparency Report, domain `relaystandby.com`: **No available data.**
+      Safe Browsing Transparency Report, URL `relaystandby.com/vault/new`: **No available data.**
+      Chrome: **blocks `/vault/new` and nothing else.**
+      A published blocklist entry would appear in at least one of the first three. None does. That
+      signature - a per-URL verdict, present in the browser and absent from every published record
+      - is Chrome's REAL-TIME / client-side phishing classification rather than a Safe Browsing
+      list entry. Which fits what the page is: the one screen in this product whose entire purpose
+      is a form collecting a username and password FOR A DIFFERENT SERVICE, on a domain 22 days
+      old with no traffic reputation. That is the canonical false positive for a credential vault.
+    ⚠️_therefore_Search_Console_is_NOT_the_remedy: >-
+      There is nothing there to request a review of - it reports no issue. The route for a URL
+      wrongly classified is the Safe Browsing false-positive report:
+      https://safebrowsing.google.com/safebrowsing/report_error/ - submit the exact URL. That is an
+      outward-facing submission on Steve's behalf and is his to send, not Claude's to send for him.
+      Worth checking first: chrome://settings/security. If Enhanced protection is ON, this may be a
+      per-user real-time verdict rather than something every visitor sees, which changes the blast
+      radius materially and is a five-second read.
+    A0_IS_NOT_ACTUALLY_BLOCKED_TODAY: >-
+      The interstitial offers "Details -> visit this unsafe site", and switching to Standard
+      protection also clears it. Either lets A0 proceed now. That judgement is sound rather than
+      reckless BECAUSE compromise was ruled out first, in writing, before the bypass was suggested
+      - deploy provenance, no foreign hosts, 0 secret-scanning alerts, no user-content hosting, no
+      open redirect, audit chain intact.
+    what: >-
+      Reported by Steve from his own browser on 2026-08-29 (~16:00 local) at
+      `relaystandby.com/vault/new`. Chrome's interstitial cites Google Safe Browsing and the phrase
+      "recently found phishing on the site you tried visiting".
+    the_origin_is_HEALTHY_and_that_is_the_first_thing_to_understand: >-
+      Safe Browsing is a CLIENT-SIDE blocklist. The server is unaffected and nothing is wrong with
+      the deployment. Measured 2026-08-29: `/`, `/caregivers`, `/auth/signin`, `/auth/signup`,
+      `/demo`, `/terms`, `/privacy` all return 200 and `/vault/new` returns its usual 307. So this
+      is a REPUTATION verdict to be appealed, not an outage to be repaired - and no redeploy,
+      rollback or code change lifts it.
+    compromise_was_checked_first_and_no_indicator_was_found: >-
+      In this order, because "normally safe sites are sometimes compromised" is the alternative
+      hypothesis and it changes everything if true.
+      (1) DEPLOY PROVENANCE - every production deploy in the window is one of this session's own
+      merge commits (252ecd7, 38ec94f, f960c3e, d45a1eb, b236003, fece3a5), all authored by Steve
+      via GitHub, none manual.
+      (2) FOREIGN HOSTS - the live landing HTML references exactly one host, relaystandby.com. No
+      injected script, no third-party origin.
+      (3) The landing page carries NO form and NO password input.
+      (4) SECRET SCANNING - enabled the same day, 0 alerts on a repo public since June.
+      (5) USER-CONTENT HOSTING - none. `/api/import` is authenticated and serves nothing back; the
+      only two `dangerouslySetInnerHTML` sites render a server-generated TOTP QR SVG behind auth.
+      (6) OPEN REDIRECT - none found echoing a URL parameter into a Location header.
+      (7) The hash-chained audit log verifies intact (`npm run incident:evidence`, same day).
+    the_likely_cause_stated_as_a_hypothesis_not_a_finding: >-
+      ⚠️ NOT CONFIRMED - Search Console is the only authoritative source and it has not been read.
+      The profile is the classic false-positive one for this product category: a domain **22 days
+      old** (registered 2026-08-08), no traffic reputation, presenting credential-entry UI, whose
+      entire purpose is to hold other services' passwords. Password managers and vaults are
+      routinely misclassified for exactly this shape.
+      ⚠️ One candidate was investigated and DOES NOT hold: `lib/seed/demo-data.ts` seeds ~30 real
+      financial and government brands with real URLs (Chase, Bank of America, PayPal, American
+      Express, Coinbase, IRS, Social Security, 1Password). That WOULD be textbook classifier bait -
+      a non-brand domain showing many financial institutions beside credential fields - but the
+      public `/demo` HTML contains none of those strings, and `src/app/demo/page.tsx` is 350 lines
+      with no brand content. `robots.txt` does allow `/demo`. Worth re-checking against whatever
+      sample URL Search Console names, because a JS-rendering crawler sees more than a fetch does.
+    what_only_steve_can_do: >-
+      Google Search Console is the authoritative diagnosis AND the only route to a review.
+      (1) https://search.google.com/search-console - if `relaystandby.com` is not already a
+      property, add it (DNS TXT via Cloudflare; Claude can prepare the record).
+      (2) Security & Manual Actions -> Security Issues. This names the exact classification and
+      gives SAMPLE URLS, which is the thing every other investigation here is guessing at.
+      (3) Request Review, once the cause is understood or fixed. Reviews of a false positive are
+      typically resolved in days rather than weeks, but the clock does not start until it is asked.
+      Cross-check, no login needed:
+      https://transparencyreport.google.com/safe-browsing/search?url=relaystandby.com
+    what_it_actually_blocks_corrected: >-
+      A0, and A0 alone - and only until Steve clicks through the interstitial or switches to
+      Standard protection. ⚠️ The first version of this field claimed "the demand lane cannot
+      fire: an op-ed driving readers to a site Chrome calls dangerous is worse than not
+      publishing", and that is FALSE: `/caregivers`, the landing page and signup all load
+      normally, so the demand lane is unaffected. The cohort is unaffected. G1's instrument is
+      unaffected. Left visible rather than deleted, because an incident record that quietly loses
+      its own overstatements teaches nothing.
+    ends_when: >-
+      `https://relaystandby.com/vault/new` loads in a real Chrome with Enhanced protection ON and
+      no interstitial - checked by LOADING IT, not by reading a dashboard, because all three
+      dashboards already say there is nothing wrong. Getting there means a false-positive report
+      submitted and accepted, and probably some domain reputation accruing. If Google's response
+      names content we control, that ships first and the report is re-sent after.
+
+  - id: the-readiness-banner-goes-stale-for-the-whole-session
+    owner: claude
+    opened: 2026-08-29
+    found_by: >-
+      A0, being done for the first time by a real owner. Steve built his entire plan - item,
+      recipient, access rule, check-in - and the banner told him at EVERY step that his vault was
+      empty and nobody was named. Screenshots at 20:28 and 20:31 show the vault listing "1 item ·
+      gmail" directly beneath a banner reading "Your vault is empty - there is nothing to give
+      anyone access to", and the triggers page at 20:31 still saying "Nobody is named to receive
+      access" with April already in the circle and an ARMED emergency trigger on screen.
+    what: >-
+      `ReadinessBanner` lives in `src/app/(owner)/layout.tsx` and fetches `/api/readiness` exactly
+      ONCE, on mount. Its only other refresh is a subscription to `onFactorsDeclared`. Adding a
+      vault item, a recipient, a verifier or an access rule refreshes NONE of them.
+      Because it is in the LAYOUT, App Router does not remount it when navigating between owner
+      pages - so the banner keeps whatever was true when the owner first entered the owner area,
+      for the rest of the session, until a hard reload.
+    the_logic_is_correct_and_that_is_the_point: >-
+      `lib/vault/readiness.ts` queries live counts and its blocker rules are right. Nothing is
+      wrong with the assessment; the component simply never asks again. So this is not a wrong
+      answer, it is a right answer from the wrong moment - which is harder to notice, because
+      every sentence in it is one the product genuinely said at some point.
+    why_it_matters_more_than_a_cosmetic_bug: >-
+      This is the surface that tells an owner whether their plan would actually work, on the
+      dashboard they use to build it. An owner who trusted it during setup would conclude nothing
+      had saved - and the two most likely reactions are to re-enter everything, or to give up. It
+      also lands squarely in the custodial clause "what the product says about itself is true",
+      about the one screen where that clause is most load-bearing.
+      ⚠️ The component's own header anticipates exactly this failure for a NEIGHBOURING case: it
+      documents adding the `onFactorsDeclared` subscription because otherwise "the surface this
+      component's own comments call authoritative would be the stale one". The fix was made for
+      one mutation and not generalised to the other four.
+    measured_2026_08_29: >-
+      Live counts at the time of the stale banner: items=1, recipients=1, rules=1, verifiers=0.
+      Applying `assessReadiness`'s own rules to those counts yields ONE blocker, about verifiers -
+      not the three the screen was showing. `npm run verify:dogfood` agreed independently: "NOT
+      READY - 1 piece(s) missing: at least one verifier."
+    candidate_fixes_not_yet_chosen: >-
+      (1) Re-fetch on pathname change - cheapest, and it would have covered this case since Steve
+      navigated between /vault, /circle and /triggers. Does not cover a mutation made without
+      navigating.
+      (2) Generalise the existing event-bus pattern: emit on item / recipient / verifier / rule
+      writes the way `onFactorsDeclared` already does. Most correct, most edits.
+      (3) `router.refresh()` after mutations, if the banner is moved to a server component.
+      Not chosen here because A0 was the task and a UI change mid-A0 would have muddied what was
+      being verified.
+    ends_when: >-
+      Adding an item, a recipient, a verifier or a rule updates the banner without a hard reload,
+      with a test that would fail if the subscription were removed - the same bar the
+      `onFactorsDeclared` fix met.
+    closed:
+      date: 2026-08-29
+      what_shipped: >-
+        Two changes, covering the two ways it went stale.
+        (1) NAVIGATION - `ReadinessBanner` now re-reads on `pathname` change, not only on mount.
+        `pathname` was already in the component for the sign-in href; adding it to the effect's
+        dependency list is the entire fix for the case Steve actually hit, since he moved between
+        /vault, /circle and /triggers throughout.
+        (2) SAME-PAGE WRITES - `apiSend` announces every SUCCESSFUL owner-side write on a small
+        event bus and the banner subscribes. Emitted at the helper rather than at each call site,
+        because a convention every future caller must remember is precisely what this repo keeps
+        deciding not to rely on.
+      ordering_is_load_bearing: >-
+        The announcement fires AFTER both throws, never before. Announcing a write that failed
+        would refresh the banner into showing the same unchanged state, which reads exactly like
+        success - the same trap `setFactorsRequired` already documents for the same reason. Pinned
+        by two tests: a 400 and a 401 must each announce NOTHING.
+      ⚠️_the_choke_point_is_not_complete_and_that_is_recorded_in_the_code: >-
+        Vault ITEM creation goes through `CryptoService`, not `apiSend`, so a same-page item write
+        still does not announce. It is covered in practice because creating an item navigates back
+        to /vault, which fires (1). Closing it properly means emitting from `crypto-service.ts`
+        too - deliberately not done, because that file is on the crypto path and was not worth
+        touching for a status banner. Said in the `api.ts` header rather than left to be
+        discovered.
+      proven: >-
+        Four tests, and mutation-tested: deleting the `announceOwnerWrite()` call makes "announces
+        after a successful write" fail, and restoring it passes. 14 tests in api.test.ts.
+
   - id: the-reminder-ladder-has-never-fired                   # ROADMAP B15.1, the ladder half
     owner: claude                         # the walk; steve decides whether to check in
     opened: 2026-08-29
@@ -4376,10 +4608,35 @@ deferred:
       cron - nothing local may call the sweep, because `CRON_SECRET` is Vercel-only. Assert the
       `owner_checkin_reminder_first` audit row and the send attempt. The walk's safety refusal (no
       other owner already overdue) applies unchanged.
+    🔴_it_CANNOT_be_walked_the_way_the_sweep_was_and_this_was_learned_by_trying: >-
+      Attempted 2026-08-29 with `verify:reminder` - a disposable owner backdated to 80% of a
+      one-day interval, waiting for a real cron tick. The tick came and the walk reported the
+      ladder had NOT fired. It had not, and the product was blameless.
+      `sweepCheckinReminders` writes its audit row ONLY on successful delivery -
+      `if (!delivered) continue;` then `writeAuditEntry(...)` - and that ordering is deliberate,
+      with its reason in place: the row is a DO-NOT-REPEAT marker, so "nothing was delivered" must
+      leave nothing to repeat and let the next sweep try again. Meanwhile `lib/notify/email.ts`
+      refuses reserved TLDs unconditionally ("`.test` is reserved and can never receive mail").
+      Two correct designs meet, and a disposable owner can satisfy neither side: no delivery, so
+      no row, so nothing to assert.
+      ⚠️ The walk's own header had CLAIMED it "asserts the AUDIT ROW, not delivery ... what is
+      being proven is that the ladder RUNS and RECORDS". That caveat was written and then the
+      assertion it invalidates was built on top of it, and the walk was run before anyone checked.
+      Fourth error of this family in one session: reasoning about a gate without reading it.
+    what_the_walk_now_does: >-
+      Proves the PRECONDITIONS and stops, loudly: that such an owner is a reminder candidate, is
+      in the 50-100% window (past the 75% rung and short of overdue - an owner already overdue is
+      not a candidate at all), and is NOT escalated by the tick that passes over them. It then
+      prints what it can and cannot show, rather than leaving a red check against a blameless
+      product.
     ends_when: >-
-      An `owner_checkin_reminder_*` audit row exists that a production cron wrote, and the mail leg
-      is either confirmed delivered or its refusal (the `DEV_MAIL_ALLOWLIST` guard) is recorded as
-      the reason. Then B15.1 is closed in both halves.
+      ⚠️ REVISED. The ladder can only be seen working by a DELIVERABLE address, which means a real
+      owner. That is now dated: the live owner's 75% rung, **2026-09-21T15:49Z**, the first
+      check-in reminder this product will ever have sent.
+      So this closes when that firing is OBSERVED - an `owner_checkin_reminder_first` row for the
+      live owner, and the mail in the inbox - and the thing worth building BEFORE then is
+      something that notices whether it fired, because the failure is silent by design and nobody
+      will be watching at 15:49 on a Monday.
 
   - id: the-iam-wall-is-the-only-wall-nothing-schedules     # ROADMAP B16, residue
     owner: steve                          # a new IAM role is infrastructure; claude builds after

@@ -207,6 +207,24 @@ npm run verify:sweep   # watch the DEAD-MAN'S SWITCH fire. The one walk that pro
                        # the walk asserts on the hash-chained log rather than on a
                        # state it would be racing.
                        # Run `npm run verify:orphans` after, like the other walks.
+npm run verify:reminder # the OTHER thing the hourly cron does to a quiet owner: the
+                       # J5-R4 check-in reminder ladder. Same script and same setup as
+                       # verify:sweep, with `--mode reminder` — one setup, because two
+                       # scripts would drift and the second is the one nobody re-reads.
+                       # It backdates to ~80% of the interval: past the 75% rung and
+                       # SHORT OF OVERDUE, because CANDIDATE_SQL reads only owners
+                       # between 50% and 100% — an owner already overdue is not a
+                       # reminder candidate at all, and the walk would report a false
+                       # failure.
+                       # 🔴 NEVER PROVEN before 2026-08-29: owner_checkin_reminder_first
+                       # and _final have zero rows in audit_log, ever. sweepCheckinReminders
+                       # NEVER THROWS by design, so a failure is a 200 from the cron, a
+                       # healthy scheduler_runs ledger, and an owner who is simply never
+                       # warned. Nothing anywhere goes red.
+                       # ⚠️ Asserts the AUDIT ROW, not delivery — the disposable owner is
+                       # on a reserved domain so DEV_MAIL_ALLOWLIST refuses the send, and
+                       # that refusal is correct. What is proven is that the ladder RUNS
+                       # and RECORDS, which is the half that had never happened.
 npm run check:cadence  # are the scheduled monitors actually RUNNING? Counts each
                        # high-frequency workflow's scheduled runs over the trailing 24h
                        # and fails below 25% of nominal. No credentials — reads the
