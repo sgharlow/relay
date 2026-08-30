@@ -39,29 +39,46 @@ label, never delete. Then **untrash the ones already in there.**
 > 08-14..17 reports that a superseded note recorded as "in Trash now, expiring ~2026-09-14..16"
 > are labelled and safe. **There is no two-minute rescue left to do and no clock counting down.**
 >
-> **2. 🔴 THE FEED IS DEAD. `_dmarc.relaystandby.com` no longer carries `rua=`.** Found 2026-08-27
-> and re-measured 2026-08-29: the record is exactly `v=DMARC1; p=none`. No aggregate report can
-> arrive from any receiver. The mailbox evidence agrees independently and is the more convincing
-> half — **the newest report of the ten is 2026-08-17**, and nothing has arrived in the twelve days
-> since, on a domain that had been receiving them daily from both Google and Microsoft.
+> **2. ✅ THE FEED IS RESTORED — 2026-08-30. The prerequisite this submission was waiting on is
+> met.**
 >
-> So the order of work in this lane is inverted from what is written above: **fix the DNS record
-> first (C1.0)**. A Gmail filter protects a stream that has stopped, and the step-up to
-> `quarantine`/`-all` would be taken blind no matter how long anyone waits for data.
+> It *was* dead: found 2026-08-27 and re-measured 2026-08-29, `_dmarc.relaystandby.com` read exactly
+> `v=DMARC1; p=none`, so no aggregate report could arrive from any receiver. The mailbox agreed
+> independently and was the more convincing half — the newest of twelve reports was **2026-08-17**,
+> on a domain that had been receiving them daily from both Google and Microsoft.
 >
-> Re-derive rather than trust either claim:
+> C1.0 was executed on **2026-08-30**. The record now reads:
+>
+> ```
+> v=DMARC1; p=none; rua=mailto:dmarc@relaystandby.com; fo=1
+> ```
+>
+> `p=none` is deliberately unchanged — the step up to `quarantine`/`-all` is a separate decision
+> that must wait until reports have accumulated, or it is taken blind, which is what this lane has
+> said all along.
+>
+> Verified from **two independent resolvers** on 2026-08-30 (`cloudflare-dns.com` and `dns.google`),
+> over DoH rather than the local resolver, which refuses on this machine. Re-derive rather than
+> trust it:
+>
 > ```bash
 > node -e 'fetch("https://cloudflare-dns.com/dns-query?name=_dmarc.relaystandby.com&type=TXT",{headers:{accept:"application/dns-json"}}).then(r=>r.json()).then(d=>console.log((d.Answer||[]).map(x=>x.data).join(" ")))'
-> # 2026-08-29: "v=DMARC1; p=none"   <- no rua=
 > ```
-> Gmail (read-only): `from:(dmarcreport@microsoft.com OR noreply-dmarc-support@google.com) to:dmarc@relaystandby.com`
-> — count them, and read the newest date. That date is the health of the feed.
-
-> **What Step 0 is now:** nothing urgent. The untrash is done, the reports are labelled, and the
-> evidence this submission rests on is safe. The sentence above — *"has been receiving aggregate
-> reports ... for at least a week"* — is in the **past tense** as of 2026-08-17: it was, and it
-> stopped, because the `rua=` tag is gone. Restoring it is the prerequisite for this submission
-> having any fresh receiver-side evidence behind it.
+>
+> ⚠️ **RESTORED IS NOT YET PROVEN, and the difference decides when to send.** A DNS record that
+> reads correctly is not the same claim as a report that arrived. Receivers send aggregate reports
+> on a daily cycle, and as of 2026-08-30 none has arrived since the change — expected, not a
+> finding. The register carries this as `wired`, not `live-proven`
+> (`deferred.dmarc-had-no-rua-so-no-report-could-arrive`), and it closes when a report dated after
+> 2026-08-30 lands.
+>
+> **What that means for this submission:** wait for one report before sending, so the
+> receiver-side evidence cited below is current rather than historical. That is a day, not a
+> blocker.
+>
+> Gmail, read-only, to check:
+> `from:(dmarcreport@microsoft.com OR noreply-dmarc-support@google.com) to:dmarc@relaystandby.com`
+> — count them and read the newest date. That date is the health of the feed.
 
 🔴 **This has a real deadline.** Gmail purges Trash after 30 days and those reports arrived
 2026-08-11 to 2026-08-13, so they are destroyed around **2026-09-10** — including one of only two

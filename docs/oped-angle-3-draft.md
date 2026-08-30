@@ -166,16 +166,47 @@ articles must NOT be advertisements for your company, product, or service."*
 
 ---
 
-## Compliance measurements — re-measure after the rewrite, do not trust these
+## Compliance measurements — **derived, not counted** (A1.4)
 
-| Constraint | This draft |
+```bash
+npm run check:oped
+```
+
+🔴 **This was a hand-written table with the heading "re-measure after the rewrite, do not trust
+these" — an instruction to a person to redo arithmetic nobody would notice going stale.** It is a
+command now. `scripts/check-oped.ts` measures every constraint this piece carries, reading them from
+`ratified.g1-editorial-over-paid.constraints_carried` and ROADMAP A1.4 rather than restating them.
+Exit 0 = nothing provably broken · 1 = a finding · 2 = could not look.
+
+**Measured 2026-08-30, pre-rewrite:**
+
+| Constraint | Result |
 |---|---|
-| Product mentions in body | **0** |
-| Product mentions in bio | **0 by name** — one oblique reference to building tools |
-| Estate / death vocabulary | **0** — hospital, rehab and recovery throughout |
-| Word count (body only) | **991**, counted not estimated, inside 500–1500 with room for Steve's rewrite to run longer |
-| Costs the reader money | **No** — a sheet of paper and a setting they already have |
-| Strongest recommendation | A **free feature of their existing email provider**, not the product |
+| Body words (500–1500) | **992** ✅ |
+| Product mentions in body | **0** ✅ |
+| Estate vocabulary | **0** ✅ |
+| Medical claims | **0** ✅ |
+| Employer references | **0** ✅ |
+| **§1a — second person joined to a health event** | 🔴 **1 — see below** |
+
+> ⚠️ **The hand count was RIGHT.** It said 991; the command says 992. Recorded because the first
+> automated pass reported 1054 and called the table wrong — that was `wc -w` over raw markdown,
+> counting headings and table pipes as prose. The draft was accurate and the checker was not.
+
+### 🔴 The one finding, and it is for the voice pass
+
+**A1.3 was ruled on 2026-08-30: §1a BINDS this piece.** One sentence breaks it:
+
+> "…and are not something **you** set up on a Tuesday because **your father** is in **rehab** for
+> eight weeks."
+
+That is exactly what §1a names — *"never 'your mother', never 'you' joined to a health event"*. The
+rule is narrower than "no second person": the draft's other sixteen uses of "you" are about what the
+reader might *do*, which is fine. This one attaches the reader to an illness.
+
+It is a small edit — the third person carries it without loss ("…not something a family sets up on a
+Tuesday because a father is in rehab for eight weeks") — but it is **Steve's to make**, in the voice
+pass, because the whole piece is human-authored by design.
 
 ## Still open
 
