@@ -165,3 +165,52 @@ export const REQUEST_LAYER_FLOOR = {
  * legitimately removed route.
  */
 export const REQUEST_LAYER_MIN_FILES = 60;
+
+/**
+ * A coverage report's absolute path, reduced to a repo-relative one.
+ *
+ * 🔴 THIS EXISTS BECAUSE THE FIRST VERSION WAS A REGEX AND IT WAS WRONG IN CI,
+ * 2026-08-30. It read `absolute.replace(/^.*?\/relay\//, '')` — non-greedy, so
+ * it stopped at the FIRST `/relay/`. On this laptop the path is
+ * `C:/Users/.../CascadeProjects/relay/src/app/api/...` and that is correct. On a
+ * GitHub runner the checkout is `/home/runner/work/relay/relay/src/app/api/...`
+ * — the repo name appears TWICE — so it yielded `relay/src/app/api/...`, which
+ * matched no prefix, and the check reported zero files in the request layer.
+ *
+ * ⚠️ THE FAILURE WAS SAFE, AND THAT WAS THE DESIGN RATHER THAN LUCK. A report
+ * describing fewer than `REQUEST_LAYER_MIN_FILES` handlers is "could not look"
+ * (exit 2), not "passed", so CI went red on the first run instead of reporting a
+ * meaningless green. Had the fallback been exit 0, this bug would have made the
+ * floor decorative on the very commit that introduced it — which is the exact
+ * shape of every defect this file's header describes.
+ *
+ * Anchored on the working directory, with the layer prefix as a fallback, and
+ * tested against all three real path shapes in `request-layer-floor.test.ts`.
+ *
+ * ⚠️ NO IMPORTS — not even `node:path`. This module is pulled in by
+ * `vitest.config.ts` before a single test runs, and the header above states the
+ * rule. String logic only.
+ */
+export function toRepoRelative(absolute: string, cwd: string): string {
+  const norm = (s: string): string =>
+    s.split(String.fromCharCode(92)).join('/').replace(/\/+$/, '');
+  const a = norm(absolute);
+  const c = norm(cwd);
+
+  // Primary: the report's paths are files inside the directory the check runs
+  // from. Compared case-insensitively because Windows disagrees with itself
+  // about drive-letter case (`C:/` vs `c:/`).
+  if (c.length > 0 && a.toLowerCase().startsWith(c.toLowerCase() + '/')) {
+    return a.slice(c.length + 1);
+  }
+
+  // Fallback for any layout where that does not hold — a nested checkout, a
+  // symlinked workspace, a report generated elsewhere. `lastIndexOf` rather than
+  // `indexOf`, which is precisely the bug above: take the DEEPEST occurrence, so
+  // a path that repeats a directory name resolves to the real source root.
+  const marker = '/src/';
+  const at = a.lastIndexOf(marker);
+  if (at !== -1) return a.slice(at + 1);
+
+  return a;
+}

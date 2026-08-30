@@ -31,7 +31,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 
-import { REQUEST_LAYER_FLOOR, REQUEST_LAYER_MIN_FILES } from './coverage-scope';
+import { REQUEST_LAYER_FLOOR, REQUEST_LAYER_MIN_FILES, toRepoRelative } from './coverage-scope';
 
 const SCRIPT = 'scripts/check-route-coverage.ts';
 const NPM_SCRIPT = 'check:route-coverage';
@@ -75,6 +75,67 @@ describe('the floor is declared', () => {
     // pass — a green about nothing, which is the failure mode this whole file
     // is about.
     expect(REQUEST_LAYER_MIN_FILES).toBeGreaterThanOrEqual(60);
+  });
+});
+
+describe('the report’s paths reduce to this repo, on every runner', () => {
+  /*
+    🔴 THESE ARE REGRESSION TESTS FOR A BUG THIS GUARD SHIPPED WITH, found by CI
+    on its first run, 2026-08-30. The reduction was
+    `absolute.replace(/^.*?\/relay\//, '')` — non-greedy, so it stopped at the
+    FIRST `/relay/`. That is correct on a laptop and wrong on a GitHub runner,
+    where the checkout is `/home/runner/work/relay/relay/…` and the repo name
+    appears twice: it produced `relay/src/app/api/…`, matched no prefix, and the
+    check reported ZERO handlers in the request layer.
+
+    The bug was caught because a report describing too few files is "could not
+    look" and not "passed". Had the fallback been a pass, the floor would have
+    been decorative on the commit that introduced it.
+
+    A local green is not a CI green — the repo says so about clocks, and this is
+    the same lesson about paths. Every shape below is a real one.
+  */
+  const CASES: Array<[string, string, string]> = [
+    [
+      'a GitHub runner, where the repo name appears twice',
+      '/home/runner/work/relay/relay',
+      '/home/runner/work/relay/relay/src/app/api/circle/route.ts',
+    ],
+    [
+      'this laptop, with a Windows drive and backslashes',
+      'C:\\Users\\dev\\CascadeProjects\\relay',
+      'C:\\Users\\dev\\CascadeProjects\\relay\\src\\app\\api\\circle\\route.ts',
+    ],
+    [
+      'a POSIX checkout with the repo name once',
+      '/srv/relay',
+      '/srv/relay/src/app/api/circle/route.ts',
+    ],
+  ];
+
+  it.each(CASES)('reduces %s', (_name, cwd, absolute) => {
+    expect(toRepoRelative(absolute, cwd)).toBe('src/app/api/circle/route.ts');
+  });
+
+  it('is case-insensitive about a Windows drive letter', () => {
+    expect(
+      toRepoRelative('c:/Users/dev/relay/src/app/api/x/route.ts', 'C:/Users/dev/relay'),
+    ).toBe('src/app/api/x/route.ts');
+  });
+
+  it('still resolves when the working directory does not match at all', () => {
+    // A report generated elsewhere, a symlinked workspace, a nested checkout.
+    // The fallback takes the DEEPEST `/src/`, which is the half the original
+    // regex got backwards.
+    expect(
+      toRepoRelative('/tmp/somewhere/relay/src/app/api/x/route.ts', '/unrelated/dir'),
+    ).toBe('src/app/api/x/route.ts');
+  });
+
+  it('resolves the deepest source root when a path repeats "src"', () => {
+    expect(
+      toRepoRelative('/w/src/relay/src/app/api/x/route.ts', '/unrelated'),
+    ).toBe('src/app/api/x/route.ts');
   });
 });
 

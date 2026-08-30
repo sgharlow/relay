@@ -36,7 +36,11 @@
 
 import { readFileSync, existsSync } from 'node:fs';
 
-import { REQUEST_LAYER_FLOOR, REQUEST_LAYER_MIN_FILES } from '../lib/ops/coverage-scope';
+import {
+  REQUEST_LAYER_FLOOR,
+  REQUEST_LAYER_MIN_FILES,
+  toRepoRelative,
+} from '../lib/ops/coverage-scope';
 
 const REPORT = 'coverage/coverage-final.json';
 
@@ -76,8 +80,11 @@ function main(): number {
   const worst: Array<{ file: string; pct: number; n: number }> = [];
 
   for (const [absolute, entry] of Object.entries(raw)) {
-    // v8 writes absolute paths, and on Windows they carry backslashes.
-    const rel = absolute.split('\\').join('/').replace(/^.*?\/relay\//, '');
+    // v8 writes absolute paths, and on Windows they carry backslashes. The
+    // reduction is `toRepoRelative` rather than a regex here because the regex
+    // that used to live on this line was wrong on a GitHub runner — see its
+    // header in coverage-scope.ts.
+    const rel = toRepoRelative(absolute, process.cwd());
     if (!rel.startsWith(REQUEST_LAYER_FLOOR.prefix)) continue;
 
     let fileCovered = 0;
