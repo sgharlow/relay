@@ -93,6 +93,12 @@ export const REACHED_FROM_OUTSIDE: Record<string, string> = {
     'has never fired for anybody; its first firing is the live owner’s 75% ' +
     'rung, and `sweepCheckinReminders` never throws, so without this probe a ' +
     'ladder that silently stopped would look exactly like a ladder not yet due.',
+  '/api/health/orphans':
+    'Probed daily by .github/workflows/orphan-monitor.yml — the schedule D4 ' +
+    'asked for and never got. `scripts/disposable-sweep.ts` has produced this ' +
+    'count since 2026-08-19 and nothing ran it, so a walk that died mid-way ' +
+    'left rows on production and reported success. Every run that made the ' +
+    'four accounts found on 2026-08-18 reported success.',
   '/api/stripe/webhook': 'Stripe, signature-verified.',
   '/api/incident': 'Posted to by the error boundary, from a page that has already failed.',
   '/api/resend/webhook':
