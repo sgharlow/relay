@@ -214,14 +214,60 @@ export async function initiateTrigger(
  * PERMITTED_TRANSITIONS stays at seven. Nothing is added; two existing edges
  * get a caller.
  */
+/**
+ * SQLSTATE 22P02 — the database could not parse the value as the column's type.
+ *
+ * 🔴 FOUND BY A WALK, 2026-08-30 (B15.2). `POST /api/triggers/[id]/stand-down`
+ * takes a release_state UUID in `[id]`, while `/initiate` and `/config` take a
+ * trigger TYPE in the same position — so `/api/triggers/emergency/stand-down` is
+ * a natural thing to write, and it reached the database as
+ * `WHERE id = 'emergency'`. DSQL answered `invalid input syntax for type uuid`,
+ * nothing caught it, and the route returned a 500.
+ *
+ * A 500 ON THE ONLY STOP CONTROL IS WORSE THAN IT SOUNDS. The route's own header
+ * says why: "if standing down stops working, an owner has no way at all to halt
+ * a false alarm short of checking in." An owner following a stale link got the
+ * same answer they would get from a database outage, and the two call for
+ * opposite responses — retry, versus check the URL. This is the identical lesson
+ * `buildVerifierContext` learned on 2026-08-08, when an untyped throw made "this
+ * release is gone" indistinguishable from "the database is down" and a verifier
+ * met a 500 in production.
+ *
+ * ⚠️ CAUGHT RATHER THAN PRE-VALIDATED, and the alternative was tried first. A
+ * UUID-shaped regex on the argument reads tidier and it breaks every fixture in
+ * `rearm-clears-the-ledger.test.ts`, which uses ids like `rs-1` — so the guard
+ * would have been asserting a format the rest of the suite does not use, which
+ * is a check measuring something adjacent to what it claims. Catching the cast
+ * is narrower and it is true: this is the database saying the value cannot name
+ * a row.
+ *
+ * The answer is the SAME 404 a well-formed-but-absent id gets, deliberately, so
+ * nothing distinguishes a malformed id from an absent one to whoever holds the
+ * link.
+ */
+function isUnparseableId(err: unknown): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'code' in err &&
+    (err as Record<string, unknown>).code === '22P02'
+  );
+}
+
 export async function standDownTrigger(
   ownerId: string,
   releaseStateId: string,
   machine: Pick<ReleaseStateMachine, 'transition'>,
 ): Promise<ReleaseStateRow> {
-  const r = await query<ReleaseStateRow>(`SELECT * FROM release_state WHERE id = $1 LIMIT 1`, [
-    releaseStateId,
-  ]);
+  let r;
+  try {
+    r = await query<ReleaseStateRow>(`SELECT * FROM release_state WHERE id = $1 LIMIT 1`, [
+      releaseStateId,
+    ]);
+  } catch (err) {
+    if (isUnparseableId(err)) throw new TriggerError('Release state not found', 404);
+    throw err;
+  }
   if (r.rowCount === 0 || r.rows.length === 0) {
     throw new TriggerError('Release state not found', 404);
   }
