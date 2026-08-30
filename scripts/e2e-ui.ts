@@ -749,23 +749,59 @@ async function main(): Promise<void> {
       await quorumBox.fill('5');
       await triggers.getByRole('button', { name: /^Set$/ }).first().click();
 
-      // The refusal is a round trip; wait for the sentence rather than a timer.
-      await triggers
-        .waitForFunction(() => /could answer|confirm/i.test(document.body.innerText), undefined, {
-          timeout: 15_000,
-        })
-        .catch(() => {});
+      /*
+        ⚠️ WAIT ON THE STATUS ELEMENT, NOT ON PAGE TEXT — and the first version of
+        this walk got it wrong in the direction that manufactures a failure. It
+        waited for `/could answer|confirm/i` in `document.body.innerText`, and the
+        page already renders "0/1 confirmations": the predicate was true on its
+        first evaluation, the wait returned instantly, and the body was read
+        before the round trip had finished. Two checks went red against a product
+        that was answering correctly.
 
-      const after = await triggers.locator('body').innerText();
+        `StatusLine` is the only thing that appears in response to the press, and
+        it carries its tone as a class — `text-clay` for a failure, `text-sage-text`
+        for a success — so waiting for either is a condition the page cannot
+        already satisfy beside this control.
+      */
+      /*
+        ⚠️ SCOPED TO THE QUORUM ROW, and the second wrong version of this is why.
+        `.text-clay, .text-sage-text` unscoped matched the FIRST element carrying
+        either class anywhere on the page — the check-in button, whose label is
+        "I'm fine — check in". The assertion then reported that sentence as what
+        the quorum control said. A selector that finds the wrong element reads
+        exactly like a product defect, which is the third time in this session a
+        checker has been wrong in the direction that manufactures a finding.
+
+        `StatusLine` renders as a sibling of the Set button inside one flex row,
+        so the row is reachable from the button and nothing else on the page can
+        be mistaken for it.
+      */
+      const statusInRow = (): boolean => {
+        const set = [...document.querySelectorAll('button')].find(
+          (b) => b.textContent?.trim() === 'Set',
+        );
+        return !!set?.parentElement?.querySelector('span.text-clay, span.text-sage-text');
+      };
+      await triggers.waitForFunction(statusInRow, undefined, { timeout: 15_000 }).catch(() => {});
+
+      const said = await triggers.evaluate<string>(() => {
+        const set = [...document.querySelectorAll('button')].find(
+          (b) => b.textContent?.trim() === 'Set',
+        );
+        const span = set?.parentElement?.querySelector('span.text-clay, span.text-sage-text');
+        return span ? (span as HTMLElement).innerText.trim() : '';
+      });
+
       check(
         '🔴 asking for more confirmations than anyone can give is REFUSED, in words',
-        /could answer/i.test(after),
-        after.split('\n').find((l) => /could answer/i.test(l))?.trim() ?? 'no such sentence',
+        /could answer/i.test(said),
+        said || 'the control said nothing at all',
       );
       check(
         'the refusal names BOTH numbers, so the owner learns M from it',
-        /5 people to confirm/i.test(after) && /only 0 could answer/i.test(after),
-        'the screen shows received/required and never M — this sentence is the only place it appears',
+        /5 people to confirm/i.test(said) && /only 0 could answer/i.test(said),
+        `the screen shows received/required and never M — this sentence is the only place it ` +
+          `appears. Said: "${said}"`,
       );
 
       /*
@@ -774,14 +810,23 @@ async function main(): Promise<void> {
         for "closed, safe". A refusal arriving in sage, beside a number the owner
         just set, reads as confirmation that it saved.
       */
-      const sageOnRefusal = await triggers
-        .locator('.text-sage-text')
-        .filter({ hasText: /could answer/i })
-        .count();
+      const tone = await triggers.evaluate<string>(() => {
+        const set = [...document.querySelectorAll('button')].find(
+          (b) => b.textContent?.trim() === 'Set',
+        );
+        const span = set?.parentElement?.querySelector('span.text-clay, span.text-sage-text');
+        return span ? span.className : '';
+      });
       check(
         '🔴 and it is NOT painted in the colour this product uses for "safe"',
-        sageOnRefusal === 0,
-        `elements matching .text-sage-text containing the refusal: ${sageOnRefusal}`,
+        !/text-sage-text/.test(tone),
+        `the status span beside Set carries: "${tone || 'no tone class at all'}"`,
+      );
+      check(
+        'the refusal wears the failure tone, rather than no tone at all',
+        /text-clay/.test(tone),
+        'StatusLine carries its tone WITH the message so the two cannot come apart; a refusal ' +
+          'with no tone is the same false green one step earlier',
       );
 
       // And it must not have saved. The refusal is a refusal, not a warning.
