@@ -1,0 +1,127 @@
+# Dead-man's switch for the check-in reminder ladder.
+#
+# 🔴 WHY THIS EXISTS, AND THE DATE THAT FORCED IT. `owner_checkin_reminder_first`
+# and `_final` have ZERO rows in audit_log, ever. The ladder shipped 2026-08-21
+# and has never fired for anybody. Its first firing is dated — the live owner's
+# 75% rung, 2026-09-21T15:49Z — and it will happen unattended, at a quarter to
+# four in the afternoon on a Monday, to a real address.
+#
+# `sweepCheckinReminders` NEVER THROWS, by design ("belt and braces": one owner's
+# mail failure must not stop the rest). So a ladder that silently sends nothing
+# produces a 200 from the cron, a healthy `scheduler_runs` ledger, a green
+# scheduler-monitor — and an owner who is never warned before their vault starts
+# opening. Every alarm this repo already has would stay green through it. That is
+# the portfolio rule verbatim: a job whose success signal is a side effect must
+# have the ABSENCE of that side effect monitored.
+#
+# ⚠️ IT IS NOT THE SCHEDULER MONITOR, and the two must not be merged. That one
+# asks "is the cron ticking"; this one asks "was the owner actually warned". The
+# case that matters is exactly the one where those differ.
+#
+# WHY DAILY AND NOT EVERY 30 MINUTES. The measurement in cadence-watch.yml:
+# between 2026-08-24 and 08-29 every DAILY workflow in this repo delivered 100%
+# of its scheduled runs while the sub-hourly tier collapsed to 2-4 runs a day.
+# The reliable tier is the daily one. And the thing being watched moves in days
+# — the rungs sit at 75% and 90% of a 30-day interval — so a daily sample is
+# inside the window by a wide margin, with the endpoint's own 3h grace absorbing
+# a late tick.
+#
+# 🔴 THE TRAP THIS FILE INHERITS, like every scheduled alarm here.
+# sgharlow/relay is a PUBLIC repository, and GitHub disables scheduled workflows
+# in a public repo after 60 days with no repository activity. So this watchdog
+# shares one failure mode with the thing it watches: a quiet owner. The full
+# account, and the off-GitHub heartbeat that would close it, are in
+# .github/workflows/date-guards.yml and `deferred.the-alarms-live-inside-the-
+# thing-they-watch` (B12).
+#
+# Feature: relay-standby
+# Requirements: J5-R4, B15.1
+
+name: Reminder ladder monitor
+
+on:
+  schedule:
+    # Daily at 10:11 UTC — off the hour, and clear of the four other daily jobs
+    # (06:17 date-guards, 06:43 kms-wall, 08:17 delivery-webhook-monitor,
+    # 09:43 cadence-watch) so one bad minute at GitHub cannot take the whole
+    # daily tier at once.
+    - cron: '11 10 * * *'
+
+  # `health_url` exists so the alarm can be pointed somewhere dead and PROVEN to
+  # fire, rather than carrying a comment claiming it can be. Two sibling monitors
+  # shipped with exactly that false comment — a hard-coded URL meant a manual run
+  # could only ever hit production and could only ever pass — and both were found
+  # and corrected on 2026-08-28/29. A host under `.invalid` (RFC 2606) never
+  # resolves, so the probe fails without sending a packet to anybody else.
+  workflow_dispatch:
+    inputs:
+      health_url:
+        description: 'Health endpoint to probe. Point it somewhere dead to prove the alarm fires.'
+        required: false
+        default: 'https://relaystandby.com/api/health/reminders'
+
+concurrency:
+  group: reminder-ladder-monitor
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe /api/health/reminders
+        env:
+          # `inputs.health_url` is empty on a scheduled run, so the fallback is
+          # what the schedule uses and the dispatch default only makes the manual
+          # form self-explanatory. Scheduled behaviour is unchanged.
+          HEALTH_URL: ${{ inputs.health_url || 'https://relaystandby.com/api/health/reminders' }}
+        run: |
+          set -uo pipefail
+
+          # Two attempts, 30s apart, for the reason scheduler-monitor.yml gives:
+          # a single failed probe is as likely to be a network blip as a real
+          # finding, and a monitor that cries wolf gets muted.
+          for attempt in 1 2; do
+            body=$(curl -sS --max-time 20 -w '\n%{http_code}' "$HEALTH_URL" || echo -e '\n000')
+            code=$(printf '%s' "$body" | tail -n1)
+            payload=$(printf '%s' "$body" | sed '$d')
+
+            echo "attempt $attempt -> HTTP $code"
+            printf '%s\n' "$payload" | head -c 600
+            echo
+
+            if [ "$code" = "200" ]; then
+              # Printed on the GREEN path on purpose. `rungsEverRecorded` is 0
+              # until the ladder fires for the first time in this product's
+              # life, and a run log that carries that number is how the
+              # 2026-09-21 firing gets OBSERVED rather than merely survived —
+              # the thing scripts/e2e-sweep.ts asked for and could not itself do.
+              echo "::notice::Reminder ladder healthy. $(printf '%s' "$payload" | head -c 300)"
+              exit 0
+            fi
+
+            if [ "$attempt" = "1" ]; then
+              echo "Retrying in 30s before alarming..."
+              sleep 30
+            fi
+          done
+
+          echo "::error::A check-in reminder was DUE and there is no record it was sent (HTTP $code)."
+          echo "An owner is approaching the point where Relay starts asking the people they named,"
+          echo "and the warning that is supposed to come first has not been recorded."
+          echo ""
+          echo "Read the payload above: `unhonoured` names the rung and how many hours it has been"
+          echo "due. Then check, in order:"
+          echo "  1. Is the cron running at all? GET /api/health/scheduler. If that is ALSO red,"
+          echo "     this is the scheduler outage and not a ladder defect — fix that first."
+          echo "  2. Vercel runtime logs for /api/cron/heartbeat, and stderr lines beginning"
+          echo "     [checkin-reminder]. The sweep never throws, so a failure is a log line and"
+          echo "     nothing else."
+          echo "  3. Did delivery fail? The audit row is written ONLY on a successful send"
+          echo "     (lib/release/checkin-reminder.ts, deliberately), so a bouncing address"
+          echo "     produces exactly this finding. Check the Resend dashboard and"
+          echo "     GET /api/health/delivery-webhook."
+          echo "  4. HTTP 000 or 5xx that is not 503 means the probe could not READ the answer."
+          echo "     That is not the ladder failing; it is this monitor being unable to look,"
+          echo "     which is deliberately also not green."
+          exit 1

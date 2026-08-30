@@ -943,8 +943,9 @@ so a database compromise reaches it even though it reaches no vault contents.
 ## `/api/health` is 404, on purpose — do not "fix" it
 
 Recorded 2026-08-29 (D22), because this is the shape of thing a well-meaning session adds in five
-minutes and nobody removes. **The health surface is `/api/health/scheduler` and
-`/api/health/delivery-webhook`.** Both answer 200 and both mean something. A bare `/api/health`
+minutes and nobody removes. **The health surface is `/api/health/scheduler`,
+`/api/health/delivery-webhook` and — since 2026-08-30 — `/api/health/reminders`.** All three answer
+200 and all three mean something. A bare `/api/health`
 returning 200 would mean only that Next.js is running, which is the exact signal
 `lib/ops/canary.ts` opens by arguing is worthless:
 
@@ -953,9 +954,23 @@ returning 200 would mean only that Next.js is running, which is the exact signal
 Re-derive rather than trust this paragraph:
 
 ```bash
-node -e 'Promise.all(["/api/health","/api/health/scheduler","/api/health/delivery-webhook"].map(p=>fetch("https://relaystandby.com"+p,{redirect:"manual"}).then(r=>console.log(p,r.status))))'
+node -e 'Promise.all(["/api/health","/api/health/scheduler","/api/health/delivery-webhook","/api/health/reminders"].map(p=>fetch("https://relaystandby.com"+p,{redirect:"manual"}).then(r=>console.log(p,r.status))))'
 # 2026-08-29: 404, 200, 200
 ```
+
+**`/api/health/reminders` (2026-08-30, B15.1) answers the one question the other two cannot**: was
+an owner actually WARNED before their vault starts opening. `/api/health/scheduler` says the cron
+ticked; that is not the same thing, and the case where they differ is the whole reason this route
+exists — `sweepCheckinReminders` never throws, so a reminder sweep that silently sends nothing
+leaves the scheduler probe green and an owner unwarned. 503 means a rung fell due more than three
+hours ago with no audit row. Watched daily by `.github/workflows/reminder-ladder-monitor.yml`.
+
+**`npm run check:ladder` is the same rule read straight from the cluster** under `.env.ro`, and it
+prints the thing the public route deliberately withholds — the DATE of each owner's next rung.
+`npm run check:ladder -- --as-of <iso>` applies the rule at a different moment against the same
+live rows, which is how the red path is provable today rather than on the day it matters. It writes
+nothing; the credential cannot. ⚠️ **`rungsEverRecorded` is `0`** — as of 2026-08-30 this product
+has never sent a check-in reminder to anybody. Derive it, do not quote it from here.
 
 ⚠️ **If a portfolio-level live-probe or a `/verify` convention wants one URL for this project,
 point it at `/api/health/scheduler`** — the route whose 200 is a claim about the scheduler having

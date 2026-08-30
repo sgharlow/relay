@@ -40,6 +40,7 @@
     "verify:factors": "npx tsx --env-file=.env.local scripts/e2e-factors.ts",
     "verify:orphans": "npx tsx --env-file=.env.ro scripts/disposable-sweep.ts",
     "check:cadence": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-cadence.ts",
+    "check:ladder": "npx tsx --env-file=.env.ro scripts/check-ladder.ts",
     "incident:evidence": "npx tsx --env-file=.env.ro scripts/incident-evidence.ts",
     "beta:status": "npx tsx --env-file=.env.ro scripts/beta-status.ts",
     "verify:csp": "npx tsx --env-file=.env.ro scripts/verify-csp.ts",

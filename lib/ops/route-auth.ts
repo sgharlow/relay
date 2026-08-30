@@ -122,6 +122,11 @@ export const PUBLIC_ROUTES: Record<string, string> = {
   '/api/health/delivery-webhook':
     'The same contract for mail-delivery telemetry: aggregate counts and an age, ' +
     'no addresses and no identifiers, reachable by a monitor that holds nothing.',
+  '/api/health/reminders':
+    'The same contract again, for the check-in reminder ladder: counts, rung ' +
+    'names and ages, and deliberately no owner id and no address — the finding ' +
+    'is “somebody was not warned”, never “this person was not warned”. A ' +
+    'monitor must reach it without credentials or it shares fate with the cron.',
   '/api/webauthn/authenticate/options':
     'Deliberately unauthenticated AND identifier-free — it takes no email, looks ' +
     'nothing up, and returns the same shape to everyone, so there is no account ' +
