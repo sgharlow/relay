@@ -34,7 +34,7 @@ export const metadata = {
 // five material edits (the operator named, continuity, lapse behaviour, Stripe
 // as a subprocessor, the readable authenticator seed), telling a reader
 // comparing versions that nothing had changed.
-const UPDATED = '21 August 2026';
+const UPDATED = '30 August 2026';
 
 export default function TermsPage() {
   return (
