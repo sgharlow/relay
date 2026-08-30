@@ -662,8 +662,23 @@ ratified:
           accounts and added ZERO."
         the_argument: "A permanently-red verify:orphans is a check that stops being read, and it
           is red today for this and nothing else."
-        ⚠️ : "DESTRUCTIVE PRODUCTION WRITE WITH NO UNDO, on rows nobody can reach. NOT YET RUN.
-          The statements are drafted and await an explicit GO."
+        ⚠️ : "DESTRUCTIVE PRODUCTION WRITE WITH NO UNDO, on rows nobody can reach."
+        executed:
+          date: 2026-08-30
+          go_given_by: steve
+          result: "28 counted, 28 deleted, 0 remaining — verifier_codes 17, break_glass_codes 10,
+            recipient_codes 1. The predicate matched exactly what the census matched, which is the
+            property the scoping was chosen for: DELETE ... WHERE owner_id NOT IN (SELECT id FROM
+            users), never a hand-written id list, because a hand-written list is what created these
+            rows in the first place."
+          verified_after: "`npm run verify:orphans` EXITS 0 and prints 'Orphan census: nothing
+            unowned in any table the cascade purges.' That command has been permanently red on this
+            set; this is the first time it has been green. The audit_log NOTICE (3570 retained rows)
+            is unchanged and is not a failure — those are what correct closures leave behind."
+          follow_up_done_same_commit: "lib/ops/orphan-health.ts DANGLING_BASELINE lowered 28 -> 0.
+            Its own comment demanded this: a baseline left above the real count is a blind spot
+            exactly the size of the difference. Live-proven after: danglingRows 0, baseline 0,
+            healthy, HTTP 200."
       d25_demo_simulate:
         ruling: "RETIRE /api/demo/simulate."
         why: "Exercisable by no account — zero demo-flagged users in the cluster — since
@@ -1949,6 +1964,31 @@ cross_cutting:
 deferred:
 
   # ═══════════════════════════════════════════════════════════════════════════
+  # CLOSED 2026-08-30 — the DMARC feed is restored.
+  # ═══════════════════════════════════════════════════════════════════════════
+  - id: dmarc-had-no-rua-so-no-report-could-arrive
+    owner: steve
+    opened: 2026-08-29
+    what: "_dmarc.relaystandby.com read exactly `v=DMARC1; p=none` — no rua= tag, so no receiver
+      could send an aggregate report anywhere. Every document in the repo recorded
+      `rua=mailto:dmarc@relaystandby.com; fo=1`; no record exists of the removal."
+    corroborated: "The mailbox agreed independently: the newest of twelve DMARC reports was
+      2026-08-17, on a domain that had been receiving them daily from both Google and Microsoft."
+    closed:
+      date: 2026-08-30
+      by: steve   # Claude prepared the change; Steve made it in Cloudflare
+      what_changed: "TXT _dmarc.relaystandby.com is now
+        `v=DMARC1; p=none; rua=mailto:dmarc@relaystandby.com; fo=1`.
+        p=none deliberately UNTOUCHED — stepping to quarantine is a separate decision that must
+        wait for reports to accumulate, or it is taken blind."
+      verified: "Two independent resolvers, 2026-08-30: cloudflare-dns.com and dns.google both
+        return the target string. Verified over DoH rather than the local resolver, which refuses
+        on this machine."
+      why_the_rua_address_works: "Proven rather than assumed — twelve reports landed at
+        dmarc@relaystandby.com before the feed died, so the mailbox exists and accepts. And because
+        rua is on the SAME domain as the policy, no external authorisation record is required."
+      ends_when: "A report arrives at dmarc@relaystandby.com dated after 2026-08-30. Expected
+        within ~24h; until one does, this is `wired`, not `live-proven`."
   # OPENED 2026-08-30 by looking, after Steve said "the email was never received".
   # It was never SENT. That is a different finding and a worse one.
   # ═══════════════════════════════════════════════════════════════════════════

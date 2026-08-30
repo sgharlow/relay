@@ -1,7 +1,20 @@
-# D20 — the purge statements, drafted and awaiting GO
+# D20 — the purge, RUN 2026-08-30
 
-**Ruled 2026-08-30 (Sitting D-1): purge. Claude drafts, Steve says GO, Claude runs.**
-**Nothing below has been executed.**
+**Ruled 2026-08-30 (Sitting D-1): purge. GO given by Steve the same day. Executed.**
+
+| | |
+|---|---|
+| counted before | **28** — `verifier_codes` 17, `break_glass_codes` 10, `recipient_codes` 1 |
+| rows deleted | **28** |
+| remaining | **0** |
+| `verify:orphans` after | **exit 0** — *"Orphan census: nothing unowned in any table the cascade purges."* |
+
+The predicate matched exactly what the census matched, which is the property it was
+scoped for. `DANGLING_BASELINE` was lowered 28 → 0 in the same commit, as the constant's
+own comment demanded.
+
+> The statements below are kept verbatim as the record of what ran. They are no longer a
+> proposal.
 
 > ⚠️ **This is a destructive production write with no undo.** It is drafted here rather
 > than typed at a prompt so the exact statements can be read before they run, and so what
