@@ -3947,6 +3947,41 @@ deferred:
       delivery half is already proven and does not need re-proving. Owner moves to CLAUDE for the
       read; it stops being Steve's the moment no rule needs deleting.
 
+    # ── RE-MEASURED 2026-08-30 — THE 08-29 CORRECTION WAS ITSELF WRONG ──────
+    re_measured_2026_08_30:
+      verdict: "The ORIGINAL finding stands. The alarm of record IS in Trash, unread, and
+        today's is in there with it."
+      measured: "Read-only Gmail connector, query
+        `from:notifications@github.com to:relay@noreply.github.com in:trash`:
+        43 relay-addressed GitHub threads in Trash; 6 of them carry the `relay-alarm`
+        label and every one is UNREAD *and* STARRED. Newest: Cadence watch,
+        2026-08-30T14:31Z — the monitoring-collapse alarm (B11) itself. Also in Trash:
+        Production canary, Scheduler heartbeat monitor, Delivery webhook monitor,
+        KMS wall watch, and the CI run for the T1 pull request.
+        The `relay-alarm` label holds 21 messages / 12 unread; 6 are in Trash.
+        Gmail purges Trash after 30 days."
+      why_the_08_29_measurement_said_the_opposite: "It was not careless, and the way it was
+        wrong is the finding. It watched three DELIBERATELY DISPATCHED red runs and timed
+        their arrival — 23-37 seconds, inbox, labelled, starred. Every one of those
+        observations is true. It measured DELIVERY, and delivery was never the claim.
+        What happens to the mail AFTER it lands is a different question and a stopwatch
+        pointed at arrival cannot see it. Tellingly, the one alarm NOT in Trash right now
+        (`Reminder ladder monitor`, 2026-08-30T06:14Z) was itself a workflow_dispatch —
+        the same trigger type as the three that supposedly disproved this entry."
+      the_pattern_that_matters: "Not delivery versus non-delivery. The alarms that fire
+        UNATTENDED are the ones in the bin. Every scheduled monitor listed above exists to
+        shout when nobody is watching, and its shout is filed where nobody is watching.
+        That is the same defect B12 describes one layer down, arriving by a different route."
+      still_unknown: "The MECHANISM. These carry `relay-alarm` and a star — filter actions —
+        and also TRASH. A filter that labels, stars, then trashes is self-defeating; a human
+        clearing a mailbox would not usually leave starred mail unread. The connector is
+        READ-ONLY at the OAuth scope (verified 2026-08-30: `untrash_thread` returns
+        `Insufficient scope`) and cannot enumerate filters at all. Gmail -> Settings ->
+        Filters and Blocked Addresses is the only place the answer lives."
+      lesson: "A finding is disproved by measuring the thing it CLAIMS, not something
+        adjacent to it. This entry claimed 'the alarm mail ends up in Trash'; the disproof
+        measured 'the alarm mail arrives quickly'. Both are true at once."
+
   - id: the-scheduled-monitors-are-collapsing                 # ROADMAP B11
     owner: claude                         # measurement; steve owns the money half
     opened: 2026-08-28
