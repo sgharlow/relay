@@ -4536,6 +4536,33 @@ deferred:
       Adding an item, a recipient, a verifier or a rule updates the banner without a hard reload,
       with a test that would fail if the subscription were removed - the same bar the
       `onFactorsDeclared` fix met.
+    closed:
+      date: 2026-08-29
+      what_shipped: >-
+        Two changes, covering the two ways it went stale.
+        (1) NAVIGATION - `ReadinessBanner` now re-reads on `pathname` change, not only on mount.
+        `pathname` was already in the component for the sign-in href; adding it to the effect's
+        dependency list is the entire fix for the case Steve actually hit, since he moved between
+        /vault, /circle and /triggers throughout.
+        (2) SAME-PAGE WRITES - `apiSend` announces every SUCCESSFUL owner-side write on a small
+        event bus and the banner subscribes. Emitted at the helper rather than at each call site,
+        because a convention every future caller must remember is precisely what this repo keeps
+        deciding not to rely on.
+      ordering_is_load_bearing: >-
+        The announcement fires AFTER both throws, never before. Announcing a write that failed
+        would refresh the banner into showing the same unchanged state, which reads exactly like
+        success - the same trap `setFactorsRequired` already documents for the same reason. Pinned
+        by two tests: a 400 and a 401 must each announce NOTHING.
+      ⚠️_the_choke_point_is_not_complete_and_that_is_recorded_in_the_code: >-
+        Vault ITEM creation goes through `CryptoService`, not `apiSend`, so a same-page item write
+        still does not announce. It is covered in practice because creating an item navigates back
+        to /vault, which fires (1). Closing it properly means emitting from `crypto-service.ts`
+        too - deliberately not done, because that file is on the crypto path and was not worth
+        touching for a status banner. Said in the `api.ts` header rather than left to be
+        discovered.
+      proven: >-
+        Four tests, and mutation-tested: deleting the `announceOwnerWrite()` call makes "announces
+        after a successful write" fail, and restoring it passes. 14 tests in api.test.ts.
 
   - id: the-reminder-ladder-has-never-fired                   # ROADMAP B15.1, the ladder half
     owner: claude                         # the walk; steve decides whether to check in

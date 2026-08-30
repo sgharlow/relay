@@ -77,6 +77,52 @@ export async function apiGet<T>(url: string): Promise<T> {
   return (await res.json()) as T;
 }
 
+/**
+ * Announced after any successful owner-side write.
+ *
+ * 🔴 WHY THIS EXISTS. `ReadinessBanner` lives in the owner LAYOUT and fetched
+ * `/api/readiness` exactly once, on mount. App Router does not remount a layout
+ * when navigating between its pages, so the banner kept whatever was true when
+ * the owner first arrived — for the rest of the session.
+ *
+ * Found the first time a real owner did A0 (2026-08-29): the vault page listed
+ * "1 item · gmail" directly beneath a banner reading "Your vault is empty", and
+ * three minutes later the triggers page still said "Nobody is named to receive
+ * access" with the recipient on screen and the trigger ARMED. An owner who
+ * trusted it would have concluded nothing had saved.
+ *
+ * The assessment logic was never wrong — `lib/vault/readiness.ts` queries live
+ * counts. It was a right answer from the wrong moment, which is harder to spot
+ * than a wrong one.
+ *
+ * ⚠️ Emitted HERE rather than at each call site, because a convention every
+ * future caller must remember is the thing this repo keeps deciding not to rely
+ * on. `apiSend` is the single choke point for POST/PUT/DELETE across the owner
+ * screens.
+ *
+ * ⚠️ AND IT IS NOT A COMPLETE CHOKE POINT, which is worth saying plainly rather
+ * than discovering later: vault ITEM creation goes through `CryptoService`, not
+ * through here, so a same-page item write does not announce. That case is
+ * covered instead by the banner re-reading on pathname change — creating an item
+ * navigates back to /vault — and closing it properly means emitting from
+ * `crypto-service.ts` too. Left undone on purpose: that file is on the crypto
+ * path and was not worth touching for a status banner mid-task.
+ */
+const OWNER_WRITE_EVENT = 'relay:owner-write';
+const bus: EventTarget | null = typeof EventTarget === 'undefined' ? null : new EventTarget();
+
+/** Subscribe to owner-side writes. Returns the unsubscribe, for `useEffect`. */
+export function onOwnerWrite(handler: () => void): () => void {
+  if (!bus) return () => {};
+  bus.addEventListener(OWNER_WRITE_EVENT, handler);
+  return () => bus.removeEventListener(OWNER_WRITE_EVENT, handler);
+}
+
+/** Exported for the test: announcing is a behaviour, not an implementation detail. */
+export function announceOwnerWrite(): void {
+  bus?.dispatchEvent(new Event(OWNER_WRITE_EVENT));
+}
+
 export async function apiSend<T>(
   url: string,
   method: 'POST' | 'PUT' | 'DELETE',
@@ -96,5 +142,13 @@ export async function apiSend<T>(
   if (res.status === 401) throw new SignedOutError();
   const data = (await res.json().catch(() => ({}))) as { message?: string };
   if (!res.ok) throw new Error(data.message ?? `Request failed (${res.status})`);
+
+  /*
+    AFTER the throws, never before. Announcing a write that failed would refresh
+    the banner into showing the same unchanged state, which reads exactly like
+    success — the same ordering `setFactorsRequired` already documents for the
+    same reason.
+  */
+  announceOwnerWrite();
   return data as T;
 }

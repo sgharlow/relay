@@ -42,8 +42,35 @@
  * would also transition somebody real — and a walk that fires a live customer's
  * release is not a walk. Checked before anything is created.
  *
+ * TWO MODES, ONE SETUP. The setup below - a disposable owner, a confirmed
+ * verifier, an ARMED trigger, a backdated `last_active_at` - is identical for
+ * both things the hourly cron does to a quiet owner. Only how far it is
+ * backdated, and what is then asserted, differs. Sharing the setup is the point:
+ * two scripts would drift, and the second one would be the one nobody re-reads.
+ *
+ *   --mode sweep     (default) backdate PAST the interval. Asserts the
+ *                    ARMED -> PENDING transition. Proven 2026-08-29.
+ *   --mode reminder  backdate to ~80% of the interval - past the 75% rung and
+ *                    short of overdue. Asserts the J5-R4 check-in reminder
+ *                    ladder fires. NEVER PROVEN: `owner_checkin_reminder_first`
+ *                    and `_final` have zero rows in `audit_log`, ever.
+ *
+ * 🔴 WHY THE REMINDER HALF MATTERS AND WHY IT IS HARDER TO TRUST.
+ * `sweepCheckinReminders()` is called by the same cron and NEVER THROWS, by
+ * design ("belt and braces" - one owner must not block the rest). So its failure
+ * mode is a 200 from the cron, a healthy `scheduler_runs` ledger, and an owner
+ * who is simply never warned. Nothing anywhere would go red. The live owner's
+ * first rung lands 2026-09-21, and it will be the first reminder this product
+ * has ever sent to anybody.
+ *
+ * ⚠️ The reminder mode asserts the AUDIT ROW, not delivery. The disposable owner
+ * is on a reserved domain, so `DEV_MAIL_ALLOWLIST` refuses the send and that
+ * refusal is correct - no mail leaves for `@relay.test`. What is being proven is
+ * that the ladder RUNS and RECORDS, which is the half that has never happened.
+ *
  * Usage:
  *   npx tsx --env-file=.env.local scripts/e2e-sweep.ts
+ *   npx tsx --env-file=.env.local scripts/e2e-sweep.ts --mode reminder
  *   npx tsx --env-file=.env.local scripts/e2e-sweep.ts --wait 90   (minutes)
  *
  * Feature: relay-h0-mvp
@@ -54,6 +81,24 @@ import { query, closeAllPools } from '../lib/db/connection';
 import { Actor, Results, signUp, signIn, claim, closeAll, undeliverable, BASE } from './walk-harness';
 
 const R = new Results();
+
+const MODE: 'sweep' | 'reminder' = (() => {
+  const i = process.argv.indexOf('--mode');
+  return i !== -1 && process.argv[i + 1] === 'reminder' ? 'reminder' : 'sweep';
+})();
+
+/*
+  How far back to push `last_active_at`, as a multiple of a one-day interval.
+
+  sweep    3 days on a 1-day interval - comfortably overdue, so the sweep's
+           `now() - last_active_at > interval` predicate is unambiguous.
+  reminder 0.8 days on a 1-day interval - past the 75% rung, short of 100%.
+           It has to be BOTH: `CANDIDATE_SQL` reads only owners between 50% and
+           100% of their interval, so an owner who is already overdue is not a
+           reminder candidate at all. The window this walk needs is narrow and it
+           is the reason the wait is capped well under the remaining 0.2 days.
+*/
+const BACKDATE = MODE === 'reminder' ? '0.8 days' : '3 days';
 
 const WAIT_MINUTES = (() => {
   const i = process.argv.indexOf('--wait');
@@ -182,20 +227,44 @@ async function main(): Promise<void> {
     await query(
       `UPDATE users
           SET checkin_interval_days = 1,
-              last_active_at = now() - INTERVAL '3 days'
+              last_active_at = now() - $2::interval
         WHERE email = $1`,
-      [owner.email],
+      [owner.email, BACKDATE],
     );
-    const chk = await query<{ overdue: boolean }>(
-      `SELECT (now() - last_active_at > (checkin_interval_days * INTERVAL '1 day')) AS overdue
+    const chk = await query<{ overdue: boolean; frac: string }>(
+      `SELECT (now() - last_active_at > (checkin_interval_days * INTERVAL '1 day')) AS overdue,
+              round(EXTRACT(EPOCH FROM (now() - last_active_at))
+                    / (checkin_interval_days * 86400), 3)::text AS frac
          FROM users WHERE email = $1`,
       [owner.email],
     );
-    R.check(
-      'the owner is now overdue by the sweep\'s own predicate',
-      chk.rows[0]?.overdue === true,
-      'interval 1d, last active 3d ago',
-    );
+    const frac = Number(chk.rows[0]?.frac ?? 0);
+
+    if (MODE === 'sweep') {
+      R.check(
+        "the owner is now overdue by the sweep's own predicate",
+        chk.rows[0]?.overdue === true,
+        `interval 1d, elapsed ${frac} of it`,
+      );
+    } else {
+      /*
+        Both halves matter and the second is the one that is easy to get wrong.
+        `CANDIDATE_SQL` reads only owners between 50% and 100% of their interval,
+        so an owner who has tipped past 100% is NOT a reminder candidate - the
+        ladder would go silent for exactly the reason this walk is trying to
+        disprove, and the walk would report a false failure.
+      */
+      R.check(
+        'the owner is past the 75% rung',
+        frac >= 0.75,
+        `elapsed ${frac} of the interval`,
+      );
+      R.check(
+        'and NOT yet overdue — past 100% and they stop being a reminder candidate at all',
+        chk.rows[0]?.overdue === false,
+        `elapsed ${frac} < 1.0`,
+      );
+    }
 
     const tickBefore = await lastSchedulerRun();
     console.log(`\n  last scheduler run before waiting: ${tickBefore ?? '(none)'}`);
@@ -213,7 +282,13 @@ async function main(): Promise<void> {
       ticked = await lastSchedulerRun();
       const mins = Math.round((deadline - Date.now()) / 60_000);
       console.log(`  [${new Date().toISOString().slice(11, 19)}] state=${after?.state} v${after?.version} · last tick ${ticked ?? '-'} · ${mins} min left`);
-      if (after && after.state !== 'armed') break;
+      /*
+        In sweep mode the state change IS the event, so stop as soon as it lands.
+        In reminder mode nothing about `release_state` changes - the event is an
+        audit row - so the loop runs until a tick has actually happened.
+      */
+      if (MODE === 'sweep' && after && after.state !== 'armed') break;
+      if (MODE === 'reminder' && ticked !== tickBefore) break;
     }
 
     R.check(
@@ -221,6 +296,55 @@ async function main(): Promise<void> {
       ticked !== tickBefore,
       `${tickBefore ?? '-'} -> ${ticked ?? '-'}`,
     );
+
+    if (MODE === 'reminder') {
+      /*
+        The reminder half. The trigger must NOT have moved - an owner short of
+        their interval is being nudged, not escalated, and a transition here
+        would mean the sweep is arming people early, which is a far worse
+        finding than a missing reminder.
+      */
+      const reminders = await query<{ action: string; actor: string; ts: string }>(
+        `SELECT a.action, a.actor, a.ts::text
+           FROM audit_log a JOIN users u ON u.id = a.owner_id
+          WHERE u.email = $1
+            AND a.action IN ('owner_checkin_reminder_first', 'owner_checkin_reminder_final')
+          ORDER BY a.seq DESC`,
+        [owner.email],
+      );
+
+      R.check(
+        '🔴 THE POINT: the check-in reminder ladder FIRED — first time for any owner, ever',
+        reminders.rows.some((r) => r.action === 'owner_checkin_reminder_first'),
+        reminders.rows.map((r) => `${r.actor}:${r.action}`).join(' ') || 'no reminder rows',
+      );
+
+      R.check(
+        'it was written by the cron, not by anything local',
+        reminders.rows.every((r) => r.actor === 'system'),
+        reminders.rows.map((r) => r.actor).join(',') || '(none)',
+      );
+
+      R.check(
+        'only the 75% rung fired — not both at once',
+        !reminders.rows.some((r) => r.action === 'owner_checkin_reminder_final'),
+        reminders.rows.length + ' reminder row(s)',
+      );
+
+      R.check(
+        'and the trigger did NOT move — a nudge is not an escalation',
+        after?.state === 'armed',
+        `state=${after?.state}`,
+      );
+
+      await closeAll([
+        { actor: verifier, kind: 'contact' },
+        { actor: owner, kind: 'owner' },
+      ]);
+      R.finish();
+      await closeAllPools();
+      return;
+    }
 
     R.check(
       '🔴 THE POINT: the sweep moved the trigger OFF armed with nobody calling it',

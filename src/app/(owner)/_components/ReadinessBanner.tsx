@@ -28,6 +28,7 @@ import {
   type Preparedness,
 } from '../../../../lib/vault/preparedness';
 import { onFactorsDeclared, setFactorsRequired } from '../../../../lib/vault/declare-factors';
+import { onOwnerWrite } from '../_lib/api';
 
 interface Blocker {
   code: string;
@@ -95,9 +96,29 @@ export default function ReadinessBanner() {
       .catch(() => setData(null));
   }, []);
 
+  /*
+    Re-read on every navigation as well as on mount.
+
+    🔴 This component is rendered by the owner LAYOUT, and App Router does not
+    remount a layout when moving between its pages — so a mount-only fetch meant
+    the banner kept its first answer for the whole session. On 2026-08-29 that
+    told a real owner "Your vault is empty" while the page beneath it listed the
+    item he had just added, and "Nobody is named to receive access" with the
+    recipient on screen.
+
+    `pathname` was already read in this component, for the sign-in href. Adding
+    it to this dependency list is the whole fix for the navigation case.
+  */
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, pathname]);
+
+  /*
+    And for a write made without navigating — adding a person on /circle, saving
+    a rule on /rules — the shared `apiSend` helper announces every successful
+    owner-side write. See its header for the one path this does NOT cover.
+  */
+  useEffect(() => onOwnerWrite(() => void load()), [load]);
 
   /*
     The vault row carries the same control, and it lives on a page that is a
