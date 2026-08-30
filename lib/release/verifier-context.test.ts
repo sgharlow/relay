@@ -14,7 +14,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../db/connection', () => ({ query: vi.fn() }));
 
 import { query } from '../db/connection';
-import { buildVerifierContext, describeInitiation } from './verifier-context';
+import {
+  buildVerifierContext,
+  describeInitiation,
+  RELEASE_TIMELINE_ACTIONS,
+  TIMELINE_ACTIONS,
+} from './verifier-context';
+import { CHECKIN_REMINDER_ACTIONS } from './checkin-reminder';
 
 const mockQuery = vi.mocked(query);
 
@@ -122,13 +128,86 @@ describe('buildVerifierContext', () => {
   it('summarises what has already been attempted, so "why now" is answerable', async () => {
     install({
       history: [
-        { action: 'checkin_reminder_sent', ts: '2026-08-06T10:00:00Z', detail: {} },
-        { action: 'checkin_reminder_sent', ts: '2026-08-06T18:00:00Z', detail: {} },
+        { action: 'owner_checkin_reminder_first', ts: '2026-08-06T10:00:00Z', detail: {} },
+        { action: 'owner_checkin_reminder_final', ts: '2026-08-06T18:00:00Z', detail: {} },
       ],
     });
 
     const ctx = await buildVerifierContext('rs-1', 'v-1');
     expect(ctx.escalationHistory).toHaveLength(2);
+  });
+
+  /*
+    🔴 B15.5. These pin the QUERY, not the mapping, because the mapping was never
+    the defect: a mocked `query` returns whatever the fixture says regardless of
+    what was asked for, so the previous test above passed for nine days against a
+    read that could not have returned a single one of those rows in production.
+
+    Two independent faults had to be fixed and either one alone leaves the row
+    unreachable — the action name (`checkin_reminder_sent`, which nothing writes)
+    and the keying (`entity_id = <release id>`, while the ladder writes against
+    the owner with no entityId at all). So both are asserted, on the parameters
+    that actually went to the database.
+  */
+  describe('the audit read can actually reach a reminder row', () => {
+    async function auditCall(): Promise<{ sql: string; params: unknown[] }> {
+      install({});
+      await buildVerifierContext('rs-1', 'v-1');
+      const call = mockQuery.mock.calls.find((c) => (c[0] as string).includes('FROM audit_log'));
+      if (!call) throw new Error('no audit_log read was issued at all');
+      return { sql: call[0] as string, params: (call[1] ?? []) as unknown[] };
+    }
+
+    it('asks for the actions the ladder actually writes', async () => {
+      const { params } = await auditCall();
+      const flat = params.flat();
+      for (const action of CHECKIN_REMINDER_ACTIONS) expect(flat).toContain(action);
+    });
+
+    it('does NOT ask for the action nothing writes', async () => {
+      const { sql, params } = await auditCall();
+      expect(sql).not.toContain('checkin_reminder_sent');
+      expect(params.flat()).not.toContain('checkin_reminder_sent');
+    });
+
+    it('scopes the read to the OWNER, not only to the release row', async () => {
+      const { sql, params } = await auditCall();
+      expect(sql).toMatch(/a\.owner_id\s*=\s*\$1/);
+      expect(params[0]).toBe('o-1');
+    });
+
+    it('still scopes the RELEASE events to this release row', async () => {
+      const { sql, params } = await auditCall();
+      expect(sql).toMatch(/a\.entity_id\s*=\s*\$2/);
+      expect(params[1]).toBe('rs-1');
+      expect(params.flat()).toEqual(expect.arrayContaining([...RELEASE_TIMELINE_ACTIONS]));
+    });
+
+    /*
+      The reminder half must NOT be behind the `entity_id` predicate. Written as
+      a structural read of the SQL because it is the one thing a mocked query
+      cannot demonstrate behaviourally, and it is exactly what was wrong.
+    */
+    it('does not put the reminder actions behind the entity_id predicate', async () => {
+      const { sql } = await auditCall();
+      const entityClause = sql.slice(sql.indexOf('a.entity_id'), sql.indexOf('OR '));
+      for (const action of CHECKIN_REMINDER_ACTIONS) expect(entityClause).not.toContain(action);
+      expect(sql).toMatch(/OR a\.action = ANY\(\$4\)/);
+    });
+
+    it('orders by seq, so the two keyings interleave into one true timeline', async () => {
+      const { sql } = await auditCall();
+      expect(sql).toMatch(/ORDER BY a\.seq ASC/);
+    });
+  });
+
+  describe('TIMELINE_ACTIONS is the whole set and is derived', () => {
+    it('is exactly the release events plus the ladder rungs', () => {
+      expect([...TIMELINE_ACTIONS]).toEqual([
+        ...RELEASE_TIMELINE_ACTIONS,
+        ...CHECKIN_REMINDER_ACTIONS,
+      ]);
+    });
   });
 
   it('throws when the release does not exist', async () => {

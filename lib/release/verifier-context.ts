@@ -12,6 +12,7 @@
  */
 
 import { query } from '../db/connection';
+import { CHECKIN_REMINDER_ACTIONS } from './checkin-reminder';
 import { TriggerError } from './triggers';
 import { isReversibleTrigger } from './state-machine';
 import { caseIdFor } from './case-id';
@@ -85,6 +86,29 @@ export interface VerifierContext {
   escalationHistory: { action: string; ts: string }[];
 }
 
+/**
+ * Timeline events addressed to the RELEASE row itself.
+ *
+ * Kept beside the reminder actions rather than inline in the SQL because
+ * `VerifyClient` has to have a sentence for every one of them: an action with no
+ * label renders as its own raw identifier on the highest-stakes screen in the
+ * product. `lib/ops/verify-timeline-is-labelled.test.ts` holds the two files
+ * together in both directions — a new action with no sentence, and a sentence
+ * for an action this query can no longer return, which is how
+ * `checkin_reminder_sent` sat in the label map for nine days after it was known
+ * to be unwritable.
+ */
+export const RELEASE_TIMELINE_ACTIONS: readonly string[] = [
+  'release_transition_pending',
+  'access_requested',
+];
+
+/** Every action `buildVerifierContext` can put on the verifier's timeline. */
+export const TIMELINE_ACTIONS: readonly string[] = [
+  ...RELEASE_TIMELINE_ACTIONS,
+  ...CHECKIN_REMINDER_ACTIONS,
+];
+
 export async function buildVerifierContext(
   releaseStateId: string,
   _verifierId: string,
@@ -140,23 +164,56 @@ export async function buildVerifierContext(
   /*
     "Why now" — what the system already tried before asking a human.
 
-    ⚠️ `checkin_reminder_sent` IS NEVER WRITTEN. Noted 2026-08-21: grep finds no
-    producer anywhere outside this file's own test fixture, because the J5-R4
-    escalation ladder (reminders before ARMED → PENDING) is OPEN, not built. The
-    row is kept in the filter so a ladder, if one is ever ruled in, appears on
-    this timeline without a second edit — but nothing here should be read as
-    evidence that an owner was nudged first. `VerifyClient.tsx` renders this
-    action as "We tried to reach them", which is a sentence the product cannot
-    currently earn; it is unreachable today only because the query returns
-    nothing.
+    🔴 THIS QUERY COULD NOT RETURN A REMINDER, IN TWO SEPARATE WAYS, and until
+    2026-08-30 the header below described only the first of them. It filtered on
+    `checkin_reminder_sent`, an action nothing writes; and it keyed the whole
+    read on `entity_id = <release state id>`, while `sweepCheckinReminders`
+    writes its rows against the OWNER with no `entityId` at all — so `entity_id`
+    is NULL on every reminder ever written. Correcting the action name alone
+    would have left the row just as unreachable, and would have looked like a
+    fix. That is B15.5, and it is why the register called it a two-line change
+    and it is not.
+
+    The consequence was not cosmetic. `VerifyClient` renders these as "We tried
+    to reach them", and the difference between a verifier being told the owner
+    was nudged twice and heard nothing back, and a verifier being told nothing,
+    is most of what makes an attestation informed. J7-R3 asks for what the
+    system already tried; the screen promised it and the query could not supply
+    it.
+
+    TWO KEYINGS IN ONE READ, because the two kinds of event are genuinely
+    addressed differently and neither addressing is wrong:
+      - release events belong to THIS release row (`entity_id`), so a second
+        trigger type on the same owner does not bleed onto this timeline;
+      - reminders belong to the OWNER — the ladder runs before any release
+        exists, so there is no release row for it to point at.
+
+    ⚠️ THE REMINDER HALF IS DELIBERATELY NOT WINDOWED, and the alternative was
+    considered rather than overlooked. Bounding it to the current check-in window
+    (`ts > users.last_active_at`, the bound `rungsSentThisWindow` uses) reads
+    tighter, but `last_active_at` MOVES: an owner who signs in after the release
+    has started would make the "we tried to reach them" rows vanish from a page
+    a verifier had already read. A timeline that loses entries is worse than one
+    that carries an old rung, and the release half above is unwindowed for the
+    same reason. The ladder writes at most one row per rung per window, so this
+    grows by two per elapsed cycle, not without bound.
+
+    The action lists are IMPORTED, not restated. `CHECKIN_REMINDER_ACTIONS` is
+    derived from the rungs themselves in `checkin-reminder.ts`, so a third rung
+    appears here without an edit — and, more to the point, a renamed one cannot
+    leave this file quietly filtering on a string nothing writes, which is the
+    exact defect being closed.
   */
   const history = await query<{ action: string; ts: string }>(
-    `SELECT action, ts
-       FROM audit_log
-      WHERE entity_id = $1
-        AND action IN ('checkin_reminder_sent', 'release_transition_pending', 'access_requested')
-      ORDER BY seq ASC`,
-    [releaseStateId],
+    `SELECT a.action, a.ts
+       FROM audit_log a
+      WHERE a.owner_id = $1
+        AND (
+              (a.entity_id = $2 AND a.action = ANY($3))
+              OR a.action = ANY($4)
+            )
+      ORDER BY a.seq ASC`,
+    [row.owner_id, releaseStateId, [...RELEASE_TIMELINE_ACTIONS], [...CHECKIN_REMINDER_ACTIONS]],
   );
 
   return {

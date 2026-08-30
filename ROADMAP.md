@@ -642,52 +642,83 @@ justified by a forecast. Everything in P0–P2 is obliged. Nothing in §2-F or �
 
 ---
 
-### P0 — now · the reminder ladder, and the A0 that makes it reachable
+### ~~P0 — now · the reminder ladder, and the A0 that makes it reachable~~ — ✅ **CLOSED 2026-08-30**
 
-**P0.1 — Walk the check-in reminder ladder (B15.1's unexercised half).**
-The ladder has never fired for anyone, and — corrected 2026-08-29 — it is currently **unreachable**
-for the live owner, who is not a candidate because `CANDIDATE_SQL` requires an armed
-`release_state` they do not have. `sweepCheckinReminders()` never throws, so a failure is a 200, a
-healthy ledger and a customer who is never reminded.
-*Method:* the pattern proven on 08-29 — a disposable owner, `last_active_at` backdated to ~80% of a
-short interval, then **wait for production's own hourly cron** and assert the audit row
-(`owner_checkin_reminder_first`) and the send attempt. Add it to `scripts/e2e-sweep.ts` or as a
-sibling walk; the safety refusal (no other owner overdue) applies unchanged.
-*Done when:* an `owner_checkin_reminder_*` audit row exists that a cron wrote, and the mail leg is
-either confirmed or its refusal (`DEV_MAIL_ALLOWLIST`) is recorded as the reason.
-*Why it still matters, now that 09-01 is not a deadline:* A0 makes the live owner a candidate
-**while they are already past the 75% rung**, so the first-ever firing happens on the next hourly
-cron after A0 — to a real address, whether anybody is watching or not. Walking it with a disposable
-owner first is how that firing gets observed rather than merely survived.
+**P0.1 — Walk the check-in reminder ladder (B15.1's unexercised half).** ✅ **Closed, and not the
+way this row specified.** The walk was built and run on 08-29 (`verify:reminder`) and it established
+that *the method written below cannot work*: `sweepCheckinReminders` writes its audit row ONLY on
+successful delivery, and `email.ts` refuses reserved TLDs unconditionally, so a disposable owner
+satisfies neither side and there is no row to assert. The *Done when* clause below was therefore
+unsatisfiable as written. What the walk proves instead is the PRECONDITIONS, and it says so loudly
+rather than leaving a red check against a blameless product.
 
-**P0.2 — A0, with Steve co-piloting (moved up from P2.1 on 2026-08-29).**
-It was already the highest ratio of unblocking to minutes in this file. The correction above adds a
-second reason: it is the cheapest live proof of the reminder ladder available, and it costs one
-email to Steve's own inbox. Five steps, in the order `verify:dogfood` names them —
-`/vault/new`, `/circle` (recipient), `/circle` (verifier), `/rules`, `/triggers` — with
-`verify:dogfood` re-run after each.
+> *The superseded method, kept because the correction is the finding:* a disposable owner,
+> `last_active_at` backdated to ~80% of a short interval, wait for production's own hourly cron and
+> assert `owner_checkin_reminder_first`. *Done when:* an `owner_checkin_reminder_*` audit row exists
+> that a cron wrote.
+
+**P0.1′ — the observer, which is what that walk actually asked for.** ✅ **Built and live-proven
+2026-08-30, green and red, writing nothing.** The 08-29 commit named the real deliverable — *"the
+thing worth building before then is something that NOTICES whether it fired, because the failure is
+silent by design and nobody will be watching at 15:49 on a Monday."* That is now
+`/api/health/reminders` + `.github/workflows/reminder-ladder-monitor.yml` (daily, the tier
+`cadence-watch` measured at 100%) + `npm run check:ladder`. It asks the OUTCOME question — is any
+owner past a rung with nothing in the audit log — by calling `dueRung` rather than restating 75%/90%,
+and it declares the rung windows it structurally cannot report on instead of returning a bare
+"healthy". ⚠️ **Do not quote the firing date from this file** — it moves every time the owner signs
+in. `npm run check:ladder` prints it.
+
+**P0.2 — A0, with Steve co-piloting.** ✅ **CLOSED 2026-08-29** — `verify:dogfood` reads READY, six
+checks green, every write Steve's own. See §0.5.
 
 ---
 
-### P1 — before 2026-09-12 (precedence lifts) · Claude's court
+### P1 — before 2026-09-12 (precedence lifts) · Claude's court — **four of five closed 2026-08-30**
 
-**P1.1 — B11.1, the re-measure, on or after 09-02.** Now a narrow question, because the minutes
-hypothesis is disproven: does the frequency-selective pattern persist past the reset? Command in
+**P1.1 — B11.1, the re-measure, on or after 09-02.** ⏳ **DATE-BLOCKED, not skipped.** Today is
+2026-08-30; the row's own precondition is three days out. Narrow question: does the
+frequency-selective pattern persist past the reset? Command in
 `deferred.the-scheduled-monitors-are-collapsing`. Whatever it shows, **B12 is the fix** — record the
 answer either way.
 
-**P1.2 — B15.2 and B15.3**, the two remaining unexercised guards: verifier deny / abstain / halt,
-and the J6 4c escalation walk. Both are walks against a disposable owner, both are the same pattern
-as 08-29. Closing them is what makes `README.md`'s "verifier deny/abstain" rung true.
+**P1.2 — B15.2 and B15.3.** ✅ **BOTH LIVE-PROVEN 2026-08-30.**
+- **B15.2** — `npm run verify:decision`, 27/27. Abstain, deny, and the J7-R7 halt, none of which had
+  run outside a unit test. The discriminating assertion is that an abstention on a 2-of-2 leaves the
+  release OPEN — fold abstain into the denial count, which is the simplification a refactor reaches
+  for, and that same abstention halts it. Also proves an unconfirmed verifier's denial is
+  `not_counted` **with the quorum ledger left untouched**, which is the load-bearing half.
+  `README.md`'s "verifier deny/abstain" rung is now true.
+- **B15.3** — `npm run verify:escalation`, 22/22 on the derive-on-read half. Walks **both** paths
+  that fire the lapse, not only the cron this row names: `standby-resolve.ts` swallows its
+  escalation error so rung 0 still renders, which makes that path's failure mode completely silent.
+  The assertion that matters is `received_confirmations === 0` after escalation — a lapse is the
+  ABSENCE of a signal, and if that ever reads 1, silence has been promoted to consent.
+  ✅ **The cron half landed too, 22/22**: at **2026-08-30T06:00:59Z** production's own hourly
+  Vercel cron ticked and escalated the request with nothing local calling it. Both paths that can
+  fire this transition have now been watched, on the same day, by the same script.
 
-**P1.3 — B15.5**, the `verifier-context.ts` action fix. Small, and it sits under B15.2.
+**P1.3 — B15.5**, the `verifier-context.ts` action fix. ✅ **BUILT 2026-08-30 — and it was not the
+two-line fix this file called it.** The known half was the dead action name. The half nobody had
+looked at: the read was keyed on `entity_id = <release id>` while the ladder writes against the
+OWNER with no `entityId` at all, so correcting the name alone would have left the row exactly as
+unreachable **and would have looked like a fix**. ⚠️ The pre-existing test passed throughout,
+because a mocked `query` answers with its fixture whatever it was asked.
 
-**P1.4 — D1 cadence.** `verify:live` dead-man fires **2026-09-12 07:45Z**, `verify:journeys`
-**2026-09-19 07:53Z**. Run the chains before those dates or record a dated pause.
+**P1.4 — D1 cadence.** ✅ **MEASURED 2026-08-30, and neither is due.** `verify:live` last stamped
+2026-08-29T07:45:36Z (fires 2026-09-12 07:45Z), `verify:journeys` 2026-08-29T07:53:10Z (fires
+2026-09-19 07:53Z). Both chains ran the day before this sprint. Re-running them now would spend the
+10-signup hourly budget to reset a clock with thirteen days on it. ⚠️ **`verify:live` falls due on
+the same day precedence lifts** — it belongs in the 09-12 block, not before it. The one changed path
+a chain covers (`standDownTrigger`) was live-exercised twice on 08-30 by the two new walks, one of
+which asserts the 404 that replaced its 500.
 
-**P1.5 — Prepare, do not execute, the `verify:iam` OIDC role.** Draft the trust policy and the
-minimal read-only permission set so Sitting D can rule on it in one line. `kms-wall.yml` is the
-working template. Not built without Steve — a new IAM role is infrastructure.
+**P1.5 — Prepare, do not execute, the `verify:iam` OIDC role.** ✅ **DRAFTED 2026-08-30 —
+`docs/iam-wall-oidc-role-proposal.md`.** Trust policy pinned to `repo:sgharlow/relay:ref:refs/heads/master`
+(the control that keeps a fork's PR out of it, on a PUBLIC repo), the eight IAM read actions derived
+from the five calls the script actually makes, and the `Resource: "*"` defended rather than hidden.
+🔴 It also names the recursion this row did not: creating the role without a fifth `CONTRACTS` entry
+makes a principal the IAM wall does not watch, *using the IAM wall as the reason for creating it*.
+**Nothing has been executed.** One line to rule on, at the bottom of that file.
 
 ---
 
@@ -695,11 +726,17 @@ working template. Not built without Steve — a new IAM role is infrastructure.
 
 Order matters here and it is not the order the sittings were written in.
 
-**P2.1 — Sitting A: A0, the owner's vault. ~20 minutes. Do this first, before the rulings.**
-§0.5 raises this above "unblocks the cohort": until it happens, every custodial guarantee in this
-file protects an empty box, the restore drill's criterion 3 cannot be satisfied, `invite:cohort`
-refuses to run by design, and the reminder ladder and release machinery have nothing real to act on.
-It is the highest ratio of unblocking to minutes anywhere in this document.
+**~~P2.1 — Sitting A: A0, the owner's vault. ~20 minutes.~~** ✅ **DONE 2026-08-29, three weeks
+early** — Steve co-piloted it the same evening this revision was written, so it never reached the
+sitting it was scheduled into. §0.5 was updated; **this row was not, and said "do this first" for a
+day after it was finished.** Recorded rather than silently deleted: it is the drift §8 exists to
+prevent, in the one file that is supposed to be authoritative, found by re-reading the plan while
+executing it.
+
+⚠️ **The consequence is a reordering, not just a strike.** P2.1 was the row everything else on
+2026-09-12 was sequenced behind. With it closed, **P2.3 (the rulings pack) is now first** and
+**A1.3 goes first within it**, because it heads Sprint 2's critical path and nothing in the demand
+lane can be drafted until it is answered. The sitting is also ~20 minutes shorter than §6 says.
 
 **P2.2 — Sitting E: three toggles, ~10 minutes.** A7.0 Web Analytics (hard precondition of Sprint 5
 — the instrument currently collects nothing readable); the restricted read-only Stripe key (before

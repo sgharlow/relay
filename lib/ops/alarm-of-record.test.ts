@@ -27,7 +27,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 const WORKFLOWS = join(process.cwd(), '.github/workflows');
@@ -131,9 +131,44 @@ describe('the one thing only the reporter can know', () => {
  * infrastructure with a cost, so it is proposed rather than taken. What this
  * does is make the trap impossible to add a fourth scheduled alarm without
  * meeting: every one of them has to carry the account of it.
+ *
+ * 🔴 AND UNTIL 2026-08-30 IT DID NOT DO THAT, in the way a hand-maintained list
+ * never does. `SCHEDULED` was written as `MONITORS + date-guards.yml` — four
+ * files — while `.github/workflows` had grown to SIX scheduled alarms:
+ * `kms-wall.yml` and `cadence-watch.yml` were both added afterwards and neither
+ * was ever added here. Both happen to carry the account, so nothing was wrong in
+ * the repo; what was wrong is that the paragraph above claimed a property the
+ * code did not enforce, and a fifth or sixth alarm could be added without
+ * meeting the trap exactly as the fourth and fifth already had been.
+ *
+ * The set is now DERIVED from the directory: any workflow with a `cron:` line
+ * is a scheduled alarm and must carry the account. That is the structural form
+ * of the same rule — a new file cannot be omitted from a list it is never added
+ * to.
  */
 describe('every scheduled alarm records the trap it shares with the others', () => {
-  const SCHEDULED = [...MONITORS.map(([f]) => f), 'date-guards.yml'];
+  /*
+    Read from disk rather than declared. The vacuity guard below is what makes
+    that safe: a glob that matched nothing would turn `it.each` into zero tests
+    and this whole block would pass by describing no files at all.
+  */
+  const SCHEDULED = readdirSync(WORKFLOWS)
+    .filter((f) => f.endsWith('.yml'))
+    .filter((f) => /^\s+- cron: /m.test(read(f)))
+    .sort();
+
+  it('finds every scheduled workflow there is, so this block is not vacuous', () => {
+    expect(
+      SCHEDULED.length,
+      'No workflow in .github/workflows has a cron line. Either every scheduled alarm was ' +
+        'deleted, or the cron syntax changed and this detector now matches nothing.',
+    ).toBeGreaterThanOrEqual(6);
+
+    // The originals must still be among them — a derived list that quietly
+    // stopped including the alarm of record would be worse than the hand one.
+    for (const [file] of MONITORS) expect(SCHEDULED).toContain(file);
+    expect(SCHEDULED).toContain('date-guards.yml');
+  });
 
   it.each(SCHEDULED)('%s names the 60-day auto-disable', (file) => {
     expect(
@@ -145,12 +180,10 @@ describe('every scheduled alarm records the trap it shares with the others', () 
     ).toContain('after 60 days');
   });
 
-  it('the scheduled set is the monitors plus the date guards, and nothing has been dropped', () => {
-    // A file removed from .github/workflows but left in this list would make the
-    // check above throw on a missing file rather than report a gap.
+  it('every file in the derived set is really a scheduled workflow', () => {
     for (const f of SCHEDULED) {
       expect(existsSync(join(WORKFLOWS, f)), `${f} is gone`).toBe(true);
-      expect(read(f), `${f} no longer runs on a schedule`).toContain('schedule:');
+      expect(read(f), `${f} has a cron line but no schedule: block`).toContain('schedule:');
     }
   });
 });

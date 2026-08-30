@@ -88,6 +88,11 @@ export const REACHED_FROM_OUTSIDE: Record<string, string> = {
     'shape of switch, for the mail telemetry rather than the cron. Without it, ' +
     'Resend silently ceasing to deliver events leaves /circle blind about every ' +
     'address while looking exactly like a quiet week.',
+  '/api/health/reminders':
+    'Probed daily by .github/workflows/reminder-ladder-monitor.yml. The ladder ' +
+    'has never fired for anybody; its first firing is the live owner’s 75% ' +
+    'rung, and `sweepCheckinReminders` never throws, so without this probe a ' +
+    'ladder that silently stopped would look exactly like a ladder not yet due.',
   '/api/stripe/webhook': 'Stripe, signature-verified.',
   '/api/incident': 'Posted to by the error boundary, from a page that has already failed.',
   '/api/resend/webhook':

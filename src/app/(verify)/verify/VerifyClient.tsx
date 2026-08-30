@@ -50,8 +50,24 @@ type Decision = 'confirm' | 'deny' | 'abstain';
  * `whyNow` is derived from `initiated_by` and knows the cause; this list is a
  * sequence of events and should not guess at one.
  */
+/*
+  ⚠️ EVERY ACTION `buildVerifierContext` CAN RETURN NEEDS A SENTENCE HERE.
+  The render below falls back to `h.action`, so a missing key does not throw —
+  it prints `owner_checkin_reminder_first` to a verifier deciding whether
+  somebody is incapacitated. `lib/ops/verify-timeline-is-labelled.test.ts` binds
+  this map to `TIMELINE_ACTIONS` in BOTH directions, because the failure this
+  file has already had was the other one: `checkin_reminder_sent` sat here as a
+  promise the query could not keep.
+
+  TWO RUNGS, TWO SENTENCES rather than one shared "We tried to reach them". A
+  verifier weighing silence needs to know whether the owner was nudged once with
+  time to spare or twice with the second one saying it was the last — those are
+  different amounts of evidence about the same silence, and collapsing them
+  would throw away the only thing the ladder produces.
+*/
 const ACTION_LABEL: Record<string, string> = {
-  checkin_reminder_sent: 'We tried to reach them',
+  owner_checkin_reminder_first: 'Relay reminded them it had not heard from them',
+  owner_checkin_reminder_final: 'Relay sent them a final reminder, and heard nothing back',
   release_transition_pending: 'Relay began asking the people they chose',
   access_requested: 'Someone asked for access',
 };

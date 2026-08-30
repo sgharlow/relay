@@ -106,6 +106,14 @@ delegation with consent, verifier deny/abstain, access requests, recovery codes,
 re-sweep at the top of [`docs/user-journeys.md`](docs/user-journeys.md), the same record
 `PROJECT.yaml → ladder_evidence` cites.
 
+> ⚠️ **One item on that list was carried by the wrong evidence until 2026-08-30, and it is
+> named here rather than quietly repaired.** *Verifier deny/abstain* was **not** in the
+> 2026-08-13 sweep. Its deny, abstain and halt branches had unit tests calling the function
+> and nothing else, which `ROADMAP.md` recorded as this rung being overstated (B15.2). It is
+> now earned on its own dated run — `npm run verify:decision`, 2026-08-30, 27 checks against
+> production, including the J7-R7 halt taking a live release back to `armed` because one
+> verifier objected. The list is unchanged; what changed is that this line is now true.
+
 One item on that list is **not** at that rung and is called out rather than folded in:
 the **heartbeat scheduler is `wired`** — `docs/user-journeys.md` J5 says "wired (it had
 never been scheduled)". Its off-Vercel dead-man's switch

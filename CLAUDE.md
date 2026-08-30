@@ -221,10 +221,77 @@ npm run verify:reminder # the OTHER thing the hourly cron does to a quiet owner:
                        # NEVER THROWS by design, so a failure is a 200 from the cron, a
                        # healthy scheduler_runs ledger, and an owner who is simply never
                        # warned. Nothing anywhere goes red.
-                       # ⚠️ Asserts the AUDIT ROW, not delivery — the disposable owner is
-                       # on a reserved domain so DEV_MAIL_ALLOWLIST refuses the send, and
-                       # that refusal is correct. What is proven is that the ladder RUNS
-                       # and RECORDS, which is the half that had never happened.
+                       # 🔴 THIS BLOCK CLAIMED THE WALK "asserts the AUDIT ROW, not
+                       # delivery ... what is proven is that the ladder RUNS and RECORDS"
+                       # UNTIL 2026-08-30, AND IT WAS FALSE. The script's own header was
+                       # corrected on 08-29 when the walk was run and reported a red
+                       # FAIL against a blameless product; this second copy of the claim
+                       # survived the correction, which is how a refuted sentence goes on
+                       # being read. The walk CANNOT observe the ladder firing:
+                       # sweepCheckinReminders writes its audit row ONLY on successful
+                       # delivery (deliberately — the row is a do-not-repeat marker), and
+                       # lib/notify/email.ts refuses reserved TLDs unconditionally. Two
+                       # correct designs meet and a disposable owner satisfies neither.
+                       # What it proves is the PRECONDITIONS — such an owner is a
+                       # candidate, sits in the 50-100% window, and is NOT escalated by
+                       # the tick that passes over them — and then it stops, loudly.
+                       # ⚠️ THE REAL PROOF IS DATED AND BELONGS TO A REAL OWNER: the live
+                       # owner's 75% rung. Derive the date with `npm run check:ladder`;
+                       # do not quote it from here.
+npm run check:ladder   # the observer that half of B15.1 asked for. Has any owner had a
+                       # reminder rung fall due with nothing in audit_log to show for it?
+                       # Read-only (.env.ro), needs no dev server, and prints the thing
+                       # the public probe deliberately withholds — the DATE of each
+                       # owner's next rung — plus `rungs ever sent`, which is 0 until
+                       # this product warns somebody for the first time in its life.
+                       # ⚠️ `-- --as-of <iso>` applies the same rule to the same live
+                       # rows at a different moment, so the RED path is provable today
+                       # rather than on the day it matters. It writes nothing.
+                       # The unattended half is /api/health/reminders, probed daily by
+                       # .github/workflows/reminder-ladder-monitor.yml.
+npm run verify:decision # B15.2 — the verifier says NO. Abstain, deny, and the J7-R7
+                       # HALT, none of which had ever run outside a unit test.
+                       # Seconds, not an hour: every transition is a real HTTP call and
+                       # no cron is involved. One owner signup against the 10/h ceiling.
+                       # 🔴 The discriminating assertions: an abstention on a 2-of-2 must
+                       # leave the release OPEN (if abstain were folded into the denial
+                       # count — the refactor anyone would reach for — it would halt);
+                       # one denial with M=2, N=2 halts and the row returns to ARMED; and
+                       # an unconfirmed verifier's denial is `not_counted` with the quorum
+                       # LEDGER left untouched, so they can still answer once verified.
+                       # ⚠️ The denial counter reads 0 after a halt and that is CORRECT —
+                       # safeResetToArmed clears the bookkeeping, so the honest witness is
+                       # `verifier_denied`'s audit detail, not the column.
+npm run verify:escalation # B15.3 — J6 step 4c. The owner never answered, so the
+                       # verifiers get asked. `CHALLENGE_WINDOW_SECONDS` was documented
+                       # as "how long the owner gets to answer", `expires_at` was stored
+                       # NOT NULL and handed to the client, and for a long time NOTHING
+                       # READ IT — so an incapacitated owner's request sat in
+                       # `awaiting_owner` forever. It had been read as a notification
+                       # problem; it was a missing state transition.
+                       # TWO paths fire it and this walks BOTH, because they are
+                       # different code with different failure modes:
+                       #   --mode read  (default) the derive-on-read half — a verifier
+                       #     loads /api/standby and the lapse fires because somebody is
+                       #     looking (§4.4). Seconds, no cron. ⚠️ Its call is wrapped in
+                       #     a swallowing catch so rung 0 still renders, which makes this
+                       #     path's failure COMPLETELY silent: the dashboard looks right
+                       #     and the release never advances.
+                       #   --mode cron  the scheduled half, from the hourly heartbeat with
+                       #     nothing local calling it. Budget up to ~60 min of waiting.
+                       # 🔴 THE ASSERTION THAT MATTERS: `received_confirmations` is 0
+                       # after the escalation. `respondToChallenge` auto-satisfies the
+                       # quorum when an OWNER approves — deliberately, because an owner
+                       # agreeing is stronger than third parties attesting for them. A
+                       # LAPSE IS THE OPPOSITE: it is the absence of a signal. If that
+                       # ever reads 1, silence has been promoted to consent.
+                       # ⚠️ SAFETY: the cron sweep is not scoped to one owner, so the walk
+                       # REFUSES to run if anybody else has a lapsed awaiting_owner
+                       # request — the tick would escalate theirs to their real verifiers.
+                       # ⚠️ Backdates ONE column (`expires_at`) scoped to its own request
+                       # id; the emergency challenge window is 2h. Everything after that —
+                       # the CAS claim, both transitions, the audit entries, the verifier
+                       # notices — is the real thing.
 npm run check:cadence  # are the scheduled monitors actually RUNNING? Counts each
                        # high-frequency workflow's scheduled runs over the trailing 24h
                        # and fails below 25% of nominal. No credentials — reads the
@@ -943,8 +1010,9 @@ so a database compromise reaches it even though it reaches no vault contents.
 ## `/api/health` is 404, on purpose — do not "fix" it
 
 Recorded 2026-08-29 (D22), because this is the shape of thing a well-meaning session adds in five
-minutes and nobody removes. **The health surface is `/api/health/scheduler` and
-`/api/health/delivery-webhook`.** Both answer 200 and both mean something. A bare `/api/health`
+minutes and nobody removes. **The health surface is `/api/health/scheduler`,
+`/api/health/delivery-webhook` and — since 2026-08-30 — `/api/health/reminders`.** All three answer
+200 and all three mean something. A bare `/api/health`
 returning 200 would mean only that Next.js is running, which is the exact signal
 `lib/ops/canary.ts` opens by arguing is worthless:
 
@@ -953,9 +1021,23 @@ returning 200 would mean only that Next.js is running, which is the exact signal
 Re-derive rather than trust this paragraph:
 
 ```bash
-node -e 'Promise.all(["/api/health","/api/health/scheduler","/api/health/delivery-webhook"].map(p=>fetch("https://relaystandby.com"+p,{redirect:"manual"}).then(r=>console.log(p,r.status))))'
+node -e 'Promise.all(["/api/health","/api/health/scheduler","/api/health/delivery-webhook","/api/health/reminders"].map(p=>fetch("https://relaystandby.com"+p,{redirect:"manual"}).then(r=>console.log(p,r.status))))'
 # 2026-08-29: 404, 200, 200
 ```
+
+**`/api/health/reminders` (2026-08-30, B15.1) answers the one question the other two cannot**: was
+an owner actually WARNED before their vault starts opening. `/api/health/scheduler` says the cron
+ticked; that is not the same thing, and the case where they differ is the whole reason this route
+exists — `sweepCheckinReminders` never throws, so a reminder sweep that silently sends nothing
+leaves the scheduler probe green and an owner unwarned. 503 means a rung fell due more than three
+hours ago with no audit row. Watched daily by `.github/workflows/reminder-ladder-monitor.yml`.
+
+**`npm run check:ladder` is the same rule read straight from the cluster** under `.env.ro`, and it
+prints the thing the public route deliberately withholds — the DATE of each owner's next rung.
+`npm run check:ladder -- --as-of <iso>` applies the rule at a different moment against the same
+live rows, which is how the red path is provable today rather than on the day it matters. It writes
+nothing; the credential cannot. ⚠️ **`rungsEverRecorded` is `0`** — as of 2026-08-30 this product
+has never sent a check-in reminder to anybody. Derive it, do not quote it from here.
 
 ⚠️ **If a portfolio-level live-probe or a `/verify` convention wants one URL for this project,
 point it at `/api/health/scheduler`** — the route whose 200 is a claim about the scheduler having
