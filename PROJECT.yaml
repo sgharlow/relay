@@ -4915,6 +4915,22 @@ deferred:
         to anybody; next rungs 2026-09-21T15:49:04Z (75%) and 2026-09-26T03:49:04Z (90%) on a
         30-day interval from `last_active_at` 2026-08-30T03:49:04Z. WARNING - DERIVE THESE, never
         quote them: they move every time the owner signs in. `npm run check:ladder`.
+      the_workflow_itself_proven_both_ways_on_day_one: >-
+        2026-08-30, after the merge deployed. GREEN run 33296399236 probed production, got HTTP
+        200 and printed the payload including rungsEverRecorded 0 - which is the run-log record
+        that makes the 2026-09-21 firing observable rather than merely survived. RED run
+        33296405660 was dispatched at a host under .invalid: both attempts HTTP 000, the 30s
+        retry happened rather than being skipped, ::error:: emitted with the checklist, exit 1.
+        The production canary took roughly 1,200 runs without ever being red; this one managed
+        both on its first day because the dispatch input was built in rather than claimed.
+      WARNING_what_that_red_does_not_cover: >-
+        HTTP 000 is a request that never completed, so the branch that READS A 503 BODY and
+        prints the `unhonoured` list has still never run in the workflow. Reaching the endpoint
+        and getting an unhealthy answer is a different path, and the only way to exercise it for
+        real is an owner who genuinely was not warned. `scheduler-monitor.yml` makes the same
+        distinction about itself, for the same reason. The RULE behind that body IS proven
+        separately, by `check:ladder --as-of`, which writes nothing. Both halves of that sentence
+        are true and neither should be dropped.
       proven_red_without_writing_anything: >-
         `check:ladder -- --as-of 2026-09-22T00:00:00Z` applies the same rule to the same live rows
         at a different moment and reports that the first rung has been due for 8h with no audit

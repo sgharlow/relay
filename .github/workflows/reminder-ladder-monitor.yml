@@ -53,6 +53,28 @@ on:
   # could only ever hit production and could only ever pass — and both were found
   # and corrected on 2026-08-28/29. A host under `.invalid` (RFC 2606) never
   # resolves, so the probe fails without sending a packet to anybody else.
+  #
+  # ✅ PROVEN IN BOTH DIRECTIONS ON ITS FIRST DAY, 2026-08-30, which is the thing
+  # the canary took ~1,200 runs to fail to do:
+  #   GREEN  run 33296399236 — HTTP 200 from production, payload printed to the
+  #          log including `rungsEverRecorded: 0`.
+  #   RED    run 33296405660 — both attempts HTTP 000, the 30s retry HAPPENED
+  #          rather than being skipped, `::error::` emitted with the checklist,
+  #          exit 1.
+  #
+  # ⚠️ WHAT THAT RED DOES NOT COVER, named because `scheduler-monitor.yml` makes
+  # the same distinction about itself and for the same reason. HTTP 000 is a
+  # request that never completed, so the branch that READS A 503 BODY and prints
+  # `unhonoured` has still never run here. Reaching the endpoint and getting an
+  # unhealthy answer is a different path, and the only way to exercise it for
+  # real is an owner who genuinely was not warned.
+  #
+  # The RULE behind that body is separately proven, and by something that writes
+  # nothing: `npm run check:ladder -- --as-of 2026-09-22T00:00:00Z` applies the
+  # same module to the same live rows at a moved clock and reports
+  # `rung "first" has been due for 8h with no audit row`, exit 1. So the logic is
+  # proven and the workflow's rendering of it is not. Both halves of that
+  # sentence are true and neither should be dropped.
   workflow_dispatch:
     inputs:
       health_url:
