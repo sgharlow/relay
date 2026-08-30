@@ -593,6 +593,102 @@ post_event_plan: "h0-verdict-disposition gate + auto-scheduled teardown (CCR tri
 # Decisions ratified by Steve, recorded here so they stop reading as open items
 # in the pre-ads blocker list. Each one had been authored but never confirmed.
 ratified:
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SITTING D-1, ruled 2026-08-30 by Steve. Eight of the ten questions in
+  # docs/rulings-pack-sitting-d.md. Item 9 (B11.2/B12) was NOT asked — the pack
+  # says "do not answer before 09-02" and the re-measure it depends on has not
+  # happened. Item 10 (B10') was ANSWERED BY MEASUREMENT rather than by ruling:
+  # the relay-alarm filter was read in Steve's browser and it does not delete.
+  #
+  # ⚠️ The sitting ran on 2026-08-30, thirteen days before the 2026-09-12 date
+  # the roadmap scheduled it for. Steve asked for it early; the report-bridge
+  # precedence ruling protects his ATTENTION and he is the one who chooses to
+  # spend it. Recorded here so the date discrepancy is deliberate, not drift.
+  # ═══════════════════════════════════════════════════════════════════════════
+  - id: sitting-d1-2026-08-30
+    date: 2026-08-30
+    owner: steve
+    decision: "Eight D-1 rulings, recorded below. Each carries what it obliges."
+    rulings:
+      a1_3_third_person_binds:
+        ruling: "YES — §1a (third person) BINDS the editorial piece."
+        why: "The register is authoritative; the 2026-08-17 sprint report's relaxation was
+          never ratified, so two documents disagreed and the op-ed could not be finished."
+        obliges: "Write the op-ed in third person. STRIKE the unratified relaxation from the
+          2026-08-17 sprint report so the two documents stop disagreeing — a relaxation left
+          standing is the next reader's contradiction."
+        unblocks: "Sprint 2's critical path (A1.1 voice pass onward)."
+      e4_1_billing_gate_scope:
+        ruling: "KEEP INITIATE-ONLY, and say so in /terms."
+        what_it_means: "assertCanRelease continues to guard exactly 1 of the 4 ARMED→PENDING
+          paths. The three INVOLUNTARY paths — the missed-check-in sweep, owner consent to an
+          access request, and silence on a challenge — are never billing-gated."
+        the_argument: "A custodial promise should not lapse with a card. An owner who is
+          incapacitated did not choose to be on those paths."
+        obliges: "/terms and guide §2.7 are SILENT on paths 2-4 today and one of them must be
+          edited either way. Edit /terms to state it plainly BEFORE the 2026-10-01 paywall
+          revisit, because the flip commit is where a silent difference becomes a false promise."
+      a0_dm_revisit_guard:
+        ruling: "BUILD A GUARD THAT READS the revisit: field and fails when one is past with nothing
+          recorded against it. Same shape as gates.test.ts."
+        why_the_mechanism_and_not_the_date: "The alternative offered was promoting A0 to a dated
+          gates: entry, which fixes one date and leaves every other revisit unread. The evidence
+          is a mechanism failure, not a one-off: the beta-cohort revisit date 2026-08-23 lapsed
+          unremarked and was recorded six days late — the third deferral of that item and the
+          first one nobody made."
+        covers_next: "The 2026-10-01 paywall revisit, which is the next one at risk."
+      d14_signup_ceiling:
+        ruling: "LEAVE IT, AND SAY SO."
+        why: "It is already documented in CLAUDE.md, verify-journeys-freshness and the register,
+          and the cost is one dev-server restart between chains. The alternatives widen a live
+          abuse guard for test convenience — an exemption for reserved domains is exactly what
+          an attacker would probe for."
+        obliges: "Nothing to build. The ruling exists so the question stops being re-derived."
+      b15_4_rungs_and_self_naming:
+        ruling: "RATIFY the three numbers as chosen, and REFUSE the self-naming row at creation."
+        numbers_ratified: "Reminder rungs at 75% and 90% of the check-in interval, and the
+          12-hour cooling-off. Chosen and documented but never measured; reasonable, and nothing
+          contradicts them. Ratified so they are owned rather than defaulted."
+        self_naming: "An owner naming THEMSELVES as their own recipient or verifier is refused at
+          creation. isEligibleVerifier already refuses to COUNT them, so the runtime hole was
+          closed — what was open is that the row could still be created and the roster then read
+          as fuller than it is. Safety by structure, not by a downstream filter."
+      d20_dangling_rows:
+        ruling: "PURGE — Claude drafts the statements, Steve says GO, Claude runs them."
+        state: "28 rows: verifier_codes 17, break_glass_codes 10, recipient_codes 1. Newest
+          2026-08-14, left by a hand-written DELETE FROM users. Twice confirmed inert, and a
+          third time on 2026-08-30 — three browser-walk runs created and closed twelve disposable
+          accounts and added ZERO."
+        the_argument: "A permanently-red verify:orphans is a check that stops being read, and it
+          is red today for this and nothing else."
+        ⚠️ : "DESTRUCTIVE PRODUCTION WRITE WITH NO UNDO, on rows nobody can reach. NOT YET RUN.
+          The statements are drafted and await an explicit GO."
+      d25_demo_simulate:
+        ruling: "RETIRE /api/demo/simulate."
+        why: "Exercisable by no account — zero demo-flagged users in the cluster — since
+          TOTP_SECRET was retired and a demo-owner session can no longer be minted. A capability
+          no user can reach can still be reached by an attacker; this repo has already retired six
+          handlers on exactly that argument."
+        obliges: "Record the reason and the replacement in docs/retired-surface.md in the same
+          commit that removes the route."
+      d3_3_restore_drill_fallback:
+        ruling: "MOOT — struck. A0 happened on 2026-08-29."
+        why: "The question was 'if A0 has not happened by the restore drill, does a disposable
+          item created before the backup satisfy criterion 3?'. The owner's vault now holds a real
+          item with real ciphertext and a wrapped KMS key, so criterion 3 is satisfied by the real
+          thing and the fallback is unnecessary."
+        obliges: "Strike it from the pack with the date and reason rather than leaving a resolved
+          item to be re-read at a later sitting."
+    not_asked:
+      b11_2_b12: "The pack says do not answer before 2026-09-02, and the re-measure it depends on
+        has not happened. Still open, correctly."
+    answered_by_measurement_instead:
+      b10_prime: "Read the relay-alarm filter in Steve's browser, 2026-08-30. It is
+        `from:(notifications@github.com) subject:([sgharlow/relay] Run failed)` →
+        Star it, Apply label relay-alarm, Never send it to Spam, Mark it as important.
+        NO DELETE ACTION. So the trashing was never a filter — see
+        deferred.the-alarm-of-record-delivers-to-trash.re_measured_2026_08_30."
   - id: relay-resumed-2026-08-21
     date: 2026-08-21
     owner: steve
@@ -3978,6 +4074,41 @@ deferred:
       set — by Claude-in-Chrome once the extension is connected, or by Steve reading it out. The
       delivery half is already proven and does not need re-proving. Owner moves to CLAUDE for the
       read; it stops being Steve's the moment no rule needs deleting.
+
+    # ── RE-MEASURED 2026-08-30 — THE 08-29 CORRECTION WAS ITSELF WRONG ──────
+    re_measured_2026_08_30:
+      verdict: "The ORIGINAL finding stands. The alarm of record IS in Trash, unread, and
+        today's is in there with it."
+      measured: "Read-only Gmail connector, query
+        `from:notifications@github.com to:relay@noreply.github.com in:trash`:
+        43 relay-addressed GitHub threads in Trash; 6 of them carry the `relay-alarm`
+        label and every one is UNREAD *and* STARRED. Newest: Cadence watch,
+        2026-08-30T14:31Z — the monitoring-collapse alarm (B11) itself. Also in Trash:
+        Production canary, Scheduler heartbeat monitor, Delivery webhook monitor,
+        KMS wall watch, and the CI run for the T1 pull request.
+        The `relay-alarm` label holds 21 messages / 12 unread; 6 are in Trash.
+        Gmail purges Trash after 30 days."
+      why_the_08_29_measurement_said_the_opposite: "It was not careless, and the way it was
+        wrong is the finding. It watched three DELIBERATELY DISPATCHED red runs and timed
+        their arrival — 23-37 seconds, inbox, labelled, starred. Every one of those
+        observations is true. It measured DELIVERY, and delivery was never the claim.
+        What happens to the mail AFTER it lands is a different question and a stopwatch
+        pointed at arrival cannot see it. Tellingly, the one alarm NOT in Trash right now
+        (`Reminder ladder monitor`, 2026-08-30T06:14Z) was itself a workflow_dispatch —
+        the same trigger type as the three that supposedly disproved this entry."
+      the_pattern_that_matters: "Not delivery versus non-delivery. The alarms that fire
+        UNATTENDED are the ones in the bin. Every scheduled monitor listed above exists to
+        shout when nobody is watching, and its shout is filed where nobody is watching.
+        That is the same defect B12 describes one layer down, arriving by a different route."
+      still_unknown: "The MECHANISM. These carry `relay-alarm` and a star — filter actions —
+        and also TRASH. A filter that labels, stars, then trashes is self-defeating; a human
+        clearing a mailbox would not usually leave starred mail unread. The connector is
+        READ-ONLY at the OAuth scope (verified 2026-08-30: `untrash_thread` returns
+        `Insufficient scope`) and cannot enumerate filters at all. Gmail -> Settings ->
+        Filters and Blocked Addresses is the only place the answer lives."
+      lesson: "A finding is disproved by measuring the thing it CLAIMS, not something
+        adjacent to it. This entry claimed 'the alarm mail ends up in Trash'; the disproof
+        measured 'the alarm mail arrives quickly'. Both are true at once."
 
   - id: the-scheduled-monitors-are-collapsing                 # ROADMAP B11
     owner: claude                         # measurement; steve owns the money half

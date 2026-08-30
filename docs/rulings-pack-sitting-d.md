@@ -25,10 +25,56 @@ Recorded so the sitting does not spend its first ten minutes on items that close
 | Item | Was | Now |
 |---|---|---|
 | **B30** | on D-1 — "parser fix or a disposition" | ✅ **CLOSED 2026-08-29**, PR #25. Fix B merged, mutation-proven three ways. **Comes off D-1.** Fix A is not foreclosed: recording a disposition on `g1-caregiver-wtp` remains available and is no longer urgent |
-| **B10** | "which filter rule trashes the alarm mail" | 🔴 **THE PREMISE WAS FALSE.** Delivery works — three deliberate red runs reached the INBOX in 23–37 s, labelled `relay-alarm`, starred. The ~20 historical threads are *archived*, not trashed. **The question changed** — see D-1 §B10′ below |
+| **B10** | "which filter rule trashes the alarm mail" | 🔴 **THE CORRECTION WAS ITSELF WRONG — re-measured 2026-08-30, the ORIGINAL question stands.** See the block below this table |
 | **D21** | precondition unmet | ✅ precondition **met** 2026-08-29 — `relay-ro-policy` measured, carries no `kms:` action at all |
 | **B27 / B31** | on the nod list | ✅ both **executed** 2026-08-29 |
 | **D20** | "28 dangling rows" | still 28, and now **twice confirmed as residue** — newest orphan 2026-08-14, and 15 disposable accounts created/closed on 08-29 added zero |
+
+### 🔴 B10 re-measured, 2026-08-30 — the correction above was wrong, and the way it was wrong is the lesson
+
+**The alarm of record is in the bin, unread, and today's is in there with it.**
+
+Measured read-only through the Gmail connector, `from:notifications@github.com
+to:relay@noreply.github.com in:trash`:
+
+| what | count |
+|---|---|
+| relay-addressed GitHub threads **in Trash** | **43** |
+| of those, carrying the `relay-alarm` label | **6** — every one `UNREAD` **and** `STARRED` |
+| the newest | **Cadence watch, 2026-08-30 14:31Z** — the monitoring-collapse alarm (B11) |
+| others in Trash | Production canary · Scheduler heartbeat monitor · Delivery webhook monitor · KMS wall watch · CI (the T1 PR run) |
+
+`relay-alarm` holds 21 messages, 12 unread. Six of them are in Trash. Gmail purges
+Trash after 30 days.
+
+**WHY THE 08-29 MEASUREMENT SAID THE OPPOSITE, AND WHY IT WAS NOT CARELESS.** It
+watched three **deliberately dispatched** red runs and timed how long they took
+to arrive: 23–37 seconds, inbox, labelled, starred. Every one of those
+observations is true. What it measured was DELIVERY — and delivery was never the
+problem. What happens to the mail *after* it lands is a different question, and a
+stopwatch pointed at arrival cannot see it. The one alarm currently NOT in Trash
+is `Reminder ladder monitor` at 06:14Z on 08-30 — which was itself a
+`workflow_dispatch`, the same trigger type as the three that "disproved" B10.
+
+⚠️ **So the pattern that matters is not delivery-vs-non-delivery. It is that the
+alarms which fire UNATTENDED are the ones in the bin.** Every scheduled monitor
+in the list above is a job whose entire purpose is to shout when nobody is
+watching, and its shout is being filed where nobody is watching.
+
+**WHAT IS STILL NOT KNOWN, and is the actual D-1 question.** The mechanism. These
+messages carry `relay-alarm` and a star — filter actions — *and* `TRASH`. A
+filter that labels, stars and then trashes is self-defeating; a human bulk-clearing
+a mailbox would not usually leave starred mail unread. This connector is
+**read-only at the OAuth scope** (verified: `untrash_thread` returns
+`Insufficient scope`), and it cannot enumerate filters at all. Gmail → Settings →
+Filters and Blocked Addresses is the only place the answer lives, and it is
+Steve's browser.
+
+**The generalisable lesson, and it is the third instance this week.** A finding is
+disproved by measuring the thing it claims, not something adjacent to it. B10
+claimed "the alarm mail ends up in Trash"; the disproof measured "the alarm mail
+arrives quickly". Both can be true at once, and both are.
+
 
 ---
 
