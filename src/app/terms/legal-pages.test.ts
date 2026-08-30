@@ -233,3 +233,42 @@ describe('/privacy states everything that survives a deletion', () => {
     expect(privacy()).toMatch(/interest form|asked to hear more/i);
   });
 });
+
+describe('the billing gate’s scope is stated, not left silent (E4.1)', () => {
+  /*
+    🔴 RULED 2026-08-30. `assertCanRelease` guards ONE of the four ARMED -> PENDING
+    paths — the deliberate Initiate action. The missed-check-in sweep, owner
+    consent to an access request, and silence on a challenge are NOT billing-gated.
+
+    /terms said nothing about any of it. Silence here is the expensive kind: an
+    owner whose card has lapsed cannot tell whether the thing they bought Relay
+    for still happens, and the honest answer — it does — is also the reassuring
+    one, so there was never a reason to withhold it.
+
+    Asserted on MEANING rather than on a sentence, so the copy can be rewritten
+    without this going red for the wrong reason. What must survive: the page says
+    a lapse does not stop the involuntary paths.
+  */
+  const terms = readFileSync('src/app/terms/page.tsx', 'utf8');
+
+  it('says a lapsed subscription does not stop a release that runs without the owner', () => {
+    expect(
+      /lapsed subscription does not switch off|not hold an emergency behind a card/i.test(terms),
+      '/terms no longer states what a lapse does NOT stop. E4.1 ruled that the three involuntary ' +
+        'paths are never billing-gated and that /terms must say so — this is the sentence that ' +
+        'keeps the promise checkable.',
+    ).toBe(true);
+  });
+
+  it('names the paths that keep working, not just that "some" do', () => {
+    // "Some releases still work" is not a term anybody can rely on. The three
+    // must be recognisable: stop checking in, agree to a request, never answer.
+    expect(/stop checking in/i.test(terms)).toBe(true);
+    expect(/asks for access/i.test(terms)).toBe(true);
+    expect(/never answer/i.test(terms)).toBe(true);
+  });
+
+  it('is honest that starting one yourself is the part that stops', () => {
+    expect(/no longer start a release yourself/i.test(terms)).toBe(true);
+  });
+});

@@ -54,17 +54,32 @@ assertion:
 - the strongest recommendation in the piece is a **free feature most email providers already have**,
   not the product
 
-## A correction to my own earlier work
+## ~~A correction to my own earlier work~~ — 🔴 OVERRULED 2026-08-30
 
-`docs/g1-editorial-lane.md` carried *"§1a third person — never 'you' joined to a health event"*. I put
+> **RULED BY STEVE, Sitting D-1, 2026-08-30: §1a BINDS the editorial piece.** The
+> relaxation below is struck. The op-ed is written in third person.
+>
+> **Why it was struck, and it is not that the argument was bad.** The reasoning
+> below is a real argument and it is left standing to be read. What was wrong was
+> its STATUS: it relaxed a rule the register carries, in a sprint report, and was
+> never ratified. So from 2026-08-17 two documents disagreed about the voice of a
+> piece that could not be finished until one of them won — and for thirteen days
+> nobody noticed, because a sprint report reads like a record rather than like a
+> change to a rule.
+>
+> The ruling is recorded at `PROJECT.yaml → ratified.sitting-d1-2026-08-30
+> .rulings.a1_3_third_person_binds`. If the case below is to be made again, it is
+> made as a proposed amendment to §1a — not as a paragraph in a report.
+
+~~`docs/g1-editorial-lane.md` carried *"§1a third person — never 'you' joined to a health event"*. I put
 it there, and carrying it across was wrong: **§1a is an ad-platform rule.** Meta and Reddit prohibit
 copy implying knowledge of a reader's circumstances because the reader did not choose to be
 targeted. A *Today's Caregiver* reader self-selected, there is no ad reviewer, and the outlet's own
 writing uses second person throughout. Applying it to editorial produces stilted prose for no
-benefit.
+benefit.~~
 
-Recorded in the draft rather than quietly applied. **The estate and medical constraints still bind
-absolutely** — those come from the product and from honesty, not from ad policy.
+**The estate and medical constraints still bind absolutely** — those come from the product and from
+honesty, not from ad policy, and nothing in the ruling above touches them.
 
 ## Blocked / next
 

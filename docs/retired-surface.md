@@ -241,6 +241,45 @@ regression.
 
 ---
 
+## `POST /api/demo/simulate` — retired 2026-08-30
+
+**Ruled at Sitting D-1 (D25). Reason: exercisable by nobody.**
+
+The route fast-forwarded the release state machine (ARMED → PENDING → GRACE →
+RELEASED) for a demo-flagged account, using the real CAS transitions. It checked
+auth and `is_demo_account` before reading any state, which was the right shape.
+
+**Why it went.** It required a demo-owner session, and one can no longer be
+minted: `TOTP_SECRET` was retired on 2026-08-13, and there are **zero
+demo-flagged users in the cluster**. `scripts/demo-run.ts` was bannered
+HISTORICAL on 2026-08-29 (B37) for the same reason. So the handler was
+code-reachable and account-unreachable — and this repo has already retired six
+handlers on exactly that argument: *a capability a user cannot reach can still be
+reached by an attacker.*
+
+**Replacement: none, and that is the point rather than an omission.** FR9 is
+WITHDRAWN, not moved. `/demo` is a read-only walkthrough that renders seeded
+data; it does not drive the state machine and is not a substitute. If a demo
+fast-forward is ever wanted again it is a new decision, with a demo account
+standing on the production cluster as its first cost.
+
+> ⚠️ **A requirement's coverage was not moved, because there was nowhere to move
+> it.** The `/api/vault/items/[id]` retirement above records the rule: *"Moving a
+> requirement's coverage to another verb is the step that is easiest to skip and
+> the one that turns a retirement into a regression."* Requirements 9.1, 9.2 and
+> 9.7 were about this route's own gating and have no second home. They lapse with
+> it, deliberately.
+
+**⚠️ NOW CALLERLESS AND DELIBERATELY LEFT: `lib/release/simulate.ts`.** This route
+was its only non-test caller. Deleting the library is a further step than the
+ruling asked for, and bundling it would be exactly the "while I'm here" change
+this repo's debugging rules refuse. Recorded here so it is a named debt rather
+than a discovery: `runSimulation` and `lib/release/simulate.test.ts` now serve
+nothing, and removing them is a one-line decision whenever somebody wants to make
+it.
+
+---
+
 ## Not retired, but unreached
 
 `lib/ops/api-reachability.ts` carries a second list, `KNOWN_UNREACHABLE`, for

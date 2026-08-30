@@ -1,5 +1,41 @@
 # Relay — Production Roadmap
 
+**Revision 6 — 2026-08-30.** An IN-PLACE revision, as §8 asks. Four sprints executed in one day
+and **six claims in this file are now false**. They are corrected where they stand; this header is
+the index of what moved, so a reader of revision 5 knows what not to trust.
+
+| What this file said | What is true on 2026-08-30 |
+|---|---|
+| Sprint 1 row 1.2: **"untrash the three reports in Trash"**, hard expiry ~09-14 | 🔴 **NON-TASK.** Twelve DMARC threads exist and **none is in Trash**. §0.0 row 7 got this right on 08-29 and this table was never updated to match — the same drift, in the same document, one section apart. **Struck.** |
+| §0.5: quorum unsatisfiable **"until Ben accepts"** | 🔴 **WRONG, and worse.** There is no invitation. April and Ben have `standby_state = NULL` and `audit_log` holds **zero** invitation actions, ever. Adding a person on `/circle` writes a roster row and nothing else. Nobody was waiting on Ben; Ben does not know. |
+| §0.0 row 1: B10's premise **"false — delivery works"** | 🔴 **The disproof measured the wrong thing.** It timed three *dispatched* runs arriving in 23–37 s. 43 relay threads were in Trash, six carrying `relay-alarm`, all unread — including that day's Cadence-watch alarm. **The alarms that fire unattended are the ones in the bin.** Seven restored 08-30; the filter was read and has **no delete action**. |
+| §2-C: `_dmarc` carries no `rua=` | ✅ **FIXED 2026-08-30.** Now `v=DMARC1; p=none; rua=mailto:dmarc@relaystandby.com; fo=1`, confirmed from two independent resolvers. `wired`, not yet `live-proven` — it closes when a report arrives. |
+| §2-D / D20: 28 dangling rows | ✅ **PURGED 2026-08-30** on Steve's GO. 28 counted, 28 deleted, 0 remaining. `verify:orphans` **exits 0 for the first time**. |
+| §2 has **no testing lane** | ✅ **Added and shipped** — see §2-T below. |
+
+**Sprint 1 ran on 2026-08-30**, thirteen days early, at Steve's request. Eight of the ten D-1
+rulings are recorded in `PROJECT.yaml → ratified.sitting-d1-2026-08-30`; item 9 was not asked (not
+before 09-02) and item 10 was answered by measurement. Five have been executed since.
+
+> ### §2-T — the testing lane, shipped 2026-08-30
+>
+> Revision 5's §2 inventory ran A through H with **no testing section**, so the largest engineering
+> gap in the repository was not on the plan at all. It is now closed:
+>
+> - **T1** — the request layer executes under test. `src/app/api/**` went **66.15% → 86.81%**
+>   statements and **26 → 0** handlers at 0%, with a per-layer floor (`npm run check:route-coverage`)
+>   so it cannot regress behind `lib/`'s mass. PR #34.
+> - **T2** — `/api/health/orphans` + a daily monitor, closing the half of D4 this file called
+>   *"a smaller and more useful thing than the cluster"* — with no cluster and no credential. The
+>   browser walks also stopped depending on one laptop's `__shared-tools` path. PR #35.
+> - **T3** — browser-walk screen coverage is now **derived (5/17)** rather than remembered, and the
+>   `/triggers` quorum screen is walked and live-proven. PR #36.
+>
+> ⚠️ **D4 was already ruled** — 2026-08-20, defer the test cluster until the first paying customer.
+> This file's §2-D describes it as an open decision because it reads `blocked_on:` and stops, forty
+> lines above the `ruled:` block. Corrected here rather than in place, because the entry itself is
+> chronological and worth keeping that way.
+
 **Revision 5 — 2026-08-29.** An IN-PLACE revision of revision 4, not a rewrite: §8 asks that a
 closing sprint be struck "with a date and a commit, in place", and most of revision 4's body is
 still accurate. What changed is concentrated in §0.0 (which of revision 4's own claims survived
@@ -76,7 +112,9 @@ chain — is presently doing nothing for the only person relying on the product.
 > an empty box.
 >
 > 🔴 **But the plan still cannot COMPLETE a release.** `countEligibleVerifiers` returns **M = 0**
-> against **N = 1**, because Ben has not accepted and only `confirmed` verifiers count. A trigger
+> against **N = 1**. 🔴 **CORRECTED 2026-08-30: not because Ben has not accepted — because Ben was
+never asked.** `standby_state` is NULL for both people and `audit_log` holds zero invitation
+actions, ever; adding somebody on `/circle` writes a roster row and sends nothing. A trigger
 > firing today would reach GRACE and stop there for good. Nothing leaks — GRACE is where verifiers
 > are asked, not where access opens — but "the vault is set up" and "the plan would work" are two
 > different claims, and only the first is now true.
@@ -96,7 +134,7 @@ reason is unchanged: A0 blocks it, A0 is ~20 minutes, and A0 has not happened.
 
 | blocker | state 2026-08-29 | owner |
 |---|---|---|
-| ~~A0 the owner's vault~~ | ✅ **DONE** — `verify:dogfood` READY, all six green. ⚠️ quorum still unsatisfiable (M=0 vs N=1) until Ben accepts and is confirmed | steve, **closed** |
+| ~~A0 the owner's vault~~ | ✅ **DONE** — `verify:dogfood` READY, all six green. ⚠️ quorum still unsatisfiable (M=0 vs N=1) — **and 2026-08-30 found why: no invitation was ever sent.** `readStandbyState(null)` renders an uncontacted person as `invited`, so the roster read as if they had been asked | steve, **closed** |
 | A1 op-ed → caregiver.com | unsent; §1a third-person ruling still owed (D-1 item 1) | steve |
 | A3 beta cohort | `.relay-cohort.json` untouched since 08-18 18:17, still untracked; no codes file; **third deferral lapsed unrecorded** | steve |
 | A7.0 the instrument | 🔴 collects nothing readable — see below | steve (one toggle) |
@@ -1005,7 +1043,7 @@ is a Steve action that unblocks something larger, sized so the whole sprint fits
 | # | Item | Steve's time | Deadline (basis) |
 |---|---|---|---|
 | 1.1 | **A0** — the six-screen vault walk (`docs/vault-checklist-sprint-1.md`). Real items, real people. Do `/rules` before anyone claims an invitation. Never Initiate. | ~20 min | 2026-09-12 (A0 revisit) |
-| 1.2 | **The mailbox sitting**: C1.1 filter · C1.2 untrash the three reports · **B10** remove the rule B10.d named (Claude can drive via Claude-in-Chrome in your session; the connector cannot write) | ~5 min if it is a filter | **~2026-09-14** (C1.2 purge). ⚠️ Two days after 09-12; a ≤5-minute item with a hard expiry is raised now under the blocker protocol, not held for the ruling |
+| 1.2 | **The mailbox sitting** — ✅ **DONE 2026-08-30.** ~~C1.2 untrash the three reports~~ **STRUCK: nothing was ever in Trash.** B10: the filter was read and has **no delete action**; seven `relay-alarm` mails restored from Trash (Claude can drive via Claude-in-Chrome in your session; the connector cannot write) | ~5 min if it is a filter | **~2026-09-14** (C1.2 purge). ⚠️ Two days after 09-12; a ≤5-minute item with a hard expiry is raised now under the blocker protocol, not held for the ruling |
 | 1.3 | **C1.0** — was `rua=` removed on purpose? Decide the target; Claude executes the DNS change under `/safe-execute` on your request | ~5 min decision | before C2.1 is sent |
 | 1.4 | **The rulings pack** — the §6 Sitting D list, verbatim, in two halves: **D-1** the dated and unblocking rulings (A1.3 first — it heads Sprint 2's critical path — then E4.1, B30, A0.dm/E4.4, D14, D20, D25, B15.4, B11.2/B12, D3.3) and **D-2** the rest in a second sitting before 2026-10-01. Basis for the estimate: the superseded checklist measured ~5 min per ruling | ~25 min (D-1) + ~60 min (D-2) | D-1 on 09-12; D-2 before 2026-10-01 |
 | 1.5 | **E1.5** Stripe dashboard reads #3 and #4 (read, don't change) | ~5 min | — |

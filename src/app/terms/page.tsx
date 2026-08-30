@@ -264,6 +264,29 @@ export default function TermsPage() {
             Ending a subscription never deletes anything. Your vault stays exactly as it is; the
             free-tier limits apply only to adding more.
           </p>
+          {/*
+            🔴 ADDED 2026-08-30, ruled at Sitting D-1 (E4.1). `/terms` was SILENT on
+            three of the four ways a release can begin, and silence on this is the
+            expensive kind: a lapsed owner reading this page could not tell whether
+            the thing they bought Relay for still happens.
+
+            `assertCanRelease` guards exactly ONE of the four ARMED -> PENDING
+            paths — the deliberate "Initiate" action. The missed-check-in sweep,
+            owner consent to an access request, and silence on a challenge are not
+            billing-gated and are not going to be. The ruling's reason, stated
+            here because a term without its reason invites the opposite edit
+            later: a custodial promise should not lapse with a card, and an
+            incapacitated owner did not choose to be on those paths.
+          */}
+          <p className="mt-2">
+            <strong className="font-semibold text-ink">
+              A lapsed subscription does not switch off the part that matters.
+            </strong>{' '}
+            If you stop paying, you can no longer start a release yourself from inside Relay. But
+            everything that happens <em>without</em> you still happens: if you stop checking in, if
+            someone asks for access and you agree, or if you are asked and never answer, your plan
+            runs exactly as you configured it. We will not hold an emergency behind a card.
+          </p>
           <p className="mt-2">
             Closing your account also releases you from anyone else&rsquo;s plan you were standing by
             for, and tells them so. We do not remove you from their list on your behalf — their

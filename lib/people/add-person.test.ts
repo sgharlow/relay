@@ -13,6 +13,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 
+/*
+  The owner's own address, for the self-naming refusal ruled 2026-08-30 (B15.4).
+  Mocked to an address that matches NOTHING in these fixtures, so every existing
+  case behaves exactly as before and the refusal is exercised only by the test
+  that asks for it.
+*/
+vi.mock('../db/connection', () => ({
+  query: vi.fn(async () => ({ rows: [{ email: 'the-owner@example.com' }] })),
+}));
 vi.mock('./people', async (io) => {
   const actual = await io<typeof import('./people')>();
   return { ...actual, listPeople: vi.fn() };
@@ -271,5 +280,81 @@ describe('addPerson checks both ceilings before it writes anything', () => {
 
     expect(mockRecipientCap).not.toHaveBeenCalled();
     expect(mockVerifierCap).toHaveBeenCalledWith('o-1');
+  });
+});
+
+describe('an owner may not name themselves (B15.4, ruled 2026-08-30)', () => {
+  /*
+    🔴 THE RUNTIME HOLE WAS ALREADY CLOSED, and that is why this is about the
+    SCREEN rather than about safety. `isEligibleVerifier` refuses to count an
+    owner toward their own quorum (rule 7 — an owner is not an independent
+    attestation about themselves). Nothing unsafe could happen.
+
+    What was open: the row could still be CREATED, and once created it appears in
+    the roster, the coverage matrix and the circle count. A vault with one person
+    in it reads as a vault with two, and readiness is computed over a circle one
+    person smaller than it looks. Not a wrong permission — a wrong impression,
+    which is the shape this codebase keeps finding.
+  */
+  it('refuses the owner’s own address at creation, writing nothing', async () => {
+    await expect(
+      addPerson('owner-1', {
+        roles: { recipient: true, verifier: false },
+        recipient: { name: 'Me', email: 'the-owner@example.com' } as never,
+        verifier: null,
+        email: 'the-owner@example.com',
+        name: 'Me',
+      }),
+    ).rejects.toThrow(/your own address/i);
+
+    expect(mockCreateRecipient).not.toHaveBeenCalled();
+    expect(mockCreateVerifier).not.toHaveBeenCalled();
+  });
+
+  it('refuses it however it is capitalised or padded', async () => {
+    /*
+      Compared on the NORMALISED address — the same key the duplicate check uses.
+      A check written against the raw string would let `The-Owner@Example.com `
+      walk straight past, which is the bug this assertion exists to prevent
+      rather than to describe.
+    */
+    await expect(
+      addPerson('owner-1', {
+        roles: { recipient: false, verifier: true },
+        recipient: null,
+        verifier: { name: 'Me', email: '  The-Owner@Example.COM ' } as never,
+        email: '  The-Owner@Example.COM ',
+        name: 'Me',
+      }),
+    ).rejects.toThrow(/your own address/i);
+    expect(mockCreateVerifier).not.toHaveBeenCalled();
+  });
+
+  it('refuses BEFORE spending a plan ceiling', async () => {
+    // A refused submission must not consume the owner's recipient or verifier
+    // allowance — the caps are asked for further down and must never be reached.
+    await expect(
+      addPerson('owner-1', {
+        roles: { recipient: true, verifier: true },
+        recipient: { name: 'Me', email: 'the-owner@example.com' } as never,
+        verifier: { name: 'Me', email: 'the-owner@example.com' } as never,
+        email: 'the-owner@example.com',
+        name: 'Me',
+      }),
+    ).rejects.toThrow(/your own address/i);
+    expect(mockRecipientCap).not.toHaveBeenCalled();
+  });
+
+  it('still allows any other address', async () => {
+    // The guard must not be so broad it refuses the normal case.
+    mockListPeople.mockResolvedValueOnce([]);
+    const r = await addPerson('owner-1', {
+      roles: { recipient: true, verifier: false },
+      recipient: { name: 'April', email: 'april@example.com' } as never,
+      verifier: null,
+      email: 'april@example.com',
+      name: 'April',
+    });
+    expect(r.createdAnything).toBe(true);
   });
 });
