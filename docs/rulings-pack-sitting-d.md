@@ -78,7 +78,34 @@ arrives quickly". Both can be true at once, and both are.
 
 ---
 
-# D-1 — 2026-09-12 · ⏱️ ~25 min · dated or unblocking
+# D-1 — ✅ RULED 2026-08-30 · eight of ten answered
+
+> **This section is a RECORD, not a set of questions.** The sitting ran on
+> 2026-08-30, thirteen days before the 2026-09-12 date it was scheduled for —
+> Steve asked for it early. Every ruling is recorded in
+> `PROJECT.yaml → ratified.sitting-d1-2026-08-30`, which is authoritative; the
+> answers below are a rendering of it.
+>
+> | # | Item | Ruling |
+> |---|---|---|
+> | 1 | **A1.3** | ✅ **§1a BINDS.** Op-ed in third person. The unratified 08-17 relaxation is struck |
+> | 2 | **E4.1** | ✅ **Keep Initiate-only**, and say so in `/terms` — done 2026-08-30 |
+> | 3 | **A0.dm / E4.4** | ✅ **Guard built** — `lib/ops/revisit-dates.test.ts` |
+> | 4 | **D14** | ✅ **Leave it and say so.** Nothing to build |
+> | 5 | **B15.4** | ✅ **Rungs ratified; self-naming refused at creation** — done 2026-08-30 |
+> | 6 | **D20** | ✅ **Purged** 2026-08-30 — 28 counted, 28 deleted, 0 remaining |
+> | 7 | **D25** | ✅ **Retired** 2026-08-30 — see `docs/retired-surface.md` |
+> | 8 | **D3.3** | ✅ **MOOT, struck** — A0 happened 2026-08-29 |
+> | 9 | **B11.2 / B12** | ⏳ **NOT ASKED.** The pack says not before 2026-09-02 |
+> | 10 | **B10′** | ✅ **Answered by measurement**, not by ruling — the filter was read |
+>
+> ⚠️ **Item 10's answer inverted its own premise.** The question assumed a filter
+> was trashing the alarm mail. The filter was read in Steve's browser on
+> 2026-08-30: it stars, labels and marks important, and has **no delete action**.
+> Seven alarms were restored from Trash the same session. What trashes them is
+> not a rule, so "remove the rule" was never the remedy — see
+> `deferred.the-alarm-of-record-delivers-to-trash`.
+
 
 Ten items. **A1.3 goes first because it heads Sprint 2's critical path** — nothing in the demand
 lane can be drafted until it is answered.
@@ -146,9 +173,12 @@ Retire, or re-seed a demo account. `scripts/demo-run.ts` was bannered HISTORICAL
 (B37): it needs a demo-owner session cookie that cannot be minted since `TOTP_SECRET` was retired.
 *Default:* **retire**, recording the reason and replacement in `docs/retired-surface.md`.
 
-**8. D3.3 fallback — if A0 has not happened by the restore drill.**
-Does a disposable item created *before* the backup satisfy criterion 3?
-*Default:* **wait for A0** (the drill is due 2026-11-08, a ceiling, so there is room).
+**~~8. D3.3 fallback — if A0 has not happened by the restore drill.~~** ✅ **STRUCK 2026-08-30 — MOOT.**
+A0 happened on 2026-08-29: the owner's vault holds a real item with real ciphertext and a wrapped
+KMS key, so criterion 3 is satisfied by the real thing and the disposable-item fallback is
+unnecessary. Struck with its date and reason rather than left to be re-read at a later sitting —
+which is what would have happened, because a resolved question and an open one look identical in a
+list.
 
 ### Batch 4 — the two that depend on a measurement not yet taken
 

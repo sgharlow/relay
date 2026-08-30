@@ -42,6 +42,7 @@
  * Requirements: J4-R1, 3.1, 3.2
  */
 
+import { query } from '../db/connection';
 import { ValidationError } from '../validation';
 import {
   assertWithinRecipientCap,
@@ -174,6 +175,41 @@ export async function addPerson(
   }
 
   const key = normaliseEmail(input.email);
+
+  /*
+    🔴 AN OWNER MAY NOT NAME THEMSELVES. Ruled 2026-08-30 (Sitting D-1, B15.4).
+
+    The runtime hole was already closed: `isEligibleVerifier` refuses to COUNT an
+    owner toward their own quorum (rule 7 — an owner is not an independent
+    attestation about themselves), and `computeCoverage` does not credit them
+    either. So nothing unsafe could happen.
+
+    What was open is what the SCREEN then says. The row could still be created,
+    and once created it appears in the roster, in the coverage matrix and in the
+    circle count — so a vault with one person in it reads as a vault with two,
+    and the readiness sentence is computed over a circle that is one person
+    smaller than it looks. That is the false-green shape this codebase keeps
+    finding: not a wrong permission, a wrong impression.
+
+    Refused HERE, at creation, rather than filtered at every read. A row that
+    cannot exist needs no consumer to remember it might. Safety by structure.
+
+    ⚠️ Compared on the NORMALISED address, the same key the duplicate check uses
+    two lines down — otherwise `Steve@Example.com` walks past a check written
+    against `steve@example.com`.
+  */
+  const owner = await query<{ email: string }>(`SELECT email FROM users WHERE id = $1 LIMIT 1`, [
+    ownerId,
+  ]);
+  const ownerEmail = owner.rows[0]?.email;
+  if (ownerEmail && normaliseEmail(ownerEmail) === key) {
+    throw new ValidationError(
+      'That is your own address. Name somebody else — a plan needs a person other than you, ' +
+        'and your own answer could not count toward it.',
+      'email',
+    );
+  }
+
   const existing = (await listPeople(ownerId)).find((p) => normaliseEmail(p.email) === key) ?? null;
 
   // Captured as locals so the creates below need no non-null assertion — the
