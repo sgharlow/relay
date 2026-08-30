@@ -63,10 +63,32 @@
  * first rung lands 2026-09-21, and it will be the first reminder this product
  * has ever sent to anybody.
  *
- * ⚠️ The reminder mode asserts the AUDIT ROW, not delivery. The disposable owner
- * is on a reserved domain, so `DEV_MAIL_ALLOWLIST` refuses the send and that
- * refusal is correct - no mail leaves for `@relay.test`. What is being proven is
- * that the ladder RUNS and RECORDS, which is the half that has never happened.
+ * 🔴 AND THE REMINDER MODE CANNOT ACTUALLY PROVE THE LADDER. This paragraph used
+ * to claim it asserted "the AUDIT ROW, not delivery ... what is being proven is
+ * that the ladder RUNS and RECORDS". That was wrong, and the walk was run before
+ * anyone checked it - it reported a red FAIL against a product that had done
+ * nothing wrong (2026-08-29).
+ *
+ * `sweepCheckinReminders` writes its audit row ONLY on successful delivery:
+ *
+ *     if (!delivered) continue;
+ *     await writeAuditEntry(...)
+ *
+ * and that ordering is deliberate, with its reason in place - the row is a
+ * do-not-repeat marker, so "nothing was delivered" must leave nothing to repeat
+ * and let the next sweep try again. Meanwhile `lib/notify/email.ts` refuses
+ * reserved TLDs unconditionally ("`.test` is reserved and can never receive
+ * mail"). A disposable owner therefore CANNOT produce the row, by two correct
+ * designs meeting.
+ *
+ * So reminder mode proves the PRECONDITIONS - that such an owner is a candidate,
+ * is in the right window, and is NOT escalated - and it stops there, loudly,
+ * rather than asserting something it structurally cannot observe.
+ *
+ * ⚠️ THE REAL PROOF IS DATED AND BELONGS TO A REAL OWNER. The ladder's first
+ * firing will be the live owner's 75% rung, 2026-09-21T15:49Z, to a deliverable
+ * address. That is the only way this mechanism can be seen working, and the
+ * thing worth building before then is something that NOTICES whether it fired.
  *
  * Usage:
  *   npx tsx --env-file=.env.local scripts/e2e-sweep.ts
@@ -314,35 +336,44 @@ async function main(): Promise<void> {
       );
 
       R.check(
-        '🔴 THE POINT: the check-in reminder ladder FIRED — first time for any owner, ever',
-        reminders.rows.some((r) => r.action === 'owner_checkin_reminder_first'),
-        reminders.rows.map((r) => `${r.actor}:${r.action}`).join(' ') || 'no reminder rows',
-      );
-
-      R.check(
-        'it was written by the cron, not by anything local',
-        reminders.rows.every((r) => r.actor === 'system'),
-        reminders.rows.map((r) => r.actor).join(',') || '(none)',
-      );
-
-      R.check(
-        'only the 75% rung fired — not both at once',
-        !reminders.rows.some((r) => r.action === 'owner_checkin_reminder_final'),
-        reminders.rows.length + ' reminder row(s)',
-      );
-
-      R.check(
-        'and the trigger did NOT move — a nudge is not an escalation',
+        'the trigger did NOT move — a nudge is not an escalation',
         after?.state === 'armed',
         `state=${after?.state}`,
       );
 
-      await closeAll([
-        { actor: verifier, kind: 'contact' },
-        { actor: owner, kind: 'owner' },
-      ]);
-      R.finish();
-      await closeAllPools();
+      /*
+        Everything above this point is provable with a disposable owner. The
+        firing itself is not, and saying so is the honest end of this walk rather
+        than a red check against a blameless product.
+      */
+      const undeliverable = /\.(test|invalid|example|localhost)$/i.test(owner.email.split('@')[1] ?? '');
+      R.check(
+        'the reminder audit row is absent — EXPECTED, and not a defect',
+        !reminders.rows.length && undeliverable,
+        undeliverable
+          ? 'reserved TLD: no delivery is possible, so no do-not-repeat row is written'
+          : `unexpected: ${reminders.rows.map((r) => r.action).join(',') || 'none'}`,
+      );
+
+      console.log('\n' + '='.repeat(72));
+      console.log('WHAT THIS WALK CAN AND CANNOT SHOW');
+      console.log('='.repeat(72));
+      console.log('  PROVEN: an owner in the 50-100% window, holding an ARMED trigger, is a');
+      console.log('    reminder candidate and is NOT escalated by the tick that passes over them.');
+      console.log('  NOT PROVEN, and not provable here: that the ladder SENDS. The audit row is');
+      console.log('    written only on successful delivery (checkin-reminder.ts, deliberately),');
+      console.log('    and email.ts refuses reserved TLDs unconditionally. Two correct designs');
+      console.log('    meet, and a disposable owner can never satisfy both.');
+      console.log('  THE REAL PROOF: the live owner\'s 75% rung, 2026-09-21T15:49Z, to a');
+      console.log('    deliverable address. Build something that NOTICES it before then.');
+      console.log('='.repeat(72));
+
+      /*
+        Return into the shared `finally`, which owns cleanup. An earlier version
+        cleaned up here AND fell through to the finally, so every account was
+        closed twice and the second attempt logged a 401 - harmless, and exactly
+        the sort of noise that trains a reader to skim a cleanup block.
+      */
       return;
     }
 

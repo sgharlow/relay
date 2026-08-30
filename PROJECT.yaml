@@ -4608,10 +4608,35 @@ deferred:
       cron - nothing local may call the sweep, because `CRON_SECRET` is Vercel-only. Assert the
       `owner_checkin_reminder_first` audit row and the send attempt. The walk's safety refusal (no
       other owner already overdue) applies unchanged.
+    🔴_it_CANNOT_be_walked_the_way_the_sweep_was_and_this_was_learned_by_trying: >-
+      Attempted 2026-08-29 with `verify:reminder` - a disposable owner backdated to 80% of a
+      one-day interval, waiting for a real cron tick. The tick came and the walk reported the
+      ladder had NOT fired. It had not, and the product was blameless.
+      `sweepCheckinReminders` writes its audit row ONLY on successful delivery -
+      `if (!delivered) continue;` then `writeAuditEntry(...)` - and that ordering is deliberate,
+      with its reason in place: the row is a DO-NOT-REPEAT marker, so "nothing was delivered" must
+      leave nothing to repeat and let the next sweep try again. Meanwhile `lib/notify/email.ts`
+      refuses reserved TLDs unconditionally ("`.test` is reserved and can never receive mail").
+      Two correct designs meet, and a disposable owner can satisfy neither side: no delivery, so
+      no row, so nothing to assert.
+      ⚠️ The walk's own header had CLAIMED it "asserts the AUDIT ROW, not delivery ... what is
+      being proven is that the ladder RUNS and RECORDS". That caveat was written and then the
+      assertion it invalidates was built on top of it, and the walk was run before anyone checked.
+      Fourth error of this family in one session: reasoning about a gate without reading it.
+    what_the_walk_now_does: >-
+      Proves the PRECONDITIONS and stops, loudly: that such an owner is a reminder candidate, is
+      in the 50-100% window (past the 75% rung and short of overdue - an owner already overdue is
+      not a candidate at all), and is NOT escalated by the tick that passes over them. It then
+      prints what it can and cannot show, rather than leaving a red check against a blameless
+      product.
     ends_when: >-
-      An `owner_checkin_reminder_*` audit row exists that a production cron wrote, and the mail leg
-      is either confirmed delivered or its refusal (the `DEV_MAIL_ALLOWLIST` guard) is recorded as
-      the reason. Then B15.1 is closed in both halves.
+      ⚠️ REVISED. The ladder can only be seen working by a DELIVERABLE address, which means a real
+      owner. That is now dated: the live owner's 75% rung, **2026-09-21T15:49Z**, the first
+      check-in reminder this product will ever have sent.
+      So this closes when that firing is OBSERVED - an `owner_checkin_reminder_first` row for the
+      live owner, and the mail in the inbox - and the thing worth building BEFORE then is
+      something that notices whether it fired, because the failure is silent by design and nobody
+      will be watching at 15:49 on a Monday.
 
   - id: the-iam-wall-is-the-only-wall-nothing-schedules     # ROADMAP B16, residue
     owner: steve                          # a new IAM role is infrastructure; claude builds after
