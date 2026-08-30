@@ -693,6 +693,9 @@ answer either way.
   escalation error so rung 0 still renders, which makes that path's failure mode completely silent.
   The assertion that matters is `received_confirmations === 0` after escalation — a lapse is the
   ABSENCE of a signal, and if that ever reads 1, silence has been promoted to consent.
+  ✅ **The cron half landed too, 22/22**: at **2026-08-30T06:00:59Z** production's own hourly
+  Vercel cron ticked and escalated the request with nothing local calling it. Both paths that can
+  fire this transition have now been watched, on the same day, by the same script.
 
 **P1.3 — B15.5**, the `verifier-context.ts` action fix. ✅ **BUILT 2026-08-30 — and it was not the
 two-line fix this file called it.** The known half was the dead action name. The half nobody had

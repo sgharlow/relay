@@ -4843,6 +4843,14 @@ deferred:
         auto-satisfies the quorum on approval because an owner agreeing is stronger than third
         parties attesting for them, but A LAPSE IS THE ABSENCE OF A SIGNAL. If this ever reads 1,
         silence has been promoted to consent.
+      and_the_CRON_half_2026_08_30T06_00_59Z: >-
+        LIVE-PROVEN TOO, 22/22, with nothing local calling the sweep - CRON_SECRET lives only in
+        Vercel, so there is no way to shortcut it. A second disposable owner was set up the same
+        way and the walk then polled once a minute for 12 minutes. At 06:00:59.895765Z the
+        production Vercel cron ticked on its own and the row moved: request awaiting_owner to
+        escalated, release armed v1 to grace v3, initiated_by challenge_lapsed:45e982e4, and
+        received_confirmations still 0. Both paths that can fire this transition have now been
+        watched, on the same day, by the same script.
       why_the_read_half_was_walked_too_and_not_only_the_cron: >-
         The ROADMAP names the cron. But `standby-resolve.ts` wraps its escalation call in a
         swallowing catch so rung 0 renders even when escalation cannot run - a correct choice that
