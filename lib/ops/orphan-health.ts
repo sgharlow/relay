@@ -72,23 +72,29 @@ import {
 export const MAX_AGE_HOURS = 24;
 
 /**
- * Dangling rows present on 2026-08-30, measured with `npm run verify:orphans`:
- * `verifier_codes.owner_id` 17, `break_glass_codes.owner_id` 10,
- * `recipient_codes.owner_id` 1.
+ * Dangling rows tolerated before this is a finding. **Zero, since 2026-08-30.**
  *
  * ⚠️ THIS IS A RECORD OF A KNOWN STATE, NOT A TOLERANCE, and the distinction is
- * the reason it is a named constant with a date rather than a magic number. The
- * rows are historical residue of a hand-written `DELETE FROM users` that did not
- * run the cascade; `verify:orphans` fails on them today and should; their
- * disposition is Steve's open ruling (D20, "twice confirmed as inert residue").
+ * the reason it is a named constant with a date rather than a magic number.
  *
- * The probe's job is to notice something NEW. Anything above this number is new.
+ * It was **28** when this file was written — `verifier_codes` 17,
+ * `break_glass_codes` 10, `recipient_codes` 1 — historical residue of a
+ * hand-written `DELETE FROM users` that did not run the cascade. That set was
+ * ruled PURGE at the D-1 sitting on 2026-08-30 and purged the same day: 28
+ * counted, 28 deleted, 0 remaining, with `verify:orphans` exiting 0 afterwards
+ * for the first time. So the honest baseline is now zero and any dangling row is
+ * new by definition.
  *
- * ⚠️ IF THE RULING PURGES THEM, LOWER THIS TO 0 IN THE SAME COMMIT. A baseline
- * left above the real count is a blind spot exactly the size of the difference —
- * which is how a tolerance becomes a place for a leak to hide.
+ * The comment that stood here said: *"IF THE RULING PURGES THEM, LOWER THIS TO 0
+ * IN THE SAME COMMIT. A baseline left above the real count is a blind spot
+ * exactly the size of the difference — which is how a tolerance becomes a place
+ * for a leak to hide."* This is that commit.
+ *
+ * ⚠️ DO NOT RAISE IT TO SILENCE A FINDING. A non-zero value here is only ever a
+ * record of rows that exist and have been ruled on; anything else is a leak with
+ * permission.
  */
-export const DANGLING_BASELINE = 28;
+export const DANGLING_BASELINE = 0;
 
 export interface OrphanHealth {
   healthy: boolean;
