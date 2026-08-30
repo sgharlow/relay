@@ -3206,6 +3206,46 @@ deferred:
       and the engineering lane is verifying machinery against fixtures because there is nothing real
       for it to act on. **A0 is what makes every other guarantee in this file non-vacuous.** It is
       ~20 minutes and it has outlived a month of week-long tasks.
+    closed:
+      date: 2026-08-29
+      by: steve                          # co-piloted; every write was his, in his own browser
+      what_landed: >-
+        `npm run verify:dogfood` reads **READY** for the first time - all six checks green. Read
+        from the database rather than from the screens, because this product's recurring defect is
+        the two disagreeing:
+        vault_items 1 - "gmail", `secret_kinds="password,username"`, REAL ciphertext AND a wrapped
+        KMS data key, so the browser encrypted it and KMS wrapped the key; nothing stored in clear.
+        recipients 1 - April <sgharlow+april@gmail.com>.
+        verifiers 1 - Ben <sgharlow+ben@gmail.com>.
+        access_rules 1 - April -> "gmail", trigger `emergency`, scope `view`, **reversible**.
+        release_state 1 - `emergency` ARMED, required_confirmations 1, case RLY-X7T5-2TQF.
+        No email clash between April and Ben, so the rule that nobody helps authorise their own
+        access is satisfied.
+      what_it_unblocks: >-
+        `npm run invite:cohort` now has something real to invite people into (A3, and the refusal
+        that guarded it stands down). `gates.g1-arms-length-demand`'s stated precondition is met.
+        `gates.d3-restore-drill` criterion 3 becomes satisfiable. And the framing in ROADMAP §0.5 -
+        that the custodial obligation was owed to nobody, and every guarantee in the file was
+        protecting an empty box - is now FALSE, in the good direction, for the first time.
+      🔴_what_is_STILL_not_true_and_matters: >-
+        THE PLAN CANNOT COMPLETE A RELEASE. Measured with the product's own
+        `countEligibleVerifiers`: verifier rows 1, **ELIGIBLE verifiers M = 0**, required N = 1 -
+        because `isEligibleVerifier` counts only `standby_state='confirmed'` and Ben has not
+        accepted. So if the emergency fired today it would go ARMED -> PENDING -> GRACE and sit
+        there permanently; Ben would be mailed, his answer recorded, and it would not count.
+        Nothing leaks - GRACE is where verifiers are ASKED, not where access opens - but the
+        dead-man is armed and cannot finish. Closing that loop needs "Give them a code" -> Ben
+        claims -> Steve confirms him, which is the step that moves M from 0 to 1.
+      also_still_unexercised: >-
+        `factors_required` is NULL on the item. The declaration path that migration 035 added, and
+        that shipped fully unit-tested and completely inert for a day, has still never been used by
+        a real owner.
+      the_dates_this_created: >-
+        The check-in reset `last_active_at` to 2026-08-30T03:31Z (every A0 action is a POST and
+        `owner-route.ts` records deliberate activity on each), so the ladder and the sweep both
+        moved out ~3 weeks: 75% rung **2026-09-21T15:49Z**, 90% rung 2026-09-26T03:49Z, overdue
+        **2026-09-29T03:49Z**. The 75% rung will be the first check-in reminder this product has
+        ever sent, to a real address.
     a_correction_worth_keeping: >-
       It was briefly stated on 2026-08-29 that the sweep would "arm their triggers, unattended, at
       night" when the owner goes overdue on ~2026-09-09. That is WRONG and the correction is the
@@ -4445,6 +4485,57 @@ deferred:
       dashboards already say there is nothing wrong. Getting there means a false-positive report
       submitted and accepted, and probably some domain reputation accruing. If Google's response
       names content we control, that ships first and the report is re-sent after.
+
+  - id: the-readiness-banner-goes-stale-for-the-whole-session
+    owner: claude
+    opened: 2026-08-29
+    found_by: >-
+      A0, being done for the first time by a real owner. Steve built his entire plan - item,
+      recipient, access rule, check-in - and the banner told him at EVERY step that his vault was
+      empty and nobody was named. Screenshots at 20:28 and 20:31 show the vault listing "1 item ·
+      gmail" directly beneath a banner reading "Your vault is empty - there is nothing to give
+      anyone access to", and the triggers page at 20:31 still saying "Nobody is named to receive
+      access" with April already in the circle and an ARMED emergency trigger on screen.
+    what: >-
+      `ReadinessBanner` lives in `src/app/(owner)/layout.tsx` and fetches `/api/readiness` exactly
+      ONCE, on mount. Its only other refresh is a subscription to `onFactorsDeclared`. Adding a
+      vault item, a recipient, a verifier or an access rule refreshes NONE of them.
+      Because it is in the LAYOUT, App Router does not remount it when navigating between owner
+      pages - so the banner keeps whatever was true when the owner first entered the owner area,
+      for the rest of the session, until a hard reload.
+    the_logic_is_correct_and_that_is_the_point: >-
+      `lib/vault/readiness.ts` queries live counts and its blocker rules are right. Nothing is
+      wrong with the assessment; the component simply never asks again. So this is not a wrong
+      answer, it is a right answer from the wrong moment - which is harder to notice, because
+      every sentence in it is one the product genuinely said at some point.
+    why_it_matters_more_than_a_cosmetic_bug: >-
+      This is the surface that tells an owner whether their plan would actually work, on the
+      dashboard they use to build it. An owner who trusted it during setup would conclude nothing
+      had saved - and the two most likely reactions are to re-enter everything, or to give up. It
+      also lands squarely in the custodial clause "what the product says about itself is true",
+      about the one screen where that clause is most load-bearing.
+      ⚠️ The component's own header anticipates exactly this failure for a NEIGHBOURING case: it
+      documents adding the `onFactorsDeclared` subscription because otherwise "the surface this
+      component's own comments call authoritative would be the stale one". The fix was made for
+      one mutation and not generalised to the other four.
+    measured_2026_08_29: >-
+      Live counts at the time of the stale banner: items=1, recipients=1, rules=1, verifiers=0.
+      Applying `assessReadiness`'s own rules to those counts yields ONE blocker, about verifiers -
+      not the three the screen was showing. `npm run verify:dogfood` agreed independently: "NOT
+      READY - 1 piece(s) missing: at least one verifier."
+    candidate_fixes_not_yet_chosen: >-
+      (1) Re-fetch on pathname change - cheapest, and it would have covered this case since Steve
+      navigated between /vault, /circle and /triggers. Does not cover a mutation made without
+      navigating.
+      (2) Generalise the existing event-bus pattern: emit on item / recipient / verifier / rule
+      writes the way `onFactorsDeclared` already does. Most correct, most edits.
+      (3) `router.refresh()` after mutations, if the banner is moved to a server component.
+      Not chosen here because A0 was the task and a UI change mid-A0 would have muddied what was
+      being verified.
+    ends_when: >-
+      Adding an item, a recipient, a verifier or a rule updates the banner without a hard reload,
+      with a test that would fail if the subscription were removed - the same bar the
+      `onFactorsDeclared` fix met.
 
   - id: the-reminder-ladder-has-never-fired                   # ROADMAP B15.1, the ladder half
     owner: claude                         # the walk; steve decides whether to check in
