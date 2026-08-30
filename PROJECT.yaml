@@ -4776,6 +4776,181 @@ deferred:
         after: 0 reserved-domain accounts remain, and the dangling-row total is 28 - unchanged
         from before the walks, so the cascade held across every attempt.
 
+    b15_2_the_verifier_said_NO_and_the_release_stopped:
+      date: 2026-08-30
+      by: claude
+      state: "LIVE-PROVEN. `npm run verify:decision` (`scripts/e2e-decision.ts`), 27/27 checks."
+      what_was_observed: >-
+        A disposable owner with THREE named verifiers, all three claimed and only TWO confirmed -
+        so `countEligibleVerifiers` reads M=2, not 3 - and a 2-of-2 quorum. V1 ABSTAINED: recorded,
+        counted toward neither side, ledger row written, `verifier_abstained` in the chain, and the
+        release STILL OPEN. V2 DENIED: `verifier_denied` with detail `denials=1 outcome=halt`,
+        `release_halted_by_denial` written by `system`, and the row back at ARMED with nothing
+        released. V3 - claimed but NOT confirmed - DENIED and was answered `not_counted`, the
+        denial counter did not move, and the release stayed open. Seconds rather than an hour:
+        every transition is a real HTTP call and no cron is involved.
+      why_the_abstain_assertion_is_the_discriminating_one: >-
+        On a 2-of-2 with M=2, ONE denial halts. So if abstain were ever folded into the denial
+        count - the simplification a refactor reaches for, since both are "not a confirmation" -
+        that same abstention would halt the release. Asserting the release is STILL OPEN after an
+        abstention is the assertion that fails the day somebody conflates them.
+      the_bug_this_walk_could_not_have_been_fooled_by: >-
+        Until 2026-08-13 M counted the whole roster rather than the eligible pool, so on any
+        roster with an unverified name the halt threshold could NEVER be crossed: both eligible
+        verifiers deny, the quorum is factually dead, and the release waits forever. That bug
+        passed every unit test it had, because the tests supplied M directly. This walk builds the
+        roster through the real API and asserts M reads 2 with three names on it.
+      the_ledger_placement_that_is_load_bearing: >-
+        V3's non-counting answer is written to `audit_log` and NOT to `verifier_confirmations`.
+        The walk asserts the LEDGER stays empty for them, because the idempotency intent-read keys
+        on that table - a non-counting row there would make every later attempt return `duplicate`,
+        so somebody who answered before the owner verified them could never count, permanently and
+        silently. That is the ordinary beta sequence, not an edge case.
+      two_of_my_own_assertions_were_WRONG: >-
+        WARNING - "the denial was counted" read `received_denials` AFTER the halt and FAILED
+        against a system doing exactly the right thing: `safeResetToArmed` clears the bookkeeping,
+        and a denial surviving the re-arm would be the 2026-08-21 stale-vote defect facing the
+        other way. The counter is momentary exactly as PENDING is, so the honest witness is the
+        audit detail. Same family as `e2e-sweep` asserting `state === 'pending'`. Both mistakes
+        are kept as comments in the walk rather than quietly corrected.
+
+    b15_3_the_owner_never_answered_and_the_verifiers_were_asked:
+      date: 2026-08-30
+      by: claude
+      state: "LIVE-PROVEN (derive-on-read half). `npm run verify:escalation`, 22/22 checks."
+      what_was_observed: >-
+        A disposable owner, a claimed recipient, a CONFIRMED verifier, a real encrypted item and an
+        access rule. The recipient asked; the request landed `awaiting_owner` and NO verifier was
+        disturbed. `expires_at` was backdated by one minute (the one mutation, scoped by request
+        id - the emergency challenge window is 2h). The VERIFIER then loaded `/api/standby`, and
+        section 4.4's derive-on-read half fired: request became `escalated`, release armed to
+        grace, OCC version +2, `initiated_by = challenge_lapsed:<requestId>`,
+        `system:challenge_lapsed:request_escalated_to_verifiers` plus both `release_transition_*`
+        entries by `system`, and the verifier's own standby view then reported `anythingOpen:
+        true` - i.e. they were actually brought in, which is the half that was a lie until
+        2026-08-21.
+      the_assertion_that_separates_a_lapse_from_CONSENT: >-
+        `received_confirmations` is 0 after the escalation, and the walk asserts it. The module's
+        header says this must never be copied from the owner-consent path: `respondToChallenge`
+        auto-satisfies the quorum on approval because an owner agreeing is stronger than third
+        parties attesting for them, but A LAPSE IS THE ABSENCE OF A SIGNAL. If this ever reads 1,
+        silence has been promoted to consent.
+      why_the_read_half_was_walked_too_and_not_only_the_cron: >-
+        The ROADMAP names the cron. But `standby-resolve.ts` wraps its escalation call in a
+        swallowing catch so rung 0 renders even when escalation cannot run - a correct choice that
+        makes THIS path's failure mode completely silent: the dashboard looks right and the release
+        never advances. Two paths, two failure modes, one walk with a `--mode` flag.
+
+    b15_5_the_verifier_could_never_be_shown_the_reminder:
+      date: 2026-08-30
+      by: claude
+      state: "BUILT and unit-proven; the row it renders cannot exist until the ladder fires."
+      it_was_not_the_two_line_fix_this_register_recorded: >-
+        The known half was the action name (`checkin_reminder_sent`, which nothing writes). The
+        half nobody had looked at: the whole read was keyed on `entity_id = <release state id>`,
+        while `sweepCheckinReminders` writes against the OWNER with no `entityId` at all - so
+        `entity_id` is NULL on every reminder row there will ever be. Correcting the action name
+        alone would have left the row exactly as unreachable AND WOULD HAVE LOOKED LIKE A FIX.
+      the_test_that_passed_for_nine_days_against_an_impossible_query: >-
+        WARNING - `verifier-context.test.ts` already had a test named "summarises what has already
+        been attempted" which passed throughout, because a mocked `query` returns the fixture
+        whatever it was asked for. The new tests pin the PARAMETERS that reached the database.
+        Mutation-checked: restoring the old query turns 6 of them red.
+      and_the_label_map_was_the_same_defect_facing_the_other_way: >-
+        `VerifyClient.tsx` mapped `checkin_reminder_sent` to "We tried to reach them" - a promise
+        with no producer, which reads as working code. `lib/ops/verify-timeline-is-labelled.test.ts`
+        now binds the query and the label map in BOTH directions. The JSX falls back to printing
+        the raw action, so an unlabelled action would show `owner_checkin_reminder_first` to
+        somebody deciding whether a person is incapacitated.
+
+    b15_1_the_other_half_the_observer:
+      date: 2026-08-30
+      by: claude
+      state: "LIVE-PROVEN both green and red, against production, writing nothing."
+      what_was_built: >-
+        `/api/health/reminders` plus `.github/workflows/reminder-ladder-monitor.yml` (daily) plus
+        `npm run check:ladder`. The question asked is the OUTCOME one - is there an owner for whom
+        a rung has been due longer than a tick with nothing in the audit log to show for it -
+        rather than the mechanism one `/api/health/scheduler` already answers. It calls `dueRung`
+        rather than re-expressing 75%/90%, so the monitor cannot drift from the rule because it IS
+        the rule; and it deliberately does NOT reuse `CANDIDATE_SQL`'s 50% floor, because a monitor
+        that inherits the suspect's assumptions would be blind to precisely the bug that floor's
+        own header warns about.
+      why_it_had_to_exist_before_2026_09_21: >-
+        `scripts/e2e-sweep.ts --mode reminder` established that a disposable owner can NEVER see
+        this ladder work - the audit row is written only on successful delivery and `email.ts`
+        refuses reserved TLDs. So the first firing happens to a real address, unattended, and
+        `sweepCheckinReminders` never throws, so failure is a 200, a healthy ledger and an owner
+        who is never warned. That commit named the fix: "the thing worth building before then is
+        something that NOTICES whether it fired."
+      the_blind_spot_is_REPORTED_not_hidden: >-
+        At a 1-day interval the final rung's window is 2.4h, shorter than the 3h grace, so such an
+        owner tips past 100% - where `dueRung` correctly stops, because the dead-man owns them from
+        there - before this check may speak. Every response carries a `blind` array saying so. A
+        monitor returning a bare "healthy" for a question it cannot answer is worse than no
+        monitor. At the 30-day default there is no blind spot.
+      the_grace_is_3h_and_the_number_is_argued: >-
+        The sweep is hourly, so 1h is the floor; `/api/health/scheduler` calls itself unhealthy at
+        9000s (2.5h), so firing below that would be two mails for one cause. 3h starts just above
+        the point where the scheduler alarm has already spoken, which makes a red here mean the
+        sweep WAS running and the owner still was not warned.
+      measured_live_2026_08_30: >-
+        1 owner examined; `rungsEverRecorded` 0 - this product has never sent a check-in reminder
+        to anybody; next rungs 2026-09-21T15:49:04Z (75%) and 2026-09-26T03:49:04Z (90%) on a
+        30-day interval from `last_active_at` 2026-08-30T03:49:04Z. WARNING - DERIVE THESE, never
+        quote them: they move every time the owner signs in. `npm run check:ladder`.
+      proven_red_without_writing_anything: >-
+        `check:ladder -- --as-of 2026-09-22T00:00:00Z` applies the same rule to the same live rows
+        at a different moment and reports that the first rung has been due for 8h with no audit
+        row, exit 1. Built in rather than claimed - two sibling monitors carried comments saying
+        they could be proven on demand when their target was hard-coded and they could only ever
+        pass.
+
+    a_500_on_the_only_stop_control_found_by_b15_2:
+      date: 2026-08-30
+      by: claude
+      state: "FIXED, with a regression test and a live assertion in the walk."
+      what: >-
+        `scripts/e2e-decision.ts` posted to `/api/triggers/emergency/stand-down` - the URL shape
+        `/initiate` and `/config` take, where `[id]` is a trigger TYPE. Stand-down takes a
+        release_state UUID there, so the literal string reached the database as
+        `WHERE id = 'emergency'`; DSQL raised SQLSTATE 22P02, nothing caught it, and the route
+        answered 500. Confirmed rather than inferred - the cast was run directly against the
+        cluster and returned `invalid input syntax for type uuid`.
+      why_it_matters_more_than_a_status_code: >-
+        Stand-down is the product's ONLY stop control since `/cancel` was retired 2026-08-21, and
+        the route's own header says that if it stops working "an owner has no way at all to halt a
+        false alarm short of checking in." A 500 tells an owner in a hurry the same thing a
+        database outage would, and the two call for opposite responses. Same lesson
+        `buildVerifierContext` learned on 2026-08-08 when a verifier met a 500 in production.
+      the_fix_catches_rather_than_pre_validates: >-
+        A UUID regex on the argument was TRIED FIRST and breaks every fixture in
+        `rearm-clears-the-ledger.test.ts`, which uses ids like `rs-1` - a guard asserting a format
+        the suite does not use. Catching 22P02 is narrower and true. It does NOT swallow a real
+        outage: two tests pin that, because a blanket catch would turn a dead cluster into a
+        cheerful "not found" on the stop control.
+      what_it_does_NOT_fix: >-
+        The two URL shapes still differ - `/initiate` takes a trigger type and `/stand-down` takes
+        a release id. Unifying them is an API change, not a bug fix, and is not taken here. What
+        is fixed is the ANSWER.
+
+    a_hand_maintained_list_that_claimed_to_be_unavoidable:
+      date: 2026-08-30
+      by: claude
+      state: "FIXED - the set is derived from the directory."
+      what: >-
+        `lib/ops/alarm-of-record.test.ts` said it made the 60-day auto-disable trap "impossible to
+        add a fourth scheduled alarm without meeting". Its SCHEDULED set was four hand-written
+        names while `.github/workflows` had grown to six: `kms-wall.yml` and `cadence-watch.yml`
+        were both added afterwards and neither was ever added there. Both happen to carry the
+        account, so nothing was broken - what was broken is that the paragraph claimed a property
+        the code did not enforce, and a fifth and sixth alarm HAD already been added without
+        meeting the trap.
+      the_fix: >-
+        The set is now derived from any workflow carrying a `cron:` line, with a vacuity guard so a
+        detector that matches nothing fails loudly rather than passing on zero files. Proven by
+        planting: removing the phrase from the new reminder-ladder monitor turns it red by name.
+
   - id: dr-copy-jobs-have-no-absence-alarm                    # ROADMAP B17
     owner: steve                          # ~$0.10/mo, 5-gate; claude builds after the ruling
     opened: 2026-08-28

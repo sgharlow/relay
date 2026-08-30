@@ -262,6 +262,36 @@ npm run verify:decision # B15.2 — the verifier says NO. Abstain, deny, and the
                        # ⚠️ The denial counter reads 0 after a halt and that is CORRECT —
                        # safeResetToArmed clears the bookkeeping, so the honest witness is
                        # `verifier_denied`'s audit detail, not the column.
+npm run verify:escalation # B15.3 — J6 step 4c. The owner never answered, so the
+                       # verifiers get asked. `CHALLENGE_WINDOW_SECONDS` was documented
+                       # as "how long the owner gets to answer", `expires_at` was stored
+                       # NOT NULL and handed to the client, and for a long time NOTHING
+                       # READ IT — so an incapacitated owner's request sat in
+                       # `awaiting_owner` forever. It had been read as a notification
+                       # problem; it was a missing state transition.
+                       # TWO paths fire it and this walks BOTH, because they are
+                       # different code with different failure modes:
+                       #   --mode read  (default) the derive-on-read half — a verifier
+                       #     loads /api/standby and the lapse fires because somebody is
+                       #     looking (§4.4). Seconds, no cron. ⚠️ Its call is wrapped in
+                       #     a swallowing catch so rung 0 still renders, which makes this
+                       #     path's failure COMPLETELY silent: the dashboard looks right
+                       #     and the release never advances.
+                       #   --mode cron  the scheduled half, from the hourly heartbeat with
+                       #     nothing local calling it. Budget up to ~60 min of waiting.
+                       # 🔴 THE ASSERTION THAT MATTERS: `received_confirmations` is 0
+                       # after the escalation. `respondToChallenge` auto-satisfies the
+                       # quorum when an OWNER approves — deliberately, because an owner
+                       # agreeing is stronger than third parties attesting for them. A
+                       # LAPSE IS THE OPPOSITE: it is the absence of a signal. If that
+                       # ever reads 1, silence has been promoted to consent.
+                       # ⚠️ SAFETY: the cron sweep is not scoped to one owner, so the walk
+                       # REFUSES to run if anybody else has a lapsed awaiting_owner
+                       # request — the tick would escalate theirs to their real verifiers.
+                       # ⚠️ Backdates ONE column (`expires_at`) scoped to its own request
+                       # id; the emergency challenge window is 2h. Everything after that —
+                       # the CAS claim, both transitions, the audit entries, the verifier
+                       # notices — is the real thing.
 npm run check:cadence  # are the scheduled monitors actually RUNNING? Counts each
                        # high-frequency workflow's scheduled runs over the trailing 24h
                        # and fails below 25% of nominal. No credentials — reads the

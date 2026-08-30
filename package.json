@@ -26,6 +26,7 @@
     "verify:sweep": "npx tsx --env-file=.env.local scripts/e2e-sweep.ts",
     "verify:reminder": "npx tsx --env-file=.env.local scripts/e2e-sweep.ts --mode reminder",
     "verify:decision": "npx tsx --env-file=.env.local scripts/e2e-decision.ts",
+    "verify:escalation": "npx tsx --env-file=.env.local scripts/e2e-escalation.ts",
     "verify:schema": "npx tsx --env-file=.env.ro scripts/verify-schema.ts",
     "verify:funnel": "npx tsx scripts/verify-funnel.ts",
     "verify:stepup": "npx tsx --env-file=.env.local scripts/e2e-stepup.ts",
