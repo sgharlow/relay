@@ -63,16 +63,24 @@ ladder_evidence:
     HISTORICAL, AND NARROWER THAN THE WORD SOUNDS. Recorded 2026-08-20 as ROADMAP.md sprint 1
     item 1.4. `dogfooded` here means the mechanism was demonstrated end to end against production
     on the date above. It does NOT mean Relay is in continuous use, and the difference had gone
-    unstated for twelve days. Measured against production on 2026-08-20: one owner account, zero
-    vault items, zero recipients, zero verifiers, zero invitations, and no release that has ever
-    left `armed` — that account holds a paid subscription and an empty vault. The rung is therefore
-    a claim about a demonstration, not about ongoing use. It stays `dogfooded` because promotion to
-    `customer-used` needs an arms-length person and G1 gates that.
-    ⚠️ Re-earning it present-tense is ROADMAP.md §2 A0 / §6 Sitting A (was "sprint 1 items
-    1.1-1.3" before the rev-4 renumbering of 2026-08-27), and it needs Steve: the
-    owner's vault has to hold something real before the beta cohort can be invited to stand by
-    for it. Seeding it with `scripts/reset-demo.ts` fixtures would satisfy a count and prove
-    nothing, which is why ROADMAP.md §6 bars it explicitly.
+    unstated for twelve days. The rung stays `dogfooded` because promotion to `customer-used`
+    needs an ARMS-LENGTH person and G1 gates that; A0 is Steve, who is not arms-length.
+    ⚠️ THE 2026-08-20 MEASUREMENT THAT USED TO SIT HERE IS GONE, AND ITS REMOVAL IS THE POINT.
+    It read "one owner account, zero vault items, zero recipients, zero verifiers, zero
+    invitations, and no release that has ever left `armed` — that account holds a paid
+    subscription and an empty vault", and it went on to say re-earning the rung present-tense
+    "needs Steve". A0 CLOSED on 2026-08-29: Steve populated the vault himself, every write in
+    his own browser, and `verify:dogfood` has read READY since. So this block spent a day
+    describing an empty box that is no longer empty and naming a blocker that had been cleared
+    — the same drift found the same day in ROADMAP.md P2.1, which was still telling somebody to
+    do A0 first. Two documents, one closure, neither updated by it.
+    RE-MEASURED LIVE 2026-08-30 (`npm run verify:dogfood`): 1 owner, 1 vault item, 1 recipient,
+    1 verifier, 1 access rule, 1 configured trigger. ⚠️ DO NOT QUOTE THOSE SIX NUMBERS — derive
+    them; that is what the command is for, and a hand-copied count is what went stale above.
+    ⚠️ WHAT IS STILL TRUE, and is the reason the rung did not move: a populated vault is not
+    ongoing use, and Steve standing by for himself is not an arms-length person. Seeding with
+    `scripts/reset-demo.ts` fixtures would have satisfied the counts and proved nothing, which
+    is why ROADMAP.md §6 bars it explicitly — and A0 was done by hand instead.
 
 derived:
   test_count: "npx vitest run 2>&1 | grep -E 'Tests .* passed' | tail -1   # static proxy: grep -rE '\\b(it|test)\\(' --include='*.test.*' lib src | wc -l"
