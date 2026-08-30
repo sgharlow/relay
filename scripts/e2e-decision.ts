@@ -57,6 +57,7 @@
  * Requirements: J7-R5, J7-R7, J7-R8, J7-R9, J7-R10; B15.2
  */
 import { issueVerifierToken } from '../lib/auth/verifier-token';
+import { TIMELINE_ACTIONS } from '../lib/release/verifier-context';
 import { query, closeAllPools } from '../lib/db/connection';
 import { Actor, Results, signUp, signIn, claim, closeAll, undeliverable, BASE } from './walk-harness';
 
@@ -173,6 +174,47 @@ async function main(): Promise<void> {
       `state=${row.state} v${row.version}`,
     );
     const releaseId = row.id;
+
+    /*
+      🔴 B15.5 THROUGH THE REAL ROUTE. `buildVerifierContext` gained a rewritten
+      audit read on 2026-08-30 — two keyings in one statement, with `= ANY()`
+      over two text arrays — and until this call it had run against a MOCKED
+      `query` and nothing else. A SQL or type error there would not have shown up
+      in any test; it would have 500d on the verifier decision page, which is the
+      highest-stakes screen in the product, during somebody's emergency.
+
+      So the walk fetches the real `GET /api/verify/<token>` and asserts the
+      timeline actually carries the release event that just happened. That
+      proves the `entity_id` half of the new query returns rows through the real
+      stack against the real engine.
+
+      ⚠️ IT CANNOT PROVE THE REMINDER HALF, and saying so is the honest end of
+      it: a reminder row is written only on successful delivery, and this owner
+      is on a reserved TLD. The reminder half is covered by the unit tests that
+      pin the query parameters, and by the fact that both branches are one
+      statement — if the statement executes, both branches parsed.
+    */
+    const ctxRes = await v1.call(`/api/verify/${await issueVerifierToken(ids[0], releaseId)}`);
+    const ctx = ctxRes.body as {
+      ownerLabel?: string;
+      escalationHistory?: { action: string; ts: string }[];
+      itemCount?: number;
+    };
+    R.check(
+      'the verifier decision context renders through the real route',
+      ctxRes.status === 200 && Boolean(ctx.ownerLabel),
+      `HTTP ${ctxRes.status} ownerLabel=${String(ctx.ownerLabel)}`,
+    );
+    R.check(
+      '🔴 the rewritten audit read returns the release event — the entity_id half works on DSQL',
+      (ctx.escalationHistory ?? []).some((h) => h.action === 'release_transition_pending'),
+      (ctx.escalationHistory ?? []).map((h) => h.action).join(',') || 'empty timeline',
+    );
+    R.check(
+      'and every action it returned has a sentence on the screen, not a raw identifier',
+      (ctx.escalationHistory ?? []).every((h) => TIMELINE_ACTIONS.includes(h.action)),
+      (ctx.escalationHistory ?? []).map((h) => h.action).join(',') || 'none',
+    );
 
     // ================= PART 1: abstaining is not a quiet denial ==============
     const abstained = await owner.post(`/api/triggers/${releaseId}/confirm`, {
