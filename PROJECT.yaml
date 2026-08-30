@@ -1989,6 +1989,44 @@ deferred:
         rua is on the SAME domain as the policy, no external authorisation record is required."
       ends_when: "A report arrives at dmarc@relaystandby.com dated after 2026-08-30. Expected
         within ~24h; until one does, this is `wired`, not `live-proven`."
+  # OPENED 2026-08-30 by looking, after Steve said "the email was never received".
+  # It was never SENT. That is a different finding and a worse one.
+  # ═══════════════════════════════════════════════════════════════════════════
+  - id: adding-a-person-to-the-circle-does-not-invite-them
+    owner: steve   # the sends; the display defect below is claude's
+    opened: 2026-08-30
+    what: "A0.2 was carried for two days as 'Ben has not accepted his invitation'. There is no
+      invitation. Adding a person on /circle writes the roster row and nothing else; creating and
+      emailing an invitation is a SEPARATE action (POST /api/invitations) and it has never run for
+      this owner."
+    measured_2026_08_30: "Read-only against production.
+      (1) April and Ben both have standby_state = NULL — not 'invited', NULL. No invitation state
+          was ever set.
+      (2) audit_log contains ZERO invitation-shaped actions for this owner, ever
+          (action ILIKE '%invit%' returns nothing).
+      (3) The owner's entire history is six actions: subscription_started, vault_items_imported,
+          renewal_payment_failed_notice, kms_wrap_requested, vault_item_created, owner_checkin.
+          No invitation among them.
+      So no mail was lost. None was composed."
+    🔴 the_display_defect_that_hid_it: "readStandbyState(null) returns 'invited'
+      (lib/people/standby-state.ts:34 — anything not in STANDBY_STATES falls through to 'invited').
+      So a person who has NEVER BEEN CONTACTED renders identically to one who was emailed and has
+      not replied. `npm run beta:status` printed 'state: invited — their answer does NOT count
+      toward quorum' for both, and that sentence was read — by Claude, out loud, twice — as 'they
+      were asked and have not answered'.
+      The state model has no value for 'not yet asked'. That is the false green this repo keeps
+      finding, in the one screen whose job is to tell an owner whether their circle is real."
+    why_it_matters: "It is the whole of A0.2, and A0.2 is the largest open item in the product —
+      M = 0 against N = 1, every trigger stopping at GRACE. The blocker was framed as waiting on
+      another person's action. Nobody was waiting on Ben; Ben does not know."
+    ends_when: "BOTH: (a) at least one verifier has a real invitation and reaches `confirmed`, so
+      quorum is satisfiable; and (b) the roster can no longer show an uncontacted person as
+      'invited' — either a distinct state, or a screen that says plainly that nobody has been asked
+      yet. (a) without (b) fixes this owner and leaves the next one to discover it the same way."
+    ⚠️ not_a_delivery_problem: "email_delivery_events holds 22 delivered / 4 bounced / 21 delayed,
+      newest 2026-08-19 — so the mail path has worked and is not implicated. Chasing Resend here
+      would have been chasing the wrong layer, which is what 'the email was never received'
+      naturally suggests and why this was worth measuring before theorising."
   - id: secret-kinds-declaration-is-opt-in-by-discovery      # "D3"
     owner: claude
     opened: 2026-08-18
