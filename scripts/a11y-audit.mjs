@@ -44,11 +44,17 @@ import { readFileSync } from 'fs';
   C:/Users/<someone> path is unrunnable for anyone else and is banned by the
   portfolio's own rule.
 */
-const HOME = (process.env.HOME || process.env.USERPROFILE || '').split('\\').join('/');
-const PLAYWRIGHT =
-  process.env.PLAYWRIGHT_MODULE ||
-  `file:///${HOME}/CascadeProjects/__shared-tools/node_modules/playwright/index.mjs`;
-const { chromium } = await import(PLAYWRIGHT);
+/*
+  ⚠️ RESOLVED THROUGH THE SHARED HELPER SINCE 2026-08-30. This file used to carry
+  its own copy of the fallback — the same four lines as `e2e-ui.ts`, including the
+  same `__shared-tools` default that exists on one laptop. Two copies of a
+  resolution rule is the rule expressed twice, and the comment directly above
+  already bans "a C:/Users/<someone> path" while the line beneath it built one.
+  CI keeps working unchanged: it sets PLAYWRIGHT_MODULE, which is still rung one.
+*/
+import { resolvePlaywright } from './resolve-playwright.mjs';
+
+const { chromium } = await resolvePlaywright();
 
 const AXE = readFileSync('node_modules/axe-core/axe.min.js', 'utf8');
 const BASE = process.env.A11Y_BASE || 'http://localhost:3100';
