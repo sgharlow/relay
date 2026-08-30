@@ -88,6 +88,32 @@ jobs:
       - name: Test (with coverage thresholds enforced)
         run: npm run test:coverage
 
+      # THE SECOND NUMBER, AND WHY THE STEP ABOVE WAS NOT ENOUGH.
+      #
+      # The thresholds enforced above are BLENDED across `lib/**` and
+      # `src/app/api/**`, and those two layers are not the same size: ~5,000
+      # statements against ~1,600. On 2026-08-30 the blend read 87.61% — well
+      # clear of an 80 floor — while the request layer alone sat at 66.15%
+      # statements / 59.17% branches, with 26 of 76 route handlers executing no
+      # test at all. Every gate in this file was green for the whole of that.
+      #
+      # Widening the coverage scope on 2026-08-21 made that layer VISIBLE. It
+      # could not stop the shortfall being absorbed by a larger layer, because
+      # that is what an average does. This step removes the weighting.
+      #
+      # IT MUST STAY IMMEDIATELY AFTER THE STEP ABOVE. It reads that run's
+      # `coverage/coverage-final.json` and does not produce one; a report from
+      # some earlier run would be a green about a run that never happened. It
+      # exits 2 — "could not look", distinct from a pass — when the report is
+      # missing or does not describe this layer, so a reordering fails loudly
+      # rather than quietly measuring nothing.
+      #
+      # Proven in all three directions on 2026-08-30: red against a planted
+      # floor, exit 2 with the report removed, exit 2 with a report describing
+      # one file. Not proven by passing once.
+      - name: Request-layer coverage floor
+        run: npm run check:route-coverage
+
       - name: Build
         run: npm run build
 

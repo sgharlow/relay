@@ -49,6 +49,8 @@ import {
   judge,
   staleCount,
   formatSweepReport,
+  OWNER_COLUMNS,
+  RETAINED_BY_DESIGN,
   type DisposableRow,
 } from '../lib/ops/disposable-accounts';
 
@@ -226,26 +228,20 @@ async function main(): Promise<void> {
       that omission, and it was invisible for the same reason everything else
       here is.
     */
-    const OWNER_COLUMNS: [table: string, column: string][] = [
-      ['vault_items', 'owner_id'],
-      ['recipients', 'owner_id'],
-      ['verifiers', 'owner_id'],
-      ['access_rules', 'owner_id'],
-      ['release_state', 'owner_id'],
-      ['invitations', 'owner_id'],
-      ['access_requests', 'owner_id'],
-      ['access_policies', 'owner_id'],
-      ['approvals', 'owner_id'],
-      ['subscriptions', 'owner_id'],
-      ['recipient_codes', 'owner_id'],
-      ['verifier_codes', 'owner_id'],
-      ['break_glass_codes', 'owner_id'],
-      ['delegations', 'owner_id'],
-      ['delegations', 'delegate_user_id'],
-      ['webauthn_credentials', 'user_id'],
-      ['recovery_codes', 'user_id'],
-      ['auth_challenges', 'user_id'],
-    ];
+    /*
+      ⚠️ THE LIST ITSELF NOW LIVES IN `lib/ops/disposable-accounts.ts`, imported
+      at the top of this file. It moved on 2026-08-30 because a second consumer
+      appeared — `lib/ops/orphan-health.ts`, which asks this same question
+      unattended, on a schedule, without a credential. Eighteen table/column
+      pairs written out in two places is a contract expressed twice, and the
+      failure mode is the quiet one: a table added to one copy and not the other
+      means the monitor and the operator's own sweep disagree about what an
+      orphan is, in the direction where the monitor sees less.
+
+      `disposable-sweep-matches-the-cascade.test.ts` follows it there and now
+      IMPORTS both lists rather than parsing them out of this file — which also
+      retired a regex that would have gone blind on this very change.
+    */
 
     /*
       🔴 `audit_log` WAS IN THE LIST ABOVE FOR ITS FIRST DAY, AND THAT MADE THIS
@@ -273,7 +269,7 @@ async function main(): Promise<void> {
       rows of the throwaway accounts they created, because a fixture's audit
       trail is nobody's record.)
     */
-    const RETAINED_BY_DESIGN: [table: string, column: string][] = [['audit_log', 'owner_id']];
+    // Also imported — see the note on OWNER_COLUMNS above.
 
     const countDangling = async (table: string, column: string): Promise<number | null> => {
       try {

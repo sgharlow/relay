@@ -27,10 +27,13 @@ import { readSessionEpoch } from '../lib/auth/session-epoch';
 
 const BASE = process.env.E2E_BASE || 'http://localhost:3000';
 
-const HOME = (process.env.HOME || process.env.USERPROFILE || '').split('\\').join('/');
-const PLAYWRIGHT =
-  process.env.PLAYWRIGHT_MODULE ||
-  `file:///${HOME}/CascadeProjects/__shared-tools/node_modules/playwright/index.mjs`;
+/*
+  ⚠️ THE DEFAULT USED TO BE A PATH ON ONE LAPTOP — a `__shared-tools` sibling of
+  a particular checkout — so this walk, the only functional browser walk in the
+  repository, ran nowhere else. `resolve-playwright.mjs` carries the whole
+  finding and the order it tries things in.
+*/
+import { resolvePlaywright } from './resolve-playwright.mjs';
 
 const RESERVED = ['test', 'invalid', 'localhost'];
 function undeliverable(a: string): string {
@@ -205,7 +208,9 @@ async function contextFor(
 }
 
 async function main(): Promise<void> {
-  const { chromium } = (await import(PLAYWRIGHT)) as { chromium: { launch(): Promise<BrowserLike> } };
+  const { chromium } = (await resolvePlaywright()) as unknown as {
+    chromium: { launch(): Promise<BrowserLike> };
+  };
   const browser = await chromium.launch();
   const stamp = Date.now();
 

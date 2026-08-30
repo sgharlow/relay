@@ -29,6 +29,8 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 
+import { OWNER_COLUMNS, RETAINED_BY_DESIGN, danglingLabel } from './disposable-accounts';
+
 const SWEEP = readFileSync('scripts/disposable-sweep.ts', 'utf8');
 const LIFECYCLE = readFileSync('lib/account/lifecycle.ts', 'utf8');
 
@@ -87,15 +89,25 @@ function cascadePurgesByOwnerId(src: string): Set<string> {
  * Returns null when the list is not there at all, so a renamed constant reads as
  * "this guard has gone blind" rather than as "nothing is missing".
  */
-function censusList(src: string, name: string): Set<string> | null {
-  // Tolerates both shapes the two lists are written in: one entry per line, and
-  // a single-line literal. A guard that only recognises today's formatting goes
-  // blind on a reformat and reports "nothing missing".
-  const block = new RegExp(`const ${name}[^=]*=\\s*\\[([\\s\\S]*?)\\]\\s*;`).exec(src);
-  if (!block) return null;
-  return new Set(
-    [...block[1].matchAll(/\[\s*'(\w+)',\s*'(\w+)'\s*\]/g)].map(([, t, c]) => `${t}.${c}`),
-  );
+/**
+ * The two census lists, as `table.column` sets.
+ *
+ * ⚠️ THESE USED TO BE PARSED OUT OF `scripts/disposable-sweep.ts` WITH A REGEX,
+ * and they are imported now because the lists moved (2026-08-30). They moved
+ * because a second consumer appeared — `lib/ops/orphan-health.ts`, which answers
+ * the same question unattended — and eighteen table/column pairs copied into two
+ * files is a contract expressed twice; the portfolio rule is one authoritative
+ * definition per cross-boundary contract.
+ *
+ * Importing is strictly stronger than the regex it replaces. The old parser
+ * carried a `| null` return and a "this guard is blind" tripwire precisely
+ * because a reformat could stop it matching — and it would have stopped matching
+ * on this very change, since the lists are now written `] as const;` and the
+ * pattern demanded `]\s*;`. A missing export is a compile error instead, which
+ * is a tripwire that cannot be silently tripped.
+ */
+function setOf(list: ReadonlyArray<readonly [string, string]>): Set<string> {
+  return new Set(list.map(([t, c]) => danglingLabel(t, c)));
 }
 
 /** Tables the sweep counts rows in, from its OWNED_TABLES list. */
@@ -239,13 +251,14 @@ describe('the census fails on wreckage, and not on what the cascade keeps', () =
   });
 
   it('audit_log is not in the list that fails the run', () => {
-    const fails = censusList(SWEEP, 'OWNER_COLUMNS');
-    expect(fails, 'OWNER_COLUMNS has gone from scripts/disposable-sweep.ts — this guard is blind').toBeTruthy();
+    const fails = setOf(OWNER_COLUMNS);
+    expect(fails.size, 'OWNER_COLUMNS is empty — this guard is blind').toBeGreaterThan(10);
     expect(
-      [...(fails as Set<string>)].filter((k) => k.startsWith('audit_log.')),
-      'scripts/disposable-sweep.ts fails the run on dangling audit_log rows. Every correctly ' +
-        'closed account leaves one, by design, so verify:orphans reports FAIL on a healthy ' +
-        'cluster — and an alarm that fires when nothing is wrong is an alarm that gets muted.',
+      [...fails].filter((k) => k.startsWith('audit_log.')),
+      'OWNER_COLUMNS fails the run on dangling audit_log rows. Every correctly closed account ' +
+        'leaves one, by design, so verify:orphans reports FAIL on a healthy cluster — and an ' +
+        'alarm that fires when nothing is wrong is an alarm that gets muted. This now binds ' +
+        'lib/ops/orphan-health.ts too, which reads the same list unattended.',
     ).toEqual([]);
   });
 
@@ -255,14 +268,13 @@ describe('the census fails on wreckage, and not on what the cascade keeps', () =
       worth a number — it is the only remaining trace of an account, and a count
       that jumps says a purge ran — it is simply not a defect.
     */
-    const retained = censusList(SWEEP, 'RETAINED_BY_DESIGN');
+    const retained = setOf(RETAINED_BY_DESIGN);
     expect(
-      retained,
-      'scripts/disposable-sweep.ts no longer declares RETAINED_BY_DESIGN, so the audit rows a ' +
-        'closure leaves behind are now invisible rather than merely not-a-failure. Count them ' +
-        'and report them as a notice.',
-    ).toBeTruthy();
-    expect([...(retained as Set<string>)]).toContain('audit_log.owner_id');
+      retained.size,
+      'RETAINED_BY_DESIGN is empty, so the audit rows a closure leaves behind are now invisible ' +
+        'rather than merely not-a-failure. Count them and report them as a notice.',
+    ).toBeGreaterThan(0);
+    expect([...retained]).toContain('audit_log.owner_id');
   });
 });
 
@@ -281,10 +293,7 @@ describe('the census asks about every table the cascade purges by owner id', () 
   });
 
   it('leaves no owner-scoped table uncensused', () => {
-    const censused = new Set([
-      ...(censusList(SWEEP, 'OWNER_COLUMNS') ?? []),
-      ...(censusList(SWEEP, 'RETAINED_BY_DESIGN') ?? []),
-    ]);
+    const censused = new Set([...setOf(OWNER_COLUMNS), ...setOf(RETAINED_BY_DESIGN)]);
     const missing = [...cascadePurgesByOwnerId(codeOnly(LIFECYCLE))].filter((k) => !censused.has(k)).sort();
 
     expect(

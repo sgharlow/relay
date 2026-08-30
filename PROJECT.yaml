@@ -1994,6 +1994,16 @@ deferred:
         production — the measurement `verify:factors` already reports (reachable 1 -> 0 on the
         declaration). Not a date: a number."
 
+  # ⚠️ READ `ruled:` (2026-08-20) BEFORE `blocked_on:`. This entry is OPEN
+  # because its CAUSE is unchanged, not because a decision is outstanding — the
+  # cluster was deferred by Steve until the first paying customer, with a
+  # `resumes_when:` condition. `blocked_on:` sits ~40 lines above that ruling and
+  # reads like a pending ask; on 2026-08-30 it was read exactly that way three
+  # times over (ROADMAP §2-D, a readiness plan, and a brief commissioned to
+  # "get the decision"), and the brief became a re-derivation of a ruling that
+  # already existed. Pointer added rather than moving the fields, because the
+  # ordering is chronological and the history is worth keeping.
+  # Record of that re-derivation, and of what changed since: docs/test-cluster-decision-brief.md
   - id: verify-live-cannot-enter-ci                          # "D4"
     owner: steve            # infrastructure spend - explicitly not a Claude item
     opened: 2026-08-18
@@ -2085,6 +2095,28 @@ deferred:
       resumes_when: "an arms-length subscription exists (g1-arms-length-demand met), at which
         point the cluster is re-argued under the 5-gate infra policy with that customer's data
         as the thing the walks must never touch."
+      # ── Re-measured 2026-08-30, against this ruling's own stated stand-ins ──
+      # `what_stands_in` names `verify:orphans` as the counting half. IT WAS
+      # SCHEDULED NOWHERE: a command a person had to remember, which is the
+      # weakness this ruling was leaning on it to cover, and on 2026-08-30 it was
+      # reporting a FAIL that nothing had seen. Closed the same day WITHOUT the
+      # deferred infrastructure — /api/health/orphans + .github/workflows/
+      # orphan-monitor.yml, daily, no credential, because the application already
+      # holds one. Scheduling it in Actions would have needed .env.ro on a runner
+      # (D21) or an OIDC role for relay_ro, both of which are decisions; probing
+      # an endpoint is neither.
+      # ⚠️ THE RULING IS UNCHANGED AND IS NOT RE-OPENED. Its stand-in is now real
+      # rather than nominal, which makes the deferral easier to defend, not
+      # harder. The CAUSE is untouched: the walks still write to production.
+    stand_in_made_real:
+      date: 2026-08-30
+      what_shipped: "/api/health/orphans, lib/ops/orphan-health.ts and a daily
+        orphan-monitor workflow. Alarms on a reserved-domain account older than a day;
+        counts dangling rows against a recorded baseline rather than against zero, because
+        the standing 28 are D20's open ruling and a probe that starts red is a probe that
+        gets muted. lib/ops/health-probe-monitored.test.ts now fails if any /api/health/*
+        route has no SCHEDULED workflow naming it — the pattern three probes had and
+        nothing made the fourth inherit."
 
   # ── OPENED 2026-08-20 by the deep production-readiness pass ───────────────
   #
