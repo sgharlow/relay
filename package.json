@@ -49,7 +49,8 @@
     "verify:stripe": "npx tsx scripts/verify-stripe.ts",
     "verify:stamp": "npx tsx scripts/stamp-verify-live.ts",
     "verify:stamp:journeys": "npx tsx scripts/stamp-verify-journeys.ts",
-    "check:route-coverage": "npx tsx scripts/check-route-coverage.ts"
+    "check:route-coverage": "npx tsx scripts/check-route-coverage.ts",
+    "check:oped": "npx tsx scripts/check-oped.ts"
   },
   "dependencies": {
     "@aws-sdk/client-kms": "3.1072.0",

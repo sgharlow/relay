@@ -205,7 +205,32 @@ Go in expecting the question and knowing the answer is "that is what this pilot 
 ## Sources — every claim above, from the organisation's own page
 
 - Homethrive × Healthee (Feb 2026): <https://homethrive.com/press/healthee-and-homethrive-partner-to-expand-access-to-personalized-caregiving-and-loss-support/>
-- Homethrive × Bright Horizons (May 2026): <https://briefglance.com/articles/homethrive-bright-horizons-tackle-caregiving-crisis-with-new-platform> ⚠️ secondary source, not Homethrive's own newsroom — confirm before citing it to anyone
+- Homethrive × Bright Horizons (May 2026): <https://briefglance.com/articles/homethrive-bright-horizons-tackle-caregiving-crisis-with-new-platform> ⚠️ secondary — **and it stayed secondary. See A6.1 below.**
+
+### 🔴 A6.1 verification, 2026-08-30 — the Bright Horizons claim is NOT primary-sourced
+
+A6.1 asks that this claim be confirmed *"from Homethrive's own newsroom before citing it"*. It was
+checked, and it cannot be:
+
+| Checked | Result |
+|---|---|
+| `homethrive.com/press/` · `/newsroom/` · `/news/` | **404** — no index exists at any of them, although individual release URLs resolve |
+| `homethrive.com/blog/` | 200, and mentions neither "Bright Horizons" nor "Care Advising" |
+| `brighthorizons.com/newsroom` + two more of their own pages | 200, **"Care Advising" confirmed**, **"Homethrive" appears nowhere** |
+
+**So the split is precise, and the first contact has to respect it:**
+
+- ✅ *Bright Horizons launched a Care Advising solution* — confirmable from Bright Horizons' own
+  site, three pages.
+- 🔴 *Homethrive powers it* — **confirmable from neither party.** One secondary outlet says so and
+  no primary source repeats it.
+
+⚠️ **Do not assert the second as fact in a cold approach to Homethrive.** If a partnership is
+unannounced by both parties there may be a reason, and telling a prospect what you believe their
+commercial arrangements are — wrongly, from a trade blog — is a bad opening. The argument the
+dossier draws from it ("a functioning process for the conversation, and a demonstrated answer of
+yes") survives on the **Healthee** integration alone, which IS primary-sourced on Homethrive's own
+site. Use that one. source, not Homethrive's own newsroom — confirm before citing it to anyone
 - Wellthy navigation, clients and demo route: <https://wellthy.com/>
 - Cariloop in the Benefitfocus catalog: <https://www.benefitfocus.com/solutions/catalog/cariloop/caregiver-support-platform>
 - Cariloop partner page (no program found): <https://www.cariloop.com/partners>

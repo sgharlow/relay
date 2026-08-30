@@ -95,6 +95,37 @@ Not tedium left undone — both are load-bearing, and automating either would br
   reason the standby architecture exists. Phase 0 measures the difference between the arms;
   collapsing them destroys the thing being measured.
 
+## Three cautions
+
+⚠️ 🔴 **ANYONE ALREADY IN `/circle` MUST NOT BE IN `.relay-cohort.json`** — added 2026-08-30 (A3.2).
+
+A0 named real people in `/circle` on 2026-08-29. `createRecipient` and `createVerifier` both refuse a
+duplicate normalised email, so `invite:cohort --commit` gets a non-OK response on that person and
+**`break`s the loop** (`scripts/invite-cohort.ts`). That is a half-run, not a failed one: everybody
+before the duplicate is created and invited, everybody after is not, and the codes file holds only
+the first group.
+
+**Check before `--commit`:**
+
+```bash
+npm run beta:status          # who is already in the circle
+node -e "console.log(require('./.relay-cohort.json').map(p=>p.email).join('
+'))"
+```
+
+No address may appear in both. **For somebody already in the circle, use
+`scripts/phase0-invite.ts`** — it issues an invitation against the person who already exists instead
+of trying to create them again.
+
+⚠️ **And since 2026-08-30, the owner's own address is refused at creation too** (B15.4, ruled at
+Sitting D-1). If Steve's own address is ever in the cohort file the run stops on it, for the same
+reason and in the same way. `lib/people/add-person.ts` refuses it; the roster can no longer show a
+vault as fuller than it is.
+
+*Measured 2026-08-30: `.relay-cohort.json` holds one person, no overlap with the circle, so the trap
+is not live today. It is written down because the roster is meant to reach 10–20 (A3.1) and the
+overlap becomes likely at that size — not because it has already bitten.*
+
 ## Two cautions
 
 ⚠️ **The claim code is readable exactly once**, at issue — only a hash is stored. The script captures
