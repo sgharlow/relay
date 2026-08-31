@@ -354,6 +354,10 @@ gates:
       `customer-used` needs an arms-length user and `revenue-proven` needs arms-length money, which
       is precisely what this gate now measures."
     revisit: "at every /daily-priority from 2026-10-01"
+    cadence_only: "A re-raise, not a decision date. The outcome is owed at this gate's own
+      `due: 2026-12-31` and `gates.test.ts` already judges that. Classified 2026-08-30 under
+      E4.4 -- `lib/ops/revisit-dates.test.ts` requires every dated cadence to say whether an
+      outcome falls due at its start, because prose cannot be asked."
     editorial_instrument:
       ratified: 2026-08-20
       by: steve
@@ -546,6 +550,10 @@ gates:
     ratify_by: "2026-09-01, the date G1's own revisit begins, so both lanes come up in the same
       /daily-priority rather than one being remembered and the other not."
     revisit: "at every /daily-priority from 2026-09-01, alongside g1-arms-length-demand."
+    cadence_only: "A re-raise, not a decision date. The outcome is owed at this gate's own
+      `due: 2026-11-30` (one signed pilot LOI; kill = zero MEETINGS taken) and `gates.test.ts`
+      judges that. Nothing is decided on 09-01 -- that is the day it starts being RAISED, and a
+      guard firing then would be the false alarm E4.4 was careful to avoid."
 
 market:
   competitors_doc: docs/COMPETITORS.md   # authored 2026-07-01; PRICES RE-VERIFIED 2026-08-18
@@ -638,6 +646,23 @@ ratified:
           unremarked and was recorded six days late — the third deferral of that item and the
           first one nobody made."
         covers_next: "The 2026-10-01 paywall revisit, which is the next one at risk."
+        covers_next_was_false_when_written:
+          found: 2026-08-30
+          what: >-
+            The guard built that same day judged BARE DATES ONLY, deliberately and with a stated
+            reason: most `revisit:` values here are conditions, and inventing a deadline for a
+            condition is the false alarm that gets a check ignored. But
+            `ratified.beta-free-release.revisit` is "at every /daily-priority from 2026-10-01" --
+            a dated cadence -- so the one entry this ruling names as covered was swept into the
+            class the guard refuses to judge, by the same comment that names it.
+          fixed_by: >-
+            E4.4. A dated cadence must now classify itself as `decision_due:` (an outcome is owed
+            then -- judged), `cadence_only:` (a re-raise, outcome dated elsewhere) or
+            `superseded_by:` (a stopped clock). `beta-free-release` carries
+            `decision_due: 2026-10-01` and a named regression test asserts it stays judged.
+          the_general_lesson: >-
+            The refused class was right and the membership test was wrong. When a guard declines
+            to judge a category, check that the thing it was built for is not inside it.
       d14_signup_ceiling:
         ruling: "LEAVE IT, AND SAY SO."
         why: "It is already documented in CLAUDE.md, verify-journeys-freshness and the register,
@@ -970,7 +995,10 @@ ratified:
       hand and will not have paid, so enforcing the paywall now would mean the beta
       cannot exercise the one capability the product exists for. The machinery is
       live rather than dead: checkout is wired and assertCanRelease is called on the
-      release path (lib/release/triggers.ts:125), so turning enforcement on is one
+      release path (`assertCanRelease` in `initiateTrigger`, lib/release/triggers.ts -- the
+      line number cited here read :125 until 2026-08-30 and the call had moved to :139;
+      `lib/ops/paywall-scope.test.ts` now measures the call sites rather than citing one),
+      so turning enforcement on is one
       line rather than a discovery."
     recorded_because: "The pre-release audit found this deliberate and undated, paired
       with a skipped test (lib/billing/entitlements.test.ts) carrying no owner either.
@@ -980,6 +1008,21 @@ ratified:
       together."
     owner: steve
     revisit: "at every /daily-priority from 2026-10-01"
+    decision_due: 2026-10-01
+    decision_due_why: >-
+      E4.4, 2026-08-30. This is the ONE dated cadence in the register whose first occurrence is
+      itself the decision: E4.2 is "flip TIER_LIMITS.free.canRelease, or extend the beta with a
+      NEW DATED revisit -- leaving it undated is the one illegitimate outcome".
+
+      It needed its own field because a `gates:` entry carries `due:` and is watched, and this is
+      a RATIFIED DECISION -- no gate, no `due:`, and no other dated instrument anywhere in the
+      repository. Its prose cadence was the only record that anything was owed, and nothing reads
+      prose. The A0.dm guard built on 2026-08-30 recorded `covers_next: "The 2026-10-01 paywall
+      revisit"` and was structurally blind to it on the day it shipped.
+
+      `lib/ops/revisit-dates.test.ts` now judges this date and carries a named regression test for
+      it. On 2026-10-02, with nothing recorded here, CI goes red -- which is the mechanism working.
+      Answer it with `revisited:` (what was decided) or move `decision_due:` and say why.
 
   - id: policy-edit-routes
     date: 2026-08-13
@@ -5440,6 +5483,30 @@ deferred:
       a past-due revisit on a throwaway branch and watching the guard go red — the same standard
       B13 demands of every other alarm. Wired is not proven.
     revisit: 2026-09-12
+    revisited:
+      date: 2026-08-30
+      outcome: CLOSED
+      built: >-
+        `lib/ops/revisit-dates.test.ts`. It walks the whole document, so `gates`, `ratified` and
+        `deferred` are all read -- option (b), the general fix, as the entry leaned.
+      proven_by_planting: >-
+        Four ways, all observed red and then restored: a `decision_due:` moved into the past
+        (the lapse fires); `decision_due:` removed (the named paywall regression test fires);
+        the classification stripped from a dated cadence (the classify rule fires); and the
+        pre-fix state itself, in which all four dated cadences were reported unclassified.
+        `ends_when` demanded exactly this, and it was done before the register fields were added
+        rather than after.
+      what_it_still_cannot_do: >-
+        It cannot tell whether a revisit was actually DONE -- no test can. It demands the date was
+        ANSWERED: an outcome recorded, or the date moved with a reason. And it does not judge a
+        condition with no date ("if G1 passes"), nor a date a cadence merely mentions -- the
+        "ready-and-unstarted since 2026-08-12" shape is pinned as a discrimination test, because
+        the first draft of the fix matched it and would have shipped the false alarm the original
+        design was careful to avoid.
+      consequence_to_expect: >-
+        On 2026-10-02, with nothing recorded on `ratified.beta-free-release`, CI goes RED. That is
+        the mechanism working, not a breakage -- the same design as `gates.test.ts` and
+        `verify-live-freshness`.
 
   - id: no-entity-and-no-insurance                            # ROADMAP G6
     owner: steve
@@ -5584,6 +5651,47 @@ deferred:
             resolvable id. ⚠️ Calling (3) `live-proven` would overstate it; the honest label is
             `wired + route-proven`.
         RECOMMENDATION: (1), with (3) as an interim recorded as what it is."
+    attempted_3:
+      date: 2026-08-30
+      route: "E1.2 / route 3 -- spliced real payload at a LOCAL PRODUCTION BUILD"
+      authorised_by: "Steve, 2026-08-30, for one fabricated-invoice audit row on his own log"
+      cost_actually_spent: "NONE. Six deliveries wrote ZERO rows, because the defect prevents any
+        write. The authorisation was granted and never used."
+      outcome: "E1prime stays `wired`. NOT route-proven. The attempt did the opposite of what it
+        was for: it turned an unexplained August anomaly into a reproducible present-tense one."
+      what_is_now_eliminated: >-
+        Everything §6 named. A production build answered (one listener, verified by netstat, so the
+        two-listener ambiguity did not apply); the SAME process answered every request (E1.1 build
+        marker `instance=fe6fe640`); signature verification really runs (400 Unsigned / 400
+        InvalidSignature / 200); `constructEvent` preserves the splice against the installed SDK;
+        and the BUILT handler extracted from .next is correct, lookup included. The stale-module
+        explanation that led §6 is DISPROVEN.
+      the_matched_pair: >-
+        A temporary diagnostic route in the same bundle replayed the handler's own steps on the SAME
+        RAW BYTES in the SAME PROCESS. Replay: would_break_early=false, owner resolved. Webhook,
+        identical bytes, same instance: 200, and zero audit rows for the shared invoice id. Payload
+        shape is not the variable -- legacy `.subscription`, modern
+        `parent.subscription_details.subscription`, and both together each returned 200 and wrote
+        nothing.
+      what_it_means_for_e4_2: >-
+        🔴 The flip means a lapsed subscription stops the owner starting a release, and the register's
+        stated precondition is that the owner is TOLD their renewal failed. On this evidence nobody
+        can currently be told. Flipping on top of that converts an expired card into a silently
+        blocked release with no notification -- the exact failure /terms now promises does not
+        happen. This is a reason to hold the flip, independent of whatever is decided about the beta.
+      the_splice_is_more_synthetic_than_route_3_admits: >-
+        §5 says "swap the subscription id for the live one". There is nothing to swap. Live mode has
+        ZERO `invoice.payment_failed` events, ever, and the only test-mode one carries
+        `billing_reason: manual` with NO subscription reference in either position. Every proof of
+        this path to date has ADDED a field no real payload in this account has ever carried.
+      next_attempt_must_not_be_another_delivery: >-
+        Instrument INSIDE notifyRenewalFailed / sendOnce -- the four branches -- rather than around
+        them; everything outside is now eliminated twice by two methods. Establish whether
+        writeAuditEntry is reached at all, given it demonstrably works for owner_checkin and
+        vault_item_created on the same owner hours earlier. Route 2 (E1.3) would exercise the same
+        body and, on this evidence, fail the same way -- spending a Stripe test clock and a
+        disposable owner to re-learn what a spliced POST already shows.
+      harness: "scripts/e1-route3.ts -- npm run verify:e1-route3. Reproduces it deterministically."
     ends_when_restated:
       date: 2026-08-28
       reachability_closed_2026_08_29: >-

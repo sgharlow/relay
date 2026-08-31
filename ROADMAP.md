@@ -1085,16 +1085,23 @@ the Microsoft form are filed.
 
 | # | Item | Blocks on | Court |
 |---|---|---|---|
-| 3.1 | **E1.2** route 3 against a local production build → `wired + route-proven`, recorded as exactly that | E1.1 (Sprint 0) | co-pilot |
-| 3.2 | **E1.3** route 2 (disposable owner, test clock, redelivery, `deleteAccount`) → `live-proven` | 3.1; `DEV_MAIL_ALLOWLIST` | co-pilot |
-| 3.3 | **E4.1** the 1-of-4 ruling (Sitting D-1) → **E4.2** the flip-or-extend decision at the first revisit (from 2026-10-01) → **E4.3** the one-commit change-set (or a new dated revisit) → **E4.4** the revisit dead-man | 3.1 minimum — and the register's bar is 3.2 (live-proven); deciding at route-proven is Steve's recorded relaxation, not this plan's assumption | steve → claude |
-| 3.4 | **B30** merge the parser fix (or record the disposition) **before 2026-10-03** | Sprint 1.4 | claude |
+| 3.1 | ~~**E1.2** route 3 → `route-proven`~~ — 🔴 **RUN 2026-08-30 (authorised) AND IT DID NOT EARN THE LABEL.** E1′ stays **`wired`**. Six deliveries, `200` every time, **zero audit rows** — so the one fabricated row Steve authorised was never written. §6's stale-module explanation is now **disproven**: a matched pair on the *same bytes* in the *same process* (build marker `fe6fe640`) had an in-process replay report `would_break_early=false` with the owner resolved, while the webhook wrote nothing. Shape is not the variable either (legacy / `parent` / both all 200, all zero). Harness: `npm run verify:e1-route3`. | — | **finding** |
+| 3.2 | **E1.3** route 2 → `live-proven` — ⚠️ **HOLD.** It exercises the same handler body that 3.1 just showed does not write, so it would spend a Stripe test clock and a disposable owner to re-learn what a spliced POST already shows. Do 3.1's follow-up first: instrument **inside** `sendOnce`'s four branches, since everything outside them is now eliminated twice by two methods. | 3.1's follow-up; `DEV_MAIL_ALLOWLIST` (unset) | co-pilot |
+| 3.3 | **E4.1** ✅ ruled + ✅ **now machine-checked** (`lib/ops/paywall-scope.test.ts`, 08-30) → **E4.2** the flip-or-extend decision at the first revisit (from 2026-10-01) → **E4.3** the one-commit change-set (or a new dated revisit), ✅ its 8 named artefacts verified present and the `it.skip` it un-skips verified still there → **E4.4** ✅ **DONE 08-30** — the dead-man judges `decision_due: 2026-10-01` | 3.1 minimum — and the register's bar is 3.2 (live-proven); deciding at route-proven is Steve's recorded relaxation, not this plan's assumption | steve → claude |
+| 3.4 | ~~**B30** merge the parser fix~~ — ✅ **ALREADY CLOSED 2026-08-29 (PR #25),** verified live 08-30: `gates.test.ts` treats `superseded_by:` as a stopped clock, pinned by a test asserting against 2026-10-03 specifically, plus a second test refusing a `superseded_by:` that does not resolve to a live gate. ⚠️ This row asked for work already done when revision 6 was written — §7's checkbox and the 09-01 calendar row both said closed while this said open. Same shape as T2's D4. | — | done |
 | 3.5 | **E1.8** `stripe login` re-pair before **2026-10-07**; **E1.7** restricted read-only key so `verify:stripe` can be scheduled; **E5** the money-path decision (E7 is ruled once, in Sitting D; its revisit lands in Sprint 8 if parked) | — | steve |
 
-**Done when:** E1′ carries its honest label in the register (`route-proven` at minimum; the register's
-own bar for the flip is `live-proven`); the paywall is ruled with the 1-of-4 ruling beside it, and any
-flip at less than `live-proven` names the relaxation Steve ratified; nothing goes red on 2026-10-03;
-the Stripe CLI is re-paired.
+**Done when:** E1′ carries its honest label in the register — ✅ **it does, and the label is `wired`**,
+recorded with the evidence rather than talked up to `route-proven`; the paywall is ruled with the
+1-of-4 ruling beside it — ✅ the ruling is now **machine-checked** and tied to `/terms`
+(`lib/ops/paywall-scope.test.ts`); nothing goes red on 2026-10-03 — ✅ **B30 was already closed**
+2026-08-29; the Stripe CLI is re-paired — ⏳ Steve, by 2026-10-07.
+
+🔴 **AND ONE THING THIS SPRINT ADDED TO THE FLIP DECISION.** E4.2 assumes an owner whose card fails
+is told. 3.1 shows nobody currently can be: the notice path accepts a correctly-signed event and
+records nothing, for every payload shape. Flipping on top of that turns an expired card into a
+silently blocked release with **no notification** — the exact failure `/terms` now promises does not
+happen. That is a reason to hold the flip independent of whatever is decided about the beta.
 
 ### Sprint 4 — Recovery proven *(calendar: → 2026-11-08 · co-pilot · one admin session · dated by `gates.d3-restore-drill.due`, a ceiling)*
 
@@ -1301,8 +1308,8 @@ records every ruling the same session and executes them in blocking order over t
       report relaxed it unratified) — **first: it heads Sprint 2's critical path**
 - [ ] **E4.1** Are releases billing-gated on **all four** ARMED→PENDING paths or only Initiate?
       **Must precede the first paywall revisit (from 2026-10-01)**
-- [ ] **B30** The 2026-10-03 latent red: parser fix (default) or a disposition on the ratified gate
-- [ ] **A0.dm / E4.4** Revisit dead-man: promote A0 to a `gates:` entry, **or** a guard reads
+- [x] **B30** The 2026-10-03 latent red — **closed 2026-08-29 (PR #25)**, re-verified 08-30
+- [x] **A0.dm / E4.4** Revisit dead-man — **guard built 08-30** (option b, the general fix); `deferred.nothing-turns-red-when-a-revisit-lapses` CLOSED with four planted-violation proofs. ⚠️ Expect CI RED on 2026-10-02 if the paywall decision is not recorded — that is the mechanism working. ~~promote A0 to a `gates:` entry, **or** a guard reads~~
       `revisit:` (default; also covers 2026-10-01)
 - [ ] **D14** Signup ceiling: **A leave-and-say-so** (default) · B exempt reserved domains · C = D4
 - [ ] **D20** 28 dangling rows: purge (Claude drafts + runs on GO) **or** NOTICE by ruling (default:
