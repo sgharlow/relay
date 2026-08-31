@@ -1,0 +1,124 @@
+# Does the billing contract still say what /terms promises?
+#
+# E1.7. `npm run verify:stripe` has existed and been correct since 2026-08-29 and
+# NOTHING RAN IT — the same weakness as `verify:orphans` before its monitor, and
+# the same weakness `deferred.verify-live-cannot-enter-ci` names: a check somebody
+# has to remember is a check that works on the days they remember.
+#
+# 🔴 WHY THIS ONE CANNOT BE LEFT TO MEMORY. It watches a wall that SOMEBODY ELSE
+# can move. The Stripe account is shared with report-bridge, skillcrossroads and
+# second-brain, and the billing portal configuration is ACCOUNT-level: another
+# product's operator can change the cancel behaviour in one click and make
+# `/terms` a false statement to Relay's paying customers — no commit, no deploy,
+# nothing in any diff. The event-list half already bit once, silently:
+# `invoice.payment_failed` was a handled `case` for nine days before anyone could
+# say whether Stripe would ever send it.
+#
+# ⚠️ WHAT IT NEEDS, AND WHY IT IS NOT HERE YET. `verify:stripe` reads
+# `STRIPE_READONLY_KEY` — a RESTRICTED key (Webhook endpoints: read; Billing
+# portal: read) — and falls back to Steve's paired Stripe CLI when it is unset.
+# Only the key path can be scheduled: the CLI pairing is a browser session on one
+# laptop. Steve mints the key; see `docs/stripe-setup.md`.
+#
+# 🔴 AND THE FALLBACK HAS A DEATH DATE. Both CLI session keys expire
+# **2026-10-07** (`~/.config/stripe/config.toml`, read 2026-08-30). After that
+# there is NO non-dashboard read path at all, so an unset secret stops being an
+# inconvenience and becomes the absence of the only instrument. This job is
+# deliberately lenient before that date and fails after it — a warning while a
+# working manual path exists, a failure once it does not.
+#
+# WHAT GREEN MEANS: the live webhook endpoint's `enabled_events` still covers
+# every event the handler has a `case` for, and the default billing portal still
+# cancels at period end — which is what `lib/offer.ts REFUND_POLICY` and `/terms`
+# promise. NOT that billing works; see `verify:e1-route3` for how far that is
+# from proven.
+#
+# 🔴 THE TRAP THIS FILE INHERITS, like every scheduled alarm here. sgharlow/relay
+# is a PUBLIC repository, and GitHub disables scheduled workflows in a public repo
+# after 60 days with no repository activity. A disabled workflow reports nothing,
+# which reads exactly like a passing one. `cadence-watch.yml` is what notices.
+
+name: stripe-contract-monitor
+
+on:
+  schedule:
+    # 10:47 UTC — offset from the other daily monitors so several jobs are not
+    # queued on the same minute. Nothing here is time-sensitive.
+    - cron: '47 10 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: stripe-contract-monitor
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci --ignore-scripts
+
+      - name: Is the credential there at all?
+        id: cred
+        env:
+          KEY: ${{ secrets.STRIPE_READONLY_KEY }}
+        run: |
+          set -uo pipefail
+          if [ -n "${KEY:-}" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+            echo "STRIPE_READONLY_KEY is set — the contract will actually be read."
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "STRIPE_READONLY_KEY is NOT set." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Read the contract
+        if: steps.cred.outputs.present == 'true'
+        env:
+          STRIPE_READONLY_KEY: ${{ secrets.STRIPE_READONLY_KEY }}
+        run: |
+          set -uo pipefail
+          npm run verify:stripe
+          code=$?
+          # 0 holds · 1 a finding · 2 could not look. The third is deliberately
+          # not the first: "I could not check" must never read as "it is fine".
+          echo "verify:stripe exit=$code" >> "$GITHUB_STEP_SUMMARY"
+          exit $code
+
+      - name: No credential — warn now, fail once the CLI fallback is dead
+        if: steps.cred.outputs.present != 'true'
+        run: |
+          set -uo pipefail
+          DEADLINE=2026-10-07
+          TODAY=$(date -u +%F)
+          {
+            echo "## The billing contract was NOT checked"
+            echo ""
+            echo "\`STRIPE_READONLY_KEY\` is not set, so this job could not read anything."
+            echo "Until **$DEADLINE** there is still a manual path — Steve's paired Stripe CLI,"
+            echo "\`npm run verify:stripe\` on his laptop — so this is a warning."
+            echo ""
+            echo "On $DEADLINE both CLI session keys expire and that path dies. After it, an unset"
+            echo "secret is the absence of the only instrument watching a wall another product's"
+            echo "operator can move, and this job fails instead of warning."
+            echo ""
+            echo "To fix: mint a restricted key (Webhook endpoints: read, Billing portal: read) and"
+            echo "add it as the repository secret \`STRIPE_READONLY_KEY\`. See docs/stripe-setup.md."
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$TODAY" \> "$DEADLINE" ]; then
+            echo "::error::STRIPE_READONLY_KEY is unset and the CLI fallback expired on $DEADLINE — nothing is watching the billing contract."
+            exit 1
+          fi
+          echo "::warning::STRIPE_READONLY_KEY is unset. Falling back to the hand-run CLI until $DEADLINE."
