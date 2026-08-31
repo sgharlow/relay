@@ -15,6 +15,7 @@ not to trust.
 | §2 B15: the three release guards **"never exercised on production"** | 🔴 **ALREADY WALKED 2026-08-30.** Derived from `audit_log`, not from a note. README recorded the proof as *"27 checks"* when a same-day commit had taken it to **30**. A closed gap described as open, beside an open number described as closed. |
 | Sprint 4 row 4.5 / D5: GoodTrust **$39/yr renewing** | 🔴 **NO LONGER ON THEIR PRICING PAGE.** A flat **$149** estate plan with no renewal shown; $39 survives only in a help article, and a price that is only in a help centre is not a market price. |
 | `docs/COMPETITORS.md`: no mention of Proton | 🔴 **THE CLOSEST MECHANISM ANY RIVAL SHIPS WAS MISSING.** Proton Emergency Access: five contacts, an owner-chosen wait, owner veto during it, auto-grant on silence. Added, with its differences stated as differences. |
+| Sprint 8 G8: **"G4 and G5 enter `PROJECT.yaml`"** | 🔴 **G4 AND G5 NAME TWO DIFFERENT THINGS IN THE SAME TABLE.** §2-G row G4 is *Mobile*, row G5 is *provider handoff + residency*; three rows later G8 says *"draft G4 (billing MVP) and G5 (audited crypto)"*, and §1's ladder chain agrees with G8. Executing G8 as written would create register gates that contradict the rows they are named after. **Not ruled — it changes what gets built** — but a guard now refuses a `gates.g4*`/`g5*` entry while the two definitions disagree. |
 | Sprint 7 A6.5: the diligence pack is ready for its first reader | 🔴 **ITS FIRST INSTRUCTION RETURNED NOTHING.** §3 says *"derive rather than quote"* and hands a partner `grep -A 30 -i "subprocessor" src/app/privacy/page.tsx` — and `/privacy` does not use that word; the section is headed **"Who else is involved"**. The page was right and the command was wrong, which is the worse way round: a reader following it concludes the list does not exist. Fixed and guarded. |
 | Sprint 6: B5's compatibility risk is **"empty today (zero vault items)"** | 🔴 **EXPIRED 2026-08-30 03:28 UTC.** There is now **1** vault item, belonging to a real owner. The premise was true when written; the argument it supports — lift the gate EARLY — is now strictly more urgent, and every day adds rows that a phase-C flip must stay compatible with. |
 | Sprint 6 B21.2: read `csp_reports` on real traffic | ✅ **DONE 2026-08-31, and it changed the check.** 66 reports / 34 distinct: **6 enforced, all of them the Vercel toolbar** — refused correctly, absent from production HTML, never served to a customer. `verify:csp` reported them as *"A real person met a broken page"* and exited 1. Now split, and the next-rung verdict is printed: **NOT takeable**, 22 distinct inline violations mean nonces or hashes first. |
@@ -1238,6 +1239,32 @@ counsel funded from the opportunity (g2 revisit trigger *a*). **G9** §19 SOC 2 
 answered as the partner asks it.
 
 ### Sprint 8 — Revenue-proven and the GA bar *(event: arms-length money moves / G1 passes)*
+
+> 🟡 **PRE-CHECKED 2026-08-31. The event has NOT fired** — `ladder: dogfooded`,
+> `market.demand_signal: none`, `market.wtp_evidence: none`. No arms-length money has moved and G1
+> has not passed, so none of this sprint can start.
+>
+> ✅ **The ladder guard was audited and it is SOUND.** `lib/ops/ladder-claim.ts` was checked on the
+> suspicion — earned by every other finding this week — that it enforces in the abstract and never
+> against the real claim. It does not: `ladder-claim.test.ts` feeds the live `PROJECT.yaml` through
+> `assessLadderClaim` with `today: new Date()`, so it tracks the actual clock and is designed to go
+> red one day with no code change. It also carries a blind-guard check for the keys disappearing.
+> Recorded because a guard that survives a hostile read is worth knowing about, and because the
+> expected finding was absent.
+>
+> 🔴 **G8 CANNOT BE EXECUTED AS WRITTEN.** §2-G row **G4 is "Mobile (§23)"** and row **G5 is
+> "provider handoff integrations + ingestion tiers 2–4; per-jurisdiction residency"**. Three rows
+> below them, G8 says *"draft **G4 (billing MVP)** and **G5 (audited crypto)** as `gates:` entries"*
+> — and §1's ladder chain agrees with G8, not with the rows. So the same table names G4 and G5 twice,
+> differently, and executing G8 would put the contradiction into the register **permanently**, in the
+> file `gates.test.ts` and every status read defer to.
+>
+> ⚠️ **Which reading wins is Steve's — it changes what gets built.** The evidence leans one way and
+> is recorded rather than acted on: G2's row calls the security audit *"G5, once G4 exists"*, which
+> reads correctly as "audited crypto, once billing exists" and incoherently as "provider handoff,
+> once mobile exists". That is an argument, not a ruling. `lib/ops/g-lane-names.test.ts` is dormant
+> today and **arms the moment a `gates.g4*`/`g5*` entry appears**, so the contradiction cannot be
+> committed silently — proven by planting the gate G8 would create and watching it fire.
 
 Ladder → `customer-used` → `revenue-proven` with evidence (`lib/ops/ladder-claim.ts` enforces).
 **G8** G4 and G5 enter `PROJECT.yaml`. **G2** audit + pen test + session-hardening review. **G6**

@@ -2037,6 +2037,57 @@ cross_cutting:
 # CI (D4). Written out as entries rather than left in a sprint report, because a
 # sprint report is the record of a day and this file is what the next session reads.
 deferred:
+  - id: g4-and-g5-name-two-different-things                     # ROADMAP G8 / Sprint 8
+    owner: steve                          # it changes what gets built; claude built the guard
+    opened: 2026-08-31
+    what: >-
+      `ROADMAP.md` §2-G defines the G-lane as rows. Row G4 is "Mobile (§23)"; row G5 is "provider
+      handoff integrations + ingestion tiers 2-4; per-jurisdiction residency". THREE ROWS LATER, in
+      the same table, G8 says "On G1 pass: draft G4 (billing MVP) and G5 (audited crypto) as
+      `gates:` entries" -- and §1's ladder chain agrees with G8: "G1 || G3 -> G4 billing MVP -> G5
+      audited crypto".
+    why_it_matters_more_than_a_naming_tidy: >-
+      G8 is an INSTRUCTION TO WRITE INTO THE REGISTER. Executing it as written creates `gates.g4`
+      and `gates.g5` that contradict the rows they are named after -- permanently, in the file that
+      `gates.test.ts`, `date-guards` and every status read defer to. A ruling is cheap now and
+      expensive once three documents cite `gates.g4`.
+    the_evidence_leans_one_way_and_that_is_not_a_ruling: >-
+      G2's row calls the security audit "G5, once G4 exists". That reads correctly as "audited
+      crypto, once billing exists" and incoherently as "provider handoff, once mobile exists". So
+      the billing/crypto reading is the one the sequencing depends on, and the G4/G5 ROWS look like
+      a feature backlog that collided with the ladder chain's names. An argument, not a decision --
+      it changes what gets built, so it is Steve's.
+    built: >-
+      `lib/ops/g-lane-names.test.ts`. DORMANT today (no such gate exists) and it ARMS the moment a
+      `gates.g4*`/`g5*` entry appears, printing both readings side by side. Proven by planting the
+      gate G8 would create and watching it fire. It also pins the collision as a FACT, so resolving
+      it by quietly rewriting one row fails the test and forces the ruling to be recorded; and it
+      checks §1's chain still agrees with G8, because a third reading would leave no anchor at all.
+    ends_when: >-
+      Steve rules which reading wins, ROADMAP is corrected in place, and this entry plus the
+      collision-pin test are deleted with the ruling recorded.
+    revisit: 2026-09-12
+
+  - id: the-ladder-guard-was-audited-and-it-held                # ROADMAP Sprint 8
+    owner: claude
+    opened: 2026-08-31
+    closed: 2026-08-31
+    what: >-
+      `lib/ops/ladder-claim.ts` was checked on the suspicion -- earned by every other finding this
+      week -- that it enforces the ladder in the abstract and never against the real claim. That
+      suspicion was WRONG.
+    what_was_found: >-
+      `ladder-claim.test.ts` feeds the live PROJECT.yaml through `assessLadderClaim` with
+      `today: new Date()`, so it judges the actual claim against the actual clock and is designed
+      to go red one day with no code change. It also carries an explicit blind-guard check: if
+      PROJECT.yaml stops carrying `ladder:` and `ladder_evidence:`, that fails rather than passing
+      vacuously on undefined -- which is the exact failure mode that caught `verify:funnel` and the
+      revisit guard this week.
+    recorded_because: >-
+      A guard that survives a hostile read is worth knowing about, and a session that only records
+      what it broke gives a false impression of the codebase. The expected finding was absent and
+      that is the finding.
+
   - id: the-diligence-packs-first-instruction-returned-nothing  # ROADMAP A6.5 / Sprint 7
     owner: claude
     opened: 2026-08-31
