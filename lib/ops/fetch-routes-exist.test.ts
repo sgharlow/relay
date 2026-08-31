@@ -91,14 +91,39 @@ export interface FetchSite {
   file: string;
 }
 
-/** Every `/api/...` literal handed to `fetch`, with where it was written. */
+/**
+ * Every `/api/...` literal handed to a call that reaches the network.
+ *
+ * 🔴 IT WATCHED `fetch(` ONLY, AND THE APP MOSTLY DOES NOT CALL `fetch`.
+ * Measured 2026-08-31: 76 literal `fetch('/api/…')` sites and **17 more** behind
+ * the `apiSend` / `apiGet` helpers — so this guard could see 76 of 93 call
+ * sites, and the 18% it could not see is exactly where the defect was.
+ *
+ * `/api/demo/simulate` was retired on 2026-08-30 (D25) and
+ * `TriggersPageClient.tsx` went on posting to it through `apiSend`. A demo owner
+ * would press a button and get a 404 from a route deleted the day before —
+ * which is the single thing this file exists to prevent.
+ *
+ * That is this directory's own rule turned inside out: a guard that watches ONE
+ * calling convention is a guard on that convention, not on the app. The helper
+ * is the dominant idiom in `src/app/(owner)`, so watching `fetch` alone watched
+ * the minority of the surface while reporting green.
+ */
 export function fetchSites(dirs: string[] = SEARCH_DIRS): FetchSite[] {
   const sites: FetchSite[] = [];
+  /*
+    `fetch(` plus any `apiSomething(` helper, with an optional type argument.
+    Deliberately a PATTERN rather than a list of the two helpers that exist
+    today: the next helper somebody adds is caught without an edit here, which is
+    the difference between a guard and a catalogue of what was true when it was
+    written.
+  */
+  const CALL = /(?:fetch|api[A-Z][A-Za-z]*)(?:<[^>]*>)?\(\s*[`'"](\/api\/[^`'"]*)/g;
   for (const dir of dirs) {
     for (const file of walk(dir)) {
       if (!/\.tsx?$/.test(file) || file.includes('.test.')) continue;
       const src = readFileSync(file, 'utf8');
-      for (const m of src.matchAll(/fetch\(\s*[`'"](\/api\/[^`'"]*)/g)) {
+      for (const m of src.matchAll(CALL)) {
         sites.push({ target: m[1], file: file.replace(/\\/g, '/') });
       }
     }
