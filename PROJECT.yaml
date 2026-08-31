@@ -5075,10 +5075,40 @@ deferred:
         A volatile number hand-copied into prose, wrong within twenty-four hours -- in the paragraph
         that exists to correct a different overstatement about the same walk. Replaced with the
         instruction to run it.
+      b15_6_the_property_is_proven_the_ITEM_cannot_be_closed_from_this_repo:
+        date: 2026-08-31
+        what_was_found: >-
+          The fail-closed classification IS fault-injected. `hasAnyStepUpFactor` returns TRUE on a
+          throw, so an unreadable factor list DEMANDS elevation rather than waiving it, and a test
+          has asserted that through `requireStepUp` since it shipped.
+        the_real_gap_and_it_is_now_closed: >-
+          The fault was injected only at the SAFER entry point. `requireStepUpOnce` -- which SPENDS
+          the elevation and guards exactly one thing, ACCOUNT CLOSURE -- had no such test. So the
+          classification was proven on the reversible path and unproven on the irreversible one.
+          The two already differ in behaviour at this boundary (each has its own stand-down branch),
+          which is precisely why proving one does not prove the other: a guard proven through one
+          caller is a guard on that caller. Added 2026-08-31, proven by planting a fail-OPEN catch
+          and watching both assertions go red.
+        why_the_ITEM_still_cannot_be_ticked: >-
+          🔴 B15.6 is described in exactly one place -- a single clause in the §2 B15 row -- as "the
+          PR #8 step-up error-classification fix stays `built` -- needs a fault injected". Nothing
+          else in this repository mentions it: no sprint report, no register entry, no doc. So
+          whether the fault injected above IS the fix that clause means cannot be established from
+          the repo, only guessed.
+        the_general_lesson: >-
+          A roadmap item whose only definition is an external identifier -- a PR number in another
+          system -- is unclosable by anyone who was not there when it was written, and it will be
+          re-investigated by every session that reaches it. That is the same failure as a volatile
+          number copied into prose: the authority lives somewhere the reader cannot check. The fix
+          is to restate B15.6 as the PROPERTY it wants proven, or for Steve to confirm the property
+          above is it. Recorded rather than ticked.
       still_open_here: >-
-        B15.5 and B15.6 (the `verifier-context.ts` action fix and step-up fault injection), and the
-        cron half of B15.3. Steve's half of `ends_when` -- ratifying the three numbers and ruling on
-        owner self-naming -- was DONE at Sitting D-1 on 2026-08-30 (B15.4).
+        B15.6 only -- and see the entry above for why it may already be satisfied and cannot be
+        told from this repo. ⚠️ This line read "B15.5 and B15.6" until 2026-08-31: B15.5 was BUILT
+        on 08-30 (ROADMAP §P1.3), so the register was still listing finished work as outstanding
+        while the entry above it was being corrected for exactly that. Also open: the cron half of
+        B15.3. Steve's half of `ends_when` -- ratifying the three numbers and ruling on owner
+        self-naming -- was DONE at Sitting D-1 on 2026-08-30 (B15.4).
     ends_when: >-
       Each of the three guards has been walked once against production with a disposable owner and
       the result recorded, AND Steve has ratified the three numbers (or replaced them) and ruled

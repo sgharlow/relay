@@ -254,6 +254,38 @@ describe('the route guards', () => {
     const out = await requireStepUp(reqWith(undefined), OWNER);
     expect(out?.status).toBe(403);
   });
+
+  /*
+    🔴 B15.6, 2026-08-31 — THE FAULT WAS INJECTED ONLY AT THE SAFER ENTRY POINT.
+    The test above covers `requireStepUp`, the five-minute window. It did not
+    cover `requireStepUpOnce`, which SPENDS the elevation and is used for exactly
+    one thing: account closure. So the fail-closed classification was proven on
+    the reversible path and unproven on the irreversible one.
+
+    Both call `hasAnyStepUpFactor`, so this is not a suspected divergence — it is
+    the rule this repository already writes down about helpers: a guard proven
+    through one caller is a guard on that caller. `requireStepUpOnce` also has a
+    stand-down branch of its own (the test two above asserts it resolves null for
+    a factorless account), which means the two paths ALREADY differ in behaviour
+    at this boundary, and only one of them was fault-injected.
+
+    ⚠️ And this is a MOCKED query, which the repo's own note says answers whatever
+    it was asked. That is acceptable here and only here: the assertion is about
+    what happens when the read THROWS, and a throw is the one thing a real engine
+    cannot be asked for on demand. What it must not become is a test of the
+    mapper — so it pins the STATUS the caller returns, through the real exported
+    function, not the boolean the private helper computed.
+  */
+  it('spends nothing and still demands elevation when the factor list is unreadable', async () => {
+    vi.mocked(query).mockRejectedValue(new Error('DSQL unavailable'));
+    const out = await requireStepUpOnce(reqWith(undefined), OWNER);
+    expect(
+      out?.status,
+      'requireStepUpOnce waived elevation because the factor list could not be read. It guards ' +
+        'account closure — the one irreversible action here — so a database blip must demand ' +
+        'elevation, never skip it.',
+    ).toBe(403);
+  });
 });
 
 describe('the cookie', () => {
