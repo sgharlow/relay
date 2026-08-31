@@ -137,7 +137,7 @@ reason is unchanged: A0 blocks it, A0 is ~20 minutes, and A0 has not happened.
 | ~~A0 the owner's vault~~ | ✅ **DONE** — `verify:dogfood` READY, all six green. ⚠️ quorum still unsatisfiable (M=0 vs N=1) — **and 2026-08-30 found why: no invitation was ever sent.** `readStandbyState(null)` renders an uncontacted person as `invited`, so the roster read as if they had been asked | steve, **closed** |
 | A1 op-ed → caregiver.com | unsent; §1a third-person ruling still owed (D-1 item 1) | steve |
 | A3 beta cohort | `.relay-cohort.json` untouched since 08-18 18:17, still untracked; no codes file; **third deferral lapsed unrecorded** | steve |
-| A7.0 the instrument | 🔴 collects nothing readable — see below | steve (one toggle) |
+| A7.0 the instrument | 🔴 **RE-MEASURED 2026-08-31 AND STILL DEAD** — the Vercel Web Analytics API answers `web_analytics_not_enabled` for `prj_VYyOXbTh…`. ⚠️ **And `verify:funnel` passed 7/7 at that same moment while printing "the instrument is alive"** — a claim about both halves from evidence about one. Fixed: the walk now exits **2** (could not look) by default and **1** when collection is known off, and says *"DO NOT LAUNCH A PLACEMENT ON THIS"*. | steve (one toggle) |
 
 ### 2. `customer-used` → `revenue-proven`
 

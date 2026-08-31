@@ -99,6 +99,8 @@ interface AnalyticsEvent {
   ed?: Record<string, unknown>;
 }
 
+import { verdict, collectionFromEnv } from '../lib/ops/funnel-instrument';
+
 const results: Array<{ step: string; ok: boolean; detail: string }> = [];
 function record(step: string, ok: boolean, detail: string): void {
   results.push({ step, ok, detail });
@@ -217,15 +219,29 @@ async function main(): Promise<void> {
     await browser.close();
   }
 
-  const failed = results.filter((r) => !r.ok);
+  /*
+    🔴 THE VERDICT IS TWO CLAIMS AND THIS WALK CAN ONLY PROVE ONE.
+    Everything above is the EMIT half: the page fires both events, they carry
+    `src`, and the ratio is computable. Whether anything COLLECTS them is a fact
+    about the Vercel project, not about the page, and on 2026-08-31 this walk
+    passed 7/7 while the Web Analytics API answered `web_analytics_not_enabled`.
+
+    So the verdict moves to `lib/ops/funnel-instrument.ts`, which refuses to say
+    "alive" from emit evidence alone. See that file for why this is the most
+    expensive place in the repository for a false green.
+  */
+  const passed = results.filter((r) => r.ok).length;
+  const v = verdict({
+    emitPassed: passed,
+    emitTotal: results.length,
+    collection: collectionFromEnv(process.env.FUNNEL_COLLECTION),
+  });
+
   console.log('');
-  if (failed.length > 0) {
-    console.error(`[funnel] ✗ ${failed.length} of ${results.length} checks FAILED.`);
-    console.error('[funnel] Do not let a lane run against this. A flight measured by a dead');
-    console.error('[funnel] instrument reads zero, which is indistinguishable from no demand.');
-    process.exit(1);
-  }
-  console.log(`[funnel] ✓ all ${results.length} checks passed — the instrument is alive.`);
+  const out = v.code === 0 ? console.log : console.error;
+  out(`[funnel] ${v.line}`);
+  for (const line of v.notes) out(line ? `[funnel] ${line}` : '');
+  process.exit(v.code);
 }
 
 main().catch((err) => {

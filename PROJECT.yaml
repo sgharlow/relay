@@ -2037,6 +2037,42 @@ cross_cutting:
 # CI (D4). Written out as entries rather than left in a sprint report, because a
 # sprint report is the record of a day and this file is what the next session reads.
 deferred:
+  - id: the-funnel-walk-spoke-for-a-half-it-could-not-see      # ROADMAP A7.0
+    owner: steve                          # the toggle; claude built the guard, effort S
+    opened: 2026-08-31
+    what: >-
+      `npm run verify:funnel` drove a real browser against production, passed 7/7 -- landing page
+      loads, caregiver_qualified fires, caregiver_intent fires, both carry `src`, the ratio is
+      computable -- and printed "the instrument is alive". At that same moment the Vercel Web
+      Analytics API answered `web_analytics_not_enabled` for this project. The events fire
+      perfectly and NOTHING COLLECTS THEM.
+    the_walk_named_its_own_consequence: >-
+      Its failure branch reads "A flight measured by a dead instrument reads zero, which is
+      indistinguishable from no demand." That sentence describes the live state, and the walk
+      printed the GREEN line above it.
+    why_it_is_the_most_expensive_false_green_here: >-
+      `gates.g1-arms-length-demand` is read from these events -- pass >=6% at N>=50, kill <2% at
+      N>=150 -- and a placement is ONE-SHOT. The reader arrives, the window passes, and the number
+      CANNOT BE RE-COLLECTED. A placement launched on this state produces an empty dashboard beside
+      a site that appears to be reporting correctly, and the D2C branch is decided on a zero that
+      measured nothing. ROADMAP Sprint 5 exists to spend that one event.
+    built_2026_08_31: >-
+      `lib/ops/funnel-instrument.ts` splits the verdict. 0 = both halves hold · 1 = a finding
+      (emit broken, OR emit fine and collection off, which now prints "DO NOT LAUNCH A PLACEMENT
+      ON THIS") · 2 = could not look at the collection half. TWO is the DEFAULT, because a default
+      that assumes the favourable answer is exactly how the overclaim happened. Proven in all
+      three states, and a structural test reads the script to stop the bare sentence returning --
+      a verdict that lives in a helper is a verdict on the helper.
+    ends_when: >-
+      Web Analytics is enabled for the relay project and `FUNNEL_COLLECTION=enabled npm run
+      verify:funnel` exits 0 against production. That is Steve's one toggle; nothing in this repo
+      can flip it.
+    what_this_does_not_fix: >-
+      ⚠️ Enabling collection does not retro-collect. Any traffic between now and the toggle is
+      unmeasured and unrecoverable, which is an argument for doing it BEFORE the op-ed is sent
+      rather than on placement day.
+    revisit: 2026-09-12
+
 
   # ═══════════════════════════════════════════════════════════════════════════
   # CLOSED 2026-08-30 — the DMARC feed is restored.
