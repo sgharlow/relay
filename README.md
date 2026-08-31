@@ -110,9 +110,15 @@ re-sweep at the top of [`docs/user-journeys.md`](docs/user-journeys.md), the sam
 > named here rather than quietly repaired.** *Verifier deny/abstain* was **not** in the
 > 2026-08-13 sweep. Its deny, abstain and halt branches had unit tests calling the function
 > and nothing else, which `ROADMAP.md` recorded as this rung being overstated (B15.2). It is
-> now earned on its own dated run — `npm run verify:decision`, 2026-08-30, 27 checks against
-> production, including the J7-R7 halt taking a live release back to `armed` because one
-> verifier objected. The list is unchanged; what changed is that this line is now true.
+> now earned on its own dated run — `npm run verify:decision`, 2026-08-30, against production,
+> including the J7-R7 halt taking a live release back to `armed` because one verifier objected.
+> The list is unchanged; what changed is that this line is now true.
+>
+> ⚠️ **This sentence said "27 checks" until 2026-08-31, and it had already drifted.** `91f4f26`
+> proved the walk and wrote 27; `fae77ac` added three more the same day, so the walk printed **30**
+> on its next run. A volatile number, hand-copied into prose, wrong within twenty-four hours — the
+> exact failure this repository has a standing rule against, in the paragraph correcting a different
+> overstatement about the same walk. **Run it and read what it prints.**
 
 One item on that list is **not** at that rung and is called out rather than folded in:
 the **heartbeat scheduler is `wired`** — `docs/user-journeys.md` J5 says "wired (it had

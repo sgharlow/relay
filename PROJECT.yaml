@@ -5037,6 +5037,48 @@ deferred:
       owner can name THEMSELVES as their own recipient or verifier. `isEligibleVerifier` already
       refuses to count an owner toward quorum, so the runtime hole is closed; what is open is that
       the row can still be created and the roster reads as fuller than it is.
+    re_measured:
+      date: 2026-08-31
+      why: >-
+        This entry still read "have never been exercised against a real transition", and that
+        stopped being true on 2026-08-30. A register entry describing a gap that has been closed is
+        the same defect as a doc describing a feature that has been removed -- it sends the next
+        session to do work already done. Found by running the walks rather than by re-reading.
+      b15_2_verifier_decision:
+        state: live-proven
+        runs: "2026-08-30 (twice: 05:42Z, 06:07Z) and 2026-08-31 01:19Z -- derived from audit_log
+          actions verifier_abstained / verifier_denied / release_halted_by_denial /
+          verifier_answer_not_counted, not from a written note."
+        the_08_31_run: "30/30. Not a first proof -- a REGRESSION check after eleven PRs landed in a
+          day, which is the more useful thing to have run. All three discriminating assertions hold:
+          an abstention leaves a 2-of-2 OPEN, one denial halts it back to `armed` with the counter
+          cleared by the re-arm, and an unconfirmed verifier's denial is `not_counted` with the
+          quorum LEDGER untouched so they can still answer once verified."
+      b15_3_escalation_read:
+        state: live-proven
+        runs: "2026-08-30 (05:47Z, 06:00Z) and 2026-08-31 01:20Z."
+        the_08_31_run: "22/22. The assertion that matters: received_confirmations=0 after the
+          escalation. respondToChallenge auto-satisfies the quorum when an OWNER approves; a LAPSE
+          is the opposite, the absence of a signal. If that ever reads 1, silence has been promoted
+          to consent. The audit names `challenge_lapsed:<request-id>` rather than a person, so
+          'nobody answered' stays distinguishable from 'they agreed'."
+      b15_1_reminder_ladder_cannot_be_closed_by_a_walk: >-
+        ⚠️ AND THIS IS NOT A GAP IN THE WALK. sweepCheckinReminders writes its audit row ONLY on
+        successful delivery -- deliberately, the row is a do-not-repeat marker -- and
+        lib/notify/email.ts refuses reserved TLDs unconditionally. Two correct designs meet, and a
+        disposable owner satisfies neither. `owner_checkin_reminder_first` / `_final` still have
+        ZERO rows in audit_log, ever (re-derived 2026-08-31). The real proof is dated: the live
+        owner's 75% rung, tracked in `the-reminder-ladder-has-never-fired`.
+      readme_had_drifted_too: >-
+        README recorded the B15.2 proof as "27 checks". Commit 91f4f26 proved the walk and wrote
+        that number; fae77ac added three more the SAME DAY, so the walk printed 30 on its next run.
+        A volatile number hand-copied into prose, wrong within twenty-four hours -- in the paragraph
+        that exists to correct a different overstatement about the same walk. Replaced with the
+        instruction to run it.
+      still_open_here: >-
+        B15.5 and B15.6 (the `verifier-context.ts` action fix and step-up fault injection), and the
+        cron half of B15.3. Steve's half of `ends_when` -- ratifying the three numbers and ruling on
+        owner self-naming -- was DONE at Sitting D-1 on 2026-08-30 (B15.4).
     ends_when: >-
       Each of the three guards has been walked once against production with a disposable owner and
       the result recorded, AND Steve has ratified the three numbers (or replaced them) and ruled
