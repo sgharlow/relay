@@ -2037,6 +2037,56 @@ cross_cutting:
 # CI (D4). Written out as entries rather than left in a sprint report, because a
 # sprint report is the record of a day and this file is what the next session reads.
 deferred:
+  - id: the-diligence-packs-first-instruction-returned-nothing  # ROADMAP A6.5 / Sprint 7
+    owner: claude
+    opened: 2026-08-31
+    closed: 2026-08-31
+    what: >-
+      `docs/g3-diligence-pack.md` §3 opens with "derive rather than quote" and hands a partner
+      `grep -A 30 -i "subprocessor" src/app/privacy/page.tsx`. It returns NOTHING: /privacy does not
+      use that word -- the section is headed "Who else is involved", in plain English, deliberately.
+    why_this_one_is_worse_than_the_others: >-
+      The page was right and the command was wrong, which is the more embarrassing way round -- a
+      reader following the pack's FIRST instruction concludes the subprocessor list does not exist.
+      And the audience is outside the company. Every other drift found this week was discovered by
+      us; this one was queued to be discovered by a prospective partner during diligence.
+    written_and_broken_within_a_day: >-
+      The pack was authored 2026-08-30 and its first step was broken when audited on 08-31. It is
+      the same shape as the rest of the week -- a document asserting something nothing checked --
+      applied to the one document written specifically for an external reader.
+    built: >-
+      `lib/ops/diligence-pack.test.ts` EXTRACTS the command from the pack and runs its grep term
+      against the real page, so a pack edited to a command that does not work fails there rather
+      than in a meeting. It also asserts the command's output actually contains the vendors the pack
+      names, checks the reverse direction (no vendor in the pack that is absent from /privacy),
+      pins that the pack still LEADS with "there is no legal opinion" rather than softening it, and
+      refuses any wording that promotes the restore drill from pre-flighted to run. Proven by
+      restoring the broken grep and watching it go red.
+    also_verified_live_the_same_day: >-
+      verify:roles (3 roles, both Regions, split intact, none holding DDL) · verify:kms (CMK
+      enabled, not pending deletion, policy grants only the runtime principal) · verify:csp (no
+      product code blocked) · zero UPDATE/DELETE statements against audit_log anywhere in source.
+      A pack whose claims fail a reader's spot-check is worse than no pack.
+
+  - id: c4-was-not-pulled-forward-and-that-was-the-decision     # ROADMAP Sprint 7 / C4
+    owner: steve
+    opened: 2026-08-31
+    what: >-
+      SMS / A2P 10DLC carries a 2-4 week lead, which is the same "degrades while you wait" shape
+      that justified pulling B5 and B21.2 forward out of Sprint 6. It was NOT pulled forward.
+    why_not: >-
+      C4 is PARKED BY RULING (2026-08-15) and scoped "Resumes at Sprint 7 only". Starting a carrier
+      registration is horizontal breadth BEFORE any arms-length demand signal exists, which the
+      portfolio's demand-gate rule forbids -- and it spends money and binds an identity. A lead time
+      is a reason to PLAN early, not a licence to SPEND early.
+    recorded_because: >-
+      The temptation is re-derivable from the roadmap in one reading, and the next session would
+      reach the same "but it takes 2-4 weeks" argument and might act on it. The reasoning is written
+      down so the answer does not have to be re-argued from scratch, and so that if Steve WANTS it
+      started early that is a deliberate override rather than drift.
+    ends_when: "gates.g3-b2b2c-pilot-loi produces a meeting that advances, or Steve rules otherwise."
+    revisit: 2026-09-12
+
   - id: the-enforced-half-cried-wolf-about-its-own-toolbar      # ROADMAP B21.2 -> B21.3/B21.4
     owner: claude
     opened: 2026-08-31
