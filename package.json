@@ -51,7 +51,9 @@
     "verify:stamp:journeys": "npx tsx scripts/stamp-verify-journeys.ts",
     "check:route-coverage": "npx tsx scripts/check-route-coverage.ts",
     "check:oped": "npx tsx scripts/check-oped.ts",
-    "verify:e1-route3": "npx tsx --env-file=.env.ro scripts/e1-route3.ts"
+    "verify:e1-route3": "npx tsx --env-file=.env.ro scripts/e1-route3.ts",
+    "drill:preflight": "npx tsx --env-file=.env.ro scripts/restore-drill.ts",
+    "drill:plan": "npx tsx --env-file=.env.ro scripts/restore-drill.ts plan"
   },
   "dependencies": {
     "@aws-sdk/client-kms": "3.1072.0",

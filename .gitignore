@@ -99,3 +99,4 @@ e2e-*.png
 # to exist before the lock is ever written.
 .claude/sprint.lock
 .e1-scratch/
+.drill-scratch/
