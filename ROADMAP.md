@@ -15,6 +15,7 @@ not to trust.
 | §2 B15: the three release guards **"never exercised on production"** | 🔴 **ALREADY WALKED 2026-08-30.** Derived from `audit_log`, not from a note. README recorded the proof as *"27 checks"* when a same-day commit had taken it to **30**. A closed gap described as open, beside an open number described as closed. |
 | Sprint 4 row 4.5 / D5: GoodTrust **$39/yr renewing** | 🔴 **NO LONGER ON THEIR PRICING PAGE.** A flat **$149** estate plan with no renewal shown; $39 survives only in a help article, and a price that is only in a help centre is not a market price. |
 | `docs/COMPETITORS.md`: no mention of Proton | 🔴 **THE CLOSEST MECHANISM ANY RIVAL SHIPS WAS MISSING.** Proton Emergency Access: five contacts, an owner-chosen wait, owner veto during it, auto-grant on silence. Added, with its differences stated as differences. |
+| Sprint 7 A6.5: the diligence pack is ready for its first reader | 🔴 **ITS FIRST INSTRUCTION RETURNED NOTHING.** §3 says *"derive rather than quote"* and hands a partner `grep -A 30 -i "subprocessor" src/app/privacy/page.tsx` — and `/privacy` does not use that word; the section is headed **"Who else is involved"**. The page was right and the command was wrong, which is the worse way round: a reader following it concludes the list does not exist. Fixed and guarded. |
 | Sprint 6: B5's compatibility risk is **"empty today (zero vault items)"** | 🔴 **EXPIRED 2026-08-30 03:28 UTC.** There is now **1** vault item, belonging to a real owner. The premise was true when written; the argument it supports — lift the gate EARLY — is now strictly more urgent, and every day adds rows that a phase-C flip must stay compatible with. |
 | Sprint 6 B21.2: read `csp_reports` on real traffic | ✅ **DONE 2026-08-31, and it changed the check.** 66 reports / 34 distinct: **6 enforced, all of them the Vercel toolbar** — refused correctly, absent from production HTML, never served to a customer. `verify:csp` reported them as *"A real person met a broken page"* and exited 1. Now split, and the next-rung verdict is printed: **NOT takeable**, 22 distinct inline violations mean nonces or hashes first. |
 | A7.0: **"collects nothing readable"**, and `verify:funnel` reports the instrument alive | 🔴 **BOTH, SIMULTANEOUSLY.** The walk passed **7/7** while the Web Analytics API answered `web_analytics_not_enabled`. Its own failure text names the consequence and it printed the green line. Verdict split; default is now *could not look*. |
@@ -1207,6 +1208,27 @@ suppressions before the first notification. **F-a**'s first measurement. Expect 
 failure mode here; Sprints 0–4 exist so that it is a usability failure and not a custodial one.
 
 ### Sprint 7 — Distribution *(event: a G3 meeting advances toward a pilot)*
+
+> 🟡 **PRE-CHECKED 2026-08-31. The event has NOT fired** — `docs/g3-outreach-log.md` has zero
+> sends, so no meeting can have advanced. One item was audited early and **one was deliberately
+> left alone**; see below.
+>
+> ⛔ **C4 WAS NOT PULLED FORWARD, AND THAT IS THE FINDING.** SMS / A2P 10DLC carries a 2–4 week
+> lead, which is exactly the shape that argued for pulling B5 and B21.2 forward out of Sprint 6.
+> It is different: C4 is **parked by ruling (2026-08-15)** and scoped *"Resumes at Sprint 7 only"*,
+> and starting a carrier registration is horizontal breadth **before any arms-length demand signal
+> exists** — which the portfolio's own demand-gate rule forbids. A lead time is a reason to plan
+> early, not a licence to spend early. Recorded so the next session does not re-derive the
+> temptation and act on it.
+>
+> ✅ **A6.5 audited instead** — the diligence pack met a reader, and the reader was this check.
+> Its first instruction returned nothing (see the revision-7 index); fixed, and
+> `lib/ops/diligence-pack.test.ts` now runs the pack's own command and fails if it stops returning
+> the vendors. Its checkable claims were re-verified live the same day: `verify:roles` (3 roles,
+> both Regions, split intact, none holding DDL), `verify:kms` (CMK enabled, not pending deletion),
+> `verify:csp` (no product code blocked), and zero `UPDATE`/`DELETE` statements against `audit_log`
+> anywhere in the source. The recovery row now carries the 08-31 restore-drill pre-flight —
+> **`preflight:` is not `met:`**, and the pack says so rather than promoting one to the other.
 
 **G1** white-label tenancy — **only once `gates.g3` is met (a signature), never at a meeting** —
 scoped against the signed pilot's actual requirements (B5 first). The meeting opens the rest of this

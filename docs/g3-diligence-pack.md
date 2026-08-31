@@ -68,8 +68,17 @@ care about this more than we do, and should.
 Derive rather than quote — `/privacy` is authoritative and is the page a partner will actually read:
 
 ```bash
-grep -A 30 -i "subprocessor" src/app/privacy/page.tsx
+grep -A 30 "Who else is involved" src/app/privacy/page.tsx
 ```
+
+> 🔴 **This command returned NOTHING until 2026-08-31.** It grepped for the word *"subprocessor"*,
+> and `/privacy` does not use it — the section is headed **"Who else is involved"**, in plain
+> English, deliberately. So the first instruction in the pack handed to a partner produced an empty
+> result, in the section whose entire argument is *derive rather than quote*.
+>
+> The page was right and the command was wrong, which is the more embarrassing way round: a reader
+> following it would conclude the list does not exist. `lib/ops/diligence-pack.test.ts` now runs
+> this exact grep and fails if it stops returning the vendors named below.
 
 The shape: infrastructure and database (AWS), hosting (Vercel), transactional mail (Resend),
 payments (Stripe), and an LLM provider used **on non-secret metadata only**. That last boundary is
@@ -113,7 +122,13 @@ What exists instead, and can be demonstrated rather than asserted:
 | Audit | Append-only, hash-chained per owner. Audit writes **block** the operation they record, by design |
 | Backups | Daily, with an **absence** alarm — the thing that alarms is the backup not happening |
 | Incident process | `docs/security-incident-runbook.md`, evidence-first, with a one-command evidence bundle |
-| Recovery | ⚠️ **The restore drill has not run yet.** Gate `d3-restore-drill`, due 2026-11-08. Stated because a partner will ask, and "we back up daily" without a proven restore is the answer that ages badly |
+| Recovery | ⚠️ **The restore drill has not run yet.** Gate `d3-restore-drill`, due 2026-11-08 — stated because a partner will ask, and "we back up daily" without a proven restore is the answer that ages badly. ✅ **Pre-flighted 2026-08-31** and recorded on the gate: three of its four criteria hold today — the CMK is present, enabled and not pending deletion; a real decryptable item exists; both clusters are ACTIVE with deletion protection and backups 21.2h fresh, byte-identical across Regions. What is missing is the restore itself, to a scratch cluster. **Pre-flighted is not proven, and the gate says `preflight:` rather than `met:` for exactly that reason** |
+
+**Verified live 2026-08-31, so a reader's spot-check does not find the first crack:**
+`npm run verify:roles` — 3 roles across both Regions, the split intact, none holding DDL.
+`npm run verify:kms` — the CMK Enabled, not pending deletion, policy still granting only the runtime
+principal. `npm run verify:csp` — no product code blocked. Zero `UPDATE`/`DELETE` statements against
+`audit_log` anywhere in the source, which is what "append-only" has to mean to survive a review.
 
 **A DPA can be signed.** There is no entity — Steve Harlow trades as an individual — and a partner's
 template is likely to be the practical route.
