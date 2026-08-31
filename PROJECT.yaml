@@ -2037,6 +2037,28 @@ cross_cutting:
 # CI (D4). Written out as entries rather than left in a sprint report, because a
 # sprint report is the record of a day and this file is what the next session reads.
 deferred:
+  - id: the-route-guard-watched-one-calling-convention          # ROADMAP D25 tail
+    owner: claude
+    opened: 2026-08-31
+    closed: 2026-08-31
+    what: >-
+      `lib/ops/fetch-routes-exist.test.ts` exists to catch a client calling a route nothing serves.
+      It matched `fetch(` LITERALS only. Measured 2026-08-31: 76 literal `fetch('/api/...')` sites
+      and 17 more behind the `apiSend` / `apiGet` helpers -- so it could see 76 of 93 call sites,
+      and the 18% it could not see is exactly where the defect was.
+    the_defect_it_missed: >-
+      `/api/demo/simulate`, retired 2026-08-30, still posted to from `TriggersPageClient.tsx`
+      through `apiSend`. The guard reported green across that entire window.
+    why_it_is_the_same_shape_as_the_rest_of_the_week: >-
+      This directory's own rule is "a guard that lives in a helper is a guard on the helper". This
+      is that rule inverted: a guard that watches ONE calling convention is a guard on that
+      convention, not on the app -- and the helper is the dominant idiom in src/app/(owner), so it
+      watched the minority of the surface while reporting on all of it.
+    built: >-
+      The matcher is now `(?:fetch|api[A-Z][A-Za-z]*)` with an optional type argument -- a PATTERN
+      rather than a list of the two helpers that exist today, so the next helper is caught without
+      an edit. It fired on `/api/demo/simulate` immediately, which is how the defect was found.
+
   - id: g4-and-g5-name-two-different-things                     # ROADMAP G8 / Sprint 8
     owner: steve                          # it changes what gets built; claude built the guard
     opened: 2026-08-31
@@ -5752,7 +5774,18 @@ deferred:
       Steve records one of: registered; Stripe Tax enabled; or "accepted until first revenue" WITH
       a revisit. Undated acceptance is the illegitimate outcome, as everywhere else in this file.
 
-  - id: fr9-demo-simulate-is-reachable-by-nobody              # ROADMAP D25
+  - id: fr9-demo-simulate-is-reachable-by-nobody
+    closed:
+      date: 2026-08-31
+      outcome: "RETIRED, and the half that was left behind is now gone too."
+      what_was_missing: >-
+        D25 ruled RETIRE and PR #40 deleted `src/app/api/demo/simulate/route.ts` on 2026-08-30. The
+        CLIENT half stayed: `TriggersPageClient.tsx` still rendered `SimulatePanel` for a
+        demo-flagged owner and posted to the deleted route through `apiSend`. A demo owner would
+        have pressed a button and met a 404 from a route removed the day before.
+      this_entrys_own_warning_was_right: >-
+        It said the piece "most likely to be left behind" was the follow-through. It was -- just not
+        the piece it named. Removed 2026-08-31 along with the now-unused SIMULATE_MS and useRef.              # ROADMAP D25
     owner: steve                          # the ruling; claude executes either branch
     opened: 2026-08-28
     what: >-

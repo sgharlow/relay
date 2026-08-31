@@ -19,7 +19,7 @@
  * Feature: relay-h0-mvp
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { apiGet, apiSend } from '../_lib/api';
 import { article } from '../../../../lib/text/article';
 import { StatusLine, type StatusMessage } from './StatusLine';
@@ -62,7 +62,6 @@ const STATE_STYLE: Record<string, string> = {
   cancelled: 'bg-paper-sunken text-muted',
 };
 
-const SIMULATE_MS = 10_000;
 
 export default function TriggersPage() {
   const [data, setData] = useState<TriggersResponse | null>(null);
@@ -99,7 +98,15 @@ export default function TriggersPage() {
       {data ? (
         <>
           <CadenceForm current={data.checkinIntervalDays} onSaved={load} />
-          {data.isDemo ? <SimulatePanel onDone={load} /> : null}
+          {/*
+            ❌ SimulatePanel REMOVED 2026-08-31. It posted to `/api/demo/simulate`,
+            which D25 retired on 2026-08-30 — so a demo owner would have pressed a
+            button and met a 404 from a route deliberately deleted the day before.
+            The CLIENT half of that retirement was left behind, and
+            `fetch-routes-exist.test.ts` could not see it: the guard watched
+            `fetch(` while this called through `apiSend`. Reason and replacement:
+            docs/retired-surface.md.
+          */}
 
           <section className="space-y-3">
             <h2 className="text-t5 font-semibold uppercase tracking-wide text-muted">Your triggers</h2>
@@ -241,77 +248,6 @@ function CadenceForm({ current, onSaved }: { current: number; onSaved: () => Pro
   );
 }
 
-function SimulatePanel({ onDone }: { onDone: () => Promise<void> }) {
-  const [progress, setProgress] = useState<number | null>(null);
-  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [result, setResult] = useState<string | null>(null);
-
-  useEffect(() => () => {
-    if (timer.current) clearInterval(timer.current);
-  }, []);
-
-  async function run() {
-    setResult(null);
-    setProgress(0);
-    const start = Date.now();
-    timer.current = setInterval(() => {
-      setProgress(Math.min(100, ((Date.now() - start) / SIMULATE_MS) * 100));
-    }, 100);
-    try {
-      const res = await apiSend<{ states: string[] }>('/api/demo/simulate', 'POST', { trigger_type: 'emergency' });
-      setResult(`Released via ${res.states.join(' → ')}`);
-    } catch (err) {
-      setResult(String((err as Error).message));
-    } finally {
-      if (timer.current) clearInterval(timer.current);
-      setProgress(null);
-      await onDone();
-    }
-  }
-
-  return (
-    <section className="rounded border border-ochre bg-ochre-soft p-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-t5 font-semibold text-ochre-text">Simulate emergency (demo)</h2>
-          <p className="text-t1 text-ochre-text">Fast-forwards ARMED → PENDING → GRACE → RELEASED in ~10s using the real state machine.</p>
-        </div>
-        <button
-          onClick={run}
-          disabled={progress !== null}
-          className="rounded bg-ink px-3 py-1.5 text-t2 font-semibold text-paper hover:bg-ink disabled:opacity-60"
-        >
-          {progress !== null ? 'Running…' : 'Simulate'}
-        </button>
-      </div>
-      {progress !== null ? (
-        <div className="mt-3 h-2 overflow-hidden rounded bg-ochre-soft">
-          <div className="h-full bg-ink transition-all" style={{ width: `${progress}%` }} />
-        </div>
-      ) : null}
-      {result ? <p className="mt-2 text-t2 text-ochre-text">{result}</p> : null}
-    </section>
-  );
-}
-
-/**
- * What a legacy row of a WITHDRAWN trigger type says about itself, per state.
- * `null` means the state already explains itself elsewhere on the card.
- *
- * A pure function, and exported, so the gate can be asserted state by state
- * rather than by grepping the file for the word "withdrawn" — the first version
- * of this notice was gated `!reversible && rs.state === 'armed'` and a test that
- * only looked for the word passed while PENDING, GRACE and RELEASED rendered a
- * badge, no controls, and no explanation.
- *
- * ⚠️ EVERY SENTENCE HERE IS A CLAIM ABOUT CODE ELSEWHERE. "Cannot be started"
- * holds because `/api/triggers/[id]/initiate` refuses a non-user-selectable type
- * AND because `runHeartbeatSweep` binds `USER_SELECTABLE_TRIGGER_TYPES` in its
- * armed-row read — it did not, until 2026-08-21, and this sentence was false on
- * the cron path for the week it shipped. "Checking in will not stand it down"
- * holds because `processCheckin` reports a non-reversible row as `blocked`. If
- * either of those changes, this copy is a defect, not a stale comment.
- */
 export function withdrawnNotice(triggerType: string, state: string): string | null {
   if (triggerType !== 'estate') return null;
   switch (state) {
