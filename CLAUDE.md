@@ -161,10 +161,29 @@ npm run verify:schema  # do both DSQL regions have the tables AND COLUMNS the mi
                        # migration, and before a release. Columns since 2026-08-17: it
                        # compared table names only, so 028 and 034 — whose entire content
                        # is an ADD COLUMN — passed it while unapplied.
-npm run verify:funnel  # is the G1 demand instrument alive? Drives a real browser against
-                       # production under src=qa (gate-excluded), writes nothing.
-                       # Run it on placement day and daily while a piece is live —
-                       # docs/g1-editorial-lane.md step 5, ROADMAP Sprint 4.
+npm run verify:funnel  # does the G1 demand instrument FIRE, and does anything COLLECT?
+                       # Drives a real browser against production under src=qa
+                       # (gate-excluded), writes nothing. Run it on placement day and
+                       # daily while a piece is live — docs/g1-editorial-lane.md step 5.
+                       # 🔴 IT USED TO SAY "the instrument is alive" AND THAT WAS A CLAIM
+                       # ABOUT BOTH HALVES MADE FROM EVIDENCE ABOUT ONE. On 2026-08-31 it
+                       # passed 7/7 while the Vercel Web Analytics API answered
+                       # `web_analytics_not_enabled` for this project — the page fires both
+                       # events perfectly and NOTHING COLLECTS THEM. Its own failure text
+                       # names the consequence: "a flight measured by a dead instrument
+                       # reads zero, which is indistinguishable from no demand" — and it
+                       # printed the GREEN line in exactly that state.
+                       # Now: 0 = both halves hold · 1 = a finding (emit broken, OR emit
+                       # fine and collection off) · 2 = COULD NOT LOOK at the collection
+                       # half. 2 is the default, because a default that assumes the
+                       # favourable answer is how the overclaim happened.
+                       # ⚠️ Set FUNNEL_COLLECTION=enabled|disabled after checking the Vercel
+                       # dashboard (or an MCP `get_web_analytics` read). Verdict logic and
+                       # the reasoning live in lib/ops/funnel-instrument.ts.
+                       # ⚠️ A PLACEMENT IS ONE-SHOT. The reader arrives, the window passes,
+                       # and the number cannot be re-collected — so a placement launched on
+                       # a dead collector decides g1-arms-length-demand on a zero that
+                       # measured nothing.
                        # ⚠️ It used to be documented ONLY by "run it daily during an ad
                        # flight — see docs/g1-ad-creatives.md". Paid advertising was
                        # retired 2026-08-16 (ratified.retire-paid-advertising) and that
