@@ -286,3 +286,72 @@ machine is held permanently by `svchost.exe`, so two listeners can appear and re
 ambiguously — use a free port and `E2E_BASE`. And relay's local dev writes **production** DSQL
 (`feedback-relay-local-dev-hits-production`), so "run it locally to be safe" is false here: a local
 run and a production run write the same rows.
+
+
+---
+
+# 2026-08-30 — route 3 run, and the symptom is now CHARACTERISED rather than mysterious
+
+Run under E1.2 with Steve's explicit authorisation for one fabricated-invoice audit row.
+**No row was written, so the authorised cost was never spent** — six deliveries, zero rows.
+`scripts/e1-route3.ts` is the harness; it reproduces this deterministically.
+
+## What §6 asked for, and what it now says
+
+§6 said the next attempt must first establish *which build is answering*, because the leading
+explanation was that `next dev` served modules that were not on disk. That was done, and the
+explanation is **eliminated**:
+
+| established | how |
+|---|---|
+| A **production** build answered (`next build && next start`, port 3117, one listener) | `netstat` showed exactly one PID; §6's two-listener ambiguity did not apply |
+| The **same process** answered every request | the E1.1 build marker returned `instance=fe6fe640` on both paths of a matched pair |
+| Signature verification really runs | no header → `400 Unsigned`; bad signature → `400 InvalidSignature`; valid → `200` |
+| `constructEvent` preserves the splice | run locally against the installed `stripe` SDK: type and subscription id survive |
+| The **built** handler is correct | extracted from `.next/server/chunks`: the case, the extraction, and the lookup `R` (`SELECT owner_id FROM subscriptions WHERE stripe_subscription_id = $1`) are all right |
+
+## The matched pair — the sharpest form of the finding
+
+A temporary diagnostic route was built into the same bundle, replaying the handler's own steps on
+the **same raw bytes** in the **same process**, and both were called back to back:
+
+```
+A  replay (in-process)  would_break_early=false   owner=0351deb3…   instance=fe6fe640
+B  webhook, same bytes  status=200                                  instance=fe6fe640
+   audit rows for the shared invoice id: 0
+```
+
+So every precondition the case needs is **provably satisfied in the process that answers**, and the
+case still writes nothing. Payload shape is not the variable either — legacy `.subscription`, modern
+`parent.subscription_details.subscription`, and both together were each delivered: `200`, zero rows.
+
+## What this means for the labels, which is the part that matters
+
+**E1′ is NOT `route-proven`.** It stays `wired`. Route 3 was supposed to be the cheap way to earn
+that label and it did the opposite: it turned an unexplained August anomaly into a reproducible
+present-tense one.
+
+🔴 **Consequence for E4.2 (the 2026-10-01 paywall decision).** The flip means a lapsed subscription
+stops the owner starting a release. The register's stated precondition is that the owner is told
+their renewal failed. On this evidence **nobody can currently be told** — the notice path accepts a
+correctly-signed event and records nothing, for any payload shape. Flipping the paywall on top of
+that converts an expired card into a silently blocked release with no notification, which is the
+exact failure `/terms` now promises does not happen.
+
+⚠️ **And the splice is more synthetic than §5 admits**, found the same day: there was nothing to
+"swap". Live mode has **zero** `invoice.payment_failed` events ever, and the only test-mode one
+carries `billing_reason: manual` with **no** subscription reference in either position. Every proof
+of this path to date has added a field no real payload in this account has ever carried.
+
+## What the next attempt should do — and it is not another delivery
+
+Stop trying to make the case pass. The evidence above says the case's preconditions hold and its
+body does not run, so the next question is about **execution**, not wiring:
+
+1. Instrument **inside** `notifyRenewalFailed` / `sendOnce` — the four branches — rather than around
+   them. Everything outside has now been eliminated, twice, by two different methods.
+2. Establish whether `writeAuditEntry` is reached at all for this action, given it demonstrably
+   works for `owner_checkin` and `vault_item_created` on the same owner hours earlier.
+3. Only then consider route 2 (E1.3). A test-clock subscription would exercise the same body and, on
+   this evidence, would fail the same way — spending a Stripe test clock and a disposable owner to
+   re-learn what a spliced POST already shows.

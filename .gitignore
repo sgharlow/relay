@@ -98,3 +98,4 @@ e2e-*.png
 # process that died days ago. ~/.claude/commands/sprint.md §1.0 requires this line
 # to exist before the lock is ever written.
 .claude/sprint.lock
+.e1-scratch/

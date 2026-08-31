@@ -355,6 +355,28 @@ npm run verify:stripe  # the BILLING contract, and the only wall here that someb
                        # CLI, which is Steve's browser pairing and EXPIRES 2026-10-07.
                        # Only the key path can be scheduled. Exit 0 holds, 1 finding,
                        # 2 could-not-look; the third is deliberately not the first.
+npm run verify:e1-route3 # E1.2 route 3 — does a failed renewal actually reach the
+                       # owner? Splices a REAL captured `invoice.payment_failed` with the
+                       # LIVE subscription id, signs it, and POSTs it at a LOCAL
+                       # PRODUCTION BUILD (`next build && next start` on a free port —
+                       # NEVER `next dev`, which is recorded serving stale modules here).
+                       # Needs E2E_BASE + STRIPE_WEBHOOK_SECRET; reads via .env.ro.
+                       # 🔴 IT CURRENTLY FAILS, AND THE FAILURE IS THE FINDING (2026-08-30).
+                       # Six deliveries returned 200 and wrote ZERO audit rows. Every
+                       # branch out of `sendOnce` writes one, so this is not a state the
+                       # source can produce. §6 of docs/e1-stripe-lapse-proof.md blamed
+                       # stale modules; that is now DISPROVEN — a matched pair on the SAME
+                       # BYTES in the SAME PROCESS (build marker `fe6fe640`) had an
+                       # in-process replay report every precondition satisfied while the
+                       # webhook wrote nothing. Payload shape is not it either: legacy,
+                       # `parent`, and both together all 200/zero.
+                       # ⚠️ E1prime is therefore `wired`, NOT `route-proven` — and that
+                       # matters on 2026-10-01, because flipping the paywall over a notice
+                       # nobody receives turns an expired card into a silently blocked
+                       # release. Do NOT relabel it from a green run of anything else.
+                       # ⚠️ It writes to PRODUCTION on success (one fabricated-invoice row
+                       # on the owner's hash-chained log). Steve authorised exactly one on
+                       # 2026-08-30; none was spent, because nothing was written.
 npm run verify:iam     # the OTHER half of the least-privilege wall — can any of our IAM
                        # principals still obtain a DSQL ADMIN token, and does the one that
                        # must hold NO KMS still hold none? Reads each live policy, managed

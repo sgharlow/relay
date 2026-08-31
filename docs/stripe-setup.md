@@ -317,3 +317,46 @@ Whether the one live subscriber received a receipt on 2026-08-08 is therefore un
 what happens at the first renewal. Read the setting once (Settings → Emails) and record it here.
 Building a receipt in-product is `ROADMAP.md` **E3**, correctly gated behind F-d — this is the
 zero-cost half that should not wait for it.
+
+
+---
+
+## 🔴 STEVE — mint the restricted read-only key (E1.7). ~5 minutes, and it has a death date.
+
+Ruled 2026-08-30: *"You mint the restricted key, I wire it."* The wiring is done —
+`.github/workflows/stripe-contract-monitor.yml`, daily at 10:47 UTC. It has nothing to read until
+this exists.
+
+**What to mint.** Stripe dashboard → Developers → API keys → **Create restricted key**.
+
+| | |
+|---|---|
+| Name | `relay-contract-monitor` (so it is obvious which product to revoke if it leaks) |
+| Webhook Endpoints | **Read** |
+| Billing Portal Configurations | **Read** |
+| Everything else | **None** — it must not be able to write anything, or read a customer, or read a charge |
+| Mode | **Live** — the contract being watched is the live one |
+
+**Where to put it.** GitHub → the `relay` repo → Settings → Secrets and variables → Actions → New
+repository secret, named exactly `STRIPE_READONLY_KEY`. **Do not put it in a `.env` file and do not
+paste it into a chat** — the monitor reads it from Actions, and `verify:stripe` picks it up from the
+environment when you want to run it by hand.
+
+**Why it is worth five minutes.** `verify:stripe` watches two things that can change with no commit,
+no deploy and nothing in any diff:
+
+1. the live endpoint's `enabled_events` still covering every event the handler has a `case` for —
+   this already bit once, silently, for nine days; and
+2. the default billing portal still cancelling **at period end**, which is what `/terms` promises.
+   ⚠️ That configuration is **account-level** on an account shared with report-bridge,
+   skillcrossroads and second-brain, so **another product's operator can falsify Relay's terms to
+   paying customers in one click.**
+
+**The date.** Both Stripe CLI session keys expire **2026-10-07** (`~/.config/stripe/config.toml`,
+read 2026-08-30). Until then the CLI is a working fallback and the monitor only warns. After it,
+there is no non-dashboard read path at all — so the monitor starts failing rather than warning,
+because at that point an unset secret means nothing is watching.
+
+**Separately, and also yours: `stripe login` before 2026-10-07** (E1.8) — it re-pairs the CLI for
+another window. The restricted key does not remove the need for it; the CLI is what `verify:stripe`
+uses interactively and what any future E1 route work needs.
