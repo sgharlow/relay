@@ -5057,6 +5057,24 @@ deferred:
       b15_3_escalation_read:
         state: live-proven
         runs: "2026-08-30 (05:47Z, 06:00Z) and 2026-08-31 01:20Z."
+        cron_half_proven:
+          date: 2026-08-31
+          result: "22/22. BOTH PATHS are now live-proven, which the read half alone did not settle."
+          the_line_that_matters: >-
+            "a real cron tick happened while waiting: 2026-08-31 01:00:51Z -> 02:00:47Z", and then
+            "the unanswered request was ESCALATED by a cron nobody called". The walk does NOT invoke
+            the sweep -- CRON_SECRET lives only in Vercel, so there is no shortcut -- it backdates
+            one column scoped to its own request id and waits ~60 minutes for production's own
+            hourly tick to find it.
+          why_both_halves_were_needed: >-
+            They are different code with different failure modes. The derive-on-read half fires
+            because somebody LOOKS, and its call sits behind a swallowing catch so rung 0 still
+            renders -- which makes ITS failure completely silent: the dashboard looks right and the
+            release never advances. The cron half is the scheduled path with nothing local calling
+            it. Proving one proves nothing about the other.
+          received_confirmations: "0 on both halves. respondToChallenge auto-satisfies the quorum
+            when an OWNER approves; a lapse is the opposite. If that ever reads 1, silence has been
+            promoted to consent." 
         the_08_31_run: "22/22. The assertion that matters: received_confirmations=0 after the
           escalation. respondToChallenge auto-satisfies the quorum when an OWNER approves; a LAPSE
           is the opposite, the absence of a signal. If that ever reads 1, silence has been promoted
