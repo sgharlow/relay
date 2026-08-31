@@ -10,6 +10,32 @@
 > ⚠️ **Everything dated 2026-07-01 below is UNVERIFIED as of today** unless it carries a
 > 2026-08-18 note. The qualitative claims (no rival does verified reversible release) were not
 > re-tested this pass; only the volatile facts were.
+>
+> ## Re-verified 2026-08-31 (D5) — three of four prices hold, one is no longer verifiable
+>
+> | claim | 2026-08-18 | 2026-08-31 |
+> |---|---|---|
+> | Everplans Premium | $99.99/yr | ✅ **unchanged**, and the free tier is still "Store up to 3 items" |
+> | Trustworthy Silver | $10/mo paid annually = $120/yr | ✅ **unchanged** (Gold $20, Platinum $40, all "per month, paid annually") |
+> | Everplans via VSP | $27/yr | ✅ **unchanged**, still stated as a 73% saving on retail |
+> | GoodTrust | "$149 one-time, or $99 first year then **$39/yr** renewing" | 🔴 **NO LONGER ON THEIR PRICING PAGE** — see below |
+>
+> 🔴 **GOODTRUST'S $39 RENEWAL CANNOT BE RE-VERIFIED FROM THE VENDOR'S OWN PAGE.**
+> `mygoodtrust.com/pricing` now shows a single **$149** "Estate Plan (Will or Trust-based)" under
+> the line *"One price, the only Estate plan you'll ever need"*, and **displays no renewal price at
+> all**. A support-centre article still describes a $39 renewal, but the pricing page — the thing a
+> prospect actually meets — does not.
+>
+> **Why that matters more than the number.** The Implications section below used the $39 figure to
+> argue *"do not read GoodTrust's $39 renewal as a floor"*. That argument now rests on a price the
+> vendor has stopped advertising, so it has been rewritten rather than left standing on a figure
+> only findable in a help article. The strategic reading is unchanged and in fact strengthened: the
+> "one price, forever" framing is the estate-planning pivot completing itself, and it moves
+> GoodTrust further from Relay, not closer.
+>
+> ⚠️ **A price that is only in a help centre is not a market price.** Recorded rather than
+> quietly corrected, because the next person to open this file would otherwise re-derive $39 from
+> the same help article and think it confirmed.
 
 Buyer moment (the caregiver wedge, per PROJECT.yaml G1): an adult child managing an aging parent's
 affairs needs credentials, documents, and instructions to be *accessible under defined conditions* —
@@ -41,7 +67,7 @@ Nobody is competing on release correctness, which is Relay's whole thesis.
 | | Plan shape | Annualised | Bearing on Relay's $119 |
 |---|---|---|---|
 | **Trustworthy** | Free · Silver $10/mo · Gold $20/mo · Platinum $40/mo, *paid annually* | **$120 / $240 / $480** | Silver at $120/yr is **within a dollar of Relay's $119**. The nearest competitor is no longer $99.99 — it is a tiered product whose entry paid tier lands exactly on our price |
-| **GoodTrust** | $149 one-time, or promotional $99 first year then **$39/yr** | **$39/yr renewing** | Undercuts everyone on renewal, and has **pivoted toward full estate planning** — wills, trusts, POA, healthcare and funeral directives — which is the ground `g2-counsel-opinion` withdrew Relay from permanently |
+| **GoodTrust** | ⚠️ **re-checked 2026-08-31:** the pricing page now shows a flat **$149** "Estate Plan (Will or Trust-based)", *"One price, the only Estate plan you'll ever need"*, **with no renewal price shown**. The $99-then-$39 shape recorded on 08-18 is no longer advertised there | **$149, renewal unstated** | Still the cheapest entry, and the **estate-planning pivot has completed** — wills, trusts, POA, healthcare and funeral directives — which is exactly the ground `g2-counsel-opinion` withdrew Relay from permanently |
 
 The GoodTrust pivot is the more strategically interesting of the two: the cheapest rival has moved
 *into* the regulated estate work Relay has ruled out, which widens the gap between the two products
@@ -55,6 +81,31 @@ single-ecosystem, all-or-nothing, mostly death-only, unverified. They set the co
 expectation ("my phone handles that"), which is the real acquisition obstacle: Relay must sell the
 *cross-platform + verified + reversible* delta, not the concept. (Build Spec §25 already positions
 these; R13.4's triage agent treats them as integration targets — both true.)
+
+**🔴 Proton Emergency Access — added 2026-08-31 (D5), and it is the closest mechanism any rival
+ships.** Verified against Proton's own support page: **up to five** emergency contacts, a waiting
+period the owner chooses from **30 / 14 / 7 / 3 / 2 / 1 days or no wait**, the owner is notified and
+**can deny the request during the wait**, and if the owner does nothing **access is granted
+automatically at the end of the period**. Available on **all paid Proton plans**; both parties must
+hold a Proton Mail address.
+
+That is a dead-man's switch with an owner-veto window — the same *shape* as Relay's core, shipped by
+a company with millions of users, and this file did not mention it. Read it honestly before reading
+the differences:
+
+- **No N-of-M verification.** A single contact's request carries it; nobody attests. Relay's quorum
+  exists precisely because "the owner did not respond" is weak evidence on its own.
+- **Not reversible in Relay's sense.** Access is granted to *the account*; there is no release state
+  that closes when the owner checks back in, and no per-item scoping — it is the same
+  all-or-nothing handoff as the rest of this paragraph's subjects.
+- **Single-ecosystem, and it requires the recipient to join it.** "Both must have a Proton Mail
+  address" is a real adoption wall, and it bounds the feature to what lives inside Proton.
+
+⚠️ **The uncomfortable half, stated rather than skipped:** on the *credentials-and-documents in one
+vendor's ecosystem* slice, a paid Proton subscriber already has a defensible answer, and it costs
+them nothing extra. Relay's argument against it is scoping, verification and reversibility — not
+existence. The "no rival does verified reversible release" claim survives; a looser claim like "no
+rival does conditional access" would not, and should not be made.
 
 **1Password emergency kit / Bitwarden emergency access** — the password-manager answer: one trusted
 contact, waiting-period access, all-or-nothing vault handoff. Bitwarden's emergency access is the
@@ -76,12 +127,18 @@ must clear before Relay touches estate releases for money.
    reversible release justifies parity with a better-known organizer, not whether cheap wins.
    ✅ **Still the right call after the 2026-08-18 check, and now better supported:** Relay's $119
    sits between Everplans ($99.99) and Trustworthy Silver ($120), so the price is *inside* the
-   established band rather than above it. Do not read GoodTrust's $39 renewal as a floor — it buys a
-   different product.
+   established band rather than above it — **both re-verified 2026-08-31 and unchanged**.
+   ⚠️ **The GoodTrust half of this argument has been rewritten.** It used to read "do not read
+   GoodTrust's $39 renewal as a floor". That renewal is no longer on their pricing page, which now
+   shows a flat $149 estate plan — so the floor argument is not needed: **the cheapest rival's
+   advertised price is now above Relay's, for a regulated product Relay does not sell.** Do not
+   quote $39 from the help centre as a market price.
 2. **Lead the caregiver pitch with reversibility** ("give access during the emergency, take it back
    after") — the one capability literally no competitor has; storage comparisons are a losing frame.
 3. **Expect "my phone does that" as the top objection** — the free platform features are the real
    competition for awareness, not the paid organizers.
+
+Sources re-checked **2026-08-31** (D5): [Everplans pricing](https://www.everplans.com/pricing) · [Trustworthy pricing](https://www.trustworthy.com/pricing) · [GoodTrust pricing](https://mygoodtrust.com/pricing) · [Everplans via VSP](https://ready.everplans.com/vsp/) · [Proton emergency access](https://proton.me/support/emergency-access) · [Proton's announcement](https://proton.me/blog/emergency-access)
 
 Sources re-checked 2026-08-18: [Everplans pricing](https://www.everplans.com/pricing) · [Trustworthy pricing](https://www.trustworthy.com/pricing) · [GoodTrust](https://mygoodtrust.com/) · [Everplans via VSP at $27/yr](https://www.vsp.com/offers/special-offers/healthcare-financing/everplans)
 

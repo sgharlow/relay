@@ -163,6 +163,38 @@ gates:
       - "4. Record the RTO actually OBSERVED — not estimated — then delete the scratch cluster and
          confirm both production clusters are still ACTIVE with deletion protection on."
     procedure: docs/backup-restore-runbook.md
+    preflight:
+      date: 2026-08-31
+      command: "npm run drill:preflight  (read-only; 0 ready / 1 finding / 2 could not look)"
+      result: READY
+      measured:
+        us_east_1: "ACTIVE, deletionProtection=true"
+        us_west_2: "ACTIVE, deletionProtection=true"
+        relay_vault: "23 recovery points, newest 21.2h old, 2246908 bytes"
+        relay_vault_dr: "22 recovery points, newest 21.2h old, 2246908 bytes -- byte-identical
+          to the primary, so the cross-Region copy is keeping pace"
+        verify_kms: "holds -- CMK b3af288c Enabled, not pending deletion, rotation as intended,
+          policy still grants the runtime principal GenerateDataKey and Decrypt"
+        decryptable_real_items: 1
+      what_this_settles: >-
+        Criterion 2 (the key) and criterion 3's PRECONDITION (a real item exists that could be
+        unwrapped) are satisfied now, and criterion 4's end state -- both production clusters
+        ACTIVE with deletion protection -- already holds, so the drill will be able to tell its
+        own damage from what it inherited. What remains is criterion 1: the restore to a SCRATCH
+        cluster, which costs money and is an infrastructure action.
+      the_margin_is_thin_and_that_is_recorded_rather_than_glossed: >-
+        ⚠️ Exactly ONE decryptable real item exists. The drill therefore has NO SECOND ATTEMPT: if
+        that item fails to unwrap from the scratch endpoint, nothing distinguishes "the restore
+        lost it" from "this item was always broken". Worth knowing before starting, not while
+        staring at a failed unwrap. Adding a second real item before the drill would remove the
+        ambiguity for the cost of one vault write.
+      harness: >-
+        `lib/ops/restore-drill.ts` + `scripts/restore-drill.ts`. LADDER: `preflight` is
+        live-proven (it ran, above); `plan` is `built` -- it prints the spend phases with their
+        ARNs and the runbook's three traps, and writes the throwaway env, but NOTHING in it has
+        ever created or deleted a cluster. Deliberate: untested automation on the one procedure
+        whose failure mode is "the data is gone and the tool for getting it back has a bug" is
+        worse than a checklist.
     ratified:
       date: 2026-08-21
       by: steve
@@ -5057,6 +5089,24 @@ deferred:
       b15_3_escalation_read:
         state: live-proven
         runs: "2026-08-30 (05:47Z, 06:00Z) and 2026-08-31 01:20Z."
+        cron_half_proven:
+          date: 2026-08-31
+          result: "22/22. BOTH PATHS are now live-proven, which the read half alone did not settle."
+          the_line_that_matters: >-
+            "a real cron tick happened while waiting: 2026-08-31 01:00:51Z -> 02:00:47Z", and then
+            "the unanswered request was ESCALATED by a cron nobody called". The walk does NOT invoke
+            the sweep -- CRON_SECRET lives only in Vercel, so there is no shortcut -- it backdates
+            one column scoped to its own request id and waits ~60 minutes for production's own
+            hourly tick to find it.
+          why_both_halves_were_needed: >-
+            They are different code with different failure modes. The derive-on-read half fires
+            because somebody LOOKS, and its call sits behind a swallowing catch so rung 0 still
+            renders -- which makes ITS failure completely silent: the dashboard looks right and the
+            release never advances. The cron half is the scheduled path with nothing local calling
+            it. Proving one proves nothing about the other.
+          received_confirmations: "0 on both halves. respondToChallenge auto-satisfies the quorum
+            when an OWNER approves; a lapse is the opposite. If that ever reads 1, silence has been
+            promoted to consent." 
         the_08_31_run: "22/22. The assertion that matters: received_confirmations=0 after the
           escalation. respondToChallenge auto-satisfies the quorum when an OWNER approves; a LAPSE
           is the opposite, the absence of a signal. If that ever reads 1, silence has been promoted

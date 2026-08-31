@@ -355,6 +355,28 @@ npm run verify:stripe  # the BILLING contract, and the only wall here that someb
                        # CLI, which is Steve's browser pairing and EXPIRES 2026-10-07.
                        # Only the key path can be scheduled. Exit 0 holds, 1 finding,
                        # 2 could-not-look; the third is deliberately not the first.
+npm run drill:preflight # D3 restore drill — can it start, and would it prove anything?
+                       # Read-only: both cluster states + deletion protection, recovery-point
+                       # freshness in BOTH vaults, `verify:kms`, and whether a REAL (non-demo,
+                       # non-disposable) vault item exists with both ciphertext and a wrapped
+                       # key. Reads the DB as `relay_ro`; signs AWS from Node.
+                       # 🔴 CRITERION 3 IS WHY THE 2026-08-08 DRILL DOES NOT COUNT: it
+                       # "restored a database and never unwrapped an item", and a restored
+                       # cluster is ciphertext without the key.
+                       # ⚠️ It reports a THIN margin at one decryptable item, which is the
+                       # live state: the drill would have no second attempt, so a failed
+                       # unwrap could not be told from an item that was always broken.
+                       # 0 = ready · 1 = a finding · 2 = could not look.
+npm run drill:plan     # the same pre-flight, then PRINTS the spend phases and writes the
+                       # throwaway env to .drill-scratch/.env.scratch (gitignored; the
+                       # production endpoint is deliberately NOT carried into it).
+                       # ⚠️ It does not create or delete anything, and that is the design:
+                       # untested automation on the one procedure whose failure mode is "the
+                       # data is gone and the tool for getting it back has a bug" is worse
+                       # than a checklist. Phase 2 is Steve's spend approval.
+                       # Carries the three runbook traps inline — the AWS CLI is dead here
+                       # (Norton MITMs TLS), the backup role ARN has LITERAL double slashes,
+                       # and an on-demand backup does not run the plan's copy action.
 npm run verify:e1-route3 # E1.2 route 3 — does a failed renewal actually reach the
                        # owner? Splices a REAL captured `invoice.payment_failed` with the
                        # LIVE subscription id, signs it, and POSTs it at a LOCAL
