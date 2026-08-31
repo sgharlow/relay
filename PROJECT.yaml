@@ -2037,6 +2037,61 @@ cross_cutting:
 # CI (D4). Written out as entries rather than left in a sprint report, because a
 # sprint report is the record of a day and this file is what the next session reads.
 deferred:
+  - id: the-enforced-half-cried-wolf-about-its-own-toolbar      # ROADMAP B21.2 -> B21.3/B21.4
+    owner: claude
+    opened: 2026-08-31
+    closed: 2026-08-31
+    what: >-
+      `npm run verify:csp` reported 6 ENFORCED violations under the banner "A real person met a
+      broken page" and exited 1. All six were `https://vercel.live/_next-live/feedback/feedback.js`
+      -- the Vercel toolbar, injected into the production origin for a signed-in operator, absent
+      from the production HTML, never served to a customer. The enforced policy is
+      `script-src 'self' 'unsafe-inline' 'unsafe-eval'`, so refusing it is the policy WORKING.
+    why_the_wording_mattered_more_than_it_looks: >-
+      True of the mechanism, wrong about the meaning. An operator who reads it literally hunts for
+      a product defect that does not exist; an operator who learns to discount it stops reading the
+      enforced half AT ALL -- and then a real enforced violation, the kind that breaks a page for a
+      customer, arrives in a section everybody has been trained to skip. A check that cries wolf
+      about its own tooling is how the signal gets thrown away.
+    built: >-
+      `lib/ops/csp-violations.ts` splits enforced rows into product-served (a defect, exit 1) and
+      third-party-the-product-never-asked-for (recorded, not a defect). One allowlist entry, arguing
+      for itself, prefix-matched with a trailing slash so a lookalike host cannot inherit the
+      exemption -- and a test proves a self-served block is STILL a defect, and that a known third
+      party cannot hide a real one in the same batch.
+    b21_2_answer_for_the_b21_3_b21_4_ruling: >-
+      NEXT RUNG IS NOT TAKEABLE. The report-only policy is `script-src 'self'` and 22 of the 28
+      distinct report-only violations are `inline`, so dropping 'unsafe-inline' blocks the
+      framework's own bootstrap scripts. That is nonces-or-hashes BUILD work, not a header flip --
+      a materially different decision from the one "tighten the CSP" sounds like, and the thing
+      B21.3/B21.4 must actually rule on.
+    zero_still_has_two_meanings: >-
+      The next-rung verdict returns takeable on an empty set only with the caveat attached: an
+      empty table means EITHER nothing violates the stricter policy OR reports are not reaching the
+      endpoint, and the script says so on every zero. Collapsing those is how a monitor lies.
+
+  - id: b5s-compatibility-window-has-started-closing            # ROADMAP Sprint 6 / B5
+    owner: steve                          # B5.0 is the gate lift; claude builds B5.1-2
+    opened: 2026-08-31
+    what: >-
+      ROADMAP Sprint 6 argues for lifting the B5 gate early because "the compatibility risk is
+      EMPTY TODAY (zero vault items) and grows from A0 onward". Measured 2026-08-31: `vault_items`
+      holds ONE row, owned by a real owner, created 2026-08-30 03:28:06 UTC. The premise was true
+      when written and expired the next day.
+    why_it_does_not_weaken_the_argument: >-
+      It strengthens it. B5.3's point of no return is "the first row written with a context, and
+      rollback after C is flag-off, never a code revert". Every item added before the gate is
+      lifted is another row a phase-C rollback has to stay compatible with. The window the roadmap
+      identified as cheapest is open and narrowing, not closed.
+    ends_when: >-
+      Steve lifts the B5.0 gate (or re-defers it with a NEW dated revisit), at which point B5.1 --
+      phase B, a no-op deploy that reads `kms_context_era` and names KeyId on Decrypt -- is
+      Claude's and makes phase C reversible.
+    ⚠️_do_not_pair_with_b3: >-
+      B5 must not share a quarter with a multi-Region CMK (B3 Option B). Two changes on the
+      wrap/unwrap path at once means a failure cannot be attributed to either.
+    revisit: 2026-09-12
+
   - id: the-funnel-walk-spoke-for-a-half-it-could-not-see      # ROADMAP A7.0
     owner: steve                          # the toggle; claude built the guard, effort S
     opened: 2026-08-31

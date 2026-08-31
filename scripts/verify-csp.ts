@@ -111,6 +111,8 @@ function pad(s: string, n: number): string {
   return s.length >= n ? s.slice(0, n) : s + ' '.repeat(n - s.length);
 }
 
+import { splitEnforced, nextRungVerdict } from '../lib/ops/csp-violations';
+
 async function main(): Promise<void> {
   const days = daysArg();
   const client = await connect();
@@ -172,10 +174,31 @@ async function main(): Promise<void> {
       console.log('');
     };
 
+    /*
+      🔴 SPLIT ON 2026-08-31 (B21.2). All six enforced rows that day were the
+      Vercel toolbar — injected into the production origin for a signed-in
+      operator, absent from the production HTML, and refused by a policy doing
+      exactly its job. Reporting that as "a real person met a broken page" sends
+      the reader hunting for a defect that does not exist, and the reader who
+      learns to discount it stops reading this section at all. Then a REAL
+      enforced violation arrives somewhere nobody looks.
+    */
+    const { productDefects, refusedThirdParty } = splitEnforced(enforced);
+
     show(
-      'ENFORCED — the live policy BLOCKED these. A real person met a broken page.',
-      enforced,
+      'ENFORCED — the live policy BLOCKED these, and the product serves them. A real person met a broken page.',
+      productDefects,
     );
+    if (refusedThirdParty.length > 0) {
+      show(
+        'ENFORCED but NOT a defect — a third party the product never asked for, correctly refused.',
+        refusedThirdParty.map((x) => x.row),
+      );
+      for (const reason of new Set(refusedThirdParty.map((x) => x.reason))) {
+        console.log(`    why: ${reason}`);
+      }
+      console.log('');
+    }
     show(
       'REPORT-ONLY — the stricter policy WOULD have blocked these. Nothing broke.',
       wouldBlock,
@@ -187,12 +210,25 @@ async function main(): Promise<void> {
         `${enforced.length} enforced, ${wouldBlock.length} report-only.`,
     );
 
-    if (enforced.length > 0) {
+    /*
+      B21.2 exists so B21.3/B21.4 can be RULED, and the ruling turns on whether
+      tightening the policy would break the product. Printed rather than left for
+      the reader to infer from a table.
+    */
+    const rung = nextRungVerdict(wouldBlock);
+    console.log('');
+    console.log(`  NEXT RUNG: ${rung.takeable ? 'takeable' : 'NOT takeable'} — ${rung.because}`);
+
+    if (productDefects.length > 0) {
       console.log('');
-      console.log('  The ENFORCED rows are defects, not evidence. Something on the live site is');
-      console.log('  being blocked right now — fix those before reading the report-only half as');
-      console.log('  a verdict on the next rung.');
+      console.log('  The ENFORCED rows above are defects, not evidence. Something the product');
+      console.log('  serves is being blocked right now — fix those before reading the');
+      console.log('  report-only half as a verdict on the next rung.');
       process.exitCode = 1;
+    } else if (refusedThirdParty.length > 0) {
+      console.log('');
+      console.log('  No product code is being blocked. The enforced rows are third-party');
+      console.log('  tooling the policy correctly refused — recorded, not a defect.');
     }
   } finally {
     await client.end();

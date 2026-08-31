@@ -1,5 +1,51 @@
 # Relay — Production Roadmap
 
+**Revision 7 — 2026-08-31.** An IN-PLACE revision, as §8 asks. Sprints 2, 3, 4 and 5 were executed
+after revision 6 was written, and **nine more claims in this file are now false or incomplete**.
+They are corrected where they stand; this header is the index, so a reader of revision 6 knows what
+not to trust.
+
+| What this file said | What is true on 2026-08-31 |
+|---|---|
+| Sprint 3 row 3.4: **B30 parser fix, before 2026-10-03** | 🔴 **ALREADY CLOSED 2026-08-29 (PR #25)** and verified live. §7's checkbox and the 09-01 calendar row both said so while the sprint row asked for the work. Same shape as T2's D4. |
+| Sprint 3 row 3.1: E1.2 route 3 → **`route-proven`** | 🔴 **RUN, AND IT DID NOT EARN THE LABEL.** Six correctly-signed deliveries, `200` each, **zero audit rows** — so the one fabricated row Steve authorised was never written. E1′ stays **`wired`**. |
+| `docs/e1-stripe-lapse-proof.md` §6: the leading explanation is **stale `next dev` modules** | 🔴 **DISPROVEN.** A matched pair on the *same bytes* in the *same process* (build marker `fe6fe640`) had an in-process replay report every precondition satisfied while the webhook wrote nothing. Payload shape is not it either. |
+| §2-H E4.1: the 1-of-4 fact | ✅ **NOW MACHINE-CHECKED** and tied to the sentence `/terms` shows customers (`lib/ops/paywall-scope.test.ts`). It had lived in prose in seven places, measured by nothing. |
+| A0.dm / E4.4: the revisit guard **"covers the 2026-10-01 paywall revisit"** | 🔴 **FALSE THE DAY IT WAS WRITTEN.** The guard judged bare dates only; the paywall revisit is a dated *cadence*, so the one entry it was built for was in the class it refused to judge. Fixed — a dated cadence must now classify itself. |
+| §2 B15: the three release guards **"never exercised on production"** | 🔴 **ALREADY WALKED 2026-08-30.** Derived from `audit_log`, not from a note. README recorded the proof as *"27 checks"* when a same-day commit had taken it to **30**. A closed gap described as open, beside an open number described as closed. |
+| Sprint 4 row 4.5 / D5: GoodTrust **$39/yr renewing** | 🔴 **NO LONGER ON THEIR PRICING PAGE.** A flat **$149** estate plan with no renewal shown; $39 survives only in a help article, and a price that is only in a help centre is not a market price. |
+| `docs/COMPETITORS.md`: no mention of Proton | 🔴 **THE CLOSEST MECHANISM ANY RIVAL SHIPS WAS MISSING.** Proton Emergency Access: five contacts, an owner-chosen wait, owner veto during it, auto-grant on silence. Added, with its differences stated as differences. |
+| Sprint 6: B5's compatibility risk is **"empty today (zero vault items)"** | 🔴 **EXPIRED 2026-08-30 03:28 UTC.** There is now **1** vault item, belonging to a real owner. The premise was true when written; the argument it supports — lift the gate EARLY — is now strictly more urgent, and every day adds rows that a phase-C flip must stay compatible with. |
+| Sprint 6 B21.2: read `csp_reports` on real traffic | ✅ **DONE 2026-08-31, and it changed the check.** 66 reports / 34 distinct: **6 enforced, all of them the Vercel toolbar** — refused correctly, absent from production HTML, never served to a customer. `verify:csp` reported them as *"A real person met a broken page"* and exited 1. Now split, and the next-rung verdict is printed: **NOT takeable**, 22 distinct inline violations mean nonces or hashes first. |
+| A7.0: **"collects nothing readable"**, and `verify:funnel` reports the instrument alive | 🔴 **BOTH, SIMULTANEOUSLY.** The walk passed **7/7** while the Web Analytics API answered `web_analytics_not_enabled`. Its own failure text names the consequence and it printed the green line. Verdict split; default is now *could not look*. |
+
+> ### The pattern these nine share, because it is the same one every time
+>
+> **A green signal measured the emitting half and spoke for the whole.** The funnel walk proved the
+> page fires and claimed the pipeline works. The revisit guard proved bare dates and claimed a
+> cadence. `verify:funnel`, `verify:stripe`, `gates.test.ts` and the E1′ harness each answer a
+> narrower question than their success line implies — and the gap is invisible precisely because
+> the check is green.
+>
+> Three consequences are now built in rather than remembered:
+>
+> 1. **A check that cannot see a half must not speak for it.** Three-way exits — `0` holds, `1` a
+>    finding, `2` could not look — with **`2` as the default**, because a default that assumes the
+>    favourable answer is how every one of these started.
+> 2. **Derive, never restate.** Four numbers in this file drifted within a day of being written
+>    (test counts, "27 checks", "eleven PRs", the B12 sprint number). Where a number is load-bearing,
+>    the command that produces it now stands in its place.
+> 3. **Proof by planted violation, before the fix.** Every guard added on 08-30/31 was watched to go
+>    red on the real defect *before* the register was edited, not after.
+>
+> ⚠️ **And the errors were not only inherited.** The revisit guard, the plan's own sprint numbering,
+> a "27 checks" successor, and the PR count in the readiness page were all written *this session* and
+> corrected in it. The rule earning its place here is the third one: a claim is worth what its
+> falsification attempt cost.
+
+<details>
+<summary><strong>Revision 6 (2026-08-30) — the previous index, kept as the record</strong></summary>
+
 **Revision 6 — 2026-08-30.** An IN-PLACE revision, as §8 asks. Four sprints executed in one day
 and **six claims in this file are now false**. They are corrected where they stand; this header is
 the index of what moved, so a reader of revision 5 knows what not to trust.
@@ -12,6 +58,8 @@ the index of what moved, so a reader of revision 5 knows what not to trust.
 | §2-C: `_dmarc` carries no `rua=` | ✅ **FIXED 2026-08-30.** Now `v=DMARC1; p=none; rua=mailto:dmarc@relaystandby.com; fo=1`, confirmed from two independent resolvers. `wired`, not yet `live-proven` — it closes when a report arrives. |
 | §2-D / D20: 28 dangling rows | ✅ **PURGED 2026-08-30** on Steve's GO. 28 counted, 28 deleted, 0 remaining. `verify:orphans` **exits 0 for the first time**. |
 | §2 has **no testing lane** | ✅ **Added and shipped** — see §2-T below. |
+
+</details>
 
 **Sprint 1 ran on 2026-08-30**, thirteen days early, at Steve's request. Eight of the ten D-1
 rulings are recorded in `PROJECT.yaml → ratified.sitting-d1-2026-08-30`; item 9 was not asked (not
@@ -1130,11 +1178,31 @@ cannot move after a result. **A9** the AARP second-round pitch opens here, after
 
 ### Sprint 6 — The first stranger *(event: an arms-length person appears — editorial, cohort, or partner intro)*
 
+> 🟡 **PRE-CHECKED 2026-08-31 (the event has NOT fired — nothing arms-length has appeared).**
+> Two of this sprint's items were measured early, because both get harder with time rather than
+> waiting patiently for the trigger. See the two findings below.
+
 The custodial obligation starts for real. **B5** (KMS EncryptionContext: lift the gate → phase B →
-S4-4 live proof → phase C) — the compatibility risk is *empty today* (zero vault items) and grows
-from A0 onward, which argues for lifting the gate early in this sprint rather than late. **B23**
+S4-4 live proof → phase C) — ~~the compatibility risk is *empty today* (zero vault items)~~
+🔴 **THAT EXPIRED ON 2026-08-30 at 03:28 UTC: there is now ONE vault item, owned by a real owner.**
+The premise was true when written and is not now. The argument it supports is unchanged and
+**strictly more urgent**: phase C's point of no return is the first row written with a context, and
+every item added before the gate is lifted is another row a rollback has to stay compatible with.
+Re-derive the count rather than trusting this line — it is the number that moved. **B23**
 standby cap + cross-owner confidentiality. **F-q** durable counters on the two public endpoints.
-**B21.2** read `csp_reports` on real traffic, then B21.3/B21.4 are ruled. **B34** read Resend
+~~**B21.2** read `csp_reports` on real traffic~~ ✅ **DONE 2026-08-31 — and B21.3/B21.4 now have
+their input.** 66 reports in 34 distinct violations over 14 days: **6 enforced, 28 report-only**.
+🔴 **All six enforced were `https://vercel.live/_next-live/feedback/feedback.js`** — the Vercel
+toolbar, injected into the production origin for a signed-in operator, absent from the production
+HTML, never served to a customer. The enforced policy is `script-src 'self' 'unsafe-inline'
+'unsafe-eval'`, so refusing it is the policy working. ⚠️ `verify:csp` reported all six under
+*"A real person met a broken page"* and exited 1 — true of the mechanism, wrong about the meaning,
+and the way an operator learns to stop reading the enforced half before a real one arrives. Now
+split (`lib/ops/csp-violations.ts`), with the exemption arguing for itself and a test proving a
+self-served block is still a defect. **Next rung: NOT takeable** — the report-only policy is
+`script-src 'self'` and 22 distinct violations are `inline`, so dropping `'unsafe-inline'` blocks
+the framework's own bootstrap scripts. That is nonces-or-hashes build work, not a header flip,
+which is precisely what B21.3/B21.4 must rule on. **B34** read Resend
 suppressions before the first notification. **F-a**'s first measurement. Expect the first genuinely unknown
 failure mode here; Sprints 0–4 exist so that it is a usability failure and not a custodial one.
 
