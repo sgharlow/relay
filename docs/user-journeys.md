@@ -197,6 +197,14 @@ would immediately want. **`check-subscription.ts` is operator-run and belongs to
 in no `npm run verify:*` target, nothing schedules it, and its absence produces no failure. That is
 the real finding, and it is narrower and more useful than the one this paragraph originally claimed.
 
+> ✅ **The no-chain half is closed — D19, 2026-08-31.** It is now `npm run check:subscription --
+> <email>`, running read-only as `relay_ro`, with its occasions written into its own header: after
+> ANY real checkout, and on every walk day beside `verify:orphans`. What has NOT changed: nothing
+> *schedules* it unattended, because that needs a database credential on a runner — D21, Steve's
+> call, the same wall as owner-mode a11y. An occasion a person can hit in one command is what was
+> available without that credential, and it is recorded here as exactly that rather than as
+> monitoring.
+
 Per step, on the ladder. **The ladder column carries no dates** — every date below lives in the
 record named beside it and is read from there. ~~This lead-in promised exactly that and the column
 then restated two dates anyway~~ (corrected 2026-08-21): this file's whole argument is that a

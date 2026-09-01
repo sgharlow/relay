@@ -83,7 +83,7 @@ jobs:
       # so a broken lockfile can never stop the alarm from firing.
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
 
       - name: Count scheduled runs in the last 24h
         env:

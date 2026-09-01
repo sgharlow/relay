@@ -1,68 +1,54 @@
 {
   "_comment": [
-    "Rewritten 2026-08-29 (D17). The previous contents described sprint/2026-08-20-5, a branch",
-    "that no longer exists (deleted with 15 other fully-merged refs under D16), cited ROADMAP",
-    "revision 3 as 'uncommitted there' when revision 4 has since been merged, and listed three",
-    "verifications as owed when two of them had run. A state file that describes a deleted branch",
-    "is worse than an absent one: /sprint resolves it first and would have resumed into nothing.",
+    "Rewritten 2026-08-31 (D17, second rewrite). The 08-29 rewrite described Sprint 0 against",
+    "ROADMAP revision 4; the roadmap is now at revision 7+ and Sprint 0 is closed, so /sprint",
+    "would have resumed into a finished sprint. The current backlog is ROADMAP.md §3.5 — the",
+    "court split PR #50 introduced — and this file records the execution of its Claude-court",
+    "ready lane (A1–A11).",
     "",
     "DO NOT hand-edit the shipped list to look tidy. This records what ran, and its value is that",
     "it can be checked against `git log` — every entry below carries the merged PR."
   ],
   "branch": "master",
-  "backlogSource": "ROADMAP.md §3 Sprint 0 (revision 4, merged 2026-08-27 in PR #17; progress notes appended 2026-08-29 in PR #23)",
-  "sprint": "Sprint 0 — Truthful alarms, truthful record",
-  "calendar": "now → 2026-09-12, when the report-bridge precedence ruling stops applying",
-  "court": "claude — needs at most a nod or an in-session authorisation, never Steve's hands",
+  "backlogSource": "ROADMAP.md §3.5 A — Claude's court (revision 7, court split added in PR #50, 2026-08-31)",
+  "sprint": "The §3.5 Claude-court ready lane",
+  "calendar": "2026-08-31; the next dated sprint is ROADMAP §3 Sprint 1, opening 2026-09-12",
+  "court": "claude — nothing needed from Steve",
   "rowsClosed": [
-    { "row": "0.1", "title": "roadmap rev 4 + the register commit", "pr": 17, "date": "2026-08-28" },
-    { "row": "0.2", "title": "B16 — the IAM wall reads the real account", "pr": 19, "date": "2026-08-29" },
-    { "row": "0.3", "title": "B13 proof-of-red, B14 dead-man, A7.0, B10.d", "pr": 20, "date": "2026-08-29" },
-    { "row": "0.4", "title": "E1.6 reads, E1.7 verify:stripe, E1.1 build marker", "pr": 21, "date": "2026-08-29" }
+    { "row": "A7/B23", "title": "MAX_STANDBY cap + rule-4-shaped refusal in claimStandbyRole", "pr": 51, "date": "2026-08-31" },
+    { "row": "A2/B32", "title": "CI workflows 22→24, @types/node ^24; engines >=22 kept as local floor", "pr": 51, "date": "2026-08-31" },
+    { "row": "A5/D19", "title": "check:subscription npm script (.env.ro) with its occasions in §5", "pr": 51, "date": "2026-08-31" },
+    { "row": "A4/C1.4", "title": "the DMARC restoration drift corrected (deliverability doc + checklist header)", "pr": 51, "date": "2026-08-31" },
+    { "row": "A9/D2", "title": "verify:orphans ran clean — 0 reserved-domain accounts, 0 dangling rows", "pr": 51, "date": "2026-08-31" },
+    { "row": "A8/D17", "title": "this file re-derived", "pr": 51, "date": "2026-08-31" }
   ],
-  "rowsPartlyClosed": [
-    {
-      "row": "0.6",
-      "done": "D1 — verify:live and verify:journeys both run against production and stamped, verify:orphans clean after each",
-      "pr": 22,
-      "date": "2026-08-29",
-      "open": [
-        "B11.1 — re-measure the scheduled-monitor cadence on 2026-09-02, after the Actions-minutes reset",
-        "B12.i — the interim off-GitHub run-count alarm (Task Scheduler, read-only `gh api`)"
-      ]
-    },
-    {
-      "row": "0.7",
-      "done": "D16 — 12 local and 4 remote fully-merged branches deleted; the repo is master-only",
-      "open": "the rest of the hygiene list; see ROADMAP.md §3 row 0.7"
-    }
+  "rowsAlreadyDoneWhenTheTableWasDrawn": [
+    { "row": "A1/B13", "note": "proven red 2026-08-29 by run id (canary 33237399208; monitors 33237979699 / 33237980971); the date-guards half is RULED WAIT (Steve 08-29 — the pre-push hook reads the same suite the planted gate breaks)" },
+    { "row": "A3/B37", "note": "both scripts bannered 2026-08-29; verified live 08-31" },
+    { "row": "A6/D27", "note": "closed 2026-08-29 in PROJECT.yaml, both debts measured" },
+    { "row": "A10/D18", "note": "unit-economics has said `pro` VERIFIED since 08-29" }
   ],
   "rowsOpen": [
     {
-      "row": "0.5",
-      "title": "B15.1/2/3/5/6 live proofs",
-      "note": "OFFERED AND NOT TAKEN on 2026-08-29 — Steve chose the two walk chains without the B15 ladder walks. These need disposable production rows AND hours of elapsed time, because the reminder intervals must actually elapse across hourly ticks. Re-offer rather than assume."
+      "row": "A11/C1.3",
+      "title": "the 08-17 Microsoft DMARC report — the A/B pass/pass question",
+      "note": "FOUND 2026-08-31 (message 1a00e72c9417ac7b, window 08-15..16 UTC, labeled, NOT in Trash) and unreadable at the last hop: the Gmail connector has no attachment-download tool and a RAW-MIME transcription failed its own gzip CRC. Remaining: ~30s download in the Gmail UI (§6 Sitting B), then Claude gunzips and reads the rows."
     },
     {
-      "row": "0.8",
-      "title": "the rulings pack — the Sitting D list as a batched AskUserQuestion series",
-      "note": "so Sitting D costs Steve minutes rather than re-derivation"
+      "row": "A12/D12",
+      "title": "major-version currency (next-auth v4, React 18 under Next 16)",
+      "note": "⛔ recorded, not scheduled — barred by the Infrastructure Change Policy without a documented problem; reopens on a Dependabot advisory (which is why B27's remaining half matters)."
     }
   ],
-  "verificationOwedFromMainCheckout": [],
-  "_verificationNote": [
-    "Empty as of 2026-08-29, and that is a measurement rather than a tidy-up.",
-    "`npm run verify:orphans` — RUN twice on 2026-08-29, after each walk chain. Clean of accounts",
-    "  both times; the 28 dangling rows are pre-existing residue (newest 2026-08-14), registered as",
-    "  deferred.dangling-rows-on-production and Steve's to purge.",
-    "`npm run verify:dogfood` — run under relay_ro; it reports NOT READY, which is a status and not",
-    "  a defect. The owner's vault is empty and no commit here changes that (A0, Sitting A).",
-    "`npm run invite:cohort` past its input check — still blocked, and correctly so: the script",
-    "  refuses an empty vault by design, so this stays blocked until A0 is done."
+  "blockedOnExactlyOneThing": [
+    { "id": "B27", "waitingOn": "Steve's nod — one `gh api PATCH` each" },
+    { "id": "B28", "waitingOn": "D21 — a database credential on a runner, Steve's call" },
+    { "id": "B11.2", "waitingOn": "2026-09-02 — the pack says not before" },
+    { "id": "B15.1", "waitingOn": "2026-09-21 — the live owner's 75% rung; no walk can substitute" }
   ],
   "blockedOnSteve": [
-    { "id": "A7.0", "what": "enable Vercel Web Analytics for the relay project", "why": "hard precondition of Sprint 5; the collector answers 200 to every beacon while the query API refuses the project", "where": "ROADMAP.md §6 Sitting E" },
+    { "id": "A7.0", "what": "enable Vercel Web Analytics for the relay project", "why": "hard precondition of Sprint 5; it does not retro-collect, so it must precede the op-ed send", "where": "ROADMAP.md §6 Sitting E" },
     { "id": "E1.7", "what": "mint a restricted read-only Stripe key", "why": "verify:stripe is live-proven but unschedulable; the CLI fallback expires 2026-10-07", "where": "ROADMAP.md §6 Sitting E" },
-    { "id": "B10.d", "what": "connect the Claude browser extension", "why": "delivery is proven working; the relay-alarm filter itself has never been read, so nobody can say why", "where": "ROADMAP.md §6 Sitting E" }
+    { "id": "A0.2", "what": "send the invitations — nobody has been asked", "why": "quorum M=0 vs N=1; no release can complete until a verifier reaches confirmed", "where": "ROADMAP.md §6 Sitting A" }
   ]
 }
