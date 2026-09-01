@@ -146,7 +146,7 @@ jobs:
       # silently.
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
 
       - name: Probe production
         # `inputs.base_url` is empty on a scheduled or push run, so the fallback

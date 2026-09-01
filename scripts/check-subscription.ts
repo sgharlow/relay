@@ -9,7 +9,22 @@
  * references a gitignored file is a runbook that fails on the second computer.
  *
  * Usage:
- *   npx tsx --env-file=.env.local scripts/check-subscription.ts someone@example.com
+ *   npm run check:subscription -- someone@example.com
+ *
+ * OCCASION (D19, 2026-08-31). This was operator-run and belonged to no chain —
+ * in no npm target, scheduled by nothing, its absence producing no failure. Two
+ * occasions now own it:
+ *   1. After ANY real checkout, against the buyer's address — the question it
+ *      was written for ("did that payment actually register?"), and the only
+ *      check that has ever caught stripe_customer_id arriving NULL.
+ *   2. On every walk day, beside `npm run verify:orphans` — the standing D2
+ *      cadence in ROADMAP §5, so the billing read happens on the days somebody
+ *      is already reading production.
+ * It CANNOT be scheduled unattended: it needs a database credential on a
+ * runner, which is D21, Steve's call — the same wall as owner-mode a11y (B28).
+ *
+ * Reads only: SELECTs on users/subscriptions plus getEntitlement (read-only),
+ * so it runs as `relay_ro` via .env.ro — the identity that cannot write.
  */
 
 import { query, closeAllPools } from '../lib/db/connection';

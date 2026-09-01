@@ -6,7 +6,9 @@
 > paywall's 1-of-4 paths, the three chosen numbers + self-naming, the A0 dead-man) and carries
 > defects the register corrected — the lapse-notice dedupe key is the INVOICE id, not the event id;
 > the DMARC batch dated ~09-10 was already rescued while the Gmail filter was never created and
-> `_dmarc` now carries no `rua=`; Stripe reads #1/#2 are CLI-readable; `verify:kms` runs daily in CI
+> `_dmarc` now carries no `rua=` *(true when this banner was written; `rua=` was restored
+> 2026-08-30 — C1.0 — and re-verified from two resolvers 2026-08-31)*; Stripe reads #1/#2 are
+> CLI-readable; `verify:kms` runs daily in CI
 > via OIDC; the ladder describes 2026-08-08, not 2026-06-27.
 
 # Relay — the go-live checklist · everything that needs Steve

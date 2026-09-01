@@ -30,7 +30,7 @@ vi.mock('../auth/upsert-user', () => ({
 
 import { query } from '../db/connection';
 import { writeAuditEntry } from '../audit/audit-service';
-import { claimStandbyRole } from './claim';
+import { claimStandbyRole, MAX_STANDBY } from './claim';
 import { ValidationError } from '../validation';
 
 const mockQuery = vi.mocked(query);
@@ -76,6 +76,7 @@ describe('claimStandbyRole — binding an identity to a roster row', () => {
       [INVITE], // find invitation
       1, // mark claimed — one row AFFECTED, i.e. this caller won the CAS
       [{ email: 'sister@example.com' }], // roster row email
+      [{ n: '0' }], // §3.7 rule 10 — how many relationships this person already holds
       1,  // link claimed_user_id + standby_state — ONE row affected
     );
 
@@ -99,6 +100,7 @@ describe('claimStandbyRole — binding an identity to a roster row', () => {
     rows(
       [INVITE],
       1, // mark claimed — won the CAS
+      [{ n: '0' }], // the standby cap count
       1,  // link — no user lookup or upsert should happen at all
     );
 
@@ -116,6 +118,7 @@ describe('claimStandbyRole — binding an identity to a roster row', () => {
       [{ ...INVITE, person_type: 'verifier', person_id: 'ver-1' }],
       1, // mark claimed — won the CAS
       [{ email: 'uncle@example.com' }],
+      [{ n: '0' }],
       1,
     );
 
@@ -125,7 +128,7 @@ describe('claimStandbyRole — binding an identity to a roster row', () => {
   });
 
   it('records the claim in the audit log against the OWNER, whose circle changed', async () => {
-    rows([INVITE], 1, [{ email: 'sister@example.com' }], 1);
+    rows([INVITE], 1, [{ email: 'sister@example.com' }], [{ n: '0' }], 1);
 
     await claimStandbyRole({ token: 'ABCDE-FGHIJ' });
 
@@ -182,6 +185,7 @@ describe('an invitation whose roster row is gone', () => {
     rows(
       [INVITE],
       1, // won the CAS on the invitation
+      [{ n: '0' }], // the standby cap count — below the cap, so it proceeds
       0, // the binding UPDATE matched NOTHING — the owner removed this person
     );
 
@@ -201,7 +205,7 @@ describe('re-claiming invalidates a confirmation made about someone else', () =>
     // Risk 8. A re-claim binds a different claimed_user_id, which changes the
     // derived phrase — an earlier confirmation was an assertion about a
     // DIFFERENT human holding this slot and must not silently stand.
-    rows([INVITE], 1, [{ email: 'sister@example.com' }], 1);
+    rows([INVITE], 1, [{ email: 'sister@example.com' }], [{ n: '0' }], 1);
 
     await claimStandbyRole({ token: 'ABCDE-FGHIJ' });
 
@@ -212,5 +216,74 @@ describe('re-claiming invalidates a confirmation made about someone else', () =>
     // they just did. Cleared in the SAME statement as the binding, so it cannot
     // be forgotten by a future path that binds an identity.
     expect(bind).toContain('break_glass_only = false');
+  });
+});
+
+describe('the standby cap — §3.7 rule 10 (B23)', () => {
+  it('refuses the claim when the person already holds MAX_STANDBY relationships', async () => {
+    rows(
+      [INVITE],
+      1, // won the CAS — the code is spent before identity work, by design
+      [{ n: String(MAX_STANDBY) }], // already at the cap
+    );
+
+    await expect(
+      claimStandbyRole({ token: 'ABCDE-FGHIJ', existingUserId: 'user-77' }),
+    ).rejects.toBeInstanceOf(ValidationError);
+
+    // The refusal must actually refuse: no binding UPDATE ran. (The cap-count
+    // SELECT also names claimed_user_id, so pin the write's SET clause.)
+    const sql = mockQuery.mock.calls.map((c) => String(c[0])).join(' | ');
+    expect(sql).not.toContain('SET claimed_user_id');
+
+    // §3.7 rule 4: a cap refusal written to the OWNER's audit chain would tell
+    // the owner this contact stands by for many others — the exact enumeration
+    // the rule forbids. Nothing is written.
+    expect(writeAuditEntry).not.toHaveBeenCalled();
+  });
+
+  it('tells the claimer what happened without counting anything for anybody (§3.7 rule 4)', async () => {
+    rows([INVITE], 1, [{ n: String(MAX_STANDBY + 3) }]);
+
+    const err = await claimStandbyRole({ token: 'ABCDE-FGHIJ', existingUserId: 'user-77' }).catch(
+      (e: ValidationError) => e,
+    );
+
+    expect(err).toBeInstanceOf(ValidationError);
+    // Distinguishable from the generic code refusal — a claimer retyping a
+    // burned code forever, with the owner reissuing into the same wall, is a
+    // silent cap, and a silent cap is hostile to exactly the person it limits.
+    expect((err as ValidationError).message).toContain('maximum number of people');
+    // No count, no names: the message travels through a 400 body and could be
+    // screenshotted to the owner. It must enumerate nothing (rule 4).
+    expect((err as ValidationError).message).not.toMatch(/\d/);
+  });
+
+  it('counts across BOTH tables and EXCLUDES the row being claimed, so a re-claim is never self-refused', async () => {
+    rows([INVITE], 1, [{ n: '0' }], 1);
+
+    await claimStandbyRole({ token: 'ABCDE-FGHIJ', existingUserId: 'user-77' });
+
+    // Pin the ARGUMENTS, not the mocked result — a mock answers whatever it was
+    // asked. The count must be keyed on the resolved user AND exclude the slot
+    // being claimed, or a reissued invitation to someone at the cap refuses
+    // their own existing row.
+    const capCall = mockQuery.mock.calls.find((c) => String(c[0]).includes('count(*)'));
+    expect(capCall, 'no cap-count query ran at all').toBeDefined();
+    const capSql = String(capCall?.[0]);
+    expect(capSql).toContain('FROM recipients');
+    expect(capSql).toContain('FROM verifiers');
+    expect(capSql).toContain('id <> $2');
+    expect(capCall?.[1]).toEqual(['user-77', 'rec-1']);
+  });
+
+  it('fails loudly when the count query returns nothing, instead of reading absence as zero', async () => {
+    // Blind-guard shape: a cap whose count silently reads as 0 on a broken
+    // query is a cap that has been disabled without anybody deciding to.
+    rows([INVITE], 1, []);
+
+    await expect(
+      claimStandbyRole({ token: 'ABCDE-FGHIJ', existingUserId: 'user-77' }),
+    ).rejects.toThrow(/refusing to guess/);
   });
 });

@@ -40,6 +40,22 @@ import { recordCodeMiss } from '../ops/guess-watch';
  */
 export const MAX_INVITE_FAILED_ATTEMPTS = 10;
 
+/**
+ * §3.7 rule 10 (B23): cap how many standby relationships one person may hold,
+ * counted across BOTH roster tables and across every owner. This bounds the
+ * abuse surface §7 Risk 4 names — one identity accumulating standby positions
+ * over many vulnerable owners — while staying far above what any genuine
+ * helper needs: the largest honest case the architecture describes is one
+ * person standing by for an extended family.
+ *
+ * Enforced here because claiming is the ONLY moment a relationship binds to an
+ * identity (`claimed_user_id` is written nowhere else). An owner adding a name
+ * to their roster is not counted — a typed name is not a relationship yet, and
+ * refusing the owner's add would tell them about the contact's other circles,
+ * which rule 4 forbids.
+ */
+export const MAX_STANDBY = 10;
+
 export interface ClaimResult {
   userId: string;
   ownerId: string;
@@ -157,6 +173,43 @@ export async function claimStandbyRole(params: {
     const record = await upsertUser(`standby:${email.trim().toLowerCase()}`, email);
     userId = record.id;
     linkedExisting = false;
+  }
+
+  // §3.7 rule 10 (B23): refuse the binding when this person already holds
+  // MAX_STANDBY relationships. The row being claimed is excluded so a re-claim
+  // of a slot this person already holds — a reissued invitation after a
+  // fingerprint reset — is never refused by its own existing row. The check is
+  // application-level (DSQL enforces no cross-table constraint), so two claims
+  // racing at the boundary can land one over the cap; that is a bounded excess
+  // on an abuse limit, not a correctness hole.
+  //
+  // The code is already spent (single-use stamps before identity work, above),
+  // so recovery is the owner reissuing once a slot is free — a conversation,
+  // not a replay surface, the same trade the stamp ordering already makes.
+  //
+  // §3.7 rule 4 shapes both sides of the refusal: the message names no count
+  // and no owners, and NOTHING is written to this owner's audit chain — a cap
+  // refusal recorded there would tell the owner this contact stands by for
+  // many others, which is exactly the enumeration the rule forbids. The owner
+  // sees only what they can already see: a slot that is still unclaimed.
+  const held = await query<{ n: string }>(
+    `SELECT (SELECT count(*) FROM recipients WHERE claimed_user_id = $1 AND id <> $2)
+          + (SELECT count(*) FROM verifiers  WHERE claimed_user_id = $1 AND id <> $2) AS n`,
+    [userId, invite.person_id],
+  );
+  const capRow = held.rows[0];
+  const heldCount = Number(capRow?.n);
+  if (!capRow || !Number.isFinite(heldCount)) {
+    // Blind-guard shape (ladder-claim.ts): a count query that returns nothing
+    // must FAIL, never read as zero — reading as zero silently disables the cap.
+    throw new Error('standby cap count returned no usable row — refusing to guess');
+  }
+  if (heldCount >= MAX_STANDBY) {
+    throw new ValidationError(
+      'You already stand by for the maximum number of people Relay supports. ' +
+        'Resign a standby role you no longer hold, then ask for a fresh invitation.',
+      'token',
+    );
   }
 
   // `fingerprint_confirmed_at = NULL` is load-bearing, not tidiness. A re-claim

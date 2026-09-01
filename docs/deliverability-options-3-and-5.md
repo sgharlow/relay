@@ -311,6 +311,18 @@ reports. Rescuing them is a two-minute job with a real expiry date on it.
 > Gmail (read-only): `from:(dmarcreport@microsoft.com OR noreply-dmarc-support@google.com) to:dmarc@relaystandby.com`
 > — count them, and read the newest date. That date is the health of the feed.
 
+> ✅ **RE-MEASURED AGAIN 2026-08-31 (C1.4): THE FEED IS RESTORED.** C1.0 was executed on
+> 2026-08-30 — `_dmarc.relaystandby.com` again reads
+> `v=DMARC1; p=none; rua=mailto:dmarc@relaystandby.com; fo=1`, verified over DoH from both
+> Cloudflare and Google resolvers on 2026-08-31 with the command above. Point 2 in the block
+> before this one is the record of the outage, not the live state — kept because the
+> order-of-work inversion it argued for was honoured (the DNS record was fixed first). Restored
+> is not yet **proven**: the register entry closes when a report dated after 2026-08-30 actually
+> arrives, and the Gmail read above remains the health of the feed. This doc carried "THE FEED
+> IS DEAD" for a day after the restoration while `outlook-sender-support-submission.md` carried
+> "RESTORED" — one change, two files, one updated; the same one-file-two-answers shape this
+> repo keeps recording.
+
 > **The deadline was met and the section is spent.** Kept because the reasoning is sound and the
 > shape recurs — but note what the rescue did NOT do: it saved the reports and did not restore the
 > stream. A deadline met on the symptom while the cause went unexamined is how this lane ended up
