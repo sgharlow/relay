@@ -121,7 +121,39 @@ export async function sendOnce(params: {
 }): Promise<NoticeOutcome> {
   const { ownerId, action, stripeId, subject, text } = params;
 
-  if (await noticeAlreadySent(ownerId, action, stripeId)) return 'duplicate';
+  if (await noticeAlreadySent(ownerId, action, stripeId)) {
+    /*
+      🔴 THIS BRANCH WROTE AND LOGGED NOTHING UNTIL 2026-09-02, AND THAT IS WHY
+      E1′ WAS MISDIAGNOSED FOR TWELVE DAYS.
+
+      The register recorded, as the basis for suspecting a stale module: *"every
+      branch out of `sendOnce` writes SOMETHING, so that is not a state the
+      source can produce"*. It is not true and was not true when it was written.
+      THIS branch — the first one, taken before any other work happens —
+      returned silently: no audit row, no log line, and a 200 from the webhook.
+      Which is precisely the observed symptom that was called impossible.
+
+      Whether it is what actually fired on any given run is a separate question
+      the evidence does not settle. What it settles is that "the source cannot
+      produce this" was false, so the reasoning built on top of it — including
+      the stale-module theory — rested on nothing.
+
+      Deduping is CORRECT and stays. Being invisible while doing it is not.
+      This is stderr rather than an audit row on purpose: an audit entry per
+      refused duplicate would let anyone with the endpoint secret grow another
+      owner's tamper-evident log by replaying one event.
+    */
+    try {
+      process.stderr.write(
+        `[billing] notice SUPPRESSED as duplicate (${action}) for ${stripeId} — an audit row ` +
+          'already carries this stripe_id, so no second notice was sent. This is the dedupe ' +
+          'working, not a failure.\n',
+      );
+    } catch {
+      /* a broken stderr must not turn a correct refusal into an error */
+    }
+    return 'duplicate';
+  }
 
   const to = await ownerEmail(ownerId);
   if (!to) {

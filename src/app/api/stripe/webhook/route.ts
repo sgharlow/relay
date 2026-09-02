@@ -422,12 +422,44 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         record live in lib/billing/lapse-notice.ts.
       */
       case 'invoice.payment_failed': {
+        /*
+          🔴 BOTH GUARDS BELOW USED TO `break` IN SILENCE, AND THAT IS HALF OF
+          WHY E1′ HAS BEEN UNDIAGNOSED SINCE 2026-08-21.
+
+          A bare `break` here answers `{received:true}` — a clean 200 in Stripe's
+          dashboard — while writing no audit row and logging nothing. The
+          docstring on `subscriptionIdOnInvoice` above already records this exact
+          failure happening once, when the subscription id moved under `parent`
+          and `subId` came back undefined. It was fixed by widening the READER.
+          The SILENCE was never fixed, so the next occurrence of any cause looks
+          identical: 200, no row, no explanation.
+
+          Together with `sendOnce`'s duplicate branch, this path has THREE places
+          that produce "200 and nothing written" — which is the state the register
+          called "not a state the source can produce" while reasoning toward a
+          stale-module theory. Every one of them now says which it was.
+        */
         const invoice = event.data.object as Stripe.Invoice;
         const subId = subscriptionIdOnInvoice(invoice);
-        if (!subId || !invoice.id) break;
+        if (!subId || !invoice.id) {
+          console.error(
+            `[billing] invoice.payment_failed IGNORED (event ${event.id}): ` +
+              `${!subId ? 'no subscription id on the invoice' : 'no invoice id'}. ` +
+              'The owner was NOT told their renewal failed. If this is a real Stripe event, the ' +
+              'payload shape has moved again — see subscriptionIdOnInvoice.',
+          );
+          break;
+        }
 
         const ownerId = await ownerIdForSubscriptionId(subId);
-        if (!ownerId) break;
+        if (!ownerId) {
+          console.error(
+            `[billing] invoice.payment_failed IGNORED (event ${event.id}): no subscriptions row ` +
+              `matches stripe_subscription_id=${subId}. The owner was NOT told their renewal ` +
+              'failed. This is the checkout-time link being absent, not a payload problem.',
+          );
+          break;
+        }
 
         await notifyRenewalFailed({ ownerId, invoiceId: invoice.id });
         break;

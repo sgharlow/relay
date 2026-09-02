@@ -6089,6 +6089,43 @@ deferred:
         it was meant to inform. An `ends_when` that can only be satisfied by luck is not a test; it
         is a way for an entry to stay open forever while real progress goes unrecorded.
       restated: >-
+    🔴 measured_2026_09_02_the_premise_was_false: >-
+      THE REASONING THIS ENTRY RESTED ON IS WRONG, and it has been since it was written. The
+      recorded basis for suspecting a stale module was: "every branch out of `sendOnce` writes a
+      row, so this is not a state the source can produce." Read tonight: the state is producible
+      by the source in THREE places, every one of which answers {received:true} while writing no
+      audit row --
+        (1) `sendOnce`'s FIRST branch, the dedupe returning 'duplicate', which returns before any
+            other work and wrote and logged NOTHING;
+        (2) `if (!subId || !invoice.id) break` in the webhook's invoice.payment_failed case;
+        (3) `if (!ownerId) break` in the same case.
+      (2) is documented in `subscriptionIdOnInvoice`'s own docstring as having ALREADY HAPPENED
+      once, when the subscription id moved under `parent` -- and the fix widened the READER while
+      leaving the silence, so the next cause of the same symptom was indistinguishable from it.
+      Six deliveries were spent chasing a stale-module theory built on a premise that a five-minute
+      read of the function disproves.
+    🔴 and_the_register_said_zero_rows_when_there_is_one: >-
+      Measured read-only against production 2026-09-02: `audit_log` holds exactly ONE
+      `renewal_payment_failed_notice` row, ts 2026-08-21 16:17:58Z, stripe_id
+      `in_E1PRIME_DIRECT_20260821`. So the notice HAS fired successfully once in this product's
+      life. "Zero audit rows" was true of the 08-30 route-3 deliveries and was carried as though it
+      were true of the path.
+    what_shipped_2026_09_02: >-
+      Instrumentation, which is exactly what this entry's own next-step instruction called for
+      ("instrument inside sendOnce's four branches, since everything outside them is now eliminated
+      twice by two methods" -- note that instruction ALSO assumed the branches were the only
+      candidates). All three silent exits now name themselves; the guards are unchanged, because
+      deduping and refusing an unresolvable invoice are both CORRECT -- they were just invisible.
+      `lib/ops/lapse-notice-has-no-silent-branch.test.ts` refuses a fourth, mutation-proven by
+      silencing one guard and watching it fail.
+      ⚠️ WHAT THIS DOES NOT DO: it does not say which branch fired on the 08-30 runs. The evidence
+      does not settle that and this entry must not be read as though it did. It makes the question
+      answerable on the NEXT run instead of producing another mystery.
+    ⚠️ what_it_means_for_the_10_01_paywall_decision: >-
+      The "hold the flip because the lapse notice does not fire" option is now on weaker ground
+      than when it was recorded -- the notice has fired at least once, and the evidence for it
+      being broken was a false-impossible. It is NOT resolved either. E1prime stays `wired`; the
+      next route-3 run is cheap, and it will now print its branch.
         This entry closes when the lapse notice reaches `route-proven` — a real captured
         `invoice.payment_failed` payload, spliced with the live subscription id, correctly signed,
         POSTed at a LOCAL PRODUCTION BUILD (`next build && next start` on a free port, never

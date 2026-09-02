@@ -24,7 +24,9 @@ log read as though nothing was sent.
 | # | Date | Who | Route | What was sent | Response | Meeting? |
 |---|---|---|---|---|---|---|
 | 1 | **2026-09-01** | **NAC Innovation Collaborative** | web form, `caregiving.org/innovation/innovation-collaborative/` — re-verified live the same evening | The A6.2 §3 eligibility question, sent by Steve under his own identity (Claude prefilled the form; Steve read it and pressed Submit). Asks two things only: is a very small independent product eligible, and what does participation cost. Newsletter consent deliberately left unchecked. Submission confirmed on-screen: *"Thank you for your submission; if you have included a message, a National Alliance for Caregiving representative will follow up with you shortly."* | — *awaiting* | — |
-| — | 2026-09-22 | NAC | — | **follow-up row owed if nothing has come back by this date** (3 weeks) | | |
+| 2 | **2026-09-01** | **Homethrive** | ✉️ `contact@homethrive.com` — the footer address; the route recorded until today (`/contact/`) 404s and the only form is `/demo/`, buyer-qualification with no message field | The A6.2 §1 approach, sent by Steve from his own mailbox after a voice pass. Asks for twenty minutes, not a pilot. Cites the **Healthee** integration as the evaluated-a-third-party precedent; the Bright Horizons claim is deliberately absent (A6.1 — not primary-sourced) | — *awaiting* | — |
+| 3 | **2026-09-01** | **Wellthy** | ✉️ `partnerships@wellthy.com` — dedicated partnerships address found today; better than the demo route previously recorded, which lands in sales | The A6.2 §2 approach, sent by Steve after Homethrive so the two companies are not simultaneous. Leads with the access gap behind care navigation; states plainly it is not an estate or legal product | — *awaiting* | — |
+| — | 2026-09-22 | NAC · Homethrive · Wellthy | — | **follow-up rows owed if nothing has come back by this date** (3 weeks from send) | | |
 
 ---
 
@@ -35,7 +37,7 @@ log read as though nothing was sent.
 | Gate | `gates.g3-b2b2c-pilot-loi` — target **1** signed pilot LOI, due **2026-11-30** |
 | Kill | zero partner **meetings** taken by that date → the B2B2C branch closes |
 | Meetings taken | **0** |
-| First contacts sent | **1** — NAC, 2026-09-01. Homethrive and Wellthy staged for the same sitting |
+| First contacts sent | **3 of 3 — ALL SENT 2026-09-01** (NAC, Homethrive, Wellthy). The lane's entire input to the 11-30 gate is now out |
 | Drafts ready | **3** — `docs/g3-first-contacts.md` (A6.2, 2026-08-30) |
 
 > 🔴 **TWO OF THE THREE ROUTES HAD MOVED, found on the day of sending (2026-09-01).**
