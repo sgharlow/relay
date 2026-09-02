@@ -72,9 +72,29 @@ label, never delete. Then **untrash the ones already in there.**
 > (`deferred.dmarc-had-no-rua-so-no-report-could-arrive`), and it closes when a report dated after
 > 2026-08-30 lands.
 >
-> **What that means for this submission:** wait for one report before sending, so the
-> receiver-side evidence cited below is current rather than historical. That is a day, not a
-> blocker.
+> **What that meant for this submission** was: wait one day for a report, so the receiver-side
+> evidence is current rather than historical.
+>
+> 🔴 **THAT WAIT WAS UNSATISFIABLE, AND THE REASON IS THE FINDING — measured 2026-09-02.**
+> No report has arrived in the ~2.5 days since `rua=` was restored, and none will arrive by
+> waiting: **this domain has sent no mail since 2026-08-19** (`email_delivery_events`, newest row
+> 2026-08-19T01:36Z, read-only under `relay_ro`). Receivers generate aggregate reports for traffic
+> they actually receive. No outbound mail, no report — the DNS record is irrelevant to that.
+>
+> So the precondition was not "wait a day"; it was "send some mail first", which nobody had
+> noticed because a silent feed and a broken feed look identical from the mailbox. **This is the
+> same shape as the item this whole lane exists for** — a green-looking wait that measures the
+> wrong thing.
+>
+> ✅ **RESOLVED 2026-09-01 (Steve's ruling): send citing the record, not a report.** The submission
+> states what is true and checkable — the record is restored and was verified from two independent
+> resolvers — and says plainly that no report has yet arrived because the domain is quiet. That is
+> a stronger position than an unexplained silence, and it does not wait on an event that cannot
+> happen.
+>
+> `deferred.dmarc-had-no-rua-so-no-report-could-arrive` stays **open** and its `ends_when` is
+> amended: it closes when a report dated after the domain's next outbound mail arrives — not
+> after a date, which was never the right trigger.
 >
 > Gmail, read-only, to check:
 > `from:(dmarcreport@microsoft.com OR noreply-dmarc-support@google.com) to:dmarc@relaystandby.com`
@@ -231,9 +251,12 @@ Paste this as the description:
 >
 > The two are 91 seconds apart, to the same freshly created mailbox, differing only in body shape.
 >
-> **DMARC posture:** `v=DMARC1; p=none; rua=mailto:dmarc@relaystandby.com; fo=1`. We receive and
-> read your aggregate reports (submitter `protection.outlook.com`) and are preparing to move to
-> `p=quarantine`. SPF is published on the envelope domain `send.relaystandby.com`
+> **DMARC posture:** `v=DMARC1; p=none; rua=mailto:dmarc@relaystandby.com; fo=1` — verified from
+> two independent resolvers on 2026-09-01. We read your aggregate reports (submitter
+> `protection.outlook.com`) and are preparing to move to `p=quarantine`. In the interest of
+> accuracy: the `rua=` tag was briefly absent during a DNS change and was restored on 2026-08-30,
+> so the most recent report we hold is dated 2026-08-17. No report has arrived since — because
+> this domain has sent no mail since 2026-08-19, not because the feed is broken. SPF is published on the envelope domain `send.relaystandby.com`
 > (`include:amazonses.com`); the apex carries MX records and can receive mail.
 >
 > **Your own aggregate reports corroborate this.** Report IDs
@@ -243,6 +266,14 @@ Paste this as the description:
 > DKIM **pass**. The mail is double DKIM-signed (`d=relaystandby.com` selector `resend`, and
 > `d=amazonses.com`), and `d=relaystandby.com` aligns with the header From under strict alignment,
 > not merely relaxed.
+>
+> **And your report for the two Junk-filed messages themselves says the same thing.** Report ID
+> `3d4113c8f9d64989839a5e1b08aa877a` (window 2026-08-15 00:00 → 08-16 00:00 UTC) carries exactly
+> two records — `54.240.48.188` and `54.240.11.161`, the sending IPs for the two messages described
+> above. **Both: `disposition: none`, SPF pass, DKIM pass**, with DKIM passing for both
+> `d=relaystandby.com` (selector `resend`) and `d=amazonses.com`. Those are the messages that were
+> filed to Junk on a freshly created mailbox with no prior contact and no user rules. Your own
+> receiver-side record of them shows nothing wrong with the authentication.
 >
 > So by your own measurement there is exactly one sender on this domain, it is the one we operate,
 > and it authenticates cleanly on every leg — while the same messages are filed to Junk at SCL 5.

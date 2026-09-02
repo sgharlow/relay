@@ -95,3 +95,53 @@ context eras, and the decrypt path would route on both. Doing them together woul
 irreversible changes in one deploy.
 
 **Do them in separate quarters, not separate commits.**
+
+
+---
+
+## Phase B build sheet — B5.1, drafted 2026-09-01 after Steve lifted the B5.0 gate
+
+**Status: NOT BUILT.** The gate was lifted in the 2026-09-01 co-pilot sitting, which authorises
+this work; it was deliberately not written the same evening. The reason is in this document's own
+§"The point of no return": this is the one path in the product where a mistake is **unrecoverable**
+— rows become intact and unreachable, which for this product is the same thing as gone — and the
+B5 roadmap row names *"**any** change on the wrap/unwrap path"* as a trigger that reopens the gate.
+Shipping it as the last act of a six-hour session is the shape this repository's rules exist to
+refuse. It is a morning task, and this sheet is what makes it a short one.
+
+### Why it is now more urgent than the roadmap assumed, not less
+
+The roadmap argued for lifting the gate early because *"the compatibility risk is empty today (zero
+vault items)"*. Measured 2026-08-30: `vault_items` holds **one** real row. That does not weaken the
+argument, it sharpens it — every item added before phase C is another row a rollback must stay
+compatible with, and the window the plan called cheapest is open and narrowing.
+
+### The surface, measured 2026-09-01
+
+Contained, which is the good news: **two functions and four call sites.**
+
+| File | Change |
+|---|---|
+| `lib/kms/kms-client.ts` | `generateDataKey(context?)` — accepts an optional `EncryptionContext`, and **passes nothing while the flag is off**. `decryptDataKey(wrapped, era)` — routes on the era: `NULL` → today's call exactly, `'owner_v1'` → pass `{ owner_id }`. Also name `KeyId` explicitly on `DecryptCommand` (today it is inferred from the ciphertext blob; naming it is required before a context is ever used, and is a no-op until then) |
+| `src/app/api/kms/wrap/route.ts` | one call site — reads the flag, still wraps without context |
+| `src/app/api/kms/unwrap/route.ts` | two call sites (lines ~154, ~216) — must SELECT `kms_context_era` alongside `wrapped_data_key` and pass it |
+| `lib/access/dashboard.ts` | one call site (~496) — same: add the column to the SELECT, pass the era |
+
+### The three properties the tests must pin
+
+1. **It is a no-op today.** Every existing row has `kms_context_era = NULL`, so every decrypt takes
+   the legacy path byte-for-byte. Prove it by asserting the `DecryptCommand` carries **no**
+   `EncryptionContext` for a NULL-era row.
+2. **The reading side works before anything writes.** Feed a synthetic `'owner_v1'` row and assert
+   the context IS passed, with the right owner. This is the property that makes phase C reversible,
+   and it must be proven while nothing depends on it.
+3. **An unknown era FAILS CLOSED.** A row with an era this build does not recognise must refuse to
+   decrypt rather than silently falling back to no context — a silent fallback would make a future
+   era's rows look decryptable-but-wrong instead of loudly unsupported.
+
+### Before phase C, and not before
+
+`verify:reveal` must run green against production after phase B is deployed. Phase B is a
+**deploy**, not a merge: the property being bought is that the ability to read a context is *already
+live and proven in production* by the time anything writes one. Merging phase B and flipping the
+flag in the same sitting throws away the entire point of splitting them.

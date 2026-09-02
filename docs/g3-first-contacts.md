@@ -1,6 +1,8 @@
 # G3 — the three first contacts, drafted
 
-**A6.2, drafted 2026-08-30 by Claude. Nothing has been sent.**
+**A6.2 drafted 2026-08-30. Routes RE-VERIFIED and CORRECTED 2026-09-01 — two of the three had
+moved.** See each Route line; the on-the-day rule earned its keep twice in one evening (this and
+caregiver.com's guidelines page).
 
 > ⚠️ **A6.3 is Steve's, under his own identity.** These are drafts to edit, not messages to
 > approve. An approach that reads as machine-written gets the address blocked at exactly the
@@ -31,7 +33,14 @@
 
 ## 1 · Homethrive
 
-**Route:** the contact form at `homethrive.com`, or a named person if Steve has one.
+**Route:** ✉️ **`contact@homethrive.com`** — the footer address, RE-VERIFIED 2026-09-01.
+⚠️ **The route in this line until 2026-09-01 was wrong and would have lost the message.**
+`homethrive.com/contact/` now **404s**; the site's only form is `/demo/`, and it is a
+buyer-qualification form — first/last/work email, "which best describes your company?",
+job title, **number of employees or members**, state, "how did you hear about us?" — with
+**no message field at all**. A partnership ask cannot be expressed through it, and submitting
+one would file Relay as a small-employer sales lead. The draft below is written as an email
+and goes as one.
 **Why them first:** they have integrated a third party's capability into their own offering and
 announced it themselves, so the conversation has a demonstrated shape and a demonstrated *yes*.
 
@@ -56,7 +65,10 @@ announced it themselves, so the conversation has a demonstrated shape and a demo
 
 ## 2 · Wellthy
 
-**Route:** `wellthy.com` — demo/contact route confirmed live 2026-08-30.
+**Route:** ✉️ **`partnerships@wellthy.com`** — a DEDICATED partnerships address, found and
+verified 2026-09-01 on `wellthy.com/contact`. Better than the demo route this line named:
+the demo funnel routes to sales, this one routes to the people whose job is the question
+being asked. (`support@` and `press@` also exist; neither is right for this.)
 **Why second:** care-navigation for employers; the same buyer, a different angle on the same
 problem. Sent after Homethrive so the two are not simultaneous.
 
@@ -80,8 +92,10 @@ problem. Sent after Homethrive so the two are not simultaneous.
 
 ## 3 · NAC Innovation Collaborative — *in parallel, not in sequence*
 
-**Route:** `caregiving.org/innovation/innovation-collaborative/`, plus
-`caregiveraction.org/care2030/` and `/corporate-partners/` — all confirmed live 2026-08-30.
+**Route:** the form at `caregiving.org/innovation/innovation-collaborative/` — **re-verified
+live 2026-09-01**, page intact, form has First/Last/Email/Phone/**Message** and a newsletter
+consent checkbox that is optional and deliberately left unchecked. This is the one of the three
+that takes a real message as a form. `caregiveraction.org/care2030/` remains the fallback route.
 **Why parallel:** it is a programme rather than a company, so it neither competes with nor delays
 the other two, and its answer is about *eligibility* rather than about appetite.
 
