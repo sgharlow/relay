@@ -100,3 +100,7 @@ e2e-*.png
 .claude/sprint.lock
 .e1-scratch/
 .drill-scratch/
+
+# B12.i — the off-GitHub heartbeat writes a stamp every few minutes.
+# Local operator state, never committed (same treatment as .drill-scratch/).
+.heartbeat/
