@@ -22,6 +22,7 @@
  */
 
 import { query, closeAllPools } from '../lib/db/connection';
+import { isOwnerAlias, OWNER_ALIAS_WARNING } from '../lib/people/owner-alias';
 
 const tick = (ok: boolean) => (ok ? '  OK ' : '  --  ');
 
@@ -144,6 +145,12 @@ async function one(o: OwnerRow): Promise<void> {
     const confirmed = state === 'confirmed';
     console.log(`\n  ${p.name} · ${p.kind}`);
     console.log(`${tick(true)}state: ${state}${confirmed ? ' — their answer counts' : ' — their answer does NOT count toward quorum'}`);
+    // §3.7 rules 5/7 (2026-09-01): a circle of the owner's own aliases must
+    // never render as independent people — the quorum screen is the one place
+    // an owner learns whether their cover is real.
+    if (isOwnerAlias(o.email, p.email)) {
+      console.log(`  ⚠️  ${OWNER_ALIAS_WARNING}`);
+    }
     console.log(`${tick(Boolean(inv))}code issued${inv ? ` (${inv.delivery_channel ?? 'unknown'} channel)` : ' — not yet'}`);
     if (inv) {
       console.log(`${tick(Boolean(inv.opened_at))}opened the claim page${inv.opened_at ? ` ${inv.opened_at.slice(0, 16)}` : ' — not yet'}`);

@@ -2089,6 +2089,17 @@ deferred:
       Steve rules which reading wins, ROADMAP is corrected in place, and this entry plus the
       collision-pin test are deleted with the ruling recorded.
     revisit: 2026-09-12
+    closed:
+      date: 2026-09-01
+      ruling: >-
+        G8's reading WON (Steve, co-pilot sitting): G4 = billing MVP, G5 = audited crypto. Mobile
+        moved to G12, provider handoff + residency to G13, content unchanged. ROADMAP §2-G rows
+        reconciled in place; §1's chain already agreed. The collision-pin test was CONVERTED
+        rather than deleted: lib/ops/g-lane-names.test.ts now asserts the rows, G8's
+        parentheticals and §1's chain all carry the ruled names, and that any future
+        gates.g4*/g5* entry carries them too. G8 itself stays event-gated on G1 passing --
+        only its ambiguity died today. (ends_when said "deleted"; closed-with-record is this
+        register's convention and the conversion preserves the pin's protection.)
 
   - id: the-ladder-guard-was-audited-and-it-held                # ROADMAP Sprint 8
     owner: claude
@@ -2316,6 +2327,24 @@ deferred:
       newest 2026-08-19 — so the mail path has worked and is not implicated. Chasing Resend here
       would have been chasing the wrong layer, which is what 'the email was never received'
       naturally suggests and why this was worth measuring before theorising."
+    measured_2026_09_01_the_people_are_not_people: >-
+      🔴 Steve disclosed in the co-pilot sitting: April and Ben are PLUS-ALIASES OF THE OWNER'S
+      OWN ADDRESS, created for testing. So the gap was never "Ben has not accepted" -- it is "no
+      real circle has been named." Worse: normaliseEmail() only trims and lowercases, so §3.7
+      rule 5's same-human normalisation does not catch plus-aliases, and rule 7's
+      no-self-verifier guard does not exist -- if the owner claimed Ben's code himself, quorum
+      would read GREEN with the owner vouching for his own emergency, and nothing anywhere
+      would say so.
+    ruled_2026_09_01: >-
+      RE-SCOPE + GUARD (Steve): (1) A0.2 is re-scoped to "name and invite the REAL circle" --
+      no sends to aliases; nothing fake goes green. (2) Claude ships an owner-alias guard:
+      beta:status flags a roster member whose address is a plus-alias (or gmail dot-variant) of
+      the owner's as NOT independent cover, citing §3.7 rules 5 and 7. Revisit at the
+      2026-09-12 sitting alongside the cohort's fourth deferral.
+    ends_when_amended_2026_09_01: >-
+      Clause (a) is sharpened: the confirmed verifier must NOT be an alias of the owner -- a
+      self-signed quorum satisfies nothing this entry exists for. Otherwise unchanged.
+    revisit: 2026-09-12
   - id: secret-kinds-declaration-is-opt-in-by-discovery      # "D3"
     owner: claude
     opened: 2026-08-18
