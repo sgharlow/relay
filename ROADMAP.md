@@ -646,14 +646,16 @@ alarms.
 | G1 | B2B2C / white-label tenancy (§22) — **only against a signed pilot's actual requirements**; B5 precedes any second tenant | `gates.g3` met | claude |
 | G2 | Third-party security audit + pen test + NextAuth session-hardening review (§20) — "G5, once G4 exists"; "one audit is worth more than a decade of the figures" | Sprint 8 | steve (vendor, money) |
 | G3 | Zero-knowledge productionization — threshold crypto, HSM-backed custody, recovery quorums (§20); B5 is the structural prerequisite | post-G3 scale | claude |
-| G4 | **Mobile (§23) survives in rev 3 §2-G with no trigger** — under §1 that makes it unschedulable; assign one (partner pull / first N recipients on mobile) or strike | ruling | steve |
-| G5 | Provider handoff integrations + ingestion tiers 2–4 (§21); per-jurisdiction residency (§22) | partner pull | claude |
+| G4 | **Billing MVP** — named by RULING 2026-09-01 (the G4/G5 collision resolved: G8's reading won; G2's own row — "G5, once G4 exists" — only parses this way). The `gates.g4-billing-mvp` entry is drafted **on G1 pass** per G8; the name is ruled now precisely so that day needs no ruling. ~~Was: Mobile (§23)~~ → G12 | G1 met (via G8) | co-pilot |
+| G5 | **Audited crypto** — third-party audit of the crypto/custody path; named by RULING 2026-09-01 (see G2). Enters the register on G1 pass per G8. ~~Was: provider handoff + residency~~ → G13 | G4 met | co-pilot |
 | G6 | **Entity and insurance re-decision** (no entity, no EIN today; E&O / cyber cover) — funded from the opportunity, not ahead of it | arms-length money or a partner's diligence | steve |
 | G7 | Counsel re-engagement — g2's revisit triggers (a) first regulated-partner conversation, (b) first estate inbound, (c) G1 passing — plus the **delegate-model question** Part VIII #3 says did not go away with G2 | any trigger | steve (money) |
 | G8 | On G1 pass: draft G4 (billing MVP) and G5 (audited crypto) as `gates:` entries; promote the ladder | G1 met | co-pilot |
 | G9 NEW | **Un-ruled spec planks** the Build Spec banner names: §18 incapacity verification (is N-of-M human verifiers the decided end state?); §19 compliance programmes (SOC 2, GDPR/CCPA, **a DPA template** — the first two questions a regulated G3 partner asks; plus **E7 tax**, which §19 never named); §20 legible trust (bug bounty, whitepaper); §21 open standard; §22 ops (SLOs, a **failover drill** — the H0 failover has never been re-exercised); §23/§24 editions — and `business` / `travel` remain **user-selectable trigger types during a caregiver-only demand test** | each a disposition (rule out / defer with trigger) | steve |
 | G10 NEW | Req 13.6 owner-facing plan preview/annotation — not built, not retired, not ruled | ruling | steve |
 | G11 NEW | Design decisions with no owner ruling: recovery and release quorums sharing one social graph (Part VI); owner-challenge window per trigger type (2h emergency is a proposal) | Claude drafts options; Steve rules | steve |
+| G12 NEW | **Mobile (§23)** — moved from the old G4 row under the 2026-09-01 ruling, content unchanged: survives with no trigger, which under §1 makes it unschedulable; assign one (partner pull / first N recipients on mobile) or strike | ruling | steve |
+| G13 NEW | **Provider handoff integrations + ingestion tiers 2–4 (§21); per-jurisdiction residency (§22)** — moved from the old G5 row under the 2026-09-01 ruling, content unchanged | partner pull | claude |
 
 ### H. Documents and the register — the drift found on 2026-08-27
 
@@ -1265,6 +1267,8 @@ answered as the partner asks it.
 > once mobile exists". That is an argument, not a ruling. `lib/ops/g-lane-names.test.ts` is dormant
 > today and **arms the moment a `gates.g4*`/`g5*` entry appears**, so the contradiction cannot be
 > committed silently — proven by planting the gate G8 would create and watching it fire.
+>
+> ✅ **RULED 2026-09-01: G8's reading won.** G4 = billing MVP, G5 = audited crypto; Mobile → G12, provider handoff/residency → G13. The rows above are reconciled, the guard is converted from a collision pin to a drift guard, and the register entry is closed with the ruling. The `gates.g4-billing-mvp`/`g5-audited-crypto` entries themselves still wait for G1 to pass — G8 stays event-gated; only its ambiguity died today.
 
 Ladder → `customer-used` → `revenue-proven` with evidence (`lib/ops/ladder-claim.ts` enforces).
 **G8** G4 and G5 enter `PROJECT.yaml`. **G2** audit + pen test + session-hardening review. **G6**
@@ -1359,8 +1363,7 @@ as B5** · `G2` audit and pen test · `G6` entity and insurance — *“funded f
 ahead of it.”*
 
 **B5 · Rulings** — they change what gets built, so they cannot be inferred.
-🔴 **G4/G5 name two different things** and G8 writes one of them into the register — a guard now
-arms the moment that happens · **B5.0** lift the KMS-context gate, whose window started closing on
+✅ **G4/G5 RULED 2026-09-01** — G4 = billing MVP, G5 = audited crypto (Mobile → G12, handoff → G13); G8 is executable the day G1 passes · **B5.0** lift the KMS-context gate, whose window started closing on
 2026-08-30 when the first vault item was written · **E4.2** flip or extend the paywall, from
 2026-10-01 — ⚠️ and it now has a third option, *hold*, because the lapse notice records nothing ·
 **E5** does any billing check join an automated chain · **E4.1**'s remaining half: the `/terms`
@@ -1381,7 +1384,7 @@ not a header flip) · `B38`, `B39`, `B40`, `B41`, `B42`.
 | **5** placement | an outlet publishes | instrument checked; **collection is off** and that blocks the reading, not the send |
 | **6** first stranger | an arms-length person appears | B5's window measured and narrowing; B21.2 done |
 | **7** distribution | a G3 meeting advances | diligence pack audited and its first instruction fixed |
-| **8** revenue-proven | arms-length money moves / G1 passes | ladder guard audited and sound; **G8 unexecutable** until G4/G5 is ruled |
+| **8** revenue-proven | arms-length money moves / G1 passes | ladder guard audited and sound; ✅ G4/G5 ruled 2026-09-01 — G8 executable on its trigger |
 
 **Every one of these waits on something being sent, and every send is in section B.**
 
@@ -1390,7 +1393,7 @@ not a header flip) · `B38`, `B39`, `B40`, `B41`, `B42`.
 1. **Enable Vercel Web Analytics** — one toggle, and it gates the measurement the whole D2C branch is decided on. It does not retro-collect.
 2. **The op-ed voice pass and send** — §1a edit included. Everything in Sprint 5 is downstream of it.
 3. **Mint the restricted Stripe key**, and `stripe login` — hard deadline **2026-10-07**.
-4. **Rule G4/G5** — cheap now, expensive once three documents cite `gates.g4`.
+4. ~~**Rule G4/G5**~~ ✅ ruled 2026-09-01 — G4 = billing MVP, G5 = audited crypto.
 5. **The three G3 first contacts** — drafted, routes verified, log ready.
 
 

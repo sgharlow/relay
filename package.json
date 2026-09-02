@@ -47,7 +47,7 @@
     "incident:evidence": "npx tsx --env-file=.env.ro scripts/incident-evidence.ts",
     "beta:status": "npx tsx --env-file=.env.ro scripts/beta-status.ts",
     "verify:csp": "npx tsx --env-file=.env.ro scripts/verify-csp.ts",
-    "verify:stripe": "npx tsx scripts/verify-stripe.ts",
+    "verify:stripe": "npx tsx --env-file=.env.local scripts/verify-stripe.ts",
     "verify:stamp": "npx tsx scripts/stamp-verify-live.ts",
     "verify:stamp:journeys": "npx tsx scripts/stamp-verify-journeys.ts",
     "check:route-coverage": "npx tsx scripts/check-route-coverage.ts",

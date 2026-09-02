@@ -48,13 +48,10 @@ Alternatives: *"The help he didn't want"* · *"What my friend's father was actua
 
 ## Draft
 
-A friend's father went into hospital, and from there into rehab. He was going to recover — that much
-was clear fairly early — but recovering was going to take months, and in the meantime a whole life
-carried on running in the background. Bills arriving. A renewal notice. The ordinary machinery of an
-adult existence, which does not pause because you are unwell.
 
-My friend and I talked about it for weeks. Not the medical side; there were people for that. What we
-kept coming back to was smaller, and much harder to solve.
+A friend’s father went into the hospital, and from there into rehab. He was going to recover; that much was clear fairly early. However, recovering was going to take months, and in the meantime a whole life carried on running in the background. Bills arriving and renewal notices for various services for his home. The ordinary machinery of an adult existence, which does not pause because you are unwell.
+
+My friend and I talked about it for weeks. Not the medical side; there were people for that. What we kept coming back to was smaller, and much harder to solve.
 
 His father needed help with things. His father also, very clearly, did not want to be helped.
 
@@ -62,100 +59,59 @@ Both of those were entirely reasonable. Neither was going to stop being true.
 
 ### What he was actually defending
 
-It is easy to read that resistance as pride, or stubbornness, and to push past it gently until it
-gives way. I think that reading is wrong, and I think it is the reason so many of these
-conversations go badly.
+It is easy to read that resistance as pride, or stubbornness, and to push past it gently until it gives way. I think that reading is wrong, and I think it is the reason so many of these conversations go badly.
 
-Consider what we were actually proposing. To make the next few months easier, someone would need to
-get into his accounts. Which means having his passwords. Which means, in practice, that from that
-afternoon onward another person could see everything, at any time, for any reason, forever — and
-that nothing in the arrangement would ever hand it back.
+Consider what we were actually proposing. To make the next few months easier, someone would need to get into his accounts. Which means having his passwords. This means, in practice, that from that afternoon onward another person could see everything, at any time, for any reason, forever. Nothing in the arrangement would ever hand it back.
 
-He was not refusing help. He was declining a permanent transfer of his private life in exchange for
-temporary convenience, which is a completely rational thing to decline.
+He was not refusing help. He was declining a permanent transfer of his private life in exchange for temporary convenience, which is a completely rational thing to decline.
 
-The trouble is that the transfer is usually the only offer on the table. Families tend to arrive at
-one of two places: do nothing and hope, or get all the passwords and hope nobody minds. There is an
-enormous amount of room between those two, and almost nothing lives in it.
+The trouble is that the transfer is usually the only offer on the table. Families tend to arrive at one of two places: do nothing and hope, or get all the passwords and hope nobody minds. There is an enormous amount of room between those two, and almost nothing lives in it.
 
 ### The middle is where everyone actually is
 
 We went looking for something built for that middle. We did not find it.
 
-Password managers are built for one person managing their own accounts. Shared vaults are built for
-teams who all have equal standing. The legal instruments are built for a permanent handover after
-the fact, and require a solicitor, and are not something you set up on a Tuesday because your father
-is in rehab for eight weeks.
+Password managers are built for one person managing their own accounts. Shared vaults are built for teams who all have equal standing. The legal instruments are built for a permanent handover after the fact, and require a lawyer, and are not something a family sets up on a Tuesday because a father is in rehab for eight weeks.
 
-None of them are designed for the situation almost every family is in at some point: someone is
-temporarily unable to do things, will very likely be able to do them again, and would like to remain
-the person in charge of their own life throughout.
+None of them are designed for the situation almost every family is in at some point: someone is temporarily unable to do things, will very likely be able to do them again, and would like to remain the person in charge of their own life throughout.
 
 ### It is a much smaller ask than it looks
 
-Here is the part that changed how I thought about it, and it came from asking a narrower question:
-not *how do we get access to everything*, but *what would actually be needed, and how little would
-do*.
+Here is the part that changed how I thought about it, and it came from asking a narrower question: not *how do we get access to everything*, but *what would actually be needed, and how little would do*.
 
-Most online accounts in an adult's life are recoverable by whoever can read that person's email.
-That is not a flaw — it is deliberately how *forgot password* works, everywhere, by design. It is a
-convenience roughly every day, and a single point of failure exactly once.
+Most online accounts in an adult’s life are recoverable by whoever can read that person’s email. That is not a flaw; it is deliberately how *forgot password* works, everywhere, by design. It is a convenience roughly every day, and a single point of failure exactly once.
 
-Which means the honest version of the request is not *may I have your passwords*. It is closer to:
-*if you were unreachable for a while, could someone reach the one account the others recover
-through?*
+Which means the honest version of the request is not *may I have your passwords*. It is closer to: *if you were unreachable for a while, could someone reach the one account the others recover through?*
 
-That is a far smaller thing to ask for. It is one account, not twenty. It does not require handing
-anything over today. And unlike a shared list of passwords, it degrades gracefully — a person who
-recovers can change one password and the arrangement is simply over, without an argument, without
-anyone having to admit anything.
+That is a far smaller thing to ask for. It is one account, not twenty. It does not require handing anything over today. And unlike a shared list of passwords, it degrades gracefully. A person who recovers can change one password and the arrangement is simply over, without an argument, without anyone having to admit anything.
 
-It also has the advantage of being true to what people are worried about. Nobody is really anxious
-about the electricity account. They are anxious about being locked out at the exact moment they are
-least able to cope with being locked out.
+It also has the advantage of being true to what people are worried about. Nobody is really anxious about the electric bill. They are anxious about being locked out at the exact moment they are least able to cope with being locked out.
 
 ### What to do about it this week, for nothing
 
 Two things, and both are free.
 
-**The paper exercise.** Sit down with a sheet of paper — not a spreadsheet, not an app — and write
-down what would actually need doing over the next month if the person you are thinking of could not
-do it. Not accounts. *Tasks.* Pay this. Cancel that. Tell those people. Most lists come out shorter
-than expected, which is reassuring, and the short list is the only part worth solving.
+**The paper exercise.** Sit down with a sheet of paper: not a spreadsheet, not an app. Write down what would actually need doing over the next month if the person you are thinking of could not do it. Not accounts: just *tasks* such as “Pay this” and “Cancel that.” Tell those people where you have written it down. Most lists come out shorter than expected, which is reassuring, and the short list is the only part worth solving.
 
-Then, next to each one, write which account it needs. Then circle every account that would send its
-password reset to the same email address. That circle is the real answer, and for most families it
-is almost everything on the page.
+Then, next to each one, write which account it needs. Then circle every account that would send its password reset to the same email address. That circle is the real answer, and for most families it is almost everything on the page.
 
-**Then use a feature you are already paying nothing for.** Most major email providers have
-had some version of a trusted or recovery contact for years, and hardly anyone has switched it on.
-Look in your provider's account or security settings — the names differ, the idea does not. It costs
-nothing, takes a few minutes, changes nothing about who can read anything today, and it is the
-single highest-value thing most families can do in one sitting.
+**Then use a feature you are already paying nothing for.** Most major email providers have had some version of a trusted or recovery contact for years, and hardly anyone has switched it on. Look in your provider’s account or security settings. The names differ, the idea does not. It costs nothing, takes a few minutes, changes nothing about who can read anything today, and it is the single highest-value thing most families can do in one sitting.
 
-Do it on your own account first, before you raise it with anyone else. It reframes the whole
-conversation. You are not asking a parent to do something you have avoided doing yourself — you are
-telling them about something you have already sorted out.
+Do it on your own account first, before you raise it with anyone else. It reframes the whole conversation. You are not asking a parent to do something you have avoided doing yourself; you are telling them about something you have already sorted out.
 
 ### Back to the rehab ward
 
-I do not think my friend's father was ever going to say yes to the version we started with, and I
-have stopped thinking he was wrong. What we were offering solved our problem — the anxiety of not
-being able to help — by taking something from him permanently.
+I do not think my friend’s father was ever going to say yes to the version we started with, and I have stopped thinking he was wrong. What we were offering solved our problem: the anxiety of not being able to help. But this was taking something from him permanently.
 
-The conversation that works is a narrower one. Not *let me in*. Something more like: *if you were
-ever out of reach for a while, who should be able to get to your email — and what would you want
-them to do?*
+The conversation that works is a narrower one. Not *let me in*. Something more like: *if you were ever out of reach for a while, who should be able to get to your email and what would you want them to do?*
 
-That is a question about what happens if. It leaves him in charge of the answer, which is the part
-that was never really negotiable.
+That is a question about what happens if. It leaves him in charge of the answer, which is the part that was never really negotiable.
 
 ---
 
 ## Bio (short — required by the outlet)
 
-> Steve Harlow writes about the practical side of caring for ageing parents. He is building tools
-> for families navigating the space between full independence and full handover.
+> Steve Harlow writes about the practical side of caring for aging parents. He is building tools for families navigating the space between full independence and full handover.
 
 ⚠️ **No employer reference, anywhere** — not in the bio, not in the cover email, not on any profile
 an editor is likely to click through to. This is an absolute constraint.

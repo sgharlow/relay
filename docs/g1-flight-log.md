@@ -359,3 +359,39 @@ future reader wanting "is the numerator alive" needs both entries rather than wh
 **What this does NOT establish.** Nothing about demand. `caregiver_leads` is 0 and no editorial
 traffic exists yet. It establishes only that the instrument reports correctly on the day the first
 placement lands, which is the one thing that cannot be checked retroactively.
+
+---
+
+## 🚀 THE SEND — 2026-09-01 (MST): the op-ed left the building
+
+**A1.7 executed.** "Helping without taking over" (final: 1,009 body words) sent by Steve from his
+own mailbox to **nancy@caregiver.com** as a Word attachment, with the bio and the full contact
+block the outlet requires, and a cover email in Steve's voice carrying the commercial-interest
+disclosure. Human-authored and human-sent by design; the compliance checker was green on the exact
+text that went out (`npm run check:oped` — every carried constraint, including §1a, US English
+confirmed by hand in the same pass).
+
+**The ordering that mattered happened in the right order.** Web Analytics collection was enabled
+(A7.0) earlier the same sitting and proven readable — API returns counts; `verify:funnel` exit 0
+with `FUNNEL_COLLECTION=enabled`, its first honest "the instrument is alive" — BEFORE the send. A
+reader arriving tomorrow gets counted. It does not retro-collect, which is why this line exists.
+
+**Send-day baseline, run within the hour:** `flight:snapshot` exit 0 — window not started,
+`caregiver_leads` **0 rows**. The lane starts from zero on the day of the send, on the record.
+
+⚠️ **Route drift found ON THE DAY, and the send was made knowingly.** caregiver.com is
+mid-restructure ("We just moved!"): the submission-guidelines page 404s and no submissions route is
+linked anywhere on the live site; the Contact page now carries a postal address only. The send
+follows the 2026-08-18 dossier capture (verbatim, primary-sourced) — Word attachment to the named
+editor, bio + contact block included. A bounce is instant feedback; silence is not evidence the
+address is dead. If the guidelines reappear with changed rules before acceptance, re-verify against
+them before any follow-up.
+
+**What arms next:** acceptance window per the dossier is ~D+2..4 weeks, publication ~D+4..10 weeks
+(D = 2026-09-01, so publication lands ~2026-09-29 .. 11-10). The **daily**
+`verify:funnel` + `flight:snapshot` cadence arms the day the piece goes LIVE (not before — there is
+nothing to measure while it sits in an inbox). On acceptance: A1.8 — sign the release, and confirm
+the byline link is exactly `relaystandby.com/caregivers?src=ed-caregiver-com` (never untagged);
+declaring the lane in `GATE_LANES` and ratifying the editorial thresholds (row 8) both precede the
+piece going live, not the pitch. **A2 (The Caregiver Space) deliberately waits** — pitched second,
+only if this one passes; one outlet at a time.
