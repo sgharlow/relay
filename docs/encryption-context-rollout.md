@@ -5,6 +5,12 @@
 > which one is safe* — because on this path being wrong is not recoverable by trying again.
 >
 > Nothing here has been done. Sprint 4 is gated to design only.
+>
+> ⚠️ **That last line was true when it was written and is no longer, 2026-09-02.** Phase B — the
+> reading side — is **BUILT** on branch `b5-1-phase-b` and **NOT DEPLOYED**. It is kept above rather
+> than edited because the sequencing argument this document makes only reads correctly from the
+> state it was written in. See the build sheet's own status line at the end of this file for what
+> exists and what closes it.
 
 ## The one asymmetry everything else follows from
 
@@ -101,7 +107,25 @@ irreversible changes in one deploy.
 
 ## Phase B build sheet — B5.1, drafted 2026-09-01 after Steve lifted the B5.0 gate
 
-**Status: NOT BUILT.** The gate was lifted in the 2026-09-01 co-pilot sitting, which authorises
+**Status: BUILT 2026-09-02, NOT DEPLOYED.** ⚠️ This line read **NOT BUILT** until then, and the
+distinction it now carries is the whole point of phase B: the code exists and is under test, and
+**none of the property this phase buys is real until it is running in production.** What is on
+branch `b5-1-phase-b`: `decryptDataKey` routes on `kms_context_era` (NULL → today's call, `owner_v1`
+→ `{ owner_id }`, anything else → refuse before any KMS call), `KeyId` named on every
+`DecryptCommand`, all four call sites reading the era from the row, and `generateDataKey` given an
+optional context it is never passed. What is NOT: nothing wraps with a context and nothing stamps an
+era, so every row is still legacy and the change is observably a no-op.
+
+**What closes it: the deploy, then `npm run verify:reveal` green against production** — not the
+merge. Until both have happened, phase C's reversibility rests on code that has never run against
+the real KMS, which is the one assumption this document says cannot be checked by reading (§"Why
+this is still gated"). The two questions in §"The two questions to answer before phase C" are
+unchanged and both still open.
+
+The paragraph below is the original argument for why it was a morning task, kept because it is the
+reason the work was sequenced this way:
+
+The gate was lifted in the 2026-09-01 co-pilot sitting, which authorises
 this work; it was deliberately not written the same evening. The reason is in this document's own
 §"The point of no return": this is the one path in the product where a mistake is **unrecoverable**
 — rows become intact and unreachable, which for this product is the same thing as gone — and the

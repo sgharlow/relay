@@ -1,11 +1,10 @@
 /**
  * The design's premises are facts about this codebase, and facts drift.
  *
- * `docs/encryption-context-design.md` (S4-1) settles how wrapped data keys will
- * be bound to an `EncryptionContext`. It is DESIGN ONLY — no crypto code has
- * changed — and its conclusions rest on four things that are true of the code
- * today. If any of them stops being true before the change is built, the design
- * is quietly wrong and the person implementing it will not know.
+ * `docs/encryption-context-design.md` (S4-1) settles how wrapped data keys are
+ * bound to an `EncryptionContext`. Its conclusions rest on four things that are
+ * true of the code. If any of them stops being true, the design is quietly wrong
+ * and the person working from it will not know.
  *
  * 🔴 THE ONE THAT MATTERS MOST is the ordering premise: the wrap happens BEFORE
  * the item exists, which is why the context is `{ owner_id }` and not
@@ -14,8 +13,13 @@
  * this test going red is how that gets noticed rather than the design being
  * followed out of habit.
  *
- * ⚠️ THIS IS NOT A TEST OF THE CHANGE. There is nothing to test yet. It is a
- * test that the design still describes the repository it was written against.
+ * ⚠️ THIS IS STILL NOT A TEST OF THE CHANGE. It read "there is nothing to test
+ * yet" until 2026-09-02, when phase B built the reading side; the tests for that
+ * live beside the code, in lib/kms/kms-client.test.ts and at the four call
+ * sites. What this file asserts is unchanged and is a different question: does
+ * the design still describe the repository it was written against? Premise 4 is
+ * the one that moved — it now takes its implemented branch, and the comment
+ * there says what that branch is for.
  *
  * Feature: relay-h0-mvp
  * Requirements: 2.2, 2.4, 17.4
@@ -118,21 +122,38 @@ describe('premise 3 — the call sites the design enumerates are the call sites 
   });
 });
 
-describe('premise 4 — nothing has started implementing this yet', () => {
+describe('premise 4 — a context is never passed without the era marker', () => {
   /*
-    The sprint is gated to design only. If a later change adds an
-    EncryptionContext without the marker column and the no-fallback rule, it has
-    the self-defeating shape §2 of the design describes: a decrypt that falls
-    back to no context is a permanently available bypass.
+    ⚠️ THIS DESCRIBE READ "nothing has started implementing this yet" until
+    2026-09-02, and the branch below has flipped: kms-client.ts now names
+    EncryptionContext, so this takes the SECOND path, and the first — the
+    design-only assertion — is the one that would now be a red flag, because it
+    would mean the reading side had been reverted.
 
-    This does not forbid the change. It requires the migration to land with it.
+    The assertion itself never depended on which phase we were in, which is why
+    it survives unedited. If a change adds an EncryptionContext without the
+    marker column and the no-fallback rule, it has the self-defeating shape §2
+    of the design describes: a decrypt that falls back to no context is a
+    permanently available bypass.
+
+    This never forbade the change. It required the migration to land with it,
+    and it did — 037, applied before the code that reads it.
   */
   it('if a context is ever passed, the era marker must exist too', () => {
     const client = stripComments(read('lib/kms/kms-client.ts'));
     const usesContext = client.includes('EncryptionContext');
 
     if (!usesContext) {
-      expect(usesContext, 'design only — nothing implemented yet, as gated').toBe(false);
+      /*
+        Unreachable since phase B, and deliberately still here: this is the
+        pre-implementation state, and reaching it again would mean the reading
+        side had been removed. That is the one direction a rollback must never
+        go once any row carries an era — docs/encryption-context-rollout.md
+        §"Rolling back, by phase".
+      */
+      expect(usesContext, 'no EncryptionContext in kms-client.ts — pre-phase-B, or reverted').toBe(
+        false,
+      );
       return;
     }
 

@@ -2939,7 +2939,10 @@ deferred:
       ⚠️_the_allow_list_entry_is_now_load_bearing: "vault_items.kms_context_era is applied and
         referenced by nothing, allow-listed in lib/ops/schema-columns-are-used.test.ts with its own
         removal condition. That entry is the only thing recording that the column is waiting rather
-        than abandoned."
+        than abandoned. — RESOLVED 2026-09-02: the entry was deleted, on its own stated condition,
+        because phase B (branch b5-1-phase-b) makes the application READ the column at all four
+        decrypt call sites. Nothing needs to record that it is waiting any more; the guard's other
+        direction now watches it, and that guard is what forced the deletion."
     ends_when: "new wraps are bound to a context and legacy blobs are PROVEN to decrypt forever.
       ⚠️ Compatibility is the whole risk: every key wrapped before the change has no context and can
       never be rewritten, because the server cannot read plaintext — the same permanent-legacy rule

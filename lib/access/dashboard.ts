@@ -485,15 +485,27 @@ async function decryptForPrincipal(
     );
   }
 
-  const item = await query<{ ciphertext: unknown; wrapped_data_key: unknown; kms_key_id: string }>(
-    `SELECT ciphertext, wrapped_data_key, kms_key_id
+  // `kms_context_era` rides along in the same SELECT: how the row was wrapped
+  // is a fact about the row, never something a caller may assert. It is NULL on
+  // every row today (phase B of docs/encryption-context-rollout.md), so this
+  // decrypt is byte-for-byte the call it has always been.
+  const item = await query<{
+    ciphertext: unknown;
+    wrapped_data_key: unknown;
+    kms_key_id: string;
+    kms_context_era: string | null;
+  }>(
+    `SELECT ciphertext, wrapped_data_key, kms_key_id, kms_context_era
        FROM vault_items WHERE id = $1 AND owner_id = $2 LIMIT 1`,
     [itemId, rs.owner_id],
   );
   if (item.rowCount === 0 || item.rows.length === 0) return deny('Item not found');
 
   // Gates passed — now (and only now) call KMS.
-  const plaintextDataKey = await decryptDataKey(byteaToBase64(item.rows[0].wrapped_data_key));
+  const plaintextDataKey = await decryptDataKey(byteaToBase64(item.rows[0].wrapped_data_key), {
+    era: item.rows[0].kms_context_era ?? null,
+    ownerId: rs.owner_id,
+  });
   await auditOutcome('authorized');
 
   return {
