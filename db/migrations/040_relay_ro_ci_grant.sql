@@ -1,0 +1,64 @@
+-- 040 — bind a SECOND IAM principal to `relay_ro`: the CI runner's OIDC role.
+--
+-- WHY THIS EXISTS. Owner-mode accessibility has been audited by nothing
+-- scheduled since 2026-08-21 (B28): `.github/workflows/a11y.yml` runs
+-- `A11Y_SCOPE=public`, because minting an owner session needs a database
+-- credential and GitHub Actions held none. The whole database dependency of that
+-- audit is SELECT — `scripts/mint-owner-session.ts` runs TWO statements, both
+-- reads: `SELECT id, email FROM users WHERE email = $1`, then `readSessionEpoch`'s
+-- `SELECT session_epoch FROM users WHERE id = $1`. The server it drives only
+-- reads too, measured page by page. `relay_ro` already covers all of it.
+-- (This said "one statement" until the review on 2026-09-02: the proposal had
+-- counted the query written in the script and not the one its helper makes. The
+-- verdict is unchanged — two reads is still no write — but a count quoted from
+-- a document rather than from the code is how a wrong one travels.)
+--
+-- Steve ruled "yes, via OIDC" on 2026-09-01. The runner therefore holds no
+-- stored secret: it mints a short-lived GitHub OIDC token and exchanges it for
+-- `relay-ro-ci`, whose trust policy names exactly one subject —
+-- `repo:sgharlow/relay:ref:refs/heads/master` — and whose only permission is
+-- `dsql:DbConnect` on the primary cluster. Not `DbConnectAdmin`. No KMS.
+-- The reviewable version of that ruling is `docs/d21-runner-db-oidc-proposal.md`.
+--
+-- 🔴 A SECOND PRINCIPAL ON A ROLE IS NORMALLY THE FINDING, AND THAT IS WHY THIS
+-- HEADER EXISTS. `scripts/verify-roles.ts` has said since it was written that
+-- "a second principal on a role is how a wall quietly acquires a side door", and
+-- it reports any extra ARN bound to a role as exactly that. This grant is the
+-- deliberate exception, so it was made DECLARABLE rather than exempt: the
+-- contract in that script now names the SET of principals bound to each role —
+-- `relay_ro` declares two, `relay_app` and `relay_dev` still declare one — and a
+-- THIRD ARN on any of them is still a finding. Bending a rule by adding a name
+-- to a list leaves the rule standing; bending it by deleting the check does not,
+-- and six months later the two look identical in a diff.
+--
+-- ⚠️ THE PRINCIPAL IS A ROLE, NOT A USER, and DSQL does not care: `AWS IAM GRANT`
+-- takes an ARN. The difference is in how it is reached — a user is reached with a
+-- key that lives on a machine, a role is reached by satisfying a trust policy. So
+-- the thing worth protecting here is that trust policy, and it is audited by
+-- `npm run verify:iam` (`lib/ops/iam-wall.ts → READONLY_CI_CONTRACT`), which this
+-- statement cannot see. `verify:roles` proves which ARN is bound; `verify:iam`
+-- proves what that ARN may do. Both, or half a wall.
+--
+-- ⚠️ IT STILL READS PII. `relay_ro` holds SELECT on every table, and emails,
+-- display names and vault item TITLES are plaintext columns. What it can never do
+-- is decrypt — `relay-ro-ci` carries no `kms:*` action at all, so the vault stays
+-- ciphertext with no key. That is the trade, and it is the reason the trust policy
+-- is pinned to one branch of one repository: `sgharlow/relay` is PUBLIC, and a
+-- widened `sub` would hand that SELECT to a stranger's pull request.
+--
+-- HOW IT IS APPLIED. By the controller, from a sysadmin identity (`.env.admin`),
+-- in BOTH REGIONS — failover here is an env switch (`DSQL_USE_SECONDARY`), so a grant
+-- applied to one region and not the other is invisible until the day somebody
+-- flips it, and `verify:roles` checks both:
+--
+--   npx tsx --env-file=.env.admin db/migrations/migrate.ts 040_relay_ro_ci_grant.sql
+--
+-- and again with DSQL_PRIMARY_ENDPOINT overridden to the secondary endpoint —
+-- migrate.ts does NOT honour DSQL_USE_SECONDARY, and shell env wins over
+-- --env-file. That gotcha is recorded in 039 and is repeated here rather than
+-- referenced, because it is the step that gets missed.
+--
+-- Feature: relay-h0-mvp
+-- Requirements: 17.4 (least privilege), and ROADMAP → D21 / B28
+
+AWS IAM GRANT relay_ro TO 'arn:aws:iam::461293170793:role/relay-ro-ci';

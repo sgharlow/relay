@@ -80,7 +80,24 @@ const MEASUREMENT_TABLE = 'caregiver_leads';
 
 interface RoleContract {
   role: string;
-  iamArn: string;
+  /**
+   * EVERY IAM principal this database role may be bound to — the declared set,
+   * not one name.
+   *
+   * 🔴 IT WAS `iamArn: string` UNTIL 2026-09-02, AND THE SINGULAR WAS THE RULE.
+   * A role bound to a second principal was reported as an EXTRA below, with the
+   * comment that says why: that is how a wall quietly acquires a side door.
+   * D21 adds one on purpose — the OIDC role `relay-ro-ci`, so a CI runner can
+   * hold the read-only identity with no stored secret (migration 040,
+   * docs/d21-runner-db-oidc-proposal.md).
+   *
+   * The exception is DECLARED rather than exempted, and the difference is the
+   * whole design: `relay_ro` names two principals, `relay_app` and `relay_dev`
+   * still name one, and a THIRD ARN on any of them is still a finding. A rule
+   * bent by adding a name to a list still holds; a rule bent by deleting the
+   * check is gone, and in a diff six months from now the two look the same.
+   */
+  iamArns: string[];
   /** May this role write the G1 measurement table? */
   writesMeasurementTable: boolean;
   /**
@@ -104,12 +121,12 @@ interface RoleContract {
 const CONTRACT: RoleContract[] = [
   {
     role: 'relay_app',
-    iamArn: 'arn:aws:iam::461293170793:user/relay-runtime',
+    iamArns: ['arn:aws:iam::461293170793:user/relay-runtime'],
     writesMeasurementTable: true,
   },
   {
     role: 'relay_dev',
-    iamArn: 'arn:aws:iam::461293170793:user/relay-dev',
+    iamArns: ['arn:aws:iam::461293170793:user/relay-dev'],
     writesMeasurementTable: false,
   },
   {
@@ -120,9 +137,21 @@ const CONTRACT: RoleContract[] = [
       It exists so that an agent running somewhere other than this laptop can
       check the live system at all: verify:schema, verify:dogfood,
       verify:orphans, flight:snapshot and this file all need only SELECT.
+
+      TWO principals, on purpose, since migration 040 (2026-09-02). The user is
+      `.env.ro` on a laptop; the ROLE is the same read-only identity reached from
+      a GitHub Actions runner by OIDC, with no stored secret and a trust policy
+      pinned to the master ref. Declaring it here is what keeps the extra-
+      principal check below meaningful: a third ARN is still a side door.
+      What this file CANNOT see is what either ARN's policy permits — that is
+      `npm run verify:iam` (lib/ops/iam-wall.ts), and the no-KMS half of the
+      read-only story lives entirely there.
     */
     role: 'relay_ro',
-    iamArn: 'arn:aws:iam::461293170793:user/relay-ro',
+    iamArns: [
+      'arn:aws:iam::461293170793:user/relay-ro',
+      'arn:aws:iam::461293170793:role/relay-ro-ci',
+    ],
     writesMeasurementTable: false,
     writesAnything: false,
   },
@@ -211,13 +240,22 @@ async function auditRegion(client: Client, tables: string[]): Promise<string[]> 
   );
   for (const c of CONTRACT) {
     const bound = maps.rows.filter((m) => m.pg_role_name === c.role).map((m) => m.arn);
-    if (!bound.includes(c.iamArn)) {
+
+    // Every DECLARED principal must actually be bound. A declaration the cluster
+    // never received is the failure that surfaces only at cutover — here, a CI
+    // run that cannot authenticate as anything at all.
+    const unbound = c.iamArns.filter((a) => !bound.includes(a));
+    if (unbound.length) {
       problems.push(
-        `${c.role} is not bound to ${c.iamArn} (bound to: ${bound.length ? bound.join(', ') : 'nothing'})`,
+        `${c.role} is not bound to ${unbound.join(', ')} (bound to: ${bound.length ? bound.join(', ') : 'nothing'})`,
       );
     }
-    const extra = bound.filter((a) => a !== c.iamArn);
-    // A second principal on a role is how a wall quietly acquires a side door.
+
+    // And nothing beyond them. A principal bound to a role and NOT declared
+    // above is how a wall quietly acquires a side door — the rule did not stop
+    // applying when relay_ro gained its second principal, it acquired a list to
+    // compare against.
+    const extra = bound.filter((a) => !c.iamArns.includes(a));
     if (extra.length) problems.push(`${c.role} has EXTRA IAM principals: ${extra.join(', ')}`);
   }
 

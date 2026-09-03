@@ -42,29 +42,46 @@ import { CONTRACTS } from './iam-wall';
 const ROLES_SCRIPT = join(process.cwd(), 'scripts', 'verify-roles.ts');
 
 /**
- * The IAM user names named by `verify-roles.ts`'s own contract, read from its
- * `iamArn:` entries. Anchored on the property name so the ARN inside the
+ * The IAM principals named by `verify-roles.ts`'s own contract, read from its
+ * `iamArns:` arrays. Anchored on the property name so the ARN inside the
  * explanatory comment beside `relay_ro` — which is not a contract entry — cannot
  * be counted as one.
+ *
+ * ⚠️ IT READS ROLES AS WELL AS USERS SINCE 2026-09-02 (D21), and the field is
+ * now a LIST. `relay_ro` is bound to two principals on purpose — the user
+ * `relay-ro` and the OIDC role `relay-ro-ci` — so a matcher pinned to
+ * `iamArn:` and to `:user/` would have gone on comparing an incomplete set
+ * while reporting equality, which is this file's own failure shape.
  */
 function usersWatchedByVerifyRoles(): string[] {
   const src = readFileSync(ROLES_SCRIPT, 'utf8');
-  const found = [...src.matchAll(/iamArn:\s*'arn:aws:iam::\d+:user\/([A-Za-z0-9_+=,.@-]+)'/g)].map(
-    (m) => m[1],
-  );
+  const found = [...src.matchAll(/iamArns:\s*\[([\s\S]*?)\]/g)]
+    .flatMap((m) => [
+      ...m[1].matchAll(/'arn:aws:iam::\d+:(?:user|role)\/([A-Za-z0-9_+=,.@-]+)'/g),
+    ])
+    .map((m) => m[1]);
   return [...new Set(found)].sort();
 }
 
 /**
- * The IAM principals that also have a database identity — i.e. everything the
- * two walls can meaningfully be compared across.
+ * CONTRACTS entries that have a database half — i.e. everything the two walls
+ * can meaningfully be compared across.
  *
- * A ROLE is excluded by KIND, not by name: `verify:roles` reads
- * `sys.iam_pg_role_mappings`, and a principal that never connects to the
- * database has no row there to read.
+ * 🔴 THE EXCLUSION IS A NAMED LIST, NOT A KIND, SINCE 2026-09-02. It was
+ * `kind === 'user'`, which was right while every role was a KMS reader that
+ * never connects to the database. `relay-ro-ci` is a role that DOES connect —
+ * it is the read-only database identity reached from a runner — so excluding
+ * roles by kind would have dropped it out of the comparison silently, and the
+ * one identity D21 exists to add would have been the one identity this guard
+ * could not see. Naming the exception costs a sentence and cannot be got wrong
+ * by a future contract's `kind`.
  */
+const NO_DATABASE_HALF = ['relay-kms-wall-ci'];
+
 function dbPrincipals(): string[] {
-  return CONTRACTS.filter((c) => c.kind === 'user').map((c) => c.user).sort();
+  return CONTRACTS.filter((c) => !NO_DATABASE_HALF.includes(c.user))
+    .map((c) => c.user)
+    .sort();
 }
 
 describe('the database wall and the IAM wall watch the same identities', () => {
@@ -73,7 +90,7 @@ describe('the database wall and the IAM wall watch the same identities', () => {
     // the ARNs move to a constant — this test would otherwise pass by comparing
     // two empty sets, which is the "guard that cannot see its subject" shape
     // this repo has caught three times. Fail loudly instead.
-    expect(usersWatchedByVerifyRoles().length).toBeGreaterThanOrEqual(3);
+    expect(usersWatchedByVerifyRoles().length).toBeGreaterThanOrEqual(4);
   });
 
   it('every identity verify:roles watches is also audited by verify:iam', () => {
@@ -90,22 +107,28 @@ describe('the database wall and the IAM wall watch the same identities', () => {
     expect(missing, `add a RoleContract to scripts/verify-roles.ts CONTRACT for: ${missing.join(', ')}`).toEqual([]);
   });
 
-  it('the ONLY principals excluded from that comparison are IAM roles, and they are named', () => {
+  it('the ONLY principal excluded from that comparison is the one with no database half', () => {
     /*
       🆕 2026-08-29 (B16.4). `relay-kms-wall-ci` is an IAM ROLE that reads KMS
       metadata from GitHub Actions. It never connects to the database, so it has
       no `sys.iam_pg_role_mappings` row and cannot have a verify:roles contract
       — demanding one would mean inventing a database identity to satisfy a test.
 
-      The exclusion is scoped to `kind === 'role'` rather than to a name list, and
-      it is asserted rather than assumed: silently narrowing a set-equality guard
-      is precisely how the hole this file was written for gets re-opened. Adding a
-      database USER still fails the tests above; only a role is exempt, and this
-      case names every one that is.
+      ⚠️ THE EXCLUSION MOVED FROM A KIND TO A NAME on 2026-09-02, because
+      `relay-ro-ci` is a role that DOES connect to the database. Exempting roles
+      as a class would have exempted it, and the set-equality guard would have
+      reported agreement while the new identity sat in one list only — which is
+      exactly the hole this file was written for, re-opened by a rule that had
+      been correct the day before. Adding ANY principal now fails the tests
+      above until it is either watched by both walls or written into
+      NO_DATABASE_HALF with a reason.
     */
     const excluded = CONTRACTS.filter((c) => !dbPrincipals().includes(c.user));
     expect(excluded.every((c) => c.kind === 'role')).toBe(true);
-    expect(excluded.map((c) => c.user)).toEqual(['relay-kms-wall-ci']);
+    expect(excluded.map((c) => c.user)).toEqual(NO_DATABASE_HALF);
+    // Named because it reads KMS metadata and holds no dsql grant at all, so it
+    // has no `sys.iam_pg_role_mappings` row for verify:roles to read.
+    expect(NO_DATABASE_HALF).toEqual(['relay-kms-wall-ci']);
   });
 
   it('the two lists are the same set of DATABASE identities, not merely overlapping', () => {

@@ -1,8 +1,24 @@
 # Proposal: a database identity on a CI runner — `relay-ro-ci` (OIDC)
 
-**Status: DRAFTED, NOT BUILT.** Steve ruled **"yes, via OIDC"** on 2026-09-01 (co-pilot sitting).
-This is that ruling written out as a reviewable change for `/safe-execute`. Nothing here has been
-executed, and no IAM object exists.
+**Status: BUILT (repo side) 2026-09-02 — infra pending `/safe-execute`.** Steve ruled **"yes, via
+OIDC"** on 2026-09-01 (co-pilot sitting). The repository half is written, tested and committed; **no
+IAM object exists and no AWS call has been made from this change.** §7 is what the controller runs
+next. On the claim ladder this is `built` — not `wired`, because nothing has connected; the first
+thing that moves it is a `verify:iam` run against the real role.
+
+> ⚠️ **One measurement changed the scope of §2.4 and it is recorded here rather than left in a
+> report.** Before the workflow was written, every owner-mode page render was traced for database
+> WRITES and KMS calls: the layout's session check, `runPrioritize` on `/vault`, and the eleven GET
+> endpoints the owner screens fetch on mount are all SELECT-only, and `/api/kms/unwrap` is reached
+> only from the export button. The one write on that path is
+> `escalateLapsedRequestsForOwners`, called from `/api/standby` — which `SidebarNav` fetches on every
+> owner screen. It is unreachable for an owner who stands by for nobody (the resolver returns early),
+> and its call site swallows failures so rung 0 still renders. So owner mode renders under
+> `DSQL_ROLE=relay_ro`. **What does NOT survive the measurement: `disposable-owner.ts create` cannot
+> run in CI.** It signs up over HTTP against the server under audit, and that server holds SELECT
+> only — so CI audits an owner account that ALREADY EXISTS, named by `secrets.A11Y_OWNER_EMAIL`,
+> and that account must be an audit fixture rather than a customer (axe prints element HTML, and on
+> owner screens that HTML carries vault item titles).
 
 > **The ruling being implemented:** *may a CI runner hold a database credential?* — **yes, via
 > OIDC**: no stored secret, a role assumed per-run from a pinned ref, scoped to the read-only
@@ -119,3 +135,87 @@ and the proof-of-red in the same change.
 reported, and it has been the state for eleven days. It is a dated cadence with an owner and a
 freshness dead-man, the shape `verify-live-freshness.test.ts` already uses, so that *"nobody
 audited owner mode"* is itself detectable. Say so and that gets built instead.
+
+---
+
+## 7. What the controller runs next
+
+Nothing below has been done. Each step is an infrastructure act on a working system, so it runs
+under `/safe-execute` with the rollback stated: **delete the role**, and every workflow falls back
+to the state it is in today (a11y public-scope, with a printed warning), which is a degradation
+rather than a breakage.
+
+**1. Create the role `relay-ro-ci`** in account `461293170793`, with this trust policy. The OIDC
+provider already exists — it was created for `relay-kms-wall-ci` — so this adds a role, not a
+provider.
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": { "Federated": "arn:aws:iam::461293170793:oidc-provider/token.actions.githubusercontent.com" },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+          "token.actions.githubusercontent.com:sub": "repo:sgharlow/relay:ref:refs/heads/master"
+        }
+      }
+    }
+  ]
+}
+```
+
+**2. Attach its only permission** — one connect grant, on the primary cluster, naming its target.
+`Resource: "*"` is a finding here (`READONLY_CI_CONTRACT.resourceScope`), and so is anything with
+`kms:` in it.
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DsqlConnectNonAdmin",
+      "Effect": "Allow",
+      "Action": ["dsql:DbConnect"],
+      "Resource": ["arn:aws:dsql:us-east-1:461293170793:cluster/frt34buqso4inluojgnj6horuy"]
+    }
+  ]
+}
+```
+
+**3. Apply the grant, in BOTH regions.** `migrate.ts` does not honour `DSQL_USE_SECONDARY`, so the
+second run overrides the endpoint in the shell — shell env wins over `--env-file`:
+
+```bash
+npx tsx --env-file=.env.admin db/migrations/migrate.ts 040_relay_ro_ci_grant.sql
+DSQL_PRIMARY_ENDPOINT=<secondary endpoint> npx tsx --env-file=.env.admin db/migrations/migrate.ts 040_relay_ro_ci_grant.sql
+```
+
+**4. Set the two workflow values.** Neither is a credential; both are secrets so they are masked in
+a public repository's logs. `A11Y_OWNER_EMAIL` must name an audit fixture owner, never a customer —
+see the note under the status line.
+
+```
+secrets.DSQL_PRIMARY_ENDPOINT   the primary cluster endpoint
+secrets.A11Y_OWNER_EMAIL        an owner account that EXISTS and holds no real data
+```
+
+**5. Measure both walls, from the laptop, before trusting either.**
+
+```bash
+npm run verify:iam     # .env.admin — five principals now; relay-ro-ci must hold dsql:DbConnect,
+                       # no kms: action at all, and a trust policy pinned to the master ref
+npm run verify:roles   # .env.ro — relay_ro bound to BOTH declared principals in BOTH regions,
+                       # and nothing else bound to it
+```
+
+**6. Prove the alarm fires, then prove the check passes — in that order.** Dispatch `a11y.yml` with
+`dsql_role` set to something that does not exist (`relay_ro_nope`) and confirm the run goes RED with
+`OWNER MODE WAS REQUIRED AND WAS NOT AUDITED`. Then dispatch it again with the default and confirm
+the eight owner screens are audited at both viewports. A checker that has only ever passed has not
+been seen to work — and until step 6 has been run, this document is `built`, not live-proven.
+
+**7. Then, and only then, close B28** — and record which run closed it.

@@ -13,11 +13,45 @@
 # minutes; folding it into the main pipeline would slow every push for a signal
 # that only changes when a screen changes. ci.yml stays the fast gate.
 #
-# WHAT THIS JOB CANNOT SEE, stated so its green is not read as wider than it is:
-# GitHub Actions holds no database credentials, so an owner session cannot be
-# minted here and owner mode is not audited. The script prints that omission on
-# every run rather than skipping quietly. Owner mode is covered by running
-# `node scripts/a11y-audit.mjs` locally before a release.
+# ⚠️ THIS HEADER SAID "GitHub Actions holds no database credentials, so an owner
+# session cannot be minted here and owner mode is not audited" UNTIL 2026-09-02.
+# That was true for eleven days and it is the sentence B28 was blocked on. Steve
+# ruled "yes, via OIDC" on 2026-09-01 (D21), so this job now holds NO STORED
+# SECRET and still reaches the database: it mints a short-lived GitHub OIDC token
+# and exchanges it for `relay-ro-ci`, whose only permission is `dsql:DbConnect`
+# on the primary cluster as the READ-ONLY database role `relay_ro` — SELECT on
+# every table, no DML, no DDL, and no `kms:*` action at all, so the vault stays
+# ciphertext with no key. The whole database dependency of owner mode is TWO
+# statements, both SELECT: `scripts/mint-owner-session.ts` runs
+# `SELECT id, email FROM users WHERE email = $1` and then `readSessionEpoch`'s
+# `SELECT session_epoch FROM users WHERE id = $1`. (This said "one statement"
+# until the review on 2026-09-02, quoting the proposal, which had counted the
+# visible query and not the one the helper makes.) Every owner page render was
+# separately measured read-only before this was built.
+# The role, the contract and the argument: `lib/ops/iam-wall.ts` →
+# READONLY_CI_CONTRACT, `db/migrations/040_relay_ro_ci_grant.sql`,
+# `docs/d21-runner-db-oidc-proposal.md`.
+#
+# 🔴 A PULL REQUEST AUDITS THE SIGNED-OUT HALF ONLY, AND THAT IS THE PIN WORKING.
+# `relay-ro-ci`'s trust policy names exactly one subject —
+# `repo:sgharlow/relay:ref:refs/heads/master` — because sgharlow/relay is PUBLIC
+# and a widened `sub` would let a stranger's pull request assume a role that
+# holds SELECT on production. A pull_request run presents a different subject and
+# therefore CANNOT assume it, by design. So owner mode is audited on pushes to
+# master and on dispatches FROM MASTER — the ref, not just the event: a dispatch
+# from a branch presents `…:ref:refs/heads/<branch>` and the trust policy does not
+# name it either. On a pull request, and on any run off master, this job behaves
+# exactly as it did before and the script prints what it did not cover.
+# `axe` is a REQUIRED CHECK on master, so it has to stay green on a pull request
+# it can never hold this credential in.
+#
+# ⚠️ IT NEEDS TWO PIECES OF CONFIGURATION THAT ARE NOT CREDENTIALS, and until
+# both exist the job runs public-scope with a warning rather than red:
+# `secrets.DSQL_PRIMARY_ENDPOINT` (a hostname — a secret so it is masked in a
+# public repo's logs, not because it authenticates anything) and
+# `secrets.A11Y_OWNER_EMAIL`. ⚠️ Point that second one at an AUDIT FIXTURE owner,
+# never at a customer: axe prints up to 110 characters of the offending element's
+# HTML, and on owner screens that HTML can carry a vault item title.
 
 name: Accessibility
 
@@ -25,11 +59,34 @@ on:
   push:
     branches: [master]
   pull_request:
-  workflow_dispatch: {}
+
+  # 🔴 THE DISPATCH INPUT EXISTS SO THE OWNER HALF CAN BE PROVEN TO FAIL.
+  # B13's standard, and kms-wall.yml's: a checker that has only ever passed has
+  # not been seen to work. Dispatch this with `dsql_role` pointed at a database
+  # role that does not exist and confirm the run goes RED — the connection is
+  # refused, the session cannot be minted, and `A11Y_REQUIRE_OWNER` turns what
+  # would otherwise be a quiet "owner mode not audited" into a failure.
+  #
+  # ⚠️ WITHOUT THAT LAST PART THIS INPUT WOULD PROVE NOTHING. scripts/a11y-audit.mjs
+  # exits 0 when it cannot mint a session — deliberately, because CI genuinely
+  # could not before today — so a proof-of-red dispatch would have printed the
+  # skip notice and passed. The proof and the guard had to ship together.
+  workflow_dispatch:
+    inputs:
+      dsql_role:
+        description: 'Database role to connect as. Point it at one that does not exist (e.g. relay_ro_nope) to prove the owner half goes RED.'
+        required: false
+        default: 'relay_ro'
 
 concurrency:
   group: a11y-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
+# `id-token: write` is what lets the job mint the OIDC token. It is not a write
+# to anything in this repository. `contents: read` is the checkout.
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
   axe:
@@ -51,10 +108,70 @@ jobs:
       # Adding ~300MB to every developer's install to serve one CI job is the
       # trade the old script header declined to make, and declining it is still
       # right — it just does not have to mean the check never runs.
-      - name: Install Playwright
+      #
+      # 🔴 ONE COMMAND, AND THAT IS NOT A TIDINESS PREFERENCE. `npm i` REIFIES THE
+      # WHOLE TREE FROM THE LOCKFILE every time it runs, so a second
+      # `npm i --no-save <other>` PRUNES whatever the first one added — the
+      # lockfile does not name it, so npm removes it. Order changes nothing except
+      # which package disappears: playwright then tsx loses playwright, tsx then
+      # playwright loses tsx. Reproduced on npm 11.5.2, the npm Node 24 ships.
+      #
+      # It was written as two steps for one commit on 2026-09-02, and the shape of
+      # the failure is the one this repository keeps finding: the tsx step was
+      # conditional on owner mode, so a pull request installed only playwright and
+      # stayed GREEN, while every armed run on master — the runs D21 exists for —
+      # would have died in `resolvePlaywright()` with "Playwright could not be
+      # resolved", on a workflow whose whole point was to stop reporting green over
+      # screens nobody opened.
+      #
+      # tsx is only needed when owner mode is armed, and it is installed
+      # unconditionally anyway: a few seconds on a pull request buys the removal of
+      # an entire class of failure, and a conditional second install is exactly
+      # what caused it.
+      - name: Install the audit harness
         run: |
-          npm i --no-save playwright@1.59.1
+          npm i --no-save playwright@1.59.1 tsx@4
           npx playwright install --with-deps chromium
+
+      # ONE DECISION, MADE OUT LOUD, BEFORE ANYTHING DEPENDS ON IT. The three
+      # things that decide whether owner mode is auditable here are an event, a
+      # hostname and an address — none of them a credential — and a job that
+      # discovered a missing one halfway through would report it as a broken
+      # audit rather than as an unconfigured one.
+      - name: Can owner mode be audited in this run?
+        env:
+          OWNER_EMAIL: ${{ secrets.A11Y_OWNER_EMAIL }}
+          DSQL_ENDPOINT: ${{ secrets.DSQL_PRIMARY_ENDPOINT }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "OWNER_MODE=no" >> "$GITHUB_ENV"
+            echo "pull_request: relay-ro-ci is pinned to the master ref, so this run cannot assume it."
+            echo "That is the trust policy working. The signed-out half is audited, as it always was."
+          elif [ "${{ github.ref }}" != "refs/heads/master" ]; then
+            # THE EVENT IS NOT THE REF. A workflow_dispatch from a branch presents
+            # `repo:sgharlow/relay:ref:refs/heads/<branch>`, which the trust policy
+            # does not name — so arming here would fail the assume step and report
+            # a configuration choice as a broken audit. Testing the event alone
+            # armed exactly that run.
+            echo "OWNER_MODE=no" >> "$GITHUB_ENV"
+            echo "${{ github.ref }} is not refs/heads/master: relay-ro-ci is pinned to the master ref, so this run cannot assume it."
+            echo "That is the trust policy working. Dispatch from master to audit owner mode."
+          elif [ -z "$OWNER_EMAIL" ] || [ -z "$DSQL_ENDPOINT" ]; then
+            echo "OWNER_MODE=no" >> "$GITHUB_ENV"
+            echo "::warning::Owner mode is NOT being audited: A11Y_OWNER_EMAIL and/or DSQL_PRIMARY_ENDPOINT are unset. B28 stays open until both are configured and relay-ro-ci exists."
+          else
+            echo "OWNER_MODE=yes" >> "$GITHUB_ENV"
+            echo "Owner mode WILL be audited, and a failure to mint the session is a red run."
+          fi
+
+      - name: Assume the read-only database role
+        if: env.OWNER_MODE == 'yes'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::461293170793:role/relay-ro-ci
+          role-session-name: a11y-owner-mode
+          aws-region: us-east-1
 
       - name: Build
         run: npm run build
@@ -66,10 +183,57 @@ jobs:
       - name: Start the app and audit it
         env:
           A11Y_BASE: http://localhost:3100
-          A11Y_SCOPE: public
+          A11Y_SCOPE: ${{ env.OWNER_MODE == 'yes' && 'all' || 'public' }}
+          # The dead-man for the half this workflow was changed to add. Without
+          # it, a failed mint is a green run with a printed apology.
+          A11Y_REQUIRE_OWNER: ${{ env.OWNER_MODE == 'yes' && '1' || '0' }}
+          A11Y_OWNER_EMAIL: ${{ secrets.A11Y_OWNER_EMAIL }}
           PLAYWRIGHT_MODULE: playwright
+          # ⚠️ ALL THREE ARE GATED ON THE ARMING DECISION, the same way A11Y_SCOPE
+          # is. A pull request job then carries NO database configuration at all —
+          # no endpoint, no role, not even a region — rather than carrying values
+          # it has no credential to use. Configuration a job cannot act on is
+          # configuration somebody later assumes it acted on.
+          DSQL_PRIMARY_ENDPOINT: ${{ env.OWNER_MODE == 'yes' && secrets.DSQL_PRIMARY_ENDPOINT || '' }}
+          # The proof-of-red lever. Anything but `relay_ro` is a role the cluster
+          # will refuse to authenticate, which is the point.
+          DSQL_ROLE: ${{ env.OWNER_MODE == 'yes' && (inputs.dsql_role || 'relay_ro') || '' }}
+          AWS_REGION: ${{ env.OWNER_MODE == 'yes' && 'us-east-1' || '' }}
         run: |
-          set -uo pipefail
+          # -e as well as -uo since 2026-09-02: without it a failed
+          # `printf > .env.local` — a read-only workspace, a full disk — left the
+          # step running and the mint failed later on a missing file, reporting the
+          # symptom instead of the cause.
+          set -euo pipefail
+
+          # 🔴 ONE SECRET, GENERATED HERE, SHARED BY THE SERVER AND THE MINT, and
+          # never anything's production value. scripts/mint-owner-session.ts
+          # forges a NextAuth cookie, so the server it is handed to must have been
+          # started with the same NEXTAUTH_SECRET — a per-run random value
+          # satisfies that and can be leaked to nobody, because it exists for the
+          # ninety seconds this job lasts and authenticates one forged session
+          # against one localhost server.
+          NEXTAUTH_SECRET="$(openssl rand -hex 32)"
+          export NEXTAUTH_SECRET
+
+          # The mint is invoked as `npx tsx --env-file=.env.local`, a path
+          # hardcoded in scripts/a11y-audit.mjs, so the four values it and the
+          # server both need are written there as well as exported. No credential
+          # is among them: the AWS session comes from the OIDC step above and
+          # lives in the job's environment, and .env.local is gitignored.
+          #
+          # Written only when there is something to write. When owner mode is not
+          # armed the three values above are empty by construction and the mint
+          # never runs, so no file is created at all — better than a file that
+          # names a database and configures nothing.
+          if [ -n "${DSQL_PRIMARY_ENDPOINT}" ]; then
+            printf '%s\n' \
+              "DSQL_PRIMARY_ENDPOINT=${DSQL_PRIMARY_ENDPOINT}" \
+              "DSQL_ROLE=${DSQL_ROLE}" \
+              "AWS_REGION=${AWS_REGION}" \
+              "NEXTAUTH_SECRET=${NEXTAUTH_SECRET}" > .env.local
+          fi
+
           npx next start -p 3100 &
           server=$!
           trap 'kill $server 2>/dev/null || true' EXIT
@@ -84,3 +248,18 @@ jobs:
           if [ -z "$up" ]; then echo "server never came up"; exit 1; fi
 
           node scripts/a11y-audit.mjs
+
+      - name: Explain a failure
+        if: failure()
+        run: |
+          echo "::error::THE ACCESSIBILITY GATE DID NOT HOLD."
+          echo "Read the audit step first — it names every page and every serious/critical rule."
+          echo "If instead it says OWNER MODE WAS REQUIRED AND WAS NOT AUDITED, the defect is not"
+          echo "on a screen. In order:"
+          echo "  1. A dispatch with dsql_role set to anything but relay_ro is SUPPOSED to fail here."
+          echo "     That is the proof-of-red; nothing is broken."
+          echo "  2. If the ASSUME ROLE step failed, the wall is unmeasured rather than breached."
+          echo "     Role: arn:aws:iam::461293170793:role/relay-ro-ci (master ref only, SELECT only)."
+          echo "  3. If the MINT failed, check that A11Y_OWNER_EMAIL still names an account that"
+          echo "     exists, and that relay_ro is still bound to the role:  npm run verify:roles"
+          echo "  4. If relay_ro lost its grant, or the role lost dsql:DbConnect:  npm run verify:iam"
