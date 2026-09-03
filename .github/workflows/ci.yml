@@ -44,10 +44,18 @@ jobs:
           # every push and its green meant one-fiftieth of what it claimed — a
           # check scoped to a history the runner had not downloaded.
           #
-          # 50 rather than 0: the step asks for fifty, and fetching the whole
-          # history to satisfy a fifty-commit question is a cost with no answer
-          # attached to it.
-          fetch-depth: 50
+          # 🔴 AND 50 WAS WRONG TOO — 2026-09-03. A shallow clone treats its
+          # boundary commit as a ROOT, and a root commit "introduces" every
+          # file in its tree. So for any file not touched inside the window,
+          # `git log -1 -- <file>` names the BOUNDARY commit as the last change.
+          # src/app/terms/legal-pages.test.ts compares each legal page's
+          # declared UPDATED date with that answer, and it went red on PR #61 —
+          # a two-document change — because a night of merges moved the window
+          # past /privacy's real last change (08-21) and git attributed the file
+          # to the boundary (08-24). Every later PR would have failed the same
+          # way. Full history is the only depth at which "the last change to
+          # this file" is a fact rather than an artefact of the fetch.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
