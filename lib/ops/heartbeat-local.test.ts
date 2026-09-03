@@ -96,4 +96,60 @@ describe('the off-GitHub heartbeat', () => {
     expect(SRC).toContain('.heartbeat');
     expect(readFileSync('.gitignore', 'utf8')).toContain('.heartbeat/');
   });
+
+  it('🔴 can still SEND the alert from the scheduler’s environment, which has no Resend key', () => {
+    /*
+      Found 2026-09-02, the day after the "alert delivered" proof. That proof ran
+      from a shell that had RESEND_API_KEY exported; the Task Scheduler's
+      environment does not, and this script loads no env file. So the installed
+      task would detect a dead production and print "ALERT COULD NOT BE SENT" —
+      a muted watchdog, which the address guard exists to prevent and did not.
+      The key must be readable from the repo's own gitignored `.env.local` when
+      the process environment lacks it.
+    */
+    const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as { scripts: Record<string, string> };
+    const cmd = pkg.scripts.heartbeat;
+    expect(cmd, 'the key lives in .env.local; the script must be started so it can read it').toContain(
+      '--env-file-if-exists=.env.local',
+    );
+    expect(cmd, 'a hard --env-file= exits 9 wherever the file is absent, before the address guard can speak').not.toMatch(
+      /--env-file=/,
+    );
+    expect(CODE).toMatch(/RESEND_API_KEY/);
+  });
+});
+
+describe('the heartbeat installer', () => {
+  const PS1 = readFileSync('scripts/install-heartbeat-task.ps1', 'utf8');
+  const PS1_CODE = PS1.replace(/<#[\s\S]*?#>/g, '').replace(/^[ \t]*#.*$/gm, '');
+
+  it('refuses to install a task that could not send its alert', () => {
+    // The address guard alone lets a task install and then mute itself; the key
+    // must be visible to the task — in the shell, or in `.env.local` — as well.
+    expect(PS1_CODE).toMatch(/RESEND_API_KEY/);
+    expect(PS1_CODE).toMatch(/\.env\.local/);
+  });
+
+  it('🔴 parses under Windows PowerShell 5.1, which reads a BOM-less file as ANSI', () => {
+    /*
+      Found 2026-09-02 on the first real run. The script had an em dash inside
+      a `throw "..."` string; `powershell.exe` (5.1, what the board and the
+      header both say to use) decoded the BOM-less UTF-8 as Windows-1252, the
+      dash's third byte became a closing smart quote, and the file did not
+      parse. The 09-01 version carried the same characters and was never run.
+      Either the file carries a BOM, which 5.1 honours, or it is pure ASCII.
+    */
+    const raw = readFileSync('scripts/install-heartbeat-task.ps1');
+    const hasBom = raw[0] === 0xef && raw[1] === 0xbb && raw[2] === 0xbf;
+    const pureAscii = raw.every((b) => b < 0x80);
+    expect(hasBom || pureAscii, 'add a UTF-8 BOM or strip the non-ASCII characters').toBe(true);
+  });
+
+  it('does not demand elevation the task never needed', () => {
+    // The task runs as the current user, so a User-scope variable is visible to
+    // it and Register-ScheduledTask works from a normal shell. Insisting on
+    // Machine scope + an elevated shell kept the task uninstalled for a day.
+    expect(PS1).toMatch(/'User'/);
+    expect(PS1).not.toMatch(/RUN THIS FROM AN ELEVATED/);
+  });
 });

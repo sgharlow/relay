@@ -298,7 +298,8 @@ Paste this as the description:
 ## What "done" looks like
 
 Microsoft's replies are often templated and slow. Treat any of these as a result worth recording in
-`docs/g1-ad-creatives.md`:
+the **Outcome log** at the end of this file (this line pointed at `docs/g1-ad-creatives.md` until
+2026-09-02 — a ⛔ RETIRED document, so the record would have gone where nobody reads):
 
 - A mitigation is applied → **re-test to a fresh outlook.com mailbox** (a new one; not this one) and
   read the SCL. Do not declare success from the reply itself — the whole file is about not trusting
@@ -307,3 +308,16 @@ Microsoft's replies are often templated and slow. Treat any of these as a result
   this into a waiting problem, which options 1, 2, 4 and the fire drill are already designed to
   survive.
 - No reply within ~2 weeks → record that too, and stop. Nothing downstream is blocked on it.
+
+---
+
+## Outcome log
+
+Written here and nowhere else. A send is recorded on the day it is sent; a reply on the day it
+arrives; and "no reply" is recorded too, because silence is a result this file has already been
+fooled by once.
+
+| Date | Step | What happened |
+|---|---|---|
+| 2026-09-02 | Step 1 | The ticket above was placed in Steve's Gmail as a **draft** to `support@resend.com`, subject verbatim, body verbatim with the code formatting stripped. **Not yet sent** — a vendor ticket is a human send from the account holder. Measured first: Gmail held no Resend ticket and no Microsoft sender-support confirmation since 08-31, so both steps were genuinely open. |
+| 2026-09-02 | Step 3 | The form was opened at `olcsupport.office.com` ("Sender Information for Outlook.com Delivery" — verified present, signed-in, with the description field this text is written for). ⚠️ **Blocked on the account, not the form:** the browser was signed in with the *employer* Microsoft account and the contact e-mail field is read-only to it. The investigation report for a personal product must not go to an employer mailbox. Resumes the moment a personal Microsoft account is signed in. |

@@ -4668,6 +4668,41 @@ deferred:
       elevated - Steve's hands) AND `.heartbeat/runs.jsonl` holds a stamp written by the scheduler
       rather than by a person. Measured 2026-09-03T02Z: task absent, variable unset. The AWS half
       (Route 53 / Synthetics -> SNS, 5-gate) stays Steve's ruling and is not required for closure.
+    closed:
+      date: 2026-09-02
+      outcome: >-
+        B12.i INSTALLED AND PROVEN on the amended ends_when: `relay-heartbeat` is registered
+        (user sghar, RunLevel Limited, every 15 min) and `.heartbeat/runs.jsonl` holds a stamp the
+        SCHEDULER wrote — 2026-09-03T02:23:37Z `ok`, six seconds after Start-ScheduledTask,
+        `LastTaskResult 0`, `task.log` reading "heartbeat OK — production healthy, GitHub
+        delivering". Registered by Claude from a normal shell, not by Steve from an elevated one.
+      what_the_first_real_run_found: >-
+        Two defects in the installer nobody had run, and a premise nobody had checked.
+        (1) THE TASK WOULD HAVE DETECTED AND NEVER ALERTED. `RESEND_API_KEY` lives only in
+        `.env.local`; `npm run heartbeat` started node bare, and the scheduler's environment
+        carries no such variable. The 09-01 "alert delivered" proof ran from a shell that had the
+        key exported. Proven from a key-less shell against a dead host: exit 1, "ALERT COULD NOT
+        BE SENT". Fixed with `--env-file-if-exists=.env.local` (the shape #55 gave the stripe
+        monitor the same evening; a hard --env-file= exits 9 before the address guard can speak),
+        pinned in `lib/ops/heartbeat-local.test.ts`, and proven again the same way: "alert sent",
+        the email in the inbox at 02:21:28Z from hello@relaystandby.com. The installer now refuses
+        unless the key is visible to the scheduler — User/Machine scope or an `.env.local` line —
+        and asks the same scheduler-visible question of the address, where it had been reading
+        the current shell.
+        (2) THE .ps1 DID NOT PARSE UNDER `powershell.exe`. No BOM, so Windows PowerShell 5.1 read
+        the UTF-8 em dash inside a `throw "..."` as Windows-1252 and its third byte became a
+        closing smart quote. The 09-01 file carried the same characters. A BOM was added and a
+        guard pins BOM-or-pure-ASCII.
+        (3) NO ELEVATION WAS EVER NEEDED. The task runs as the user who registers it, so a
+        User-scope variable is what the scheduler sees, and Register-ScheduledTask for one's own
+        account needs no administrator. The "elevated shell + Machine scope + Steve's hands"
+        requirement in the amended ends_when above was a premise, not a measurement, and it kept
+        the task uninstalled for a day.
+      what_this_does_not_close: >-
+        The AWS half — a Route 53 health check or Synthetics canary -> SNS — stays Steve's 5-gate
+        ruling, exactly as the amended ends_when says. And the task lives on ONE laptop: it stops
+        when the laptop sleeps (WakeToRun is deliberately false) and it watches from a single
+        place. That is the interim's known shape, not a defect to fix here.
 
   - id: the-journey-sweep-has-no-freshness-dead-man           # ROADMAP B14
     owner: claude
