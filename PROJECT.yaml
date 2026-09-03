@@ -6248,3 +6248,16 @@ deferred:
         It does not relax the LABEL. Calling route-proven "live-proven" would still be an
         overstatement and this file says so in three places. What changes is which label closes
         the entry, not what the labels mean.
+    run_2026_09_02_route3_after_54: >-
+      One authorised delivery against a local production build of master 1ae4a0d (next start
+      :3200, shared one-off STRIPE_WEBHOOK_SECRET; STRIPE_SECRET_KEY set to the restricted
+      read-only key for the local process because getStripe() throws without one). 200 with the
+      build marker, audit rows 1 -> 1. IDENTICAL to 08-30 - and after #54 every branch this entry
+      ever blamed is loud (two IGNORED guards and the duplicate branch print to stderr; the other
+      two write a row), yet NONE spoke and nothing was written. Route-level stderr is proven to
+      reach the log by the same night's InvalidSignature line. So the case body was not entered,
+      or exited before its first statement: the silence is UPSTREAM of everything instrumented -
+      the switch on event.type, the parse, or the process boundary. Next instrument = the
+      handler's first line (event id/type/livemode) and the case's first line; then one run.
+      Nothing was spent. E1-prime stays wired; the 10-01 hold option is stronger. Record:
+      docs/e1-stripe-lapse-proof.md, Run log 2026-09-02.
