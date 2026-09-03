@@ -7,7 +7,8 @@
 > Nothing here has been done. Sprint 4 is gated to design only.
 >
 > ⚠️ **That last line was true when it was written and is no longer, 2026-09-02.** Phase B — the
-> reading side — is **BUILT** on branch `b5-1-phase-b` and **NOT DEPLOYED**. It is kept above rather
+> reading side — is **BUILT** on branch `b5-1-phase-b` and, as of 2026-09-03T04:18Z, **DEPLOYED
+> (PR #58, master `8174a61`) and PROVEN** by `verify:reveal` 20/20 against production. It is kept above rather
 > than edited because the sequencing argument this document makes only reads correctly from the
 > state it was written in. See the build sheet's own status line at the end of this file for what
 > exists and what closes it.
@@ -107,7 +108,7 @@ irreversible changes in one deploy.
 
 ## Phase B build sheet — B5.1, drafted 2026-09-01 after Steve lifted the B5.0 gate
 
-**Status: BUILT 2026-09-02, NOT DEPLOYED.** ⚠️ This line read **NOT BUILT** until then, and the
+**Status: DEPLOYED 2026-09-03T04:18Z (PR #58, master `8174a61`) AND PROVEN — `E2E_BASE=https://relaystandby.com npm run verify:reveal` 20/20 the same night, orphans clean. Phase C is now reversible.** ⚠️ This line read **BUILT 2026-09-02, NOT DEPLOYED** for the two hours between merge-readiness and the production proof, and **NOT BUILT** before that; the
 distinction it now carries is the whole point of phase B: the code exists and is under test, and
 **none of the property this phase buys is real until it is running in production.** What is on
 branch `b5-1-phase-b`: `decryptDataKey` routes on `kms_context_era` (NULL → today's call, `owner_v1`
