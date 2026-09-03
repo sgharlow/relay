@@ -355,3 +355,33 @@ body does not run, so the next question is about **execution**, not wiring:
 3. Only then consider route 2 (E1.3). A test-clock subscription would exercise the same body and, on
    this evidence, would fail the same way — spending a Stripe test clock and a disposable owner to
    re-learn what a spliced POST already shows.
+
+## Run log — 2026-09-02, the first run after #54 made the three branches loud
+
+**Authorised by Steve for one write, tonight. Nothing was written, so nothing was spent.**
+
+Setup: `next build` at master `1ae4a0d` → `next start -p 3200` with a one-off `STRIPE_WEBHOOK_SECRET`
+shared with the script (verification is pure HMAC, so any shared value works) and
+`STRIPE_SECRET_KEY` set to the restricted read-only key for the local process only, because
+`getStripe()` throws without one — the first delivery of the night was refused `400 InvalidSignature`
+for exactly that reason (`[stripe] signature verification failed: Error: STRIPE_SECRET_KEY is not
+set` in the server log). ⚠️ That line proves route-level stderr DOES reach the log, which matters
+below.
+
+Delivery: `POST #1 -> 200 {"received":true,"build":{...instance c53141e8}}` at 03:28:01Z, invoice
+`in_e1r3_1788406081113`, spliced sub `sub_1U2MHx…`, owner `0351deb3…`.
+`renewal_payment_failed_notice` rows before 1, after 1. **Identical to 08-30.**
+
+🔴 **The sharpened finding.** After #54, every branch this document blamed is loud: the two IGNORED
+guards in the route print to stderr, `sendOnce`'s duplicate branch prints to stderr, no-address and
+undelivered write an audit row. **None of them spoke** — the server log holds the startup lines
+and nothing else — and no row was written. So the `invoice.payment_failed` case body was NOT
+ENTERED, or was exited before its first statement. The silence is upstream of everything
+instrumented so far: the `switch (event.type)`, the parse, or the process boundary.
+
+What the next attempt does, and it is not another delivery either: instrument the handler's FIRST
+line — `[stripe] event <id> type=<type> livemode=<bool>` to stderr before the switch — and the
+first line of the `invoice.payment_failed` case. One more run then says whether the request reaches
+the switch, and with which type. Until then E1′ stays `wired`, and the 10-01 "hold" option gets
+stronger, not weaker. (Also: `scripts/e1-route3.ts` prints the build marker as `[object Object]`;
+cosmetic.)

@@ -1,10 +1,24 @@
 -- 037 — which wrapping era a row's data key belongs to.
 --
--- ⛔ AUTHORED, NOT APPLIED, AND NOTHING READS IT YET. Sprint 4 is gated to
--- design only (docs/backlog.md), so the wrap/unwrap change this column exists
--- for is deliberately not in the same branch. Applying this early is harmless —
--- it is one nullable column that no code selects — but it is not useful either
--- until that change lands. The full design is docs/encryption-context-design.md.
+-- ⛔ THIS BANNER READ "AUTHORED, NOT APPLIED, AND NOTHING READS IT YET" UNTIL
+-- 2026-09-02, and every clause of it has now moved. Corrected in place rather
+-- than rewritten, because the reasoning below is what the column is for and it
+-- is all still true.
+--
+-- APPLIED: per PROJECT.yaml (deferred → tenant-separation-at-the-kms-boundary-
+-- is-not-cryptographic), to BOTH regions. Do not trust that sentence or this
+-- one — re-derive it with `npm run verify:schema`, which compares what these
+-- files declare against what each live cluster actually has.
+--
+-- READ: YES, since phase B of docs/encryption-context-rollout.md. The decrypt
+-- path routes on this column at all four call sites — both branches of
+-- src/app/api/kms/unwrap/route.ts and lib/access/dashboard.ts — selecting it in
+-- the same statement as wrapped_data_key. NULL takes the legacy call; the one
+-- value below takes an EncryptionContext; anything else REFUSES.
+--
+-- WRITTEN: still nothing. Every row is NULL, so the reading side is a no-op that
+-- is deployed and proven before anything depends on it. That ordering is the
+-- whole design; the full argument is docs/encryption-context-design.md.
 --
 -- ── WHAT IT IS FOR ──────────────────────────────────────────────────────────
 -- `lib/kms/kms-client.ts` wraps every per-item data key under one CMK with NO

@@ -207,6 +207,52 @@ describe('decryptAccessItem', () => {
     expect(authored).toBeDefined();
   });
 
+  /*
+    Phase B of docs/encryption-context-rollout.md. `kms_context_era` is selected
+    with the row and travels to the KMS boundary; it is NULL on every row today,
+    so this path is unchanged in production.
+  */
+  it('reads a NULL era as legacy — the no-op every row takes today', async () => {
+    mockQuery
+      .mockResolvedValueOnce(qResult([rsRow()]))
+      .mockResolvedValueOnce(qResult([{ id: 'rule-1' }]))
+      .mockResolvedValueOnce(qResult([{ ciphertext: Buffer.from([1]), wrapped_data_key: Buffer.from([3]), kms_key_id: 'cmk', kms_context_era: null }]));
+
+    await decryptAccessItem('tok', 'item-1');
+
+    expect(mockDecrypt).toHaveBeenCalledWith(expect.any(String), {
+      era: null,
+      ownerId: 'owner-1',
+    });
+  });
+
+  it("passes an 'owner_v1' era through with the release row's owner", async () => {
+    mockQuery
+      .mockResolvedValueOnce(qResult([rsRow()]))
+      .mockResolvedValueOnce(qResult([{ id: 'rule-1' }]))
+      .mockResolvedValueOnce(qResult([{ ciphertext: Buffer.from([1]), wrapped_data_key: Buffer.from([3, 4]), kms_key_id: 'cmk', kms_context_era: 'owner_v1' }]));
+
+    await decryptAccessItem('tok', 'item-1');
+
+    expect(mockDecrypt).toHaveBeenCalledWith(Buffer.from([3, 4]).toString('base64'), {
+      era: 'owner_v1',
+      ownerId: 'owner-1',
+    });
+  });
+
+  it('selects the era in the SAME query as the blob', async () => {
+    mockQuery
+      .mockResolvedValueOnce(qResult([rsRow()]))
+      .mockResolvedValueOnce(qResult([{ id: 'rule-1' }]))
+      .mockResolvedValueOnce(qResult([{ ciphertext: Buffer.from([1]), wrapped_data_key: Buffer.from([3]), kms_key_id: 'cmk', kms_context_era: null }]));
+
+    await decryptAccessItem('tok', 'item-1');
+
+    const itemSql = mockQuery.mock.calls[2][0] as string;
+    expect(itemSql).toContain('kms_context_era');
+    expect(itemSql).toContain('FROM vault_items');
+  });
+
   it('denies (403) with NO KMS call and an audited denial when item is out of scope (Req 7.5/7.8)', async () => {
     mockQuery
       .mockResolvedValueOnce(qResult([rsRow()])) // release_state

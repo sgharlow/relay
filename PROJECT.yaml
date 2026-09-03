@@ -2268,6 +2268,20 @@ deferred:
       authorised 2026-09-02 for build. This entry stays OPEN until phase B is deployed and
       `verify:reveal` runs green against production with it live; it closes in the PR that ships
       phase B, not before.
+    closed:
+      date: 2026-09-02
+      outcome: >-
+        B5.1 phase B is DEPLOYED AND PROVEN. PR #58 (squash, master 8174a61) — built under the
+        SDD loop by a fresh implementer with a spec+quality review and one fix round; Vercel
+        production deployment succeeded 2026-09-03T04:18:37Z; `E2E_BASE=https://relaystandby.com
+        npm run verify:reveal` then passed 20/20 against production with the new decrypt path live
+        (the full round trip: wrap, KMS, DSQL, release, unwrap with KeyId named, NULL-era rows on
+        the legacy path); orphan census clean. Migration 037 re-verified applied in both regions
+        by `verify:schema` the same night. Phase C — the flag flip AND a deploy, not a flip alone
+        — is now reversible by turning `KMS_WRAP_WITH_CONTEXT` off.
+      what_this_does_not_close: >-
+        Phase C itself, which still needs its own dated revisit and the two questions the rollout
+        doc asks before it. And the ⚠️ pairing rule stands: not in the same quarter as B3.
 
   - id: the-funnel-walk-spoke-for-a-half-it-could-not-see      # ROADMAP A7.0
     owner: steve                          # the toggle; claude built the guard, effort S
@@ -2965,7 +2979,10 @@ deferred:
       ⚠️_the_allow_list_entry_is_now_load_bearing: "vault_items.kms_context_era is applied and
         referenced by nothing, allow-listed in lib/ops/schema-columns-are-used.test.ts with its own
         removal condition. That entry is the only thing recording that the column is waiting rather
-        than abandoned."
+        than abandoned. — RESOLVED 2026-09-02: the entry was deleted, on its own stated condition,
+        because phase B (branch b5-1-phase-b) makes the application READ the column at all four
+        decrypt call sites. Nothing needs to record that it is waiting any more; the guard's other
+        direction now watches it, and that guard is what forced the deletion."
     ends_when: "new wraps are bound to a context and legacy blobs are PROVEN to decrypt forever.
       ⚠️ Compatibility is the whole risk: every key wrapped before the change has no context and can
       never be rewritten, because the server cannot read plaintext — the same permanent-legacy rule
@@ -6271,3 +6288,16 @@ deferred:
         It does not relax the LABEL. Calling route-proven "live-proven" would still be an
         overstatement and this file says so in three places. What changes is which label closes
         the entry, not what the labels mean.
+    run_2026_09_02_route3_after_54: >-
+      One authorised delivery against a local production build of master 1ae4a0d (next start
+      :3200, shared one-off STRIPE_WEBHOOK_SECRET; STRIPE_SECRET_KEY set to the restricted
+      read-only key for the local process because getStripe() throws without one). 200 with the
+      build marker, audit rows 1 -> 1. IDENTICAL to 08-30 - and after #54 every branch this entry
+      ever blamed is loud (two IGNORED guards and the duplicate branch print to stderr; the other
+      two write a row), yet NONE spoke and nothing was written. Route-level stderr is proven to
+      reach the log by the same night's InvalidSignature line. So the case body was not entered,
+      or exited before its first statement: the silence is UPSTREAM of everything instrumented -
+      the switch on event.type, the parse, or the process boundary. Next instrument = the
+      handler's first line (event id/type/livemode) and the case's first line; then one run.
+      Nothing was spent. E1-prime stays wired; the 10-01 hold option is stronger. Record:
+      docs/e1-stripe-lapse-proof.md, Run log 2026-09-02.

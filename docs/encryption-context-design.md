@@ -6,6 +6,25 @@
 > is **not** in this branch. What is here is S4-1 (this document), S4-2 (the migration, authored and
 > not applied) and S4-5 (the roll-forward and roll-back notes).
 >
+> ⚠️ **SUPERSEDED IN PART, 2026-09-02 — the banner above is the 2026-08-20 state and is kept as the
+> record.** Steve lifted the gate on 2026-09-01 and **phase B of `docs/encryption-context-rollout.md`
+> is built** on branch `b5-1-phase-b` (not deployed). Read this document as the settled design it
+> always was, and read these four lines for which half of it is now code:
+>
+> - **IMPLEMENTED — the reading side.** §2's rule is the code: the era is a stored fact read from the
+>   row before the KMS call, `owner_v1` decrypts with `{ owner_id }`, an unrecognised era throws
+>   before any KMS call, and there is **no** try-then-fall-back anywhere. §3 is done too — `KeyId` is
+>   named on every `DecryptCommand`. All four call sites in §5 read the era from the same `SELECT`
+>   as the blob, never from the caller.
+> - **NOT IMPLEMENTED — the writing side.** Nothing wraps with an `EncryptionContext` and nothing
+>   stamps `kms_context_era`; `generateDataKey` merely *accepts* an optional context that no caller
+>   passes. §5's first row ("return the era so the write path can stamp it") is still unbuilt.
+> - **NOT DONE — §4's live proof.** Every assertion in §4 is still owed, including the two this
+>   document names as the ones a hurried implementation drops. Nothing here has been exercised
+>   against real AWS: the era routing is proven against a mocked SDK boundary only.
+> - **UNCHANGED — §1 and §6.** The context is `{ owner_id }` for the reason §1 gives, and the
+>   sequencing in §6 is what is being followed.
+>
 > **The finding** (`PROJECT.yaml → deferred → tenant-separation-at-the-kms-boundary-is-not-cryptographic`,
 > B5): `generateDataKey` and `decryptDataKey` pass no `EncryptionContext`, and `DecryptCommand`
 > names no `KeyId`. Any blob wrapped under the CMK unwraps for any caller the *application* lets

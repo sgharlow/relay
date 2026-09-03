@@ -53,28 +53,14 @@ const UNREFERENCED_BY_DESIGN: Record<string, string> = {
     'Populated by its own DEFAULT now(). The screen shows delegations.granted_at ' +
     'instead, which is the moment the delegation actually became active.',
   /*
-    🔴 THE ONLY ENTRY HERE THAT IS UNREFERENCED ON PURPOSE AND TEMPORARILY, and
-    it is the one this guard came closest to being right to refuse.
-
-    Migration 037 declares it; no code reads it, because Sprint 4 is gated to
-    DESIGN ONLY (docs/backlog.md) and the wrap/unwrap change it exists for is
-    deliberately not in the same branch. That is exactly the shape migration 035
-    shipped in — `secret_kinds` was fully unit-tested and completely INERT for a
-    day — so this guard firing was correct behaviour, not noise.
-
-    What makes it acceptable HERE and not there: 035's column was believed to be
-    wired and was not. This one is declared ahead of its code on purpose, with
-    the reason written down before the column existed, and with a second guard
-    (lib/ops/encryption-context-design.test.ts) that fails if an EncryptionContext
-    is ever passed WITHOUT this marker — the dangerous ordering being the other
-    one.
+    `vault_items.kms_context_era` WAS HERE until phase B of
+    docs/encryption-context-rollout.md landed. The entry stated its own removal
+    condition — "REMOVE THIS ENTRY when that lands" — because a column that is
+    inert HERE means a decrypt cannot tell a legacy blob from a current one.
+    Both unwrap paths and lib/access/dashboard.ts now SELECT it and route on it,
+    so the entry is deleted rather than re-argued, which is this guard working in
+    the direction nobody expects: it noticed a column coming to life.
   */
-  'vault_items.kms_context_era':
-    'Authored ahead of its code by docs/backlog.md S4-2, which gates Sprint 4 to ' +
-    'design only. Superseded by nothing — it is waiting for the wrap/unwrap change ' +
-    'in docs/encryption-context-design.md. REMOVE THIS ENTRY when that lands; if it ' +
-    'is still here once EncryptionContext is passed, the column is inert in the one ' +
-    'place where inert means a decrypt cannot tell a legacy blob from a current one.',
 };
 
 /** Present on nearly every table and referenced generically, not by name. */

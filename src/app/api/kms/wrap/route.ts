@@ -13,8 +13,16 @@
 
 import { NextResponse } from 'next/server';
 import { getOwnerSession } from '../../../../../lib/auth/session';
-import { generateDataKey } from '../../../../../lib/kms/kms-client';
+import { generateDataKey, wrapsWithContext } from '../../../../../lib/kms/kms-client';
 import { writeAuditEntry } from '../../../../../lib/audit/audit-service';
+
+/*
+  One line per process, not per request. The flag is a deployment-wide
+  misconfiguration, so an operator needs to be told once — repeating it on every
+  vault write buries the signal in the noise it creates. Never reset: a warm
+  function instance has already said it.
+*/
+let warnedIgnoredWrapFlag = false;
 
 export async function POST(): Promise<NextResponse> {
   // Owner auth — getOwnerSession throws a 401 NextResponse when unauthenticated.
@@ -23,6 +31,31 @@ export async function POST(): Promise<NextResponse> {
     ({ ownerId } = await getOwnerSession());
   } catch (res) {
     return res as NextResponse;
+  }
+
+  /*
+    PHASE B READS THE FLAG AND DELIBERATELY DOES NOT ACT ON IT.
+
+    docs/encryption-context-rollout.md makes KMS_WRAP_WITH_CONTEXT phase C's
+    switch for wrapping with { owner_id } AND stamping 'owner_v1' — one change,
+    because a data key wrapped with a context that nothing stamps could never be
+    unwrapped again. This build has neither half, so the flag is inert here and
+    that is safe by design: no context is wrapped, nothing is stamped, and every
+    row stays openable by every build. Refusing the request instead would turn a
+    harmless misconfiguration into an outage on every vault write.
+
+    It is not silently inert, though. One line to stderr, because a flag that is
+    ignored without saying so is how a phase C flip gets recorded as done having
+    changed nothing.
+
+    Phase C replaces this block with the wrap-and-stamp path.
+  */
+  if (wrapsWithContext() && !warnedIgnoredWrapFlag) {
+    warnedIgnoredWrapFlag = true;
+    console.warn(
+      '[kms] KMS_WRAP_WITH_CONTEXT is on but this build does not stamp an era — ' +
+        'ignored; wrapping without context',
+    );
   }
 
   let key;

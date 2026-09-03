@@ -11,22 +11,26 @@ vi.mock('../../../../../lib/auth/session', () => ({
 }));
 vi.mock('../../../../../lib/kms/kms-client', () => ({
   generateDataKey: vi.fn(),
+  wrapsWithContext: vi.fn(() => false),
 }));
 vi.mock('../../../../../lib/audit/audit-service', () => ({
   writeAuditEntry: vi.fn(async () => ({})),
 }));
 
 import { getOwnerSession } from '../../../../../lib/auth/session';
-import { generateDataKey } from '../../../../../lib/kms/kms-client';
+import { generateDataKey, wrapsWithContext } from '../../../../../lib/kms/kms-client';
 import { writeAuditEntry } from '../../../../../lib/audit/audit-service';
 import { POST } from './route';
 
 const mockSession = vi.mocked(getOwnerSession);
 const mockGenerate = vi.mocked(generateDataKey);
+const mockWrapsWithContext = vi.mocked(wrapsWithContext);
 const mockAudit = vi.mocked(writeAuditEntry);
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Phase B: the flag is off, which is what makes this deploy a no-op.
+  mockWrapsWithContext.mockReturnValue(false);
 });
 
 describe('POST /api/kms/wrap', () => {
@@ -66,6 +70,50 @@ describe('POST /api/kms/wrap', () => {
     expect(auditStr).not.toContain('PLAINTEXT_B64');
     expect(auditStr).not.toContain('WRAPPED_B64');
   });
+
+  it.each([false, true])(
+    'sends no EncryptionContext regardless of the flag (KMS_WRAP_WITH_CONTEXT=%s)',
+    async (flag) => {
+      /*
+        Phase B wraps without a context in BOTH flag states, which is what makes
+        the flag harmless here: nothing is wrapped with a context and nothing is
+        stamped, so every row stays openable by every build. The flag is phase
+        C's switch for wrapping AND stamping together — this build has neither,
+        so an ON flag is a misconfiguration to report, not a state to honour and
+        not an outage to cause.
+      */
+      mockWrapsWithContext.mockReturnValue(flag);
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // TWO requests, because the warning is latched per process rather than
+      // per request: a deployment-wide misconfiguration said on every vault
+      // write is noise, and the count is the only thing that can tell the two
+      // designs apart.
+      for (let i = 0; i < 2; i += 1) {
+        mockSession.mockResolvedValueOnce({ ownerId: 'owner-1', isDemo: false });
+        mockGenerate.mockResolvedValueOnce({
+          plaintextDataKey: 'P',
+          wrappedDataKey: 'W',
+          kmsKeyId: 'cmk-1',
+        });
+        const res = await POST();
+        expect(res.status).toBe(200);
+        // No argument at all — not an empty context, not undefined-but-passed.
+        // The GenerateDataKey call is byte-for-byte the one it has always made.
+        expect(mockGenerate).toHaveBeenLastCalledWith();
+      }
+
+      // Once when on across BOTH requests, never when off. An ignored flag that
+      // says nothing is how a phase C flip gets recorded as done having done
+      // nothing; one that says it every time gets filtered out instead.
+      expect(warn).toHaveBeenCalledTimes(flag ? 1 : 0);
+      if (flag) {
+        expect(String(warn.mock.calls[0][0])).toContain('KMS_WRAP_WITH_CONTEXT');
+        expect(String(warn.mock.calls[0][0])).toContain('ignored');
+      }
+      warn.mockRestore();
+    },
+  );
 
   it('returns 502 and does not audit when KMS fails', async () => {
     mockSession.mockResolvedValueOnce({ ownerId: 'owner-1', isDemo: false });
