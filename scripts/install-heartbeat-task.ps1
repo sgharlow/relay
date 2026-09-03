@@ -1,4 +1,4 @@
-# B12.i — register the off-GitHub heartbeat as a Windows Scheduled Task.
+﻿# B12.i — register the off-GitHub heartbeat as a Windows Scheduled Task.
 #
 # WHY A SCHEDULED TASK AND NOT A WORKFLOW. That is the whole point: the thing
 # being watched is GitHub's own scheduler, which drops sub-hourly runs (~6/day
@@ -10,7 +10,12 @@
 # `gh api` delivery count. No credentials beyond the ones already on this
 # machine, no writes, no cloud spend.
 #
-# ⚠️ RUN THIS FROM AN ELEVATED PowerShell in the repo root:
+# RUN THIS FROM A NORMAL PowerShell in the repo root. No elevation is needed:
+# the task runs as the user who registers it, so a User-scope variable is
+# visible to it, and Register-ScheduledTask for your own account does not need
+# administrator rights. (The 2026-09-01 version asked for an elevated shell and
+# a Machine-scope variable; that requirement kept the task uninstalled for a
+# day and was never what the scheduler needed.)
 #     powershell -ExecutionPolicy Bypass -File scripts\install-heartbeat-task.ps1
 #
 # To remove it:
@@ -26,27 +31,59 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$envLocal = Join-Path $repo '.env.local'
 
 if (-not (Test-Path (Join-Path $repo 'scripts\heartbeat-local.ts'))) {
   throw "heartbeat-local.ts not found under $repo — run this from the relay repo."
 }
 
-# 🔴 The address is checked HERE as well as in the script, because a task that
-# installs cleanly and then mutes itself is the failure this whole item exists
-# to prevent. A watchdog that cannot alert is worse than no watchdog: its
-# silence is indistinguishable from good news.
-$addr = $env:OPS_ALERT_ADDRESS
-if (-not $addr) { $addr = $env:OPS_ALERT_EMAIL }
+# 🔴 Both checks below ask what the SCHEDULER will see, not what this shell
+# sees. A variable exported into this session only is invisible to the task,
+# and a task that installs cleanly and then mutes itself is the failure this
+# whole item exists to prevent. A watchdog that cannot alert is worse than no
+# watchdog: its silence is indistinguishable from good news.
+#
+# The task can read a value from three places: a User-scope variable, a
+# Machine-scope variable, or a line in the repo's gitignored .env.local
+# (`npm run heartbeat` starts node with --env-file-if-exists=.env.local).
+function Test-SchedulerVisible([string]$Name) {
+  if ([Environment]::GetEnvironmentVariable($Name, 'User')) { return $true }
+  if ([Environment]::GetEnvironmentVariable($Name, 'Machine')) { return $true }
+  if ((Test-Path $envLocal) -and (Select-String -Path $envLocal -Pattern "^$Name=.+" -Quiet)) { return $true }
+  return $false
+}
+
+# The address: where the alert goes.
+$addr = [Environment]::GetEnvironmentVariable('OPS_ALERT_ADDRESS', 'User')
+if (-not $addr) { $addr = [Environment]::GetEnvironmentVariable('OPS_ALERT_ADDRESS', 'Machine') }
+if (-not $addr -and (Test-Path $envLocal)) {
+  $m = Select-String -Path $envLocal -Pattern '^OPS_ALERT_ADDRESS=(.+)$' | Select-Object -First 1
+  if ($m) { $addr = $m.Matches[0].Groups[1].Value.Trim().Trim('"').Trim("'") }
+}
 if (-not $addr) {
   throw @"
-OPS_ALERT_ADDRESS is not set in this shell.
+OPS_ALERT_ADDRESS is not visible to the scheduler.
 
 The task would install and then refuse to run (exit 2) every time. Set it as a
-MACHINE-level variable so the scheduler sees it, not just this session:
+USER-level variable (no elevation needed) and run this script again:
 
-  [Environment]::SetEnvironmentVariable('OPS_ALERT_ADDRESS','you@example.com','Machine')
+  [Environment]::SetEnvironmentVariable('OPS_ALERT_ADDRESS','you@example.com','User')
+"@
+}
 
-Then open a new shell and run this script again.
+# 🔴 The key: what the alert is sent WITH. Found 2026-09-02, the day after the
+# "alert delivered" proof — that proof ran from a shell with RESEND_API_KEY
+# exported, and the scheduler's environment has no such thing. Without this
+# check the task would have detected a dead production and printed
+# "ALERT COULD NOT BE SENT" every fifteen minutes, forever.
+if (-not (Test-SchedulerVisible 'RESEND_API_KEY')) {
+  throw @"
+RESEND_API_KEY is not visible to the scheduler, so the task could detect a
+failure and never tell anyone about it.
+
+It is read from the repo's gitignored .env.local ($envLocal) — the same file the
+app uses locally — or from a User/Machine-scope variable. Put it in .env.local
+and run this script again. Do not paste it into a shell.
 "@
 }
 

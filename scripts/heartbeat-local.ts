@@ -43,6 +43,18 @@
  * directory exists to prevent, so the address is read directly and its ABSENCE
  * is a fatal error rather than a quiet no-op.
  *
+ * 🔴 AND IT MUST BE ABLE TO SEND. Found 2026-09-02, the day after the "alert
+ * delivered" proof: that proof ran from a shell with RESEND_API_KEY exported,
+ * and the Task Scheduler's environment has no such thing. Started bare, this
+ * script detected a dead production and printed "ALERT COULD NOT BE SENT" —
+ * exactly the muted watchdog the address guard exists to prevent. So
+ * `npm run heartbeat` starts node with `--env-file-if-exists=.env.local`, the
+ * same shape #55 gave the stripe monitor: the key is read from the repo's
+ * gitignored env file, the environment still wins where both define a value,
+ * and a missing file is not fatal (a hard `--env-file=` exits 9 before the
+ * address guard could speak). The installer refuses to register the task
+ * unless the key is visible to the scheduler by one of those routes.
+ *
  * Exit codes follow this repo's convention:
  *   0  both halves healthy
  *   1  a finding — production is unhealthy, or GitHub has stopped delivering
