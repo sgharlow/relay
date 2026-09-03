@@ -2089,6 +2089,10 @@ deferred:
       Steve rules which reading wins, ROADMAP is corrected in place, and this entry plus the
       collision-pin test are deleted with the ruling recorded.
     revisit: 2026-09-12
+    revisit_outcome: >-
+      Answered by the 2026-09-01 ruling in `closed:` below — G8's reading won and the register
+      records it. The revisit has nothing left to ask; acknowledged 2026-09-02 so the guard does
+      not fire the day after a date this entry had already outlived.
     closed:
       date: 2026-09-01
       ruling: >-
@@ -2169,7 +2173,13 @@ deferred:
       down so the answer does not have to be re-argued from scratch, and so that if Steve WANTS it
       started early that is a deliberate override rather than drift.
     ends_when: "gates.g3-b2b2c-pilot-loi produces a meeting that advances, or Steve rules otherwise."
-    revisit: 2026-09-12
+    ruled_2026_09_02: >-
+      Steve, asked directly: still NOT pulled forward. The three G3 first contacts went out
+      2026-09-01 and no meeting exists yet, so the "2-4 weeks" argument has nothing to attach to.
+      The revisit moves to the G3 gate's own due date, 2026-11-30, where the answer is owed anyway
+      (`gates.g3-b2b2c-pilot-loi`, watched by gates.test.ts). Deliberately NOT recorded under an
+      acknowledgement key: the new date must be able to ring.
+    revisit: 2026-11-30
 
   - id: the-enforced-half-cried-wolf-about-its-own-toolbar      # ROADMAP B21.2 -> B21.3/B21.4
     owner: claude
@@ -2225,6 +2235,13 @@ deferred:
       B5 must not share a quarter with a multi-Region CMK (B3 Option B). Two changes on the
       wrap/unwrap path at once means a failure cannot be attributed to either.
     revisit: 2026-09-12
+    revisit_outcome: >-
+      Answered 2026-09-02: the first half of the ends_when was met 2026-09-01 — Steve LIFTED the
+      B5.0 gate in the co-pilot sitting (ROADMAP rulings row), and the phase-B build sheet in
+      docs/encryption-context-rollout.md was drafted the same night. B5.1 is therefore Claude's,
+      authorised 2026-09-02 for build. This entry stays OPEN until phase B is deployed and
+      `verify:reveal` runs green against production with it live; it closes in the PR that ships
+      phase B, not before.
 
   - id: the-funnel-walk-spoke-for-a-half-it-could-not-see      # ROADMAP A7.0
     owner: steve                          # the toggle; claude built the guard, effort S
@@ -2261,6 +2278,17 @@ deferred:
       unmeasured and unrecoverable, which is an argument for doing it BEFORE the op-ed is sent
       rather than on placement day.
     revisit: 2026-09-12
+    revisit_outcome: >-
+      CLOSED 2026-09-02, ahead of the revisit. The ends_when was met 2026-09-01: Steve enabled Web
+      Analytics for the relay project in the co-pilot sitting, hours BEFORE the op-ed send, and
+      `verify:funnel` printed "all 7 emit checks passed and collection is enabled"
+      (docs/g1-flight-log.md). Re-measured 2026-09-03T03Z against production with
+      `FUNNEL_COLLECTION=enabled npm run verify:funnel`: exit 0, all 7 emit checks, collection
+      enabled. The toggle preceded the send on the same day, so nothing a reader could have done
+      went unmeasured.
+    closed:
+      date: 2026-09-02
+      outcome: "Collection ON and proven readable before the send; the instrument is alive on both halves."
 
 
   # ═══════════════════════════════════════════════════════════════════════════
