@@ -4599,6 +4599,34 @@ deferred:
       question to answer - whether the minutes reset changes anything - but it is now a narrow one,
       because the minutes hypothesis is already disproven by the frequency split. And B12 is
       strengthened rather than satisfied: this watcher shares fate with what it watches.
+    revisit_outcome: >-
+      ANSWERED 2026-09-02 (the revisit date itself), re-measured again 2026-09-03T02:00Z by
+      `npm run check:cadence`: production-canary 7 runs/24h (floor 24, designed 96),
+      scheduler-monitor 7 runs/24h (floor 12, designed 48). The collapse SURVIVED the billing
+      reset. Every DAILY workflow (date-guards, kms-wall, stripe-contract-monitor, cadence-watch)
+      delivered on 09-01 and 09-02, so the frequency-selective pattern persists unchanged.
+      THE CAUSE IS RECORDED: GitHub is dropping sub-hourly schedules on this public repo. The
+      "Actions minutes" hypothesis was never possible - a public repo's minutes are free and
+      unlimited - and the reset date it was watched for changed nothing. No cron tuning fixes
+      runs that are not being created. Per ends_when's second branch, B12 stops being a proposal
+      and is the fix: B12.i (`scripts/heartbeat-local.ts` + `install-heartbeat-task.ps1`) was
+      built 2026-09-01 and proven green against production, red against a dead host, and
+      alert-delivered to a real inbox. ⚠️ Measured 2026-09-03T02Z: the `relay-heartbeat`
+      scheduled task is NOT registered and OPS_ALERT_ADDRESS is unset at Machine scope, so the
+      watchdog still runs only when a person runs it. That is B12's open half, not this entry's.
+    closed:
+      date: 2026-09-02
+      outcome: "ANSWERED: still collapsed after the reset; cause recorded; B12 is the fix."
+      what_this_does_not_close: >-
+        The collapse itself. `cadence-watch.yml` stays RED daily for as long as GitHub drops the
+        sub-hourly tier - that is B11 reporting itself, not a regression to debug. The detection
+        window is closed by B12.i's install, tracked under
+        `the-alarms-live-inside-the-thing-they-watch`.
+      how_the_lapse_was_caught: >-
+        `lib/ops/revisit-dates.test.ts` went red the first UTC day after 2026-09-02 because this
+        entry's revisit had passed with no acknowledgement key - the re-measure had been done and
+        written into memory, docs and a PR title, and not into the register. The guard built on
+        2026-08-30 for exactly that shape fired on its first real occasion.
 
   - id: the-alarms-live-inside-the-thing-they-watch           # ROADMAP B12
     owner: steve                          # infra + cost, 5-gate; claude builds after the ruling
@@ -4624,6 +4652,22 @@ deferred:
       Either an off-GitHub heartbeat exists and has been proven to reach a human inbox once, or
       Steve records the decision to accept single-provider alarm risk with a stated residual risk
       and a revisit date. An undated "not yet" is the one illegitimate outcome.
+    what_shipped_2026_09_01_b12i: >-
+      `npm run heartbeat` (`scripts/heartbeat-local.ts`) + `scripts/install-heartbeat-task.ps1`
+      (PR #53). It runs the REAL production canary from this laptop - not a run-count proxy - AND
+      counts GitHub's delivery, every 15 minutes once registered. Proven three ways on 2026-09-01:
+      green against production; exit 1 against a dead `.invalid` host; the alert email DELIVERED
+      to the inbox (not spam, not Trash). It reads OPS_ALERT_ADDRESS directly, never via
+      `opsAlertAddress()`, because that app gate returns undefined off-platform and would mute the
+      watchdog while it kept exiting 0 (`lib/ops/heartbeat-local.test.ts`).
+    ends_when_amended_2026_09_02: >-
+      The ends_when above reads "exists and has been proven to reach a human inbox once", and that
+      was met on 2026-09-01 by a HAND run. It is deliberately not closed on that: B4 was closed for
+      four days on a check nothing ran, and this is the same shape. It closes when the
+      `relay-heartbeat` task is registered (Machine-scope OPS_ALERT_ADDRESS + the .ps1, both
+      elevated - Steve's hands) AND `.heartbeat/runs.jsonl` holds a stamp written by the scheduler
+      rather than by a person. Measured 2026-09-03T02Z: task absent, variable unset. The AWS half
+      (Route 53 / Synthetics -> SNS, 5-gate) stays Steve's ruling and is not required for closure.
 
   - id: the-journey-sweep-has-no-freshness-dead-man           # ROADMAP B14
     owner: claude

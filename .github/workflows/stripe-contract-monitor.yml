@@ -84,6 +84,12 @@ jobs:
             echo "STRIPE_READONLY_KEY is NOT set." >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      # ⚠️ `verify:stripe` loads `.env.local` with --env-file-if-exists, NOT --env-file.
+      # The hard form killed this job on its first scheduled run after PR #52
+      # (run 33643932031, 2026-09-02: `node: .env.local: not found`, exit 9) before it
+      # read anything — the file is gitignored and does not exist here; the key
+      # arrives through `env:` below. The dispatch that had "proven it green" ran
+      # BEFORE the merge. Pinned by lib/ops/gate-script.test.ts.
       - name: Read the contract
         if: steps.cred.outputs.present == 'true'
         env:

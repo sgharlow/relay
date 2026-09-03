@@ -282,3 +282,29 @@ describe('the walls each have a command, and it points at the real probe', () =>
     }
   });
 });
+
+/*
+  verify:stripe is the one wall check that runs in TWO places with the SAME
+  command: on the laptop, where the restricted key lives in gitignored
+  `.env.local`, and on a GitHub runner (`stripe-contract-monitor.yml`), where the
+  key is a repository secret and the file does not exist.
+
+  🔴 2026-09-01 gave it `--env-file=.env.local` so the key could reach it locally,
+  and the monitor's first scheduled run on that commit died with
+  `node: .env.local: not found` (exit 9) before reading anything — run
+  33643932031, 2026-09-02. The dispatch that had proven it "green" ran BEFORE the
+  merge, on the previous command. `--env-file-if-exists=` (Node >= 22.9) loads
+  the file where it is and continues where it is not, so one command serves both
+  callers — and a fix that moves a failure from one caller to the other is not a
+  fix, which is what this pins.
+*/
+describe('verify:stripe can start where .env.local does not exist', () => {
+  it('loads .env.local only if it exists, because the runner has no such file', () => {
+    const cmd = pkg.scripts['verify:stripe'];
+    expect(cmd, 'verify:stripe is gone — nothing reads the billing contract').toBeTruthy();
+    expect(cmd).toContain('--env-file-if-exists=.env.local');
+    expect(cmd, 'a hard --env-file= exits 9 on the runner before reading anything').not.toMatch(
+      /--env-file=/,
+    );
+  });
+});
