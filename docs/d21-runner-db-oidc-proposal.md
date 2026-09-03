@@ -1,6 +1,6 @@
 # Proposal: a database identity on a CI runner — `relay-ro-ci` (OIDC)
 
-**Status: BUILT (repo side) 2026-09-02 — infra pending `/safe-execute`.** Steve ruled **"yes, via
+**Status: EXECUTED 2026-09-03 — repo side merged (PR #60, `1441eff`) and the infrastructure half applied under `/safe-execute`: role `arn:aws:iam::461293170793:role/relay-ro-ci` created (inline `dsql:DbConnect` on both clusters, nothing else), migration 040 applied in both regions, `npm run verify:iam` → "all 5 principals hold their contract", `npm run verify:roles` intact in both regions with two declared principals for `relay_ro`. Snapshots of both walls were taken before the change; rollback is `create-relay-ro-ci.mjs --delete` plus one `AWS IAM REVOKE` per region. ⛔ Steps 5–6 (the proof-of-red dispatch, then a normal one) and B28's closure wait for a dedicated audit-FIXTURE owner in `A11Y_OWNER_EMAIL` — `deferred.owner-mode-a11y-is-armed-by-configuration-not-required`.** ~~Status: BUILT (repo side) 2026-09-02 — infra pending `/safe-execute`.~~ Steve ruled **"yes, via
 OIDC"** on 2026-09-01 (co-pilot sitting). The repository half is written, tested and committed; **no
 IAM object exists and no AWS call has been made from this change.** §7 is what the controller runs
 next. On the claim ladder this is `built` — not `wired`, because nothing has connected; the first

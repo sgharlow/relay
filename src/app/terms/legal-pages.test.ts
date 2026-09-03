@@ -35,7 +35,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 
 const PAGES = [
@@ -74,11 +74,24 @@ function updatedDate(file: string): Date | null {
  */
 function lastCommitDate(file: string): Date | null {
   try {
-    const out = execFileSync('git', ['log', '-1', '--format=%cs', '--', file], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }).trim();
-    return /^\d{4}-\d{2}-\d{2}$/.test(out) ? new Date(`${out}T00:00:00Z`) : null;
+    const git = (args: string[]): string =>
+      execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    const [date, hash] = git(['log', '-1', '--format=%cs%n%H', '--', file]).split('\n');
+    /*
+      🔴 A SHALLOW CLONE LIES HERE, AND IT LIED ON 2026-09-03. The boundary
+      commit of a shallow clone is a root, and a root "introduces" every file,
+      so for a file untouched inside the fetched window this query names the
+      boundary as the last change. CI (fetch-depth 50 at the time) attributed
+      /privacy to a commit dated 08-24 when its real last change was 08-21, and
+      a two-document PR went red. ci.yml now fetches full history; this guard
+      is the belt to that brace — if the answer IS the shallow boundary, there
+      is no answer, and "no answer" must not become "the page is stale".
+    */
+    if (git(['rev-parse', '--is-shallow-repository']) === 'true') {
+      const shallowFile = git(['rev-parse', '--git-path', 'shallow']);
+      if (existsSync(shallowFile) && readFileSync(shallowFile, 'utf8').includes(hash)) return null;
+    }
+    return /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T00:00:00Z`) : null;
   } catch {
     return null;
   }
