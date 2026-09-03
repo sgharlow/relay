@@ -725,7 +725,12 @@ describe('the trust policy of relay-ro-ci — the half that decides who may BECO
     ],
   };
 
-  it('passes the trust policy docs/iam-wall-oidc-role-proposal.md §4 specifies', () => {
+  // ⚠️ Cited docs/iam-wall-oidc-role-proposal.md §4 until the review on
+  // 2026-09-02. That document proposes a DIFFERENT role — an OIDC identity for
+  // verify:iam — and pointing a reader at it for this role's trust policy sends
+  // them to a document that will not mention relay-ro-ci. The two proposals are
+  // near-identical in shape, which is exactly why the wrong one is easy to name.
+  it('passes the trust policy docs/d21-runner-db-oidc-proposal.md §7 step 1 specifies', () => {
     const t = readTrust(READONLY_CI_CONTRACT, PROPOSED);
     expect(t.ok, t.reason).toBe(true);
   });

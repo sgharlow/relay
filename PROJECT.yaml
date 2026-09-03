@@ -2037,6 +2037,32 @@ cross_cutting:
 # CI (D4). Written out as entries rather than left in a sprint report, because a
 # sprint report is the record of a day and this file is what the next session reads.
 deferred:
+  - id: owner-mode-a11y-is-armed-by-configuration-not-required   # ROADMAP B28 / D21
+    owner: steve
+    opened: 2026-09-02
+    what: >-
+      `.github/workflows/a11y.yml` audits owner mode only when `secrets.A11Y_OWNER_EMAIL` and
+      `secrets.DSQL_PRIMARY_ENDPOINT` are both set. With either one missing it runs public-scope
+      and emits a `::warning::` -- so a DELETED secret downgrades the gate rather than breaking
+      it, yellow instead of red, and B28 could read closed while the eight owner screens went
+      unaudited.
+    why: >-
+      It was built that way on purpose and the reason has an expiry. `relay-ro-ci` does not exist
+      yet and neither secret is set, so requiring owner mode on the day this merged would have
+      made every master run red for a reason already known -- the "red on its first run for a
+      reason you already knew" failure, which is how an operator learns to ignore a gate. The
+      moment the fixture owner exists that argument is gone and what remains is a conditional
+      skip: the shape `a11y-audit.mjs` and `verify-live-freshness.test.ts` both exist to refuse.
+      It is Steve's because the missing half is a DECISION about which account CI signs in as,
+      and that account must be an audit fixture and never a customer -- axe prints up to 110
+      characters of the offending element's HTML, and owner screens carry vault item titles into
+      a PUBLIC repository's run log. CI cannot make its own: `disposable-owner.ts create` signs
+      up over HTTP against the very server being audited, and that server holds SELECT only.
+    ends_when: >-
+      A11Y_OWNER_EMAIL names a dedicated audit-fixture owner AND a11y.yml treats its absence on
+      master as a failure, not a ::warning::.
+    revisit: 2026-09-12
+
   - id: the-route-guard-watched-one-calling-convention          # ROADMAP D25 tail
     owner: claude
     opened: 2026-08-31

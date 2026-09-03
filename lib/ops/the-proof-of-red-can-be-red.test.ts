@@ -107,6 +107,65 @@ describe('the proof-of-red is wired end to end', () => {
   });
 });
 
+/* ────────────────────────────────────────────────────────────────────────────
+   REVIEW ROUND 1, 2026-09-02. Both cases below pin defects a reviewer found in
+   the first version of this workflow, and they share a shape with everything
+   else in this file: BOTH WERE GREEN ON EVERY PULL REQUEST AND BROKEN ON EXACTLY
+   THE ARMED RUNS D21 EXISTS FOR. A workflow whose two halves fail in different
+   conditions cannot be judged by whether its checks are passing.
+   ──────────────────────────────────────────────────────────────────────────── */
+describe('the harness survives its own installation', () => {
+  it('installs every --no-save package in ONE command', () => {
+    /*
+      🔴 `npm i` REIFIES THE WHOLE TREE FROM THE LOCKFILE. A second
+      `npm i --no-save <other>` therefore PRUNES whatever the first added — the
+      lockfile does not name it. Playwright and tsx are both --no-save, so two
+      steps delete one of them, and which one depends only on the order.
+      Reproduced on npm 11.5.2, the npm Node 24 ships.
+
+      The first version installed tsx in a SECOND step, conditional on owner
+      mode, so a pull request installed only playwright and passed while every
+      armed run would have died in resolvePlaywright(). Counting the commands is
+      the only form of this rule that cannot be got wrong by reordering them.
+    */
+    // Comment lines are dropped first — the header above the step explains the
+    // trap and quotes the very command being counted, and a guard that counts
+    // its own explanation is the vacuous-matcher failure this file is about.
+    const installs = readFileSync(WORKFLOW_PATH, 'utf8')
+      .split('\n')
+      .filter((l) => !l.trim().startsWith('#'))
+      .filter((l) => /npm\s+(i|install)\s/.test(l) && l.includes('--no-save'));
+    expect(installs.length, `found ${installs.length} --no-save installs:\n${installs.join('\n')}`).toBe(1);
+    expect(installs[0]).toContain('playwright@');
+    expect(installs[0]).toContain('tsx@');
+  });
+});
+
+describe('arming reads the REF, not just the event', () => {
+  it('refuses owner mode on any ref that is not refs/heads/master', () => {
+    /*
+      The trust policy pins `repo:sgharlow/relay:ref:refs/heads/master`. A
+      workflow_dispatch from a branch is not a pull_request, so an event-only
+      test armed it — and the assume step would then fail, reporting a
+      configuration choice as a broken audit. The event is not the ref.
+    */
+    const arming = workflow().jobs.axe.steps.find((s) => (s.run ?? '').includes('OWNER_MODE=yes'));
+    expect(arming, 'no step decides OWNER_MODE').toBeDefined();
+    expect(arming?.run).toContain('github.ref');
+    expect(arming?.run).toContain('refs/heads/master');
+  });
+
+  it('carries no database configuration into a run that cannot use it', () => {
+    // Gated the same way A11Y_SCOPE is, so a pull request job holds no endpoint,
+    // no role and no region — rather than values it has no credential to use.
+    for (const key of ['DSQL_PRIMARY_ENDPOINT', 'DSQL_ROLE', 'AWS_REGION']) {
+      expect(auditStep().env?.[key], `${key} is not gated on OWNER_MODE`).toContain(
+        "env.OWNER_MODE == 'yes'",
+      );
+    }
+  });
+});
+
 describe('the runner reaches the database the way the ruling allows', () => {
   it('mints an OIDC token rather than reading a stored credential', () => {
     expect(workflow().permissions?.['id-token']).toBe('write');

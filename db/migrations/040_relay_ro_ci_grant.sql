@@ -4,9 +4,14 @@
 -- scheduled since 2026-08-21 (B28): `.github/workflows/a11y.yml` runs
 -- `A11Y_SCOPE=public`, because minting an owner session needs a database
 -- credential and GitHub Actions held none. The whole database dependency of that
--- audit is SELECT — `scripts/mint-owner-session.ts` runs one statement,
--- `SELECT id, email FROM users WHERE email = $1`, and the server it drives only
--- reads. `relay_ro` already covers it.
+-- audit is SELECT — `scripts/mint-owner-session.ts` runs TWO statements, both
+-- reads: `SELECT id, email FROM users WHERE email = $1`, then `readSessionEpoch`'s
+-- `SELECT session_epoch FROM users WHERE id = $1`. The server it drives only
+-- reads too, measured page by page. `relay_ro` already covers all of it.
+-- (This said "one statement" until the review on 2026-09-02: the proposal had
+-- counted the query written in the script and not the one its helper makes. The
+-- verdict is unchanged — two reads is still no write — but a count quoted from
+-- a document rather than from the code is how a wrong one travels.)
 --
 -- Steve ruled "yes, via OIDC" on 2026-09-01. The runner therefore holds no
 -- stored secret: it mints a short-lived GitHub OIDC token and exchanges it for

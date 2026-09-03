@@ -21,10 +21,13 @@
 # and exchanges it for `relay-ro-ci`, whose only permission is `dsql:DbConnect`
 # on the primary cluster as the READ-ONLY database role `relay_ro` — SELECT on
 # every table, no DML, no DDL, and no `kms:*` action at all, so the vault stays
-# ciphertext with no key. The whole database dependency of owner mode is one
-# statement: `scripts/mint-owner-session.ts` runs
-# `SELECT id, email FROM users WHERE email = $1`, and every owner page render was
-# measured read-only before this was built.
+# ciphertext with no key. The whole database dependency of owner mode is TWO
+# statements, both SELECT: `scripts/mint-owner-session.ts` runs
+# `SELECT id, email FROM users WHERE email = $1` and then `readSessionEpoch`'s
+# `SELECT session_epoch FROM users WHERE id = $1`. (This said "one statement"
+# until the review on 2026-09-02, quoting the proposal, which had counted the
+# visible query and not the one the helper makes.) Every owner page render was
+# separately measured read-only before this was built.
 # The role, the contract and the argument: `lib/ops/iam-wall.ts` →
 # READONLY_CI_CONTRACT, `db/migrations/040_relay_ro_ci_grant.sql`,
 # `docs/d21-runner-db-oidc-proposal.md`.
@@ -35,8 +38,10 @@
 # and a widened `sub` would let a stranger's pull request assume a role that
 # holds SELECT on production. A pull_request run presents a different subject and
 # therefore CANNOT assume it, by design. So owner mode is audited on pushes to
-# master and on manual dispatches; on a pull request this job behaves exactly as
-# it did before, and the script prints what it did not cover on every run.
+# master and on dispatches FROM MASTER — the ref, not just the event: a dispatch
+# from a branch presents `…:ref:refs/heads/<branch>` and the trust policy does not
+# name it either. On a pull request, and on any run off master, this job behaves
+# exactly as it did before and the script prints what it did not cover.
 # `axe` is a REQUIRED CHECK on master, so it has to stay green on a pull request
 # it can never hold this credential in.
 #
@@ -103,9 +108,29 @@ jobs:
       # Adding ~300MB to every developer's install to serve one CI job is the
       # trade the old script header declined to make, and declining it is still
       # right — it just does not have to mean the check never runs.
-      - name: Install Playwright
+      #
+      # 🔴 ONE COMMAND, AND THAT IS NOT A TIDINESS PREFERENCE. `npm i` REIFIES THE
+      # WHOLE TREE FROM THE LOCKFILE every time it runs, so a second
+      # `npm i --no-save <other>` PRUNES whatever the first one added — the
+      # lockfile does not name it, so npm removes it. Order changes nothing except
+      # which package disappears: playwright then tsx loses playwright, tsx then
+      # playwright loses tsx. Reproduced on npm 11.5.2, the npm Node 24 ships.
+      #
+      # It was written as two steps for one commit on 2026-09-02, and the shape of
+      # the failure is the one this repository keeps finding: the tsx step was
+      # conditional on owner mode, so a pull request installed only playwright and
+      # stayed GREEN, while every armed run on master — the runs D21 exists for —
+      # would have died in `resolvePlaywright()` with "Playwright could not be
+      # resolved", on a workflow whose whole point was to stop reporting green over
+      # screens nobody opened.
+      #
+      # tsx is only needed when owner mode is armed, and it is installed
+      # unconditionally anyway: a few seconds on a pull request buys the removal of
+      # an entire class of failure, and a conditional second install is exactly
+      # what caused it.
+      - name: Install the audit harness
         run: |
-          npm i --no-save playwright@1.59.1
+          npm i --no-save playwright@1.59.1 tsx@4
           npx playwright install --with-deps chromium
 
       # ONE DECISION, MADE OUT LOUD, BEFORE ANYTHING DEPENDS ON IT. The three
@@ -118,11 +143,20 @@ jobs:
           OWNER_EMAIL: ${{ secrets.A11Y_OWNER_EMAIL }}
           DSQL_ENDPOINT: ${{ secrets.DSQL_PRIMARY_ENDPOINT }}
         run: |
-          set -uo pipefail
+          set -euo pipefail
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             echo "OWNER_MODE=no" >> "$GITHUB_ENV"
             echo "pull_request: relay-ro-ci is pinned to the master ref, so this run cannot assume it."
             echo "That is the trust policy working. The signed-out half is audited, as it always was."
+          elif [ "${{ github.ref }}" != "refs/heads/master" ]; then
+            # THE EVENT IS NOT THE REF. A workflow_dispatch from a branch presents
+            # `repo:sgharlow/relay:ref:refs/heads/<branch>`, which the trust policy
+            # does not name — so arming here would fail the assume step and report
+            # a configuration choice as a broken audit. Testing the event alone
+            # armed exactly that run.
+            echo "OWNER_MODE=no" >> "$GITHUB_ENV"
+            echo "${{ github.ref }} is not refs/heads/master: relay-ro-ci is pinned to the master ref, so this run cannot assume it."
+            echo "That is the trust policy working. Dispatch from master to audit owner mode."
           elif [ -z "$OWNER_EMAIL" ] || [ -z "$DSQL_ENDPOINT" ]; then
             echo "OWNER_MODE=no" >> "$GITHUB_ENV"
             echo "::warning::Owner mode is NOT being audited: A11Y_OWNER_EMAIL and/or DSQL_PRIMARY_ENDPOINT are unset. B28 stays open until both are configured and relay-ro-ci exists."
@@ -138,14 +172,6 @@ jobs:
           role-to-assume: arn:aws:iam::461293170793:role/relay-ro-ci
           role-session-name: a11y-owner-mode
           aws-region: us-east-1
-
-      # scripts/a11y-audit.mjs shells out to `npx tsx` for the session mint, and
-      # tsx is deliberately not a dependency of this product. Installed here
-      # rather than left to npx's on-demand fetch, so the resolution is local and
-      # the version is stated — the same trade as Playwright above.
-      - name: Install tsx for the session mint
-        if: env.OWNER_MODE == 'yes'
-        run: npm i --no-save tsx@4
 
       - name: Build
         run: npm run build
@@ -163,13 +189,22 @@ jobs:
           A11Y_REQUIRE_OWNER: ${{ env.OWNER_MODE == 'yes' && '1' || '0' }}
           A11Y_OWNER_EMAIL: ${{ secrets.A11Y_OWNER_EMAIL }}
           PLAYWRIGHT_MODULE: playwright
-          DSQL_PRIMARY_ENDPOINT: ${{ secrets.DSQL_PRIMARY_ENDPOINT }}
+          # ⚠️ ALL THREE ARE GATED ON THE ARMING DECISION, the same way A11Y_SCOPE
+          # is. A pull request job then carries NO database configuration at all —
+          # no endpoint, no role, not even a region — rather than carrying values
+          # it has no credential to use. Configuration a job cannot act on is
+          # configuration somebody later assumes it acted on.
+          DSQL_PRIMARY_ENDPOINT: ${{ env.OWNER_MODE == 'yes' && secrets.DSQL_PRIMARY_ENDPOINT || '' }}
           # The proof-of-red lever. Anything but `relay_ro` is a role the cluster
           # will refuse to authenticate, which is the point.
-          DSQL_ROLE: ${{ inputs.dsql_role || 'relay_ro' }}
-          AWS_REGION: us-east-1
+          DSQL_ROLE: ${{ env.OWNER_MODE == 'yes' && (inputs.dsql_role || 'relay_ro') || '' }}
+          AWS_REGION: ${{ env.OWNER_MODE == 'yes' && 'us-east-1' || '' }}
         run: |
-          set -uo pipefail
+          # -e as well as -uo since 2026-09-02: without it a failed
+          # `printf > .env.local` — a read-only workspace, a full disk — left the
+          # step running and the mint failed later on a missing file, reporting the
+          # symptom instead of the cause.
+          set -euo pipefail
 
           # 🔴 ONE SECRET, GENERATED HERE, SHARED BY THE SERVER AND THE MINT, and
           # never anything's production value. scripts/mint-owner-session.ts
@@ -186,11 +221,18 @@ jobs:
           # server both need are written there as well as exported. No credential
           # is among them: the AWS session comes from the OIDC step above and
           # lives in the job's environment, and .env.local is gitignored.
-          printf '%s\n' \
-            "DSQL_PRIMARY_ENDPOINT=${DSQL_PRIMARY_ENDPOINT}" \
-            "DSQL_ROLE=${DSQL_ROLE}" \
-            "AWS_REGION=${AWS_REGION}" \
-            "NEXTAUTH_SECRET=${NEXTAUTH_SECRET}" > .env.local
+          #
+          # Written only when there is something to write. When owner mode is not
+          # armed the three values above are empty by construction and the mint
+          # never runs, so no file is created at all — better than a file that
+          # names a database and configures nothing.
+          if [ -n "${DSQL_PRIMARY_ENDPOINT}" ]; then
+            printf '%s\n' \
+              "DSQL_PRIMARY_ENDPOINT=${DSQL_PRIMARY_ENDPOINT}" \
+              "DSQL_ROLE=${DSQL_ROLE}" \
+              "AWS_REGION=${AWS_REGION}" \
+              "NEXTAUTH_SECRET=${NEXTAUTH_SECRET}" > .env.local
+          fi
 
           npx next start -p 3100 &
           server=$!
