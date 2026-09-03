@@ -1005,8 +1005,18 @@ proves the refusal is about the key's *state* and not merely about absence. Reco
 > and not carried back here.
 
 Accessibility is a fifth: `node scripts/a11y-audit.mjs` with `A11Y_OWNER_EMAIL` set to an account
-that exists (`scripts/disposable-owner.ts create` makes one). CI covers the signed-out half only —
-it has no database credentials to mint an owner session, and the script says so on every run.
+that exists (`scripts/disposable-owner.ts create` makes one).
+
+> ⚠️ **This said "CI covers the signed-out half only — it has no database credentials to mint an
+> owner session" until 2026-09-02, and that is the sentence D21 was built to retire.** The runner
+> now assumes `relay-ro-ci` by OIDC (no stored secret) and audits owner mode too — but read what
+> the run prints rather than this paragraph, because it is true in three different states:
+> a **pull request** audits the signed-out half only and always will (the role's trust policy pins
+> the master ref, so a PR structurally cannot assume it); a **master push or dispatch** audits both
+> halves, and fails rather than skipping when it cannot mint a session (`A11Y_REQUIRE_OWNER`); and
+> until the controller creates the role and sets `A11Y_OWNER_EMAIL` / `DSQL_PRIMARY_ENDPOINT`, every
+> run behaves as it did before and says so with a `::warning::`. `.github/workflows/a11y.yml` is the
+> authority; `docs/d21-runner-db-oidc-proposal.md` §7 is what is still outstanding.
 
 ## The structural checks in `lib/ops/` — read these before adding a route or a screen
 

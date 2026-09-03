@@ -432,11 +432,98 @@ export const KMS_WALL_CI_CONTRACT: PrincipalContract = {
   ],
 };
 
+/**
+ * The OIDC role a GitHub Actions runner assumes to hold the READ-ONLY DATABASE
+ * identity, added 2026-09-02 (D21). Steve ruled "yes, via OIDC" on 2026-09-01.
+ *
+ * 🔴 IT IS `relay-ro` REACHED FROM SOMEWHERE ELSE, AND THAT IS THE WHOLE POINT.
+ * The identity table in CLAUDE.md is built from identities rather than
+ * environments because there is one cluster: `.env.ro` exists so unattended work
+ * can check the live system at all, and the property that makes it placeable
+ * somewhere less trusted than Steve's laptop is that `relay-ro-policy` carries
+ * NO `kms:*` action. A runner is somewhere less trusted than Steve's laptop.
+ * This role inherits the absence, and the absence is why the role may exist.
+ *
+ * ⚠️ IT DOES NOT INHERIT THE OTHER ROLE'S SHAPE, and the two OIDC roles in this
+ * file are the clearest reason a contract is per-principal.
+ * `relay-kms-wall-ci` REQUIRES `kms:DescribeKey` — it watches the key, so
+ * forbidding the service would fail it on its first run for doing its job. The
+ * same action here would end the sentence `.env.example`, the rotation runbook
+ * and `verify-roles.ts` all print. One action, two roles, opposite verdicts.
+ *
+ * ⚠️ AND `dsql:DbConnect` IS NOT HARMLESS. This grants SELECT on every table on
+ * the production cluster: emails, display names and vault item TITLES are
+ * plaintext columns. What it can never do is decrypt, because of the line
+ * above. That trade is stated in docs/d21-runner-db-oidc-proposal.md §4 rather
+ * than implied here.
+ *
+ * ⚠️ NOT YET LIVE. The role is created by the controller under /safe-execute;
+ * nothing has read this contract against a real document. `built`, not
+ * live-proven — `npm run verify:iam` under `.env.admin` is what changes that.
+ */
+export const READONLY_CI_CONTRACT: PrincipalContract = {
+  kind: 'role',
+  user: 'relay-ro-ci',
+  purpose:
+    'the GitHub Actions OIDC role for the read-only database identity — assumed by a workflow in ' +
+    'a PUBLIC repo from the master ref only, mapped to DB role relay_ro: SELECT on every table, ' +
+    'no DML, no DDL, and no way to decrypt anything it reads',
+  requires: ['dsql:DbConnect'],
+  requiresConsequence:
+    'The runner cannot reach the database at all, so owner-mode accessibility goes back to being ' +
+    'audited only when somebody remembers (B28), and every unattended read-only verification stays ' +
+    'a command a person types. Nothing serves customer traffic with this identity — this is an ' +
+    'outage of the instruments rather than of the product. Still broken, not safe.',
+  resourceScope: {
+    mustNotBeWildcard: true,
+    consequence:
+      'This role is asked for ONE cluster: the primary, us-east-1, the endpoint the workflow ' +
+      'connects to. A grant on Resource "*" reaches every cluster in the account including any ' +
+      'created later, which nobody would think to re-audit, while the ACTION list stays ' +
+      'word-for-word identical. That is the whole shape of a silent widening, and it is worth ' +
+      'more here than on a laptop user: this principal is assumed from a public repository.',
+  },
+  forbids: [{ action: 'dsql:DbConnectAdmin', consequence: ADMIN_TOKEN_CONSEQUENCE }],
+  forbidsServices: [
+    {
+      service: 'kms',
+      consequence:
+        '🔴 THIS IS THE PROPERTY THAT LETS A DATABASE CREDENTIAL EXIST ON A RUNNER AT ALL. The ' +
+        'ruling was "yes, via OIDC" for a read-only identity, and read-only is only defensible ' +
+        'while the vault stays ciphertext with no key. Any KMS action here — DescribeKey ' +
+        'included, which decrypts nothing — makes a role assumed by CI as dangerous as the ' +
+        'runtime one, in a PUBLIC repository, while every document in this repo goes on saying ' +
+        'otherwise. The forbidden unit is the whole service because that is the claim that was ' +
+        'made. docs/d21-runner-db-oidc-proposal.md is the ruling; this is the check that makes it ' +
+        'true rather than aspirational.',
+    },
+  ],
+  trust: {
+    provider: 'token.actions.githubusercontent.com',
+    subject: 'repo:sgharlow/relay:ref:refs/heads/master',
+    consequence:
+      '🔴 A TRUST POLICY WIDENED PAST THE MASTER REF HANDS PRODUCTION PII TO STRANGERS. ' +
+      'sgharlow/relay is PUBLIC, so `repo:sgharlow/relay:*` lets any pull request opened against a fork assume ' +
+      'a role holding SELECT on every table — every owner email, every display name, every vault ' +
+      'item title. The permission policy would still read exactly as clean as it does today, ' +
+      'which is why this half is audited separately from the actions.',
+  },
+  notes: [
+    'A pull_request run presents a different `sub` and therefore CANNOT assume this role. That is ' +
+      'the pin working, not a defect: .github/workflows/a11y.yml audits owner mode on master ' +
+      'pushes and manual dispatches, and audits the signed-out half only on a pull request.',
+    'Its database half is watched by npm run verify:roles, which asserts relay_ro is bound to ' +
+      'exactly these two principals — the user and this role — and reports any third as a side ' +
+      'door. Neither instrument can see the other half.',
+  ],
+};
+
 export const CONTRACTS: PrincipalContract[] = [
   RUNTIME_CONTRACT,
   LAPTOP_CONTRACT,
   READONLY_CONTRACT,
   KMS_WALL_CI_CONTRACT,
+  READONLY_CI_CONTRACT,
 ];
 
 function lower(v: string | string[] | undefined): string[] {

@@ -121,6 +121,28 @@ const PUBLIC_PAGES = [
 const SCOPE = process.env.A11Y_SCOPE || 'all';
 
 /**
+ * Is a missing owner session a FAILURE, or the loud skip it has always been?
+ *
+ * 🔴 THE SKIP WAS HONEST AND IT WAS ALSO A GREEN. Until 2026-09-02 this script
+ * could not reach a database from CI, so "could not mint a session" was a
+ * statement about the environment and exiting 0 was right. D21 gave the runner a
+ * read-only database identity, and the moment owner mode is something CI CAN do,
+ * a run that quietly did not do it is a false green over the eight screens a
+ * paying owner actually uses.
+ *
+ * It is also what makes the proof-of-red possible at all. `a11y.yml`'s dispatch
+ * input points `DSQL_ROLE` at a database role that does not exist so the alarm
+ * can be seen to fire — and without this flag that dispatch would have failed
+ * the mint, printed the skip notice, and PASSED. A checker that has only ever
+ * passed has not been seen to work; a checker whose deliberate breakage still
+ * passes has been seen not to.
+ *
+ * Off by default, so running this by hand on a laptop with no credentials
+ * behaves exactly as it did. CI sets it, and says so in the workflow.
+ */
+const REQUIRE_OWNER = process.env.A11Y_REQUIRE_OWNER === '1';
+
+/**
  * Whose session to audit owner mode in.
  *
  * 🔴 IT WAS HARDCODED TO `demo@relay.test`, AND THAT ACCOUNT NO LONGER EXISTS —
@@ -264,6 +286,22 @@ if (ownerSkipReason) {
 }
 
 await browser.close();
+
+/*
+  Before the page-count check, because they are different findings: this one says
+  a whole SCOPE was not covered, and reporting it as "reached 27 of 45 pages"
+  would bury the cause under an arithmetic symptom.
+*/
+if (ownerSkipReason && REQUIRE_OWNER) {
+  console.log(
+    '\nOWNER MODE WAS REQUIRED AND WAS NOT AUDITED — treat this run as a failure.\n' +
+      `Cause: ${ownerSkipReason}.\n` +
+      'Nothing above says anything about the owner screens. If this is a proof-of-red\n' +
+      'dispatch (a11y.yml, dsql_role pointed at a role that does not exist), this line IS\n' +
+      'the proof and the alarm works.',
+  );
+  process.exit(1);
+}
 
 if (audited !== expected) {
   console.log(`REACHED ${audited} OF ${expected} PAGES — treat this run as a failure.`);

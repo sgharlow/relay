@@ -25,6 +25,7 @@ import {
   readTrust,
   CONTRACTS,
   KMS_WALL_CI_CONTRACT,
+  READONLY_CI_CONTRACT,
   RUNTIME_CONTRACT,
   LAPTOP_CONTRACT,
   READONLY_CONTRACT,
@@ -315,12 +316,14 @@ describe('the contract is per-principal, which is the point of the change', () =
       'relay-dev',
       'relay-ro',
       'relay-kms-wall-ci',
+      'relay-ro-ci',
     ]);
     // A role is reached by satisfying a trust policy, not with a key, so the
     // kind is what decides which API calls collect it. Getting it wrong audits
     // the role's permissions against a user that does not exist.
     expect(CONTRACTS.filter((c) => c.kind === 'role').map((c) => c.user)).toEqual([
       'relay-kms-wall-ci',
+      'relay-ro-ci',
     ]);
   });
 
@@ -338,8 +341,23 @@ describe('the contract is per-principal, which is the point of the change', () =
     }
   });
 
-  it('only relay-ro is held to an absence of KMS, and it is held to it', () => {
+  it('the two read-only identities are held to an absence of KMS, and nothing else is', () => {
+    /*
+      🆕 2026-09-02 (D21). This case read "only relay-ro" until `relay-ro-ci`
+      arrived, and the sentence had to change rather than the rule: the CI role
+      is the SAME read-only identity reached from a runner instead of a laptop,
+      so it inherits the one property that makes that identity placeable at all.
+      Two principals asserting the absence is the rule spreading to where it
+      belongs; a THIRD arriving here unnoticed would be the rule spreading to
+      somewhere it breaks the product, which is why this is an exact list.
+    */
+    expect(
+      CONTRACTS.filter((c) => (c.forbidsServices ?? []).some((f) => f.service === 'kms')).map(
+        (c) => c.user,
+      ),
+    ).toEqual(['relay-ro', 'relay-ro-ci']);
     expect(READONLY_CONTRACT.forbidsServices?.map((f) => f.service)).toEqual(['kms']);
+    expect(READONLY_CI_CONTRACT.forbidsServices?.map((f) => f.service)).toEqual(['kms']);
     expect(RUNTIME_CONTRACT.forbidsServices ?? []).toEqual([]);
     // relay-dev holds KMS too. It is not asserted, and the contract says why
     // rather than leaving the omission to look like coverage.
@@ -598,5 +616,146 @@ describe('the trust policy of relay-kms-wall-ci', () => {
     ]);
     expect(v.ok).toBe(false);
     expect(v.violations.join(' ')).toContain('kms:decrypt');
+  });
+});
+
+/* ────────────────────────────────────────────────────────────────────────────
+   D21 — THE RUNNER'S DATABASE IDENTITY. `relay-ro-ci` is the read-only identity
+   reached from GitHub Actions instead of from a laptop: one connect grant, the
+   whole KMS service forbidden, and a trust policy pinned to the master ref.
+
+   ⚠️ THESE FIXTURES ARE THE PROPOSED DOCUMENTS, NOT LIVE ONES — the role does
+   not exist yet (docs/d21-runner-db-oidc-proposal.md; the controller creates it
+   under /safe-execute). Every other fixture in this file is a verbatim copy of
+   something the account returned, and the difference matters: this proves the
+   READER, and only a run of `npm run verify:iam` against the real role proves
+   the ACCOUNT. Said here rather than discovered later.
+   ──────────────────────────────────────────────────────────────────────────── */
+describe('the IAM half of the least-privilege wall — relay-ro-ci, the runner', () => {
+  const PRIMARY = 'arn:aws:dsql:us-east-1:461293170793:cluster/frt34buqso4inluojgnj6horuy';
+  const CMK = 'arn:aws:kms:us-east-1:461293170793:key/b3af288c-0e0f-46ec-bccd-9b53776ffbb8';
+
+  /** The permission policy this proposal asks the controller to attach. */
+  const HEALTHY: NamedPolicy = {
+    source: 'inline relay-ro-ci-connect',
+    document: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Sid: 'DsqlConnectNonAdmin',
+          Effect: 'Allow',
+          Action: ['dsql:DbConnect'],
+          Resource: [PRIMARY],
+        },
+      ],
+    },
+  };
+
+  /** HEALTHY plus one planted statement, on a Resource IAM would actually accept. */
+  function plus(sid: string, action: string | string[], resource: string): NamedPolicy[] {
+    return [
+      HEALTHY,
+      {
+        source: 'inline planted',
+        document: { Statement: [{ Sid: sid, Effect: 'Allow', Action: action, Resource: resource }] },
+      },
+    ];
+  }
+
+  it('passes the policy the proposal asks for', () => {
+    const v = readWall(READONLY_CI_CONTRACT, [HEALTHY]);
+    expect(v.ok, v.reason).toBe(true);
+    expect(v.violations).toEqual([]);
+    expect(v.missing).toEqual([]);
+    expect(v.user).toBe('relay-ro-ci');
+  });
+
+  it('fails on kms:DescribeKey — which decrypts NOTHING, and is exactly why the rule is a service', () => {
+    /*
+      The sharpest difference between the two OIDC roles in this file.
+      `relay-kms-wall-ci` REQUIRES kms:DescribeKey to do its job; this role
+      holding it would end the sentence the whole read-only identity rests on.
+      The same action, two roles, opposite verdicts — which is what a contract
+      per principal is for.
+    */
+    const v = readWall(READONLY_CI_CONTRACT, plus('Meta', 'kms:DescribeKey', CMK));
+    expect(v.ok).toBe(false);
+    expect(v.violations.join(' ')).toContain('kms: service');
+    expect(readWall(KMS_WALL_CI_CONTRACT, [HEALTHY]).ok).toBe(false); // and not interchangeable
+  });
+
+  it('fails on dsql:DbConnectAdmin — a runner that can obtain DDL over every table', () => {
+    const v = readWall(READONLY_CI_CONTRACT, plus('Admin', 'dsql:DbConnectAdmin', PRIMARY));
+    expect(v.ok).toBe(false);
+    expect(v.violations.join(' ')).toContain('dsql:dbconnectadmin');
+    expect(v.reason).toContain('DSQL ADMIN token');
+  });
+
+  it('catches a service wildcard, which confers admin without naming it', () => {
+    const v = readWall(READONLY_CI_CONTRACT, plus('Wild', 'dsql:*', PRIMARY));
+    expect(v.ok).toBe(false);
+  });
+
+  it('refuses to call a role with no connect grant secure — CI stops, it does not get safer', () => {
+    const v = readWall(READONLY_CI_CONTRACT, [
+      { source: 'inline empty', document: { Statement: [] } },
+    ]);
+    expect(v.ok).toBe(false);
+    expect(v.missing).toEqual(['dsql:dbconnect']);
+  });
+});
+
+describe('the trust policy of relay-ro-ci — the half that decides who may BECOME it', () => {
+  const SUB = 'token.actions.githubusercontent.com:sub';
+  const OIDC = 'arn:aws:iam::461293170793:oidc-provider/token.actions.githubusercontent.com';
+
+  const PROPOSED = {
+    Statement: [
+      {
+        Effect: 'Allow',
+        Principal: { Federated: OIDC },
+        Action: 'sts:AssumeRoleWithWebIdentity',
+        Condition: {
+          StringEquals: {
+            'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
+            [SUB]: 'repo:sgharlow/relay:ref:refs/heads/master',
+          },
+        },
+      },
+    ],
+  };
+
+  it('passes the trust policy docs/iam-wall-oidc-role-proposal.md §4 specifies', () => {
+    const t = readTrust(READONLY_CI_CONTRACT, PROPOSED);
+    expect(t.ok, t.reason).toBe(true);
+  });
+
+  it('catches the widening that would hand production PII to any fork', () => {
+    /*
+      sgharlow/relay is PUBLIC. `repo:sgharlow/relay:*` lets a stranger's pull
+      request assume a role that holds SELECT on every table — emails, display
+      names and vault item titles. The ACTION list would read exactly as clean
+      as it does above, which is why the trust half is audited separately.
+    */
+    const t = readTrust(READONLY_CI_CONTRACT, {
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: { Federated: OIDC },
+          Condition: { StringLike: { [SUB]: 'repo:sgharlow/relay:*' } },
+        },
+      ],
+    });
+    expect(t.ok).toBe(false);
+    expect(t.violations.join(' ')).toContain('StringLike');
+  });
+
+  it('pins the master ref, the same subject the workflow can actually present', () => {
+    // A pull_request run presents a different sub, so it CANNOT assume this
+    // role — which is a design constraint the workflow has to respect rather
+    // than a defect. .github/workflows/a11y.yml audits owner mode on master
+    // pushes and dispatches only, and says so.
+    expect(READONLY_CI_CONTRACT.trust?.subject).toBe('repo:sgharlow/relay:ref:refs/heads/master');
+    expect(READONLY_CI_CONTRACT.trust?.provider).toBe('token.actions.githubusercontent.com');
   });
 });
