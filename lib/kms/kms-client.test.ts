@@ -147,6 +147,21 @@ describe('decryptDataKey routes on the row era', () => {
     expect(sent).toHaveLength(0);
   });
 
+  it('refuses an owner_v1 row with an empty owner id, before any KMS call', async () => {
+    // Ours to catch: a call site that lost the owner id is a bug on this side,
+    // and `{ owner_id: '' }` would come back from AWS looking like a genuine
+    // cross-tenant refusal.
+    const sent = recordingClient();
+    await expect(
+      decryptDataKey(Buffer.from([1]).toString('base64'), {
+        era: KMS_CONTEXT_ERA_OWNER_V1,
+        ownerId: '',
+      }),
+    ).rejects.toThrow(/requires the row's owner id/i);
+
+    expect(sent).toHaveLength(0);
+  });
+
   it('names KeyId on every DecryptCommand, legacy row and context row alike', async () => {
     const sent = recordingClient();
     await decryptDataKey(Buffer.from([1]).toString('base64'), { era: null, ownerId: 'o' });

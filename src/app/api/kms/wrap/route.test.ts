@@ -82,23 +82,30 @@ describe('POST /api/kms/wrap', () => {
         so an ON flag is a misconfiguration to report, not a state to honour and
         not an outage to cause.
       */
-      mockSession.mockResolvedValueOnce({ ownerId: 'owner-1', isDemo: false });
       mockWrapsWithContext.mockReturnValue(flag);
-      mockGenerate.mockResolvedValueOnce({
-        plaintextDataKey: 'P',
-        wrappedDataKey: 'W',
-        kmsKeyId: 'cmk-1',
-      });
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-      const res = await POST();
+      // TWO requests, because the warning is latched per process rather than
+      // per request: a deployment-wide misconfiguration said on every vault
+      // write is noise, and the count is the only thing that can tell the two
+      // designs apart.
+      for (let i = 0; i < 2; i += 1) {
+        mockSession.mockResolvedValueOnce({ ownerId: 'owner-1', isDemo: false });
+        mockGenerate.mockResolvedValueOnce({
+          plaintextDataKey: 'P',
+          wrappedDataKey: 'W',
+          kmsKeyId: 'cmk-1',
+        });
+        const res = await POST();
+        expect(res.status).toBe(200);
+        // No argument at all — not an empty context, not undefined-but-passed.
+        // The GenerateDataKey call is byte-for-byte the one it has always made.
+        expect(mockGenerate).toHaveBeenLastCalledWith();
+      }
 
-      expect(res.status).toBe(200);
-      // No argument at all — not an empty context, not undefined-but-passed.
-      // The GenerateDataKey call is byte-for-byte the one it has always made.
-      expect(mockGenerate).toHaveBeenCalledWith();
-      // Reported once when on, silent when off — an ignored flag that says
-      // nothing is how a phase C flip gets recorded as done having done nothing.
+      // Once when on across BOTH requests, never when off. An ignored flag that
+      // says nothing is how a phase C flip gets recorded as done having done
+      // nothing; one that says it every time gets filtered out instead.
       expect(warn).toHaveBeenCalledTimes(flag ? 1 : 0);
       if (flag) {
         expect(String(warn.mock.calls[0][0])).toContain('KMS_WRAP_WITH_CONTEXT');

@@ -112,9 +112,27 @@ export interface WrapProvenance {
  * @throws on any era this build does not recognise — fail closed, never weaker.
  */
 function encryptionContextFor(provenance: WrapProvenance): EncryptionContext | undefined {
-  const { era } = provenance;
+  const { era, ownerId } = provenance;
   if (era === null || era === undefined) return undefined;
-  if (era === KMS_CONTEXT_ERA_OWNER_V1) return { owner_id: provenance.ownerId };
+
+  if (era === KMS_CONTEXT_ERA_OWNER_V1) {
+    /*
+      Refuse here rather than letting KMS refuse `{ owner_id: '' }`. Both fail,
+      but they fail differently: this says which of our call sites lost the owner
+      id, where the AWS error says only that a context did not match — the same
+      thing a genuine cross-tenant attempt says. A caller that has mislaid the
+      owner is a bug on our side, and it should not be reported as if it were an
+      attack, or spend a KMS call finding out.
+    */
+    if (!ownerId) {
+      throw new Error(
+        `kms_context_era '${KMS_CONTEXT_ERA_OWNER_V1}' requires the row's owner id and none ` +
+          'was supplied — refusing to decrypt. The era binds the wrapped key to an owner, so an ' +
+          'empty one cannot be the context any row was wrapped with.',
+      );
+    }
+    return { owner_id: ownerId };
+  }
 
   throw new Error(
     `Unrecognised kms_context_era ${JSON.stringify(era)} — refusing to decrypt. ` +

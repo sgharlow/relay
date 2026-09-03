@@ -6,7 +6,7 @@
  *    release_state is RELEASED.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import fc from 'fast-check';
 
 vi.mock('../../../../../lib/auth/session', () => ({ getOwnerSession: vi.fn() }));
@@ -183,6 +183,19 @@ describe('POST /api/kms/unwrap — recipient path', () => {
 // ---------------------------------------------------------------------------
 
 describe('POST /api/kms/unwrap — recipient path, era routing', () => {
+  /*
+    ⚠️ `withRow` installs a PERSISTENT mockImplementation, not a queued value, so
+    it outlives its test. Left in place it would answer every later
+    `FROM release_state` with a RELEASED row owned by owner-9 — a fixture that
+    silently satisfies the gate these tests exist to prove is refusable.
+    `vi.clearAllMocks()` in the outer beforeEach clears calls and NOT
+    implementations, so the reset has to be explicit.
+  */
+  afterEach(() => {
+    mockQuery.mockReset();
+    mockVerify.mockReset();
+  });
+
   /** Drives the real gate: release_state -> access_rules -> the blob lookup. */
   function withRow(row: Record<string, unknown>) {
     mockVerify.mockResolvedValue({

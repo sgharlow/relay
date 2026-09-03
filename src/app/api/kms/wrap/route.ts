@@ -16,6 +16,14 @@ import { getOwnerSession } from '../../../../../lib/auth/session';
 import { generateDataKey, wrapsWithContext } from '../../../../../lib/kms/kms-client';
 import { writeAuditEntry } from '../../../../../lib/audit/audit-service';
 
+/*
+  One line per process, not per request. The flag is a deployment-wide
+  misconfiguration, so an operator needs to be told once — repeating it on every
+  vault write buries the signal in the noise it creates. Never reset: a warm
+  function instance has already said it.
+*/
+let warnedIgnoredWrapFlag = false;
+
 export async function POST(): Promise<NextResponse> {
   // Owner auth — getOwnerSession throws a 401 NextResponse when unauthenticated.
   let ownerId: string;
@@ -42,7 +50,8 @@ export async function POST(): Promise<NextResponse> {
 
     Phase C replaces this block with the wrap-and-stamp path.
   */
-  if (wrapsWithContext()) {
+  if (wrapsWithContext() && !warnedIgnoredWrapFlag) {
+    warnedIgnoredWrapFlag = true;
     console.warn(
       '[kms] KMS_WRAP_WITH_CONTEXT is on but this build does not stamp an era — ' +
         'ignored; wrapping without context',
