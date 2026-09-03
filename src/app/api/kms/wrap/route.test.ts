@@ -71,40 +71,42 @@ describe('POST /api/kms/wrap', () => {
     expect(auditStr).not.toContain('WRAPPED_B64');
   });
 
-  it('wraps WITHOUT an EncryptionContext while the flag is off', async () => {
-    mockSession.mockResolvedValueOnce({ ownerId: 'owner-1', isDemo: false });
-    mockGenerate.mockResolvedValueOnce({
-      plaintextDataKey: 'P',
-      wrappedDataKey: 'W',
-      kmsKeyId: 'cmk-1',
-    });
+  it.each([false, true])(
+    'sends no EncryptionContext regardless of the flag (KMS_WRAP_WITH_CONTEXT=%s)',
+    async (flag) => {
+      /*
+        Phase B wraps without a context in BOTH flag states, which is what makes
+        the flag harmless here: nothing is wrapped with a context and nothing is
+        stamped, so every row stays openable by every build. The flag is phase
+        C's switch for wrapping AND stamping together — this build has neither,
+        so an ON flag is a misconfiguration to report, not a state to honour and
+        not an outage to cause.
+      */
+      mockSession.mockResolvedValueOnce({ ownerId: 'owner-1', isDemo: false });
+      mockWrapsWithContext.mockReturnValue(flag);
+      mockGenerate.mockResolvedValueOnce({
+        plaintextDataKey: 'P',
+        wrappedDataKey: 'W',
+        kmsKeyId: 'cmk-1',
+      });
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    const res = await POST();
+      const res = await POST();
 
-    expect(res.status).toBe(200);
-    // No argument at all — not an empty context, not undefined-but-passed. The
-    // GenerateDataKey call is byte-for-byte the one this route has always made.
-    expect(mockGenerate).toHaveBeenCalledWith();
-  });
-
-  it('REFUSES to wrap while the flag is on, because this build cannot stamp the era', async () => {
-    /*
-      🔴 The one unrecoverable state in this product. A data key wrapped with a
-      context that nothing stamps can never be unwrapped again — no row records
-      which context it needs. This build reads `kms_context_era` and does not
-      write it, so an ON flag is a misconfiguration, and it fails closed rather
-      than stranding rows. Phase C removes the refusal together with the
-      stamping. docs/encryption-context-rollout.md.
-    */
-    mockSession.mockResolvedValueOnce({ ownerId: 'owner-1', isDemo: false });
-    mockWrapsWithContext.mockReturnValue(true);
-
-    const res = await POST();
-
-    expect(res.status).toBe(503);
-    expect(mockGenerate).not.toHaveBeenCalled();
-    expect(mockAudit).not.toHaveBeenCalled();
-  });
+      expect(res.status).toBe(200);
+      // No argument at all — not an empty context, not undefined-but-passed.
+      // The GenerateDataKey call is byte-for-byte the one it has always made.
+      expect(mockGenerate).toHaveBeenCalledWith();
+      // Reported once when on, silent when off — an ignored flag that says
+      // nothing is how a phase C flip gets recorded as done having done nothing.
+      expect(warn).toHaveBeenCalledTimes(flag ? 1 : 0);
+      if (flag) {
+        expect(String(warn.mock.calls[0][0])).toContain('KMS_WRAP_WITH_CONTEXT');
+        expect(String(warn.mock.calls[0][0])).toContain('ignored');
+      }
+      warn.mockRestore();
+    },
+  );
 
   it('returns 502 and does not audit when KMS fails', async () => {
     mockSession.mockResolvedValueOnce({ ownerId: 'owner-1', isDemo: false });

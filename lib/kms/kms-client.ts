@@ -73,13 +73,14 @@ export type EncryptionContext = Record<string, string>;
 export const KMS_CONTEXT_ERA_OWNER_V1 = 'owner_v1';
 
 /**
- * Phase C's switch, and it is OFF in this build.
+ * Phase C's switch, and this build honours neither half of it.
  *
  * It is consulted at the wrap call site rather than here, so the decision is
- * visible where the wrap happens. This build cannot stamp `kms_context_era` on
- * the row it is wrapping for, so it must never wrap WITH a context — see the
- * refusal in `src/app/api/kms/wrap/route.ts`, which phase C replaces with the
- * wrap-and-stamp path in the same change that makes stamping possible.
+ * visible where the wrap happens. Phase C turns on wrapping with `{ owner_id }`
+ * AND stamping `kms_context_era` together; this build does neither, so the flag
+ * is inert and an ON flag is reported to stderr and ignored rather than
+ * honoured — wrapping with a context nothing stamps is the one unrecoverable
+ * state in this product. `src/app/api/kms/wrap/route.ts` carries the argument.
  *
  * Exactly `'true'`, so a half-set variable (`1`, `yes`, an empty string left
  * behind by a deleted value) cannot cross the one boundary in this product

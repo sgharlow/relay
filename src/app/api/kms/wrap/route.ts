@@ -26,29 +26,26 @@ export async function POST(): Promise<NextResponse> {
   }
 
   /*
-    PHASE B READS THE FLAG AND REFUSES TO ACT ON IT.
+    PHASE B READS THE FLAG AND DELIBERATELY DOES NOT ACT ON IT.
 
-    docs/encryption-context-rollout.md phase C flips KMS_WRAP_WITH_CONTEXT so
-    new wraps carry { owner_id } AND the row is stamped 'owner_v1'. Those are
-    one change, not two: a data key wrapped with a context that nothing stamps
-    can never be unwrapped again, because no row records which context it
-    needs. That is the intact-and-unreachable state the rollout document exists
-    to prevent, and it is the one failure in this product with no recovery.
+    docs/encryption-context-rollout.md makes KMS_WRAP_WITH_CONTEXT phase C's
+    switch for wrapping with { owner_id } AND stamping 'owner_v1' — one change,
+    because a data key wrapped with a context that nothing stamps could never be
+    unwrapped again. This build has neither half, so the flag is inert here and
+    that is safe by design: no context is wrapped, nothing is stamped, and every
+    row stays openable by every build. Refusing the request instead would turn a
+    harmless misconfiguration into an outage on every vault write.
 
-    This build reads the era and cannot stamp it, so an ON flag here is a
-    misconfiguration and not an early phase C. It is refused rather than
-    honoured or ignored: honouring it strands rows, and ignoring it would let
-    the flip be recorded as done while nothing changed.
+    It is not silently inert, though. One line to stderr, because a flag that is
+    ignored without saying so is how a phase C flip gets recorded as done having
+    changed nothing.
 
-    Phase C deletes this block in the same change that adds the stamping.
+    Phase C replaces this block with the wrap-and-stamp path.
   */
   if (wrapsWithContext()) {
-    return NextResponse.json(
-      {
-        error: 'KMSError',
-        message: 'Wrapping with an encryption context is not available in this build',
-      },
-      { status: 503 },
+    console.warn(
+      '[kms] KMS_WRAP_WITH_CONTEXT is on but this build does not stamp an era — ' +
+        'ignored; wrapping without context',
     );
   }
 
