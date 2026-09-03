@@ -66,9 +66,25 @@ export interface EmailMessage {
  */
 const RESERVED_TLDS = ['test', 'invalid', 'localhost'];
 
+/**
+ * Would `assertDeliverableDomain` refuse this address?
+ *
+ * Exported because "we refused it ourselves" and "the provider failed" are the
+ * same `false` out of `sendEmailBestEffort`, and one caller has to tell them
+ * apart: a release whose recipients are all reserved-TLD accounts reached
+ * nobody, but nothing went wrong — see `notifyRecipientsOfRelease`.
+ *
+ * Shares RESERVED_TLDS with the guard rather than restating the rule, so the
+ * question "would this be refused?" cannot drift from the refusal itself.
+ */
+export function isUndeliverableByConstruction(to: string): boolean {
+  const tld = to.trim().toLowerCase().split('@').pop()?.split('.').pop();
+  return Boolean(tld && RESERVED_TLDS.includes(tld));
+}
+
 function assertDeliverableDomain(to: string): void {
   const tld = to.trim().toLowerCase().split('@').pop()?.split('.').pop();
-  if (tld && RESERVED_TLDS.includes(tld)) {
+  if (isUndeliverableByConstruction(to)) {
     throw new Error(
       `Refusing to send to ${to}: .${tld} is reserved and can never receive mail, ` +
         'so the attempt would only spend sending reputation',

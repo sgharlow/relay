@@ -56,6 +56,20 @@ const claimed = (n: number) =>
   }));
 
 /**
+ * A claimed recipient on a RESERVED TLD — refused by Relay's own pre-flight
+ * guard before the provider is ever asked. `.test` can never receive mail, so
+ * this is the shape every E2E walk and reveal proof produces.
+ */
+const claimedUndeliverable = (n: number) =>
+  Array.from({ length: n }, (_, i) => ({
+    id: `r${i}`,
+    name: `Rec ${i}`,
+    email: `rec${i}@example.test`,
+    email_secondary: null,
+    claimed_user_id: `user-${i}`,
+  }));
+
+/**
  * `notifyRecipientsOfRelease` issues the recipient SELECT first, then
  * `getOwnerLabel`. Everything after the first call returns empty.
  */
@@ -128,6 +142,35 @@ describe('a release nobody could be told about', () => {
     unscoped trigger, and a channel that cries wolf gets muted, which is worse
     than no channel because it still looks like coverage.
   */
+  /*
+    ⚠️ THE THIRD STATE, AND THE ONE THAT WAS MISSING. A release whose recipients
+    all sit on a reserved TLD reaches zero people too — but nothing failed.
+    `assertDeliverableDomain` refused them before Resend was asked, which is
+    Relay working correctly, and `sendEmailBestEffort` reports that refusal with
+    the same `false` it uses for a provider outage.
+
+    Measured on production 2026-09-03: `/api/health/delivery-webhook` reported
+    `refusedSends: 0` — the provider was never asked — while an ops alert said
+    "Release RLY-5LZG-YPXE opened but NONE of its 1 recipient(s) could be
+    notified". That alert was the B5.1 reveal proof's own `@example.test`
+    accounts. The same class fired on 2026-08-19.
+
+    This is the exact failure the case above it names: a channel that fires on
+    the operator's own test traffic gets muted, and this is the one alert that
+    means somebody's access opened and nobody was told.
+  */
+  it('says NOTHING when every recipient is undeliverable by construction', async () => {
+    withRecipients(claimedUndeliverable(1));
+    // The provider would ACCEPT — it is never asked, because our own guard refuses first.
+    _setResendClientForTesting(resend({ accept: true }));
+
+    const reached = await notifyRecipientsOfRelease(release);
+
+    expect(reached).toBe(0);
+    expect(mockAudit).not.toHaveBeenCalled();
+    expect(mockAlert).not.toHaveBeenCalled();
+  });
+
   it('says NOTHING when there were no recipients to reach in the first place', async () => {
     withRecipients([]);
     _setResendClientForTesting(resend({ accept: false }));

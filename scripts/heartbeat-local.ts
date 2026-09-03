@@ -68,6 +68,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { appendFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { sendOperatorAlert } from '../lib/notify/operator-alert.ts';
 
 const run = promisify(execFile);
 
@@ -162,21 +163,25 @@ async function sendAlert(to: string, findings: Finding[]): Promise<boolean> {
     `dropped (~6 runs/day against a designed 96).\n\n` +
     findings.map((f) => `── ${f.half.toUpperCase()}\n${f.detail}\n\n→ ${f.consequence}`).join('\n\n') +
     `\n\nProbed: ${BASE_URL}\n`;
-  try {
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
-      body: JSON.stringify({
-        from,
-        to,
-        subject: `[relay] heartbeat: ${findings.map((f) => f.half).join(' + ')} FAILING`,
-        text: body,
-      }),
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
+  /*
+    Sent through `sendOperatorAlert` rather than a bare POST here, so the alert
+    lands in `email_send_attempts` like every other message Relay sends. It is
+    still a plain POST underneath — the watchdog must not inherit the app's
+    start-up path — but the ledger write comes back.
+
+    Without it every alert was an orphan delivery event, and `webhook-health`
+    reads an orphan as "the recorder has died". Production carried
+    `orphanEvents: 2` for exactly the two alerts this function had sent, with
+    the mail itself provably healthy, and the orphan query has no upper time
+    bound: the switch was disarmed permanently, by its own alarm channel.
+  */
+  return sendOperatorAlert({
+    apiKey: key,
+    from,
+    to,
+    subject: `[relay] heartbeat: ${findings.map((f) => f.half).join(' + ')} FAILING`,
+    text: body,
+  });
 }
 
 function stamp(record: Record<string, unknown>): void {

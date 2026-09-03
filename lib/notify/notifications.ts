@@ -13,7 +13,7 @@
  * Requirements: 4.4, 6.2, 6.6
  */
 
-import { sendEmailBestEffort, sendEmailToAllBestEffort } from './email';
+import { isUndeliverableByConstruction, sendEmailBestEffort, sendEmailToAllBestEffort } from './email';
 import { addressesFor } from './fanout';
 import { appUrl } from '../app-url';
 import { issueVerifierToken } from '../auth/verifier-token';
@@ -259,7 +259,28 @@ export async function notifyRecipientsOfRelease(params: {
     reported, which is a state that should essentially never occur and therefore
     cannot flood the channel it uses.
   */
-  if (recipients.rows.length > 0 && reached === 0) {
+  /*
+    ⚠️ REACHED ZERO IS NOT ALWAYS A FAILURE. `sendEmailBestEffort` answers
+    `false` for a provider outage AND for an address our own pre-flight guard
+    refused — and a reserved-TLD account can never receive mail, so refusing it
+    is this code working. Every E2E walk and every reveal proof runs on
+    `@example.test` accounts, so without this the highest-stakes alert in the
+    product fires on the operator's own test traffic.
+
+    Not hypothetical: on 2026-09-03 production reported `refusedSends: 0` — the
+    provider was never asked — beside an ops alert saying release RLY-5LZG-YPXE
+    reached none of its 1 recipient. That was the B5.1 reveal proof. The same
+    class fired on 2026-08-19.
+
+    A recipient with NO address at all is deliberately not covered: that is a
+    data fault, and it should still be reported.
+  */
+  const everyRecipientUndeliverableByConstruction = recipients.rows.every((r) => {
+    const addresses = [r.email, r.email_secondary].filter(Boolean) as string[];
+    return addresses.length > 0 && addresses.every(isUndeliverableByConstruction);
+  });
+
+  if (recipients.rows.length > 0 && reached === 0 && !everyRecipientUndeliverableByConstruction) {
     await reportUndeliveredRelease({
       ownerId: params.ownerId,
       releaseStateId: params.releaseStateId,
