@@ -83,7 +83,66 @@ describe('POST /api/kms/unwrap — owner path', () => {
     expect(mockDecrypt).toHaveBeenCalledOnce();
     // 🔴 THE ORACLE, REFUTED. The decrypted input is the row's stored blob,
     // NOT the attacker-supplied body value.
-    expect(mockDecrypt).toHaveBeenCalledWith(Buffer.from('STORED-BLOB').toString('base64'));
+    expect(mockDecrypt).toHaveBeenCalledWith(Buffer.from('STORED-BLOB').toString('base64'), {
+      era: null,
+      ownerId: 'owner-1',
+    });
+  });
+
+  /*
+    Phase B of docs/encryption-context-rollout.md. The row above has no
+    `kms_context_era`, which is every row in production today, and the decrypt
+    is byte-for-byte the call it has always been. These two pin the routing:
+    the era travels from the row to the KMS boundary, and it is read from the
+    row rather than accepted from the caller.
+  */
+  it('reads a NULL era as legacy — the no-op every row takes today', async () => {
+    mockSession.mockResolvedValueOnce({ ownerId: 'owner-1', isDemo: false });
+    mockAssertOwns.mockResolvedValueOnce(undefined);
+    mockQuery.mockResolvedValueOnce(
+      qResult([{ wrapped_data_key: Buffer.from('STORED-BLOB'), kms_context_era: null }]),
+    );
+
+    const res = await POST(makeReq({ vault_item_id: 'v1' }));
+    expect(res.status).toBe(200);
+    expect(mockDecrypt).toHaveBeenCalledWith(expect.any(String), {
+      era: null,
+      ownerId: 'owner-1',
+    });
+  });
+
+  it("passes an 'owner_v1' era through with the row's owner — the reading side, before anything writes", async () => {
+    mockSession.mockResolvedValueOnce({ ownerId: 'owner-1', isDemo: false });
+    mockAssertOwns.mockResolvedValueOnce(undefined);
+    mockQuery.mockResolvedValueOnce(
+      qResult([{ wrapped_data_key: Buffer.from('STORED-BLOB'), kms_context_era: 'owner_v1' }]),
+    );
+
+    const res = await POST(makeReq({ vault_item_id: 'v1' }));
+    expect(res.status).toBe(200);
+    expect(mockDecrypt).toHaveBeenCalledWith(Buffer.from('STORED-BLOB').toString('base64'), {
+      era: 'owner_v1',
+      ownerId: 'owner-1',
+    });
+  });
+
+  it('selects the era in the SAME query as the blob — never from the caller', async () => {
+    mockSession.mockResolvedValueOnce({ ownerId: 'owner-1', isDemo: false });
+    mockAssertOwns.mockResolvedValueOnce(undefined);
+    mockQuery.mockResolvedValueOnce(
+      qResult([{ wrapped_data_key: Buffer.from('B'), kms_context_era: null }]),
+    );
+
+    await POST(makeReq({ vault_item_id: 'v1', kms_context_era: 'owner_v1' }));
+
+    const [sql] = mockQuery.mock.calls[0];
+    expect(sql).toContain('kms_context_era');
+    expect(sql).toContain('FROM vault_items WHERE id = $1 AND owner_id = $2');
+    // A body-supplied era is an instruction to skip the context. It is ignored.
+    expect(mockDecrypt).toHaveBeenCalledWith(expect.any(String), {
+      era: null,
+      ownerId: 'owner-1',
+    });
   });
 
   it('403 when the owner owns nothing at that id (row missing) — no decrypt', async () => {
@@ -122,6 +181,56 @@ describe('POST /api/kms/unwrap — recipient path', () => {
 // ---------------------------------------------------------------------------
 // Property 6 — KMS unwrap is gated on (RELEASED state) AND (access_rule exists)
 // ---------------------------------------------------------------------------
+
+describe('POST /api/kms/unwrap — recipient path, era routing', () => {
+  /** Drives the real gate: release_state -> access_rules -> the blob lookup. */
+  function withRow(row: Record<string, unknown>) {
+    mockVerify.mockResolvedValue({
+      recipientId: 'r1',
+      releaseStateId: 'rs1',
+      version: '0',
+      iat: 0,
+      exp: 9_999_999_999,
+    });
+    mockQuery.mockImplementation(async (sql: string) => {
+      if (sql.includes('FROM release_state'))
+        return qResult([
+          { state: 'released', owner_id: 'owner-9', released_at: '2026-01-01' },
+        ]);
+      if (sql.includes('FROM access_rules'))
+        return qResult([{ id: 'rule-1', release_after_days: null }]);
+      if (sql.includes('FROM vault_items')) return qResult([row]);
+      return qResult([]);
+    });
+  }
+
+  const recipientReq = () =>
+    makeReq({ vault_item_id: 'v1' }, { authorization: 'Bearer t' });
+
+  it('reads a NULL era as legacy — the no-op every row takes today', async () => {
+    withRow({ wrapped_data_key: Buffer.from('STORED'), kms_context_era: null });
+
+    const res = await POST(recipientReq());
+
+    expect(res.status).toBe(200);
+    expect(mockDecrypt).toHaveBeenCalledWith(Buffer.from('STORED').toString('base64'), {
+      era: null,
+      ownerId: 'owner-9',
+    });
+  });
+
+  it("passes an 'owner_v1' era with the OWNER id the gate resolved, not the recipient's", async () => {
+    withRow({ wrapped_data_key: Buffer.from('STORED'), kms_context_era: 'owner_v1' });
+
+    const res = await POST(recipientReq());
+
+    expect(res.status).toBe(200);
+    expect(mockDecrypt).toHaveBeenCalledWith(Buffer.from('STORED').toString('base64'), {
+      era: 'owner_v1',
+      ownerId: 'owner-9',
+    });
+  });
+});
 
 describe('Property 6: KMS unwrap scoped to access rules', () => {
   it('decrypt happens IFF release_state=released AND a matching access_rule exists', async () => {
@@ -259,7 +368,28 @@ describe('POST /api/kms/unwrap — delegate path', () => {
 
     expect(res.status).toBe(200);
     expect(mockDecrypt).toHaveBeenCalledOnce();
-    expect(mockDecrypt).toHaveBeenCalledWith(Buffer.from('STORED-BLOB').toString('base64'));
+    expect(mockDecrypt).toHaveBeenCalledWith(Buffer.from('STORED-BLOB').toString('base64'), {
+      era: null,
+      ownerId: 'parent-1',
+    });
+  });
+
+  it("passes the era with the DELEGATED owner's id, not the delegate's", async () => {
+    // The context binds to whoever owns the vault. A delegate opening an item
+    // they entered is still reading `parent-1`'s row.
+    mockQuery
+      .mockResolvedValueOnce(qResult([{ created_by_delegate_id: 'd-1' }]))
+      .mockResolvedValueOnce(
+        qResult([{ wrapped_data_key: Buffer.from('STORED-BLOB'), kms_context_era: 'owner_v1' }]),
+      );
+
+    const res = await POST(delegateReq({ vault_item_id: 'v1' }));
+
+    expect(res.status).toBe(200);
+    expect(mockDecrypt).toHaveBeenCalledWith(Buffer.from('STORED-BLOB').toString('base64'), {
+      era: 'owner_v1',
+      ownerId: 'parent-1',
+    });
   });
 
   it('refuses entirely when no active delegation exists', async () => {

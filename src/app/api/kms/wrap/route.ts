@@ -13,7 +13,7 @@
 
 import { NextResponse } from 'next/server';
 import { getOwnerSession } from '../../../../../lib/auth/session';
-import { generateDataKey } from '../../../../../lib/kms/kms-client';
+import { generateDataKey, wrapsWithContext } from '../../../../../lib/kms/kms-client';
 import { writeAuditEntry } from '../../../../../lib/audit/audit-service';
 
 export async function POST(): Promise<NextResponse> {
@@ -23,6 +23,33 @@ export async function POST(): Promise<NextResponse> {
     ({ ownerId } = await getOwnerSession());
   } catch (res) {
     return res as NextResponse;
+  }
+
+  /*
+    PHASE B READS THE FLAG AND REFUSES TO ACT ON IT.
+
+    docs/encryption-context-rollout.md phase C flips KMS_WRAP_WITH_CONTEXT so
+    new wraps carry { owner_id } AND the row is stamped 'owner_v1'. Those are
+    one change, not two: a data key wrapped with a context that nothing stamps
+    can never be unwrapped again, because no row records which context it
+    needs. That is the intact-and-unreachable state the rollout document exists
+    to prevent, and it is the one failure in this product with no recovery.
+
+    This build reads the era and cannot stamp it, so an ON flag here is a
+    misconfiguration and not an early phase C. It is refused rather than
+    honoured or ignored: honouring it strands rows, and ignoring it would let
+    the flip be recorded as done while nothing changed.
+
+    Phase C deletes this block in the same change that adds the stamping.
+  */
+  if (wrapsWithContext()) {
+    return NextResponse.json(
+      {
+        error: 'KMSError',
+        message: 'Wrapping with an encryption context is not available in this build',
+      },
+      { status: 503 },
+    );
   }
 
   let key;

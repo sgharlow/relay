@@ -52,17 +52,29 @@ import { IntegrityError } from '../../../../../lib/db/integrity';
  * body's `wrapped_data_key` is now ignored. The client still sends it; it is
  * simply no longer trusted.
  *
- * Returns the row's wrapped key, or null when the item does not exist — a
- * caller-supplied id that names no row is a 403, never a decrypt of something
- * they handed us. Scoped by owner_id so the lookup cannot read across owners.
+ * Returns the row's wrapped key and the era it was wrapped under, or null when
+ * the item does not exist — a caller-supplied id that names no row is a 403,
+ * never a decrypt of something they handed us. Scoped by owner_id so the lookup
+ * cannot read across owners.
+ *
+ * `kms_context_era` comes back in the SAME select as the blob, deliberately: it
+ * is a fact about the row, and a caller-supplied era would be a caller-supplied
+ * instruction to skip the context. Every row reads NULL today (phase B), so
+ * every decrypt below still takes the legacy path.
  */
-async function storedWrappedKey(itemId: string, ownerId: string): Promise<string | null> {
-  const row = await query<{ wrapped_data_key: unknown }>(
-    `SELECT wrapped_data_key FROM vault_items WHERE id = $1 AND owner_id = $2 LIMIT 1`,
+async function storedWrappedKey(
+  itemId: string,
+  ownerId: string,
+): Promise<{ wrappedDataKey: string; era: string | null } | null> {
+  const row = await query<{ wrapped_data_key: unknown; kms_context_era: string | null }>(
+    `SELECT wrapped_data_key, kms_context_era FROM vault_items WHERE id = $1 AND owner_id = $2 LIMIT 1`,
     [itemId, ownerId],
   );
   if (row.rowCount === 0 || row.rows.length === 0) return null;
-  return byteaToBase64(row.rows[0].wrapped_data_key);
+  return {
+    wrappedDataKey: byteaToBase64(row.rows[0].wrapped_data_key),
+    era: row.rows[0].kms_context_era ?? null,
+  };
 }
 
 /**
@@ -151,7 +163,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (stored === null) {
       return NextResponse.json({ error: 'Forbidden', message: 'Access not permitted' }, { status: 403 });
     }
-    const plaintextDataKey = await decryptDataKey(stored);
+    const plaintextDataKey = await decryptDataKey(stored.wrappedDataKey, {
+      era: stored.era,
+      ownerId,
+    });
     if (ownerId) {
       await writeAuditEntry(ownerId, {
         actor: `recipient:${payload.recipientId}`,
@@ -213,7 +228,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (stored === null) {
     return NextResponse.json({ error: 'Forbidden', message: 'Not the item owner' }, { status: 403 });
   }
-  const plaintextDataKey = await decryptDataKey(stored);
+  const plaintextDataKey = await decryptDataKey(stored.wrappedDataKey, {
+    era: stored.era,
+    ownerId,
+  });
   await writeAuditEntry(ownerId, {
     actor: actor.isDelegate ? `delegate:${actor.delegationId}` : `owner:${ownerId}`,
     action: 'kms_unwrap',
