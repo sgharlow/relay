@@ -4698,6 +4698,46 @@ deferred:
         entry's revisit had passed with no acknowledgement key - the re-measure had been done and
         written into memory, docs and a PR title, and not into the register. The guard built on
         2026-08-30 for exactly that shape fired on its first real occasion.
+    corroborated_2026_09_03T23Z_one_new_observation: >-
+      NOT a new finding - revisit_outcome above already answered this on 09-02 and re-measured at
+      09-03T02Z. Recorded because an independent measurement 21 hours later returned the identical
+      figures, and because one hypothesis was formed and refuted in the process, which is cheaper to
+      read here than to re-derive.
+      CORROBORATION - production-canary 7 runs/24h against a designed 96, scheduler-monitor 7
+      against 48, no daily workflow below floor; and created_at == run_started_at on 10 of 10 recent
+      scheduler-monitor runs, so the 08-28 "never created, not queued" observation still holds.
+      THE ONE THING NOT ALREADY WRITTEN DOWN - both workflows received EXACTLY 7. One asked for 96
+      and the other for 48, and they got the same ABSOLUTE number, so delivery here is independent
+      of the requested frequency rather than proportional to it. Load-shedding would have left the
+      96-requester with more runs than the 48-requester. That is the measured form of this entry's
+      "no cron tuning fixes runs that are not being created": halving a cron does not improve the
+      ratio and doubling it does not raise the count.
+      REFUTED BEFORE IT WAS ACTED ON - every daily workflow sits at an odd minute (43, 17, 41, 11,
+      47) while the two collapsed ones are */15 and */30 and therefore ask for :00/:15/:30/:45, the
+      contended slots. That suggested moving them off round minutes. The runs that DID land refute
+      it: they arrive at :56, :01, :33, :13, :47 and so on, scattered across the hour in 2-5h gaps.
+      The survivors are not the ones that asked for uncontended minutes, so there is nothing to move.
+    b12i_task_state_measured_2026_09_03T23Z: >-
+      CORRECTS the warning at the end of revisit_outcome above, which was accurate at 09-03T02Z and
+      is not now: the `relay-heartbeat` scheduled task IS registered - state Ready, RunAs sghar,
+      repetition PT15M, last run 16:54:54 with result 0, next run 17:09. It was installed after that
+      measurement, and the two alerts it delivered on 09-02 04:55Z and 09-03 02:21Z are its own.
+      TWO COUPLED GAPS REMAIN, and they have to move together.
+      (1) LogonType is INTERACTIVE, so the watchdog runs only while a person is logged on. A
+      dead-man's switch that stops when the laptop is locked, asleep or logged off has the failure
+      mode it exists to cover, and its silence is indistinguishable from good news - the exact
+      property this register faults GitHub's scheduler for.
+      (2) OPS_ALERT_ADDRESS is set at USER scope only (Machine is empty). That is why it currently
+      works, because an Interactive task inherits the user environment. Switching the task to run
+      whether logged on or not - the fix for (1) - would hide that variable, and the heartbeat would
+      exit 2 "could not look" rather than alerting. So (1) alone converts a watchdog that sleeps
+      into a watchdog that is silent, which is worse.
+      Also measured: HEARTBEAT_WINDOW_HOURS defaults to 6 and HEARTBEAT_MIN_RUNS to 1, so the
+      delivery half alarms only when fewer than one canary run lands in six hours. At the measured
+      ~7 runs/day (~1 per 3.4h) that threshold sits just above the delivered rate, which is why the
+      alerts are intermittent rather than constant.
+      Owner: steve - changing a scheduled task's logon type and setting a Machine-scope variable
+      both need elevation, and neither is a repository change.
 
   - id: the-alarms-live-inside-the-thing-they-watch           # ROADMAP B12
     owner: steve                          # infra + cost, 5-gate; claude builds after the ruling
