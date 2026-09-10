@@ -3924,6 +3924,21 @@ deferred:
         own words that an unrecorded third deferral is not a legitimate one.
         (Was "sprint 2 item 2.6" before the rev-4 renumbering of 2026-08-27.)
       revisit: 2026-09-12
+      revisit_outcome:
+        date: 2026-09-10
+        by: claude
+        outcome: >-
+          ANSWERED, two days before the date, because the item was DONE 2026-08-29 (Steve co-piloted
+          the six screens the evening ROADMAP revision 5 was written -- §2.5 P2.1) and the revisit was
+          never acknowledged here. Measured live 2026-09-10 with `npm run verify:dogfood` (.env.ro,
+          demo-flagged and reserved-domain accounts excluded): real owner accounts 1, vault items 1,
+          recipients 1, verifiers 1, access rules 1, release triggers configured 1 -- "READY, the owner
+          vault can host a cohort invitation", exit 0. The five pieces this block measured as missing
+          on 2026-08-24 are all present. Recorded by Claude rather than at the sitting because it is a
+          measurement, not a ruling, and `lib/ops/revisit-dates.test.ts` would have gone red on
+          2026-09-13 for an item finished twelve days before the date -- the guard doing its job on the
+          wrong target. What this does NOT answer: A0.2 (the circle is two owner aliases) -- that entry
+          keeps its own 2026-09-12 revisit and is Steve's.
       # 📍 The out-of-repo checklist this basis names now has an IN-REPO copy that is the one to
       # read: `docs/vault-checklist-sprint-1.md`. The `__project-docs/` copy carries a PARKED
       # banner pointing here. Moved 2026-08-27 for the reason this file keeps recording: a
