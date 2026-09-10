@@ -74,6 +74,7 @@ interface Fixture {
   access_policies: Record<string, unknown>[];
   webauthn_credentials: Record<string, unknown>[];
   break_glass_codes: Record<string, unknown>[];
+  invitations: Record<string, unknown>[];
 }
 
 let fixture: Fixture;
@@ -91,6 +92,7 @@ function routeQuery(sql: unknown): { rows: Record<string, unknown>[] } {
   if (/FROM access_policies/.test(s)) return { rows: fixture.access_policies };
   if (/FROM webauthn_credentials/.test(s)) return { rows: fixture.webauthn_credentials };
   if (/FROM break_glass_codes/.test(s)) return { rows: fixture.break_glass_codes };
+  if (/FROM invitations/.test(s)) return { rows: fixture.invitations };
   throw new Error('unexpected query: ' + s);
 }
 
@@ -141,6 +143,7 @@ beforeEach(() => {
     access_policies: [],
     webauthn_credentials: [],
     break_glass_codes: [],
+    invitations: [],
   };
   mockRequireOwner.mockResolvedValue({ ownerId: OWNER });
   mockQuery.mockImplementation(async (sql: unknown) => routeQuery(sql) as never);
@@ -301,5 +304,31 @@ describe('what it refuses', () => {
     expect(res.status).toBe(401);
     expect(mockQuery).not.toHaveBeenCalled();
     expect(mockDrills).not.toHaveBeenCalled();
+  });
+});
+
+/*
+  A0.2b. On the owner-delivered arm, creating a person mints nothing — so a row
+  can sit in the roster with NO invitation ever issued, and until 2026-09-10 the
+  screen could not tell that person from one who was emailed and has not replied.
+  The route now says whether anybody was ever asked; the screen reads it.
+*/
+describe('whether anybody was ever asked (A0.2b)', () => {
+  it('reports ever_invited=false for a person with no invitation row', async () => {
+    const body = await (await GET()).json();
+    expect(body.verifiers[0].ever_invited).toBe(false);
+  });
+
+  it('reports ever_invited=true once an invitation names them', async () => {
+    fixture.invitations = [{ person_id: VER }];
+    const body = await (await GET()).json();
+    expect(body.verifiers[0].ever_invited).toBe(true);
+    // Somebody else's invitation is not theirs.
+    expect(body.recipients[0].ever_invited).toBe(false);
+  });
+
+  it('scopes the invitations read to this owner', async () => {
+    await GET();
+    expect(sqlFor(/FROM invitations/)).toMatch(/owner_id\s*=\s*\$1/);
   });
 });

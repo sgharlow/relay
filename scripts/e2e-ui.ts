@@ -689,6 +689,22 @@ async function main(): Promise<void> {
       `recipient rows=${row.rec} verifier rows=${row.ver}`,
     );
 
+    /*
+      A0.2b (2026-09-10). On the owner-delivered arm — the beta default — adding
+      a person mints NOTHING, so the human just created has no invitation and
+      nobody has been asked. Until today the light beside them said "Has not
+      accepted yet — give them their code", which told the owner to chase somebody
+      they had never written to. The screen must say plainly that nobody asked.
+      Re-read after the roster refreshes; the status toast alone is not the roster.
+    */
+    await circle.goto(`${BASE}/circle`, { waitUntil: 'networkidle' });
+    const rosterText = await circle.locator('body').innerText();
+    check(
+      '🔴 a person nobody has asked reads "Not asked yet", never "Has not accepted yet"',
+      /Not asked yet/i.test(rosterText) && !/Has not accepted yet/i.test(rosterText),
+      rosterText.match(/(Not asked yet|Has not accepted yet)[^\n]{0,60}/)?.[0] ?? 'neither sentence found',
+    );
+
     // =====================================================================
     // PART 5 — /triggers, and whether an owner can SEE an unsatisfiable quorum
     // =====================================================================

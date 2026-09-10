@@ -2412,6 +2412,26 @@ deferred:
     ends_when_amended_2026_09_01: >-
       Clause (a) is sharpened: the confirmed verifier must NOT be an alias of the owner -- a
       self-signed quorum satisfies nothing this entry exists for. Otherwise unchanged.
+    clause_b_built_2026_09_10: >-
+      ROADMAP Sprint 1 row 1.3 (A0.2b). DERIVED, not stored: `readRosterState(raw, everInvited)`
+      in lib/people/standby-state.ts returns `not_asked` when the column reads `invited` and no
+      `invitations` row has ever named the person; claimed/confirmed/revoked are never demoted.
+      /api/circle now returns `ever_invited` per person (any invitation ever issued, spent or
+      expired -- the question is whether the owner asked, not whether the ticket is live);
+      the /circle light reads "Not asked yet -- nobody has been sent anything. Give them their
+      code" for that person and keeps "Has not accepted yet" once a code exists; `beta:status`
+      prints the same derivation. Proof by planted violation FIRST: ten assertions across
+      standby-state.test.ts, circle/route.test.ts and circle-surfaces.test.tsx were watched
+      red on the pre-fix code (missing function, missing export, missing field) before any
+      production line changed. Live-proven for the script half on 2026-09-10 -- `npm run
+      beta:status` against production now prints "not asked yet -- nobody has been sent
+      anything" for both roster rows, which is the true sentence. The screen half carries a
+      new assertion in scripts/e2e-ui.ts (PART 4), and that walk was RUN the same day: 43/43
+      against a local dev server on production data, the new check printing the exact sentence
+      ("Not asked yet -- nobody has been sent anything. Give them their code") for the person
+      the walk had just typed into the real form; `verify:orphans` clean after. So clause (b)
+      is live-proven on both surfaces. Clause (a) -- a real verifier reaching `confirmed` --
+      is unchanged and is Steve's.
     revisit: 2026-09-12
   - id: secret-kinds-declaration-is-opt-in-by-discovery      # "D3"
     owner: claude

@@ -16,6 +16,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
 
 import {
   STANDBY_STATES,
@@ -24,6 +25,7 @@ import {
   canTransitionStandby,
   isUnreachable,
   circleLight,
+  readRosterState,
 } from './standby-state';
 
 describe('readStandbyState — NULL means invited, so 020 needs no backfill', () => {
@@ -130,5 +132,49 @@ describe('circleLight — three positions, and green is a claim about capability
   it('has exactly three positions across every state', () => {
     const lights = new Set(STANDBY_STATES.map(circleLight));
     expect([...lights].sort()).toEqual(['amber', 'green', 'red']);
+  });
+});
+
+/*
+  A0.2b (ROADMAP Sprint 1 row 1.3, 2026-09-10). `readStandbyState(null)` returns
+  `invited` on purpose — that is what let migration 020 land without a backfill —
+  but it means a person the owner typed into /circle and NEVER SENT ANYTHING TO
+  renders identically to one who was emailed and has not replied. On the owner
+  arm (the beta default) creation mints nothing, so that is every fresh row.
+  `npm run beta:status` printed "state: invited" for two people with no
+  invitation row, and it was read aloud, twice, as "they were asked".
+
+  The reading is DERIVED, like `isUnreachable`: the roster column stays as it
+  is; whether anybody was ever asked is a fact the invitations table holds.
+*/
+describe('readRosterState — a person nobody has asked must not read as invited', () => {
+  it('reads not_asked when the state is invited and no invitation was ever issued', () => {
+    expect(readRosterState(null, false)).toBe('not_asked');
+    expect(readRosterState('invited', false)).toBe('not_asked');
+  });
+
+  it('reads invited once an invitation exists', () => {
+    expect(readRosterState(null, true)).toBe('invited');
+    expect(readRosterState('invited', true)).toBe('invited');
+  });
+
+  it('never overrides a claimed, confirmed or revoked row — those imply an invitation', () => {
+    // If the column says claimed and the invitations table disagrees, the column
+    // wins: a person cannot have claimed without a ticket, and a missing ticket
+    // row must not demote somebody who has bound an identity.
+    for (const s of ['claimed', 'confirmed', 'revoked'] as const) {
+      expect(readRosterState(s, false)).toBe(s);
+    }
+  });
+
+  it('is red on the light, because a person never asked cannot act either', () => {
+    expect(circleLight('not_asked')).toBe('red');
+  });
+
+  it('is used by the screen whose job is quorum truth', () => {
+    // A guard that lives in a helper is a guard on the helper (owner-alias.test.ts).
+    const src = readFileSync('scripts/beta-status.ts', 'utf8');
+    expect(src).toContain('readRosterState');
+    expect(src.toLowerCase()).toContain('not asked');
   });
 });

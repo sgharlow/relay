@@ -23,6 +23,7 @@
 
 import { query, closeAllPools } from '../lib/db/connection';
 import { isOwnerAlias, OWNER_ALIAS_WARNING } from '../lib/people/owner-alias';
+import { readRosterState } from '../lib/people/standby-state';
 
 const tick = (ok: boolean) => (ok ? '  OK ' : '  --  ');
 
@@ -141,10 +142,17 @@ async function one(o: OwnerRow): Promise<void> {
   if (people.rows.length === 0) console.log('  --  nobody named yet');
   for (const p of people.rows) {
     const inv = inviteBy.get(p.id);
-    const state = p.standby_state ?? 'invited';
+    // A0.2b: a person with no invitation row was never asked, and must not read
+    // as "invited" — that sentence was read aloud, twice, as "asked and not
+    // answering" about two people nobody had written to.
+    const state = readRosterState(p.standby_state, Boolean(inv));
     const confirmed = state === 'confirmed';
     console.log(`\n  ${p.name} · ${p.kind}`);
-    console.log(`${tick(true)}state: ${state}${confirmed ? ' — their answer counts' : ' — their answer does NOT count toward quorum'}`);
+    console.log(
+      `${tick(true)}state: ${
+        state === 'not_asked' ? 'not asked yet — nobody has been sent anything' : state
+      }${confirmed ? ' — their answer counts' : ' — their answer does NOT count toward quorum'}`,
+    );
     // §3.7 rules 5/7 (2026-09-01): a circle of the owner's own aliases must
     // never render as independent people — the quorum screen is the one place
     // an owner learns whether their cover is real.

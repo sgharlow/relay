@@ -23,7 +23,7 @@ import { useState } from 'react';
 import { apiSend } from '../_lib/api';
 import { RenameControl } from './RenameControl';
 import { VALID_ROLES } from '../../../../lib/domain/enums';
-import { readStandbyState, circleLight } from '../../../../lib/people/standby-state';
+import { readStandbyState, readRosterState, circleLight } from '../../../../lib/people/standby-state';
 import InviteControl from './InviteControl';
 import BreakGlassControl from './BreakGlassControl';
 import FingerprintControl from './FingerprintControl';
@@ -116,6 +116,8 @@ export interface Recipient {
   /** Could they get back in on a new device? Only meaningful once claimed. */
   has_passkey?: boolean;
   has_break_glass?: boolean;
+  /** A0.2b: false = the owner has never issued this person a code. Nobody asked. */
+  ever_invited?: boolean;
   /** Latest provider event for their address; null = we have not heard. */
   delivery?: DeliveryState | null;
   /** §8.1: the owner has recorded that this person will never hold an account. */
@@ -138,6 +140,8 @@ export interface Verifier {
   /** Could they get back in on a new device? Only meaningful once claimed. */
   has_passkey?: boolean;
   has_break_glass?: boolean;
+  /** A0.2b: false = the owner has never issued this person a code. Nobody asked. */
+  ever_invited?: boolean;
   /** Latest provider event for their address; null = we have not heard. */
   delivery?: DeliveryState | null;
   /** §8.1: the owner has recorded that this person will never hold an account. */
@@ -156,14 +160,27 @@ export interface Verifier {
  * nobody has an account yet and nobody can act through one. The existing
  * invitation path still works for them meanwhile.
  */
-function StandbyLight({ state, paperOnly }: { state?: string; paperOnly?: boolean | null }) {
-  const s = readStandbyState(state);
+export function StandbyLight({
+  state,
+  paperOnly,
+  everInvited,
+}: {
+  state?: string;
+  paperOnly?: boolean | null;
+  /** A0.2b: undefined is read as "asked" so an older API shape never demotes anyone. */
+  everInvited?: boolean;
+}) {
+  // The stored state, one value wider: a person nobody has asked is not
+  // "not accepted yet". On the owner arm every freshly-added person is exactly
+  // this, and the old wording told the owner to chase somebody they had never
+  // written to.
+  const s = readRosterState(state, everInvited !== false);
   const light = circleLight(s);
 
   // §8.1: a red light saying "has not accepted yet" tells the owner to chase
   // somebody who is never coming. Once they have recorded that, it stops being a
   // failure and becomes a choice — so it reads as one, and in a neutral tone.
-  if (paperOnly && s === 'invited') {
+  if (paperOnly && (s === 'invited' || s === 'not_asked')) {
     return (
       <span
         title="Covered by an emergency code only — does not count towards a release"
@@ -193,7 +210,12 @@ function StandbyLight({ state, paperOnly }: { state?: string; paperOnly?: boolea
     amber: { dot: 'var(--warn, #b26a00)', label: 'Accepted — not yet verified, so their answer would not count' },
     red: {
       dot: 'var(--rule-strong)',
-      label: s === 'revoked' ? 'Removed' : 'Has not accepted yet — give them their code',
+      label:
+        s === 'revoked'
+          ? 'Removed'
+          : s === 'not_asked'
+            ? 'Not asked yet — nobody has been sent anything. Give them their code'
+            : 'Has not accepted yet — give them their code',
     },
   }[light];
 
@@ -463,7 +485,7 @@ export function RecipientSection({
               >
                 {r.role}
               </span>
-              <StandbyLight state={r.standby_state} paperOnly={r.break_glass_only} />
+              <StandbyLight state={r.standby_state} paperOnly={r.break_glass_only} everInvited={r.ever_invited} />
               <div style={{ fontSize: 'var(--t1)', color: 'var(--ink-muted)' }}>
                 {r.email}
                 {r.relationship ? ` · ${r.relationship}` : ''}
@@ -607,7 +629,7 @@ export function VerifierSection({
           >
             <div>
               <span style={{ fontSize: 'var(--t3)', fontWeight: 500 }}>{v.name}</span>
-              <StandbyLight state={v.standby_state} paperOnly={v.break_glass_only} />
+              <StandbyLight state={v.standby_state} paperOnly={v.break_glass_only} everInvited={v.ever_invited} />
               <div style={{ fontSize: 'var(--t1)', color: 'var(--ink-muted)' }}>{v.email}</div>
               {needsClaimCode(v.standby_state) && !v.break_glass_only ? (
                 <InviteControl
