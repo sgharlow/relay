@@ -9,6 +9,13 @@ new preamble (**one sprint to beta-ready; three to end-to-end with real people**
 the number cannot be smaller is two calendar dates, not engineering). **Eleven claims in this
 file were false or stale on 2026-09-10**; corrected where they stand, indexed here.
 
+> **Ruling, 2026-09-10 (Steve):** *"defer the hands-on items to tonight."* Every Steve-hands item that
+> the 09-12 sitting was holding — the real circle (A0.2), the a11y fixture owner (B28), the cohort
+> roster (A3.1), `stripe login` (E1.8), the Safe Browsing protection-level read — is **pulled forward
+> to the evening of 2026-09-10**. The 09-12 date survives only as the register's `revisit:` on two
+> entries, which an early answer satisfies. `docs/sitting-2026-09-12.md` is the run sheet for tonight
+> and says so in its banner.
+
 | What this file said | What is true on 2026-09-10 |
 |---|---|
 | Sprint 1 row 1.1: **A0 — ~20 min on 2026-09-12** | ✅ **DONE 2026-08-29** (§2.5 P2.1 already said so; the sprint row did not). Re-measured 09-10: `npm run verify:dogfood` → **READY**, all six counts non-zero. |
@@ -1166,7 +1173,7 @@ the calendar, not the backlog, sets the pace:
 Anything shorter than three is a claim that the ladder fired before 09-21 or that the paywall was
 ruled before its evidence — the two things this file exists to stop.
 
-### Sprint 1 — Beta-ready *(calendar: 2026-09-10 → 2026-09-17 · Steve ≈ 1 h at the 09-12 sitting · Claude: one S build, two chains, the register)*
+### Sprint 1 — Beta-ready *(calendar: 2026-09-10 → 2026-09-17 · Steve ≈ 1 h **tonight, 2026-09-10** (was the 09-12 sitting — ruled forward 09-10) · Claude: one S build, two chains, the register)*
 
 **Why here:** R1, R4, R5 and R8 are done; R2 needs Steve's people, R3 needs one Claude build, R6 needs
 a sentence in the handoff, R7 needs three register answers by 09-13. Every dated obligation in this
@@ -1175,14 +1182,14 @@ window (the 09-13 guard, the 09-17 `verify:live` dead-man) sits inside the sprin
 | # | Item | Court | Measured 2026-09-10 | Done when |
 |---|---|---|---|---|
 | 1.1 | ~~**A0** the six-screen vault walk~~ — ✅ **DONE 2026-08-29**; its `revisit: 2026-09-12` is answered in this revision (`sprint_1_calendar_lapsed.revisit_outcome`) so the guard does not fire on a finished item | done | `verify:dogfood` READY, six counts 1/1/1/1/1/1 | — |
-| 1.2 | **A0.2 (clause a) — the REAL circle.** At the 09-12 sitting: name one real recipient and one real verifier (neither a plus-alias or dot-variant of the owner), issue each a code via `scripts/phase0-invite.ts` (**never** `invite:cohort` for people already in `/circle`), the four-word verification call after each claims. People named here must **not** also appear in `.relay-cohort.json` | steve (Claude drives via Claude-in-Chrome if wanted) | `beta:status`: April + Ben, both ⚠️ owner-alias, `code issued — not yet` | `beta:status` prints no alias warning and one verifier `confirmed`; `adding-a-person-to-the-circle-does-not-invite-them` carries `revisit_outcome:` |
+| 1.2 | **A0.2 (clause a) — the REAL circle.** **Tonight, 2026-09-10** (was the 09-12 sitting): name one real recipient and one real verifier (neither a plus-alias or dot-variant of the owner), issue each a code via `scripts/phase0-invite.ts` (**never** `invite:cohort` for people already in `/circle`), the four-word verification call after each claims. People named here must **not** also appear in `.relay-cohort.json` | steve (Claude drives via Claude-in-Chrome if wanted) | `beta:status`: April + Ben, both ⚠️ owner-alias, `code issued — not yet` | `beta:status` prints no alias warning and one verifier `confirmed`; `adding-a-person-to-the-circle-does-not-invite-them` carries `revisit_outcome:` |
 | 1.3 | **A0.2b (clause b) — a person who was never asked must not read as `invited`.** Add a distinct *not-yet-asked* reading (the roster row exists, no invitation row/audit action) to `standby-state.ts` and the `/circle` screen, so the owner's screen says plainly *nobody has been asked yet*; `beta:status` uses the same derivation. Proof by planted violation first (a NULL-state row rendered as `invited` goes red before the fix) | claude | `readStandbyState(null)` → `invited`; no state value for *not asked* | the test that was red on the plant is green; `beta:status` and `/circle` agree; register clause (b) recorded |
-| 1.4 | **B28 fixture owner.** One dedicated audit-fixture owner account (never a customer — axe prints element HTML into a public log), then `gh secret set A11Y_OWNER_EMAIL`; Claude runs the proof-of-red dispatch and flips `a11y.yml` to fail (not warn) on master when the secret is absent | steve (5 min) → claude | `owner-mode-a11y-is-armed-by-configuration-not-required` open, revisit 09-12, **fires 09-13** | secret set; dispatch red then green; entry closed or its revisit moved with a reason |
+| 1.4 | **B28 fixture owner — tonight, 2026-09-10.** One dedicated audit-fixture owner account (never a customer — axe prints element HTML into a public log), then `gh secret set A11Y_OWNER_EMAIL`; Claude runs the proof-of-red dispatch and flips `a11y.yml` to fail (not warn) on master when the secret is absent | steve (5 min) → claude | `owner-mode-a11y-is-armed-by-configuration-not-required` open, revisit 09-12, **fires 09-13** | secret set; dispatch red then green; entry closed or its revisit moved with a reason |
 | 1.5 | **D1 + D2 + D19** — the five-walk chain before **2026-09-17 03:19Z**, then `verify:orphans` and `npm run check:subscription -- <owner email>`; `verify:journeys` an hour later (before 09-19 07:53Z) | claude | live stamp 09-03T03:19Z @ `1ae4a0d`; journeys 08-29T07:53Z | both stamps ≥ 09-10; orphans 0; subscription `active` |
 | 1.6 | **R6 — the Outlook sentence.** `docs/beta-cohort-handoff.md` and `docs/first-invitations.md` say: outlook.com/hotmail/live invitees land in Junk by domain reputation (Resend, 09-03); prefer the **owner arm** for them, and tell them to look in Junk if the email arm is used. C2.2/C2.3 struck as moot in §2-C | claude | outcome log had no reply row; C2.2 still open | the sentence is in both docs; §2-C C2 rows closed |
-| 1.7 | **A3.1 → A3.4 — the cohort, if the roster exists by the end of the sprint.** A3.1 roster (Steve, ~10–20 people, both types, both arms; **Outlook addresses on the owner arm**) · A3.2 dry run (Claude, any day) · A3.3 `--commit` on GO (co-pilot, owner cookie) · A3.4 owner-arm sends (Steve, by design) | steve / co-pilot | `.relay-cohort.json`: 1 person, 08-18, never run; N = 0 since 08-12 | `.relay-cohort-codes.json` exists, or a **dated** fourth deferral is recorded on `ratified.beta-cohort-deferred-four-days` |
-| 1.8 | **E1.8 `stripe login`** (both CLI session keys expire 2026-10-07 — do it now rather than in the week it matters) | steve (2 min) | `~/.config/stripe/config.toml` expiry 10-07 | `stripe config --list` shows a fresh expiry |
-| 1.9 | **Safe Browsing close-out.** Read `chrome://settings/security`; if Enhanced protection is ON and `/vault/new` still loads clean, close the INCIDENT entry with the two facts; if Standard, record that and keep it open | steve (1 min) | loads clean 09-10; protection level unread | entry closed or its `ends_when` re-dated with a reason |
+| 1.7 | **A3.1 → A3.4 — the cohort.** A3.1 roster **tonight, 2026-09-10** (Steve, ~10–20 people, both types, both arms; **Outlook addresses on the owner arm**) · A3.2 dry run (Claude, any day) · A3.3 `--commit` on GO (co-pilot, owner cookie) · A3.4 owner-arm sends (Steve, by design) | steve / co-pilot | `.relay-cohort.json`: 1 person, 08-18, never run; N = 0 since 08-12 | `.relay-cohort-codes.json` exists, or a **dated** fourth deferral is recorded on `ratified.beta-cohort-deferred-four-days` |
+| 1.8 | **E1.8 `stripe login` — tonight, 2026-09-10** (both CLI session keys expire 2026-10-07) | steve (2 min) | `~/.config/stripe/config.toml` expiry 10-07 | `stripe config --list` shows a fresh expiry |
+| 1.9 | **Safe Browsing close-out — tonight, 2026-09-10.** Read `chrome://settings/security`; if Enhanced protection is ON and `/vault/new` still loads clean, close the INCIDENT entry with the two facts; if Standard, record that and keep it open | steve (1 min) | loads clean 09-10; protection level unread | entry closed or its `ends_when` re-dated with a reason |
 
 **Done when (beta-ready):** R1–R8 all ✅ except R6 which is 🟡 by nature — i.e. `verify:dogfood`
 exit 0 · `beta:status` alias-clean with one `confirmed` verifier · the not-yet-asked state shipped ·
@@ -1526,11 +1533,11 @@ not a header flip) · `B38`, `B39`, `B40`, `B41`, `B42`.
 
 ### If only five things happen *(re-drawn 2026-09-10 — the previous five are four-fifths done and one half done; see the revision-8 header)*
 
-1. **Name and invite the real circle at the 09-12 sitting** (Sprint 1 row 1.2) — one recipient, one verifier, neither an alias of you; the four-word call when each claims. It is R2, and it is the only beta-ready condition that needs your hands.
-2. **Name the a11y fixture owner** (row 1.4) — one dedicated account, one `gh secret set`. Five minutes, and the register goes red on 09-13 without it.
-3. **The cohort roster** (row 1.7) — ten to twenty names with type and arm, Outlook addresses on the owner arm. Without it Sprint 2 has nobody in it.
+1. **Name and invite the real circle tonight, 2026-09-10** (Sprint 1 row 1.2; was the 09-12 sitting, ruled forward) — one recipient, one verifier, neither an alias of you; the four-word call when each claims. It is R2, and it is the only beta-ready condition that needs your hands.
+2. **Name the a11y fixture owner tonight** (row 1.4) — one dedicated account, one `gh secret set`. Five minutes, and the register goes red on 09-13 without it.
+3. **The cohort roster tonight** (row 1.7) — ten to twenty names with type and arm, Outlook addresses on the owner arm. Without it Sprint 2 has nobody in it.
 4. **Do not sign in as the owner between 09-17 and 09-21** — the first reminder this product has ever sent fires 2026-09-21 15:49Z and a sign-in moves it. The cheapest item on this list is not doing something.
-5. **`stripe login`** (row 1.8) — before 2026-10-07, and there is no reason to wait for the week it expires.
+5. **`stripe login` tonight** (row 1.8) — the keys expire 2026-10-07 and there is no reason to wait for the week it expires.
 
 > *The previous five, for the record:* Web Analytics ✅ 09-02 · the op-ed ✅ sent 09-02 · restricted Stripe key ✅ (`verify:stripe` reads via it) + `stripe login` ⏳ · G4/G5 ✅ 09-01 · the three G3 contacts ✅ 09-01/02.
 
@@ -1557,7 +1564,8 @@ be re-derived rather than trusted.
 | ~~**~2026-09-08**~~ | ~~`verify:live` freshness dead-man~~ — **SUPERSEDED: the chain was run 2026-08-29**, so it now fires **2026-09-12 07:45Z** | claude | `tail -1 docs/verify-live-runs.jsonl` + 14 d |
 | 2026-09-09 04:32Z | the live owner goes **overdue**. The sweep selects them and **transitions nothing** — they hold 0 `release_state` rows. Recorded because the opposite was briefly believed | — | `heartbeat.ts` inner query; `relay_ro` read 08-29 |
 | ~~**2026-09-12 07:45Z**~~ | ~~`verify:live` freshness dead-man fires (14 d from the 08-29 stamp)~~ — **SUPERSEDED: the chain ran 2026-09-03** (stamp `1ae4a0d`); fires **2026-09-17 03:19Z** | claude | `tail -1 docs/verify-live-runs.jsonl` + 14 d |
-| **2026-09-12** | **Sitting A — the real circle** (Sprint 1 row 1.2) and the a11y fixture owner (row 1.4); ~1 h | steve | `docs/sitting-2026-09-12.md` |
+| **2026-09-10 (evening)** | **The hands-on sitting, pulled forward from 09-12 by ruling** — the real circle (row 1.2), the a11y fixture owner (1.4), the cohort roster (1.7), `stripe login` (1.8), the Safe Browsing read (1.9); ~1 h | steve | `docs/sitting-2026-09-12.md` (the run sheet keeps its filename; its banner says tonight) |
+| ~~**2026-09-12**~~ | ~~Sitting A — the real circle and the a11y fixture owner~~ — **moved to 2026-09-10 evening** (above). The date remains the `revisit:` on two register entries; an early answer satisfies it | steve | `docs/sitting-2026-09-12.md` |
 | **2026-09-13** | `revisit-dates.test.ts` fires on any `revisit: 2026-09-12` without an acknowledgement — A0.2 and the a11y fixture entry (A0's own was answered in revision 8) | steve → claude (record) | `TZ=UTC npx vitest run lib/ops/revisit-dates.test.ts` |
 | **2026-09-17 03:19Z** | `verify:live` freshness dead-man fires (14 d from the 09-03 stamp) | claude | `lib/ops/verify-live-freshness.ts` |
 | **2026-09-12** | report-bridge precedence lifts → **Sprint 1** (A0, mailbox, rulings) and **Sprint 2** open. ⚠️ Nothing turns red on this date (A0.dm) | steve | `deferred.the-owners-vault-is-empty.sprint_1_calendar_lapsed.revisit` |
@@ -1627,7 +1635,7 @@ be re-derived rather than trusted.
 > is in Sprint 0 and is not repeated here. Where an item has a Claude half, the row says what is
 > already prepared. ⏱️ is an honest estimate assuming nothing goes wrong.
 
-### Sitting A — 2026-09-12 · the vault · ⏱️ ~20 min · **unblocks the most**
+### Sitting A — ~~2026-09-12~~ **tonight, 2026-09-10** (ruled forward 09-10) · ~~the vault~~ the real circle — the vault half was done 08-29 · ⏱️ ~1 h all in · **unblocks the most**
 
 - [ ] **A0** Walk `docs/vault-checklist-sprint-1.md` at relaystandby.com: two real items (one login
       with secret + 2FA seed + recovery codes; one document/instruction), **Needs a code?** answered,
