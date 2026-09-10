@@ -20,9 +20,40 @@ import { reportIncident, _resetIncidentStateForTesting } from './incident';
 const mockSend = vi.mocked(sendEmailBestEffort);
 const T0 = 1_700_000_000_000;
 
+/*
+  🔴 EVERY NAME opsAlertAddress() READS, cleared and restored — not just the one
+  this file happens to set. It cleared OPS_ALERT_EMAIL alone until 2026-09-04,
+  which was correct when incident.ts read that variable directly and became
+  wrong the day it moved to opsAlertAddress(), which resolves
+  OPS_ALERT_ADDRESS ?? OPS_ALERT_EMAIL. The test below deletes "the" address and
+  asserts nothing is sent; on a machine with OPS_ALERT_ADDRESS exported in the
+  shell — which is how an operator following .env.example configures it — the
+  address survived the delete, the incident alerted, and the suite went red
+  against blameless code.
+
+  The direction that matters is the other one. In CI neither name is set, so the
+  gap never showed: the "no address configured" case was passing because the
+  runner's environment happened to agree with it, not because the file arranged
+  it. A negative test that only holds on a bare environment is not testing the
+  negative.
+
+  This is the third file in this family to be caught by the two-name contract —
+  alert-address.test.ts and guess-watch.test.ts already clear the full set — and
+  it is deliberately the same shape as theirs rather than a cheaper local fix,
+  because the cheap fix here is "delete the other one too", which drifts again
+  the next time a name is added. See lib/ops/alert-address.ts for why both names
+  are accepted.
+*/
+const ADDRESS_KEYS = ['OPS_ALERT_ADDRESS', 'OPS_ALERT_EMAIL', 'RESEND_REPLY_TO_ADDRESS'] as const;
+const savedAddressEnv: Record<string, string | undefined> = {};
+
 beforeEach(() => {
   vi.clearAllMocks();
   _resetIncidentStateForTesting();
+  for (const k of ADDRESS_KEYS) {
+    savedAddressEnv[k] = process.env[k];
+    delete process.env[k];
+  }
   process.env.OPS_ALERT_EMAIL = 'ops@example.com';
   // Says which environment these assert. Ops alerting is gated on it since
   // 2026-08-15 (see lib/ops/alert-address.ts) and under vitest NODE_ENV is
@@ -30,7 +61,10 @@ beforeEach(() => {
   vi.stubEnv('VERCEL_ENV', 'production');
 });
 afterEach(() => {
-  delete process.env.OPS_ALERT_EMAIL;
+  for (const k of ADDRESS_KEYS) {
+    if (savedAddressEnv[k] === undefined) delete process.env[k];
+    else process.env[k] = savedAddressEnv[k];
+  }
   vi.unstubAllEnvs();
 });
 
@@ -103,6 +137,9 @@ describe('the alert must not become the outage', () => {
 
 describe('degrading', () => {
   it('records without alerting when no operator address is configured', async () => {
+    // One delete is enough ONLY because beforeEach cleared every name
+    // opsAlertAddress() reads and then set exactly this one. Do not read it as
+    // "OPS_ALERT_EMAIL is the address" — that reading is what broke this test.
     delete process.env.OPS_ALERT_EMAIL;
     await expect(reportIncident(base, T0)).resolves.toEqual({ alerted: false });
     expect(mockSend).not.toHaveBeenCalled();
