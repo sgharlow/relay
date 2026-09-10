@@ -16,7 +16,7 @@
   "betaReadyConditions": {
     "R1 vault real": "✅ verify:dogfood READY (09-10)",
     "R2 real circle, verifier confirmed": "❌ two owner aliases — Steve, tonight 09-10",
-    "R3 not-yet-asked roster state": "❌ not built — Claude, row 1.3",
+    "R3 not-yet-asked roster state": "✅ built + live-proven 09-10 (PR #65)",
     "R4 signup/checkout/release live-proven": "✅ chain 09-03; verify:stripe holds",
     "R5 alarms alive and seen red": "✅ heartbeat stamp ok 09-10",
     "R6 invitation mail reaches people": "🟡 Outlook = Junk by reputation, no remedy (Resend 09-03) — handoff sentence, row 1.6",
@@ -33,10 +33,10 @@
     { "row": "A8/D17", "title": "this file re-derived", "pr": 51, "date": "2026-08-31" },
     { "row": "B12.i", "title": "off-GitHub heartbeat installed and scheduler-stamped", "pr": 56, "date": "2026-09-02" },
     { "row": "B5.1 phase B", "title": "decrypt path reads the era; deployed and proven 20/20 on production", "pr": 58, "date": "2026-09-03" },
-    { "row": "D21", "title": "relay_ro runner identity via OIDC, both regions, five principals hold", "pr": 60, "date": "2026-09-03" }
+    { "row": "D21", "title": "relay_ro runner identity via OIDC, both regions, five principals hold", "pr": 60, "date": "2026-09-03" },
+    { "row": "1.3 / A0.2b", "title": "a never-asked person reads `not_asked`, never `invited` — standby-state + /api/circle + /circle + beta:status", "pr": 65, "date": "2026-09-10" }
   ],
   "rowsOpen": [
-    { "row": "1.3 / A0.2b", "title": "a never-asked person must not read as `invited` (standby-state + /circle + beta:status)", "note": "S; proof by planted violation first" },
     { "row": "1.5 / D1+D2+D19", "title": "verify:live before 2026-09-17T03:19Z; verify:journeys before 09-19T07:53Z; orphans; check:subscription", "note": "10 signups/h ceiling — one chain per hour" },
     { "row": "1.6 / R6", "title": "the Outlook sentence in beta-cohort-handoff.md + first-invitations.md; C2.2/C2.3 struck", "note": "doc only" },
     { "row": "A12/D12", "title": "major-version currency (next-auth v4, React 18 under Next 16)", "note": "⛔ recorded, not scheduled — Infrastructure Change Policy" }
