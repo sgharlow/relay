@@ -1,5 +1,49 @@
 # Relay — Production Roadmap
 
+**Revision 8 — 2026-09-10 · the beta-readiness re-baseline.** An IN-PLACE revision, as §8 asks,
+written from a live inventory (`verify:dogfood`, `beta:status`, `verify:stripe`, `check:ladder`,
+the two freshness stamps, the heartbeat stamp, Gmail Sent/Inbox, a real-Chrome load of
+`/vault/new`, and the full suite at `33a77cd`). Steve's question was *"what does it take to be
+beta-ready, and how many sprints to fully functional end to end in beta?"* — the answer is §3's
+new preamble (**one sprint to beta-ready; three to end-to-end with real people**, and the reason
+the number cannot be smaller is two calendar dates, not engineering). **Eleven claims in this
+file were false or stale on 2026-09-10**; corrected where they stand, indexed here.
+
+> **Ruling, 2026-09-10 (Steve):** *"defer the hands-on items to tonight."* Every Steve-hands item that
+> the 09-12 sitting was holding — the real circle (A0.2), the a11y fixture owner (B28), the cohort
+> roster (A3.1), `stripe login` (E1.8), the Safe Browsing protection-level read — is **pulled forward
+> to the evening of 2026-09-10**. The 09-12 date survives only as the register's `revisit:` on two
+> entries, which an early answer satisfies. `docs/sitting-2026-09-12.md` is the run sheet for tonight
+> and says so in its banner.
+
+| What this file said | What is true on 2026-09-10 |
+|---|---|
+| Sprint 1 row 1.1: **A0 — ~20 min on 2026-09-12** | ✅ **DONE 2026-08-29** (§2.5 P2.1 already said so; the sprint row did not). Re-measured 09-10: `npm run verify:dogfood` → **READY**, all six counts non-zero. |
+| Sprint 1 row 1.3: **C1.0 — decide whether `rua=` was removed on purpose** | ✅ **MOOT SINCE 2026-08-30** — the record was restored and re-verified from two resolvers; §2-C and §0.0 both say so. The row still asked for a decision. |
+| Sprint 2 row 2.1: **A1.7 the op-ed send — target the first sitting after 09-12, ceiling ~09-20** | ✅ **SENT 2026-09-02 04:16Z** (Gmail Sent, to the caregiver.com editor), ten days ahead of the window this row set. No reply as of 09-10; the acceptance window the gate derives runs to ~09-30, publication ~09-30..11-10. |
+| Sprint 2 row 2.4: **A6.3 the three G3 first contacts** | ✅ **ALL THREE SENT 2026-09-01/02** (NAC form; Homethrive and Wellthy by email — both in Gmail Sent). **0 replies as of 09-10.** Follow-up rows in `docs/g3-outreach-log.md` are dated **2026-09-22**. |
+| Sprint 2 row 2.5 / §2-C: **C2 — Resend ticket → Microsoft form → re-test** | 🔴 **C2.1 WAS SENT 09-03 02:48Z AND ANSWERED 09-03 16:00Z, and the answer retires C2.2 and C2.3.** Resend (in writing): *SCL 5 is the score Microsoft assigns mail it has no opinion about; it is not a penalty; no mitigation request exists; the only lever is steady volume and engagement on the domain.* The deliverability doc's outcome log still said *"the reply, when it comes, is a row here"* seven days after it came. Recorded now; the Microsoft form is **struck as moot**, not parked. |
+| §3.5 **"If only five things happen"** | **Four of five are done and the fifth is half done**: A7.0 (09-02), the op-ed (09-02), G4/G5 (09-01), the G3 contacts (09-02); **E1.7 the restricted Stripe key is DONE** — `npm run verify:stripe` printed *"read via STRIPE_READONLY_KEY (schedulable)"* on 09-10. Only **E1.8 `stripe login` by 2026-10-07** remains of the five. The list is replaced below with the five that matter for beta. |
+| §4: **2026-09-12 07:45Z `verify:live` dead-man fires** | **SUPERSEDED — the chain ran 2026-09-03** (`tail -1 docs/verify-live-runs.jsonl` → stamp at `1ae4a0d`), so it fires **2026-09-17 03:19Z**. `verify:journeys` is unchanged at **2026-09-19 07:53Z**. Both fall inside beta Sprint 1. |
+| `docs/sitting-2026-09-12.md`: **"two entries still carry `revisit: 2026-09-12`"** | 🔴 **THREE fire `lib/ops/revisit-dates.test.ts` on 2026-09-13** without an acknowledgement key: A0's own `the-owners-vault-is-empty.sprint_1_calendar_lapsed` (done since 08-29 and never answered — **answered in this revision** with the 09-10 measurement), A0.2, and `owner-mode-a11y-is-armed-by-configuration-not-required` (the a11y fixture owner). The sitting sheet listed two. Re-derive: `TZ=UTC npx vitest run lib/ops/revisit-dates.test.ts` on 09-13. |
+| A0.2 `ends_when` clause (b): **"the roster can no longer show an uncontacted person as `invited`"** | 🔴 **NOT BUILT.** `lib/people/standby-state.ts` still has no value for *not yet asked*; `readStandbyState(null)` still returns `invited`. `beta:status` prints *"code issued — not yet"*, which is the script half only — the `/circle` screen a beta owner reads is unchanged. Clause (a) is Steve's; clause (b) is Claude's, **S**, and it is the one product defect a beta owner would meet on day one. Row **A0.2b**, Sprint 1. |
+| INCIDENT: **Chrome blocks `/vault/new`** (Safe Browsing) | **Loaded in Steve's real Chrome on 2026-09-10 straight to `/auth/signin`, no interstitial.** ⚠️ The entry's `ends_when` also requires *Enhanced protection ON*, which was not read — one look at `chrome://settings/security` before closing it. |
+| §2 B11 row: **"B12.i built 09-01, install pending"** | ✅ **INSTALLED 2026-09-02** and alive on 09-10 — `tail -1 .heartbeat/runs.jsonl` shows a scheduler-written `ok` within the last 15 minutes. §3.5 already said so (PR #63); the §2 row did not. |
+
+> ### What the eleven have in common, and what this revision does about it
+>
+> Every one is a **row that was still asking for something already done** — the same drift §8 was
+> written for, in the eighth revision of the file that carries §8. Four of them (the op-ed, the G3
+> sends, the Resend answer, the restricted key) are Steve's own actions that the plan set for a
+> fortnight from now and he did early. A plan that is behind the person executing it stops being
+> read. So this revision does two things the previous seven did not: (1) **§3 now opens with a
+> definition of beta-ready and a sprint count**, so the file answers the question Steve actually
+> asks; (2) the sprint tables carry a **Measured 09-10** column whose contents are commands, so the
+> next reader re-derives instead of trusting this table.
+
+<details>
+<summary><strong>Revision 7 (2026-08-31) — the previous index, kept as the record</strong></summary>
+
 **Revision 7 — 2026-08-31.** An IN-PLACE revision, as §8 asks. Sprints 2, 3, 4 and 5 were executed
 after revision 6 was written, and **nine more claims in this file are now false or incomplete**.
 They are corrected where they stand; this header is the index, so a reader of revision 6 knows what
@@ -44,6 +88,8 @@ not to trust.
 > a "27 checks" successor, and the PR count in the readiness page were all written *this session* and
 > corrected in it. The rule earning its place here is the third one: a claim is worth what its
 > falsification attempt cost.
+
+</details>
 
 <details>
 <summary><strong>Revision 6 (2026-08-30) — the previous index, kept as the record</strong></summary>
@@ -519,7 +565,7 @@ alarms.
 | ID | Item | Court | Manual? | Blocks / unlocks | Deadline (basis) | Source |
 |---|---|---|---|---|---|---|
 | **B10** NEW 📝 | 🔴 **The alarm of record delivers to Gmail TRASH.** Every `[sgharlow/relay] Run failed` mail since 2026-08-08 (≈20 threads incl. both red-proofs, about half unread) is in Trash. **B10.d (Sprint 0):** Claude reads Gmail Settings → Filters / Blocked addresses via Claude-in-Chrome (read-only) and names the rule. **B10:** Steve (or Claude in his session, on his say-so) removes it. B10.t: Claude then **re-proves delivery** — `gh workflow run kms-wall.yml -f key_id=<bogus>` (read-only KMS calls) and a read-only Gmail search for INBOX labels | steve (rule); claude (re-prove) | yes — Gmail connector is read-only at its OAuth scope; no filter API at any scope | Every scheduled alarm; B4's and the canary's "proven red" become true | the 2026-08-25 evidence mail purges ~2026-09-24 (Gmail 30-day Trash) | Gmail: `[sgharlow/relay] Run failed: KMS wall watch - master (ce776ef)`, 2026-08-25, labels TRASH+UNREAD; `kms-wall.yml:59-60` (its own bar: "exits 1 **and** the notification reaches a watched inbox") |
-| **B11** ✅ **CLOSED 2026-09-02** | ✅ **ANSWERED on the revisit date and re-measured 09-03T02Z: STILL collapsed after the reset** (canary 7/24h, scheduler-monitor 7/24h; every daily workflow 100%). Cause recorded — GitHub drops sub-hourly schedules on this public repo; minutes were never the cause. **B12 is the fix**; B12.i built 09-01 (PR #53), install pending. Record: `deferred.the-scheduled-monitors-are-collapsing.revisit_outcome`. Was: 🔴 **The scheduled monitors are collapsing** — canary 45→2 runs/day, scheduler-monitor 30→3 (08-18..08-27) vs 96/48 designed; `created_at == run_started_at`, so GitHub is not queueing them, it is not creating them. Coincident: the account's 2,000 Actions minutes 100% used 2026-08-28 (reset 2026-09-01; private repos consume them, relay is public/free); a GitHub Actions incident 08-26/27. B11.1 Claude re-measures per-day counts on **2026-09-02**; B11.2 if cadence recovers → the payment-method/plan decision is Steve's (money); if not → B12 is the only fix. The scheduler dead-man (2.5h threshold) was sampled 3× on 08-27 | claude (measure); steve (money) | B11.2 only | truthful cadence claims; the case for B12 | re-measure 2026-09-02 (GitHub billing-reset mail) | `gh api …/runs?created=<day>`; GitHub billing mail "You have used 100% of included Actions minutes", 2026-08-28T02:50Z |
+| **B11** ✅ **CLOSED 2026-09-02** | ✅ **ANSWERED on the revisit date and re-measured 09-03T02Z: STILL collapsed after the reset** (canary 7/24h, scheduler-monitor 7/24h; every daily workflow 100%). Cause recorded — GitHub drops sub-hourly schedules on this public repo; minutes were never the cause. **B12 is the fix**; B12.i built 09-01 (PR #53), ~~install pending~~ **installed 2026-09-02 and alive 09-10** (`tail -1 .heartbeat/runs.jsonl`). Record: `deferred.the-scheduled-monitors-are-collapsing.revisit_outcome`. Was: 🔴 **The scheduled monitors are collapsing** — canary 45→2 runs/day, scheduler-monitor 30→3 (08-18..08-27) vs 96/48 designed; `created_at == run_started_at`, so GitHub is not queueing them, it is not creating them. Coincident: the account's 2,000 Actions minutes 100% used 2026-08-28 (reset 2026-09-01; private repos consume them, relay is public/free); a GitHub Actions incident 08-26/27. B11.1 Claude re-measures per-day counts on **2026-09-02**; B11.2 if cadence recovers → the payment-method/plan decision is Steve's (money); if not → B12 is the only fix. The scheduler dead-man (2.5h threshold) was sampled 3× on 08-27 | claude (measure); steve (money) | B11.2 only | truthful cadence claims; the case for B12 | re-measure 2026-09-02 (GitHub billing-reset mail) | `gh api …/runs?created=<day>`; GitHub billing mail "You have used 100% of included Actions minutes", 2026-08-28T02:50Z |
 | **B12** NEW 📝 | ✅ **B12.i CLOSED 2026-09-02 — the `relay-heartbeat` task is registered and the scheduler has written its own stamp** (`.heartbeat/runs.jsonl` 2026-09-03T02:23:37Z `ok`, `LastTaskResult 0`, every 15 min). 🔴 Two defects found on the way, both in the never-run installer: (1) the task would have detected and NEVER ALERTED — `RESEND_API_KEY` lives only in `.env.local`, which the heartbeat did not load and the scheduler's environment does not carry; proven from a key-less shell ("ALERT COULD NOT BE SENT"), fixed with `--env-file-if-exists=.env.local` (the #55 shape) and proven again (alert delivered to the inbox at 02:21Z); (2) the `.ps1` had no BOM, so Windows PowerShell 5.1 read its em dash as a closing smart quote and the script did not parse. Also: no elevation was ever needed — the task runs as the registering user, so a User-scope variable is what the scheduler sees. Registered un-elevated by Claude. **The AWS half (Route 53 / Synthetics → SNS) stays Steve's 5-gate ruling and is not required for this closure.** ~~Original: **Off-GitHub heartbeat for the alarms** (Route 53 health check or CloudWatch Synthetics → SNS NotifyMe — the one path proven to reach a human). GitHub also auto-disables public-repo schedules after 60 quiet days; every `verify:live` stamp commit resets it, so this date MOVES — never quote it from here, derive it: `gh api repos/sgharlow/relay --jq .pushed_at` + 60d (was ~2026-10-24 off the 08-25 push; the 09-04 push moved it to ~2026-11-03). Proposed in three places, taken in none. B12.i interim, no AWS change: a Windows Task Scheduler job (beside `devsync-sync`) counting `gh api …/runs?created=<today>` per workflow and alarming on 0 in 24h **via SNS NotifyMe (the proven path) — never via GitHub mail, which B10 shows goes to Trash** | steve (infra + cost, 5-gate); claude (interim + build) | ruling | alarms that outlive a park, a quiet autumn, or load-shedding | ~2026-10-24 derived; not a repo field | `lib/ops/alarm-of-record.test.ts:128` ("THIS TEST DOES NOT FIX IT"); `date-guards.yml` header |
 | **B13** NEW | ✅ **CLOSED 2026-08-29, re-verified from the run ledger 2026-08-31** — this row read as open for two days after its work shipped in PR #20, and §3.5 rendered it "ready" on the strength of this line. The proofs, by run id: canary red at a dead host `33237399208`; `scheduler-monitor` red `33237979699` and `delivery-webhook-monitor` red `33237980971` (both via the `health_url` inputs the PR added); the canary header's "~1,200 runs" claim replaced with the derivation command. ⚠️ **The `date-guards` half is NOT done and CANNOT be done as written**: the planted past-due gate fails the same suite `~/.claude/hooks/pre-push-check.sh` runs on every push, so the plant cannot leave the machine — and Steve ruled **wait** (2026-08-29): the guard proves itself the first time a real date passes. Its all-time failure count is still 0 (`gh api …/date-guards.yml/runs?status=failure` → `total_count: 0`); that zero is the ruled state, not an omission. ~~Original: **Proof-of-red owed:** `production-canary` never red in 685 runs — dispatch it at a dead host; add `health_url` inputs; `date-guards` — dispatch on a throwaway branch planting a past-due gate; fix the canary header~~ | done (date-guards half: steve ruled wait) | no | three of five alarms proven red, not just green (the inbox half needs B10) | — | `production-canary.yml` header (records the run id); `gh run list --workflow=<w> --status=failure` |
 | **B14** NEW 📝 | ✅ **CLOSED 2026-08-29.** `verify:stamp:journeys` → `docs/verify-journeys-runs.jsonl` → `verify-journeys-freshness.test.ts`, plus `chain-dead-man.test.ts` so a third chain cannot ship without one. ~~Original:~~ `verify:journeys` (J3/J6/J9; each walk prints its own count) has **no freshness dead-man** — D10 was closed by building walks nothing schedules or ages. Add a stamp line + freshness assertion; keep the chain separate (signup ceiling)| claude | no | the 08-21 walks stop being decorative | — | `package.json:21-22`; `deferred.the-journey-sweep-is-stale.closed` |
@@ -563,9 +609,9 @@ alarms.
 | **C1.2** | **Untrash the three reports in Trash now** — Google/relaystandby 08-15, Microsoft/report-bridge 08-16, Microsoft/relaystandby 08-17 (the 08-15→16 window = the A/B-test evidence the doc said to watch for) | steve | yes | C1.3 | **~2026-09-14** (earliest arrival 2026-08-15 + Gmail's 30-day Trash purge — **not** the ~09-10 every doc cites, which is the batch already rescued) | memory 2026-08-24 Gmail read |
 | C1.3 | 🟡 **ATTEMPTED 2026-08-31 — found, verified safe, and unreadable at the last hop.** The report exists exactly as predicted: message `1a00e72c9417ac7b`, `dmarcreport@microsoft.com`, 2026-08-17, window **2026-08-15 00:00 → 08-16 00:00 UTC** — precisely where the doc said the A/B IPs would land — retained under the DMARC label, **not in Trash**. What cannot be done from here: the data is a gzip XML attachment (`protection.outlook.com!relaystandby.com!1786752000!1786838400.xml.gz`) and the Gmail connector has **no attachment-download tool**; a RAW-MIME read hands the bytes through the conversation, and that transcription **failed its own gzip CRC** — proof the channel corrupts, so no answer read that way could be trusted. ⏭️ Remaining: ~30 seconds in the Gmail UI (open the message, download, `gunzip`, read `<row>` for `54.240.48.188` / `54.240.11.161`) — folded into the next mailbox sitting (§6 Sitting B). Original ask: read the rescued 08-17 report — pass/pass, disposition none? Still the question; only the byte path changed | steve (30s download) then claude (the read) | no | closes the A/B-test question | next mailbox sitting | Gmail message id above; this row |
 | C1.4 | ✅ **CLOSED 2026-08-31.** §10.1 and step 0 already carried their 08-29 correction blocks; what remained was the drift the restoration itself created: `deliverability-options-3-and-5.md` still declared **"THE FEED IS DEAD"** a day after C1.0 restored `rua=` (the outlook doc was updated, this one was not — one change, two files, one updated). A dated restoration note now sits under the outage record, derived live from both resolvers on 2026-08-31, and the go-live checklist's header banner no longer asserts the dead feed in the present tense. ~~Original: correct the DMARC item everywhere it is written wrong — the other three are Sprint 0.7~~ | done | no | — | — | the DoH command in the deliverability doc §"A deadline nobody set" |
-| **C2.1** | Outlook sender support, step 1: open the **Resend ticket** (drafted verbatim; no record it was ever sent) — **after** Claude strips the draft's two false sentences (reports received; quarantine being prepared) | steve | yes — vendor human-send from the account holder | step 3 | — | `docs/outlook-sender-support-submission.md §Step 1` |
-| **C2.2** | Step 3: submit the **Microsoft sender-support form** (signed-in Microsoft web flow; Claude-in-Chrome may prefill as co-pilot; Steve presses submit). Record outcomes in the deliverability doc, not the ⛔ RETIRED ad-creatives doc the "done" section points at | steve | yes | Outlook deliverability of release/verifier mail | — | same doc §Step 3 |
-| C2.3 | After any Microsoft reply: re-test to a FRESH outlook.com mailbox and read the SCL from headers (never from Resend's "Delivered"); no reply in ~2 weeks → record and stop. Never click "It's not junk" on evidence | claude / vendor | no | — | — | same doc §What done looks like |
+| **C2.1** | ✅ **SENT 2026-09-03 02:48Z AND ANSWERED 2026-09-03 16:00Z** (Gmail thread `1a0650dde420bf2a`). Resend's answer, verbatim in the deliverability doc's outcome log: SCL 5 is *"the score Microsoft assigns mail it has no opinion about"*, **not a penalty**; Resend does not raise mitigation requests and a request against the IPs would not help because the score tracks the domain; Microsoft has no Postmaster-style program; the only lever is *steady volume and engagement* — recipients opening, replying, and moving mail from Junk. ~~Original: open the **Resend ticket** (drafted verbatim; no record it was ever sent) — **after** Claude strips the draft's two false sentences~~ | done | — | — | — | `docs/outlook-sender-support-submission.md §Outcome log` |
+| ~~**C2.2**~~ | ~~Step 3: submit the **Microsoft sender-support form**~~ — **STRUCK 2026-09-10 as MOOT on Resend's answer**: the form asks Microsoft to mitigate an IP or a penalty, and there is neither — SCL 5 is *no reputation*. Filing it would spend a Steve-court sitting (it was already blocked on Windows SSO signing in the employer account) to ask for a remedy that does not exist. What replaces it is a sentence in the cohort handoff (Sprint 1 row 1.6): Outlook invitees on the **owner arm**, and told to look in Junk otherwise. Memory `feedback-outlook-scl5-is-no-reputation-not-a-penalty` says the same and adds: **do not re-open** | done | — | — | — | same doc §Outcome log |
+| ~~C2.3~~ | ~~After any Microsoft reply: re-test to a FRESH outlook.com mailbox~~ — **STRUCK with C2.2.** The one re-test worth doing is the natural one: after the cohort has sent and received real mail for a few weeks, read the SCL from a fresh outlook.com header once, and record it as the domain's first reputation reading rather than as a fix | done | — | — | after Sprint 2's sends, opportunistic | same doc §Outcome log |
 | **C3** | DMARC step-up `p=none→quarantine`, `~all→-all` — only after C1.0 restores reporting **and** a fortnight-plus of reports confirms every legitimate source aligns. Claude drafts record + snapshot + rollback + DoH proof; Steve requests | steve (5-gate) | ruling | — | after C1.0 + 2 weeks | `docs/deliverability-options-3-and-5.md` rec 3 |
 | C4 | 📅 **RULED 2026-09-02 (Steve): still not pulled forward; the register's revisit moves from 2026-09-12 to the G3 gate's own due, 2026-11-30**, where the answer is owed anyway. **SMS / A2P 10DLC — parked** (2026-08-15); route settled **Sole Proprietor** (no entity, no EIN; brand ~$4 + ~$15 vetting; OTP on a real mobile with a lifetime three-use limit; 2–4 week lead). Resumes at Sprint 7 only. The A2P doc's "Standard, LLC" lines are stale (H) | steve | yes — identity, money, carrier process | SMS channel (standby rung 5) | event: Sprint 7 | `ratified.relay-operator-is-an-individual.consequences.sms_10dlc`; `docs/a2p-registration-prep.md` |
 | C5 | Stripe merchant name (`Relay/ReportBridge/LearningAI365`, shared personal account) — re-decide only if a real customer remarks (the register carries two revisit triggers for one decision — reconcile, H). Also: the shared default portal config has null terms/privacy URLs — not relay's alone to set | steve | yes | — | — | `ratified.stripe-merchant-name`; `ratified.relay-operator-is-an-individual.consequences.stripe` |
@@ -1086,6 +1132,102 @@ a register entry; a `verify:live` stamp younger than 14 days exists at the sprin
 commits since it touch no walked path (or the chain was re-run); Web Analytics collection is
 confirmed, or its absence is on Sitting E as a precondition of Sprint 5.
 
+### What "beta-ready" means, and how many sprints it is *(revision 8, 2026-09-10 — the answer to the question this file is read for)*
+
+**Beta-ready** = an arms-length person can be invited into a product that is real, monitored, and
+walked, and nothing they can reach on day one is a known defect. Measured, not declared:
+
+| # | Condition | State 2026-09-10 | Re-derive |
+|---|---|---|---|
+| R1 | The owner's vault is real (A0) | ✅ READY since 08-29 | `npm run verify:dogfood` → exit 0 |
+| R2 | The circle is real: one recipient **and** one verifier who are not the owner, invited, and the verifier `confirmed` by the four-word call (A0.2 clause a) | ❌ two owner plus-aliases, no code issued to either | `npm run beta:status` → no ⚠️ alias line; one `state: confirmed` |
+| R3 | The roster cannot show an uncontacted person as `invited` (A0.2 clause b) | ❌ not built — `STANDBY_STATES` has no *not-yet-asked* value | `grep -n "STANDBY_STATES = " lib/people/standby-state.ts` |
+| R4 | Signup, sign-in, checkout and the release machine are live-proven on production | ✅ five-walk chain 09-03; `verify:reveal` 20/20; `verify:stripe` contract holds; one live subscription | `tail -1 docs/verify-live-runs.jsonl`; `npm run verify:stripe` |
+| R5 | Every alarm that watches the live system is alive and has been seen red once | ✅ heartbeat (B12.i), KMS wall, reminder observer, orphans, DR absence — each proven both ways | `tail -1 .heartbeat/runs.jsonl`; §2-B rows B4/B13 |
+| R6 | Invitation mail reaches the people it is sent to | 🟡 Gmail yes; **Outlook = Junk by domain reputation, no remedy but volume** (Resend, 09-03). The cohort handoff must say so and prefer the owner arm for Outlook addresses | `docs/outlook-sender-support-submission.md §Outcome log` |
+| R7 | The register is green the day after the sitting | 🟡 three revisits fire 09-13 unless answered | `TZ=UTC npx vitest run lib/ops/revisit-dates.test.ts` |
+| R8 | The page a new owner needs first loads in a real browser | ✅ `/vault/new` → `/auth/signin`, no interstitial, Steve's Chrome 09-10 (Enhanced-protection state unread) | load it |
+
+**Not** required for beta-ready, and deliberately so: the paywall flip (the beta is free by ruling,
+`ratified.beta-free-release`); E1′ live-proof (it matters the day the paywall flips, not before);
+the a11y fixture owner (a CI gate, not a customer path); anything in §2-F/§2-G.
+
+**"Fully functional end to end in beta"** = real people through the whole custodial loop on
+production, not disposables: invitation → claim → confirm → the check-in reminder ladder fires for
+the real owner → a **fire drill** reaches every verifier and they acknowledge → the owner checks in
+and the ladder clears → and the beta's billing question is ruled with evidence, not by default.
+
+**The count: one sprint to beta-ready, three to end-to-end.** Sprints are seven days here because
+the calendar, not the backlog, sets the pace:
+
+- **Sprint 1 (09-10 → 09-17) — beta-ready.** Gated on ~1 hour of Steve's hands at the 09-12
+  sitting (R2) and one S-sized Claude build (R3). Everything else is done or a command.
+- **Sprint 2 (09-17 → 09-24) — real people in the loop.** The cohort's first sends and claims, and
+  **B15.1, the first check-in reminder this product has ever sent, fires 2026-09-21 15:49Z** for the
+  live owner (`npm run check:ladder` prints the date; it moves when the owner signs in). No walk can
+  pull that forward — the sweep writes its row only on delivery and the mailer refuses reserved TLDs.
+- **Sprint 3 (09-24 → 10-01) — beta billing truth.** The 90% rung (09-26), the Phase-0 report, and
+  the **2026-10-01 E4.2 decision** with E4.1 ruled first. E1′ is still `wired`; the honest default
+  on 10-01 is *extend with a dated revisit*, not flip.
+
+Anything shorter than three is a claim that the ladder fired before 09-21 or that the paywall was
+ruled before its evidence — the two things this file exists to stop.
+
+### Sprint 1 — Beta-ready *(calendar: 2026-09-10 → 2026-09-17 · Steve ≈ 1 h **tonight, 2026-09-10** (was the 09-12 sitting — ruled forward 09-10) · Claude: one S build, two chains, the register)*
+
+**Why here:** R1, R4, R5 and R8 are done; R2 needs Steve's people, R3 needs one Claude build, R6 needs
+a sentence in the handoff, R7 needs three register answers by 09-13. Every dated obligation in this
+window (the 09-13 guard, the 09-17 `verify:live` dead-man) sits inside the sprint on purpose.
+
+| # | Item | Court | Measured 2026-09-10 | Done when |
+|---|---|---|---|---|
+| 1.1 | ~~**A0** the six-screen vault walk~~ — ✅ **DONE 2026-08-29**; its `revisit: 2026-09-12` is answered in this revision (`sprint_1_calendar_lapsed.revisit_outcome`) so the guard does not fire on a finished item | done | `verify:dogfood` READY, six counts 1/1/1/1/1/1 | — |
+| 1.2 | **A0.2 (clause a) — the REAL circle.** **Tonight, 2026-09-10** (was the 09-12 sitting): name one real recipient and one real verifier (neither a plus-alias or dot-variant of the owner), issue each a code via `scripts/phase0-invite.ts` (**never** `invite:cohort` for people already in `/circle`), the four-word verification call after each claims. People named here must **not** also appear in `.relay-cohort.json` | steve (Claude drives via Claude-in-Chrome if wanted) | `beta:status`: April + Ben, both ⚠️ owner-alias, `code issued — not yet` | `beta:status` prints no alias warning and one verifier `confirmed`; `adding-a-person-to-the-circle-does-not-invite-them` carries `revisit_outcome:` |
+| 1.3 | **A0.2b (clause b) — a person who was never asked must not read as `invited`.** Add a distinct *not-yet-asked* reading (the roster row exists, no invitation row/audit action) to `standby-state.ts` and the `/circle` screen, so the owner's screen says plainly *nobody has been asked yet*; `beta:status` uses the same derivation. Proof by planted violation first (a NULL-state row rendered as `invited` goes red before the fix) | claude | `readStandbyState(null)` → `invited`; no state value for *not asked* | the test that was red on the plant is green; `beta:status` and `/circle` agree; register clause (b) recorded |
+| 1.4 | **B28 fixture owner — tonight, 2026-09-10.** One dedicated audit-fixture owner account (never a customer — axe prints element HTML into a public log), then `gh secret set A11Y_OWNER_EMAIL`; Claude runs the proof-of-red dispatch and flips `a11y.yml` to fail (not warn) on master when the secret is absent | steve (5 min) → claude | `owner-mode-a11y-is-armed-by-configuration-not-required` open, revisit 09-12, **fires 09-13** | secret set; dispatch red then green; entry closed or its revisit moved with a reason |
+| 1.5 | **D1 + D2 + D19** — the five-walk chain before **2026-09-17 03:19Z**, then `verify:orphans` and `npm run check:subscription -- <owner email>`; `verify:journeys` an hour later (before 09-19 07:53Z) | claude | live stamp 09-03T03:19Z @ `1ae4a0d`; journeys 08-29T07:53Z | both stamps ≥ 09-10; orphans 0; subscription `active` |
+| 1.6 | **R6 — the Outlook sentence.** `docs/beta-cohort-handoff.md` and `docs/first-invitations.md` say: outlook.com/hotmail/live invitees land in Junk by domain reputation (Resend, 09-03); prefer the **owner arm** for them, and tell them to look in Junk if the email arm is used. C2.2/C2.3 struck as moot in §2-C | claude | outcome log had no reply row; C2.2 still open | the sentence is in both docs; §2-C C2 rows closed |
+| 1.7 | **A3.1 → A3.4 — the cohort.** A3.1 roster **tonight, 2026-09-10** (Steve, ~10–20 people, both types, both arms; **Outlook addresses on the owner arm**) · A3.2 dry run (Claude, any day) · A3.3 `--commit` on GO (co-pilot, owner cookie) · A3.4 owner-arm sends (Steve, by design) | steve / co-pilot | `.relay-cohort.json`: 1 person, 08-18, never run; N = 0 since 08-12 | `.relay-cohort-codes.json` exists, or a **dated** fourth deferral is recorded on `ratified.beta-cohort-deferred-four-days` |
+| 1.8 | **E1.8 `stripe login` — tonight, 2026-09-10** (both CLI session keys expire 2026-10-07) | steve (2 min) | `~/.config/stripe/config.toml` expiry 10-07 | `stripe config --list` shows a fresh expiry |
+| 1.9 | **Safe Browsing close-out — tonight, 2026-09-10.** Read `chrome://settings/security`; if Enhanced protection is ON and `/vault/new` still loads clean, close the INCIDENT entry with the two facts; if Standard, record that and keep it open | steve (1 min) | loads clean 09-10; protection level unread | entry closed or its `ends_when` re-dated with a reason |
+
+**Done when (beta-ready):** R1–R8 all ✅ except R6 which is 🟡 by nature — i.e. `verify:dogfood`
+exit 0 · `beta:status` alias-clean with one `confirmed` verifier · the not-yet-asked state shipped ·
+`revisit-dates.test.ts` green on 09-13 · both freshness stamps dated ≥ 09-10 · the Outlook sentence
+in the handoff · the cohort committed or its fourth deferral dated.
+
+### Sprint 2 — Real people in the loop *(calendar: 2026-09-17 → 2026-09-24 · Steve: the sends and the calls · Claude: observe, measure, one instrument)*
+
+| # | Item | Court | Measured 2026-09-10 | Done when |
+|---|---|---|---|---|
+| 2.1 | **A3.4 / A3.5** — owner-arm sends go out; the four-word call after each claim; every claim and call logged | steve (by design) | N = 0 | first arms-length **claim**; first arms-length verifier `confirmed` |
+| 2.2 | **B15.1 — the first reminder ever sent, observed.** The 75% rung fires **2026-09-21 15:49Z** (`check:ladder`); confirm the `owner_checkin_reminder_first` audit row and the delivered mail; **do not sign in as the owner before it fires** (a sign-in moves the rung) | claude (observe); steve (do not touch) | `rungs ever sent 0` | the audit row exists and the mail was seen in an inbox; `the-reminder-ladder-has-never-fired` closed |
+| 2.3 | **The fire drill with the real circle** (`POST /api/fire-drill`, owner-initiated from the product): every verifier who can sign in receives it and **acknowledges**; the response's *did-not-mail* list is empty | steve (press it) · claude (read the audit) | never run with a real person | one drill, every verifier acknowledged — the only reachability evidence this product can produce, produced |
+| 2.4 | **A6 follow-ups** dated **2026-09-22** in `docs/g3-outreach-log.md` (Homethrive, Wellthy, NAC); log every response, including none | steve | 3 sent, 0 replies | three follow-up rows carry an outcome |
+| 2.5 | **E1′ — the handler's first line.** Route 3 after PR #54 returned 200 and *no* loud branch spoke, so the `invoice.payment_failed` case body is never entered. Instrument the handler's first line; one authorised route-3 run (a fresh nod — it writes one fabricated-invoice row to the production audit log); record which branch answers | claude (build) → co-pilot (one run, nod) | E1′ `wired`; six + one deliveries, zero rows | the run prints its branch; the register's `attempted_3` names it — whatever it is |
+| 2.6 | **A1 acceptance watch** — caregiver.com's acceptance window runs to ~09-30; re-verify the outlet's new submission guidelines before any follow-up (they were mid-migration on send day); on acceptance A1.8 (release + byline link) | steve | sent 09-02, no reply | a reply logged in `docs/g1-flight-log.md`, or the 09-30 silence recorded |
+
+**Done when:** one real person has claimed and one real verifier is `confirmed` · the ladder's first
+rung has a row and a seen mail · one fire drill fully acknowledged · G3 follow-ups logged · E1′'s
+branch named.
+
+### Sprint 3 — Beta billing truth *(calendar: 2026-09-24 → 2026-10-01 · co-pilot · the 10-01 decision with its evidence in front of it)*
+
+| # | Item | Court | Measured 2026-09-10 | Done when |
+|---|---|---|---|---|
+| 3.1 | **The 90% rung, 2026-09-26 03:49Z** — second reminder observed the same way as 2.2; then the owner checks in and the ladder clears (the first live ARMED-and-reminded → cleared cycle) | claude (observe) · steve (check in **after** 09-26) | — | `owner_checkin_reminder_final` row; `check:ladder` clean after the check-in |
+| 3.2 | **A3.6 Phase-0 report** (`scripts/phase0-report.ts`) against the pre-recorded ~50% claim-conversion floor; the two security decisions that rest on that number get their first measurement | claude | N = 0 | the report is in `docs/sprint-reports/` with N, claims, confirmations |
+| 3.3 | **E4.1 ruling** — are releases billing-gated on one path or four? Recorded either way; the `/terms` or guide §2.7 sentence is drafted for both answers so the flip commit, if any, is one commit | steve (ruling) → claude (draft) | open, revisit 10-01 | `releases-may-or-may-not-be-billing-gated` carries the ruling |
+| 3.4 | **E4.2 the 10-01 decision**: flip, or **extend with a new dated revisit**. Recommended default: **extend** — E1′ is `wired` (an expired card would become a silently blocked release), N is days old, and `/terms` promises a notice the code cannot yet prove it sends. If flip: E1.3 route 2 first (co-pilot, test clock, disposable owner), then E4.3's one-commit change-set | steve (ruling) → claude | `ratified.beta-free-release.decision_due: 2026-10-01`; **CI red 10-02 if nothing is recorded** | a `revisited:` block on `beta-free-release` with either a new date or the flip PR |
+| 3.5 | ~~E1.8~~ moved to Sprint 1 row 1.8 · **E5** does any billing check join an automated chain (ruling) · **E7** Stripe Tax posture (Claude reads `stripe tax settings retrieve --live` first; Steve rules) | steve | E1.8 expiry 10-07 | both rulings recorded, or parked with dates |
+
+**Done when (end to end in beta):** a real circle has claimed, confirmed and acknowledged a drill ·
+both reminder rungs have fired for the real owner and cleared on check-in · the Phase-0 report
+exists · E4.1 and E4.2 are recorded on 10-01 with their evidence · nothing goes red on 10-02.
+
+<details>
+<summary><strong>Sprints 1–3 as revision 7 wrote them (2026-08-31) — kept as the record; every row's state is carried above</strong></summary>
+
 ### Sprint 1 — The 20 minutes and the 2 minutes *(calendar: 2026-09-12 → ~2026-09-14, the C1.2 purge — the sprint's only hard expiry · Steve ≈ 1 hour in one sitting, plus a second ~1-hour rulings sitting before 2026-10-01 · Claude tails)*
 
 **Why here:** 2026-09-12 is the first day the report-bridge ruling stops applying
@@ -1154,6 +1296,9 @@ is told. 3.1 shows nobody currently can be: the notice path accepts a correctly-
 records nothing, for every payload shape. Flipping on top of that turns an expired card into a
 silently blocked release with **no notification** — the exact failure `/terms` now promises does not
 happen. That is a reason to hold the flip independent of whatever is decided about the beta.
+
+
+</details>
 
 ### Sprint 4 — Recovery proven *(calendar: → 2026-11-08 · co-pilot · one admin session · dated by `gates.d3-restore-drill.due`, a ceiling)*
 
@@ -1344,14 +1489,12 @@ registration. **Claude drafts; a machine-written approach gets the address block
 organisations.**
 
 **B2 · Credential minting** — Claude must never hold these.
-`E1.7` the restricted read-only Stripe key (permissions written out in `docs/stripe-setup.md`) ·
+~~`E1.7` the restricted read-only Stripe key~~ ✅ **minted — `verify:stripe` reads via `STRIPE_READONLY_KEY` (measured 09-10)** ·
 `E1.8` `stripe login` **before 2026-10-07**, when both CLI session keys expire and the billing
 contract has no non-dashboard read path at all · `D21` a runner credential, if B28 is wanted.
 
 **B3 · A dashboard with no API path.**
-🔴 `A7.0` **enable Vercel Web Analytics** — measured again tonight as `web_analytics_not_enabled`
-while the page fires both events perfectly. **It does not retro-collect, so it must happen before
-the op-ed goes out**, not on placement day · `E1.5` Stripe reads #3 (receipts) and #4 (endpoint
+~~🔴 `A7.0` **enable Vercel Web Analytics**~~ ✅ **done 2026-09-02, and before the op-ed send** (funnel exit 0 with `FUNNEL_COLLECTION=enabled`) · `E1.5` Stripe reads #3 (receipts) and #4 (endpoint
 failure notifications) · the **Safe Browsing** false-positive report (an INCIDENT entry, no ROADMAP
 row — ⚠️ it was mislabelled “G6” in the readiness page; ROADMAP's G6 is entity and insurance).
 
@@ -1388,14 +1531,17 @@ not a header flip) · `B38`, `B39`, `B40`, `B41`, `B42`.
 
 **Every one of these waits on something being sent, and every send is in section B.**
 
-### If only five things happen
+### If only five things happen *(re-drawn 2026-09-10 — the previous five are four-fifths done and one half done; see the revision-8 header)*
 
-1. **Enable Vercel Web Analytics** — one toggle, and it gates the measurement the whole D2C branch is decided on. It does not retro-collect.
-2. **The op-ed voice pass and send** — §1a edit included. Everything in Sprint 5 is downstream of it.
-3. **Mint the restricted Stripe key**, and `stripe login` — hard deadline **2026-10-07**.
-4. ~~**Rule G4/G5**~~ ✅ ruled 2026-09-01 — G4 = billing MVP, G5 = audited crypto.
-5. **The three G3 first contacts** — drafted, routes verified, log ready.
+1. **Name and invite the real circle tonight, 2026-09-10** (Sprint 1 row 1.2; was the 09-12 sitting, ruled forward) — one recipient, one verifier, neither an alias of you; the four-word call when each claims. It is R2, and it is the only beta-ready condition that needs your hands.
+2. **Name the a11y fixture owner tonight** (row 1.4) — one dedicated account, one `gh secret set`. Five minutes, and the register goes red on 09-13 without it.
+3. **The cohort roster tonight** (row 1.7) — ten to twenty names with type and arm, Outlook addresses on the owner arm. Without it Sprint 2 has nobody in it.
+4. **Do not sign in as the owner between 09-17 and 09-21** — the first reminder this product has ever sent fires 2026-09-21 15:49Z and a sign-in moves it. The cheapest item on this list is not doing something.
+5. **`stripe login` tonight** (row 1.8) — the keys expire 2026-10-07 and there is no reason to wait for the week it expires.
 
+> *The previous five, for the record:* Web Analytics ✅ 09-02 · the op-ed ✅ sent 09-02 · restricted Stripe key ✅ (`verify:stripe` reads via it) + `stripe login` ⏳ · G4/G5 ✅ 09-01 · the three G3 contacts ✅ 09-01/02.
+
+**Claude-court rows opened by the beta sprints (§3, revision 8), named here so the court guard sees them:** row **1.3** (A0.2b, the not-yet-asked state) · row **1.5** (D1/D2/D19 chains) · row **1.6** (the Outlook sentence) · row **2.2** (observe B15.1) · row **2.5** (E1′ first-line instrument, build half) · row **3.1** (observe the 90% rung) · row **3.2** (A3.6 report).
 
 ## 4. Dated obligations calendar — a rendering; `PROJECT.yaml` and the named files win
 
@@ -1417,11 +1563,19 @@ be re-derived rather than trusted.
 | ~~2026-09-06 04:32Z~~ | ~~the 90% rung~~ — same correction: not a candidate until A0 | — | as above |
 | ~~**~2026-09-08**~~ | ~~`verify:live` freshness dead-man~~ — **SUPERSEDED: the chain was run 2026-08-29**, so it now fires **2026-09-12 07:45Z** | claude | `tail -1 docs/verify-live-runs.jsonl` + 14 d |
 | 2026-09-09 04:32Z | the live owner goes **overdue**. The sweep selects them and **transitions nothing** — they hold 0 `release_state` rows. Recorded because the opposite was briefly believed | — | `heartbeat.ts` inner query; `relay_ro` read 08-29 |
-| **2026-09-12 07:45Z** | `verify:live` freshness dead-man fires (14 d from the 08-29 stamp) | claude | `lib/ops/verify-live-freshness.ts` |
+| ~~**2026-09-12 07:45Z**~~ | ~~`verify:live` freshness dead-man fires (14 d from the 08-29 stamp)~~ — **SUPERSEDED: the chain ran 2026-09-03** (stamp `1ae4a0d`); fires **2026-09-17 03:19Z** | claude | `tail -1 docs/verify-live-runs.jsonl` + 14 d |
+| **2026-09-10 (evening)** | **The hands-on sitting, pulled forward from 09-12 by ruling** — the real circle (row 1.2), the a11y fixture owner (1.4), the cohort roster (1.7), `stripe login` (1.8), the Safe Browsing read (1.9); ~1 h | steve | `docs/sitting-2026-09-12.md` (the run sheet keeps its filename; its banner says tonight) |
+| ~~**2026-09-12**~~ | ~~Sitting A — the real circle and the a11y fixture owner~~ — **moved to 2026-09-10 evening** (above). The date remains the `revisit:` on two register entries; an early answer satisfies it | steve | `docs/sitting-2026-09-12.md` |
+| **2026-09-13** | `revisit-dates.test.ts` fires on any `revisit: 2026-09-12` without an acknowledgement — A0.2 and the a11y fixture entry (A0's own was answered in revision 8) | steve → claude (record) | `TZ=UTC npx vitest run lib/ops/revisit-dates.test.ts` |
+| **2026-09-17 03:19Z** | `verify:live` freshness dead-man fires (14 d from the 09-03 stamp) | claude | `lib/ops/verify-live-freshness.ts` |
 | **2026-09-12** | report-bridge precedence lifts → **Sprint 1** (A0, mailbox, rulings) and **Sprint 2** open. ⚠️ Nothing turns red on this date (A0.dm) | steve | `deferred.the-owners-vault-is-empty.sprint_1_calendar_lapsed.revisit` |
 | ~~**~2026-09-14..16**~~ | ~~three DMARC reports purge from Trash~~ — 🔴 **FALSE. Nothing is in Trash**; all 10 reports are retained and labelled. There is no rescue left and no clock. The real finding: `_dmarc` carries no `rua=`, so **the feed is dead** and the newest report is 2026-08-17 | steve (the DNS record) | `in:trash` returns nothing; DoH read 08-29 |
 | ~~~2026-09-24~~ | ~~the 08-25 KMS-wall red-proof mail purges from Trash~~ — 🔴 **FALSE.** That thread carries no TRASH label; B10's premise was wrong and delivery is proven working (§0.0 row 1) | — | Gmail read 08-29 |
 | **2026-09-19 07:53Z** | `verify:journeys` freshness dead-man fires (21 d from the 08-29 stamp) | claude | `lib/ops/verify-journeys-freshness.ts` |
+| **2026-09-21 15:49Z** | **B15.1 — the first check-in reminder ever sent** (75% rung, live owner). Moves if the owner signs in first | claude (observe) | `npm run check:ladder` |
+| **2026-09-22** | G3 follow-ups: Homethrive, Wellthy, NAC | steve | `docs/g3-outreach-log.md` |
+| **2026-09-26 03:49Z** | the 90% rung (final reminder) for the live owner | claude (observe) | `npm run check:ladder` |
+| ~2026-09-30 | caregiver.com acceptance window closes (send 09-02 + 4 wk); silence is recorded, not assumed | steve | `docs/g1-flight-log.md` |
 | 2026-09-30 | `gates.g2-counsel-opinion.due` — **declined**; the date survives as a record | — | register |
 | **2026-10-01** | `ratified.beta-free-release` revisit → E4.2 decision; **E4.1 must precede it**; Sprint 2's send-by (derived, Steve to confirm) | steve | register; §3 Sprint 2 |
 | ~~**2026-10-02 → 10-03**~~ | ~~CI goes red unless B30 lands~~ — ✅ **CLOSED 2026-08-29 (PR #25).** The parser treats `superseded_by:` as a stopped clock, pinned by a test asserting against 2026-10-03 specifically | — | `lib/ops/gates.test.ts` |
@@ -1481,7 +1635,7 @@ be re-derived rather than trusted.
 > is in Sprint 0 and is not repeated here. Where an item has a Claude half, the row says what is
 > already prepared. ⏱️ is an honest estimate assuming nothing goes wrong.
 
-### Sitting A — 2026-09-12 · the vault · ⏱️ ~20 min · **unblocks the most**
+### Sitting A — ~~2026-09-12~~ **tonight, 2026-09-10** (ruled forward 09-10) · ~~the vault~~ the real circle — the vault half was done 08-29 · ⏱️ ~1 h all in · **unblocks the most**
 
 - [ ] **A0** Walk `docs/vault-checklist-sprint-1.md` at relaystandby.com: two real items (one login
       with secret + 2FA seed + recovery codes; one document/instruction), **Needs a code?** answered,

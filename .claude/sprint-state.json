@@ -1,54 +1,61 @@
 {
   "_comment": [
-    "Rewritten 2026-08-31 (D17, second rewrite). The 08-29 rewrite described Sprint 0 against",
-    "ROADMAP revision 4; the roadmap is now at revision 7+ and Sprint 0 is closed, so /sprint",
-    "would have resumed into a finished sprint. The current backlog is ROADMAP.md §3.5 — the",
-    "court split PR #50 introduced — and this file records the execution of its Claude-court",
-    "ready lane (A1–A11).",
+    "Rewritten 2026-09-10 (D17, third rewrite). The 08-31 rewrite recorded the §3.5 Claude-court",
+    "ready lane; that lane is spent (see rowsClosed below, unchanged from 08-31). ROADMAP revision 8",
+    "re-baselined §3 as three seven-day BETA sprints with a measured beta-ready definition, so this",
+    "file now points at Sprint 1 of that plan.",
     "",
     "DO NOT hand-edit the shipped list to look tidy. This records what ran, and its value is that",
     "it can be checked against `git log` — every entry below carries the merged PR."
   ],
   "branch": "master",
-  "backlogSource": "ROADMAP.md §3.5 A — Claude's court (revision 7, court split added in PR #50, 2026-08-31)",
-  "sprint": "The §3.5 Claude-court ready lane",
-  "calendar": "2026-08-31; the next dated sprint is ROADMAP §3 Sprint 1, opening 2026-09-12",
-  "court": "claude — nothing needed from Steve",
+  "backlogSource": "ROADMAP.md §3 — 'What beta-ready means' + Sprint 1 (revision 8, 2026-09-10)",
+  "sprint": "Beta Sprint 1 — beta-ready",
+  "calendar": "2026-09-10 → 2026-09-17; Sprint 2 (real people in the loop) 09-17 → 09-24; Sprint 3 (beta billing truth) 09-24 → 10-01",
+  "court": "steve ≈ 1 h TONIGHT 2026-09-10 (rows 1.2, 1.4, 1.7, 1.8, 1.9 — ruled forward from the 09-12 sitting); claude: rows 1.3, 1.5, 1.6",
+  "betaReadyConditions": {
+    "R1 vault real": "✅ verify:dogfood READY (09-10)",
+    "R2 real circle, verifier confirmed": "❌ two owner aliases — Steve, tonight 09-10",
+    "R3 not-yet-asked roster state": "❌ not built — Claude, row 1.3",
+    "R4 signup/checkout/release live-proven": "✅ chain 09-03; verify:stripe holds",
+    "R5 alarms alive and seen red": "✅ heartbeat stamp ok 09-10",
+    "R6 invitation mail reaches people": "🟡 Outlook = Junk by reputation, no remedy (Resend 09-03) — handoff sentence, row 1.6",
+    "R7 register green on 09-13": "🟡 A0 answered in this revision; A0.2 + a11y fixture entry are Steve's",
+    "R8 /vault/new loads in a real browser": "✅ Steve's Chrome 09-10, no interstitial; Enhanced-protection state unread"
+  },
+  "sprintCount": "1 sprint to beta-ready; 3 to end-to-end in beta — bounded by B15.1 (2026-09-21 15:49Z, first reminder ever) and E4.2 (2026-10-01)",
   "rowsClosed": [
     { "row": "A7/B23", "title": "MAX_STANDBY cap + rule-4-shaped refusal in claimStandbyRole", "pr": 51, "date": "2026-08-31" },
     { "row": "A2/B32", "title": "CI workflows 22→24, @types/node ^24; engines >=22 kept as local floor", "pr": 51, "date": "2026-08-31" },
     { "row": "A5/D19", "title": "check:subscription npm script (.env.ro) with its occasions in §5", "pr": 51, "date": "2026-08-31" },
     { "row": "A4/C1.4", "title": "the DMARC restoration drift corrected (deliverability doc + checklist header)", "pr": 51, "date": "2026-08-31" },
     { "row": "A9/D2", "title": "verify:orphans ran clean — 0 reserved-domain accounts, 0 dangling rows", "pr": 51, "date": "2026-08-31" },
-    { "row": "A8/D17", "title": "this file re-derived", "pr": 51, "date": "2026-08-31" }
-  ],
-  "rowsAlreadyDoneWhenTheTableWasDrawn": [
-    { "row": "A1/B13", "note": "proven red 2026-08-29 by run id (canary 33237399208; monitors 33237979699 / 33237980971); the date-guards half is RULED WAIT (Steve 08-29 — the pre-push hook reads the same suite the planted gate breaks)" },
-    { "row": "A3/B37", "note": "both scripts bannered 2026-08-29; verified live 08-31" },
-    { "row": "A6/D27", "note": "closed 2026-08-29 in PROJECT.yaml, both debts measured" },
-    { "row": "A10/D18", "note": "unit-economics has said `pro` VERIFIED since 08-29" }
+    { "row": "A8/D17", "title": "this file re-derived", "pr": 51, "date": "2026-08-31" },
+    { "row": "B12.i", "title": "off-GitHub heartbeat installed and scheduler-stamped", "pr": 56, "date": "2026-09-02" },
+    { "row": "B5.1 phase B", "title": "decrypt path reads the era; deployed and proven 20/20 on production", "pr": 58, "date": "2026-09-03" },
+    { "row": "D21", "title": "relay_ro runner identity via OIDC, both regions, five principals hold", "pr": 60, "date": "2026-09-03" }
   ],
   "rowsOpen": [
-    {
-      "row": "A11/C1.3",
-      "title": "the 08-17 Microsoft DMARC report — the A/B pass/pass question",
-      "note": "FOUND 2026-08-31 (message 1a00e72c9417ac7b, window 08-15..16 UTC, labeled, NOT in Trash) and unreadable at the last hop: the Gmail connector has no attachment-download tool and a RAW-MIME transcription failed its own gzip CRC. Remaining: ~30s download in the Gmail UI (§6 Sitting B), then Claude gunzips and reads the rows."
-    },
-    {
-      "row": "A12/D12",
-      "title": "major-version currency (next-auth v4, React 18 under Next 16)",
-      "note": "⛔ recorded, not scheduled — barred by the Infrastructure Change Policy without a documented problem; reopens on a Dependabot advisory (which is why B27's remaining half matters)."
-    }
-  ],
-  "blockedOnExactlyOneThing": [
-    { "id": "B27", "waitingOn": "Steve's nod — one `gh api PATCH` each" },
-    { "id": "B28", "waitingOn": "D21 — a database credential on a runner, Steve's call" },
-    { "id": "B11.2", "waitingOn": "2026-09-02 — the pack says not before" },
-    { "id": "B15.1", "waitingOn": "2026-09-21 — the live owner's 75% rung; no walk can substitute" }
+    { "row": "1.3 / A0.2b", "title": "a never-asked person must not read as `invited` (standby-state + /circle + beta:status)", "note": "S; proof by planted violation first" },
+    { "row": "1.5 / D1+D2+D19", "title": "verify:live before 2026-09-17T03:19Z; verify:journeys before 09-19T07:53Z; orphans; check:subscription", "note": "10 signups/h ceiling — one chain per hour" },
+    { "row": "1.6 / R6", "title": "the Outlook sentence in beta-cohort-handoff.md + first-invitations.md; C2.2/C2.3 struck", "note": "doc only" },
+    { "row": "A12/D12", "title": "major-version currency (next-auth v4, React 18 under Next 16)", "note": "⛔ recorded, not scheduled — Infrastructure Change Policy" }
   ],
   "blockedOnSteve": [
-    { "id": "A7.0", "what": "enable Vercel Web Analytics for the relay project", "why": "hard precondition of Sprint 5; it does not retro-collect, so it must precede the op-ed send", "where": "ROADMAP.md §6 Sitting E" },
-    { "id": "E1.7", "what": "mint a restricted read-only Stripe key", "why": "verify:stripe is live-proven but unschedulable; the CLI fallback expires 2026-10-07", "where": "ROADMAP.md §6 Sitting E" },
-    { "id": "A0.2", "what": "send the invitations — nobody has been asked", "why": "quorum M=0 vs N=1; no release can complete until a verifier reaches confirmed", "where": "ROADMAP.md §6 Sitting A" }
+    { "id": "A0.2", "what": "name + invite the real circle; four-word call → verifier confirmed", "why": "R2 — the only beta-ready condition needing his hands; revisit fires 09-13", "where": "docs/sitting-2026-09-12.md" },
+    { "id": "B28", "what": "one dedicated a11y fixture owner → gh secret set A11Y_OWNER_EMAIL", "why": "revisit fires 09-13; owner-mode a11y stays warn-only until then", "where": "ROADMAP Sprint 1 row 1.4" },
+    { "id": "A3.1", "what": "the cohort roster (.relay-cohort.json)", "why": "Sprint 2 has nobody in it otherwise; N = 0 since 08-12", "where": "docs/beta-cohort-handoff.md" },
+    { "id": "E1.8", "what": "stripe login", "why": "CLI keys expire 2026-10-07", "where": "ROADMAP Sprint 1 row 1.8" },
+    { "id": "E4.1/E4.2", "what": "billing-gated on 1 or 4 paths; flip or extend on 10-01", "why": "CI red 10-02 if unrecorded; E1′ still wired", "where": "ROADMAP Sprint 3 rows 3.3/3.4" }
+  ],
+  "datedInsideTheSprints": [
+    { "date": "2026-09-13", "what": "revisit guard fires for A0.2 and the a11y fixture entry if unanswered" },
+    { "date": "2026-09-17T03:19Z", "what": "verify:live dead-man" },
+    { "date": "2026-09-19T07:53Z", "what": "verify:journeys dead-man" },
+    { "date": "2026-09-21T15:49Z", "what": "B15.1 first reminder ever (75% rung) — moves on owner sign-in" },
+    { "date": "2026-09-22", "what": "G3 follow-ups" },
+    { "date": "2026-09-26T03:49Z", "what": "90% rung" },
+    { "date": "2026-10-01", "what": "E4.2 decision_due" },
+    { "date": "2026-10-07", "what": "Stripe CLI keys expire" }
   ]
 }
