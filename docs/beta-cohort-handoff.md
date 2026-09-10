@@ -64,6 +64,15 @@
      that matters first is *does anyone claim at all*, not the split. The split gets interesting
      past ten.
 
+   ⚠️ **Outlook, Hotmail, Live and MSN addresses go on the `owner` arm.** Microsoft files every
+   message from this domain to Junk at SCL 5, and Resend confirmed in writing on 2026-09-03 that
+   this is *no reputation, not a penalty* — there is no mitigation request to file and no IP to
+   fix; only months of volume and engagement change it. An `email`-arm invitation to one of those
+   addresses is a code in a Junk folder, and the funnel would count it as "sent". If you must use
+   the email arm for one of them, tell the person to look in Junk **before** you send, and to drag
+   it to Inbox — that drag is the one signal Microsoft weighs. Record:
+   `docs/outlook-sender-support-submission.md §Outcome log`.
+
 2. **Set your display name first** if it is not set: Account → Your name. Without it, every message
    and every screen your people see says your email address instead.
 
