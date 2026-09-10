@@ -22,6 +22,13 @@ to send.
    number that matters first is *does anyone claim at all*, not the split. The split gets interesting
    past ten.
 
+   ⚠️ **For an Outlook, Hotmail, Live or MSN address, choose "I will tell them myself".** Microsoft
+   files everything from this domain to Junk at SCL 5, and Resend confirmed on 2026-09-03 that this
+   is *no reputation, not a penalty*: nothing to appeal, nothing to fix, only volume and engagement
+   over months. "Email it to them" puts the code in their Junk folder and reports success. If you
+   email one anyway, say **before** sending that it will land in Junk and ask them to drag it to
+   Inbox — that drag is the one signal Microsoft weighs.
+
 ⚠️ **The code is readable exactly once**, at the moment you issue it — only a hash is stored. Copy it
 before you close the panel.
 
@@ -138,9 +145,10 @@ treatment: reject and reissue.
 
 - **Accepting grants nothing.** They get a free standby account that holds nothing of theirs. It
   exists so that on the bad day they sign in as themselves rather than being emailed a credential.
-- **Email is the part that fails.** Outlook files us at spam-confidence 5, and a previously bounced
-  address is muted permanently with no error. If you email a code and nothing happens within a day,
-  assume the channel and not the person.
+- **Email is the part that fails.** Outlook files us at spam-confidence 5 — by domain reputation,
+  not by anything fixable (Resend, 2026-09-03) — and a previously bounced address is muted
+  permanently with no error. If you email a code and nothing happens within a day, assume the
+  channel and not the person, and for a Microsoft address assume Junk.
 - **Two verified verifiers is the first real milestone.** One works; two means your plan survives one
   of them being on the same flight as you.
 - **Ask them to add a passkey** when they accept. It is what lets them back in on a new phone without
