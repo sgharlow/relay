@@ -39,6 +39,7 @@ interface CircleData {
     role: string;
     email: string;
     standby_state?: string;
+    ever_invited?: boolean;
     break_glass_only?: boolean | null;
   }[];
   verifiers: {
@@ -46,6 +47,7 @@ interface CircleData {
     name: string;
     email: string;
     standby_state?: string;
+    ever_invited?: boolean;
     break_glass_only?: boolean | null;
   }[];
   policyCount: number;

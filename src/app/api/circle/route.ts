@@ -101,7 +101,7 @@ export async function GET(): Promise<NextResponse> {
     .filter((id): id is string => Boolean(id));
   const personIds = [...recipients.rows, ...verifiers.rows].map((p) => p.id);
 
-  const [passkeyRows, codeRows] = await Promise.all([
+  const [passkeyRows, codeRows, invitedRows] = await Promise.all([
     claimedUserIds.length
       ? query<{ user_id: string }>(
           `SELECT DISTINCT user_id FROM webauthn_credentials WHERE user_id = ANY($1)`,
@@ -116,10 +116,25 @@ export async function GET(): Promise<NextResponse> {
           [personIds],
         )
       : Promise.resolve({ rows: [] as { person_id: string }[] }),
+    /*
+      A0.2b. WAS ANYBODY EVER ASKED. On the owner-delivered arm creating a person
+      mints nothing, so a roster row with no invitation is the normal state of a
+      freshly-added person — and until 2026-09-10 the screen rendered them as
+      "has not accepted yet". Any invitation ever issued counts, spent or
+      expired: the question is whether the owner ever asked, not whether the
+      ticket is still live (`isUnreachable` answers that one).
+    */
+    personIds.length
+      ? query<{ person_id: string }>(
+          `SELECT DISTINCT person_id FROM invitations WHERE owner_id = $1 AND person_id = ANY($2)`,
+          [auth.ownerId, personIds],
+        )
+      : Promise.resolve({ rows: [] as { person_id: string }[] }),
   ]);
 
   const withPasskey = new Set(passkeyRows.rows.map((r) => r.user_id));
   const withCode = new Set(codeRows.rows.map((r) => r.person_id));
+  const everInvited = new Set(invitedRows.rows.map((r) => r.person_id));
 
   /*
     THE ONE REACHABILITY SIGNAL A JUNKED MESSAGE CANNOT FAKE. Everything else on
@@ -189,6 +204,8 @@ export async function GET(): Promise<NextResponse> {
         // back in EXISTS, and knowing more than that would not help them.
         has_passkey: Boolean(claimed_user_id && withPasskey.has(claimed_user_id)),
         has_break_glass: withCode.has(person.id),
+        // Whether the owner ever issued this person a code. False = nobody asked.
+        ever_invited: everInvited.has(person.id),
         // null = we have not heard. Never rendered as reassurance.
         delivery:
           deliveryByEmail.get(String((person as { email?: unknown }).email ?? '').toLowerCase()) ??

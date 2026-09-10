@@ -27,6 +27,7 @@ import DrillLine from './DrillLine';
 import SecondAddressControl from './SecondAddressControl';
 import FireDrillControl from './FireDrillControl';
 import DrillCard from '../../(access)/standby/DrillCard';
+import { StandbyLight } from './PeopleSections';
 
 const noop = async () => {};
 
@@ -173,5 +174,31 @@ describe('DrillCard (the verifier side)', () => {
     expect(markup).not.toContain('<a ');
     expect(markup).not.toContain('token=');
     expect(markup).not.toContain('<input');
+  });
+});
+
+/*
+  A0.2b (2026-09-10). The red light said "Has not accepted yet — give them their
+  code" for a person who had been sent NOTHING. On the owner arm that is every
+  freshly-added person, so the one screen whose job is to tell an owner whether
+  their circle is real told them somebody was ignoring them.
+*/
+describe('StandbyLight — a person nobody has asked is not "not accepted yet"', () => {
+  it('says plainly that nobody has been asked when no invitation was ever issued', () => {
+    const out = text(renderToStaticMarkup(<StandbyLight state={undefined} everInvited={false} />));
+    expect(out.toLowerCase()).toContain('not asked yet');
+    expect(out.toLowerCase()).not.toContain('not accepted');
+  });
+
+  it('keeps the has-not-accepted wording once an invitation exists', () => {
+    const out = text(renderToStaticMarkup(<StandbyLight state="invited" everInvited={true} />));
+    expect(out).toContain('Has not accepted yet');
+  });
+
+  it('is unchanged for a claimed or confirmed person whatever the invitation record says', () => {
+    const claimed = text(renderToStaticMarkup(<StandbyLight state="claimed" everInvited={false} />));
+    expect(claimed).toContain('Accepted');
+    const confirmed = text(renderToStaticMarkup(<StandbyLight state="confirmed" everInvited={false} />));
+    expect(confirmed).toContain('Verified');
   });
 });

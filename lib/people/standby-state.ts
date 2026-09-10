@@ -81,6 +81,31 @@ export function isUnreachable(
   return expiry <= now.getTime();
 }
 
+/**
+ * The roster READING, which is one value wider than the stored state.
+ *
+ * `readStandbyState(null)` is `invited` on purpose (no backfill for 020). But on
+ * the owner-delivered arm — the beta default — creating a person mints NOTHING,
+ * so a fresh row sits at `invited` with no invitation ever issued, and the
+ * screen could not tell that person from one who was emailed and has not
+ * replied. Two people in the live owner's circle read "invited" for eleven days
+ * and were understood, out loud, as "asked and not answering". Nobody had asked.
+ *
+ * DERIVED, never stored, like `isUnreachable`: whether anyone was ever asked is
+ * a fact the `invitations` table holds, and the caller passes it in. The state
+ * column is not widened — a stored "not_asked" would need a writer on every
+ * invitation path and would drift the first time one was added.
+ *
+ * Claimed, confirmed and revoked are never demoted: each implies a ticket
+ * existed, and a missing ticket row must not un-bind an identity.
+ */
+export type RosterReading = StandbyState | 'not_asked';
+
+export function readRosterState(raw: unknown, everInvited: boolean): RosterReading {
+  const s = readStandbyState(raw);
+  return s === 'invited' && !everInvited ? 'not_asked' : s;
+}
+
 export type CircleLight = 'red' | 'amber' | 'green';
 
 /**
@@ -92,8 +117,8 @@ export type CircleLight = 'red' | 'amber' | 'green';
  * matters, and the owner deserves to see that as one glance rather than a status
  * vocabulary they have to learn.
  */
-export function circleLight(state: StandbyState): CircleLight {
+export function circleLight(state: RosterReading): CircleLight {
   if (state === 'confirmed') return 'green';
   if (state === 'claimed') return 'amber';
-  return 'red'; // invited or revoked — either way, cannot act
+  return 'red'; // not_asked, invited or revoked — either way, cannot act
 }
