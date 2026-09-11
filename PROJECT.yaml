@@ -2076,6 +2076,29 @@ deferred:
       the audit step and the .env.local it writes. The signed-out half was clean throughout (0
       serious/critical violations across 18 pages). Closes only when both dispatches are re-run on
       master with the fix and read line by line.
+    closed:
+      date: 2026-09-10
+      how: >-
+        Both halves of ends_when, measured on master after PR #69 (merge 9b4e879). (1)
+        `A11Y_OWNER_EMAIL` names the dedicated audit-fixture owner, which holds no vault data. (2)
+        a11y.yml now FAILS on master when any of the three owner-mode values is unset, instead of
+        warning. That branch has not been exercised live, because proving it would mean deleting
+        a secret; it is stated here rather than implied.
+      proof_of_red: >-
+        Run 34561924459, dispatched from master with dsql_role=relay_ro_nope. It went RED for the
+        right reason this time: `DSQL_ROLE: relay_ro_nope` -> `FAILED: unable to accept connection,
+        access denied` -> "OWNER MODE WAS REQUIRED AND WAS NOT AUDITED". The cluster refused the
+        role; no configuration error was involved. (The first attempt, 34560241176, was red for the
+        missing secondary endpoint and is NOT this proof. See found_2026_09_10.)
+      then_green: >-
+        Run 34562079649, dispatched from master with the default role: "Owner mode WILL be audited",
+        all nine owner pages clean (/vault, /vault/new, /circle, /rules, /triggers, /approvals,
+        /account, /audit, /import), "0 serious/critical violation type(s) across 36 pages". The
+        master push run for the merge, 34561410706, showed the same before it. Red before green, as
+        d21 section 7 step 6 requires.
+    revisit_outcome: >-
+      Answered 2026-09-10 by closing: see `closed`. Owner mode is audited on every master push from
+      here on.
     revisit: 2026-09-12
 
   - id: the-route-guard-watched-one-calling-convention          # ROADMAP D25 tail
