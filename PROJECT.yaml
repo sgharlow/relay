@@ -2061,6 +2061,21 @@ deferred:
     ends_when: >-
       A11Y_OWNER_EMAIL names a dedicated audit-fixture owner AND a11y.yml treats its absence on
       master as a failure, not a ::warning::.
+    found_2026_09_10: >-
+      The fixture owner was created (an empty account on a plus-alias of Steve's own address, never a
+      customer) and `A11Y_OWNER_EMAIL` set. `verify:iam` (5 principals) and `verify:roles` (both
+      regions) held first. Then BOTH d21 step-6 dispatches FAILED IN THE MINT, before touching the
+      database: run 34560241176 (dsql_role=relay_ro_nope) and run 34560461944 (default) each
+      printed `FAILED: DSQL_SECONDARY_ENDPOINT is not set`. So the proof-of-red proved NOTHING about
+      role refusal; it was red for a configuration reason, and the session briefly reported it as
+      proven before reading the log line underneath. Root cause, reproduced locally by changing one
+      variable: lib/db/connection.ts getPool() rule 3 sends a query to the SECONDARY pool whenever
+      the primary has no connections yet, which is every fresh process, and a11y.yml supplied only
+      the primary endpoint. Without the secondary the local mint fails identically; with it, it
+      mints. Fix: `DSQL_SECONDARY_ENDPOINT` secret set, and passed by a11y.yml to the arming check,
+      the audit step and the .env.local it writes. The signed-out half was clean throughout (0
+      serious/critical violations across 18 pages). Closes only when both dispatches are re-run on
+      master with the fix and read line by line.
     revisit: 2026-09-12
 
   - id: the-route-guard-watched-one-calling-convention          # ROADMAP D25 tail
@@ -2432,7 +2447,27 @@ deferred:
       the walk had just typed into the real form; `verify:orphans` clean after. So clause (b)
       is live-proven on both surfaces. Clause (a) -- a real verifier reaching `confirmed` --
       is unchanged and is Steve's.
-    revisit: 2026-09-12
+    sitting_a_2026_09_10: >-
+      Sitting A ran on the evening of 2026-09-10, co-piloted through the browser plugin in Steve's own
+      owner session. The two owner plus-aliases were REMOVED and the real circle NAMED: one real
+      recipient and one real verifier, neither an alias of the owner. `npm run beta:status` printed
+      no owner-alias warning for either, the first time it has been clean. Names and addresses are
+      withheld here because this repository is public. The verifier's mailbox is on a different
+      domain from the owner's, which the alias guard cannot judge, so it was ASKED: Steve confirmed it
+      is the verifier's own mailbox and not one he can read. Removing the aliased recipient cascaded
+      the only access rule, so it was re-created (gmail -> the real recipient, emergency, act,
+      reversible, release after 0); `npm run verify:dogfood` READY afterwards. Both codes were issued
+      from /circle with "I will tell them myself" (the owner channel) and handed over by Steve;
+      `beta:status` shows "code issued (owner channel)" for both, and neither has claimed yet.
+      Clause (a) is therefore NOT met: the verifier still has to claim and pass the four-word call
+      before quorum is satisfiable. The cost, accepted by Steve before signing in: the sign-in and the
+      edits reset `last_active_at`, so B15.1's first reminder moved from 2026-09-21 to about
+      2026-10-03 (see `the-reminder-ladder-has-never-fired.redated_2026_09_10`).
+    revisit: 2026-09-17
+    revisit_moved_2026_09_10: >-
+      Moved from 2026-09-12, deliberately NOT answered: the circle is real but the verifier has not
+      claimed, and an acknowledgement key would silence this entry for good. 09-17 is the end of
+      Sprint 1, when beta-ready is due. If the verifier is not `confirmed` by then, that is the finding.
   - id: secret-kinds-declaration-is-opt-in-by-discovery      # "D3"
     owner: claude
     opened: 2026-08-18
@@ -5297,6 +5332,20 @@ deferred:
       dashboards already say there is nothing wrong. Getting there means a false-positive report
       submitted and accepted, and probably some domain reputation accruing. If Google's response
       names content we control, that ships first and the report is re-sent after.
+    closed:
+      date: 2026-09-10
+      how: >-
+        By LOADING IT, as ends_when demands. Around 2026-09-11 04:00Z, `https://relaystandby.com/vault/new`
+        was opened in Steve's real Chrome (the plugin-connected "Browser 1", signed in as the owner)
+        and rendered the Add item form (title, type, secret value, "Save item") with no interstitial.
+        Enhanced protection is ON in that Chrome per Steve. chrome://settings cannot be read by the
+        browser plugin, so that half is his report, not a machine read. The page had also loaded clean
+        earlier on 09-10; tonight's load is the first with Enhanced confirmed ON.
+      what_is_not_known: >-
+        Why the verdict cleared. No false-positive report was sent, and nothing on the page changed.
+        The diagnosis above (a per-URL real-time classification on a young domain) allows it to
+        lapse on its own, but that is consistent with the outcome, not proven by it. If the
+        interstitial comes back, re-open this entry rather than starting a new one.
 
   - id: the-readiness-banner-goes-stale-for-the-whole-session
     owner: claude
@@ -5449,6 +5498,15 @@ deferred:
       live owner, and the mail in the inbox - and the thing worth building BEFORE then is
       something that notices whether it fired, because the failure is silent by design and nobody
       will be watching at 15:49 on a Monday.
+    redated_2026_09_10: >-
+      ⚠️ The 2026-09-21T15:49Z date above is STALE. Sitting A (A0.2) needed the owner to sign in and
+      change the roster and the rules, and both reset `last_active_at`: lib/auth/upsert-user.ts on
+      every sign-in, lib/release/liveness.ts on every deliberate write. `npm run check:ladder`, run
+      after the last owner action of the night, printed 2026-10-03T15:36:20Z (75%) and
+      2026-10-08T03:36:20Z (90%). Steve accepted the slip before signing in. It will move AGAIN when
+      the owner confirms the verifier (A0.2 clause a), so re-derive the date rather than quoting this
+      one. The planning note that said "do not sign in 09-17..09-21" undercounted the rule: ANY owner
+      sign-in or change moves the rung, whenever it happens.
 
   - id: the-iam-wall-is-the-only-wall-nothing-schedules     # ROADMAP B16, residue
     owner: steve                          # a new IAM role is infrastructure; claude builds after
