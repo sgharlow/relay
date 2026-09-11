@@ -200,6 +200,9 @@ see the note under the status line.
 
 ```
 secrets.DSQL_PRIMARY_ENDPOINT   the primary cluster endpoint
+secrets.DSQL_SECONDARY_ENDPOINT the secondary cluster endpoint -- REQUIRED (added 2026-09-10): a
+                                fresh process's first query goes to the secondary, connection.ts
+                                getPool() rule 3, so without it the mint dies before the database
 secrets.A11Y_OWNER_EMAIL        an owner account that EXISTS and holds no real data
 ```
 

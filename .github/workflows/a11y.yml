@@ -142,6 +142,7 @@ jobs:
         env:
           OWNER_EMAIL: ${{ secrets.A11Y_OWNER_EMAIL }}
           DSQL_ENDPOINT: ${{ secrets.DSQL_PRIMARY_ENDPOINT }}
+          DSQL_SECONDARY: ${{ secrets.DSQL_SECONDARY_ENDPOINT }}
         run: |
           set -euo pipefail
           if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -157,9 +158,26 @@ jobs:
             echo "OWNER_MODE=no" >> "$GITHUB_ENV"
             echo "${{ github.ref }} is not refs/heads/master: relay-ro-ci is pinned to the master ref, so this run cannot assume it."
             echo "That is the trust policy working. Dispatch from master to audit owner mode."
-          elif [ -z "$OWNER_EMAIL" ] || [ -z "$DSQL_ENDPOINT" ]; then
-            echo "OWNER_MODE=no" >> "$GITHUB_ENV"
-            echo "::warning::Owner mode is NOT being audited: A11Y_OWNER_EMAIL and/or DSQL_PRIMARY_ENDPOINT are unset. B28 stays open until both are configured and relay-ro-ci exists."
+          elif [ -z "$OWNER_EMAIL" ] || [ -z "$DSQL_ENDPOINT" ] || [ -z "$DSQL_SECONDARY" ]; then
+            # B28, 2026-09-10: this branch was a ::warning:: while it had a reason
+            # to be one (no fixture owner existed, no role to assume). All three
+            # values now exist, so on master an unset one can only mean it was
+            # DELETED or RENAMED, and a gate that quietly downgrades itself to
+            # public-only is the conditional skip the audit script itself exists to
+            # refuse. (It is deliberately NOT named here: the proof-of-red guard
+            # finds the audit step as the first `run:` that names that script, so
+            # naming it in this step once pointed every one of its checks at the
+            # wrong step.)
+            #
+            # ⚠️ THE SECONDARY IS NOT OPTIONAL, and the first armed run proved it.
+            # lib/db/connection.ts getPool() sends a query to the SECONDARY pool
+            # whenever the primary has no connections yet (rule 3), which is every
+            # fresh process: the mint's very first query goes to us-west-2 and the
+            # primary is never tried. Both 2026-09-10 runs (the proof-of-red and
+            # the normal one) died at "DSQL_SECONDARY_ENDPOINT is not set" before
+            # reaching the database at all, so neither proved anything.
+            echo "::error::Owner mode cannot be audited on master: A11Y_OWNER_EMAIL, DSQL_PRIMARY_ENDPOINT and/or DSQL_SECONDARY_ENDPOINT are unset. All three were configured on 2026-09-10 (B28), so an unset one means a secret was deleted or renamed. Restore it. A11Y_OWNER_EMAIL must name the audit-fixture owner, never a customer."
+            exit 1
           else
             echo "OWNER_MODE=yes" >> "$GITHUB_ENV"
             echo "Owner mode WILL be audited, and a failure to mint the session is a red run."
@@ -195,6 +213,10 @@ jobs:
           # it has no credential to use. Configuration a job cannot act on is
           # configuration somebody later assumes it acted on.
           DSQL_PRIMARY_ENDPOINT: ${{ env.OWNER_MODE == 'yes' && secrets.DSQL_PRIMARY_ENDPOINT || '' }}
+          # Required, not a fallback: a fresh process's first query goes to the
+          # secondary (connection.ts getPool rule 3). relay-ro-ci's policy names
+          # both clusters and migration 040 is applied in both regions.
+          DSQL_SECONDARY_ENDPOINT: ${{ env.OWNER_MODE == 'yes' && secrets.DSQL_SECONDARY_ENDPOINT || '' }}
           # The proof-of-red lever. Anything but `relay_ro` is a role the cluster
           # will refuse to authenticate, which is the point.
           DSQL_ROLE: ${{ env.OWNER_MODE == 'yes' && (inputs.dsql_role || 'relay_ro') || '' }}
@@ -217,7 +239,7 @@ jobs:
           export NEXTAUTH_SECRET
 
           # The mint is invoked as `npx tsx --env-file=.env.local`, a path
-          # hardcoded in scripts/a11y-audit.mjs, so the four values it and the
+          # hardcoded in scripts/a11y-audit.mjs, so the five values it and the
           # server both need are written there as well as exported. No credential
           # is among them: the AWS session comes from the OIDC step above and
           # lives in the job's environment, and .env.local is gitignored.
@@ -229,6 +251,7 @@ jobs:
           if [ -n "${DSQL_PRIMARY_ENDPOINT}" ]; then
             printf '%s\n' \
               "DSQL_PRIMARY_ENDPOINT=${DSQL_PRIMARY_ENDPOINT}" \
+              "DSQL_SECONDARY_ENDPOINT=${DSQL_SECONDARY_ENDPOINT}" \
               "DSQL_ROLE=${DSQL_ROLE}" \
               "AWS_REGION=${AWS_REGION}" \
               "NEXTAUTH_SECRET=${NEXTAUTH_SECRET}" > .env.local
