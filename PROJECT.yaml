@@ -1801,6 +1801,21 @@ ratified:
       this cannot move until A0 (the owner's vault) is done — which is Steve's, is ~20 minutes,
       and is Sitting A. Deferring it again without doing A0 changes nothing; that is why no new
       `revisit:` is set here. The honest next state is Sitting A, not a fourth date.
+    fourth_deferral_2026_09_10:
+      decision: "Defer the cohort roster (ROADMAP Sprint 1 row 1.7, A3.1) to 2026-09-17. Steve, 2026-09-10."
+      why_now_and_not_before: >-
+        The third deferral said the honest next state was Sitting A, not a fourth date, and it was
+        right. Sitting A has now happened: A0 was done on 08-29, and on the evening of 09-10 the
+        real circle was named and both codes issued (A0.2 clause a is pending the verifier's
+        claim). The blocker the third entry named is gone, so this date is a decision about
+        sequencing, not a lapse. The roster waited on the circle being real, and it now is.
+      why_it_is_nested: >-
+        This entry already carries `third_deferral_recorded_2026_08_29`, an acknowledgement key,
+        and the revisit guard treats any acknowledgement key as answering EVERY date on its
+        entry. A new `revisit:` beside it would be silenced on the day it was written, which is
+        the lapse the third deferral describes. As its own mapping, this date is judged on its own
+        keys, and it goes red on 2026-09-18 if nothing is recorded here.
+      revisit: 2026-09-17
 
 # Per-journey build state — THE one authoritative record, added 2026-08-13.
 #
