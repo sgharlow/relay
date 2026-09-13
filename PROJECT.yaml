@@ -4596,7 +4596,7 @@ deferred:
   # ═══════════════════════════════════════════════════════════════════════════
 
   - id: the-alarm-of-record-delivers-to-trash                 # ROADMAP B10
-    owner: steve                          # the filter removal; claude re-proves delivery after
+    owner: claude                         # moved from steve 2026-09-12: no rule needs deleting (see re_scoped_2026_09_12)
     opened: 2026-08-28
     found: 2026-08-27
     what: >-
@@ -4704,6 +4704,23 @@ deferred:
         signature of PERIODIC mailbox hygiene rather than a rule. So the seven restored mails are
         likely to be swept again and this entry stays OPEN. The durable fix is not a filter edit;
         it is B12, an alert path that does not depend on this mailbox at all."
+    re_scoped_2026_09_12:
+      revised_ends_when_met: "2026-08-30 -- the filter was read and named (mechanism_narrowed above);
+        delivery proven. That condition is closed. The entry stays open on the RESIDUE below."
+      observed_2026_09_13: "Read-only Gmail connector, `from:notifications@github.com subject:relay
+        in:trash newer_than:14d`, 201 threads. The two newest relay alarms -- Orphan monitor
+        2026-09-12T13:44Z and Cadence watch 2026-09-12T13:09Z / 2026-09-11T13:49Z -- are in TRASH,
+        labelled `relay-alarm`, starred, important, and READ. Vercel bot PR comments from 09-10/09-11
+        are in TRASH and UNREAD, within hours of arrival. Read-then-trashed alarms and
+        unread-then-trashed bot mail in the same window fit a client or hygiene tool acting on the
+        mailbox, not a Gmail filter (none deletes). THE ORPHAN MONITOR ALARM WAS REAL: the 09-10
+        step-up walk left two reserved-domain owners behind (61h old, no rows), the monitor went red
+        09-12, and the alarm was found 09-13 only because a person searched Trash. Closed the same
+        hour via deleteAccount(); census clean; monitor re-dispatched."
+      ends_when: "The mechanism that moves relay mail to Trash is NAMED (which client, rule or tool),
+        OR the two scheduler dead-men are probed by the off-GitHub heartbeat (GP-D1) AND a scheduled
+        read of `in:trash` for the `relay-alarm` label surfaces a trashed alarm within 24h of its
+        arrival at least once. Until then every unattended alarm is one Trash sweep from a 30-day purge."
 
   - id: the-scheduled-monitors-are-collapsing                 # ROADMAP B11
     owner: claude                         # measurement; steve owns the money half
@@ -5530,8 +5547,11 @@ deferred:
       product.
     ends_when: >-
       ⚠️ REVISED. The ladder can only be seen working by a DELIVERABLE address, which means a real
-      owner. That is now dated: the live owner's 75% rung, **2026-09-21T15:49Z**, the first
-      check-in reminder this product will ever have sent.
+      owner. That is dated by `npm run check:ladder` ON THE DAY -- the live owner's 75% rung, which
+      moves with ANY owner sign-in or deliberate write (see `redated_2026_09_10` and the ruling
+      entry `the-ladder-cannot-be-proven-while-the-owner-is-active`) -- the first check-in reminder
+      this product will ever have sent. (Until 2026-09-12 this sentence carried a literal
+      2026-09-21T15:49Z that had been false since 09-10.)
       So this closes when that firing is OBSERVED - an `owner_checkin_reminder_first` row for the
       live owner, and the mail in the inbox - and the thing worth building BEFORE then is
       something that notices whether it fired, because the failure is silent by design and nobody
@@ -6180,6 +6200,12 @@ deferred:
       a past-due revisit on a throwaway branch and watching the guard go red — the same standard
       B13 demands of every other alarm. Wired is not proven.
     revisit: 2026-09-12
+    closed: 2026-08-30
+    closed_by: >-
+      PR #43 (128e3cf) -- `lib/ops/revisit-dates.test.ts`, proven by planting four ways (see
+      `revisited:` below). The `closed:` key was omitted when the outcome was recorded, so the
+      register's own open-count derivation kept counting this entry. Added 2026-09-12
+      (docs/gap-closure-plan-2026-09-12.md GP-R2); the well-formed test now refuses the shape.
     revisited:
       date: 2026-08-30
       outcome: CLOSED
@@ -6472,3 +6498,91 @@ deferred:
       handler's first line (event id/type/livemode) and the case's first line; then one run.
       Nothing was spent. E1-prime stays wired; the 10-01 hold option is stronger. Record:
       docs/e1-stripe-lapse-proof.md, Run log 2026-09-02.
+
+  - id: the-ladder-cannot-be-proven-while-the-owner-is-active    # gap plan GP-U9 (NEW 2026-09-12)
+    owner: steve                          # a ruling; it sets the G1/G2 calendar
+    opened: 2026-09-12
+    what: >-
+      Three writers reset `users.last_active_at`: an owner sign-in (lib/auth/upsert-user.ts:77),
+      any owner POST/PUT/PATCH/DELETE through `requireOwner(req)` (lib/http/owner-route.ts:44 ->
+      lib/release/liveness.ts:52), and the explicit check-in (lib/release/heartbeat.ts:113). The
+      rungs sit at 0.75 and 0.9 of the interval, so every owner write pushes the first reminder to
+      write + 22.5 days. Confirming the verifier, committing the cohort, pressing the fire drill and
+      regenerating recovery codes -- all of beta Sprint 2 -- are such writes.
+    why: >-
+      The plan cannot both put real people in the loop AND observe the first reminder in the same
+      fortnight; revision 1 of the gap plan scheduled exactly that. Nothing can pull the rung
+      forward except the owner changing `checkin_interval_days`, which is a real product setting
+      with a real consequence: at 14 days a missed check-in opens a REAL emergency to the REAL circle
+      with a 1.4-day buffer after the final rung.
+    options:
+      - "(a) ACCEPT THE NATURAL DATE -- recommended. All owner writes happen in G1 (-> 09-24); then a
+         quiet window with no owner sign-in or write; first rung ~ last write + 22.5 d (~ 10-16/17),
+         final ~ +27 d (~ 10-21); then the owner checks in. E4.2 on 10-01 is ruled with the ladder
+         unproven, which the EXTEND default already assumes."
+      - "(b) SHORTEN THE INTERVAL TO 14 DAYS for the proof window (PUT /api/settings, itself a
+         deliberate write that starts the clock): rungs at +10.5 d / +12.6 d, overdue at +14 d.
+         Restore 30 after the check-in. The risk is stated above."
+    ends_when: >-
+      Steve records (a) or (b) here, and the G2/G3 calendar in docs/gap-closure-plan-2026-09-12.md
+      carries the chosen quiet window. Under (a) the proof itself closes
+      `the-reminder-ladder-has-never-fired`, not this entry.
+    revisit: 2026-09-17
+
+  - id: the-failover-has-not-been-re-exercised-since-h0           # gap plan GP-U11 (NEW 2026-09-12)
+    owner: steve                          # a ruling on what counts as evidence, then a 5-gate drill
+    opened: 2026-09-12
+    what: >-
+      FR15 / R14 / NFR1: multi-region failover was proven once, at H0 (June 2026), and has not been
+      re-exercised. `DSQL_USE_SECONDARY` is an env switch (CLAUDE.md), and B3 records that the
+      switch moves the data and not the key. The Build Spec banner names the failover drill as an
+      un-ruled section-22 plank (ROADMAP G9).
+    what_evidence_exists_today: >-
+      `getPool()` rule 3 (lib/db/connection.ts:206-227) sends a fresh process's first query to the
+      SECONDARY when the primary pool is cold. `.github/workflows/a11y.yml` states it verbatim, and
+      every MASTER-PUSH run of that job (not PRs, which carry no DB config; not scheduled -- the job
+      has no `schedule:`) therefore reads us-west-2 first under `relay_ro`, which is SELECT-only.
+      That is dated, repeatable evidence for R14.1 (the secondary answers strongly-consistent reads)
+      and for NOTHING about R14.2 (no acknowledged write absent after failover) -- a read-only
+      credential cannot evidence a write clause. Revision 1 of the gap plan called it "daily" and
+      "R14.2 evidence"; both were wrong.
+    ends_when: >-
+      (a) Steve records the master-push secondary read as R14.1 evidence, dated, with the trigger
+      list -- and nothing stronger; AND (b) an R14.2 re-proof -- a cut-over exercised against
+      production, 5-gate, bundled with `gates.d3-restore-drill` -- is either dated or explicitly
+      deferred with a trigger.
+
+  - id: the-sprint-skill-resolves-a-spent-lane                     # gap plan GP-R9 (NEW 2026-09-12)
+    owner: claude
+    opened: 2026-09-12
+    what: >-
+      `~/.claude/commands/sprint.md` section 1.1 resolves its backlog in a fixed order: `.claude/sprint-state.json`
+      only "with iterations remaining" (the file has no such field), then `docs/backlog.md` (banner-ed
+      SUPERSEDED since 2026-08-27 and still showing S4-3 as NOT DONE, though it shipped as B5.1 phase B
+      on 09-03). A fresh `/sprint` therefore reads a closed crypto item as open work.
+    why: >-
+      The one automated executor this repo has would start from a wrong queue. Same shape as
+      backlog.md's own origin note: without a real source the skill infers one and escalates.
+    ends_when: >-
+      `.claude/sprint-state.json` carries `iterationsRemaining` and names the live queue
+      (docs/gap-closure-plan-2026-09-12.md section 5), and `docs/backlog.md`'s banner points there.
+
+  - id: gap-plan-revision-1-called-ruled-items-owed                # gap plan GP-R11/R12/R13 (record)
+    owner: claude
+    opened: 2026-09-12
+    closed: 2026-09-12
+    what: >-
+      docs/gap-closure-plan-2026-09-12.md revision 1 listed as "rulings owed": D25 (ruled RETIRE
+      2026-08-30, executed PR #40, docs/retired-surface.md:244), D14 (LEAVE IT), D20 (PURGE --
+      executed, 28 -> 0), B15.4 (RATIFY), E4.1 (KEEP INITIATE-ONLY, say so in /terms) -- all in
+      `ratified.sitting-d1-2026-08-30`. It also recommended `scripts/reset-demo.ts`, which
+      ROADMAP section 6 bars by name, and carried the ladder entry's dead 2026-09-21 date forward as fact.
+    why_it_is_recorded: >-
+      The same-day adversarial review caught every one before anything was acted on. The
+      generalisable defect: the plan read an entry's OLDER block instead of its NEWEST
+      (`re_measured_...`, `ratified.sitting-d1...`) and treated a ROADMAP row as current when the register
+      had moved. Rule for the next plan: derive "owed" from `ratified:` and each entry's newest
+      dated block, never from a section-2 row.
+    closed_by: >-
+      Revision 2 of the plan, same day: section Q logs all fifty findings; the pack no longer lists the
+      five; the ladder entry's `ends_when` no longer asserts a date.
