@@ -334,6 +334,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'InvalidSignature' }, { status: 400 });
   }
 
+  /*
+    E1′ — the handler's FIRST line, instrumented (2026-09-13, gap plan GP-P2,
+    ROADMAP row 2.5). Seven signed deliveries of `invoice.payment_failed` came
+    back 200 with no audit row and no stderr from any branch that was already
+    loud, so the case body was never entered — or the request never reached
+    the switch with that type. This line and the one at the top of the
+    `invoice.payment_failed` case are the two remaining places silence can
+    hide. `docs/e1-stripe-lapse-proof.md`, final section, says exactly this.
+    Nothing here reads the payload beyond three ids Stripe puts on every event.
+  */
+  process.stderr.write(
+    `[stripe] event ${event.id} type=${event.type} livemode=${String(event.livemode)}\n`,
+  );
+
   try {
     switch (event.type) {
       case 'checkout.session.completed': {
@@ -440,6 +454,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           stale-module theory. Every one of them now says which it was.
         */
         const invoice = event.data.object as Stripe.Invoice;
+        // E1′ — the case body's first line. If the line above fired with
+        // type=invoice.payment_failed and this one did not, the switch is the gap.
+        process.stderr.write(`[stripe] invoice.payment_failed entered invoice=${String(invoice?.id)}\n`);
         const subId = subscriptionIdOnInvoice(invoice);
         if (!subId || !invoice.id) {
           console.error(

@@ -806,3 +806,59 @@ describe('a redelivered event does not write the audit entry twice', () => {
     expect(insertCall(), 'the entitlement write must not be skipped').toBeTruthy();
   });
 });
+
+/*
+ * E1′ — the two instrumented lines (2026-09-13, gap plan GP-P2). Seven signed
+ * `invoice.payment_failed` deliveries returned 200 with no audit row and no
+ * stderr from any branch that was already loud, so the remaining places silence
+ * could hide were the handler's first line and the case body's first line.
+ * These assert both speak, in order, and that a request that fails signature
+ * verification never reaches the first one (nothing about an unverified event
+ * is logged as if it were one).
+ */
+describe('E1-prime instrument: the first line speaks before the switch', () => {
+  it('logs event id, type and livemode before the switch, then the case entry', async () => {
+    const lines: string[] = [];
+    const spy = vi.spyOn(process.stderr, 'write').mockImplementation(((chunk: unknown) => {
+      lines.push(String(chunk));
+      return true;
+    }) as never);
+    mockQuery.mockImplementation(async (sql: string) => {
+      if (/SELECT owner_id FROM subscriptions WHERE stripe_subscription_id/.test(sql)) {
+        return { rows: [{ owner_id: OWNER }], rowCount: 1 } as never;
+      }
+      return { rows: [], rowCount: 0 } as never;
+    });
+    constructEvent.mockReturnValue({
+      id: 'evt_e1prime',
+      type: 'invoice.payment_failed',
+      livemode: false,
+      data: { object: { id: 'in_e1prime', subscription: 'sub_e1' } },
+    });
+
+    await POST(req());
+    spy.mockRestore();
+
+    const first = lines.findIndex((l) => l.includes('[stripe] event evt_e1prime type=invoice.payment_failed livemode=false'));
+    const entered = lines.findIndex((l) => l.includes('[stripe] invoice.payment_failed entered invoice=in_e1prime'));
+    expect(first).toBeGreaterThanOrEqual(0);
+    expect(entered).toBeGreaterThan(first);
+  });
+
+  it('says nothing about an event that failed signature verification', async () => {
+    const lines: string[] = [];
+    const spy = vi.spyOn(process.stderr, 'write').mockImplementation(((chunk: unknown) => {
+      lines.push(String(chunk));
+      return true;
+    }) as never);
+    constructEvent.mockImplementation(() => {
+      throw new Error('bad signature');
+    });
+
+    const res = await POST(req());
+    spy.mockRestore();
+
+    expect(res.status).toBe(400);
+    expect(lines.some((l) => l.includes('[stripe] event '))).toBe(false);
+  });
+});
