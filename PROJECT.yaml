@@ -908,9 +908,9 @@ ratified:
       copilot3_describekey: { ruling: "STRIP kms:DescribeKey.", executed: "the-iam-template-can-re-open-the-wall.describekey_ruled_and_found_2026_09_13 - the live policy never had it; template + README + audit fixed; entry CLOSED" }
       copilot3_ro_in_cloud: { ruling: "NOT NOW - Sitting E.", executed: "the-read-only-identity-is-not-in-the-cloud.parked_2026_09_13" }
       copilot3_reply_to: { ruling: "Steve sets RESEND_REPLY_TO_ADDRESS in the Vercel UI (production scope) himself.", obliges: "Claude verifies by reading a sent mail's Reply-To header afterwards; d6_b42_reply_to stays 'pending' until then" }
-      copilot3_validity_checks: { ruling: "Steve flips it in his own browser now (the plugin's Chrome profile is not signed in to GitHub - the settings page 404s).", obliges: "Claude re-reads security_and_analysis by API and records the state" }
+      copilot3_validity_checks: { ruling: "Steve flips it in his own browser now (the plugin's Chrome profile is not signed in to GitHub - the settings page 404s).", read_after: "still `disabled` by API at 22:25Z; re-read at Sitting E" }
       # -- co-pilot batch 4 (Sitting E items pulled forward to Steve's hands, same evening) --
-      copilot4_dmarc_download: { ruling: "Steve downloads the 08-17 report's .xml.gz to ~/Downloads now.", obliges: "Claude reads it read-only and records the verdict on dmarc-had-no-rua-so-no-report-could-arrive; the C3 step-up decision then has its evidence" }
+      copilot4_dmarc_download: { ruling: "Steve downloads the 08-17 report's .xml.gz to ~/Downloads now.", executed: "downloaded and read the same evening: 2 messages, DKIM+SPF pass and aligned, p=none - dmarc-had-no-rua-so-no-report-could-arrive.report_read_2026_09_13; C3 has its first clean datapoint" }
       copilot4_gmail_filters: { ruling: "Steve creates the never-send-to-spam filter for the two DMARC senders AND un-trashes budgets@costalerts.amazonaws.com now.", obliges: "verified only by the NEXT arrival of each (read-only search) - the plugin cannot open Gmail and the connector cannot list filters" }
       copilot4_stripe_endpoint_failure_mail: { read: "E1.5 #4 read by Steve at the Notifications bell: webhook endpoint-failure emails are ON. With #3 (receipts OFF) that completes the two Stripe dashboard reads Sitting E carried." }
 
@@ -2587,6 +2587,16 @@ deferred:
   # OPENED 2026-08-30 by looking, after Steve said "the email was never received".
   # It was never SENT. That is a different finding and a worse one.
   # ═══════════════════════════════════════════════════════════════════════════
+    report_read_2026_09_13: >-
+      The 08-17 aggregate report (Outlook.com, window 2026-08-15 00:00Z to 08-16 00:00Z, Gmail
+      thread 1a00e72c9417ac7b) was downloaded by Steve to ~/Downloads and parsed read-only.
+      Published policy seen by the receiver: p=none, adkim=r, aspf=r, pct=100. Two messages, both
+      from Amazon SES addresses (Resend's path), header_from relaystandby.com, DKIM
+      relaystandby.com PASS, SPF send.relaystandby.com PASS, disposition none. Nothing unaligned,
+      nothing spoofed, nothing failing. This is the first clean datapoint C3 (p=none -> quarantine)
+      asked for; the step-up stays parked to Sitting E (09-19) per the G4 ruling and Steve changes
+      the record in the Cloudflare UI when he takes it. The never-send-to-spam filter for the two
+      report senders is his as well (co-pilot batch 4).
   - id: adding-a-person-to-the-circle-does-not-invite-them
     owner: steve   # the sends; the display defect below is claude's
     opened: 2026-08-30
