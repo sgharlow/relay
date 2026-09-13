@@ -272,3 +272,22 @@ describe('where a new subscriber lands after paying', () => {
     expect(sessionArgs?.cancel_url).toMatch(/\/start\?checkout=cancelled/);
   });
 });
+
+/*
+ * E7, ruled 2026-09-13: automatic tax on every checkout session. Pinned here
+ * because the field is one line that nobody would notice falling out, and its
+ * absence means every customer is charged without the tax Stripe Tax is
+ * configured to calculate.
+ */
+describe('automatic tax (E7)', () => {
+  it('enables automatic_tax on every session', async () => {
+    await POST(req());
+    expect(sessionArgs).toMatchObject({ automatic_tax: { enabled: true } });
+  });
+
+  it('saves the collected address back to a known customer, which Stripe requires with automatic tax', async () => {
+    rows({ stripe_customer_id: 'cus_known', tier: 'free', status: 'active' });
+    await POST(req());
+    expect(sessionArgs).toMatchObject({ customer: 'cus_known', customer_update: { address: 'auto' } });
+  });
+});

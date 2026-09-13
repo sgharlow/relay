@@ -129,7 +129,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     so this is an either/or rather than a merge.
   */
   const customerFields = row?.stripe_customer_id
-    ? { customer: row.stripe_customer_id }
+    ? /*
+        Stripe requires `customer_update.address = 'auto'` when automatic tax is
+        on and an existing customer is named, so the billing address Checkout
+        collects is saved back to the customer rather than rejected at creation.
+      */
+      { customer: row.stripe_customer_id, customer_update: { address: 'auto' as const } }
     : owner.rows[0]?.email
       ? { customer_email: owner.rows[0].email }
       : {};
@@ -137,6 +142,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const session = await getStripe().checkout.sessions.create({
     mode: 'subscription',
     line_items: [{ price: RELAY_PLAN.priceId, quantity: 1 }],
+    /*
+      E7, ruled 2026-09-13 (`ratified.sitting-d2-2026-09-13.e7_sales_tax`): Stripe
+      Tax is ACTIVE at the account (a US head office is set) but nothing collected
+      it here, so every $119/yr was charged without tax. Checkout now calculates
+      it from the billing address it collects. This changes what every future
+      customer is charged, which is why the PR carrying it waits for Steve's
+      approval rather than merging on green.
+    */
+    automatic_tax: { enabled: true },
     ...customerFields,
     // owner_id, not email: the webhook must never depend on matching a string
     // the customer could have typed differently at checkout.
