@@ -248,26 +248,28 @@ Court: **S** Steve · **C** Claude · **CP** co-pilot · **E** event. ⏱ = an o
 
 **Stop rule (pre-registered):** the number moved is *open rows in §2.P/D/U/R*. Target: 0 Claude/co-pilot rows and 0 rulings owed by the end of G4; §3 rows are not counted. Minimum gain per sprint: **3 rows closed**. Below that, the next scoping note leads with **STOP recommended** and the trailing-3 table; it runs only on Steve's override.
 
-### G0 — The record and the nods *(2026-09-12 → 09-17 · Claude's court · Steve ≈ 15 min: one ruling and five nods)*
+### G0 — The record and the nods *(2026-09-12 → 09-17 · Claude's court · Steve ≈ 15 min: one ruling and five nods)* — ✅ **Claude's lane RAN 2026-09-12/13 (PRs #75–#79); report `docs/sprint-reports/2026-09-12-gap-closure-g0.md`**
 
 | # | Row | Court | Done when |
 |---|---|---|---|
 | G0.1 | **GP-R2** `closed:` on the revisit-lapse entry; **GP-R13** the ladder entry's `ends_when` re-dated; the new `revisited.outcome` rule in the existing well-formed test (task 5.1) — ✅ **merged PR #75, 2026-09-12** | C | one-liner reads **74 total, 28 open** (26 − R2 + the three new open rulings GP-U9/U11/R9; the GP-R11–13 record entry is born closed); test proven red on the base, then green |
 | G0.2 | **GP-R1, R3, R4** — nod-gated register edits (task 5.1 second half) | S nod → C | on nods: 70 / 24 (R1 closed) and R4 well-formed; R3's ROADMAP overstatement struck either way |
-| G0.3 | **GP-R5, R10** ROADMAP + CLAUDE.md + `verify-stripe.ts` strikes (task 5.2) | C | `npx vitest run lib/ops/roadmap-court.test.ts lib/ops/g-lane-names.test.ts` green |
-| G0.4 | **GP-R7, R8** six docs, five J6 lines (task 5.3) | C | `npx vitest run lib/ops/journey-state.test.ts` green; stale phrases grep empty |
-| G0.5 | **GP-R6** Property 17 tag + both spec files (task 5.5) | C | tag present once |
-| G0.6 | **GP-R9** `/sprint` pointer with `iterationsRemaining` (task 5.6) | C | the orient step names this file as the backlog source |
+| G0.3 | **GP-R5, R10** ROADMAP + CLAUDE.md + `verify-stripe.ts` strikes (task 5.2) — ✅ **merged PR #76** | C | `roadmap-court` + `g-lane-names` green (15/15) |
+| G0.4 | **GP-R7, R8** six docs, five J6 lines (task 5.3) — ✅ **merged PR #77** | C | `journey-state` green; stale phrases grep empty |
+| G0.5 | **GP-R6** Property 17 tag + both spec files (task 5.5) — ✅ **merged PR #77** | C | `grep -c "Property 17" lib/import/csv-parser.test.ts` = 1 |
+| G0.6 | **GP-R9** `/sprint` pointer with `iterationsRemaining` (task 5.6) — ✅ **merged PR #77**; register entry closed in the close-out PR | C | `.claude/sprint-state.json` names this file; `iterationsRemaining` present |
 | G0.7 | **GP-D4 (files)** six estate banners (task 5.8) — ✅ **already present; verified 2026-09-12** (Q31) | C | banner is the first `estate` hit in each — it is |
-| G0.8 | **GP-D1** two canary health assertions + proof-of-red via the heartbeat (task 5.9) | C | one heartbeat run seen red on a planted path, then green |
-| G0.9 | **GP-D13** B10 re-scope + residue entry (task 5.10) | C | entry re-scoped; residue has `ends_when` |
+| G0.8 | **GP-D1** two canary health assertions + proof-of-red (task 5.9) — ✅ **merged PR #78**; live 8/8 green 2026-09-13T06:58Z, planted wrong-prefix run red naming both | C | the next `relay-heartbeat` cycle on master runs the widened list (it runs from this checkout; `tail -1 .heartbeat/runs.jsonl`) |
+| G0.9 | **GP-D13** B10 re-scope + residue (task 5.10) — ✅ **merged PR #75** as `re_scoped_2026_09_12` on the entry (owner → claude); the 09-13 Trash read found the 09-12 orphan-monitor alarm there, read | C | entry re-scoped; residue has `ends_when` |
 | G0.10 | **GP-P6** on Steve's one-line confirmation: B15.6 restated as its property and ticked | S line → C | sub-entry closed |
 | G0.11 | **GP-U13 → GP-D2** on a nod: audit labels (task 5.4) | S nod → C | `a11y-audit.mjs` owner mode clean on `/audit`; both-way binding test green |
 | G0.12 | **GP-D15** on a nod: two repo settings | S nod → C | both on |
 | G0.13 | **GP-U9** the ladder-window ruling — **before G1's first owner write** | S ruling | recorded on `the-reminder-ladder-has-never-fired` |
-| G0.14 | **GP-U10** options brief (task 5.7); the rulings pack (§6) into `docs/rulings-pack-sitting-d.md`; **NEW** register rows GP-U9, GP-U11, GP-R9, GP-R11–R13, the B10 residue | C | each new entry has owner/opened/what/why/ends_when |
+| G0.14 | **GP-U10** options brief (task 5.7); the rulings pack into `docs/rulings-pack-sitting-d.md`; **NEW** register rows — ✅ **merged PRs #75 (register) and #77 (docs)**: `the-ladder-cannot-be-proven-while-the-owner-is-active` (revisit 09-17), `the-failover-has-not-been-re-exercised-since-h0`, `the-sprint-skill-resolves-a-spent-lane`, `gap-plan-revision-1-called-ruled-items-owed` (born closed); the B10 residue lives on B10's entry rather than a sibling | C | each new entry has owner/opened/what/why/ends_when; `project-yaml-parses` green |
 
 **Done when:** every C row merged by PR; every nod-gated row merged or its nod recorded as withheld; GP-U9 ruled. Nothing in G0 writes to production except one planted canary red.
+
+**State 2026-09-13:** every Claude row is merged (PRs #75, #76, #77, #78; ROADMAP revision 9 as #79). Two production writes happened that the row above did not plan, both recorded (Q32): the two stale disposable owners were closed via `deleteAccount()`, and the orphan monitor was re-dispatched. **Open and Steve's:** G0.2 (three nods), G0.10 (one line), G0.11 (one nod → task 5.4), G0.12 (one nod), G0.13 (the ladder-window ruling, revisit 09-17). Until those land, G0 is *Claude-complete*, not complete.
 
 ### G1 — Real people, real rulings *(2026-09-17 → 09-24 · = rev-8 Sprint 2 + Sitting D-2 · Steve ≈ 3 h: the sends and calls (by design), ~20 rulings ≈ 100 min, four owner writes)*
 
