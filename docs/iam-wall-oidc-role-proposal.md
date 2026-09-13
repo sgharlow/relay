@@ -187,3 +187,10 @@ does not exist. It is the `kms-wall.yml` pattern with the actions swapped.
 a dated cadence with an owner, so that *"nobody ran the IAM check"* is itself detectable. The
 mechanism already exists in this repo: a stamp file plus a freshness dead-man, the shape
 `verify-live-freshness.test.ts` uses. Say so and Claude builds that instead.
+
+## Executed 2026-09-13 — and two things the proposal got wrong
+
+Ruled and executed under the 5-gate (gap plan G3.1, `/safe-execute`, on the goal's authority). Role `relay-iam-wall-ci` exists; `iam-wall.yml` runs daily; `lib/ops/iam-wall.ts` carries `IAM_WALL_CI_CONTRACT`.
+
+1. **§3's "deliberately NOT included" group calls were stale.** `scripts/verify-iam.ts` has made `ListGroupsForUser`, `ListAttachedGroupPolicies`, `ListGroupPolicies` and `GetGroupPolicy` since the group half was built, and reads each role's trust with `GetRole`. The first master-push run (34771127827) failed on `iam:ListGroupsForUser`. The grant and the contract now carry **thirteen** reads, derived from `grep -oE "new [A-Za-z]+Command\(" scripts/verify-iam.ts`, which is where the list should have come from in the first place.
+2. **§3's `Resource: "*"` was refused by the wall's own rule.** `ResourceScope.mustNotBeWildcard` is a literal `true` on every contract, so a role whose grant carried a bare `*` would have failed its own audit daily. The live inline policy `relay-iam-wall-reads` is four scoped statements: user reads on the three users, group reads on `group/*`, role reads on the three CI roles plus `relay-backend-dsql` (the inventory check), and policy-document reads on `arn:aws:iam::461293170793:policy/*` and `arn:aws:iam::aws:policy/*` — every policy that can be attached here, without reaching across accounts.

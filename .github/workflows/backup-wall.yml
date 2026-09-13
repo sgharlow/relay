@@ -1,0 +1,112 @@
+# Is relay actually being backed up — in BOTH Regions — and how stale is the newest copy?
+#
+# 🔴 WHY THIS FILE EXISTS. `scripts/backup-status.mjs` is the only instrument
+# that reads both vaults, and from 2026-08-20 to 2026-09-13 it was hand-run
+# only (ROADMAP B29). The DR half — `relay-vault-dr` in us-west-2, filled by the
+# plan's cross-Region COPY — had no absence alarm at all until the same day
+# (B17: `relay-dr-copy-absent`, a CloudWatch alarm on the copy-job metric,
+# forced red once and seen in the inbox). This is the second, independent read
+# of the same fact from outside AWS's own metrics: it lists the recovery points
+# in each vault and fails when the newest is older than the script's threshold.
+# Two instruments on two mechanisms, because a metric that stops being emitted
+# and a copy that stops running look identical from inside either one alone.
+#
+# This job holds NO stored secret. It mints a short-lived GitHub OIDC token and
+# exchanges it for `relay-backup-wall-ci`, whose trust policy names exactly one
+# subject — `repo:sgharlow/relay:ref:refs/heads/master` — and whose permissions
+# are four reads: list the backup plans and their selections, list recovery
+# points in the two vaults, and read the two clusters' state. It cannot start a
+# restore, delete a recovery point, connect to the database, or touch the CMK;
+# `lib/ops/iam-wall.ts` carries a contract for it, so the IAM wall audits this
+# principal too.
+#
+# 🔴 IT SHARES THE TRAP EVERY SCHEDULED ALARM HERE SHARES. GitHub disables
+# scheduled workflows in a public repository after 60 days with no repository
+# activity. This watchdog therefore has the same failure mode as the others: a
+# quiet owner. GitHub emails before disabling and that email is the only
+# warning. See .github/workflows/date-guards.yml for the full account.
+
+name: Backup wall watch
+
+on:
+  schedule:
+    # Daily, on the reliable tier (cadence-watch.yml records the daily
+    # workflows delivering 100% on the days the sub-hourly ones collapsed).
+    # The plan backs up daily and copies daily; the script's threshold is 30 h,
+    # so a missed day is red the morning after.
+    - cron: '29 6 * * *'
+
+  # 🔴 THE DISPATCH INPUT EXISTS SO THE ALARM CAN BE PROVEN TO FIRE.
+  # `BACKUP_DR_VAULT` renames the DR vault the script reads. Point it at a vault
+  # that does not exist and the read fails; the script reports it and exits 1.
+  workflow_dispatch:
+    inputs:
+      dr_vault:
+        description: 'DR vault name to read. Point it at a vault that does not exist to prove the alarm goes RED.'
+        required: false
+        default: 'relay-vault-dr'
+
+  # So a change to the checker is exercised by the checker.
+  push:
+    branches: [master]
+    paths:
+      - 'scripts/backup-status.mjs'
+      - 'scripts/aws-sig.mjs'
+      - '.github/workflows/backup-wall.yml'
+
+concurrency:
+  group: backup-wall
+  cancel-in-progress: false
+
+# `id-token: write` is what lets the job mint the OIDC token. It is not a write
+# to anything in this repository. `contents: read` is the checkout.
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  wall:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Assume the backup read role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::461293170793:role/relay-backup-wall-ci
+          role-session-name: backup-wall-watch
+          aws-region: us-east-1
+
+      # The script signs its own requests with @smithy/signature-v4 and
+      # @aws-crypto/sha256-js. Neither is declared in package.json — both arrive
+      # transitively through the AWS SDK clients — so a `--omit=dev` install is a
+      # bet on the SDK's dependency tree. Plain `npm ci` is the install that the
+      # lockfile actually proves.
+      - run: npm ci
+
+      # The script reads AWS_ACCESS_KEY_ID / SECRET / SESSION_TOKEN from the
+      # OIDC session above (scripts/aws-sig.mjs `credentials()`); the profile
+      # argument it takes on a laptop is not used here.
+      - name: Check both vaults
+        env:
+          BACKUP_DR_VAULT: ${{ inputs.dr_vault || 'relay-vault-dr' }}
+        run: node scripts/backup-status.mjs
+
+      - name: Explain a failure
+        if: failure()
+        run: |
+          echo "::error::A VAULT IS STALE, EMPTY, OR UNREADABLE. Read the check step: it names which."
+          echo "  1. relay-vault (us-east-1) stale: the daily backup job stopped. relay-backup-absent (CloudWatch) should also be red."
+          echo "  2. relay-vault-dr (us-west-2) stale: the cross-Region COPY stopped. relay-dr-copy-absent (CloudWatch) should also be red."
+          echo "     ⚠️ An on-demand backup does NOT run the plan's copy action — a fresh manual backup will not clear this."
+          echo "  3. 'cannot read vault': either the dispatch input named a vault that does not exist (the proof-of-red),"
+          echo "     or this role lost a read. Both are findings; neither is a pass."
+          echo "  4. A cluster not ACTIVE or without deletion protection: docs/backup-restore-runbook.md, now."
+          echo "  5. If this step failed to ASSUME THE ROLE, the wall is unmeasured, not broken."
+          echo "     Role: arn:aws:iam::461293170793:role/relay-backup-wall-ci (master ref only, reads only)."

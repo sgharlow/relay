@@ -208,6 +208,47 @@ gates:
         decision, and .github/workflows/date-guards.yml runs daily. Before this entry, "quarterly"
         was a word in two planning documents with no owner, no trigger and no absence alarm — which
         is exactly the dead-man's-switch failure this portfolio has a standing rule about.
+    met:
+      date: 2026-09-13
+      by: claude, on Steve's in-session spend approval (AskUserQuestion, "Approve now - run it in this session")
+      result: "MET - a restore that DECRYPTS, end to end, against all four criteria; 56 days before the ceiling"
+      criterion_1_backup_and_restore: >-
+        `node scripts/backup-now.mjs` -> on-demand job 79ad4460-11f0-4d20-88a3-038d3f55ba20 COMPLETED,
+        2,689,340 bytes, recovery point f89c35eb-0dee-45cb-b9a5-a7c535d53b12 (relay-vault, us-east-1).
+        StartRestoreJob 37fcc826-8187-46f4-9e37-d6b5769e4c01 at 18:13:33Z with
+        `regionalConfig: [{region: us-east-1, isDeletionProtectionEnabled: false}]` -> COMPLETED after
+        154 s -> scratch cluster tvucn7gdnkuwfanwv6n6agso2u. Signed from Node (scripts/aws-sig.mjs);
+        the AWS CLI is not usable here.
+      criterion_2_the_key: "verify:kms holds, before and after (drill:preflight both times); rotation now ON and the pin agrees (B19, same day)."
+      criterion_3_one_real_item_through_the_product: >-
+        The production build (`next start -p 3117`) run under `.drill-scratch/.env.scratch` - DSQL
+        endpoints pointed at the scratch cluster, the ADMIN identity (relay-dev's policy names only the
+        two production cluster ARNs, so it cannot reach a scratch one), NEXTAUTH_URL local. Row counts
+        on the scratch cluster (users 2, vault_items 1, audit_log 4165) matched production read the same
+        minute under `.env.ro`. The one real item fdc4ad26-8502-4981-b6e6-32ceaafa4eda carried ciphertext
+        (132 B) and wrapped key (184 B, legacy era). A forged owner session for its owner ->
+        `POST /api/kms/unwrap` on the local build -> 200 with a 256-bit data key -> AES-GCM decrypt in
+        Node -> 104 bytes of plaintext parsing as a JSON object with 2 fields. Nothing decrypted was
+        printed or stored. The unwrap wrote its audit row on the SCRATCH cluster (1 row), never
+        production.
+      criterion_4_rto_and_teardown: >-
+        RTO OBSERVED: restore 2 min 34 s; from StartRestoreJob to a proven decrypt about 4 minutes
+        (18:13:33Z -> ~18:17:30Z), the local build starting in under a second on an existing `.next`.
+        Not included and not exercised: runbook step 4 (repoint DSQL_PRIMARY_ENDPOINT in Vercel and
+        redeploy), which is the part of a REAL recovery that is a deploy, not a restore. The on-demand
+        backup itself took ~4 min before the restore could begin. Scratch cluster DELETED (a `DELETE
+        /cluster/{id}` needs a `client-token` query parameter - the first call was a 400 - then
+        DELETING -> 404 in ~90 s); `.drill-scratch/.env.scratch` scrubbed of the endpoints and the
+        admin key; the three one-off scripts deleted. `npm run drill:preflight` afterwards: both
+        production clusters ACTIVE with deletionProtection=true, relay-vault 37 points newest 0.4 h,
+        relay-vault-dr 35 points newest 13.6 h, verify:kms holds, 1 decryptable real item.
+      what_it_did_not_prove: >-
+        The margin was one item and it decrypted, so "the restore lost it" vs "the item was always
+        broken" never had to be told apart. The cross-Region DR copy was not restored from (the
+        on-demand backup does not run the copy action; the DR vault's nightly copy was 13.6 h old and
+        byte-close to the primary). The failover cut-over (R14.2) was NOT bundled - see
+        the-failover-has-not-been-re-exercised-since-h0.
+      next: "cadence: 2026-09-13 + one quarter = 2026-12-13, the new ceiling for the next drill; the runbook's cadence line says so."
   - id: h0-verdict-disposition
     metric: post_judging_decision (H0 judging ends 2026-07-24; winners ~2026-07-31; DSQL/KMS teardown auto-fires 7-25)
     target: "explicit commercialize / park / archive decision recorded within a week of results"
@@ -810,7 +851,7 @@ ratified:
           Vercel CLI is not installed here and the value is Steve's to set. Recorded as pending."
       d10_b20_iam_template: { ruling: "Match the live policy.", executed: "infra/iam-policy.json no longer grants dsql:DbConnectAdmin (live relay-runtime-policy v2 since 2026-08-16)" }
       d16_b21_3_csp_retention: { ruling: "30 days.", executed: "pruneCspReports() rides the heartbeat cron as housekeeping (lib/ops/csp-report-store.ts; src/app/api/cron/heartbeat/route.ts); tested" }
-      d17_b19_cmk_rotation: { ruling: "ENABLE - enable-key-rotation AND ROTATION_INTENDED = true in ONE commit; ~$24/yr recurring; rotated material is not removable.", obliges: "EXECUTE IN G4 (Sitting H), not before" }
+      d17_b19_cmk_rotation: { ruling: "ENABLE - enable-key-rotation AND ROTATION_INTENDED = true in ONE commit; ~$24/yr recurring; rotated material is not removable.", obliges: "EXECUTE IN G4 (Sitting H), not before", executed: "2026-09-13 - EnableKeyRotation (365 d) on the CMK by the Node SDK and ROTATION_INTENDED = true in the same commit (PR #89); verify:kms proven RED on the pin mismatch first, GREEN after" }
       d17_b25_bulk_revocation: { ruling: "ACCEPT 'rotate NEXTAUTH_SECRET' as the bulk path and document it; a built control is deferred to the first stranger.", executed: "docs/security-incident-runbook.md, the global-signout row" }
       d17_b26_secret_types_q6_q16: { ruling: "DEFER with F-b (field-level editing) - the same change decides the unwrap step-up." }
       u1_incapacity_verification_s18: { ruling: "DEFER; trigger = the first regulated-partner conversation (G7)." }
@@ -832,7 +873,20 @@ ratified:
       e4_2_paywall: { ruling: "EXTEND now; beta stays free; new decision_due 2026-11-15.", executed: "ratified.beta-free-release.revisited + decision_due moved; 10-01/10-02 pass green" }
       e5_billing_check_in_a_chain: { ruling: "NO - verify:stripe stays on its own daily workflow (stripe-contract-monitor.yml); a chain that needs Stripe is a chain that fails on Stripe." }
       e7_sales_tax: { ruling: "ENABLE automatic_tax on the Relay checkout NOW (co-pilot: Steve approves the PR before merge - it changes what every future customer is charged).", obliges: "one field on the checkout session + a unit test + a verify:stripe-adjacent read; PR opened, not merged, the same day" }
+      # -- G3, executed 2026-09-13 under the goal "complete G3; use cli/automation where possible" --
+      g3_iam_wall_role_5_gate: { gate: "problem: the-iam-wall-is-the-only-wall-nothing-schedules; rollback: delete role + inline policy (<2 min); snapshot: verify:iam 5/5 baseline + kms-wall trust policy read; isolated test: verify:iam read the missing role RED, then GREEN; request: the /goal text.", executed: "role created; PR #86; green run 34771699676; red run 34771727011" }
+      g3_admin_key_rotation_5_gate: { gate: "problem: no-secret-rotation-cadence-and-nothing-rotated (441-day key); rollback: restore ~/.aws/credentials.bak-2026-09-13 + reactivate; snapshot: the .bak + ListAccessKeys; isolated test: three walls on the new key BEFORE the old one was touched; request: the /goal text.", executed: "new key active, old key INACTIVE, walls green twice; deletion left to Steve" }
+      g3_devpost_prize: { measured: "MOOT - Devpost, Inc. paid the $2,000 by PayPal on 2026-09-03 ('Congrats on your H0 prize!'), and the AWS promotional credit code arrived 2026-08-17 ('Your AWS Credit Winnings ...'). Whether the credit code was redeemed is Steve's to say; A11's ~10-08 chase does not arise." }
       sitting_e_scheduled: { ruling: "Inside Sprint 2 - 2026-09-19. Five reads: Stripe receipts, Stripe endpoint-failure notifications, registrar auto-renew + card expiry, the 08-17 Microsoft DMARC download, the Gmail never-send-to-spam filter for the two DMARC senders; plus the GitHub secret-scanning validity-checks toggle.", obliges: "revisit: 2026-09-19 on the-domain-can-lapse-without-anyone-noticing rings 09-20 if unanswered" }
+      # -- G4, executed 2026-09-13 under the goal "complete G4; use cli/automation where possible" --
+      g4_cmk_rotation_5_gate: { gate: "problem: an unrecorded rotation answer (kms-wall.ts); rollback: DisableKeyRotation + revert the pin (<2 min; rotated material keeps decrypting); snapshot: DescribeKey + GetKeyRotationStatus read; isolated test: the pin flipped first -> verify:kms RED, then EnableKeyRotation -> GREEN; request: the D-2 ruling + the /goal text.", executed: "d17_b19_cmk_rotation.executed above; PR #89" }
+      g4_dr_copy_alarm_5_gate: { gate: "problem: dr-copy-jobs-have-no-absence-alarm; rollback: DeleteAlarms (<1 min); snapshot: DescribeAlarms read of both alarms; isolated test: SetAlarmState ALARM -> mail in the inbox 17:40:53Z -> OK on its own evaluation 17:43:59Z; request: the /goal text.", executed: "entry CLOSED 2026-09-13; relay-backup-absent's live scope READ and recorded" }
+      g4_backup_wall_5_gate: { gate: "problem: backup-status.mjs hand-run only (B29); rollback: delete role relay-backup-wall-ci + inline policy (<2 min); snapshot: verify:iam baseline; isolated test: verify:iam read the new role against BACKUP_WALL_CI_CONTRACT; the workflow dispatched with a bogus vault RED; request: the /goal text.", executed: "role + .github/workflows/backup-wall.yml (daily 06:29Z) merged PR #89; first run 34772769825 RED on a real defect (a scoped ListBackupPlans returns an empty list - the wall's own no-wildcard rule refused the shape); per-statement exception wildcardOnlyFor + live policy re-put, PR #90; master dispatch 34773753600 GREEN, bogus-vault dispatch 34773781289 RED; iam-wall run 34774159337 GREEN on the widened contract" }
+      g4_budget_measured: { measured: "no-budget-alarm-on-the-aws-estate.measured_2026_09_13 - a $250 portfolio budget already exists on the shared account and its mail lands in Trash; nothing created; Sitting E asks Steve to un-filter or subscribe NotifyMe" }
+      g4_restore_drill_approved_and_run: { ruling: "Steve approved the scratch-cluster spend in-session; Claude ran all four phases by script.", executed: "gates.d3-restore-drill.met - restore 154 s, one real item decrypted through the product's own unwrap route, scratch cluster gone, preflight green after" }
+      g4_failover_r14_2: { ruling: "DEFER with a trigger (next drill 2026-12-13 or G1 pass).", executed: "the-failover-has-not-been-re-exercised-since-h0 CLOSED on both halves" }
+      g4_dmarc_c3: { ruling: "PARK the p=none -> quarantine step-up until Sitting E's 08-17 report is read (2026-09-19); Steve changes the record in the Cloudflare UI (no Cloudflare token is on this machine, and DNS is the trap list's kind of change).", obliges: "the C3 row in the gap plan carries the date; no register revisit of its own - it rides Sitting E's" }
+      g4_admin_key_deletion: { ruling: "Delete the INACTIVE old admin key and the .bak on 2026-09-27 if nothing missed it.", executed: "revisit: 2026-09-27 on no-secret-rotation-cadence-and-nothing-rotated" }
 
   - id: relay-resumed-2026-08-21
     date: 2026-08-21
@@ -5707,6 +5761,18 @@ deferred:
     ends_when: >-
       `verify:iam` runs on a schedule against the real account with no stored secret, and has been
       seen both green and red - the same bar `kms-wall` met.
+    closed: 2026-09-13
+    closed_by: >-
+      Gap plan G3.1 (GP-D9), 5-gate passed via /safe-execute the same day. Role `relay-iam-wall-ci`
+      created in 461293170793 by the Node SDK under the admin profile (trust pinned to
+      `repo:sgharlow/relay:ref:refs/heads/master`; inline `relay-iam-wall-reads` - eight IAM policy
+      reads SCOPED to the six audited principals and the two policy paths, because the wall's own
+      resource-scope rule refuses the proposal's bare "*"). `lib/ops/iam-wall.ts` gained
+      IAM_WALL_CI_CONTRACT (the proposal's section-5 recursion) and verify:iam read the missing
+      role as RED before creation and 6/6 GREEN after. `.github/workflows/iam-wall.yml` (daily,
+      plain `npm ci`, `principal` dispatch input) merged as PR #86: the master-push run 34771699676
+      is GREEN; the dispatched proof-of-red with `principal=does-not-exist-2026-09-13` (run 34771727011)
+      is RED. Rollback: delete the role and its inline policy (<2 min).
 
   - id: date-guards-has-never-been-red                        # ROADMAP B13, residue
     owner: steve                          # the blocker is a hook in ~/.claude, not a file in this repo
@@ -6136,6 +6202,18 @@ deferred:
       the live `relay-backup-absent` definition has been READ and its scope recorded — or Steve
       records that single-Region backup alarming is accepted and the runbook is corrected to match.
 
+    closed: 2026-09-13
+    closed_by: >-
+      Gap plan G4.4, under the 5-gate (ratified.sitting-d2-2026-09-13.g4_dr_copy_alarm_5_gate). Alarm
+      `relay-dr-copy-absent` (us-east-1): AWS/Backup NumberOfCopyJobsCompleted, BackupVaultName=
+      relay-vault-dr, Sum < 1 over 2 x 24 h, TreatMissingData=breaching, actions -> SNS NotifyMe.
+      Forced to ALARM with SetAlarmState: the mail reached the inbox at 17:40:53Z ("ALARM:
+      relay-dr-copy-absent", Gmail thread 1a09bdb94392fdb3), and the alarm returned to OK on its own
+      evaluation at 17:43:59Z (thread 1a09bde6fe22570e) on two real copy-job datapoints (09-11, 09-12).
+      AND the live `relay-backup-absent` definition was READ, for the first time: NumberOfBackupJobsCompleted,
+      BackupVaultName=relay-vault, Sum < 1 over 10 x 3 h, breaching, NotifyMe - so its scope is the
+      PRIMARY vault only, exactly as this entry inferred; the DR half is now the new alarm's. Both
+      alarms OK at close. Rollback = DeleteAlarms.
   - id: no-secret-rotation-cadence-and-nothing-rotated        # ROADMAP B18
     owner: steve                          # B18.0 ratification; B18.1-3 co-pilot; B18.4-5 claude
     opened: 2026-08-28
@@ -6162,7 +6240,28 @@ deferred:
       ⚠️ Do NOT invent a deadline for this. The ROADMAP row says so explicitly. An invented date
       on a credential item produces either a rushed rotation or a missed date that teaches everyone
       to ignore the next one.
+    first_rotation_2026_09_13: >-
+      The `autospecai` admin access key (created 2025-06-29, ~441 days) was rotated by script under
+      the 5-gate (gap plan G3.2 / GP-D8): snapshot `~/.aws/credentials.bak-2026-09-13` + a
+      ListAccessKeys read; CreateAccessKey; the new secret written straight into the `[autospecai]`
+      profile by the script and NEVER printed; `verify:iam` (6/6), `verify:kms` and
+      `drill:preflight` green on the new key; then the old key set INACTIVE (reversible) and the
+      walls re-run green. Runbook section 5b written first. OWED TO STEVE: delete the inactive key
+      after a fortnight with nothing missing it, then delete the `.bak` (it holds the old secret).
+      Production was never involved - this key is read by no deployed code.
+    cadence_recorded_2026_09_13: >-
+      Not a deadline (the note above stands) but a RECORD: one admin-key rotation has now
+      happened, by script, in about four minutes, with a proven rollback. The remaining 25 keys
+      (Vercel runtime pair, six app secrets, Resend, Stripe) each have a runbook section; none has
+      been rotated. The next rotation is whichever of those a leak or a diligence question names
+      first, using section 5's two-keys-valid ordering.
 
+    revisit: 2026-09-27
+    revisit_why: >-
+      Steve's ruling 2026-09-13 (G4): the INACTIVE old admin key and `~/.aws/credentials.bak-2026-09-13`
+      are deleted on 2026-09-27 if nothing has missed the old key in the fortnight (the walls,
+      drill:preflight and the backup wall all run on the new one daily). Rings 09-28 if unanswered;
+      answer with `revisit_outcome:`.
   - id: the-iam-template-can-re-open-the-wall                 # ROADMAP B20
     owner: steve                          # the ruling; claude edits
     opened: 2026-08-28
@@ -6223,6 +6322,21 @@ deferred:
       estate is small enough not to warrant one — with the figure that makes that true, so the
       next reader can check whether it still is.
 
+    measured_2026_09_13: >-
+      Gap plan G4.4. A budget ALREADY EXISTS and it is not relay's: `portfolio-monthly`, COST, $250/mo
+      on the whole account (the account is shared portfolio-wide, so a relay-only budget cannot be
+      cut from it - which is the "figure that makes it true" this entry asked for). Read live:
+      actual $109.45, forecast $257.24, ACTUAL > 80 % OK, FORECASTED > 100 % in ALARM. Subscriber is
+      Steve's Gmail address (EMAIL, not the NotifyMe topic). It has fired SIX times since 08-01: the
+      08-01 mail carries a user label; the five since 08-21 (08-21, 09-07, 09-08, 09-09, 09-11) sit in
+      TRASH - the same failure mode B10 met, an alarm that delivers into a filter. So "exists" is
+      true, "proven to reach a human" is true for exactly one of six, and the fix is a Gmail filter
+      (Steve's) or adding NotifyMe as a second subscriber. Nothing was created: a second budget on a
+      shared account would double the noise into the same Trash.
+    revisit: 2026-09-19
+    revisit_why: >-
+      Added to Sitting E (2026-09-19): un-filter budgets@costalerts.amazonaws.com or subscribe
+      NotifyMe, and say which. Rings 09-20 if unanswered; answer with `revisit_outcome:`.
   - id: the-privacy-page-may-be-missing-two-subprocessors     # ROADMAP B38
     owner: steve                          # a ruling about a published legal page
     opened: 2026-08-28
@@ -6747,6 +6861,18 @@ deferred:
       production, 5-gate, bundled with `gates.d3-restore-drill` -- is either dated or explicitly
       deferred with a trigger.
 
+    r14_2_deferred_2026_09_13: >-
+      RULED 2026-09-13 (G4, AskUserQuestion): the R14.2 cut-over is DEFERRED WITH A TRIGGER rather than
+      bundled with today's restore drill - the drill used a scratch cluster and a read-only production
+      read on purpose, and a write-clause proof needs a live cut-over of production during a window
+      with a write credential, which is a different spend and a different risk. Trigger: the next
+      restore drill (cadence 2026-12-13) or the first arms-length customer (G1 pass), whichever
+      comes first; on that day R14.2 is either dated or re-deferred by name.
+    closed: 2026-09-13
+    closed_by: >-
+      Both halves of ends_when are met: (a) the master-push secondary read is R14.1 evidence, dated
+      (r14_1_evidence_recorded_2026_09_13); (b) the R14.2 cut-over is explicitly deferred with a
+      trigger (above). The drill it was bundled with ran the same day (gates.d3-restore-drill.met).
   - id: the-sprint-skill-resolves-a-spent-lane                     # gap plan GP-R9 (NEW 2026-09-12)
     owner: claude
     opened: 2026-09-12

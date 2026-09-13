@@ -159,6 +159,17 @@ export interface ResourceScope {
   /** A bare `*` (or an absent Resource) on an Allow is a finding. */
   mustNotBeWildcard: true;
   consequence: string;
+  /**
+   * The narrow exception, added 2026-09-13 for `backup:ListBackupPlans`: IAM
+   * defines NO resource-level permission for some List actions, and a scoped
+   * Resource on them does not fail loudly — it returns an EMPTY LIST (run
+   * 34772769825 read "no backup plan covers relay" from a runner that could
+   * see both vaults). A statement may carry Resource "*" ONLY when every
+   * action in it is listed here, each with the reason. Mixing one of these
+   * with a scopable action in the same wildcard statement is still a finding:
+   * the exception is per statement, so the scopable action would ride along.
+   */
+  wildcardOnlyFor?: { action: string; why: string }[];
 }
 
 /** What one IAM principal is expected to hold, and expected never to hold. */
@@ -518,12 +529,223 @@ export const READONLY_CI_CONTRACT: PrincipalContract = {
   ],
 };
 
+/**
+ * The IAM wall's OWN principal — the recursion docs/iam-wall-oidc-role-proposal.md §5
+ * names as the part most likely to be missed. Creating a role so the wall can run
+ * daily and stopping there would create a principal the wall does not watch, using
+ * the wall as the reason. So the role's contract lands in the same change as the
+ * role (2026-09-13, gap plan GP-D9, ROADMAP B16 residue).
+ *
+ * ⚠️ THE PROPOSAL ASKED FOR `Resource: "*"` ON THE READS; THIS FILE'S OWN RULE
+ * REFUSES THAT, and the rule wins. `iam:GetPolicy`/`GetPolicyVersion` take a
+ * POLICY ARN, and the whole point is to see a policy nobody listed in advance —
+ * so the grant is scoped to the ACCOUNT'S policy path and the AWS-managed path
+ * (`arn:aws:iam::461293170793:policy/*`, `arn:aws:iam::aws:policy/*`), which is
+ * every policy that can be attached here, without being the bare `*` that would
+ * reach across accounts and that `resourceScope` flags on every other principal.
+ * The user/role reads are scoped to the principals CONTRACTS names. A principal
+ * added later must be added to the grant AND to this list — the same recursion,
+ * stated so it is done rather than discovered.
+ */
+export const IAM_WALL_CI_CONTRACT: PrincipalContract = {
+  kind: 'role',
+  user: 'relay-iam-wall-ci',
+  purpose:
+    'the GitHub Actions OIDC role for the IAM wall watch — assumed by a workflow in a PUBLIC ' +
+    'repo, so it holds thirteen IAM policy READS on named principals and nothing that writes, ' +
+    'connects, or decrypts',
+  /*
+    THIRTEEN reads, not the proposal's eight. The proposal (§3) said the four
+    group calls were "deliberately NOT included" because "the script's header
+    records group-attached policies as a known open blind spot, left open on
+    purpose". That was stale: scripts/verify-iam.ts has made those four calls
+    since the group half was built, and it reads each role's trust policy with
+    GetRole. The first master-push run of iam-wall.yml (2026-09-13, run
+    34771127827) failed on `iam:ListGroupsForUser` and said so — the list below
+    is derived from `grep -oE "new [A-Za-z]+Command\(" scripts/verify-iam.ts`,
+    which is the only place it should ever come from.
+  */
+  requires: [
+    'iam:ListAttachedUserPolicies',
+    'iam:ListUserPolicies',
+    'iam:GetUserPolicy',
+    'iam:ListGroupsForUser',
+    'iam:ListAttachedGroupPolicies',
+    'iam:ListGroupPolicies',
+    'iam:GetGroupPolicy',
+    'iam:GetRole',
+    'iam:ListAttachedRolePolicies',
+    'iam:ListRolePolicies',
+    'iam:GetRolePolicy',
+    'iam:GetPolicy',
+    'iam:GetPolicyVersion',
+  ],
+  requiresConsequence:
+    'The IAM wall cannot read the policies it audits, so it reports a clean account because it ' +
+    'saw nothing — or exits 1 on AccessDenied and the daily run reads as "the wall is unmeasured", ' +
+    'which is how the first master-push run ended. Losing one read silently narrows the audit: a ' +
+    'principal whose inline or group policies cannot be listed reads as having none, which is the ' +
+    'exact blind spot this wall was built to close on 2026-08-21.',
+  resourceScope: {
+    mustNotBeWildcard: true,
+    consequence:
+      'A bare "*" on IAM reads reaches every principal and every policy in every account this ' +
+      'credential could ever be pointed at. The grant names the audited principals and the two ' +
+      'policy paths that exist here; a widening to "*" is the same silent shape the other five ' +
+      'contracts refuse.',
+  },
+  forbids: [
+    {
+      action: 'iam:CreatePolicyVersion',
+      consequence:
+        '🔴 A wall that can WRITE a policy version can widen the very grant it audits — from a ' +
+        'public repository. The wall reads; it never writes.',
+    },
+    {
+      action: 'iam:AttachUserPolicy',
+      consequence: 'Attaching a policy is granting; the auditor must not be able to grant.',
+    },
+    {
+      action: 'iam:PutUserPolicy',
+      consequence: 'An inline policy write is a grant by another API call — the blind-spot shape.',
+    },
+    {
+      action: 'iam:CreateAccessKey',
+      consequence: 'Minting a key for any user turns an auditor into a credential factory.',
+    },
+    { action: 'dsql:DbConnectAdmin', consequence: ADMIN_TOKEN_CONSEQUENCE },
+  ],
+  forbidsServices: [
+    {
+      service: 'kms',
+      consequence:
+        'This role reads IAM documents. Any kms: action would let a public-repo workflow touch ' +
+        'the key every vault is wrapped under; the KMS wall has its own, narrower role for that.',
+    },
+    {
+      service: 'dsql',
+      consequence:
+        'This role never connects to the database. A dsql: action here would give a public-repo ' +
+        'workflow a path to production rows under the name of an IAM audit.',
+    },
+  ],
+  trust: {
+    provider: 'token.actions.githubusercontent.com',
+    subject: 'repo:sgharlow/relay:ref:refs/heads/master',
+    consequence:
+      '🔴 A TRUST POLICY WIDENED PAST THE MASTER REF LETS ANY FORK READ THIS ACCOUNT\'S IAM. ' +
+      'sgharlow/relay is PUBLIC; `repo:sgharlow/relay:*` would let a stranger\'s pull request ' +
+      'enumerate every policy here. The permission policy would read exactly as clean as today.',
+  },
+  notes: [
+    'Group-attached policies are a known open blind spot of verify-iam.ts (none of the principals ' +
+      'is in a group today); the four group reads are deliberately NOT granted, so they cannot be ' +
+      'lost either. If the group half is ever built, the grant and this contract change together.',
+    'The daily run is proven red on demand by the workflow_dispatch `principal` input, which ' +
+      'points the RUNTIME contract at a user that does not exist; an unreadable principal is a ' +
+      'finding, not a pass.',
+  ],
+};
+
+/**
+ * The backup wall's principal (2026-09-13, gap plan G4.4 / ROADMAP B29 + B17).
+ * `scripts/backup-status.mjs` makes four reads: list the backup plans, list a
+ * plan's selections, list recovery points in each of the two vaults, and read
+ * each cluster's state. Everything else about backups — starting a restore,
+ * deleting a recovery point or a vault — is forbidden by name, because a
+ * public-repo role that could delete recovery points would be the one
+ * credential able to erase the product's last line of recovery.
+ */
+export const BACKUP_WALL_CI_CONTRACT: PrincipalContract = {
+  kind: 'role',
+  user: 'relay-backup-wall-ci',
+  purpose:
+    'the GitHub Actions OIDC role for the backup wall watch — assumed by a workflow in a PUBLIC ' +
+    'repo, so it holds four Backup/DSQL READS on the named plans, vaults and clusters and nothing ' +
+    'that restores, deletes, connects or decrypts',
+  requires: [
+    'backup:ListBackupPlans',
+    'backup:ListBackupSelections',
+    'backup:ListRecoveryPointsByBackupVault',
+    'dsql:GetCluster',
+  ],
+  requiresConsequence:
+    'The backup wall cannot read a vault, so it reports "cannot read vault" and exits 1 — the ' +
+    'daily run reads as unmeasured rather than as healthy, which is the right failure but still ' +
+    'a failure. Losing the cluster read hides deletion protection being switched off.',
+  resourceScope: {
+    mustNotBeWildcard: true,
+    consequence:
+      'The grant names two vaults, the plan ARNs and two clusters. A bare "*" would let a ' +
+      'public-repo workflow enumerate every vault and recovery point in the account, including ' +
+      'the other products that share it.',
+    wildcardOnlyFor: [
+      {
+        action: 'backup:ListBackupPlans',
+        why:
+          'IAM defines no resource-level permission for ListBackupPlans. Scoped to backup-plan:* ' +
+          'it did not refuse — it returned an EMPTY LIST, and the first runner read "no backup ' +
+          'plan covers relay" (run 34772769825, 2026-09-13). The action lists plan NAMES and ids; ' +
+          'it reveals no recovery point and can change nothing.',
+      },
+    ],
+  },
+  forbids: [
+    {
+      action: 'backup:StartRestoreJob',
+      consequence:
+        '🔴 A restore from CI means a public-repo workflow could materialise a copy of every ' +
+        'vault row somewhere nobody is watching. Reads only.',
+    },
+    {
+      action: 'backup:DeleteRecoveryPoint',
+      consequence:
+        '🔴 The one credential able to erase the last line of recovery must not exist on a runner.',
+    },
+    {
+      action: 'backup:DeleteBackupVault',
+      consequence: 'Same as above, at the scale of the whole vault.',
+    },
+    {
+      action: 'dsql:DbConnect',
+      consequence:
+        'This role reads cluster STATE, never rows. A connect here would be a database credential ' +
+        'on a runner under the name of a backup check.',
+    },
+    { action: 'dsql:DbConnectAdmin', consequence: ADMIN_TOKEN_CONSEQUENCE },
+  ],
+  forbidsServices: [
+    {
+      service: 'kms',
+      consequence:
+        'A recovery point is ciphertext plus a wrapped key. A role that can list recovery points ' +
+        'AND touch the CMK is most of a decryption path, in a public repo.',
+    },
+  ],
+  trust: {
+    provider: 'token.actions.githubusercontent.com',
+    subject: 'repo:sgharlow/relay:ref:refs/heads/master',
+    consequence:
+      '🔴 A TRUST POLICY WIDENED PAST THE MASTER REF LETS ANY FORK ENUMERATE THE BACKUPS. ' +
+      'sgharlow/relay is PUBLIC; `repo:sgharlow/relay:*` would hand a stranger\'s pull request the ' +
+      'list of every recovery point and the clusters\' state.',
+  },
+  notes: [
+    'The daily run is proven red on demand by the workflow_dispatch `dr_vault` input, which ' +
+      'points the script at a vault that does not exist; "cannot read vault" is a finding.',
+    'Its sibling on the AWS side is the CloudWatch alarm relay-dr-copy-absent (B17): same fact, ' +
+      'read from the copy-job metric instead of the vault listing, so the two cannot fail the same way.',
+  ],
+};
+
 export const CONTRACTS: PrincipalContract[] = [
   RUNTIME_CONTRACT,
   LAPTOP_CONTRACT,
   READONLY_CONTRACT,
   KMS_WALL_CI_CONTRACT,
   READONLY_CI_CONTRACT,
+  IAM_WALL_CI_CONTRACT,
+  BACKUP_WALL_CI_CONTRACT,
 ];
 
 function lower(v: string | string[] | undefined): string[] {
@@ -632,8 +854,23 @@ export function readWall(contract: PrincipalContract, policies: NamedPolicy[]): 
           violations.push(`${where} · Allow with no Resource at all`);
           explain(scope.consequence);
         } else if (resources.includes('*')) {
-          violations.push(`${where} · granted on Resource "*"`);
-          explain(scope.consequence);
+          /*
+            The exception is per STATEMENT: a wildcard statement passes only when
+            it names no NotAction and every action in it is one the contract lists
+            as unscopable. Anything else on "*" — a scopable action riding along, a
+            NotAction, a service wildcard — is the finding it always was.
+          */
+          const unscopable = (scope.wildcardOnlyFor ?? []).map((w) => w.action.toLowerCase());
+          const actions = lower(s.Action);
+          const excused =
+            unscopable.length > 0 &&
+            s.NotAction === undefined &&
+            actions.length > 0 &&
+            actions.every((a) => unscopable.includes(a));
+          if (!excused) {
+            violations.push(`${where} · granted on Resource "*"`);
+            explain(scope.consequence);
+          }
         }
       }
 

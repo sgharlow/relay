@@ -19,19 +19,26 @@
  * Feature: relay-h0-mvp (CC9)
  */
 
-import { credentialsFromProfile, backup, dsql } from './aws-sig.mjs';
+import { credentials, backup, dsql } from './aws-sig.mjs';
 
 const PROFILE = process.argv[2] || 'autospecai';
 // Kept for reference — the account these vaults live in. Underscored
 // because nothing reads it; the lint config allows `^_` unused vars.
 const _ACCOUNT = '461293170793';
 const PRIMARY = { region: 'us-east-1', id: 'frt34buqso4inluojgnj6horuy', vault: 'relay-vault' };
-const SECONDARY = { region: 'us-west-2', id: 'fjt34b2el5yoh7pvcm4knbkyvi', vault: 'relay-vault-dr' };
+/*
+  `BACKUP_DR_VAULT` exists so the scheduled run (.github/workflows/backup-wall.yml,
+  2026-09-13) can be PROVEN TO GO RED on demand: dispatch it with a vault name that
+  does not exist and the read fails, which is a finding. Every other alarm here
+  learned that lesson the expensive way — see production-canary.yml's history.
+*/
+const SECONDARY = { region: 'us-west-2', id: 'fjt34b2el5yoh7pvcm4knbkyvi', vault: process.env.BACKUP_DR_VAULT || 'relay-vault-dr' };
 
 /** Daily schedule + a generous window for a slow job. Alert beyond this. */
 const STALE_AFTER_HOURS = 30;
 
-const creds = credentialsFromProfile(PROFILE);
+// A runner carries an OIDC session in the environment; a laptop names a profile.
+const creds = credentials(PROFILE);
 const problems = [];
 
 function hoursAgo(epochSeconds) {

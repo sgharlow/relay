@@ -25,6 +25,8 @@ import {
   readTrust,
   CONTRACTS,
   KMS_WALL_CI_CONTRACT,
+  IAM_WALL_CI_CONTRACT,
+  BACKUP_WALL_CI_CONTRACT,
   READONLY_CI_CONTRACT,
   RUNTIME_CONTRACT,
   LAPTOP_CONTRACT,
@@ -317,6 +319,8 @@ describe('the contract is per-principal, which is the point of the change', () =
       'relay-ro',
       'relay-kms-wall-ci',
       'relay-ro-ci',
+      'relay-iam-wall-ci',
+      'relay-backup-wall-ci',
     ]);
     // A role is reached by satisfying a trust policy, not with a key, so the
     // kind is what decides which API calls collect it. Getting it wrong audits
@@ -324,6 +328,8 @@ describe('the contract is per-principal, which is the point of the change', () =
     expect(CONTRACTS.filter((c) => c.kind === 'role').map((c) => c.user)).toEqual([
       'relay-kms-wall-ci',
       'relay-ro-ci',
+      'relay-iam-wall-ci',
+      'relay-backup-wall-ci',
     ]);
   });
 
@@ -355,7 +361,7 @@ describe('the contract is per-principal, which is the point of the change', () =
       CONTRACTS.filter((c) => (c.forbidsServices ?? []).some((f) => f.service === 'kms')).map(
         (c) => c.user,
       ),
-    ).toEqual(['relay-ro', 'relay-ro-ci']);
+    ).toEqual(['relay-ro', 'relay-ro-ci', 'relay-iam-wall-ci', 'relay-backup-wall-ci']);
     expect(READONLY_CONTRACT.forbidsServices?.map((f) => f.service)).toEqual(['kms']);
     expect(READONLY_CI_CONTRACT.forbidsServices?.map((f) => f.service)).toEqual(['kms']);
     expect(RUNTIME_CONTRACT.forbidsServices ?? []).toEqual([]);
@@ -762,5 +768,164 @@ describe('the trust policy of relay-ro-ci — the half that decides who may BECO
     // pushes and dispatches only, and says so.
     expect(READONLY_CI_CONTRACT.trust?.subject).toBe('repo:sgharlow/relay:ref:refs/heads/master');
     expect(READONLY_CI_CONTRACT.trust?.provider).toBe('token.actions.githubusercontent.com');
+  });
+});
+
+/* ────────────────────────────────────────────────────────────────────────────
+   B16 residue closed 2026-09-13 — the IAM wall's OWN role. The proposal asked
+   for Resource "*"; this file's scope rule refused it, so the live grant names
+   the audited principals and the two policy paths. These pin that the contract
+   reads the intended grant as healthy and a widened one as a breach.
+   ──────────────────────────────────────────────────────────────────────────── */
+describe('the IAM wall audits its own principal — relay-iam-wall-ci', () => {
+  // The thirteen calls scripts/verify-iam.ts makes (the proposal's eight was stale — see the
+  // contract). Derived: grep -oE "new [A-Za-z]+Command\(" scripts/verify-iam.ts
+  const READS = [
+    'iam:ListAttachedUserPolicies',
+    'iam:ListUserPolicies',
+    'iam:GetUserPolicy',
+    'iam:ListGroupsForUser',
+    'iam:ListAttachedGroupPolicies',
+    'iam:ListGroupPolicies',
+    'iam:GetGroupPolicy',
+    'iam:GetRole',
+    'iam:ListAttachedRolePolicies',
+    'iam:ListRolePolicies',
+    'iam:GetRolePolicy',
+    'iam:GetPolicy',
+    'iam:GetPolicyVersion',
+  ];
+  const A = 'arn:aws:iam::461293170793';
+  /** Verbatim shape of the live inline policy `relay-iam-wall-reads` (re-put 2026-09-13). */
+  const INTENDED: NamedPolicy = {
+    source: 'inline relay-iam-wall-reads',
+    document: {
+      Statement: [
+        {
+          Sid: 'ReadUserPolicies',
+          Effect: 'Allow',
+          Action: ['iam:ListAttachedUserPolicies', 'iam:ListUserPolicies', 'iam:GetUserPolicy', 'iam:ListGroupsForUser'],
+          Resource: [`${A}:user/relay-runtime`, `${A}:user/relay-dev`, `${A}:user/relay-ro`],
+        },
+        {
+          Sid: 'ReadGroupPolicies',
+          Effect: 'Allow',
+          Action: ['iam:ListAttachedGroupPolicies', 'iam:ListGroupPolicies', 'iam:GetGroupPolicy'],
+          Resource: [`${A}:group/*`],
+        },
+        {
+          Sid: 'ReadRolePolicies',
+          Effect: 'Allow',
+          Action: ['iam:GetRole', 'iam:ListAttachedRolePolicies', 'iam:ListRolePolicies', 'iam:GetRolePolicy'],
+          Resource: [`${A}:role/relay-kms-wall-ci`, `${A}:role/relay-ro-ci`, `${A}:role/relay-iam-wall-ci`, `${A}:role/relay-backup-wall-ci`, `${A}:role/relay-backend-dsql`],
+        },
+        {
+          Sid: 'ReadManagedPolicyDocuments',
+          Effect: 'Allow',
+          Action: ['iam:GetPolicy', 'iam:GetPolicyVersion'],
+          Resource: [`${A}:policy/*`, 'arn:aws:iam::aws:policy/*'],
+        },
+      ],
+    },
+  };
+
+  it('reads the intended grant as healthy', () => {
+    const v = readWall(IAM_WALL_CI_CONTRACT, [INTENDED]);
+    expect(v.missing).toEqual([]);
+    expect(v.violations).toEqual([]);
+    expect(v.ok).toBe(true);
+  });
+
+  it('refuses the bare "*" the proposal originally asked for', () => {
+    const widened: NamedPolicy = {
+      source: 'inline widened',
+      document: { Statement: [{ Sid: 'All', Effect: 'Allow', Action: READS, Resource: '*' }] },
+    };
+    const v = readWall(IAM_WALL_CI_CONTRACT, [widened]);
+    expect(v.ok).toBe(false);
+    expect(v.violations.join(' ')).toContain('Resource "*"');
+  });
+
+  it('refuses a write action and a kms or dsql action, which an auditor must never hold', () => {
+    const doc = (action: string): NamedPolicy => ({
+      source: `inline ${action}`,
+      document: {
+        Statement: [
+          INTENDED.document.Statement![0]!,
+          { Sid: 'Extra', Effect: 'Allow', Action: [action], Resource: 'arn:aws:iam::461293170793:policy/*' },
+        ],
+      },
+    });
+    for (const action of ['iam:CreatePolicyVersion', 'iam:PutUserPolicy', 'kms:DescribeKey', 'dsql:DbConnect']) {
+      expect(readWall(IAM_WALL_CI_CONTRACT, [doc(action)]).ok, `${action} should be refused`).toBe(false);
+    }
+  });
+
+  it('reports a missing read as a finding, never as safety', () => {
+    const statements = INTENDED.document.Statement!;
+    const narrowed: NamedPolicy = {
+      source: 'inline narrowed',
+      document: {
+        Statement: [
+          ...statements.slice(0, 3),
+          { ...statements[3]!, Action: ['iam:GetPolicy'] }, // GetPolicyVersion dropped
+        ],
+      },
+    };
+    const v = readWall(IAM_WALL_CI_CONTRACT, [narrowed]);
+    expect(v.ok).toBe(false);
+    expect(v.missing).toEqual(['iam:getpolicyversion']);
+  });
+});
+
+/* ────────────────────────────────────────────────────────────────────────────
+   G4.4 (2026-09-13) — the backup wall's principal, and the ONE argued exception
+   to the wildcard rule: `backup:ListBackupPlans` has no resource-level
+   permission, and scoped it returns an empty list rather than refusing.
+   ──────────────────────────────────────────────────────────────────────────── */
+describe('the backup wall principal — relay-backup-wall-ci', () => {
+  const A = 'arn:aws:iam::461293170793';
+  const B = 'arn:aws:backup';
+  /** Verbatim shape of the live inline policy `relay-backup-wall-reads`. */
+  const LIVE: NamedPolicy = {
+    source: 'inline relay-backup-wall-reads',
+    document: {
+      Statement: [
+        { Sid: 'ListPlansUnscopable', Effect: 'Allow', Action: ['backup:ListBackupPlans'], Resource: '*' },
+        { Sid: 'ListSelections', Effect: 'Allow', Action: ['backup:ListBackupSelections'], Resource: [`${B}:us-east-1:461293170793:backup-plan:*`] },
+        { Sid: 'ListRecoveryPoints', Effect: 'Allow', Action: ['backup:ListRecoveryPointsByBackupVault'], Resource: [`${B}:us-east-1:461293170793:backup-vault:relay-vault`, `${B}:us-west-2:461293170793:backup-vault:relay-vault-dr`] },
+        { Sid: 'ReadClusters', Effect: 'Allow', Action: ['dsql:GetCluster'], Resource: ['arn:aws:dsql:us-east-1:461293170793:cluster/frt34buqso4inluojgnj6horuy', 'arn:aws:dsql:us-west-2:461293170793:cluster/fjt34b2el5yoh7pvcm4knbkyvi'] },
+      ],
+    },
+  };
+  void A;
+
+  it('reads the live grant as healthy, wildcard on the unscopable list action included', () => {
+    const v = readWall(BACKUP_WALL_CI_CONTRACT, [LIVE]);
+    expect(v.missing).toEqual([]);
+    expect(v.violations).toEqual([]);
+    expect(v.ok).toBe(true);
+  });
+
+  it('still refuses a wildcard statement that carries a SCOPABLE action alongside the excused one', () => {
+    const mixed: NamedPolicy = {
+      source: 'inline mixed',
+      document: { Statement: [{ Sid: 'Mixed', Effect: 'Allow', Action: ['backup:ListBackupPlans', 'backup:ListRecoveryPointsByBackupVault'], Resource: '*' }, ...LIVE.document.Statement!.slice(1)] },
+    };
+    const v = readWall(BACKUP_WALL_CI_CONTRACT, [mixed]);
+    expect(v.ok).toBe(false);
+    expect(v.violations.join(' ')).toContain('Resource "*"');
+  });
+
+  it('the exception is not transferable: the IAM wall contract has none, so its reads on "*" stay findings', () => {
+    const v = readWall(IAM_WALL_CI_CONTRACT, [{ source: 'inline x', document: { Statement: [{ Sid: 'X', Effect: 'Allow', Action: ['iam:GetPolicy'], Resource: '*' }] } }]);
+    expect(v.ok).toBe(false);
+  });
+
+  it('refuses a restore, a delete, a connect and any kms action', () => {
+    for (const action of ['backup:StartRestoreJob', 'backup:DeleteRecoveryPoint', 'dsql:DbConnect', 'kms:Decrypt']) {
+      const doc: NamedPolicy = { source: `inline ${action}`, document: { Statement: [...LIVE.document.Statement!, { Sid: 'Extra', Effect: 'Allow', Action: [action], Resource: 'arn:aws:backup:us-east-1:461293170793:backup-vault:relay-vault' }] } };
+      expect(readWall(BACKUP_WALL_CI_CONTRACT, [doc]).ok, `${action} should be refused`).toBe(false);
+    }
   });
 });
