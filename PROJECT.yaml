@@ -6557,6 +6557,12 @@ deferred:
       and for NOTHING about R14.2 (no acknowledged write absent after failover) -- a read-only
       credential cannot evidence a write clause. Revision 1 of the gap plan called it "daily" and
       "R14.2 evidence"; both were wrong.
+    r14_1_evidence_candidates_2026_09_13: >-
+      Five master-push `a11y.yml` runs on 2026-09-13, every one green, every one minting the owner
+      session through the SECONDARY first (rule 3; PRs #75-#79 each triggered one):
+      34744086721 (06:58Z), 34744222304 (07:02Z), 34744328860 (07:04Z), 34744434177 (07:07Z),
+      34744557036 (07:10Z). Recorded by Claude as CANDIDATES; they become R14.1 evidence only
+      when Steve rules (a) below - the entry does not close itself.
     ends_when: >-
       (a) Steve records the master-push secondary read as R14.1 evidence, dated, with the trigger
       list -- and nothing stronger; AND (b) an R14.2 re-proof -- a cut-over exercised against
