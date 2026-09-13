@@ -887,6 +887,13 @@ ratified:
       g4_failover_r14_2: { ruling: "DEFER with a trigger (next drill 2026-12-13 or G1 pass).", executed: "the-failover-has-not-been-re-exercised-since-h0 CLOSED on both halves" }
       g4_dmarc_c3: { ruling: "PARK the p=none -> quarantine step-up until Sitting E's 08-17 report is read (2026-09-19); Steve changes the record in the Cloudflare UI (no Cloudflare token is on this machine, and DNS is the trap list's kind of change).", obliges: "the C3 row in the gap plan carries the date; no register revisit of its own - it rides Sitting E's" }
       g4_admin_key_deletion: { ruling: "Delete the INACTIVE old admin key and the .bak on 2026-09-27 if nothing missed it.", executed: "revisit: 2026-09-27 on no-secret-rotation-cadence-and-nothing-rotated" }
+      # -- close-out sweep, 2026-09-13 evening, under "close out all autonomous items" --
+      closeout_validity_checks: { attempted: "gh api PATCH repos/sgharlow/relay security_and_analysis.secret_scanning_validity_checks=enabled returns 200 and the setting reads `disabled` after - not API-settable on this plan/repo; stays Steve's UI toggle (Settings -> Code security), co-pilot" }
+      closeout_registrar_read: { read: "the-domain-can-lapse-without-anyone-noticing.registrar_read_2026_09_13 - auto-renew ON, expires 2027-08-07, NO PAYMENT METHOD ON FILE" }
+      closeout_security_bumps: { executed: "the-auth-and-react-lines-are-a-major-version-behind.patched_2026_09_13" }
+      closeout_stripe_reads: { read: "E1.5 #3 through Claude-in-Chrome in Steve's Stripe session: Settings -> Customer emails has 'Successful payments' (receipts) OFF and 'Refunds' OFF - Stripe sends no receipt for a Relay charge; the product's own confirmation is the only one. E1.5 #4 (webhook endpoint-failure notification preference) sits behind the personal Notifications menu, which is not URL-addressable and was not clicked into - still Steve's one click. Gmail is not a permitted domain for the browser plugin, so the DMARC filter and the budget filter stay Steve's hands." }
+      closeout_production_after_bumps: { probed: "relaystandby.com /, /api/health/scheduler, /api/health/delivery-webhook, /api/health/reminders all 200 after the PR #92 deploy; Dependabot #70-#72 auto-closed, open alerts 6 -> 2 (vitest pair, dev-only)" }
+      closeout_two_entries_closed_on_measurement: { executed: "the-privacy-page-may-be-missing-two-subprocessors (both named 09-13) and rows-outlived-the-accounts-that-owned-them (census exits 0)" }
 
   - id: relay-resumed-2026-08-21
     date: 2026-08-21
@@ -4001,6 +4008,14 @@ deferred:
       census that has learned to ignore orphans is the decorative-guard shape this project keeps
       catching."
 
+    closed: 2026-09-13
+    closed_by: >-
+      Ends_when's first arm is met and was measured rather than assumed: `npm run verify:orphans`
+      on 2026-09-13 exits 0 - "No accounts on a reserved domain exist" and "Orphan census: nothing
+      unowned in any table the cascade purges". The dangling rows this entry was opened on were
+      purged under ratified.sitting-d1-2026-08-30 (D20 PURGE, executed), and the census has read
+      clean on every run since; the only retained rows are audit_log entries of closed accounts,
+      which deleteAccount() keeps by design and the census reports as a NOTICE, not a finding.
   - id: the-read-only-identity-is-not-in-the-cloud
     owner: steve
     opened: 2026-08-21
@@ -4743,6 +4758,16 @@ deferred:
   # holds the detail; these hold the obligation.
   # ═══════════════════════════════════════════════════════════════════════════
 
+    patched_2026_09_13: >-
+      NOT the reopen this entry describes. Dependabot raised two CRITICAL advisories on next 16.3.0
+      plus sharp and js-yaml; all three are PATCH releases on the pinned lines and were taken in one
+      PR (next 16.3.5, sharp 0.35.4, js-yaml 4.3.2 - the latter two transitive; adding them as
+      direct dependencies tripped lib/ops/subprocessors-are-listed.test.ts, which is that guard
+      working). Full suite and build green before push; production probed after deploy. The
+      vitest 4.1.11 bump (moderate, dev-only, Dependabot #68) is NOT taken: npm's resolver crashes
+      on it locally (`edgesOut` null) and Dependabot's own PR fails on the coverage-v8 peer pin - it
+      needs vitest, @vitest/mocker and @vitest/coverage-v8 moved together in one change. The
+      major-version question (next-auth, React) is unchanged and still has no trigger.
   - id: the-alarm-of-record-delivers-to-trash                 # ROADMAP B10
     owner: claude                         # moved from steve 2026-09-12: no rule needs deleting (see re_scoped_2026_09_12)
     opened: 2026-08-28
@@ -6286,6 +6311,15 @@ deferred:
       Cloudflare API token is on disk in .env.local/.env.admin (the zone-scoped token the DNS
       runbook mentions is not here), and a registrar read needs account scope regardless. Still
       Steve's one-minute dashboard read; the four ends_when clauses are unchanged.
+    registrar_read_2026_09_13: >-
+      READ through Claude-in-Chrome in Steve's own signed-in Cloudflare session (read-only, no
+      token): relaystandby.com is Active, expires **2027-08-07**, auto-renew **ON**, renewal
+      scheduled 2027-07-08 at $10.46/yr. 🔴 AND THE BILLING PAGE SAYS "No payment method on file"
+      - both payment-method slots empty. Auto-renew with no card is a renewal that fails on the
+      day, which is precisely the silent lapse this entry exists to catch. The card is Steve's to
+      add (payment details are never entered by Claude); until it is, ends_when clause 1 ("with a
+      card that has not expired") is NOT met and this stays open. Thirteen other domains on the
+      same account share the gap.
     revisit: 2026-09-19
     revisit_why: >-
       Sitting E is scheduled inside Sprint 2 for 2026-09-19 (ratified.sitting-d2-2026-09-13
@@ -6354,6 +6388,13 @@ deferred:
       are out of scope for this list — a defensible position, but one that has to be written down
       rather than assumed.
 
+    closed: 2026-09-13
+    closed_by: >-
+      Ruled at ratified.sitting-d2-2026-09-13.d6_b38_subprocessors (name both) and executed the same
+      day: src/app/privacy/page.tsx names Cloudflare (mail forwarding) and Google (Gmail) on the
+      subprocessor list, UPDATED moved with the edit (src/app/terms/legal-pages.test.ts holds it to
+      the commit date). The entry outlived its own ends_when by a session; closed on the close-out
+      sweep of 2026-09-13 after re-reading the page.
   - id: releases-may-or-may-not-be-billing-gated              # ROADMAP E4.1
     owner: steve                          # a ruling, and it has a hard date
     opened: 2026-08-28
