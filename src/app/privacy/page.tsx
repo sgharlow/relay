@@ -107,6 +107,14 @@ export default function PrivacyPage() {
             <li><strong>OpenAI</strong> — the labels-only analysis described above</li>
             <li><strong>Resend</strong> — sending email such as invitations and alerts</li>
             <li>
+              <strong>Cloudflare</strong> — our domain&rsquo;s DNS, and the mail forwarding that
+              delivers anything you send to our support address
+            </li>
+            <li>
+              <strong>Google</strong> — the mailbox (Gmail) where that forwarded support mail is
+              read, and where our mail-authentication reports arrive
+            </li>
+            <li>
               <strong>Stripe</strong> — payment processing, if you subscribe. Your card details go
               to Stripe directly and never reach our servers; we keep only the fact that a
               subscription exists and its status

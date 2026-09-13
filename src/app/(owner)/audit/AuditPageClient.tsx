@@ -13,6 +13,7 @@
 
 import { useEffect, useState } from 'react';
 import { GENESIS_PREV_HASH, canonicalJson } from '../../../../lib/audit/canonical';
+import { labelForAction } from '../../../../lib/audit/action-labels';
 import IncidentRecord from './IncidentRecord';
 
 interface AuditEntry {
@@ -188,7 +189,22 @@ export default function AuditPage() {
                     e.actor
                   )}
                 </td>
-                <td className="px-3 py-1.5 font-medium">{e.action}</td>
+                {/*
+                  The action as a sentence, with the raw action on a visible second
+                  line — the same shape as the actor column above, and for the same
+                  reason: nothing is hidden behind a hover. An action this map does
+                  not know prints once, unchanged (lib/audit/action-labels.ts).
+                */}
+                <td className="px-3 py-1.5 font-medium">
+                  {labelForAction(e.action) !== e.action ? (
+                    <>
+                      {labelForAction(e.action)}
+                      <span className="block text-t1 font-normal text-muted">{e.action}</span>
+                    </>
+                  ) : (
+                    e.action
+                  )}
+                </td>
                 <td className="px-3 py-1.5 text-muted">
                   {e.entity}
                   {e.entity_id ? <span className="text-muted"> · {e.entity_id.slice(0, 8)}</span> : null}

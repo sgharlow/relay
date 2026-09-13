@@ -18,6 +18,7 @@ import { sweepSilentVerifiers } from '../../../../../lib/release/silence-sweep';
 import { sweepCheckinReminders } from '../../../../../lib/release/checkin-reminder';
 import { sweepExpiredChallenges } from '../../../../../lib/auth/challenge-store';
 import { sweepOldSigninAttempts } from '../../../../../lib/auth/signin-attempts';
+import { pruneCspReports } from '../../../../../lib/ops/csp-report-store';
 import { timingSafeEquals } from '../../../../../lib/http/timing-safe';
 
 async function handle(req: NextRequest): Promise<NextResponse> {
@@ -84,6 +85,14 @@ async function handle(req: NextRequest): Promise<NextResponse> {
   */
   const signinAttemptsSwept = await sweepOldSigninAttempts();
 
+  /*
+    Third of the same shape (2026-09-13, B21.3 ruled: thirty days). CSP reports
+    are evidence for the next policy rung, not a control; a report older than
+    the window has already been read or never will be. Swallows its own errors.
+    Housekeeping. Do not wire an alert to this one either.
+  */
+  const cspReportsPruned = await pruneCspReports();
+
   // CC9: record the run so its ABSENCE is detectable by /api/health/scheduler.
   await recordSchedulerRun(summary);
 
@@ -120,6 +129,7 @@ async function handle(req: NextRequest): Promise<NextResponse> {
     checkinReminders: checkinReminders.length,
     challengesSwept,
     signinAttemptsSwept,
+    cspReportsPruned,
   });
 }
 

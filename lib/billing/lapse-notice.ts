@@ -121,6 +121,15 @@ export async function sendOnce(params: {
 }): Promise<NoticeOutcome> {
   const { ownerId, action, stripeId, subject, text } = params;
 
+  // E1′ run 3 (2026-09-13): the case body was entered and nothing downstream
+  // spoke. This is the first statement of the send path; if it prints and no
+  // later line does, the silence is between here and the dedupe query's return.
+  try {
+    process.stderr.write(`[billing] sendOnce entered action=${action} stripe_id=${stripeId}\n`);
+  } catch {
+    /* a broken stderr must not stop a notice */
+  }
+
   if (await noticeAlreadySent(ownerId, action, stripeId)) {
     /*
       🔴 THIS BRANCH WROTE AND LOGGED NOTHING UNTIL 2026-09-02, AND THAT IS WHY

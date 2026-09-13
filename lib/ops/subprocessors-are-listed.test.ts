@@ -62,6 +62,17 @@ const SERVICES: Record<string, { name: string; receives: string }> = {
 };
 
 /**
+ * Processors that are NOT dependencies — infrastructure the code never imports —
+ * and which this file therefore could not see until 2026-09-13 (ROADMAP B38,
+ * gap plan GP-D5). Ruled: a mail forwarder counts. Each entry says what customer
+ * data reaches it.
+ */
+const INFRA: Record<string, string> = {
+  Cloudflare: 'DNS for relaystandby.com, and Email Routing — every message to the support address passes through it',
+  Google: 'the Gmail mailbox where forwarded support mail and the DMARC aggregate reports are read',
+};
+
+/**
  * Dependencies that receive nothing, because they run in our own process.
  *
  * Every entry argues for itself. "It is a library" is not a reason; the reason
@@ -119,6 +130,13 @@ describe('every service that receives customer data is named', () => {
     expect(
       namesAsListItem(section, name),
       `/privacy does not name ${name} as an entry in "Who else is involved"`,
+    ).toBe(true);
+  });
+
+  it.each(Object.keys(INFRA))('infra → the page names %s', (name) => {
+    expect(
+      namesAsListItem(section, name),
+      `/privacy does not name ${name} — an infra-only processor package.json cannot reveal`,
     ).toBe(true);
   });
 

@@ -29,7 +29,14 @@ export type TriggerType = 'emergency' | 'travel' | 'caregiver' | 'business' | 'e
 /**
  * How long the owner gets to answer before verifiers are contacted. Emergency
  * is shortest because someone is waiting; estate is longest because it cannot
- * be undone. These are starting proposals, not evidence (J6-R7).
+ * be undone. These were starting proposals, not evidence (J6-R7) — and were
+ * RATIFIED AS SHIPPED on 2026-09-13 (`ratified.sitting-d2-2026-09-13`, gap
+ * plan GP-U10 option B1, brief in docs/g11-quorum-and-challenge-window-options.md):
+ * both lapse paths are live-proven (B15.3, 2026-08-31) and no observed request
+ * argues for a different number. A lapse never releases anything; it asks the
+ * verifiers. Revisit the numbers when the Phase-0 report or the first real
+ * access request gives a reason; an owner-configurable window needs a migration
+ * and is barred (F-k's shape).
  */
 export const CHALLENGE_WINDOW_SECONDS: Record<TriggerType, number> = {
   emergency: 7200, // 2 h

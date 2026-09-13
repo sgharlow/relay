@@ -761,6 +761,74 @@ ratified:
         Star it, Apply label relay-alarm, Never send it to Spam, Mark it as important.
         NO DELETE ACTION. So the trashing was never a filter — see
         deferred.the-alarm-of-record-delivers-to-trash.re_measured_2026_08_30."
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SITTING D-2, ruled 2026-09-13 by Steve — via the gap plan's rulings pack
+  # (docs/rulings-pack-sitting-d.md, bottom section = docs/gap-closure-plan-2026-09-12.md §6).
+  # Asked as four AskUserQuestion items; Steve chose "take the recommended defaults as
+  # rulings" for rows 5-24, so each row below is RULED-BY-DEFAULT, which the option text
+  # said makes it a ruling. Two rows are recorded as NOT taken because the default
+  # contradicted an earlier explicit ruling or needs a credential Claude does not hold.
+  # ═══════════════════════════════════════════════════════════════════════════
+  - id: sitting-d2-2026-09-13
+    date: 2026-09-13
+    owner: steve
+    decision: "Twenty D-2 rulings by ratified default, plus the G0 nods and the ladder window."
+    rulings:
+      gp_u9_ladder_window:
+        ruling: "(a) ACCEPT THE NATURAL DATE. All owner writes happen in Sprint 2 (09-17 -> 09-24);
+          then a quiet window with no owner sign-in or write until the ladder has fired
+          (first rung ~ last write + 22.5 d, final ~ +27 d); then the owner checks in."
+        obliges: "Sprint 2 rows 2.1/2.3 and the recovery-code regeneration all inside the week;
+          Sprint 3 and the plan's G3 are the quiet window; row 2.2 / 3.1 land in the plan's G4."
+      gp_u13_f_p_reclassified: { ruling: "OBLIGED (the unlock 'a real owner reads /audit' is met). Neutral past-tense label for the retired estate action.", obliges: "gap plan task 5.4" }
+      gp_d15_b27_repo_settings:
+        ruling: "YES to both."
+        executed: "Dependabot security updates: confirmed enabled via PUT /automated-security-fixes
+          (2026-09-13). Secret-scanning VALIDITY CHECKS: the PATCH on security_and_analysis is
+          accepted and the value stays 'disabled' — not settable through the API for this repo;
+          the toggle is in the GitHub UI (Settings -> Code security -> Secret scanning). STEVE'S
+          HANDS, ~1 min; recorded as pending, not done."
+      gp_r1_r4_register_nods: { ruling: "YES: close web-analytics-collects-but-cannot-be-read (clause 3 recorded as partial, no location named); verify-live-cannot-enter-ci gains its ends_when." }
+      gp_p6_b15_6: { ruling: "The fault-injected property recorded 2026-08-31 IS B15.6.", obliges: "tick it on shipped-but-unproven-release-guards" }
+      e1_prime_route_3_one_run: { ruling: "ONE authorised run against a local production build; at most one fabricated-invoice audit row on the live owner's log.", obliges: "gap plan G1.5, second half" }
+      d3_b22_executor:
+        ruling: "DOCUMENT the UI/API asymmetry as design (default). Live read 2026-09-13: recipients.role = {recipient: 1}; no executor row."
+        executed: "comment on VALID_ROLES in lib/domain/enums.ts; B22 closes"
+      d5_b38_privacy_subprocessors:
+        ruling: "YES - a mail forwarder counts. Name Cloudflare and Google."
+        executed: "src/app/privacy/page.tsx two entries; lib/ops/subprocessors-are-listed.test.ts INFRA allowlist"
+      d6_b41_support_promise:
+        ruling: "DEFAULT NOT TAKEN. The pack's default ('soften until a reader exists') contradicts
+          Steve's explicit 2026-08-20 ruling recorded in lib/contact.ts (SUPPORT_RESPONSE_TIME =
+          'within one business day') and guarded by lib/ops/support-commitment.test.ts. A wholesale
+          default cannot silently overturn a dated explicit ruling. B41 stands as ruled 08-20; the
+          open half is the READER (who watches the inbox), which is B41's original question and
+          stays Steve's."
+      d6_b42_reply_to:
+        ruling: "ALIGN Reply-To with From (default)."
+        executed: "NOT YET - Reply-To is RESEND_REPLY_TO_ADDRESS in the Vercel environment; the
+          Vercel CLI is not installed here and the value is Steve's to set. Recorded as pending."
+      d10_b20_iam_template: { ruling: "Match the live policy.", executed: "infra/iam-policy.json no longer grants dsql:DbConnectAdmin (live relay-runtime-policy v2 since 2026-08-16)" }
+      d16_b21_3_csp_retention: { ruling: "30 days.", executed: "pruneCspReports() rides the heartbeat cron as housekeeping (lib/ops/csp-report-store.ts; src/app/api/cron/heartbeat/route.ts); tested" }
+      d17_b19_cmk_rotation: { ruling: "ENABLE - enable-key-rotation AND ROTATION_INTENDED = true in ONE commit; ~$24/yr recurring; rotated material is not removable.", obliges: "EXECUTE IN G4 (Sitting H), not before" }
+      d17_b25_bulk_revocation: { ruling: "ACCEPT 'rotate NEXTAUTH_SECRET' as the bulk path and document it; a built control is deferred to the first stranger.", executed: "docs/security-incident-runbook.md, the global-signout row" }
+      d17_b26_secret_types_q6_q16: { ruling: "DEFER with F-b (field-level editing) - the same change decides the unwrap step-up." }
+      u1_incapacity_verification_s18: { ruling: "DEFER; trigger = the first regulated-partner conversation (G7)." }
+      u2_compliance_programmes_s19: { ruling: "DEFER; trigger = a G3 pilot signature. A DPA template is the first thing drafted on that day." }
+      u3_legible_trust_s20: { ruling: "DEFER to G5 (audited crypto)." }
+      u4_open_standard_s21: { ruling: "STRIKE." }
+      u5_ops_slos_ledger_s22: { ruling: "DEFER to G4 (billing MVP)." }
+      u6_business_travel_selectable: { ruling: "KEEP - built, reversible, not a widening." }
+      u7_mobile_g12: { ruling: "STRIKE until partner pull; no trigger of its own." }
+      u8_req_13_6_plan_preview: { ruling: "DEFER into ROADMAP section 2-F under F-o (owner preview of the recipient's view)." }
+      u10_g11_quorums_and_challenge_window:
+        ruling: "A1 - recovery and release quorums stay SEPARATE; A2's coercion objection recorded
+          so G3 starts from it. B1 - the challenge-window table is RATIFIED AS SHIPPED."
+        executed: "comment on CHALLENGE_WINDOW_SECONDS in lib/release/access-request.ts;
+          docs/g11-quorum-and-challenge-window-options.md is the brief"
+      u11_failover_r14_1: { ruling: "(a) the five master-push a11y runs of 2026-09-13 are recorded as R14.1 evidence, dated; (b) the R14.2 cut-over stays with the restore drill (G4).", executed: "the-failover-has-not-been-re-exercised-since-h0.r14_1_evidence_recorded_2026_09_13" }
+      u15_d23_review_on_10_21: { ruling: "The 2026-10-21 review asks two things: is report-bridge still the precedence, and did G1 move." }
+
   - id: relay-resumed-2026-08-21
     date: 2026-08-21
     owner: steve
@@ -2662,6 +2730,11 @@ deferred:
   - id: verify-live-cannot-enter-ci                          # "D4"
     owner: steve            # infrastructure spend - explicitly not a Claude item
     opened: 2026-08-18
+    ends_when: >-
+      Arms-length money has moved (a gates.g4-class event) - D4's ruling is "a separate test
+      cluster is deferred until the first paying customer" - OR Steve re-rules earlier. Added
+      2026-09-13 on Steve's nod (gap plan GP-R4); the entry already carried `blocked_on`, which
+      the well-formed test exempts, so this is hygiene, not a repair.
     what: "The release gate is a chain of live walks a PERSON has to remember to run,
       against the PRODUCTION cluster, creating and deleting real accounts as it goes."
     narrowed_2026-08-18: "`verify:factors` was folded into `verify:live`, so the chain
@@ -5043,6 +5116,18 @@ deferred:
       Web Analytics is enabled for the `relay` project, the API probe returns a count instead of
       `web_analytics_not_enabled`, and a decision is recorded about where the queryability
       assertion lives.
+    queryability_assertion_lives: >-
+      PARTIAL, recorded 2026-09-13 on Steve's nod (ratified.sitting-d2-2026-09-13
+      .gp_r1_r4_register_nods): no location was named, so the assertion lives nowhere yet.
+      `FUNNEL_COLLECTION=enabled npm run verify:funnel` is the operator declaration that stands in
+      for it (CLAUDE.md). If a placement day approaches with no assertion, this is the line to
+      re-open.
+    closed: 2026-09-13
+    closed_by: >-
+      The toggle was thrown 2026-09-01 and the closure landed on
+      `the-funnel-walk-spoke-for-a-half-it-could-not-see` (ROADMAP section 0.5 A7.0); this entry
+      was left open by omission (gap plan GP-R1). Closed on the nod with clause 3 recorded as
+      partial above.
 
   - id: the-billing-contract-had-no-guard                     # ROADMAP E1.6 + E1.7 + E1.1
     owner: claude
@@ -5747,9 +5832,14 @@ deferred:
           number copied into prose: the authority lives somewhere the reader cannot check. The fix
           is to restate B15.6 as the PROPERTY it wants proven, or for Steve to confirm the property
           above is it. Recorded rather than ticked.
+      b15_6_confirmed_by_steve_2026_09_13: >-
+        ✅ "That property IS B15.6." (ratified.sitting-d2-2026-09-13.gp_p6_b15_6). The fault-injected
+        fail-closed classification on `requireStepUp` and `requireStepUpOnce`, recorded 2026-08-31
+        above, is the thing the section-2 B15 clause meant. B15.6 is TICKED; the item's only
+        definition is now this block rather than a PR number in another system.
       still_open_here: >-
-        B15.6 only -- and see the entry above for why it may already be satisfied and cannot be
-        told from this repo. ⚠️ This line read "B15.5 and B15.6" until 2026-08-31: B15.5 was BUILT
+        ~~B15.6 only~~ (ticked 2026-09-13, see above) -- and see the entry above for why it may
+        already have been satisfied and could not be told from this repo. ⚠️ This line read "B15.5 and B15.6" until 2026-08-31: B15.5 was BUILT
         on 08-30 (ROADMAP §P1.3), so the register was still listing finished work as outstanding
         while the entry above it was being corrected for exactly that. Also open: the cron half of
         B15.3. Steve's half of `ends_when` -- ratifying the three numbers and ruling on owner
@@ -6509,6 +6599,24 @@ deferred:
       handler's first line (event id/type/livemode) and the case's first line; then one run.
       Nothing was spent. E1-prime stays wired; the 10-01 hold option is stronger. Record:
       docs/e1-stripe-lapse-proof.md, Run log 2026-09-02.
+    run_2026_09_13_route3_after_81: >-
+      ONE authorised delivery (ratified.sitting-d2-2026-09-13.e1_prime_route_3_one_run) against a
+      local production build of the working tree at master 357eda9 + the PR #81 instrument
+      (next start :3200; STRIPE_SECRET_KEY = the restricted read-only key for the local process
+      only, as on 09-02). 200 with the build marker (instance de5ba616), audit rows 1 -> 1, zero
+      email_send_attempts in the window, and the subscriptions row for the spliced sub maps to
+      the counted owner. THE TWO NEW LINES BOTH REACHED THE LOG: `[stripe] event evt_e1r3_...
+      type=invoice.payment_failed livemode=false` and `[stripe] invoice.payment_failed entered
+      invoice=in_e1r3_1789312383912`. So the 09-02 hypothesis is REFUTED: the request reaches the
+      switch with the right type and the case body IS entered. What stays silent is everything
+      after the case's first line: neither IGNORED guard printed, sendOnce's duplicate branch did
+      not print, no row was written. Every remaining silent exit reports through console.error,
+      and across three runs no console.error from this handler has ever appeared in a `next
+      start` log while process.stderr.write lines from the same handler do. Next instrument
+      (build half done the same day, no nod needed): the two IGNORED guards write to stderr
+      directly; sendOnce logs its own first statement. Then one more authorised run names the
+      branch. Nothing was spent on the log; E1-prime stays `wired`; the 10-01 EXTEND default
+      stands. Record: docs/e1-stripe-lapse-proof.md, Run log 2026-09-13.
 
   - id: the-ladder-cannot-be-proven-while-the-owner-is-active    # gap plan GP-U9 (NEW 2026-09-12)
     owner: steve                          # a ruling; it sets the G1/G2 calendar
@@ -6539,6 +6647,14 @@ deferred:
       carries the chosen quiet window. Under (a) the proof itself closes
       `the-reminder-ladder-has-never-fired`, not this entry.
     revisit: 2026-09-17
+    revisit_outcome: >-
+      RULED 2026-09-13, option (a) - accept the natural date (ratified.sitting-d2-2026-09-13
+      .gp_u9_ladder_window). The calendar in docs/gap-closure-plan-2026-09-12.md section 4 carries
+      the quiet window. This entry stays open only until the plan's G2/G3 text reflects it, which
+      the same day's PR does; the proof itself closes the ladder entry.
+    closed: 2026-09-13
+    closed_by: "ruling recorded; calendar carried into the plan the same day (PR after #82)."
+
 
   - id: the-failover-has-not-been-re-exercised-since-h0           # gap plan GP-U11 (NEW 2026-09-12)
     owner: steve                          # a ruling on what counts as evidence, then a 5-gate drill
@@ -6563,6 +6679,11 @@ deferred:
       34744086721 (06:58Z), 34744222304 (07:02Z), 34744328860 (07:04Z), 34744434177 (07:07Z),
       34744557036 (07:10Z). Recorded by Claude as CANDIDATES; they become R14.1 evidence only
       when Steve rules (a) below - the entry does not close itself.
+    r14_1_evidence_recorded_2026_09_13: >-
+      RULED (a) 2026-09-13 (ratified.sitting-d2-2026-09-13.u11_failover_r14_1): the five runs
+      above ARE R14.1 evidence, dated, trigger = master push (not scheduled, not PRs). Half (a)
+      of ends_when is met; the entry stays open on half (b), the R14.2 cut-over with the restore
+      drill in G4.
     ends_when: >-
       (a) Steve records the master-push secondary read as R14.1 evidence, dated, with the trigger
       list -- and nothing stronger; AND (b) an R14.2 re-proof -- a cut-over exercised against

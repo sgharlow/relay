@@ -458,8 +458,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         // type=invoice.payment_failed and this one did not, the switch is the gap.
         process.stderr.write(`[stripe] invoice.payment_failed entered invoice=${String(invoice?.id)}\n`);
         const subId = subscriptionIdOnInvoice(invoice);
+        /*
+          2026-09-13, run 3 after PR #81: the two [stripe] lines above BOTH reached the
+          log, no audit row was written, no send attempt was made, and neither of the
+          two IGNORED guards below nor sendOnce's duplicate branch printed anything.
+          The guards used console.error; the lines that reached the log used
+          process.stderr.write. Across three runs no console.error from this handler
+          has ever appeared in a `next start` log. So the guards now write to stderr
+          directly — the channel that is proven to arrive — and sendOnce logs its
+          own entry. docs/e1-stripe-lapse-proof.md, Run log 2026-09-13.
+        */
         if (!subId || !invoice.id) {
-          console.error(
+          process.stderr.write(
             `[billing] invoice.payment_failed IGNORED (event ${event.id}): ` +
               `${!subId ? 'no subscription id on the invoice' : 'no invoice id'}. ` +
               'The owner was NOT told their renewal failed. If this is a real Stripe event, the ' +
@@ -470,7 +480,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
         const ownerId = await ownerIdForSubscriptionId(subId);
         if (!ownerId) {
-          console.error(
+          process.stderr.write(
             `[billing] invoice.payment_failed IGNORED (event ${event.id}): no subscriptions row ` +
               `matches stripe_subscription_id=${subId}. The owner was NOT told their renewal ` +
               'failed. This is the checkout-time link being absent, not a payload problem.',

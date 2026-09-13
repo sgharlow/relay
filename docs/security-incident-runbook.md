@@ -97,7 +97,7 @@ yourself out of the investigation.
 | Situation | What to do | The honest state of the mechanism |
 |---|---|---|
 | One account | `bumpSessionEpoch(userId)` (`lib/auth/session-epoch.ts`) — every existing session for that user fails its next request | Built for exactly this. Currently called from **one** place: `/api/auth/recover` |
-| Everybody, now | **Rotate `NEXTAUTH_SECRET`** in Vercel and redeploy. The JWT session strategy means every cookie in existence stops verifying | ⚠️ There is **no bulk `bumpSessionEpoch`** and no operator UI for it. This is the global signout, and it is a blunt one |
+| Everybody, now | **Rotate `NEXTAUTH_SECRET`** in Vercel and redeploy. The JWT session strategy means every cookie in existence stops verifying | ⚠️ There is **no bulk `bumpSessionEpoch`** and no operator UI for it. This is the global signout, and it is a blunt one. **Ruled 2026-09-13 (B25, `ratified.sitting-d2-2026-09-13`): accepted as THE bulk path; a built control is deferred until the first stranger.** Do not script a raw `UPDATE users SET session_epoch` instead — it skips `revokeChallenges` (`lib/auth/session-epoch.ts`) and would one day meet DSQL's per-transaction row cap |
 
 > ⚠️ **Rotating `NEXTAUTH_SECRET` signs out every owner in the world, including people mid-crisis.**
 > That is a *feature* here and an outage on an ordinary Tuesday. Decide deliberately, and expect

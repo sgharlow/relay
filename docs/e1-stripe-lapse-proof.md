@@ -385,3 +385,20 @@ first line of the `invoice.payment_failed` case. One more run then says whether 
 the switch, and with which type. Until then E1′ stays `wired`, and the 10-01 "hold" option gets
 stronger, not weaker. (Also: `scripts/e1-route3.ts` prints the build marker as `[object Object]`;
 cosmetic.)
+
+## Run log 2026-09-13 — route 3, after PR #81 (the first-line instrument)
+
+**Authorised:** one run, `ratified.sitting-d2-2026-09-13.e1_prime_route_3_one_run`. **Spent:** nothing — no row was written.
+
+Local production build of the working tree (master `357eda9` + PR #81), `next start :3200`, `STRIPE_SECRET_KEY` = the restricted read-only key for the local process only (the first attempt without it answered `400 InvalidSignature` with `STRIPE_SECRET_KEY is not set` — the same trap as 09-02). Delivery: `POST #1 -> 200`, build marker `instance=de5ba616`, invoice `in_e1r3_1789312383912`, spliced sub `sub_1U2MHx…`, owner `0351deb3…`. Rows before 1, after 1. Zero `email_send_attempts` in the window. The `subscriptions` row for the spliced sub maps to the counted owner (read-only check).
+
+**The two new lines both reached the log:**
+
+```
+[stripe] event evt_e1r3_b7a7aa13e74c41a990d7caa6 type=invoice.payment_failed livemode=false
+[stripe] invoice.payment_failed entered invoice=in_e1r3_1789312383912
+```
+
+**So the 09-02 hypothesis is refuted.** The request reaches the switch with the right type and the case body is entered. Everything after the case's first line is silent: neither `IGNORED` guard printed, `sendOnce`'s duplicate branch did not print, nothing was written. Every remaining silent exit in that stretch reported through `console.error`; across three runs no `console.error` from this handler has ever appeared in a `next start` log, while `process.stderr.write` lines from the same handler do. That is the sharpened finding.
+
+**Next instrument (built the same day, no nod needed):** the two `IGNORED` guards now write to stderr directly, and `sendOnce` logs its own first statement (`[billing] sendOnce entered …`). One more authorised run then names the branch.
