@@ -1,5 +1,7 @@
 # The rulings pack — Sitting D, ready to run
 
+> ⚠️ **Re-baselined 2026-09-12.** Sitting **D-1 ran on 2026-08-30** (`PROJECT.yaml → ratified.sitting-d1-2026-08-30`: eight rulings, incl. D25 RETIRE, D14 LEAVE IT, D20 PURGE — executed, B15.4 RATIFY, E4.1 KEEP INITIATE-ONLY). The live sheet is **§ Sitting D-2 as re-derived 2026-09-12** at the bottom of this file, which is the same table as `docs/gap-closure-plan-2026-09-12.md` §6. Everything between this banner and that section is the 08-29 draft, kept as the record; do not answer a D-1 question twice.
+
 **Drafted 2026-08-29 (ROADMAP Sprint 0, row 0.8).** Its whole purpose is that Sitting D costs Steve
 *minutes rather than re-derivation*: every question below carries the measurement that makes it
 answerable, a recommended default, and what happens if it is parked.
@@ -299,3 +301,41 @@ Then wait for one report cycle (~24 h) and confirm arrival with a read-only Gmai
 Step 0 and `go-live-checklist-steve.md` 10.1 both put the Gmail filter first. A filter protects a
 stream that has stopped. The DNS record comes first; everything else in that lane is downstream
 of it.
+
+## Sitting D-2 as re-derived 2026-09-12 (the live sheet)
+
+Source: `docs/gap-closure-plan-2026-09-12.md` §6 (revision 2, after the same-day QA). ≈5 min each. Recommended default first; a ruling licenses the edit in its row. G0 rows first because they gate Claude's work this week.
+
+| # | Ruling | Recommended default | When |
+|---|---|---|---|
+| 1 | **GP-U13** reclassify F-p (`/audit` action labels) from barred to obliged — its unlock "a real owner reads /audit" is met since 08-29; and rule that the retired `estate_irreversibility_acknowledged` action gets a neutral past-tense label | obliged; neutral label | G0 |
+| 2 | **GP-D15** B27: validity checks + Dependabot security updates | yes | G0 |
+| 3 | **GP-R1** close `web-analytics-collects-but-cannot-be-read` with clause 3 answered (where the queryability assertion lives) · **GP-R4** `verify-live-cannot-enter-ci.ends_when` = arms-length money moved · **GP-P6** "the fault-injected property recorded 08-31 IS B15.6" | yes · yes · yes | G0 |
+| 4 | **GP-U9** the ladder proof window — `deferred.the-ladder-cannot-be-proven-while-the-owner-is-active` | **(a)** natural date after G1's last owner write; quiet window to ~10-21 | **G0, before G1's first owner write (revisit 09-17)** |
+| 5 | **GP-D3** B22 `executor`: document the UI/API asymmetry as design (it mirrors the estate pattern and a DB CHECK), or strike with a migration | document, after a `.env.ro` read of live `recipients.role` | G1 |
+| 6 | **GP-D5** B38 name Cloudflare and Google on `/privacy` | yes | G1 |
+| 7 | **GP-D6** B41 "within one business day" | soften to "we read every message" until a reader exists | G1 |
+| 8 | **GP-D6** B42 Reply-To / From | align | G1 |
+| 9 | **GP-D10** B20 `infra/iam-policy.json` | match the live policy | G1 |
+| 10 | **GP-D16** B21.3 `csp_reports` retention | 30 days | G1 |
+| 11 | **GP-D17** B19 CMK auto-rotation | enable — `enable-key-rotation` **and** `ROTATION_INTENDED = true` in ONE commit, `verify:kms` green after; ~$24/yr recurring; rotated material is not removable; **execute in G4 (Sitting H)** | G1 rule · G4 execute |
+| 12 | **GP-D17** B25 bulk session revocation — build / defer with trigger / accept "rotate `NEXTAUTH_SECRET`" | accept and document; defer a built control to the first stranger (a raw `session_epoch` bump skips `revokeChallenges` and would meet DSQL's per-transaction row cap — not a runbook line) | G1 |
+| 13 | **GP-D17** B26 Q6 / Q16 | defer with F-b | G1 |
+| 14 | **GP-U1** §18 incapacity verification | defer; trigger = first regulated-partner conversation (G7) | G1 |
+| 15 | **GP-U2** §19 SOC 2 / GDPR-CCPA / DPA | defer; trigger = G3 signature | G1 |
+| 16 | **GP-U3** §20 legible trust | defer to G5 | G1 |
+| 17 | **GP-U4** §21 open standard | strike | G1 |
+| 18 | **GP-U5** §22 SLOs / ledger | defer to G4 | G1 |
+| 19 | **GP-U6** `business` / `travel` selectable during the caregiver test | keep | G1 |
+| 20 | **GP-U7** Mobile | strike until partner pull | G1 |
+| 21 | **GP-U8** Req 13.6 plan preview | defer into §2-F under F-o | G1 |
+| 22 | **GP-U10** quorums / challenge window | read `docs/g11-quorum-and-challenge-window-options.md` | G1 |
+| 23 | **GP-U11** failover — `deferred.the-failover-has-not-been-re-exercised-since-h0` | (a) record the master-push secondary read as **R14.1** evidence now; (b) the cut-over with the restore drill (G4) | G1 · G4 |
+| 24 | **GP-U15** D23 what `relay-resumed.review_on: 2026-10-21` reviews | "is report-bridge still the precedence, and did G1 move" | G1 |
+| 25 | **GP-D9** 5-gate: create `relay-iam-wall-ci` | yes (additive; rollback = delete the role) | G3 |
+| 26 | **GP-D8** 5-gate: rotate the `autospecai` admin key | yes, after runbook §5b exists; Steve's hands, no secret in chat | G3 |
+| 27 | **E4.2** (10-01) flip or extend | extend, dated revisit | 10-01 |
+| 28 | **E5** billing check in an automated chain | no | 10-01 |
+| 29 | **E7** Stripe Tax | Claude reads `stripe tax settings retrieve --live` first, then rule | 10-01 |
+
+Struck from the plan's first draft because they were ruled on 2026-08-30: D25, D14, D20, B15.4, E4.1. B10's "re-prove once" is struck: delivery is proven and the residue moved to Claude (`re_scoped_2026_09_12`).

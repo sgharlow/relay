@@ -1,61 +1,186 @@
 {
   "_comment": [
-    "Rewritten 2026-09-10 (D17, third rewrite). The 08-31 rewrite recorded the §3.5 Claude-court",
-    "ready lane; that lane is spent (see rowsClosed below, unchanged from 08-31). ROADMAP revision 8",
-    "re-baselined §3 as three seven-day BETA sprints with a measured beta-ready definition, so this",
-    "file now points at Sprint 1 of that plan.",
+    "Rewritten 2026-09-12 (D17, fourth rewrite). Revision 8's Sprint 1 Claude lane is spent (rows 1.3, 1.5,",
+    "1.6 merged 09-10). docs/gap-closure-plan-2026-09-12.md (revision 2, post-QA) re-baselined the remaining",
+    "work as sprints G0-G4; this file points at G0's Claude lane (plan section 5).",
+    "",
+    "iterationsRemaining exists because ~/.claude/commands/sprint.md section 1.1 resolves this file FIRST",
+    "only when it has iterations remaining; without the field the skill fell through to docs/backlog.md,",
+    "which is banner-ed SUPERSEDED (deferred.the-sprint-skill-resolves-a-spent-lane).",
     "",
     "DO NOT hand-edit the shipped list to look tidy. This records what ran, and its value is that",
-    "it can be checked against `git log` — every entry below carries the merged PR."
+    "it can be checked against `git log` - every entry below carries the merged PR."
   ],
   "branch": "master",
-  "backlogSource": "ROADMAP.md §3 — 'What beta-ready means' + Sprint 1 (revision 8, 2026-09-10)",
-  "sprint": "Beta Sprint 1 — beta-ready",
-  "calendar": "2026-09-10 → 2026-09-17; Sprint 2 (real people in the loop) 09-17 → 09-24; Sprint 3 (beta billing truth) 09-24 → 10-01",
-  "court": "steve ≈ 1 h TONIGHT 2026-09-10 (rows 1.2, 1.4, 1.7, 1.8, 1.9 — ruled forward from the 09-12 sitting); claude: rows 1.3, 1.5, 1.6",
+  "backlogSource": "docs/gap-closure-plan-2026-09-12.md section 5 - the G0 Claude-court tasks (revision 2, 2026-09-12)",
+  "sprint": "Gap-closure G0 - the record and the nods",
+  "calendar": "G0 2026-09-12 -> 09-17; G1 09-17 -> 09-24 (= ROADMAP rev-8 Sprint 2 + Sitting D-2; all owner writes); G2 09-24 -> 10-01 (quiet window, E4.2); G3 10-01 -> 10-08 (IAM-wall role, admin-key rotation, both 5-gate); G4 10-08 -> 11-08 (the ladder fires, restore drill)",
+  "court": "claude: tasks 5.1 (first half), 5.2, 5.3, 5.5, 5.6, 5.7, 5.9, 5.10 + the rulings pack; steve: the ladder-window ruling (GP-U9, revisit 09-17) and five nods (GP-U13 -> task 5.4, GP-D15, GP-R1, GP-R4, GP-P6)",
   "betaReadyConditions": {
     "R1 vault real": "✅ verify:dogfood READY (09-10)",
-    "R2 real circle, verifier confirmed": "❌ two owner aliases — Steve, tonight 09-10",
+    "R2 real circle, verifier confirmed": "◐ aliases removed and codes issued 09-10; the verifier has not claimed - revisit 2026-09-17",
     "R3 not-yet-asked roster state": "✅ built + live-proven 09-10 (PR #65)",
     "R4 signup/checkout/release live-proven": "✅ chain 09-03; verify:stripe holds",
     "R5 alarms alive and seen red": "✅ heartbeat stamp ok 09-10",
     "R6 invitation mail reaches people": "🟡 Outlook = Junk by reputation, no remedy (Resend 09-03); ✅ handoff sentence in both docs 09-10 (row 1.6)",
-    "R7 register green on 09-13": "🟡 A0 answered in this revision; A0.2 + a11y fixture entry are Steve's",
-    "R8 /vault/new loads in a real browser": "✅ Steve's Chrome 09-10, no interstitial; Enhanced-protection state unread"
+    "R7 register green on 09-13": "✅ 7/7 under TZ=UTC on 09-12; the three 09-17 revisits are the next ring",
+    "R8 /vault/new loads in a real browser": "✅ Steve's Chrome 09-10; Enhanced protection ON; INCIDENT closed (PR #69)"
   },
-  "sprintCount": "1 sprint to beta-ready; 3 to end-to-end in beta — bounded by B15.1 (2026-09-21 15:49Z, first reminder ever) and E4.2 (2026-10-01)",
+  "sprintCount": "beta-ready needs one verifier's four-word call; end-to-end is bounded by the ladder, which every owner write moves to write + 22.5 d (deferred.the-ladder-cannot-be-proven-while-the-owner-is-active) - under option (a) the first rung lands ~10-16 and the final ~10-21, in G4",
   "rowsClosed": [
-    { "row": "A7/B23", "title": "MAX_STANDBY cap + rule-4-shaped refusal in claimStandbyRole", "pr": 51, "date": "2026-08-31" },
-    { "row": "A2/B32", "title": "CI workflows 22→24, @types/node ^24; engines >=22 kept as local floor", "pr": 51, "date": "2026-08-31" },
-    { "row": "A5/D19", "title": "check:subscription npm script (.env.ro) with its occasions in §5", "pr": 51, "date": "2026-08-31" },
-    { "row": "A4/C1.4", "title": "the DMARC restoration drift corrected (deliverability doc + checklist header)", "pr": 51, "date": "2026-08-31" },
-    { "row": "A9/D2", "title": "verify:orphans ran clean — 0 reserved-domain accounts, 0 dangling rows", "pr": 51, "date": "2026-08-31" },
-    { "row": "A8/D17", "title": "this file re-derived", "pr": 51, "date": "2026-08-31" },
-    { "row": "B12.i", "title": "off-GitHub heartbeat installed and scheduler-stamped", "pr": 56, "date": "2026-09-02" },
-    { "row": "B5.1 phase B", "title": "decrypt path reads the era; deployed and proven 20/20 on production", "pr": 58, "date": "2026-09-03" },
-    { "row": "D21", "title": "relay_ro runner identity via OIDC, both regions, five principals hold", "pr": 60, "date": "2026-09-03" },
-    { "row": "1.3 / A0.2b", "title": "a never-asked person reads `not_asked`, never `invited` — standby-state + /api/circle + /circle + beta:status", "pr": 65, "date": "2026-09-10" },
-    { "row": "1.6 / R6", "title": "the Outlook sentence: Microsoft addresses on the owner arm, in beta-cohort-handoff.md + first-invitations.md", "pr": 66, "date": "2026-09-10" },
-    { "row": "1.5 / D1+D2+D19", "title": "verify:live 5/5 + verify:journeys 3/3 stamped @ d8843e2; orphans clean; subscription active", "pr": 67, "date": "2026-09-10" }
+    {
+      "row": "A7/B23",
+      "title": "MAX_STANDBY cap + rule-4-shaped refusal in claimStandbyRole",
+      "pr": 51,
+      "date": "2026-08-31"
+    },
+    {
+      "row": "A2/B32",
+      "title": "CI workflows 22→24, @types/node ^24; engines >=22 kept as local floor",
+      "pr": 51,
+      "date": "2026-08-31"
+    },
+    {
+      "row": "A5/D19",
+      "title": "check:subscription npm script (.env.ro) with its occasions in §5",
+      "pr": 51,
+      "date": "2026-08-31"
+    },
+    {
+      "row": "A4/C1.4",
+      "title": "the DMARC restoration drift corrected (deliverability doc + checklist header)",
+      "pr": 51,
+      "date": "2026-08-31"
+    },
+    {
+      "row": "A9/D2",
+      "title": "verify:orphans ran clean — 0 reserved-domain accounts, 0 dangling rows",
+      "pr": 51,
+      "date": "2026-08-31"
+    },
+    {
+      "row": "A8/D17",
+      "title": "this file re-derived",
+      "pr": 51,
+      "date": "2026-08-31"
+    },
+    {
+      "row": "B12.i",
+      "title": "off-GitHub heartbeat installed and scheduler-stamped",
+      "pr": 56,
+      "date": "2026-09-02"
+    },
+    {
+      "row": "B5.1 phase B",
+      "title": "decrypt path reads the era; deployed and proven 20/20 on production",
+      "pr": 58,
+      "date": "2026-09-03"
+    },
+    {
+      "row": "D21",
+      "title": "relay_ro runner identity via OIDC, both regions, five principals hold",
+      "pr": 60,
+      "date": "2026-09-03"
+    },
+    {
+      "row": "1.3 / A0.2b",
+      "title": "a never-asked person reads `not_asked`, never `invited` — standby-state + /api/circle + /circle + beta:status",
+      "pr": 65,
+      "date": "2026-09-10"
+    },
+    {
+      "row": "1.6 / R6",
+      "title": "the Outlook sentence: Microsoft addresses on the owner arm, in beta-cohort-handoff.md + first-invitations.md",
+      "pr": 66,
+      "date": "2026-09-10"
+    },
+    {
+      "row": "1.5 / D1+D2+D19",
+      "title": "verify:live 5/5 + verify:journeys 3/3 stamped @ d8843e2; orphans clean; subscription active",
+      "pr": 67,
+      "date": "2026-09-10"
+    },
+    {
+      "row": "G0.1/0.9/0.14 (GP-R2, R13, D13, U9, U11, R9, R11-13)",
+      "title": "register: revisit-lapse closed, ladder date retired, B10 residue, three rulings entered",
+      "pr": 75,
+      "date": "2026-09-12"
+    },
+    {
+      "row": "G0.3 (GP-R5, R10, R3 strike)",
+      "title": "ROADMAP/CLAUDE.md/verify-stripe: twelve done-work rows struck in place",
+      "pr": 76,
+      "date": "2026-09-12"
+    }
   ],
   "rowsOpen": [
-    { "row": "A12/D12", "title": "major-version currency (next-auth v4, React 18 under Next 16)", "note": "⛔ recorded, not scheduled — Infrastructure Change Policy" }
+    {
+      "row": "A12/D12",
+      "title": "major-version currency (next-auth v4, React 18 under Next 16)",
+      "note": "⛔ recorded, not scheduled — Infrastructure Change Policy"
+    }
   ],
   "blockedOnSteve": [
-    { "id": "A0.2", "what": "name + invite the real circle; four-word call → verifier confirmed", "why": "R2 — the only beta-ready condition needing his hands; revisit fires 09-13", "where": "docs/sitting-2026-09-12.md" },
-    { "id": "B28", "what": "one dedicated a11y fixture owner → gh secret set A11Y_OWNER_EMAIL", "why": "revisit fires 09-13; owner-mode a11y stays warn-only until then", "where": "ROADMAP Sprint 1 row 1.4" },
-    { "id": "A3.1", "what": "the cohort roster (.relay-cohort.json)", "why": "Sprint 2 has nobody in it otherwise; N = 0 since 08-12", "where": "docs/beta-cohort-handoff.md" },
-    { "id": "E1.8", "what": "stripe login", "why": "CLI keys expire 2026-10-07", "where": "ROADMAP Sprint 1 row 1.8" },
-    { "id": "E4.1/E4.2", "what": "billing-gated on 1 or 4 paths; flip or extend on 10-01", "why": "CI red 10-02 if unrecorded; E1′ still wired", "where": "ROADMAP Sprint 3 rows 3.3/3.4" }
+    {
+      "id": "GP-U9",
+      "what": "the ladder proof window: (a) natural date after G1's last owner write, or (b) 14-day interval",
+      "why": "every G1 owner write moves the first rung to write + 22.5 d; revisit 2026-09-17",
+      "where": "PROJECT.yaml deferred.the-ladder-cannot-be-proven-while-the-owner-is-active"
+    },
+    {
+      "id": "A0.2 / GP-P4",
+      "what": "the verifier claims; the four-word call",
+      "why": "the one open beta-ready clause; revisit 2026-09-17",
+      "where": "docs/gap-closure-plan-2026-09-12.md G1.1"
+    },
+    {
+      "id": "A3.1",
+      "what": "the cohort roster",
+      "why": "fourth deferral lands 2026-09-17",
+      "where": "docs/beta-cohort-handoff.md"
+    },
+    {
+      "id": "GP-U13 / GP-D15 / GP-R1 / GP-R4 / GP-P6",
+      "what": "five nods: reclassify F-p; two repo settings; two register edits; 'that property is B15.6'",
+      "why": "G0 rows 0.2, 0.10, 0.11, 0.12",
+      "where": "docs/gap-closure-plan-2026-09-12.md section 6 rows 1-3"
+    },
+    {
+      "id": "E4.2",
+      "what": "flip or extend on 10-01 (E4.1 was ruled 08-30: keep initiate-only)",
+      "why": "CI red 10-02 if unrecorded",
+      "where": "ROADMAP Sprint 3 row 3.4"
+    }
   ],
   "datedInsideTheSprints": [
-    { "date": "2026-09-13", "what": "revisit guard fires for A0.2 and the a11y fixture entry if unanswered" },
-    { "date": "2026-09-24T17:25Z", "what": "verify:live dead-man (ran 09-10)" },
-    { "date": "2026-10-01T17:28Z", "what": "verify:journeys dead-man (ran 09-10)" },
-    { "date": "2026-09-21T15:49Z", "what": "B15.1 first reminder ever (75% rung) — moves on owner sign-in" },
-    { "date": "2026-09-22", "what": "G3 follow-ups" },
-    { "date": "2026-09-26T03:49Z", "what": "90% rung" },
-    { "date": "2026-10-01", "what": "E4.2 decision_due" },
-    { "date": "2026-10-07", "what": "Stripe CLI keys expire" }
-  ]
+    {
+      "date": "2026-09-17",
+      "what": "three revisits ring: A0.2 (verifier confirmed?), the cohort's fourth deferral, the ladder-window ruling - red 09-18 if unanswered"
+    },
+    {
+      "date": "2026-09-22",
+      "what": "G3 follow-ups"
+    },
+    {
+      "date": "2026-09-24T17:25Z",
+      "what": "verify:live dead-man (ran 09-10)"
+    },
+    {
+      "date": "2026-10-01",
+      "what": "E4.2 decision_due; verify:journeys dead-man 17:28Z"
+    },
+    {
+      "date": "per npm run check:ladder",
+      "what": "the 75% and 90% rungs - 10-03 / 10-08 today, moved by every owner write; ~10-16 / ~10-21 under GP-U9(a)"
+    },
+    {
+      "date": "2026-11-08",
+      "what": "gates.d3-restore-drill ceiling"
+    },
+    {
+      "date": "2026-12-10",
+      "what": "Stripe CLI pairing expires (re-paired 09-10)"
+    }
+  ],
+  "iterationsRemaining": 5
 }
