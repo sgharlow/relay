@@ -4939,6 +4939,17 @@ deferred:
         ruling, exactly as the amended ends_when says. And the task lives on ONE laptop: it stops
         when the laptop sleeps (WakeToRun is deliberately false) and it watches from a single
         place. That is the interim's known shape, not a defect to fix here.
+      widened_2026_09_12: >-
+        The heartbeat ran the real canary against production, but the canary probed BEHAVIOUR
+        only — front door, funnel page, three refusals — and neither `/api/health/scheduler` nor
+        `/api/health/reminders`. So the two dead-men were watched by the collapsing GitHub tier
+        alone (~3.4 h detection). `lib/ops/canary.ts` now carries both (expect 200 and the body's
+        `"healthy":true`); live 8/8 green against production 2026-09-13T06:58Z, and a planted
+        wrong-prefix run reported both new checks red by name. Because `relay-heartbeat` runs the
+        same list every fifteen minutes from this laptop, that IS the off-GitHub watch for the
+        dead-men — no new monitor. The "AWS half" question above is therefore narrower than it
+        reads: an off-LAPTOP watcher is what remains, and that is a separate ruling, not a gap the
+        product has today (gap plan GP-D1, Q2).
 
   - id: the-journey-sweep-has-no-freshness-dead-man           # ROADMAP B14
     owner: claude
