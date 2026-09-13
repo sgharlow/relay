@@ -12,10 +12,10 @@
     "it can be checked against `git log` - every entry below carries the merged PR."
   ],
   "branch": "master",
-  "backlogSource": "docs/gap-closure-plan-2026-09-12.md section 5 - the G0 Claude-court tasks (revision 2, 2026-09-12)",
-  "sprint": "Gap-closure G0 - Claude's lane DONE 2026-09-13; Steve's five nods + the ladder-window ruling remain (revisit 09-17)",
+  "backlogSource": "docs/gap-closure-plan-2026-09-12.md section 5 - SPENT 2026-09-13; a fresh /sprint must be re-scoped by Steve, not resolved from this file",
+  "sprint": "Gap-closure G0-G4 - every Claude lane DONE 2026-09-13 plus the same-day close-out and co-pilot sweeps (PRs #75-#96); the remaining queue is Steve's (ladder dates, verifier claim, first stranger, Sitting E 09-19, 09-27 key deletion)",
   "calendar": "G0 2026-09-12 -> 09-17; G1 09-17 -> 09-24 (= ROADMAP rev-8 Sprint 2 + Sitting D-2; all owner writes); G2 09-24 -> 10-01 (quiet window, E4.2); G3 10-01 -> 10-08 (IAM-wall role, admin-key rotation, both 5-gate); G4 10-08 -> 11-08 (the ladder fires, restore drill)",
-  "court": "claude (remaining, gated): task 5.4 audit labels after the GP-U13 nod; G1.5 the E1-prime first-line instrument; the R14.1 record after the GP-U11 ruling. steve: GP-U9 ruling (09-17) and nods GP-U13, GP-D15, GP-R1, GP-R4, GP-P6",
+  "court": "claude: nothing queued - every open register entry is Steve's, dated, or event-gated (derive: PROJECT.yaml deferred entries without closed:). steve: Sitting E 2026-09-19, the ladder on real dates, the verifier's call, the first stranger.",
   "betaReadyConditions": {
     "R1 vault real": "✅ verify:dogfood READY (09-10)",
     "R2 real circle, verifier confirmed": "◐ aliases removed and codes issued 09-10; the verifier has not claimed - revisit 2026-09-17",
@@ -200,5 +200,5 @@
       "what": "Stripe CLI pairing expires (re-paired 09-10)"
     }
   ],
-  "iterationsRemaining": 2
+  "iterationsRemaining": 0
 }
