@@ -176,4 +176,16 @@ describe('the deferred register is legible to a machine, not just a reader', () 
       .map((e) => e.id);
     expect(endless, 'open deferred items with no ends_when').toEqual([]);
   });
+
+  it('an item whose revisited.outcome is CLOSED also carries closed:', () => {
+    // Found 2026-09-12: an entry recorded `revisited: {outcome: CLOSED}` on 08-30 and never
+    // gained `closed:`, so the register's own open-count derivation (`!resolved && !closed`)
+    // kept counting it open for thirteen days. A closure that one reader can see and the
+    // other cannot is the one-file-two-answers shape this whole file exists to catch.
+    const halfClosed = deferredItems()
+      .filter((e) => !('closed' in e))
+      .filter((e) => (e.revisited as { outcome?: unknown } | undefined)?.outcome === 'CLOSED')
+      .map((e) => e.id);
+    expect(halfClosed, 'open deferred items with a CLOSED revisit outcome').toEqual([]);
+  });
 });
