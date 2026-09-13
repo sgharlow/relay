@@ -83,11 +83,18 @@ for u in relay-runtime relay-dev; do
   v=$(aws iam get-policy --profile autospecai --policy-arn "$arn" --query 'Policy.DefaultVersionId' --output text)
   echo "== $u =="
   aws iam get-policy-version --profile autospecai --policy-arn "$arn" --version-id "$v" \
-    --query 'PolicyVersion.Document.Statement[?starts_with(Sid, `Dsql`)].Action' --output json
+    --query 'PolicyVersion.Document.Statement[].[Sid, Action]' --output json   # every statement, no Sid filter (widened 2026-09-13)
 done
 ```
 
 Verified 2026-08-16: `relay-runtime` → `["dsql:DbConnect"]` (v2), `relay-dev` → `["dsql:DbConnect"]`.
+
+✅ **Widened 2026-09-13** (Steve's DescribeKey ruling, `the-iam-template-can-re-open-the-wall` closed): the
+query above now prints EVERY statement's `Sid` and `Action`, so the KMS grant is visible and a renamed
+`Sid` cannot print `[]`. Read the same day through the Node signer (the AWS CLI is Norton-blocked
+here): `relay-runtime-policy` v2 = `DsqlConnect` → `dsql:DbConnect` on both cluster ARNs;
+`KmsEnvelope` → `kms:GenerateDataKey`, `kms:Decrypt` on the CMK. No `DescribeKey`, no admin.
+`npm run verify:iam` is the scheduled form of this read (`.github/workflows/iam-wall.yml`, daily).
 
 ## Rollback
 

@@ -32,14 +32,17 @@ class of change the Infrastructure Change Policy exists for. Recorded 2026-08-21
 
 ## `AllowKmsEnvelopeEncryption`
 
-The runtime's envelope-encryption grant: `GenerateDataKey`, `Decrypt`,
-`DescribeKey`, conditioned on the `Project=relay-h0-mvp` resource tag.
+The runtime's envelope-encryption grant: `GenerateDataKey` and `Decrypt`,
+conditioned on the `Project=relay-h0-mvp` resource tag.
 
-⚠️ Note `kms:DescribeKey` here. `npm run verify:kms` runs under `.env.admin`
-precisely *because* the application is not meant to hold key-administration
-reads; if the runtime keeps `DescribeKey`, that separation is weaker than the
-runbook's description of it. Not a live exposure — `DescribeKey` reveals key
-metadata, not key material — but worth deciding rather than inheriting.
+✅ **`kms:DescribeKey` was removed from this template on 2026-09-13, on Steve's
+ruling (STRIP).** The live `relay-runtime-policy` v2 never granted it — read back
+that day: `dsql:DbConnect` on the two cluster ARNs, `kms:GenerateDataKey` +
+`kms:Decrypt` on the CMK, nothing else — so the action existed only here, which
+is exactly the template-drift this file warns about. `npm run verify:kms` runs
+under `.env.admin` precisely *because* the application is not meant to hold
+key-administration reads, and now the template agrees with the account.
+`RUNTIME_CONTRACT.requires` in `lib/ops/iam-wall.ts` is the same three actions.
 
 ## `DenyKmsDecryptForAiRoles`
 

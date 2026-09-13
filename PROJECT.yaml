@@ -894,6 +894,25 @@ ratified:
       closeout_stripe_reads: { read: "E1.5 #3 through Claude-in-Chrome in Steve's Stripe session: Settings -> Customer emails has 'Successful payments' (receipts) OFF and 'Refunds' OFF - Stripe sends no receipt for a Relay charge; the product's own confirmation is the only one. E1.5 #4 (webhook endpoint-failure notification preference) sits behind the personal Notifications menu, which is not URL-addressable and was not clicked into - still Steve's one click. Gmail is not a permitted domain for the browser plugin, so the DMARC filter and the budget filter stay Steve's hands." }
       closeout_production_after_bumps: { probed: "relaystandby.com /, /api/health/scheduler, /api/health/delivery-webhook, /api/health/reminders all 200 after the PR #92 deploy; Dependabot #70-#72 auto-closed, open alerts 6 -> 2 (vitest pair, dev-only)" }
       closeout_two_entries_closed_on_measurement: { executed: "the-privacy-page-may-be-missing-two-subprocessors (both named 09-13) and rows-outlived-the-accounts-that-owned-them (census exits 0)" }
+      # -- co-pilot batch 1, 2026-09-13 evening (AskUserQuestion, four rulings) --
+      copilot1_cloudflare_card: { ruling: "DETAIL - Steve adds the card later himself and reports the expiry month/year.", executed: "the-domain-can-lapse-without-anyone-noticing.card_ruling_2026_09_13" }
+      copilot1_e7_merge: { ruling: "MERGE PR #85 now.", executed: "merged 6a237cc after two update-branch rounds (strict protection; auto-merge is not enabled on the repo); sales-tax-has-never-been-considered CLOSED" }
+      copilot1_trash_mechanism: { ruling: "NAMED - 'I trash them by hand after reading'.", executed: "the-alarm-of-record-delivers-to-trash CLOSED" }
+      copilot1_e1_prime_run4: { ruling: "AUTHORISE run #4 now.", executed: "the-lapse-notice-is-wired-not-live-proven.run_2026_09_13_route3_run4_ROUTE_PROVEN - PASS, one mail received, re-delivery deduped" }
+      # -- co-pilot batch 2 (four rulings) --
+      copilot2_signup_limit: { ruling: "LEAVE IT AND SAY SO.", executed: "the-live-chain-sits-at-its-own-signup-limit CLOSED" }
+      copilot2_date_guards: { ruling: "KEEP WAITING (reaffirmed); natural red ~09-27 / ~10-04.", executed: "date-guards-has-never-been-red.ruling_2026_09_13" }
+      copilot2_entity_trigger: { ruling: "ATTACH the proposed trigger.", executed: "ratified.relay-operator-is-an-individual.re_decide_trigger; no-entity-and-no-insurance CLOSED" }
+      copilot2_rotation: { ruling: "NONE UNTIL FIRST CUSTOMER, revisit 2026-12-13.", executed: "no-secret-rotation-cadence-and-nothing-rotated.cadence_ratified_2026_09_13 (entry closes on the 09-27 deletion)", revisit: 2026-12-13 }
+      # -- co-pilot batch 3 (four rulings) --
+      copilot3_describekey: { ruling: "STRIP kms:DescribeKey.", executed: "the-iam-template-can-re-open-the-wall.describekey_ruled_and_found_2026_09_13 - the live policy never had it; template + README + audit fixed; entry CLOSED" }
+      copilot3_ro_in_cloud: { ruling: "NOT NOW - Sitting E.", executed: "the-read-only-identity-is-not-in-the-cloud.parked_2026_09_13" }
+      copilot3_reply_to: { ruling: "Steve sets RESEND_REPLY_TO_ADDRESS in the Vercel UI (production scope) himself.", obliges: "Claude verifies by reading a sent mail's Reply-To header afterwards; d6_b42_reply_to stays 'pending' until then" }
+      copilot3_validity_checks: { ruling: "Steve flips it in his own browser now (the plugin's Chrome profile is not signed in to GitHub - the settings page 404s).", obliges: "Claude re-reads security_and_analysis by API and records the state" }
+      # -- co-pilot batch 4 (Sitting E items pulled forward to Steve's hands, same evening) --
+      copilot4_dmarc_download: { ruling: "Steve downloads the 08-17 report's .xml.gz to ~/Downloads now.", obliges: "Claude reads it read-only and records the verdict on dmarc-had-no-rua-so-no-report-could-arrive; the C3 step-up decision then has its evidence" }
+      copilot4_gmail_filters: { ruling: "Steve creates the never-send-to-spam filter for the two DMARC senders AND un-trashes budgets@costalerts.amazonaws.com now.", obliges: "verified only by the NEXT arrival of each (read-only search) - the plugin cannot open Gmail and the connector cannot list filters" }
+      copilot4_stripe_endpoint_failure_mail: { read: "E1.5 #4 read by Steve at the Notifications bell: webhook endpoint-failure emails are ON. With #3 (receipts OFF) that completes the two Stripe dashboard reads Sitting E carried." }
 
   - id: relay-resumed-2026-08-21
     date: 2026-08-21
@@ -1591,6 +1610,11 @@ ratified:
       employment detail — the employer-anonymity rule (feedback_no_employer_references) is unchanged
       and applies with full force to any bio written for an outlet."
 
+    re_decide_trigger:
+      date: 2026-09-13
+      by: steve
+      trigger: "On the first arms-length payment, or the first partner diligence request, re-decide - an entity form and E&O / cyber cover appropriate to a custodial service become a question on that day, not before."
+      why: "The choice is right today and becomes wrong on a specific event both A8 and A6 are trying to cause; without a named trigger it would be revisited by a counterparty rather than by Steve (deferred.no-entity-and-no-insurance, closed on this)."
   - id: j9-5-7-dropped
     date: 2026-08-16
     owner: steve
@@ -4058,6 +4082,10 @@ deferred:
     note: "Steve ruled 2026-08-21 to TRACK this rather than do it immediately, so it is here rather
       than in a memory file - a sentence in a memory file is one session from being lost."
 
+    parked_2026_09_13: >-
+      Steve, AskUserQuestion: NOT NOW - park to Sitting E (2026-09-19). The step is his alone (the
+      key pair goes into the Claude Code cloud environment's secrets UI, never through chat); on the
+      day, Claude proves it by running verify:schema from a cloud session and closes this.
   - id: the-owners-vault-is-empty                              # "A0"
     owner: steve
     opened: 2026-08-20
@@ -4672,6 +4700,14 @@ deferred:
     ends_when: >-
       Steve rules, or the separate-cluster decision is revisited and swallows it.
 
+    closed: 2026-09-13
+    closed_by: >-
+      RULED by Steve (AskUserQuestion, close-out sweep): "LEAVE IT AND SAY SO." `verify:live` and
+      `verify:journeys` stay two chains by design, each inside the 10/hour front-door budget, an
+      hour apart or on a fresh dev instance; the split is documented in CLAUDE.md's Commands block
+      and in the two chains' own headers, and LIMIT is not raised for a fixture. The separate test
+      cluster (verify-live-cannot-enter-ci) would dissolve the constraint and stays gated on the
+      first paying customer.
   - id: every-secrets-age-is-unknown                           # "D11"
     owner: steve
     opened: 2026-08-20
@@ -4895,6 +4931,17 @@ deferred:
         read of `in:trash` for the `relay-alarm` label surfaces a trashed alarm within 24h of its
         arrival at least once. Until then every unattended alarm is one Trash sweep from a 30-day purge."
 
+    closed: 2026-09-13
+    closed_by: >-
+      ends_when's first arm: the mechanism is NAMED. Steve, 2026-09-13 (AskUserQuestion, close-out
+      sweep): "I trash them by hand after reading." No filter, no client rule, no tool - a human
+      habit, which is why read-then-trashed alarms sat beside unread-then-trashed bot mail. That
+      also settles the risk: a read alarm in Trash was a SEEN alarm. What made it safe to close
+      rather than merely explain: the off-GitHub heartbeat now probes both scheduler dead-men
+      (PR #78, G0), so a trashed GitHub mail is no longer the only signal, and today's four
+      deliberate failures (iam-wall 34771727011, backup-wall 34772769825 / 34773781289) all arrived
+      with an INBOX label by read-only Gmail search. Residue, not a finding: the connector cannot
+      schedule an in:trash read, and none is needed now that the mechanism has a name.
   - id: the-scheduled-monitors-are-collapsing                 # ROADMAP B11
     owner: claude                         # measurement; steve owns the money half
     opened: 2026-08-28
@@ -5842,6 +5889,12 @@ deferred:
       the thing that stops it firing. The honest reading is that this proof is now DEFERRED rather
       than scheduled, and if it still matters in mid-September it needs option (1) or (2).
 
+    ruling_2026_09_13: >-
+      Steve, AskUserQuestion: KEEP WAITING (option 3, reaffirmed). Neither route around the pre-push
+      hook is taken. Both chains were re-stamped on 2026-09-13, so the natural red is the
+      verify-live dead-man ~2026-09-27 or the journeys dead-man ~2026-10-04, whichever lapses first
+      - and only if nobody runs the chain before it. Same tension as 08-29, chosen with eyes open:
+      the proof arrives only by letting the thing it watches actually lapse.
   - id: shipped-but-unproven-release-guards                   # ROADMAP B15
     owner: claude                         # B15.4 is steve's: it is a ratification, not a build
     opened: 2026-08-28
@@ -6287,6 +6340,15 @@ deferred:
       are deleted on 2026-09-27 if nothing has missed the old key in the fortnight (the walls,
       drill:preflight and the backup wall all run on the new one daily). Rings 09-28 if unanswered;
       answer with `revisit_outcome:`.
+    cadence_ratified_2026_09_13: >-
+      RULED by Steve (AskUserQuestion): "NONE UNTIL FIRST CUSTOMER", with a dated revisit of
+      2026-12-13 (the next restore drill's ceiling, so the two admin sessions coincide). The
+      runbook stays the procedure for any leak or diligence question in the meantime; the
+      cadence question is re-asked on that date or on the first arms-length payment, whichever
+      first. Both halves of ends_when are now met (a recorded no-cadence WITH a revisit; the
+      admin key rotated 09-13 on a two-keys-valid overlap). The entry stays OPEN only for the
+      09-27 deletion of the inactive key and the .bak - it closes when that revisit is answered,
+      and the 12-13 cadence revisit then lives on ratified.sitting-d2-2026-09-13.copilot2_rotation.
   - id: the-iam-template-can-re-open-the-wall                 # ROADMAP B20
     owner: steve                          # the ruling; claude edits
     opened: 2026-08-28
@@ -6305,6 +6367,22 @@ deferred:
       `kms:DescribeKey` at all. The Sid-filtered audit is either widened or replaced in the same
       change, because leaving it is leaving the blind spot.
 
+    describekey_ruled_and_found_2026_09_13: >-
+      RULED by Steve (AskUserQuestion): STRIP kms:DescribeKey from the runtime. Then the live
+      policy was read before anything was changed - and the LIVE relay-runtime-policy v2 (default,
+      v1 retained) grants exactly `dsql:DbConnect` on the two cluster ARNs and `kms:GenerateDataKey`
+      + `kms:Decrypt` on the CMK: NO DescribeKey, and no tag condition. The action the ruling
+      strips existed only in the TEMPLATE, infra/iam-policy.json, which is the drift this entry is
+      about. So no IAM call was made and no 5-gate was needed: the template lost DescribeKey, the
+      README's DescribeKey paragraph now records the ruling and the live fact, and the cutover
+      document's audit dropped its `Sid`-prefix filter so it prints every statement's actions.
+      Guard: `verify:iam` reads the live policy and RUNTIME_CONTRACT.requires is exactly the three
+      actions v2 grants.
+    closed: 2026-09-13
+    closed_by: >-
+      All four ends_when clauses: the template matches the live v2 shape (DbConnectAdmin gone 09-13
+      under d10_b20, DescribeKey gone today); infra/README.md says what each statement grants and
+      why; Steve ruled on DescribeKey (strip); the Sid-filtered audit is widened in the same change.
   - id: the-domain-can-lapse-without-anyone-noticing          # ROADMAP B35
     read_attempted_2026_09_13: >-
       Gap plan G2.2. The registrar's auto-renew flag is not readable from this machine: no
@@ -6341,6 +6419,11 @@ deferred:
       here, and — if a mechanism exists that does not depend on a human remembering — the renewal
       failure raises an alarm on the same path as everything else.
 
+    card_ruling_2026_09_13: >-
+      Steve, AskUserQuestion: "DETAIL - I'll do it later myself." He adds the payment method at
+      Cloudflare on his own time and tells Claude the card's expiry month/year (never the number);
+      the entry closes when that is recorded here beside the 2027-08-07 expiry. Rides the 09-19
+      Sitting E revisit; if the card is still absent on 09-19 the revisit answer says so.
   - id: no-budget-alarm-on-the-aws-estate                     # ROADMAP B36
     owner: steve                          # 5-gate; default yes
     opened: 2026-08-28
@@ -6457,6 +6540,15 @@ deferred:
       Steve records one of: registered; Stripe Tax enabled; or "accepted until first revenue" WITH
       a revisit. Undated acceptance is the illegitimate outcome, as everywhere else in this file.
 
+    enabled_2026_09_13: >-
+      ends_when's second option, "Stripe Tax enabled", is now TRUE IN CODE: Steve approved the merge
+      (AskUserQuestion, close-out sweep) and PR #85 landed at 6a237cc - `automatic_tax: { enabled:
+      true }` on every checkout session, unit-tested, on an account where Stripe Tax is already
+      active with a US head office. What every future customer is charged now includes the tax
+      Stripe computes for their address; existing subscribers are untouched until their next
+      checkout. Rollback = revert the PR.
+    closed: 2026-09-13
+    closed_by: "Ruled ENABLE at ratified.sitting-d2-2026-09-13.e7_sales_tax (09-13 morning), merged the same evening on Steve's explicit approval; recorded above."
   - id: fr9-demo-simulate-is-reachable-by-nobody
     closed:
       date: 2026-08-31
@@ -6566,6 +6658,12 @@ deferred:
       arms-length payment, or the first partner diligence request, re-decide" — so that the next
       person to read it knows what re-opens it. Forming an entity is NOT required to close this.
 
+    closed: 2026-09-13
+    closed_by: >-
+      RULED by Steve (AskUserQuestion): attach the proposed trigger. Recorded on
+      ratified.relay-operator-is-an-individual as `re_decide_trigger` - "on the first arms-length
+      payment, or the first partner diligence request, re-decide" - so the decision now names the
+      event that reopens it. Forming an entity was never required to close this.
   - id: the-lapse-notice-is-wired-not-live-proven              # "E1-prime"
     owner: steve
     opened: 2026-08-20
@@ -6830,6 +6928,27 @@ deferred:
       branch. Nothing was spent on the log; E1-prime stays `wired`; the 10-01 EXTEND default
       stands. Record: docs/e1-stripe-lapse-proof.md, Run log 2026-09-13.
 
+    run_2026_09_13_route3_run4_ROUTE_PROVEN: >-
+      ONE authorised delivery (Steve, AskUserQuestion, "Authorise run #4 now") against a local
+      production build of master 05d823e (next start :3200; STRIPE_SECRET_KEY = the restricted
+      read-only key for the local process only; throwaway env scrubbed after). POST #1 -> 200 with
+      the build marker (instance c2c17e9b); renewal_payment_failed_notice rows 1 -> 2, newest
+      `{"source":"stripe","delivered":true,"stripe_id":"in_e1r3_1789336457191"}`; the server's
+      stderr shows the whole path speak for the first time - `[stripe] event ... entered`,
+      `[billing] sendOnce entered`. POST #2 (the same event re-delivered) -> 200, rows 2 -> 2, and
+      stderr says `notice SUPPRESSED as duplicate ... This is the dedupe working`. And the mail
+      EXISTS: exactly one "Relay could not renew your plan" from relay@relaystandby.com reached the
+      owner's mailbox at 21:54:18Z (Gmail thread 1a09cc398a00902b, INBOX), read back through the
+      read-only connector. `npm run verify:e1-route3` exit 0: PASS - route 3, E1prime is
+      `wired + route-proven`.
+    what_changed_since_run_3_and_what_is_not_claimed: >-
+      Between run #3 (silent after the case's first line, 09-13 morning, next 16.3.0) and run #4
+      the only RUNTIME change on master is PR #92, next 16.3.0 -> 16.3.5 (two critical advisories;
+      PR #82 only moved diagnostics to stderr). The silence being a Next 16.3.0 defect in an
+      async route handler is consistent with that and is NOT asserted - nobody bisected it, and
+      the register does not record a cause it cannot show. What IS shown: on the current
+      production line the notice is written, sent once, and deduped on retry.
+    ladder_2026_09_13: "wired + route-proven (was: wired). NOT live-proven: the delivery hit a local production build of the same code, not the deployed webhook URL, and no real Stripe payload in this account has ever carried a subscription reference (route 1 = a real renewal failure, 2027-08-09; route 2 = E1.3, a test-clock subscription through relay's own checkout)."
   - id: the-ladder-cannot-be-proven-while-the-owner-is-active    # gap plan GP-U9 (NEW 2026-09-12)
     owner: steve                          # a ruling; it sets the G1/G2 calendar
     opened: 2026-09-12

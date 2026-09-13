@@ -22,8 +22,7 @@
       "Effect": "Allow",
       "Action": [
         "kms:GenerateDataKey",
-        "kms:Decrypt",
-        "kms:DescribeKey"
+        "kms:Decrypt"
       ],
       "Resource": "*",
       "Condition": {
