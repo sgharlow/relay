@@ -828,6 +828,11 @@ ratified:
           docs/g11-quorum-and-challenge-window-options.md is the brief"
       u11_failover_r14_1: { ruling: "(a) the five master-push a11y runs of 2026-09-13 are recorded as R14.1 evidence, dated; (b) the R14.2 cut-over stays with the restore drill (G4).", executed: "the-failover-has-not-been-re-exercised-since-h0.r14_1_evidence_recorded_2026_09_13" }
       u15_d23_review_on_10_21: { ruling: "The 2026-10-21 review asks two things: is report-bridge still the precedence, and did G1 move." }
+      # ── the G2 sitting, same day, second AskUserQuestion ─────────────────────
+      e4_2_paywall: { ruling: "EXTEND now; beta stays free; new decision_due 2026-11-15.", executed: "ratified.beta-free-release.revisited + decision_due moved; 10-01/10-02 pass green" }
+      e5_billing_check_in_a_chain: { ruling: "NO - verify:stripe stays on its own daily workflow (stripe-contract-monitor.yml); a chain that needs Stripe is a chain that fails on Stripe." }
+      e7_sales_tax: { ruling: "ENABLE automatic_tax on the Relay checkout NOW (co-pilot: Steve approves the PR before merge - it changes what every future customer is charged).", obliges: "one field on the checkout session + a unit test + a verify:stripe-adjacent read; PR opened, not merged, the same day" }
+      sitting_e_scheduled: { ruling: "Inside Sprint 2 - 2026-09-19. Five reads: Stripe receipts, Stripe endpoint-failure notifications, registrar auto-renew + card expiry, the 08-17 Microsoft DMARC download, the Gmail never-send-to-spam filter for the two DMARC senders; plus the GitHub secret-scanning validity-checks toggle.", obliges: "revisit: 2026-09-19 on the-domain-can-lapse-without-anyone-noticing rings 09-20 if unanswered" }
 
   - id: relay-resumed-2026-08-21
     date: 2026-08-21
@@ -1108,7 +1113,23 @@ ratified:
       together."
     owner: steve
     revisit: "at every /daily-priority from 2026-10-01"
-    decision_due: 2026-10-01
+    decision_due: 2026-11-15
+    revisited:
+      date: 2026-09-13
+      outcome: EXTEND
+      ruled_by: steve, via the gap plan's sitting (ratified.sitting-d2-2026-09-13.e4_2_paywall)
+      why: >-
+        E1-prime is still `wired` after run 3 (the renewal-failure notice has never been proven to
+        reach an owner), so a paywall flipped now would turn an expired card into a silently
+        blocked release. The ladder has not fired for a real owner yet (first rung ~10-16 under
+        the natural-date ruling) and the cohort has not been asked. Ruled eighteen days early so
+        2026-10-01 passes with nothing to remember and 2026-10-02 stays green.
+      new_decision_due: 2026-11-15
+      what_must_be_true_by_then: >-
+        E1-prime `route-proven` (one more authorised run names the branch, then the fix), both
+        reminder rungs observed for the real owner, and a Phase-0 read with N > 2. If any is
+        missing on 11-15 the honest default is EXTEND again, dated.
+    decision_due_moved_2026_09_13: "2026-10-01 -> 2026-11-15 by the ruling above; the original date is kept in `decision_due_why` as the record."
     decision_due_why: >-
       E4.4, 2026-08-30. This is the ONE dated cadence in the register whose first occurrence is
       itself the decision: E4.2 is "flip TIER_LIMITS.free.canRelease, or extend the beta with a
@@ -6161,6 +6182,17 @@ deferred:
       change, because leaving it is leaving the blind spot.
 
   - id: the-domain-can-lapse-without-anyone-noticing          # ROADMAP B35
+    read_attempted_2026_09_13: >-
+      Gap plan G2.2. The registrar's auto-renew flag is not readable from this machine: no
+      Cloudflare API token is on disk in .env.local/.env.admin (the zone-scoped token the DNS
+      runbook mentions is not here), and a registrar read needs account scope regardless. Still
+      Steve's one-minute dashboard read; the four ends_when clauses are unchanged.
+    revisit: 2026-09-19
+    revisit_why: >-
+      Sitting E is scheduled inside Sprint 2 for 2026-09-19 (ratified.sitting-d2-2026-09-13
+      .sitting_e_scheduled): this read, the two Stripe dashboard reads, the 08-17 DMARC download,
+      the Gmail filter, and the GitHub validity-checks toggle. This date rings on 09-20 if none of
+      it is recorded; answer it with `revisit_outcome:`.
     owner: steve
     opened: 2026-08-28
     what: >-
@@ -6229,8 +6261,33 @@ deferred:
       Steve records "only the manual path" or "all four", and the corresponding sentence lands in
       `/terms` or the guide in the same commit as the `canRelease` flip.
     revisit: 2026-10-01
+    revisit_outcome: >-
+      Both halves were already met when the gap plan re-read this on 2026-09-13: the ruling is
+      `ratified.sitting-d1-2026-08-30.rulings.e4_1_billing_gate_scope` (KEEP INITIATE-ONLY,
+      2026-08-30) and `/terms` has said so since that day (src/app/terms/page.tsx, the "Initiate"
+      paragraph: the three involuntary paths "are not billing-gated and are not going to be").
+      The "same commit as the canRelease flip" clause bound the SENTENCE to the flip; the sentence
+      landed early and the flip is E4.2's own decision (`ratified.beta-free-release`, 2026-10-01),
+      which this entry no longer needs to shadow. Recorded by Claude on the D-1 ruling; no new
+      ruling was taken.
+    closed: 2026-09-13
+    closed_by: "the 08-30 ruling plus the /terms sentence that shipped with it (gap plan GP-U14)."
 
   - id: sales-tax-has-never-been-considered                   # ROADMAP E7
+    e7_read_2026_09_13: >-
+      Read for the 10-01 ruling (gap plan G2.5): `stripe tax settings retrieve --live` → status
+      ACTIVE, provider stripe, tax_behavior inferred_by_currency, a US head office set. But the
+      Relay checkout session sets NO `automatic_tax` (grep of lib/billing and the checkout route),
+      so Stripe Tax is configured at the account and NOT applied to the $119/yr — nothing is
+      collected or remitted today. The ruling is therefore "enable automatic_tax on the Relay
+      checkout (one field, then verify:stripe reads it)" vs "leave it until arms-length revenue";
+      recommended: leave, and re-read on the first arms-length payment.
+    ruled_2026_09_13: >-
+      ENABLE automatic_tax on the Relay checkout now (ratified.sitting-d2-2026-09-13.e7_sales_tax),
+      against the recommendation. Co-pilot: Claude builds it (`automatic_tax: { enabled: true }` on
+      the checkout session, a unit test pinning it), opens the PR, and STOPS — Steve approves the
+      merge because it changes what every future customer is charged. This entry closes when that
+      PR merges and a checkout session created after the deploy carries automatic_tax enabled.
     owner: steve
     opened: 2026-08-28
     what: >-

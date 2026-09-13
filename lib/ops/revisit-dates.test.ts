@@ -297,7 +297,10 @@ describe('every revisit: date is answered, or has not arrived yet', () => {
         'dated instrument in this repository, so if this guard does not judge it, nothing does.',
     ).toBeTruthy();
     expect(paywall!.via).toBe('decision_due');
-    expect(paywall!.date).toBe('2026-10-01');
+    // 2026-10-01 until 2026-09-13, when E4.2 was ruled EXTEND eighteen days early and the
+    // date moved to 2026-11-15 (`ratified.beta-free-release.revisited`). The literal is the
+    // point: a silent change to this date is exactly what this test exists to notice.
+    expect(paywall!.date).toBe('2026-11-15');
   });
 
   it('a date the cadence merely MENTIONS is not treated as its anchor', () => {
