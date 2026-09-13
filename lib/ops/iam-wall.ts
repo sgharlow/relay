@@ -541,12 +541,28 @@ export const IAM_WALL_CI_CONTRACT: PrincipalContract = {
   user: 'relay-iam-wall-ci',
   purpose:
     'the GitHub Actions OIDC role for the IAM wall watch — assumed by a workflow in a PUBLIC ' +
-    'repo, so it holds eight IAM policy READS on named principals and nothing that writes, ' +
+    'repo, so it holds thirteen IAM policy READS on named principals and nothing that writes, ' +
     'connects, or decrypts',
+  /*
+    THIRTEEN reads, not the proposal's eight. The proposal (§3) said the four
+    group calls were "deliberately NOT included" because "the script's header
+    records group-attached policies as a known open blind spot, left open on
+    purpose". That was stale: scripts/verify-iam.ts has made those four calls
+    since the group half was built, and it reads each role's trust policy with
+    GetRole. The first master-push run of iam-wall.yml (2026-09-13, run
+    34771127827) failed on `iam:ListGroupsForUser` and said so — the list below
+    is derived from `grep -oE "new [A-Za-z]+Command\(" scripts/verify-iam.ts`,
+    which is the only place it should ever come from.
+  */
   requires: [
     'iam:ListAttachedUserPolicies',
     'iam:ListUserPolicies',
     'iam:GetUserPolicy',
+    'iam:ListGroupsForUser',
+    'iam:ListAttachedGroupPolicies',
+    'iam:ListGroupPolicies',
+    'iam:GetGroupPolicy',
+    'iam:GetRole',
     'iam:ListAttachedRolePolicies',
     'iam:ListRolePolicies',
     'iam:GetRolePolicy',
@@ -555,9 +571,10 @@ export const IAM_WALL_CI_CONTRACT: PrincipalContract = {
   ],
   requiresConsequence:
     'The IAM wall cannot read the policies it audits, so it reports a clean account because it ' +
-    'saw nothing. Losing one read silently narrows the audit: a principal whose inline policies ' +
-    'cannot be listed reads as having none, which is the exact blind spot this wall was built to ' +
-    'close on 2026-08-21.',
+    'saw nothing — or exits 1 on AccessDenied and the daily run reads as "the wall is unmeasured", ' +
+    'which is how the first master-push run ended. Losing one read silently narrows the audit: a ' +
+    'principal whose inline or group policies cannot be listed reads as having none, which is the ' +
+    'exact blind spot this wall was built to close on 2026-08-21.',
   resourceScope: {
     mustNotBeWildcard: true,
     consequence:
