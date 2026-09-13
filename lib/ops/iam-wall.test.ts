@@ -25,6 +25,7 @@ import {
   readTrust,
   CONTRACTS,
   KMS_WALL_CI_CONTRACT,
+  IAM_WALL_CI_CONTRACT,
   READONLY_CI_CONTRACT,
   RUNTIME_CONTRACT,
   LAPTOP_CONTRACT,
@@ -317,6 +318,7 @@ describe('the contract is per-principal, which is the point of the change', () =
       'relay-ro',
       'relay-kms-wall-ci',
       'relay-ro-ci',
+      'relay-iam-wall-ci',
     ]);
     // A role is reached by satisfying a trust policy, not with a key, so the
     // kind is what decides which API calls collect it. Getting it wrong audits
@@ -324,6 +326,7 @@ describe('the contract is per-principal, which is the point of the change', () =
     expect(CONTRACTS.filter((c) => c.kind === 'role').map((c) => c.user)).toEqual([
       'relay-kms-wall-ci',
       'relay-ro-ci',
+      'relay-iam-wall-ci',
     ]);
   });
 
@@ -355,7 +358,7 @@ describe('the contract is per-principal, which is the point of the change', () =
       CONTRACTS.filter((c) => (c.forbidsServices ?? []).some((f) => f.service === 'kms')).map(
         (c) => c.user,
       ),
-    ).toEqual(['relay-ro', 'relay-ro-ci']);
+    ).toEqual(['relay-ro', 'relay-ro-ci', 'relay-iam-wall-ci']);
     expect(READONLY_CONTRACT.forbidsServices?.map((f) => f.service)).toEqual(['kms']);
     expect(READONLY_CI_CONTRACT.forbidsServices?.map((f) => f.service)).toEqual(['kms']);
     expect(RUNTIME_CONTRACT.forbidsServices ?? []).toEqual([]);
@@ -762,5 +765,90 @@ describe('the trust policy of relay-ro-ci — the half that decides who may BECO
     // pushes and dispatches only, and says so.
     expect(READONLY_CI_CONTRACT.trust?.subject).toBe('repo:sgharlow/relay:ref:refs/heads/master');
     expect(READONLY_CI_CONTRACT.trust?.provider).toBe('token.actions.githubusercontent.com');
+  });
+});
+
+/* ────────────────────────────────────────────────────────────────────────────
+   B16 residue closed 2026-09-13 — the IAM wall's OWN role. The proposal asked
+   for Resource "*"; this file's scope rule refused it, so the live grant names
+   the audited principals and the two policy paths. These pin that the contract
+   reads the intended grant as healthy and a widened one as a breach.
+   ──────────────────────────────────────────────────────────────────────────── */
+describe('the IAM wall audits its own principal — relay-iam-wall-ci', () => {
+  const READS = [
+    'iam:ListAttachedUserPolicies',
+    'iam:ListUserPolicies',
+    'iam:GetUserPolicy',
+    'iam:ListAttachedRolePolicies',
+    'iam:ListRolePolicies',
+    'iam:GetRolePolicy',
+    'iam:GetPolicy',
+    'iam:GetPolicyVersion',
+  ];
+  const INTENDED: NamedPolicy = {
+    source: 'inline relay-iam-wall-reads',
+    document: {
+      Statement: [
+        {
+          Sid: 'ReadTheAuditedPrincipals',
+          Effect: 'Allow',
+          Action: READS,
+          Resource: [
+            'arn:aws:iam::461293170793:user/relay-runtime',
+            'arn:aws:iam::461293170793:user/relay-dev',
+            'arn:aws:iam::461293170793:user/relay-ro',
+            'arn:aws:iam::461293170793:role/relay-kms-wall-ci',
+            'arn:aws:iam::461293170793:role/relay-ro-ci',
+            'arn:aws:iam::461293170793:role/relay-iam-wall-ci',
+            'arn:aws:iam::461293170793:policy/*',
+            'arn:aws:iam::aws:policy/*',
+          ],
+        },
+      ],
+    },
+  };
+
+  it('reads the intended grant as healthy', () => {
+    const v = readWall(IAM_WALL_CI_CONTRACT, [INTENDED]);
+    expect(v.missing).toEqual([]);
+    expect(v.violations).toEqual([]);
+    expect(v.ok).toBe(true);
+  });
+
+  it('refuses the bare "*" the proposal originally asked for', () => {
+    const widened: NamedPolicy = {
+      source: 'inline widened',
+      document: { Statement: [{ Sid: 'All', Effect: 'Allow', Action: READS, Resource: '*' }] },
+    };
+    const v = readWall(IAM_WALL_CI_CONTRACT, [widened]);
+    expect(v.ok).toBe(false);
+    expect(v.violations.join(' ')).toContain('Resource "*"');
+  });
+
+  it('refuses a write action and a kms or dsql action, which an auditor must never hold', () => {
+    const doc = (action: string): NamedPolicy => ({
+      source: `inline ${action}`,
+      document: {
+        Statement: [
+          INTENDED.document.Statement![0]!,
+          { Sid: 'Extra', Effect: 'Allow', Action: [action], Resource: 'arn:aws:iam::461293170793:policy/*' },
+        ],
+      },
+    });
+    for (const action of ['iam:CreatePolicyVersion', 'iam:PutUserPolicy', 'kms:DescribeKey', 'dsql:DbConnect']) {
+      expect(readWall(IAM_WALL_CI_CONTRACT, [doc(action)]).ok, `${action} should be refused`).toBe(false);
+    }
+  });
+
+  it('reports a missing read as a finding, never as safety', () => {
+    const narrowed: NamedPolicy = {
+      source: 'inline narrowed',
+      document: {
+        Statement: [{ ...INTENDED.document.Statement![0]!, Action: READS.filter((a) => a !== 'iam:GetPolicyVersion') }],
+      },
+    };
+    const v = readWall(IAM_WALL_CI_CONTRACT, [narrowed]);
+    expect(v.ok).toBe(false);
+    expect(v.missing).toEqual(['iam:getpolicyversion']);
   });
 });
