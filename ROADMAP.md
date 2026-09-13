@@ -1,5 +1,31 @@
 # Relay — Production Roadmap
 
+**Revision 9 — 2026-09-12 · the gap-closure re-baseline.** An IN-PLACE revision, as §8 asks.
+Steve asked *"assess the gap between the deployed product and the fully-specified product; close it
+without adding functionality"* and then *"QA the plan"*. The answer lives in
+**`docs/gap-closure-plan-2026-09-12.md` (revision 2, after a same-day adversarial QA that found fifty
+defects in revision 1, eight of them blockers — its §Q is the log)**. That file is a *derived view*;
+this file and `PROJECT.yaml` stay authoritative, and this revision absorbs what it measured. **Sprint
+G0 of that plan ran the same day** (PRs #75–#78); what it found, and what it changed here, is below.
+
+| What this revision measured or changed on 2026-09-12 | Evidence |
+|---|---|
+| **The verdict:** the H0 obligation layer is built end to end; beta-ready is **7 of 8** (R2, one verifier's four-word call, is the eighth). What separates deployed from specified is proof, drift, undecided planks and the record — not code. Seventeen scoped-but-barred items (§2-F/G) stay barred. | `verify:dogfood` READY · `beta:status` alias-clean, verifier not yet `confirmed` · `verify-live-runs.jsonl` 09-10 |
+| **Every owner write moves the reminder ladder** (`lib/http/owner-route.ts:44` → `liveness.ts:52`; sign-in `upsert-user.ts:77`; check-in `heartbeat.ts:113`): confirming the verifier, committing the cohort, the fire drill, regenerating recovery codes each push the first rung to write + 22.5 d. **Sprint 2 and B15.1 cannot share a fortnight.** Ruling entered: `deferred.the-ladder-cannot-be-proven-while-the-owner-is-active` (revisit **09-17**; recommended: accept the natural date — first rung ≈ 10-16, final ≈ 10-21, a quiet window after Sprint 2's last owner write). Row 3.1's "09-26" was a stale copy and is struck. | `npm run check:ladder` (09-12: 10-03 / 10-08, before Sprint 2's writes) |
+| **B12's off-GitHub heartbeat watched behaviour, not the two dead-men.** `lib/ops/canary.ts` never probed `/api/health/scheduler` or `/api/health/reminders`, so they were watched by the collapsing GitHub tier alone. Both are now canary checks (PR #78): live 8/8 green, a planted wrong-prefix run red by name. No new monitor was bought; the Route 53 idea in the plan's first draft was withdrawn as ≈43k DSQL-backed requests/day. | `node scripts/canary.ts` 2026-09-13T06:58Z |
+| **Two stale disposable owners from the 09-10 step-up walk** (61 h, no rows) sat on production; the orphan monitor went red 09-12 and **its alarm was in Gmail Trash, read** — B10's failure mode, live. Both closed via `deleteAccount()`; census clean; monitor green on re-dispatch. B10 moves to Claude's court with the residue (`re_scoped_2026_09_12`). | `npm run verify:orphans` 0/0/0 · orphan-monitor run 06:46Z success |
+| **Five "rulings owed" in the plan's first draft were ruled on 2026-08-30** (`ratified.sitting-d1-2026-08-30`): D25 RETIRE (executed), D14, D20 PURGE (executed), B15.4, E4.1 KEEP INITIATE-ONLY. A reader deriving "owed" from a §2 row instead of the register gets rulings that already happened. Recorded as `deferred.gap-plan-revision-1-called-ruled-items-owed` (closed). | `PROJECT.yaml:635-750` |
+| **Register hygiene:** `nothing-turns-red-when-a-revisit-lapses` had `revisited.outcome: CLOSED` and no `closed:` for thirteen days — the one-liner counted it open. `project-yaml-parses.test.ts` now refuses that shape (proven red on the base). `the-reminder-ladder-has-never-fired.ends_when` no longer asserts a date that died 09-10. **§2-D's "D21 ✅ DONE" overstated:** `the-read-only-identity-is-not-in-the-cloud` is correctly open (its `ends_when` needs one of five `.env.ro` verifications observed in CI; the a11y mint is none). | one-liner: **74 deferred, 28 open** (was 70 / 26) |
+| **Twelve rows here still asked for done work** (PR #76): B28, C1.0, D1's date, D21, E1.8 ×4 incl. `CLAUDE.md` and `verify-stripe.ts`, §3.5 rows 1.5/1.6, §6 A0/B10/C1.0/A7.0/E1.7/C2.2, the 90 % rung's date — struck in place. §4 gains the three **2026-09-17** obligations Sitting A created. The `/sprint` skill's state file now carries `iterationsRemaining` and points at the plan's Claude lane. | `git show f7dbb6e --stat` |
+| **Steve's court after G0:** the ladder-window ruling (09-17) · five nods (reclassify F-p → audit labels; two repo settings; two register edits; "that property is B15.6") · then Sprint 2 exactly as revision 8 wrote it, with every owner write inside it and Sitting D-2's twenty rulings (`docs/rulings-pack-sitting-d.md`, re-derived sheet at the bottom). | `docs/gap-closure-plan-2026-09-12.md` §4 G0–G1, §6 |
+
+> **Where the sprints stand after revision 9.** Revision 8's Sprints 1–3 keep their rows; the gap
+> plan's G1 *is* Sprint 2 plus Sitting D-2, and G2 *is* Sprint 3 under a **quiet window** (no owner
+> sign-in or write from Sprint 2's last owner action until the ladder has fired). The ladder itself
+> — rows 2.2 and 3.1 — lands in the plan's **G4** (≈ 10-16 / 10-21 under the recommended ruling),
+> not in Sprint 2 or 3. G3 (10-01 → 10-08) is two `/safe-execute` sittings: the IAM-wall role and
+> the admin-key rotation. G4 (→ 11-08) is revision 7's Sprint 4. Nothing in §2-F/§2-G moved.
+
 **Revision 8 — 2026-09-10 · the beta-readiness re-baseline.** An IN-PLACE revision, as §8 asks,
 written from a live inventory (`verify:dogfood`, `beta:status`, `verify:stripe`, `check:ladder`,
 the two freshness stamps, the heartbeat stamp, Gmail Sent/Inbox, a real-Chrome load of
@@ -769,6 +795,8 @@ being lost (§8).
 
 ## 2.5 THE PLAN — what to do next, and in what order (revision 5, 2026-08-29)
 
+> **Revision 9 (2026-09-12):** the *current* ordering is `docs/gap-closure-plan-2026-09-12.md` §4 (G0 done the same day; G1 = Sprint 2 + Sitting D-2; G2 = Sprint 3 under the quiet window; G3 the two `/safe-execute` sittings; G4 = Sprint 4 + the ladder). P0–P4 below are revision 5's record.
+
 Sprint 0 is **closed**: every row is done or explicitly not taken (§3). So this is not a re-plan of
 Sprint 0; it is the sequencing of what §0.5 found still standing between here and production.
 
@@ -1140,13 +1168,13 @@ walked, and nothing they can reach on day one is a known defect. Measured, not d
 | # | Condition | State 2026-09-10 | Re-derive |
 |---|---|---|---|
 | R1 | The owner's vault is real (A0) | ✅ READY since 08-29 | `npm run verify:dogfood` → exit 0 |
-| R2 | The circle is real: one recipient **and** one verifier who are not the owner, invited, and the verifier `confirmed` by the four-word call (A0.2 clause a) | ❌ two owner plus-aliases, no code issued to either | `npm run beta:status` → no ⚠️ alias line; one `state: confirmed` |
+| R2 | The circle is real: one recipient **and** one verifier who are not the owner, invited, and the verifier `confirmed` by the four-word call (A0.2 clause a) | ◐ **09-12:** aliases removed, both codes issued 09-10; the verifier has **not claimed** — revisit 09-17. ~~❌ two owner plus-aliases, no code issued to either~~ | `npm run beta:status` → no ⚠️ alias line; one `state: confirmed` |
 | R3 | The roster cannot show an uncontacted person as `invited` (A0.2 clause b) | ✅ **built and live-proven 2026-09-10 (PR #65)** — derived reading `not_asked`; `beta:status` and `/circle` both say *Not asked yet* | `npm run beta:status` → *not asked yet* for any person with no code issued |
 | R4 | Signup, sign-in, checkout and the release machine are live-proven on production | ✅ five-walk chain 09-03; `verify:reveal` 20/20; `verify:stripe` contract holds; one live subscription | `tail -1 docs/verify-live-runs.jsonl`; `npm run verify:stripe` |
 | R5 | Every alarm that watches the live system is alive and has been seen red once | ✅ heartbeat (B12.i), KMS wall, reminder observer, orphans, DR absence — each proven both ways | `tail -1 .heartbeat/runs.jsonl`; §2-B rows B4/B13 |
 | R6 | Invitation mail reaches the people it is sent to | 🟡 Gmail yes; **Outlook = Junk by domain reputation, no remedy but volume** (Resend, 09-03). ✅ The handoff and first-invitations docs now route Microsoft addresses to the owner arm and say why (row 1.6, 09-10) — 🟡 stays, because the channel is still what it is | `docs/outlook-sender-support-submission.md §Outcome log` |
-| R7 | The register is green the day after the sitting | 🟡 three revisits fire 09-13 unless answered | `TZ=UTC npx vitest run lib/ops/revisit-dates.test.ts` |
-| R8 | The page a new owner needs first loads in a real browser | ✅ `/vault/new` → `/auth/signin`, no interstitial, Steve's Chrome 09-10 (Enhanced-protection state unread) | load it |
+| R7 | The register is green the day after the sitting | ✅ **09-12:** 7/7 under `TZ=UTC`; nothing fired 09-13. Next ring: three `revisit: 2026-09-17` entries. ~~🟡 three revisits fire 09-13 unless answered~~ | `TZ=UTC npx vitest run lib/ops/revisit-dates.test.ts` |
+| R8 | The page a new owner needs first loads in a real browser | ✅ `/vault/new` → `/auth/signin`, no interstitial, Steve's Chrome 09-10 (Enhanced-protection state unread → read 09-10: ON; INCIDENT closed PR #69) | load it |
 
 **Not** required for beta-ready, and deliberately so: the paywall flip (the beta is free by ruling,
 `ratified.beta-free-release`); E1′ live-proof (it matters the day the paywall flips, not before);
@@ -1199,6 +1227,8 @@ in the handoff · the cohort committed or its fourth deferral dated.
 
 ### Sprint 2 — Real people in the loop *(calendar: 2026-09-17 → 2026-09-24 · Steve: the sends and the calls · Claude: observe, measure, one instrument)*
 
+> ⏱ **Revision 9:** every Steve action in this sprint that touches the product as the owner (row 2.1's `--commit`, the four-word confirm, row 2.3's fire drill, regenerating recovery codes) **resets the ladder to that day + 22.5 d**. Row 2.2 therefore cannot land here; it lands ≈ 10-16 under the ruling due 09-17 (`the-ladder-cannot-be-proven-while-the-owner-is-active`). Do all owner writes here, then stop touching the owner account. Rows 2.4–2.6 are unchanged. Sitting D-2's rulings join this week (`docs/gap-closure-plan-2026-09-12.md` G1.7).
+
 | # | Item | Court | Measured 2026-09-10 | Done when |
 |---|---|---|---|---|
 | 2.1 | **A3.4 / A3.5** — owner-arm sends go out; the four-word call after each claim; every claim and call logged | steve (by design) | N = 0 | first arms-length **claim**; first arms-length verifier `confirmed` |
@@ -1213,6 +1243,8 @@ rung has a row and a seen mail · one fire drill fully acknowledged · G3 follow
 branch named.
 
 ### Sprint 3 — Beta billing truth *(calendar: 2026-09-24 → 2026-10-01 · co-pilot · the 10-01 decision with its evidence in front of it)*
+
+> ⏱ **Revision 9:** this is the **quiet window** — no owner sign-in, no owner write — so row 3.1 (the final rung) does not land here either; both rungs fire in the plan's G4. Row 3.3 is already ruled (E4.1 KEEP INITIATE-ONLY, 08-30); what remains is the `/terms` sentence in the E4.3 change-set. Row 3.4's default stays **extend with a dated revisit**.
 
 | # | Item | Court | Measured 2026-09-10 | Done when |
 |---|---|---|---|---|
