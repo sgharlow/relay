@@ -122,6 +122,37 @@ export const CHECKS: CanaryCheck[] = [
     meaning:
       'Signature verification on the billing webhook is not working. That endpoint grants paid entitlement, so accepting an unsigned payload means anyone can grant themselves a subscription.',
   },
+  /*
+    The two dead-men, added 2026-09-12 (gap plan GP-D1, ROADMAP B12). Until now
+    this list probed BEHAVIOUR — the front door, the funnel page, three refusals —
+    and the only thing watching whether the hourly cron had actually ticked, or
+    whether a reminder rung had fallen due unrecorded, was the GitHub-scheduled
+    tier (scheduler-monitor.yml, reminder-ladder-monitor.yml), which
+    `check:cadence` has reported collapsing since 2026-08-29. Because
+    `scripts/heartbeat-local.ts` runs THIS list against production every
+    fifteen minutes from outside GitHub, putting the two routes here is what
+    gives them an off-GitHub watcher — no new monitor, no infrastructure.
+
+    Both routes answer 503 when unhealthy, so the status check alone would do;
+    the body needle is there so a 200 that has stopped carrying the field is a
+    failure rather than a pass by shape.
+  */
+  {
+    name: 'scheduler dead-man reports healthy',
+    path: '/api/health/scheduler',
+    expectStatus: 200,
+    expectBodyContains: ['"healthy":true'],
+    meaning:
+      'The hourly heartbeat cron has not run inside its staleness threshold. Overdue owners are not being swept, so a trigger that should be advancing is sitting still and nobody is being asked — the silent half of the product.',
+  },
+  {
+    name: 'reminder ladder dead-man reports healthy',
+    path: '/api/health/reminders',
+    expectStatus: 200,
+    expectBodyContains: ['"healthy":true'],
+    meaning:
+      'A check-in reminder rung fell due more than three hours ago with no audit row. sweepCheckinReminders never throws, so the cron reads green while an owner goes unwarned before their vault starts opening — the failure J5-R4 exists to prevent.',
+  },
 ];
 
 /** Judges one response against its check. */
