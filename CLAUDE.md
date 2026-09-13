@@ -371,7 +371,7 @@ npm run verify:stripe  # the BILLING contract, and the only wall here that someb
                        # before anyone could say whether Stripe would ever send it).
                        # Reads via STRIPE_READONLY_KEY if set — a RESTRICTED key,
                        # never the secret key — else falls back to the paired Stripe
-                       # CLI, which is Steve's browser pairing and EXPIRES 2026-10-07.
+                       # CLI, which is Steve's browser pairing (re-paired 2026-09-10; expires 2026-12-10).
                        # Only the key path can be scheduled. Exit 0 holds, 1 finding,
                        # 2 could-not-look; the third is deliberately not the first.
 npm run drill:preflight # D3 restore drill — can it start, and would it prove anything?
@@ -571,7 +571,7 @@ that rule lives in `lib/ops/iam-wall.ts → READONLY_CONTRACT.forbidsServices` a
 `.env.ro` proves the database half of its own safety story and cannot prove the half that makes it
 placeable at all. Corrected 2026-08-22; the table above and `docs/secret-rotation-runbook.md` both
 state the absence as fact, and `verify:iam` is the only thing that can make that true rather than
-aspirational — and it has never been run against the real policy.
+aspirational. ✅ First run against the real policies 2026-09-10 (B28 `found_2026_09_10`: five principals held) — this sentence read "never" for two days after.
 
 `.env.admin` holds **no secrets** — just `AWS_PROFILE`, so the key stays in `~/.aws/credentials`
 alone. Being a sysadmin is something you *choose* by naming that file, not a power you carry by
