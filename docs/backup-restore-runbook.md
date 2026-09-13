@@ -42,7 +42,10 @@ restore here.
 
 **RTO: minutes to restore, plus a redeploy.** Measured 2026-08-08: the backup
 job took ~2.5 min for 494 KB; the restore took ~3 min. The redeploy is the part
-people forget — see step 4 below.
+people forget — see step 4 below. **Re-measured 2026-09-13, this time through to
+a decrypt:** on-demand backup ~4 min for 2.6 MB; restore **2 min 34 s**; a proven
+unwrap of a real item about **4 min** after `StartRestoreJob`. The redeploy was
+not part of it (scratch cluster), so a real recovery is that plus step 4.
 
 ## Three traps, all of which cost time on the day this was built
 
@@ -166,6 +169,40 @@ failover worked.
   `docs/kms-region-proposal.md`. It is an infrastructure change to a working
   system and needs the 5-gate policy and Steve's explicit request.
 
+## Proven, including the decrypt (2026-09-13)
+
+The drill `gates.d3-restore-drill` asked for, run end to end by script under
+Steve's in-session spend approval, and recorded on that gate's `met:` block —
+read the block for the ids and figures; this section is the runbook's own
+account of what the day taught.
+
+- `node scripts/backup-now.mjs` → on-demand backup **COMPLETED**, 2,689,340 bytes.
+- `PUT /restore-jobs` exactly as step 2 above with `isDeletionProtectionEnabled:
+  false` → **COMPLETED in 154 s** → scratch cluster `tvucn7gdnkuwfanwv6n6agso2u`.
+- Row counts on the scratch cluster matched production, read the same minute
+  under `.env.ro`: users 2, vault_items 1, audit_log 4165.
+- **Step 6 for the first time:** a local production build (`next start`) pointed
+  at the scratch cluster through a throwaway env, an owner session for the real
+  owner, `POST /api/kms/unwrap` → 200, AES-GCM decrypt in Node → plaintext of the
+  expected shape. The unwrap's audit row landed on the scratch cluster. Nothing
+  decrypted was printed or kept.
+- Scratch cluster deleted, env scrubbed, `npm run drill:preflight` green after:
+  both production clusters `ACTIVE`, deletion protection on.
+
+Two things the runbook did not know until it was done, both now traps here:
+
+- **`DELETE /cluster/{id}` on the DSQL control plane needs a `client-token`
+  query parameter.** Without it the call is a `400 fieldValidationFailed` and the
+  cluster stays `ACTIVE` — which, on a scratch cluster that costs money by the
+  hour, is the failure mode to know about before the teardown step, not during.
+- **A scratch cluster needs the ADMIN identity.** `relay-dev`'s IAM policy names
+  the two production cluster ARNs, so `DbConnect` against a restored cluster is
+  denied and looks like a broken restore. The throwaway env must carry the admin
+  key for the duration and be scrubbed after; `drill:plan` writes the file and
+  deliberately leaves that line for the operator.
+
+The 2026-08-08 record below is retained as the restore half's first proof.
+
 ## Proven, not assumed (2026-08-08)
 
 > 🔴 **THIS DRILL PREDATES STEP 6, AND STEP 6 IS THE HALF THAT MATTERS.** The
@@ -231,7 +268,9 @@ Owner: **both** — the AWS admin credentials are Steve's, the walk is Claude's.
 **When.** Two dates argue for themselves and neither is enforced by anything
 yet, so both are written as derivations rather than as a figure:
 
-- *The cadence:* last drill **2026-08-08** + one quarter = **2026-11-08**.
+- *The cadence:* last drill **2026-09-13** (the first with a decrypt) + one quarter
+  = **2026-12-13**. ~~last drill 2026-08-08 + one quarter = 2026-11-08~~ — met 56
+  days early; `gates.d3-restore-drill.met` is the record.
 - *The trigger:* the criteria changed on **2026-08-19** (step 6, the unwrap),
   which retired the 2026-08-08 run as evidence for the half that matters. A
   drill whose criteria have been superseded is not a drill that is three months
@@ -274,7 +313,13 @@ lane.
 
 ## Still open
 
-- **The DR vault's copy jobs have no absence alarm — only their FAILURES alert.**
+- ~~**The DR vault's copy jobs have no absence alarm — only their FAILURES alert.**~~
+  ✅ **CLOSED 2026-09-13:** `relay-dr-copy-absent` — `AWS/Backup NumberOfCopyJobsCompleted`
+  on `relay-vault-dr`, Sum < 1 over 2 × 24 h, `TreatMissingData: breaching`, NotifyMe —
+  forced to ALARM once (mail in the inbox 17:40:53Z) and back to OK on its own
+  evaluation. And the live `relay-backup-absent` definition was finally READ: it
+  watches `NumberOfBackupJobsCompleted` on `relay-vault` only, as the paragraph
+  below inferred. Kept for the reasoning:
   The `relay-backup-absent` alarm watches completed **backup** jobs, which are
   produced by the primary vault. If the plan's copy action is removed, or its
   cross-Region permission changes in a way that raises no `COPY_JOB_FAILED`
@@ -296,6 +341,9 @@ lane.
   ⚠️ Worth noting how this was confirmed: by running the script, four days late,
   because somebody thought to ask. "Configured" and "running" were different
   questions here as they were everywhere else, and nothing would have said so.
-- `backup-status.mjs` still has to be run by hand. The two alerts above cover
-  failure and silence; the script remains the way to answer "how stale is it
-  right now?" on demand.
+- ~~`backup-status.mjs` still has to be run by hand.~~ ✅ **Scheduled 2026-09-13:**
+  `.github/workflows/backup-wall.yml` runs it daily at 06:29 UTC under the OIDC
+  role `relay-backup-wall-ci` (Backup/DSQL reads only, no KMS, audited by
+  `verify:iam`), proven green on master and red on a dispatched bogus vault
+  (`dr_vault` input). The script remains the way to answer "how stale is it right
+  now?" on demand, and `drill:preflight` reads the same facts.
