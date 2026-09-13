@@ -312,7 +312,7 @@ Source: `docs/gap-closure-plan-2026-09-12.md` §6 (revision 2, after the same-da
 | 2 | **GP-D15** B27: validity checks + Dependabot security updates | yes | G0 |
 | 3 | **GP-R1** close `web-analytics-collects-but-cannot-be-read` with clause 3 answered (where the queryability assertion lives) · **GP-R4** `verify-live-cannot-enter-ci.ends_when` = arms-length money moved · **GP-P6** "the fault-injected property recorded 08-31 IS B15.6" | yes · yes · yes | G0 |
 | 4 | **GP-U9** the ladder proof window — `deferred.the-ladder-cannot-be-proven-while-the-owner-is-active` | **(a)** natural date after G1's last owner write; quiet window to ~10-21 | **G0, before G1's first owner write (revisit 09-17)** |
-| 5 | **GP-D3** B22 `executor`: document the UI/API asymmetry as design (it mirrors the estate pattern and a DB CHECK), or strike with a migration | document, after a `.env.ro` read of live `recipients.role` | G1 |
+| 5 | **GP-D3** B22 `executor`: document the UI/API asymmetry as design (it mirrors the estate pattern and a DB CHECK), or strike with a migration. **Live read done 2026-09-13 (`.env.ro`): `recipients.role` = `{recipient: 1}` — no `executor` row exists on production** | document (nothing stored would be orphaned either way) | G1 |
 | 6 | **GP-D5** B38 name Cloudflare and Google on `/privacy` | yes | G1 |
 | 7 | **GP-D6** B41 "within one business day" | soften to "we read every message" until a reader exists | G1 |
 | 8 | **GP-D6** B42 Reply-To / From | align | G1 |
@@ -330,7 +330,7 @@ Source: `docs/gap-closure-plan-2026-09-12.md` §6 (revision 2, after the same-da
 | 20 | **GP-U7** Mobile | strike until partner pull | G1 |
 | 21 | **GP-U8** Req 13.6 plan preview | defer into §2-F under F-o | G1 |
 | 22 | **GP-U10** quorums / challenge window | read `docs/g11-quorum-and-challenge-window-options.md` | G1 |
-| 23 | **GP-U11** failover — `deferred.the-failover-has-not-been-re-exercised-since-h0` | (a) record the master-push secondary read as **R14.1** evidence now; (b) the cut-over with the restore drill (G4) | G1 · G4 |
+| 23 | **GP-U11** failover — `deferred.the-failover-has-not-been-re-exercised-since-h0`. **Five candidate runs are on the entry (`r14_1_evidence_candidates_2026_09_13`)** | (a) accept those as R14.1 evidence, dated; (b) the cut-over with the restore drill (G4) | G1 · G4 |
 | 24 | **GP-U15** D23 what `relay-resumed.review_on: 2026-10-21` reviews | "is report-bridge still the precedence, and did G1 move" | G1 |
 | 25 | **GP-D9** 5-gate: create `relay-iam-wall-ci` | yes (additive; rollback = delete the role) | G3 |
 | 26 | **GP-D8** 5-gate: rotate the `autospecai` admin key | yes, after runbook §5b exists; Steve's hands, no secret in chat | G3 |

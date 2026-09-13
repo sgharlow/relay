@@ -1227,7 +1227,7 @@ in the handoff · the cohort committed or its fourth deferral dated.
 
 ### Sprint 2 — Real people in the loop *(calendar: 2026-09-17 → 2026-09-24 · Steve: the sends and the calls · Claude: observe, measure, one instrument)*
 
-> ⏱ **Revision 9:** every Steve action in this sprint that touches the product as the owner (row 2.1's `--commit`, the four-word confirm, row 2.3's fire drill, regenerating recovery codes) **resets the ladder to that day + 22.5 d**. Row 2.2 therefore cannot land here; it lands ≈ 10-16 under the ruling due 09-17 (`the-ladder-cannot-be-proven-while-the-owner-is-active`). Do all owner writes here, then stop touching the owner account. Rows 2.4–2.6 are unchanged. Sitting D-2's rulings join this week (`docs/gap-closure-plan-2026-09-12.md` G1.7).
+> ✅ **2026-09-13, Claude's half of this sprint ran early:** `verify:live` 5/5 and `verify:journeys` 27/33/23 both re-stamped 07:20Z / 07:25Z (dead-men now 09-27 and 10-04); the E1′ first-line instrument (row 2.5's build half) is in PR; the cohort dry run and the `executor` census are done. What is left here is entirely Steve's hands and his calendar. ⏱ **Revision 9:** every Steve action in this sprint that touches the product as the owner (row 2.1's `--commit`, the four-word confirm, row 2.3's fire drill, regenerating recovery codes) **resets the ladder to that day + 22.5 d**. Row 2.2 therefore cannot land here; it lands ≈ 10-16 under the ruling due 09-17 (`the-ladder-cannot-be-proven-while-the-owner-is-active`). Do all owner writes here, then stop touching the owner account. Rows 2.4–2.6 are unchanged. Sitting D-2's rulings join this week (`docs/gap-closure-plan-2026-09-12.md` G1.7).
 
 | # | Item | Court | Measured 2026-09-10 | Done when |
 |---|---|---|---|---|

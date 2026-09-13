@@ -271,25 +271,27 @@ Court: **S** Steve · **C** Claude · **CP** co-pilot · **E** event. ⏱ = an o
 
 **State 2026-09-13:** every Claude row is merged (PRs #75, #76, #77, #78; ROADMAP revision 9 as #79). Two production writes happened that the row above did not plan, both recorded (Q32): the two stale disposable owners were closed via `deleteAccount()`, and the orphan monitor was re-dispatched. **Open and Steve's:** G0.2 (three nods), G0.10 (one line), G0.11 (one nod → task 5.4), G0.12 (one nod), G0.13 (the ladder-window ruling, revisit 09-17). Until those land, G0 is *Claude-complete*, not complete.
 
-### G1 — Real people, real rulings *(2026-09-17 → 09-24 · = rev-8 Sprint 2 + Sitting D-2 · Steve ≈ 3 h: the sends and calls (by design), ~20 rulings ≈ 100 min, four owner writes)*
+### G1 — Real people, real rulings *(2026-09-17 → 09-24 · = rev-8 Sprint 2 + Sitting D-2 · Steve ≈ 3 h: the sends and calls (by design), ~20 rulings ≈ 100 min, four owner writes)* — **Claude's lane ran early, 2026-09-13; every remaining row is Steve's or waits on him (see the G1 state paragraph)**
 
 **All ⏱ rows happen inside this sprint, and the last of them starts the quiet window (GP-U9).**
 
 | # | Row | Court | Done when |
 |---|---|---|---|
 | G1.1 ⏱ | **GP-P4** the verifier claims; the four-word call; `revisit_outcome` (revisit 09-17) | S + verifier → C | `beta:status` → `confirmed` |
-| G1.2 ⏱ | **A3.1 roster** (fourth deferral lands 09-17) → A3.2 dry run → A3.3 `--commit` (owner cookie) → A3.4 owner-arm sends (not a product write); Outlook addresses on the owner arm | S / C / CP / S | first arms-length claim, or a dated fifth deferral |
+| G1.2 ⏱ | **A3.1 roster** (fourth deferral lands 09-17) → A3.2 dry run ✅ **run 2026-09-13**: 1 person, owner-delivered, `DRY RUN — nothing created` → A3.3 `--commit` (owner cookie) → A3.4 owner-arm sends (not a product write); Outlook addresses on the owner arm | S / C / CP / S | first arms-length claim, or a dated fifth deferral |
 | G1.3 ⏱ | **GP-P3** fire drill with the real circle | S press · C audit | every verifier acknowledged |
 | G1.4 ⏱ | **GP-D7** recovery codes regenerated | S 2 min | NOTICE gone |
-| G1.5 | **GP-P2** E1′ instrumented; one route-3 run on a fresh nod | C → CP | branch named |
+| G1.5 | **GP-P2** E1′ instrumented ✅ **build half done 2026-09-13** (the handler's first line + the case's first line to stderr, two tests; PR opened) → one route-3 run on a fresh nod | C → CP | branch named |
 | G1.6 | **A6 follow-ups 09-22** logged, including silence | S | three outcome rows |
-| G1.7 | **Sitting D-2** (§6 rows 5–24): GP-D3 (after the live-rows read), D5, D6, D10, D16, D17, U1–U8, U10, U11 record, U15 | S ≈ 100 min | each recorded |
+| G1.7 | **Sitting D-2** (§6 rows 5–24): GP-D3 (live-rows read ✅ 09-13: `recipients.role` = `{recipient: 1}`, no `executor`), D5, D6, D10, D16, D17, U1–U8, U10, U11 (five candidate runs on the entry ✅ 09-13), U15 | S ≈ 100 min | each recorded |
 | G1.8 | The edits the rulings license, one PR each: privacy line + test; B22 comment or nothing; IAM template; Reply-To; copy softening; R14.1 evidence recorded | C | merged; `verify:iam` / `verify:ui` assert |
 | G1.9 | **GP-D4 (accounts)** YouTube edit or unlist; X-thread check | S | recorded on B39 |
-| G1.10 | `npm run verify:live` before the **09-24 17:25Z** dead-man (disposable owners only — not a live-owner write) | C | fresh stamp |
+| G1.10 | `npm run verify:live` before the **09-24 17:25Z** dead-man (disposable owners only — not a live-owner write) — ✅ **ran 2026-09-13**: live 5/5 stamped 07:20Z, journeys 27/33/23 stamped 07:25Z (G2.6 done early too), `verify:orphans` clean after each. Dead-men now **09-27 07:20Z** (live) and **10-04 07:25Z** (journeys). ⚠️ The first journeys attempt hit `429` because the first dev instance survived `taskkill`; `Stop-Process -Force` is what kills it | C | fresh stamp ✅ |
 | G1.11 | **A1 acceptance watch** (rev-8 row 2.6): caregiver.com window to ~09-30; re-verify submission guidelines before any follow-up; A1.8 on acceptance | S | a reply logged, or the 09-30 silence recorded |
 
 **Done when:** one real claim and one `confirmed` verifier · one fully acknowledged drill · E1′'s branch named · Sitting D-2 answered · licensed edits merged · live stamp ≥ 09-23 · the quiet window has begun (no further owner writes).
+
+**State 2026-09-13 (Claude's lane, run four days before the sprint opens):** G1.10 ✅ (both chains), G1.5 build half ✅ (route-3 run awaits a nod), A3.2 ✅, the D3 census and the U11 candidates ✅. **Nothing else in G1 can move without Steve:** G1.1 is the verifier's claim and his call; G1.2's roster, G1.3's drill, G1.4's codes, G1.9's YouTube are his hands; G1.6 and G1.11 are dated 09-22 and ~09-30; G1.7's twenty rulings license G1.8's edits. The sprint's calendar (09-17 → 09-24) has not opened. **G1 is Claude-complete and Steve-open; it is not complete.** The one gate before any of it: the ladder-window ruling (G0.13, revisit 09-17).
 
 ### G2 — Billing truth, quiet window *(2026-09-24 → 10-01 · = rev-8 Sprint 3 + Sitting E · Steve ≈ 20 min + the 10-01 decision · **no owner sign-in, no owner write**)*
 
