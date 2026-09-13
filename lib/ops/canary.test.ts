@@ -80,6 +80,22 @@ describe('what the canary actually covers', () => {
     expect(CHECKS.some((c) => c.path.startsWith('/caregivers'))).toBe(true);
   });
 
+  it('probes both dead-men, so the off-GitHub heartbeat watches them too (GP-D1, B12)', () => {
+    // Until 2026-09-12 the only watcher of these two routes was the GitHub-scheduled
+    // tier that check:cadence reports collapsing. The heartbeat runs CHECKS every
+    // fifteen minutes from this laptop; being in this list IS the off-GitHub watch.
+    for (const name of ['scheduler dead-man reports healthy', 'reminder ladder dead-man reports healthy']) {
+      const check = byName(name);
+      expect(check.expectStatus).toBe(200);
+      // The routes answer 503 when unhealthy; a 503 must read as a failure that
+      // names the route's own reason, never as "site up".
+      expect(evaluateCheck(check, res(503, '{"healthy":false,"reason":"stale"}')).ok).toBe(false);
+      // And a 200 whose body has lost the field is a pass by shape, not by fact.
+      expect(evaluateCheck(check, res(200, '{}')).ok).toBe(false);
+      expect(evaluateCheck(check, res(200, '{"healthy":true,"lastRunAt":"x"}')).ok).toBe(true);
+    }
+  });
+
   it('every check explains what its failure means, for whoever is woken up', () => {
     // A canary that fails with "check 4 failed" at 3am is a canary that gets
     // muted. Each one has to carry its own consequence.
