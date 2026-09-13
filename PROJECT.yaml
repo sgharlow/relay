@@ -913,6 +913,14 @@ ratified:
       copilot4_dmarc_download: { ruling: "Steve downloads the 08-17 report's .xml.gz to ~/Downloads now.", executed: "downloaded and read the same evening: 2 messages, DKIM+SPF pass and aligned, p=none - dmarc-had-no-rua-so-no-report-could-arrive.report_read_2026_09_13; C3 has its first clean datapoint" }
       copilot4_gmail_filters: { ruling: "Steve creates the never-send-to-spam filter for the two DMARC senders AND un-trashes budgets@costalerts.amazonaws.com now.", obliges: "verified only by the NEXT arrival of each (read-only search) - the plugin cannot open Gmail and the connector cannot list filters" }
       copilot4_stripe_endpoint_failure_mail: { read: "E1.5 #4 read by Steve at the Notifications bell: webhook endpoint-failure emails are ON. With #3 (receipts OFF) that completes the two Stripe dashboard reads Sitting E carried." }
+      # -- co-pilot batch 5 + the one-at-a-time walkthrough, 2026-09-13 late evening --
+      copilot5_lapse_notice: { ruling: "ACCEPT route-proven; revisit 2026-11-15.", executed: "the-lapse-notice-is-wired-not-live-proven.ruling_2026_09_13" }
+      copilot5_stripe_receipts: { ruling: "DEFER to Sitting E - the toggle is account-wide (shared with report-bridge and skillcrossroads).", obliges: "Sitting E 09-19 asks it again with the other console items" }
+      walkthrough_1_validity_checks: { read: "Steve's screenshot of Settings -> Code security: Secret Protection ON, Push protection ON, NO 'Validity checks' control on this repo/plan. The B27 nod's validity half is UNAVAILABLE rather than pending - closed as such; the API PATCH earlier was a no-op for the same reason." }
+      walkthrough_2_reply_to: { executed: "Steve set RESEND_REPLY_TO_ADDRESS = relay@relaystandby.com (Production) in the Vercel UI and redeployed. d6_b42_reply_to is now EXECUTED; Claude verifies the Reply-To header on the next product mail (read-only)." }
+      walkthrough_3_dmarc_filter: { executed: "Filter created (screenshot): from:(dmarcreport@microsoft.com OR noreply-dmarc-support@google.com) -> Apply label DMARC, Never send it to Spam. The same screenshot shows the relay-alarm filter (Star, label, never-spam, important; no Skip Inbox) and no filter on the Budgets sender." }
+      walkthrough_4_budgets: { ruling: "No rule needed - the Trash mails were deleted by hand after reading.", executed: "no-budget-alarm-on-the-aws-estate CLOSED" }
+      walkthrough_5_card: { executed: "card added; expiry 01/2027 - BEFORE the 2027-07-08 renewal; Steve: replace it by 2026-12-31", revisit: 2026-12-31, revisit_why: "Replace the Cloudflare card (expires 2027-01) before the 2027-07-08 auto-renewal; rings 2027-01-01 if unanswered." }
 
   - id: relay-resumed-2026-08-21
     date: 2026-08-21
@@ -6434,6 +6442,17 @@ deferred:
       Cloudflare on his own time and tells Claude the card's expiry month/year (never the number);
       the entry closes when that is recorded here beside the 2027-08-07 expiry. Rides the 09-19
       Sitting E revisit; if the card is still absent on 09-19 the revisit answer says so.
+    card_added_2026_09_13: >-
+      Steve added a payment method at Cloudflare (walkthrough item 5; screenshot). Card expiry as
+      shown: 01/2027. 🔴 THAT IS BEFORE THE RENEWAL: auto-renew fires 2027-07-08 against a card that
+      expires 2027-01, so the lapse this entry exists to catch is still on the calendar - a card
+      that has not expired is ends_when clause 1, and this one will have. The card must be
+      replaced at Cloudflare before it expires. Steve, on being told: "this is not a problem for
+      now - defer to December 31" - so the replacement carries `revisit: 2026-12-31` on the
+      sitting entry's walkthrough_5_card line, and the 09-19 Sitting E revisit here asks only its
+      other reads. Clause 3 (an alarm that does not depend on a
+      human remembering) has no Cloudflare mechanism beyond the registrar's own mail, which now
+      lands in a monitored mailbox. Number never recorded here, only the expiry month.
   - id: no-budget-alarm-on-the-aws-estate                     # ROADMAP B36
     owner: steve                          # 5-gate; default yes
     opened: 2026-08-28
@@ -6464,6 +6483,17 @@ deferred:
     revisit_why: >-
       Added to Sitting E (2026-09-19): un-filter budgets@costalerts.amazonaws.com or subscribe
       NotifyMe, and say which. Rings 09-20 if unanswered; answer with `revisit_outcome:`.
+    revisit_outcome: >-
+      Answered early, 2026-09-13 (walkthrough item 4): the five Trash mails were DELETED BY HAND
+      after reading - "these were manually deleted, rule not needed." No filter touches the sender
+      (the Gmail filter list was read from Steve's screenshot the same evening). So the budget
+      exists AND has reached a human six times; ends_when's first arm is met in full.
+    closed: 2026-09-13
+    closed_by: >-
+      `portfolio-monthly` ($250/mo COST on the shared account, subscriber = Steve's Gmail) exists
+      and its alerts are read by the human they reach; Steve ruled no filter is needed. Nothing
+      created. A relay-only budget cannot be carved from a shared account and is not wanted.
+
   - id: the-privacy-page-may-be-missing-two-subprocessors     # ROADMAP B38
     owner: steve                          # a ruling about a published legal page
     opened: 2026-08-28
@@ -6959,6 +6989,15 @@ deferred:
       the register does not record a cause it cannot show. What IS shown: on the current
       production line the notice is written, sent once, and deduped on retry.
     ladder_2026_09_13: "wired + route-proven (was: wired). NOT live-proven: the delivery hit a local production build of the same code, not the deployed webhook URL, and no real Stripe payload in this account has ever carried a subscription reference (route 1 = a real renewal failure, 2027-08-09; route 2 = E1.3, a test-clock subscription through relay's own checkout)."
+    ruling_2026_09_13: >-
+      Steve, AskUserQuestion: ACCEPT route-proven, revisit 2026-11-15 - the paywall decision
+      (ratified.beta-free-release.decision_due) inherits a proven notice path. Route 2 (a test-mode
+      test-clock subscription through relay's own checkout) is not built now; route 1 is a real
+      renewal failure, earliest 2027-08-09. The entry stays open on the live-proof half only.
+    revisit: 2026-11-15
+    revisit_why: >-
+      Re-read beside the paywall decision: is route-proven still enough, or has a customer made
+      route 2 worth building? Rings 11-16 if unanswered; answer with `revisit_outcome:`.
   - id: the-ladder-cannot-be-proven-while-the-owner-is-active    # gap plan GP-U9 (NEW 2026-09-12)
     owner: steve                          # a ruling; it sets the G1/G2 calendar
     opened: 2026-09-12
