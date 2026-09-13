@@ -775,34 +775,52 @@ describe('the trust policy of relay-ro-ci — the half that decides who may BECO
    reads the intended grant as healthy and a widened one as a breach.
    ──────────────────────────────────────────────────────────────────────────── */
 describe('the IAM wall audits its own principal — relay-iam-wall-ci', () => {
+  // The thirteen calls scripts/verify-iam.ts makes (the proposal's eight was stale — see the
+  // contract). Derived: grep -oE "new [A-Za-z]+Command\(" scripts/verify-iam.ts
   const READS = [
     'iam:ListAttachedUserPolicies',
     'iam:ListUserPolicies',
     'iam:GetUserPolicy',
+    'iam:ListGroupsForUser',
+    'iam:ListAttachedGroupPolicies',
+    'iam:ListGroupPolicies',
+    'iam:GetGroupPolicy',
+    'iam:GetRole',
     'iam:ListAttachedRolePolicies',
     'iam:ListRolePolicies',
     'iam:GetRolePolicy',
     'iam:GetPolicy',
     'iam:GetPolicyVersion',
   ];
+  const A = 'arn:aws:iam::461293170793';
+  /** Verbatim shape of the live inline policy `relay-iam-wall-reads` (re-put 2026-09-13). */
   const INTENDED: NamedPolicy = {
     source: 'inline relay-iam-wall-reads',
     document: {
       Statement: [
         {
-          Sid: 'ReadTheAuditedPrincipals',
+          Sid: 'ReadUserPolicies',
           Effect: 'Allow',
-          Action: READS,
-          Resource: [
-            'arn:aws:iam::461293170793:user/relay-runtime',
-            'arn:aws:iam::461293170793:user/relay-dev',
-            'arn:aws:iam::461293170793:user/relay-ro',
-            'arn:aws:iam::461293170793:role/relay-kms-wall-ci',
-            'arn:aws:iam::461293170793:role/relay-ro-ci',
-            'arn:aws:iam::461293170793:role/relay-iam-wall-ci',
-            'arn:aws:iam::461293170793:policy/*',
-            'arn:aws:iam::aws:policy/*',
-          ],
+          Action: ['iam:ListAttachedUserPolicies', 'iam:ListUserPolicies', 'iam:GetUserPolicy', 'iam:ListGroupsForUser'],
+          Resource: [`${A}:user/relay-runtime`, `${A}:user/relay-dev`, `${A}:user/relay-ro`],
+        },
+        {
+          Sid: 'ReadGroupPolicies',
+          Effect: 'Allow',
+          Action: ['iam:ListAttachedGroupPolicies', 'iam:ListGroupPolicies', 'iam:GetGroupPolicy'],
+          Resource: [`${A}:group/*`],
+        },
+        {
+          Sid: 'ReadRolePolicies',
+          Effect: 'Allow',
+          Action: ['iam:GetRole', 'iam:ListAttachedRolePolicies', 'iam:ListRolePolicies', 'iam:GetRolePolicy'],
+          Resource: [`${A}:role/relay-kms-wall-ci`, `${A}:role/relay-ro-ci`, `${A}:role/relay-iam-wall-ci`, `${A}:role/relay-backend-dsql`],
+        },
+        {
+          Sid: 'ReadManagedPolicyDocuments',
+          Effect: 'Allow',
+          Action: ['iam:GetPolicy', 'iam:GetPolicyVersion'],
+          Resource: [`${A}:policy/*`, 'arn:aws:iam::aws:policy/*'],
         },
       ],
     },
@@ -841,10 +859,14 @@ describe('the IAM wall audits its own principal — relay-iam-wall-ci', () => {
   });
 
   it('reports a missing read as a finding, never as safety', () => {
+    const statements = INTENDED.document.Statement!;
     const narrowed: NamedPolicy = {
       source: 'inline narrowed',
       document: {
-        Statement: [{ ...INTENDED.document.Statement![0]!, Action: READS.filter((a) => a !== 'iam:GetPolicyVersion') }],
+        Statement: [
+          ...statements.slice(0, 3),
+          { ...statements[3]!, Action: ['iam:GetPolicy'] }, // GetPolicyVersion dropped
+        ],
       },
     };
     const v = readWall(IAM_WALL_CI_CONTRACT, [narrowed]);

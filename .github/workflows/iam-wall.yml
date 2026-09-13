@@ -12,8 +12,11 @@
 # This job holds NO stored secret. It mints a short-lived GitHub OIDC token and
 # exchanges it for `relay-iam-wall-ci`, whose trust policy names exactly one
 # subject — `repo:sgharlow/relay:ref:refs/heads/master` — and whose permissions
-# are eight IAM policy READS scoped to the audited principals and this
-# account's policy paths. It cannot write a policy, attach one, mint a key,
+# are thirteen IAM policy READS scoped to the audited principals, the account's
+# groups and its policy paths (the proposal said eight and omitted the four
+# group reads and GetRole; the first master-push run, 34771127827, failed on
+# `iam:ListGroupsForUser` and taught the list — it is derived from the script's
+# own API calls now). It cannot write a policy, attach one, mint a key,
 # connect to the database, or touch the CMK; `lib/ops/iam-wall.ts` carries a
 # contract for this role itself, so the wall audits its own principal
 # (docs/iam-wall-oidc-role-proposal.md §5, "the recursion").
