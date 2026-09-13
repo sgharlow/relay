@@ -237,6 +237,8 @@ version on `users`, checked per request), which is a design decision with a
 per-request cost, not something to bolt on at the end of a sprint. **Do it before
 beta**, since a beta is when real people start deleting real accounts.
 
+> ✅ **DONE before beta (noted 2026-09-12).** `lib/auth/session-epoch.ts` — a per-user `session_epoch` checked per request; `scripts/e2e-stepup.ts:231` asserts *the deleted account cannot use its session* → 401, and that walk runs in every `verify:live` chain (stamped 2026-09-10 @ `d8843e2`). The paragraph above is the 08-12 finding, kept as the record.
+
 ## 4. Gaps this analysis found
 
 **N14 — the fingerprint mismatch path was unspecified, and it is the whole point of the control.**

@@ -492,6 +492,7 @@ verifiers — has unit tests and has never run on production. That is the half t
 for: 4b is the flow change the design section calls the highest-value one in the whole event
 sequence, and 4c is the incapacity fast path that `docs/standby-architecture.md` §4.4 names as the
 defect which justified building standby ahead of G1.
+> ✅ **AMENDED 2026-09-12 — the outcomes HAVE been walked on production.** 4a deny and 4b approve: `npm run verify:request` (`scripts/e2e-request.ts:241,342,445`), in every `verify:journeys` chain since 2026-08-21 (stamped 2026-09-10). 4c lapse-escalation: both paths (derive-on-read and cron) live-proven 2026-08-31, B15.3, 22/22 — re-run by `npm run verify:escalation`. The 🔴 note this amends was true on 2026-08-21 and is kept as the record.
 
 Nothing in `verify:live` reaches them either: the chain is stepup · multiowner · ui · reveal ·
 factors · stamp (see `package.json`), and no script under `scripts/` touches
@@ -502,6 +503,7 @@ never leaves `armed`, requester told); request → approve (reaches `released`, 
 request → window lapse (escalates, only **confirmed** verifiers are asked, quorum still required).
 Until then J6 reads `live-proven` for step 1 and `wired` for everything after it, and this file
 should not say otherwise.
+> ✅ **AMENDED 2026-09-12 — the outcomes HAVE been walked on production.** 4a deny and 4b approve: `npm run verify:request` (`scripts/e2e-request.ts:241,342,445`), in every `verify:journeys` chain since 2026-08-21 (stamped 2026-09-10). 4c lapse-escalation: both paths (derive-on-read and cron) live-proven 2026-08-31, B15.3, 22/22 — re-run by `npm run verify:escalation`. The 🔴 note this amends was true on 2026-08-21 and is kept as the record.
 
 ### J8 — Hands on the account · PRIMARY DEMAND
 
@@ -588,6 +590,7 @@ Steve; both are in Part VIII's open-decisions table.
    defined and not collectable (`PROJECT.yaml → deferred → D2`, deliberately HELD until owners are
    observed answering the first question). And items created before 2026-08-18 stay `unknown`
    permanently unless re-saved, because the server cannot read ciphertext to backfill them.
+> ✅ **AMENDED 2026-09-12 — the outcomes HAVE been walked on production.** 4a deny and 4b approve: `npm run verify:request` (`scripts/e2e-request.ts:241,342,445`), in every `verify:journeys` chain since 2026-08-21 (stamped 2026-09-10). 4c lapse-escalation: both paths (derive-on-read and cron) live-proven 2026-08-31, B15.3, 22/22 — re-run by `npm run verify:escalation`. The 🔴 note this amends was true on 2026-08-21 and is kept as the record.
 
 None of these is a broken journey. Every journey the product *claims* completes end to end; this is
 the list of what it does not claim.
@@ -1580,6 +1583,7 @@ sequenceDiagram
 - **J6-R11** Every request SHALL be assigned a case ID referenced in every subsequent notification to every actor (CC7).
 - **J6-R12** An owner SHALL be able to stop a release from any channel at any point before it commits. **The stop is state-dependent and SHALL respect the permitted transitions:** from `PENDING` the release returns to `ARMED`; ~~explicit `CANCELLED` is reachable only from `GRACE`~~. `PENDING → CANCELLED` is not a permitted transition and SHALL NOT be added.
   ⚠️ **AMENDED 2026-08-21 — the stop survives; the second half of it does not.** `CANCELLED` is still reachable only from `GRACE` *in the table*, and the edge is still permitted, but **no code takes it**: `POST /api/triggers/[id]/cancel` and `cancelTrigger` were deleted (`docs/retired-surface.md`). The requirement's substance — an owner can stop a release before it commits — is **unaffected and better served**: `POST /api/triggers/[id]/stand-down` covers `PENDING`, `GRACE` **and** `RELEASED`, and every one of them re-arms. What was removed is the owner's ability to stop a release *permanently*, which was never what this requirement asked for and was a one-way door out of a screen opened under stress.
+> ✅ **AMENDED 2026-09-12 — the outcomes HAVE been walked on production.** 4a deny and 4b approve: `npm run verify:request` (`scripts/e2e-request.ts:241,342,445`), in every `verify:journeys` chain since 2026-08-21 (stamped 2026-09-10). 4c lapse-escalation: both paths (derive-on-read and cron) live-proven 2026-08-31, B15.3, 22/22 — re-run by `npm run verify:escalation`. The 🔴 note this amends was true on 2026-08-21 and is kept as the record.
 
 > **J6-R9 is an anti-abuse control.** Broadcasting that a request occurred makes covert access
 > attempts impossible, which is the deterrent that matters most in the family-dynamics context this
@@ -2264,7 +2268,7 @@ What remains genuinely open is **refinement inside journeys that work**, not mis
 | J3 | The monthly "what was done on your behalf" digest — nothing schedules it |
 | J4 | ~~Single-entry add-person across roles (read-side merge exists, two add forms remain)~~ **CLOSED 2026-08-21 — `POST /api/people` + one `AddPersonForm`; `built`, not walked.** Still open: proposed N-of-M defaults per trigger type |
 | J5 | ~~Owner-reminder ladder **before** a heartbeat transition (the two adjacent escalation cases are built)~~ **SHIPPED 2026-08-21 — `lib/release/checkin-reminder.ts`; `wired`, and no walk has let an interval elapse.** Still open: **per-trigger cadence (J5-R3)**, quarterly review packaging, life-event prompts, renewal receipt |
-| J6 | Evidence attachment on a request; channels beyond email; time-remaining on the recipient's status. ⚠️ **And the outcome branches — deny, approve, lapse-escalate — are `wired`, never walked on production** |
+| J6 | Evidence attachment on a request; channels beyond email; time-remaining on the recipient's status. ~~⚠️ **And the outcome branches — deny, approve, lapse-escalate — are `wired`, never walked on production**~~ ✅ walked: `verify:request` (4a/4b), `verify:escalation` (4c, 08-31) — amended 2026-09-12 |
 | J7 | Per-verifier response rate and latency (J7-R13), which delivers through J5's quarterly review and is blocked on it |
 | J8 | ~~Precomputed triage plan~~ *(retired — met by read-time ordering, see J8-R4)*, single-next-action, ephemeral reveal, shared progress; mobile (`[P2]`) |
 | J9 | ~~Steps 5–7: reversal receipt, re-arm confirmation, thank-the-recipient~~ **DROPPED 2026-08-16 by ruling, not deferred — `PROJECT.yaml → ratified.j9-5-7-dropped`.** Step 4, the graceful close, shipped 2026-08-08 and carries their weight. Reversal from a second owner channel (J9-R1) is a channel question, not a journey gap |

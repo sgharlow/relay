@@ -67,6 +67,7 @@ describe('parseCSV', () => {
     expect(result.skipped).toEqual([{ row: 1, reason: expect.stringContaining('missing required field') }]);
   });
 
+  // Feature: relay-h0-mvp, Property 17: CSV import deduplication
   it('deduplicates case-insensitively on (service_name, url) (Req 10.6)', async () => {
     const file = csvFile('Title,Url,Username,Password\nGmail,https://Mail.Google.com,a,p1\nGMAIL,https://mail.google.com,b,p2\n');
     const result = await parseCSV(file, '1password');

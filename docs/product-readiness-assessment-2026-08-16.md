@@ -14,6 +14,8 @@
 > `_dmarc.relaystandby.com` carries no `rua=` (C1.0), and Outlook sender support was never
 > actually contacted (C2). Editorial outreach that assumes mail arrives is assuming the thing
 > most in doubt.
+>
+> ✅ **Both closed since (noted 2026-09-12):** C1.0 closed 2026-08-30 (`rua=` restored; `deferred.dmarc-had-no-rua-so-no-report-could-arrive`); C2 answered by Resend 2026-09-03 — Outlook is domain reputation, no remedy but volume, so C2.2 was struck 09-10. The paragraph above is the 08-16 record.
 
 # Is the product complete and polished enough for editorial outreach?
 

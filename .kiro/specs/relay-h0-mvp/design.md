@@ -928,7 +928,7 @@ The following properties are drawn from acceptance criteria that are amenable to
 
 **Validates: Requirements 10.6**
 
-> **Covered, but UNTAGGED — noted 2026-08-21.** The behaviour is asserted by
+> ✅ **TAGGED 2026-09-12** at `lib/import/csv-parser.test.ts` (`// Feature: relay-h0-mvp, Property 17`). The note below is the 08-21 record. ~~**Covered, but UNTAGGED — noted 2026-08-21.**~~ The behaviour is asserted by
 > `lib/import/csv-parser.test.ts` ("deduplicates case-insensitively on (service_name, url) (Req 10.6)"),
 > which cites the requirement but carries no `// Feature: relay-h0-mvp, Property 17` tag — so a tag
 > sweep of the suite reports this property as uncovered when it is not. `tasks.md` went further and
