@@ -159,6 +159,17 @@ export interface ResourceScope {
   /** A bare `*` (or an absent Resource) on an Allow is a finding. */
   mustNotBeWildcard: true;
   consequence: string;
+  /**
+   * The narrow exception, added 2026-09-13 for `backup:ListBackupPlans`: IAM
+   * defines NO resource-level permission for some List actions, and a scoped
+   * Resource on them does not fail loudly — it returns an EMPTY LIST (run
+   * 34772769825 read "no backup plan covers relay" from a runner that could
+   * see both vaults). A statement may carry Resource "*" ONLY when every
+   * action in it is listed here, each with the reason. Mixing one of these
+   * with a scopable action in the same wildcard statement is still a finding:
+   * the exception is per statement, so the scopable action would ride along.
+   */
+  wildcardOnlyFor?: { action: string; why: string }[];
 }
 
 /** What one IAM principal is expected to hold, and expected never to hold. */
@@ -668,6 +679,16 @@ export const BACKUP_WALL_CI_CONTRACT: PrincipalContract = {
       'The grant names two vaults, the plan ARNs and two clusters. A bare "*" would let a ' +
       'public-repo workflow enumerate every vault and recovery point in the account, including ' +
       'the other products that share it.',
+    wildcardOnlyFor: [
+      {
+        action: 'backup:ListBackupPlans',
+        why:
+          'IAM defines no resource-level permission for ListBackupPlans. Scoped to backup-plan:* ' +
+          'it did not refuse — it returned an EMPTY LIST, and the first runner read "no backup ' +
+          'plan covers relay" (run 34772769825, 2026-09-13). The action lists plan NAMES and ids; ' +
+          'it reveals no recovery point and can change nothing.',
+      },
+    ],
   },
   forbids: [
     {
@@ -833,8 +854,23 @@ export function readWall(contract: PrincipalContract, policies: NamedPolicy[]): 
           violations.push(`${where} · Allow with no Resource at all`);
           explain(scope.consequence);
         } else if (resources.includes('*')) {
-          violations.push(`${where} · granted on Resource "*"`);
-          explain(scope.consequence);
+          /*
+            The exception is per STATEMENT: a wildcard statement passes only when
+            it names no NotAction and every action in it is one the contract lists
+            as unscopable. Anything else on "*" — a scopable action riding along, a
+            NotAction, a service wildcard — is the finding it always was.
+          */
+          const unscopable = (scope.wildcardOnlyFor ?? []).map((w) => w.action.toLowerCase());
+          const actions = lower(s.Action);
+          const excused =
+            unscopable.length > 0 &&
+            s.NotAction === undefined &&
+            actions.length > 0 &&
+            actions.every((a) => unscopable.includes(a));
+          if (!excused) {
+            violations.push(`${where} · granted on Resource "*"`);
+            explain(scope.consequence);
+          }
         }
       }
 

@@ -26,6 +26,7 @@ import {
   CONTRACTS,
   KMS_WALL_CI_CONTRACT,
   IAM_WALL_CI_CONTRACT,
+  BACKUP_WALL_CI_CONTRACT,
   READONLY_CI_CONTRACT,
   RUNTIME_CONTRACT,
   LAPTOP_CONTRACT,
@@ -874,5 +875,57 @@ describe('the IAM wall audits its own principal — relay-iam-wall-ci', () => {
     const v = readWall(IAM_WALL_CI_CONTRACT, [narrowed]);
     expect(v.ok).toBe(false);
     expect(v.missing).toEqual(['iam:getpolicyversion']);
+  });
+});
+
+/* ────────────────────────────────────────────────────────────────────────────
+   G4.4 (2026-09-13) — the backup wall's principal, and the ONE argued exception
+   to the wildcard rule: `backup:ListBackupPlans` has no resource-level
+   permission, and scoped it returns an empty list rather than refusing.
+   ──────────────────────────────────────────────────────────────────────────── */
+describe('the backup wall principal — relay-backup-wall-ci', () => {
+  const A = 'arn:aws:iam::461293170793';
+  const B = 'arn:aws:backup';
+  /** Verbatim shape of the live inline policy `relay-backup-wall-reads`. */
+  const LIVE: NamedPolicy = {
+    source: 'inline relay-backup-wall-reads',
+    document: {
+      Statement: [
+        { Sid: 'ListPlansUnscopable', Effect: 'Allow', Action: ['backup:ListBackupPlans'], Resource: '*' },
+        { Sid: 'ListSelections', Effect: 'Allow', Action: ['backup:ListBackupSelections'], Resource: [`${B}:us-east-1:461293170793:backup-plan:*`] },
+        { Sid: 'ListRecoveryPoints', Effect: 'Allow', Action: ['backup:ListRecoveryPointsByBackupVault'], Resource: [`${B}:us-east-1:461293170793:backup-vault:relay-vault`, `${B}:us-west-2:461293170793:backup-vault:relay-vault-dr`] },
+        { Sid: 'ReadClusters', Effect: 'Allow', Action: ['dsql:GetCluster'], Resource: ['arn:aws:dsql:us-east-1:461293170793:cluster/frt34buqso4inluojgnj6horuy', 'arn:aws:dsql:us-west-2:461293170793:cluster/fjt34b2el5yoh7pvcm4knbkyvi'] },
+      ],
+    },
+  };
+  void A;
+
+  it('reads the live grant as healthy, wildcard on the unscopable list action included', () => {
+    const v = readWall(BACKUP_WALL_CI_CONTRACT, [LIVE]);
+    expect(v.missing).toEqual([]);
+    expect(v.violations).toEqual([]);
+    expect(v.ok).toBe(true);
+  });
+
+  it('still refuses a wildcard statement that carries a SCOPABLE action alongside the excused one', () => {
+    const mixed: NamedPolicy = {
+      source: 'inline mixed',
+      document: { Statement: [{ Sid: 'Mixed', Effect: 'Allow', Action: ['backup:ListBackupPlans', 'backup:ListRecoveryPointsByBackupVault'], Resource: '*' }, ...LIVE.document.Statement!.slice(1)] },
+    };
+    const v = readWall(BACKUP_WALL_CI_CONTRACT, [mixed]);
+    expect(v.ok).toBe(false);
+    expect(v.violations.join(' ')).toContain('Resource "*"');
+  });
+
+  it('the exception is not transferable: the IAM wall contract has none, so its reads on "*" stay findings', () => {
+    const v = readWall(IAM_WALL_CI_CONTRACT, [{ source: 'inline x', document: { Statement: [{ Sid: 'X', Effect: 'Allow', Action: ['iam:GetPolicy'], Resource: '*' }] } }]);
+    expect(v.ok).toBe(false);
+  });
+
+  it('refuses a restore, a delete, a connect and any kms action', () => {
+    for (const action of ['backup:StartRestoreJob', 'backup:DeleteRecoveryPoint', 'dsql:DbConnect', 'kms:Decrypt']) {
+      const doc: NamedPolicy = { source: `inline ${action}`, document: { Statement: [...LIVE.document.Statement!, { Sid: 'Extra', Effect: 'Allow', Action: [action], Resource: 'arn:aws:backup:us-east-1:461293170793:backup-vault:relay-vault' }] } };
+      expect(readWall(BACKUP_WALL_CI_CONTRACT, [doc]).ok, `${action} should be refused`).toBe(false);
+    }
   });
 });
