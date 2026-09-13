@@ -832,6 +832,10 @@ ratified:
       e4_2_paywall: { ruling: "EXTEND now; beta stays free; new decision_due 2026-11-15.", executed: "ratified.beta-free-release.revisited + decision_due moved; 10-01/10-02 pass green" }
       e5_billing_check_in_a_chain: { ruling: "NO - verify:stripe stays on its own daily workflow (stripe-contract-monitor.yml); a chain that needs Stripe is a chain that fails on Stripe." }
       e7_sales_tax: { ruling: "ENABLE automatic_tax on the Relay checkout NOW (co-pilot: Steve approves the PR before merge - it changes what every future customer is charged).", obliges: "one field on the checkout session + a unit test + a verify:stripe-adjacent read; PR opened, not merged, the same day" }
+      # -- G3, executed 2026-09-13 under the goal "complete G3; use cli/automation where possible" --
+      g3_iam_wall_role_5_gate: { gate: "problem: the-iam-wall-is-the-only-wall-nothing-schedules; rollback: delete role + inline policy (<2 min); snapshot: verify:iam 5/5 baseline + kms-wall trust policy read; isolated test: verify:iam read the missing role RED, then GREEN; request: the /goal text.", executed: "role created; PR #86; green run 34771699676; red run 34771727011" }
+      g3_admin_key_rotation_5_gate: { gate: "problem: no-secret-rotation-cadence-and-nothing-rotated (441-day key); rollback: restore ~/.aws/credentials.bak-2026-09-13 + reactivate; snapshot: the .bak + ListAccessKeys; isolated test: three walls on the new key BEFORE the old one was touched; request: the /goal text.", executed: "new key active, old key INACTIVE, walls green twice; deletion left to Steve" }
+      g3_devpost_prize: { measured: "MOOT - Devpost, Inc. paid the $2,000 by PayPal on 2026-09-03 ('Congrats on your H0 prize!'), and the AWS promotional credit code arrived 2026-08-17 ('Your AWS Credit Winnings ...'). Whether the credit code was redeemed is Steve's to say; A11's ~10-08 chase does not arise." }
       sitting_e_scheduled: { ruling: "Inside Sprint 2 - 2026-09-19. Five reads: Stripe receipts, Stripe endpoint-failure notifications, registrar auto-renew + card expiry, the 08-17 Microsoft DMARC download, the Gmail never-send-to-spam filter for the two DMARC senders; plus the GitHub secret-scanning validity-checks toggle.", obliges: "revisit: 2026-09-19 on the-domain-can-lapse-without-anyone-noticing rings 09-20 if unanswered" }
 
   - id: relay-resumed-2026-08-21
@@ -5707,6 +5711,18 @@ deferred:
     ends_when: >-
       `verify:iam` runs on a schedule against the real account with no stored secret, and has been
       seen both green and red - the same bar `kms-wall` met.
+    closed: 2026-09-13
+    closed_by: >-
+      Gap plan G3.1 (GP-D9), 5-gate passed via /safe-execute the same day. Role `relay-iam-wall-ci`
+      created in 461293170793 by the Node SDK under the admin profile (trust pinned to
+      `repo:sgharlow/relay:ref:refs/heads/master`; inline `relay-iam-wall-reads` - eight IAM policy
+      reads SCOPED to the six audited principals and the two policy paths, because the wall's own
+      resource-scope rule refuses the proposal's bare "*"). `lib/ops/iam-wall.ts` gained
+      IAM_WALL_CI_CONTRACT (the proposal's section-5 recursion) and verify:iam read the missing
+      role as RED before creation and 6/6 GREEN after. `.github/workflows/iam-wall.yml` (daily,
+      plain `npm ci`, `principal` dispatch input) merged as PR #86: the master-push run 34771699676
+      is GREEN; the dispatched proof-of-red with `principal=does-not-exist-2026-09-13` (run 34771727011)
+      is RED. Rollback: delete the role and its inline policy (<2 min).
 
   - id: date-guards-has-never-been-red                        # ROADMAP B13, residue
     owner: steve                          # the blocker is a hook in ~/.claude, not a file in this repo
@@ -6162,6 +6178,21 @@ deferred:
       ⚠️ Do NOT invent a deadline for this. The ROADMAP row says so explicitly. An invented date
       on a credential item produces either a rushed rotation or a missed date that teaches everyone
       to ignore the next one.
+    first_rotation_2026_09_13: >-
+      The `autospecai` admin access key (created 2025-06-29, ~441 days) was rotated by script under
+      the 5-gate (gap plan G3.2 / GP-D8): snapshot `~/.aws/credentials.bak-2026-09-13` + a
+      ListAccessKeys read; CreateAccessKey; the new secret written straight into the `[autospecai]`
+      profile by the script and NEVER printed; `verify:iam` (6/6), `verify:kms` and
+      `drill:preflight` green on the new key; then the old key set INACTIVE (reversible) and the
+      walls re-run green. Runbook section 5b written first. OWED TO STEVE: delete the inactive key
+      after a fortnight with nothing missing it, then delete the `.bak` (it holds the old secret).
+      Production was never involved - this key is read by no deployed code.
+    cadence_recorded_2026_09_13: >-
+      Not a deadline (the note above stands) but a RECORD: one admin-key rotation has now
+      happened, by script, in about four minutes, with a proven rollback. The remaining 25 keys
+      (Vercel runtime pair, six app secrets, Resend, Stripe) each have a runbook section; none has
+      been rotated. The next rotation is whichever of those a leak or a diligence question names
+      first, using section 5's two-keys-valid ordering.
 
   - id: the-iam-template-can-re-open-the-wall                 # ROADMAP B20
     owner: steve                          # the ruling; claude edits
