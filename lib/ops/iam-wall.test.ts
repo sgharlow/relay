@@ -319,6 +319,7 @@ describe('the contract is per-principal, which is the point of the change', () =
       'relay-kms-wall-ci',
       'relay-ro-ci',
       'relay-iam-wall-ci',
+      'relay-backup-wall-ci',
     ]);
     // A role is reached by satisfying a trust policy, not with a key, so the
     // kind is what decides which API calls collect it. Getting it wrong audits
@@ -327,6 +328,7 @@ describe('the contract is per-principal, which is the point of the change', () =
       'relay-kms-wall-ci',
       'relay-ro-ci',
       'relay-iam-wall-ci',
+      'relay-backup-wall-ci',
     ]);
   });
 
@@ -358,7 +360,7 @@ describe('the contract is per-principal, which is the point of the change', () =
       CONTRACTS.filter((c) => (c.forbidsServices ?? []).some((f) => f.service === 'kms')).map(
         (c) => c.user,
       ),
-    ).toEqual(['relay-ro', 'relay-ro-ci', 'relay-iam-wall-ci']);
+    ).toEqual(['relay-ro', 'relay-ro-ci', 'relay-iam-wall-ci', 'relay-backup-wall-ci']);
     expect(READONLY_CONTRACT.forbidsServices?.map((f) => f.service)).toEqual(['kms']);
     expect(READONLY_CI_CONTRACT.forbidsServices?.map((f) => f.service)).toEqual(['kms']);
     expect(RUNTIME_CONTRACT.forbidsServices ?? []).toEqual([]);
@@ -814,7 +816,7 @@ describe('the IAM wall audits its own principal — relay-iam-wall-ci', () => {
           Sid: 'ReadRolePolicies',
           Effect: 'Allow',
           Action: ['iam:GetRole', 'iam:ListAttachedRolePolicies', 'iam:ListRolePolicies', 'iam:GetRolePolicy'],
-          Resource: [`${A}:role/relay-kms-wall-ci`, `${A}:role/relay-ro-ci`, `${A}:role/relay-iam-wall-ci`, `${A}:role/relay-backend-dsql`],
+          Resource: [`${A}:role/relay-kms-wall-ci`, `${A}:role/relay-ro-ci`, `${A}:role/relay-iam-wall-ci`, `${A}:role/relay-backup-wall-ci`, `${A}:role/relay-backend-dsql`],
         },
         {
           Sid: 'ReadManagedPolicyDocuments',

@@ -636,6 +636,87 @@ export const IAM_WALL_CI_CONTRACT: PrincipalContract = {
   ],
 };
 
+/**
+ * The backup wall's principal (2026-09-13, gap plan G4.4 / ROADMAP B29 + B17).
+ * `scripts/backup-status.mjs` makes four reads: list the backup plans, list a
+ * plan's selections, list recovery points in each of the two vaults, and read
+ * each cluster's state. Everything else about backups — starting a restore,
+ * deleting a recovery point or a vault — is forbidden by name, because a
+ * public-repo role that could delete recovery points would be the one
+ * credential able to erase the product's last line of recovery.
+ */
+export const BACKUP_WALL_CI_CONTRACT: PrincipalContract = {
+  kind: 'role',
+  user: 'relay-backup-wall-ci',
+  purpose:
+    'the GitHub Actions OIDC role for the backup wall watch — assumed by a workflow in a PUBLIC ' +
+    'repo, so it holds four Backup/DSQL READS on the named plans, vaults and clusters and nothing ' +
+    'that restores, deletes, connects or decrypts',
+  requires: [
+    'backup:ListBackupPlans',
+    'backup:ListBackupSelections',
+    'backup:ListRecoveryPointsByBackupVault',
+    'dsql:GetCluster',
+  ],
+  requiresConsequence:
+    'The backup wall cannot read a vault, so it reports "cannot read vault" and exits 1 — the ' +
+    'daily run reads as unmeasured rather than as healthy, which is the right failure but still ' +
+    'a failure. Losing the cluster read hides deletion protection being switched off.',
+  resourceScope: {
+    mustNotBeWildcard: true,
+    consequence:
+      'The grant names two vaults, the plan ARNs and two clusters. A bare "*" would let a ' +
+      'public-repo workflow enumerate every vault and recovery point in the account, including ' +
+      'the other products that share it.',
+  },
+  forbids: [
+    {
+      action: 'backup:StartRestoreJob',
+      consequence:
+        '🔴 A restore from CI means a public-repo workflow could materialise a copy of every ' +
+        'vault row somewhere nobody is watching. Reads only.',
+    },
+    {
+      action: 'backup:DeleteRecoveryPoint',
+      consequence:
+        '🔴 The one credential able to erase the last line of recovery must not exist on a runner.',
+    },
+    {
+      action: 'backup:DeleteBackupVault',
+      consequence: 'Same as above, at the scale of the whole vault.',
+    },
+    {
+      action: 'dsql:DbConnect',
+      consequence:
+        'This role reads cluster STATE, never rows. A connect here would be a database credential ' +
+        'on a runner under the name of a backup check.',
+    },
+    { action: 'dsql:DbConnectAdmin', consequence: ADMIN_TOKEN_CONSEQUENCE },
+  ],
+  forbidsServices: [
+    {
+      service: 'kms',
+      consequence:
+        'A recovery point is ciphertext plus a wrapped key. A role that can list recovery points ' +
+        'AND touch the CMK is most of a decryption path, in a public repo.',
+    },
+  ],
+  trust: {
+    provider: 'token.actions.githubusercontent.com',
+    subject: 'repo:sgharlow/relay:ref:refs/heads/master',
+    consequence:
+      '🔴 A TRUST POLICY WIDENED PAST THE MASTER REF LETS ANY FORK ENUMERATE THE BACKUPS. ' +
+      'sgharlow/relay is PUBLIC; `repo:sgharlow/relay:*` would hand a stranger\'s pull request the ' +
+      'list of every recovery point and the clusters\' state.',
+  },
+  notes: [
+    'The daily run is proven red on demand by the workflow_dispatch `dr_vault` input, which ' +
+      'points the script at a vault that does not exist; "cannot read vault" is a finding.',
+    'Its sibling on the AWS side is the CloudWatch alarm relay-dr-copy-absent (B17): same fact, ' +
+      'read from the copy-job metric instead of the vault listing, so the two cannot fail the same way.',
+  ],
+};
+
 export const CONTRACTS: PrincipalContract[] = [
   RUNTIME_CONTRACT,
   LAPTOP_CONTRACT,
@@ -643,6 +724,7 @@ export const CONTRACTS: PrincipalContract[] = [
   KMS_WALL_CI_CONTRACT,
   READONLY_CI_CONTRACT,
   IAM_WALL_CI_CONTRACT,
+  BACKUP_WALL_CI_CONTRACT,
 ];
 
 function lower(v: string | string[] | undefined): string[] {
