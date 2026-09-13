@@ -308,16 +308,18 @@ Court: **S** Steve · **C** Claude · **CP** co-pilot · **E** event. ⏱ = an o
 
 **State 2026-09-13 (run early, before Sprint 2):** Claude's rows are done or read to their limit (G2.4 baseline, G2.5's E4.1 closed and E7 read, G2.6 stamped, G2.1/G2.2/G2.3 read as far as an API allows). **Steve's:** Sitting E — the Gmail filter, the DMARC download, the registrar read, the two Stripe dashboard reads, D28's lines, the GitHub validity-checks toggle — **scheduled 2026-09-19** (`the-domain-can-lapse-without-anyone-noticing.revisit`, rings 09-20). E4.2/E5/E7 were **ruled early on 2026-09-13**; the E7 PR awaits his approval. **The window itself cannot start until Sprint 2's last owner write and cannot be verified until 10-01 passes with nothing red on 10-02.** G2 is Claude-complete; it is not complete, and cannot be before 2026-10-02 by construction.
 
-### G3 — The machine watches; the window holds *(2026-10-01 → 10-08 · Steve ≈ 30 min + two `/safe-execute` sittings · still no owner write)*
+### G3 — The machine watches; the window holds *(2026-10-01 → 10-08 · Steve ≈ 30 min + two `/safe-execute` sittings · still no owner write)* — **Claude's lane ran 2026-09-13 under the goal "use cli/automation where possible": both 5-gates passed, both actions executed by the Node SDK (the AWS CLI is unreliable here), both proven**
 
 | # | Row | Court | Done when |
 |---|---|---|---|
-| G3.1 | **GP-D9** 5-gate: Steve creates `relay-iam-wall-ci`; Claude's `iam-wall.yml` per the five requirements | S → C | green on the real account; red on a bogus dispatch |
-| G3.2 | **GP-D8** 5-gate: runbook §5b (Claude) → `/safe-execute` → Steve rotates the admin key → three walls re-run | C → S → C | one key rotated with its date |
-| G3.3 | Devpost prize clock ~10-08 checked | S | a line in the register |
-| G3.4 | `check:ladder` read daily; the two rungs are expected ≈ 10-16/17 and ≈ 10-21 under GP-U9(a) | C | dates recorded as they print |
+| G3.1 | **GP-D9** — ✅ **DONE 2026-09-13**: role created by script under the admin profile (5-gate via `/safe-execute`); grant SCOPED (the proposal's `*` refused by the wall's own rule); `IAM_WALL_CI_CONTRACT` + tests; `iam-wall.yml` merged (PR #86); master-push run 34771699676 GREEN, dispatched bogus-principal run 34771727011 RED; `the-iam-wall-is-the-only-wall-nothing-schedules` closed | C (was S → C) | ✅ |
+| G3.2 | **GP-D8** — ✅ **DONE 2026-09-13**: runbook §5b written; `/safe-execute` passed; the 441-day `autospecai` key rotated BY SCRIPT (secret written into the profile, never printed); `verify:iam` 6/6, `verify:kms`, `drill:preflight` green on the new key; old key set INACTIVE; walls green again. **Owed to Steve:** delete the inactive key after a fortnight, then the `.bak` | C (was C → S → C) | ✅ one key rotated, 2026-09-13 |
+| G3.3 | Devpost prize clock — ✅ **MOOT, read 2026-09-13 via the Gmail connector**: $2,000 paid by PayPal 2026-09-03; AWS credit code arrived 2026-08-17 (redemption is Steve's to confirm) | C read | recorded on the sitting entry |
+| G3.4 | `check:ladder` read daily — 09-13: rungs ever sent 0; first 2026-10-03T15:36Z, final 2026-10-08T03:36Z (no owner write yet; both move with the first one in Sprint 2) | C | dates recorded as they print |
 
 **Done when:** `verify:iam` runs daily under OIDC · one secret rotated · the window still unbroken.
+
+**State 2026-09-13:** the first two are done and proven; the window has not opened (it starts after Sprint 2's last owner write) and is verified only by 10-08 passing with no owner write. Steve's residue from G3: delete the inactive admin key after a fortnight, confirm the AWS credit code was redeemed.
 
 ### G4 — The ladder fires; recovery proven *(2026-10-08 → 11-08 · = rev-7 Sprint 4 / Sitting H · co-pilot · one admin session ≈ 2–3 h)*
 
