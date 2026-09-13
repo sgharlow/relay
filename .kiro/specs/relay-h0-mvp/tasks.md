@@ -37,11 +37,11 @@
 >   describing the state *before* that file landed.
 > - ~~"**Property 17 was never defined** — the numbering skips from 16 to 18"~~ — **it is defined**, at
 >   `design.md` §"Property 17: CSV import deduplication", and the behaviour is covered by
->   `lib/import/csv-parser.test.ts`. Only the *tag* is missing from that test. The numbering does not
+>   `lib/import/csv-parser.test.ts`. ~~Only the *tag* is missing from that test.~~ ✅ Tagged 2026-09-12. The numbering does not
 >   skip.
 >
 > **What is actually true, derived rather than quoted:** every defined property from 2 to 20 is tagged
-> in the suite except **17** (covered, untagged — see the note in `design.md`). **Property 1 is
+> in the suite, **17 included since 2026-09-12** (it was covered-but-untagged from 08-21 — see the note in `design.md`). **Property 1 is
 > superseded**: it asserts uniqueness of a `vaults` row and no `vaults` table exists in any migration,
 > so it is struck in `design.md` rather than left looking uncovered.
 >

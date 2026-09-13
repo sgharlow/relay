@@ -6,6 +6,8 @@
 > Claude's court). Known stale claims below: migrations 036/037 ARE applied to both regions; S1-5
 > shipped as `docs/security-incident-runbook.md`; S3-1's box cites "the existing webhook test harness" — that is `src/app/api/stripe/webhook/route.test.ts`
 > (added 2026-08-15); the 2026-08-20 sprint-3 report's "that route has no test file" was wrong when written.
+>
+> **The live Claude queue as of 2026-09-12 is `docs/gap-closure-plan-2026-09-12.md` §5** (sprint G0). `/sprint` reads `.claude/sprint-state.json` first, which points there and carries `iterationsRemaining`; this file is the third fallback and must not be read as the queue.
 
 # Backlog — the execution queue for `/sprint`
 
@@ -632,7 +634,7 @@ execute with credentials at their elbow — not a merged crypto change nobody ha
 |---|---|---|
 | ✅ S4-1 | SHIPPED `35f4242` — The compatibility rule, written first: how a legacy blob is recognised, and the proof that it still decodes. Nothing else starts until this is settled | S |
 | ✅ S4-2 | SHIPPED `99924c1` — `db/migrations/037_kms_context_era.sql` authored, not applied — the per-row marker recording which wrapping era a key belongs to | S |
-| ⛔ S4-3 | **NOT DONE — gated.** The wrap/unwrap change itself, behind that marker, with `KeyId` named on Decrypt as the second half of the same fix | M |
+| ✅ S4-3 | **SHIPPED 2026-09-03 as B5.1 phase B (PR #58; production deployed 04:18Z, proven 20/20)** — S4-4 stays specified-not-written behind B5.0's reopen conditions. ~~NOT DONE — gated.~~ The wrap/unwrap change itself, behind that marker, with `KeyId` named on Decrypt as the second half of the same fix | M |
 | 📋 S4-4 | SPECIFIED in the design §4, not written — it must call signatures S4-3 has not created. The live-proof script: a walk that wraps with context, unwraps it, **and** unwraps a legacy blob, in one run against the real CMK. This is what "done" means for S4-3, and it cannot run here | S |
 | ✅ S4-5 | SHIPPED `a75ac83` — Roll-forward and roll-back notes: what a half-deployed state looks like in each direction, and which one is safe | S |
 
