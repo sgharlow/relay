@@ -28,7 +28,7 @@ export const metadata = {
 
 // Moves with the content — see the note in src/app/terms/page.tsx and the
 // guard in src/app/terms/legal-pages.test.ts.
-const UPDATED = '21 August 2026';
+const UPDATED = '13 September 2026';
 
 export default function PrivacyPage() {
   return (
