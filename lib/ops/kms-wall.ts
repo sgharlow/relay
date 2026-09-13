@@ -118,8 +118,14 @@ const REQUIRED_ACTIONS = ['kms:generatedatakey', 'kms:decrypt'];
  *
  * If the first live run fails on this, that is itself the finding: somebody
  * changed rotation and nothing wrote it down.
+ *
+ * ✅ TAKEN 2026-09-13 (B19, ruled at `ratified.sitting-d2-2026-09-13.d17_b19_cmk_rotation`,
+ * executed in the plan's G4 under the 5-gate): `EnableKeyRotation` on the CMK, yearly, and
+ * this pin flipped in the same commit — proven red first (`verify:kms` against the
+ * un-rotated key with this constant true), then green after the call. Rotated material
+ * is retained by AWS, so nothing wrapped before today needs a re-wrap. ~$24/yr recurring.
  */
-export const ROTATION_INTENDED = false;
+export const ROTATION_INTENDED = true;
 
 function asArray(v: string | string[] | undefined): string[] {
   if (v === undefined) return [];

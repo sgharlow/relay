@@ -57,6 +57,27 @@ export function credentialsFromProfile(name) {
 }
 
 /**
+ * Credentials from the environment — what an OIDC session on a CI runner leaves
+ * behind (aws-actions/configure-aws-credentials exports the three variables).
+ * Added 2026-09-13 so `backup-status.mjs` can run under `relay-backup-wall-ci`
+ * with no profile file and no stored secret.
+ */
+export function credentialsFromEnv() {
+  const { AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN } = process.env;
+  if (!AWS_ACCESS_KEY_ID || !AWS_SECRET_ACCESS_KEY) {
+    throw new Error('No AWS credentials in the environment (AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY)');
+  }
+  const creds = { accessKeyId: AWS_ACCESS_KEY_ID, secretAccessKey: AWS_SECRET_ACCESS_KEY };
+  if (AWS_SESSION_TOKEN) creds.sessionToken = AWS_SESSION_TOKEN;
+  return creds;
+}
+
+/** The environment when it carries a key (a runner), else the named profile (a laptop). */
+export function credentials(profileName) {
+  return process.env.AWS_ACCESS_KEY_ID ? credentialsFromEnv() : credentialsFromProfile(profileName);
+}
+
+/**
  * Signs and sends one request.
  *
  * @returns {Promise<{status:number, json?:unknown, text?:string}>}
