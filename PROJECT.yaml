@@ -6566,6 +6566,10 @@ deferred:
     ends_when: >-
       `.claude/sprint-state.json` carries `iterationsRemaining` and names the live queue
       (docs/gap-closure-plan-2026-09-12.md section 5), and `docs/backlog.md`'s banner points there.
+    closed: 2026-09-13
+    closed_by: >-
+      PR #77 - sprint-state.json rewritten (D17, fourth) with `iterationsRemaining: 5` (2 after the
+      G0 close-out) and `backlogSource` naming the plan's section 5; backlog.md's banner points there.
 
   - id: gap-plan-revision-1-called-ruled-items-owed                # gap plan GP-R11/R12/R13 (record)
     owner: claude

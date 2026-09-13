@@ -13,9 +13,9 @@
   ],
   "branch": "master",
   "backlogSource": "docs/gap-closure-plan-2026-09-12.md section 5 - the G0 Claude-court tasks (revision 2, 2026-09-12)",
-  "sprint": "Gap-closure G0 - the record and the nods",
+  "sprint": "Gap-closure G0 - Claude's lane DONE 2026-09-13; Steve's five nods + the ladder-window ruling remain (revisit 09-17)",
   "calendar": "G0 2026-09-12 -> 09-17; G1 09-17 -> 09-24 (= ROADMAP rev-8 Sprint 2 + Sitting D-2; all owner writes); G2 09-24 -> 10-01 (quiet window, E4.2); G3 10-01 -> 10-08 (IAM-wall role, admin-key rotation, both 5-gate); G4 10-08 -> 11-08 (the ladder fires, restore drill)",
-  "court": "claude: tasks 5.1 (first half), 5.2, 5.3, 5.5, 5.6, 5.7, 5.9, 5.10 + the rulings pack; steve: the ladder-window ruling (GP-U9, revisit 09-17) and five nods (GP-U13 -> task 5.4, GP-D15, GP-R1, GP-R4, GP-P6)",
+  "court": "claude (remaining, gated): task 5.4 audit labels after the GP-U13 nod; G1.5 the E1-prime first-line instrument; the R14.1 record after the GP-U11 ruling. steve: GP-U9 ruling (09-17) and nods GP-U13, GP-D15, GP-R1, GP-R4, GP-P6",
   "betaReadyConditions": {
     "R1 vault real": "✅ verify:dogfood READY (09-10)",
     "R2 real circle, verifier confirmed": "◐ aliases removed and codes issued 09-10; the verifier has not claimed - revisit 2026-09-17",
@@ -111,6 +111,24 @@
       "title": "ROADMAP/CLAUDE.md/verify-stripe: twelve done-work rows struck in place",
       "pr": 76,
       "date": "2026-09-12"
+    },
+    {
+      "row": "G0.4/0.5/0.6/0.14 (GP-R7, R8, R6, R9, U10)",
+      "title": "six docs banner-ed; Property 17 tagged; sprint-state re-pointed; rulings pack re-derived; G11 options brief; the plan enters the repo",
+      "pr": 77,
+      "date": "2026-09-13"
+    },
+    {
+      "row": "G0.8 (GP-D1)",
+      "title": "canary probes both health dead-men; live 8/8, planted red by name; B12 widened",
+      "pr": 78,
+      "date": "2026-09-13"
+    },
+    {
+      "row": "reassess (ROADMAP revision 9)",
+      "title": "the gap-closure re-baseline header; beta-ready cells R2/R7/R8; Sprint 2/3 owner-write and quiet-window pointers",
+      "pr": 79,
+      "date": "2026-09-13"
     }
   ],
   "rowsOpen": [
@@ -182,5 +200,5 @@
       "what": "Stripe CLI pairing expires (re-paired 09-10)"
     }
   ],
-  "iterationsRemaining": 5
+  "iterationsRemaining": 2
 }
