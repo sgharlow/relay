@@ -6,6 +6,17 @@
  * Feature: relay-h0-mvp
  */
 
+/*
+  `executor` is VALID here and is NOT offered by the /circle form — and that
+  asymmetry is the recorded design, ruled 2026-09-13 (ROADMAP B22, gap plan
+  GP-D3, `ratified.sitting-d2-2026-09-13`). It is the same pattern as `estate`
+  in the trigger-type list: the domain keeps the value so a stored row still
+  validates and reads back, the UI stops offering it. This array MIRRORS the DB
+  CHECK in `db/migrations/001_initial.sql`; striking `executor` here would need
+  a migration, which the ruling declined. Live read 2026-09-13 (`relay_ro`):
+  `recipients.role` = {recipient: 1} — no `executor` row exists, so nothing
+  stored depends on it either way. See `src/app/(owner)/circle/PeopleSections.tsx`.
+*/
 export const VALID_ROLES = ['recipient', 'executor', 'caregiver', 'partner'] as const;
 export type RecipientRole = (typeof VALID_ROLES)[number];
 

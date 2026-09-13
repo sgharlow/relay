@@ -5,8 +5,7 @@
       "Sid": "AllowDsqlDbConnect",
       "Effect": "Allow",
       "Action": [
-        "dsql:DbConnect",
-        "dsql:DbConnectAdmin"
+        "dsql:DbConnect"
       ],
       "Resource": "CLUSTER_ARN_PLACEHOLDER",
       "Condition": {

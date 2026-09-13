@@ -304,6 +304,8 @@ of it.
 
 ## Sitting D-2 as re-derived 2026-09-12 (the live sheet)
 
+> ✅ **RULED 2026-09-13.** Steve took the "recommended default" column as his rulings, wholesale, via the gap plan's AskUserQuestion sitting; each row is recorded under `PROJECT.yaml → ratified.sitting-d2-2026-09-13` with what it obliged and what was executed the same day. **Two defaults were NOT taken** and are recorded as such there: row 7 (B41 — the default contradicted the explicit 2026-08-20 ruling in `lib/contact.ts`; "one business day" stands, the reader half stays Steve's) and row 8 (B42 — Reply-To is a Vercel env value; pending Steve). Row 11 (B19) executes in G4. Rows 1–4 (the G0 items) were also answered: F-p reclassified and built; Dependabot on, secret-scanning validity checks need the UI toggle; R1/R4 recorded; "that property is B15.6". The ladder window is option (a).
+
 Source: `docs/gap-closure-plan-2026-09-12.md` §6 (revision 2, after the same-day QA). ≈5 min each. Recommended default first; a ruling licenses the edit in its row. G0 rows first because they gate Claude's work this week.
 
 | # | Ruling | Recommended default | When |

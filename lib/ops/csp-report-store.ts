@@ -97,3 +97,30 @@ export async function recordCspViolation(v: CspViolation): Promise<boolean> {
     return false;
   }
 }
+
+/** Retention, ruled 2026-09-13 (B21.3, `ratified.sitting-d2-2026-09-13`): thirty days. */
+export const CSP_REPORT_RETENTION_DAYS = 30;
+
+/**
+ * Delete reports older than the retention window. Housekeeping, in the cron's
+ * sense: it rides the heartbeat, swallows its own errors, and nothing becomes
+ * less safe if it never runs — the table only grows. Returns the rows removed,
+ * or -1 when it could not look, so a caller can log without ever throwing.
+ *
+ * The window is a parameter so a test can prove the predicate without waiting
+ * thirty days; production passes nothing and gets the ruled value.
+ */
+export async function pruneCspReports(days: number = CSP_REPORT_RETENTION_DAYS): Promise<number> {
+  if (relationMissing) return -1;
+  if (!Number.isInteger(days) || days < 1) return -1;
+  try {
+    const r = await query(
+      `DELETE FROM csp_reports WHERE ts < now() - ($1::int * INTERVAL '1 day')`,
+      [days],
+    );
+    return typeof r.rowCount === 'number' ? r.rowCount : 0;
+  } catch (err) {
+    if (isUndefinedTable(err)) relationMissing = true;
+    return -1;
+  }
+}

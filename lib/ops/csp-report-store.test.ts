@@ -16,6 +16,8 @@ vi.mock('../db/connection', () => ({ query: vi.fn() }));
 import { query } from '../db/connection';
 import {
   recordCspViolation,
+  pruneCspReports,
+  CSP_REPORT_RETENTION_DAYS,
   _resetCspStoreForTesting,
   _cspStoreUnavailable,
 } from './csp-report-store';
@@ -195,5 +197,25 @@ describe('something can read what this writes', () => {
       .map((l) => l.replace(/\/\/.*$/, ''))
       .join('\n');
     expect(src).not.toMatch(/DELETE\s+FROM|TRUNCATE/i);
+  });
+});
+
+describe('retention (B21.3, ruled 2026-09-13: thirty days)', () => {
+  it('deletes rows older than the window and reports the count', async () => {
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 7 } as never);
+    const n = await pruneCspReports();
+    expect(n).toBe(7);
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toMatch(/DELETE FROM csp_reports WHERE ts < now\(\) - \(\$1::int \* INTERVAL '1 day'\)/);
+    expect(params).toEqual([CSP_REPORT_RETENTION_DAYS]);
+    expect(CSP_REPORT_RETENTION_DAYS).toBe(30);
+  });
+
+  it('refuses a window that would delete everything, and never throws', async () => {
+    expect(await pruneCspReports(0)).toBe(-1);
+    expect(await pruneCspReports(1.5)).toBe(-1);
+    expect(mockQuery).not.toHaveBeenCalled();
+    mockQuery.mockRejectedValue(new Error('connection reset'));
+    expect(await pruneCspReports()).toBe(-1);
   });
 });

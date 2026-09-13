@@ -28,7 +28,7 @@ export const metadata = {
 
 // Moves with the content — see the note in src/app/terms/page.tsx and the
 // guard in src/app/terms/legal-pages.test.ts.
-const UPDATED = '21 August 2026';
+const UPDATED = '13 September 2026';
 
 export default function PrivacyPage() {
   return (
@@ -106,6 +106,14 @@ export default function PrivacyPage() {
             <li><strong>Vercel</strong> — hosting and privacy-friendly, cookieless analytics</li>
             <li><strong>OpenAI</strong> — the labels-only analysis described above</li>
             <li><strong>Resend</strong> — sending email such as invitations and alerts</li>
+            <li>
+              <strong>Cloudflare</strong> — our domain&rsquo;s DNS, and the mail forwarding that
+              delivers anything you send to our support address
+            </li>
+            <li>
+              <strong>Google</strong> — the mailbox (Gmail) where that forwarded support mail is
+              read, and where our mail-authentication reports arrive
+            </li>
             <li>
               <strong>Stripe</strong> — payment processing, if you subscribe. Your card details go
               to Stripe directly and never reach our servers; we keep only the fact that a
