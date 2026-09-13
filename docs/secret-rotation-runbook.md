@@ -245,6 +245,35 @@ tokens **and** calls KMS. Everything depends on them.
   — a new key on a policy somebody widened while they were in there is exactly the drift that check
   exists to catch.
 
+## §5b — the `autospecai` admin key · the laptop profile behind `.env.admin`
+
+Added 2026-09-13 (gap plan GP-D8, ROADMAP B18): §5 above is the RUNTIME pair in Vercel; this is
+the other AWS key, the one `~/.aws/credentials [autospecai]` holds and `.env.admin` selects by
+`AWS_PROFILE`. It is **database admin** (migrations, roles, grants) plus IAM and KMS reads. It is
+not read by any deployed code, so production is unaffected by rotating it; what stops mid-rotation
+is every admin-run instrument: `db/migrations/migrate.ts`, `verify:iam`, `verify:kms`,
+`drill:preflight`/`drill:plan`, and any script declared `--env-file=.env.admin`.
+
+- **Same two-keys-valid ordering as §5**, and the same reason. IAM allows two access keys per
+  user, so the new one is created while the old one still works:
+  1. Snapshot: copy `~/.aws/credentials` to a dated `.bak` beside it; `ListAccessKeys` for the
+     user and record the old key id's first 8 characters and its create date.
+  2. `CreateAccessKey` for `autospecai`. **The secret is written straight into the `[autospecai]`
+     section of `~/.aws/credentials` by the script that created it and is never printed** — not to
+     a terminal, not to a log, not to chat. (The Norton TLS trap makes the AWS CLI unreliable here;
+     the Node SDK with `NODE_EXTRA_CA_CERTS` from `~/.aws-certs` is the path that works.)
+  3. Prove the new key: `npm run verify:iam`, `npm run verify:kms`, `npm run verify:roles` — all
+     three read under `.env.admin`, so all three now use the new key. Green is the proof.
+  4. **Only then** `UpdateAccessKey` the old key to `Inactive` — reversible in one call. Re-run the
+     three walls once more on the inactive-old / active-new state.
+  5. **Deletion is a separate, later step and is Steve's**: an inactive key that is never missed
+     for a fortnight is safe to delete; a deleted key cannot come back.
+- **Rollback at any step before 5:** restore the `.bak` over `~/.aws/credentials` and, if step 4
+  ran, `UpdateAccessKey` the old key back to `Active`. Under two minutes.
+- ⚠️ `verify:iam` audits five other principals and now its own role, but NOT `autospecai` itself —
+  the admin user is deliberately outside the wall because it is the wall's own credential. That is
+  why its rotation cadence is recorded on the register rather than enforced by a check.
+
 ## §6 — the rest
 
 `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET` and `OPENAI_API_KEY` follow the ordinary shape: create the

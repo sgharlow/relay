@@ -1,0 +1,115 @@
+# Can any of our IAM principals still obtain what it must never hold?
+#
+# 🔴 WHY THIS FILE EXISTS. `scripts/verify-iam.ts` is the half of the
+# least-privilege wall that `verify:roles` structurally cannot see: one
+# `aws iam create-policy-version` puts `dsql:DbConnectAdmin` back on the live
+# site's user, or a `kms:` action onto the read-only identity that is placeable
+# in CI precisely because it holds none — in no diff, no test run and no build,
+# and the app keeps working. From 2026-08-21 to 2026-09-13 that check ran when a
+# person typed `npm run verify:iam` on one laptop under `.env.admin`; ROADMAP
+# B16's residue named it "the only wall nothing schedules". This schedules it.
+#
+# This job holds NO stored secret. It mints a short-lived GitHub OIDC token and
+# exchanges it for `relay-iam-wall-ci`, whose trust policy names exactly one
+# subject — `repo:sgharlow/relay:ref:refs/heads/master` — and whose permissions
+# are eight IAM policy READS scoped to the audited principals and this
+# account's policy paths. It cannot write a policy, attach one, mint a key,
+# connect to the database, or touch the CMK; `lib/ops/iam-wall.ts` carries a
+# contract for this role itself, so the wall audits its own principal
+# (docs/iam-wall-oidc-role-proposal.md §5, "the recursion").
+#
+# 🔴 IT SHARES THE TRAP EVERY SCHEDULED ALARM HERE SHARES. GitHub disables
+# scheduled workflows in a public repository after 60 days with no repository
+# activity. This watchdog therefore has the same failure mode as the others: a
+# quiet owner. GitHub emails before disabling and that email is the only
+# warning. See .github/workflows/date-guards.yml for the full account.
+#
+# ⚠️ UNLIKE kms-wall.yml THIS ONE CANNOT USE `npm ci --omit=dev`:
+# `@aws-sdk/client-iam` is a devDependency (the product never calls IAM; only
+# this audit does), so the install is a plain `npm ci`. That is the one place a
+# copy of the KMS workflow would have failed on its first run.
+
+name: IAM wall watch
+
+on:
+  schedule:
+    # Daily. An IAM widening is instant and has no waiting period, so the cadence
+    # is set by the reliable tier rather than by a deletion window: the daily
+    # tier delivered 100% on the days the sub-hourly tier collapsed to 2–4 runs
+    # (cadence-watch.yml). A daily check bounds an unnoticed widening to one day.
+    - cron: '17 6 * * *'
+
+  # 🔴 THE DISPATCH INPUT EXISTS SO THE ALARM CAN BE PROVEN TO FIRE.
+  # `RELAY_RUNTIME_IAM_USER` overrides the name of the RUNTIME contract's user
+  # (scripts/verify-iam.ts applies the override to that contract only). Point it
+  # at a user that does not exist and the script reports an unreadable
+  # principal as a finding, not a pass, and exits 1.
+  workflow_dispatch:
+    inputs:
+      principal:
+        description: 'IAM user name to audit as relay-runtime. Point it at a name that does not exist to prove the alarm goes RED.'
+        required: false
+        default: 'relay-runtime'
+
+  # So a change to the checker is exercised by the checker.
+  push:
+    branches: [master]
+    paths:
+      - 'lib/ops/iam-wall.ts'
+      - 'scripts/verify-iam.ts'
+      - '.github/workflows/iam-wall.yml'
+
+concurrency:
+  group: iam-wall
+  cancel-in-progress: false
+
+# `id-token: write` is what lets the job mint the OIDC token. It is not a write
+# to anything in this repository. `contents: read` is the checkout.
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  wall:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Assume the IAM read role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::461293170793:role/relay-iam-wall-ci
+          role-session-name: iam-wall-watch
+          aws-region: us-east-1
+
+      # Plain `npm ci`: the IAM client is a devDependency. See the header.
+      - run: npm ci
+
+      # ⚠️ NOT `npm run verify:iam`. That script is declared
+      # `--env-file=.env.admin`, which is a gitignored file on one laptop and
+      # does not exist here. The credentials come from the OIDC session above.
+      - name: Check the wall
+        env:
+          RELAY_RUNTIME_IAM_USER: ${{ inputs.principal || 'relay-runtime' }}
+          AWS_REGION: us-east-1
+        run: npx --yes tsx@4 scripts/verify-iam.ts
+
+      - name: Explain a failure
+        if: failure()
+        run: |
+          echo "::error::THE IAM WALL DID NOT HOLD, or could not be read. Read the check step: it names the principal and the rule."
+          echo "  1. A FORBIDDEN action reachable (dsql:DbConnectAdmin, kms:* on relay-ro, an iam write on this role):"
+          echo "     somebody widened a policy. relay-runtime-policy v1 is retained as the rollback shape; roll the policy back"
+          echo "     to its last known version and re-run. docs/least-privilege-cutover.md."
+          echo "  2. A REQUIRED action missing: the product or an instrument is broken, not safe. Restore the grant."
+          echo "  3. A TRUST POLICY off the master ref on a CI role: a fork can assume it. Pin it back immediately."
+          echo "  4. An UNREADABLE principal: either the dispatch input was pointed at a bogus name on purpose"
+          echo "     (the proof-of-red), or this role lost a read. Both are findings; neither is a pass."
+          echo "  5. If this step failed to ASSUME THE ROLE, the wall is unmeasured, not broken."
+          echo "     Role: arn:aws:iam::461293170793:role/relay-iam-wall-ci (master ref only, IAM reads only)."

@@ -518,12 +518,114 @@ export const READONLY_CI_CONTRACT: PrincipalContract = {
   ],
 };
 
+/**
+ * The IAM wall's OWN principal — the recursion docs/iam-wall-oidc-role-proposal.md §5
+ * names as the part most likely to be missed. Creating a role so the wall can run
+ * daily and stopping there would create a principal the wall does not watch, using
+ * the wall as the reason. So the role's contract lands in the same change as the
+ * role (2026-09-13, gap plan GP-D9, ROADMAP B16 residue).
+ *
+ * ⚠️ THE PROPOSAL ASKED FOR `Resource: "*"` ON THE READS; THIS FILE'S OWN RULE
+ * REFUSES THAT, and the rule wins. `iam:GetPolicy`/`GetPolicyVersion` take a
+ * POLICY ARN, and the whole point is to see a policy nobody listed in advance —
+ * so the grant is scoped to the ACCOUNT'S policy path and the AWS-managed path
+ * (`arn:aws:iam::461293170793:policy/*`, `arn:aws:iam::aws:policy/*`), which is
+ * every policy that can be attached here, without being the bare `*` that would
+ * reach across accounts and that `resourceScope` flags on every other principal.
+ * The user/role reads are scoped to the principals CONTRACTS names. A principal
+ * added later must be added to the grant AND to this list — the same recursion,
+ * stated so it is done rather than discovered.
+ */
+export const IAM_WALL_CI_CONTRACT: PrincipalContract = {
+  kind: 'role',
+  user: 'relay-iam-wall-ci',
+  purpose:
+    'the GitHub Actions OIDC role for the IAM wall watch — assumed by a workflow in a PUBLIC ' +
+    'repo, so it holds eight IAM policy READS on named principals and nothing that writes, ' +
+    'connects, or decrypts',
+  requires: [
+    'iam:ListAttachedUserPolicies',
+    'iam:ListUserPolicies',
+    'iam:GetUserPolicy',
+    'iam:ListAttachedRolePolicies',
+    'iam:ListRolePolicies',
+    'iam:GetRolePolicy',
+    'iam:GetPolicy',
+    'iam:GetPolicyVersion',
+  ],
+  requiresConsequence:
+    'The IAM wall cannot read the policies it audits, so it reports a clean account because it ' +
+    'saw nothing. Losing one read silently narrows the audit: a principal whose inline policies ' +
+    'cannot be listed reads as having none, which is the exact blind spot this wall was built to ' +
+    'close on 2026-08-21.',
+  resourceScope: {
+    mustNotBeWildcard: true,
+    consequence:
+      'A bare "*" on IAM reads reaches every principal and every policy in every account this ' +
+      'credential could ever be pointed at. The grant names the audited principals and the two ' +
+      'policy paths that exist here; a widening to "*" is the same silent shape the other five ' +
+      'contracts refuse.',
+  },
+  forbids: [
+    {
+      action: 'iam:CreatePolicyVersion',
+      consequence:
+        '🔴 A wall that can WRITE a policy version can widen the very grant it audits — from a ' +
+        'public repository. The wall reads; it never writes.',
+    },
+    {
+      action: 'iam:AttachUserPolicy',
+      consequence: 'Attaching a policy is granting; the auditor must not be able to grant.',
+    },
+    {
+      action: 'iam:PutUserPolicy',
+      consequence: 'An inline policy write is a grant by another API call — the blind-spot shape.',
+    },
+    {
+      action: 'iam:CreateAccessKey',
+      consequence: 'Minting a key for any user turns an auditor into a credential factory.',
+    },
+    { action: 'dsql:DbConnectAdmin', consequence: ADMIN_TOKEN_CONSEQUENCE },
+  ],
+  forbidsServices: [
+    {
+      service: 'kms',
+      consequence:
+        'This role reads IAM documents. Any kms: action would let a public-repo workflow touch ' +
+        'the key every vault is wrapped under; the KMS wall has its own, narrower role for that.',
+    },
+    {
+      service: 'dsql',
+      consequence:
+        'This role never connects to the database. A dsql: action here would give a public-repo ' +
+        'workflow a path to production rows under the name of an IAM audit.',
+    },
+  ],
+  trust: {
+    provider: 'token.actions.githubusercontent.com',
+    subject: 'repo:sgharlow/relay:ref:refs/heads/master',
+    consequence:
+      '🔴 A TRUST POLICY WIDENED PAST THE MASTER REF LETS ANY FORK READ THIS ACCOUNT\'S IAM. ' +
+      'sgharlow/relay is PUBLIC; `repo:sgharlow/relay:*` would let a stranger\'s pull request ' +
+      'enumerate every policy here. The permission policy would read exactly as clean as today.',
+  },
+  notes: [
+    'Group-attached policies are a known open blind spot of verify-iam.ts (none of the principals ' +
+      'is in a group today); the four group reads are deliberately NOT granted, so they cannot be ' +
+      'lost either. If the group half is ever built, the grant and this contract change together.',
+    'The daily run is proven red on demand by the workflow_dispatch `principal` input, which ' +
+      'points the RUNTIME contract at a user that does not exist; an unreadable principal is a ' +
+      'finding, not a pass.',
+  ],
+};
+
 export const CONTRACTS: PrincipalContract[] = [
   RUNTIME_CONTRACT,
   LAPTOP_CONTRACT,
   READONLY_CONTRACT,
   KMS_WALL_CI_CONTRACT,
   READONLY_CI_CONTRACT,
+  IAM_WALL_CI_CONTRACT,
 ];
 
 function lower(v: string | string[] | undefined): string[] {

@@ -76,7 +76,9 @@ function usersWatchedByVerifyRoles(): string[] {
  * could not see. Naming the exception costs a sentence and cannot be got wrong
  * by a future contract's `kind`.
  */
-const NO_DATABASE_HALF = ['relay-kms-wall-ci'];
+// 2026-09-13: `relay-iam-wall-ci` joins it for the same reason — an IAM ROLE that reads
+// IAM policy documents and never connects to the database (gap plan GP-D9).
+const NO_DATABASE_HALF = ['relay-kms-wall-ci', 'relay-iam-wall-ci'];
 
 function dbPrincipals(): string[] {
   return CONTRACTS.filter((c) => !NO_DATABASE_HALF.includes(c.user))
@@ -128,7 +130,7 @@ describe('the database wall and the IAM wall watch the same identities', () => {
     expect(excluded.map((c) => c.user)).toEqual(NO_DATABASE_HALF);
     // Named because it reads KMS metadata and holds no dsql grant at all, so it
     // has no `sys.iam_pg_role_mappings` row for verify:roles to read.
-    expect(NO_DATABASE_HALF).toEqual(['relay-kms-wall-ci']);
+    expect(NO_DATABASE_HALF).toEqual(['relay-kms-wall-ci', 'relay-iam-wall-ci']);
   });
 
   it('the two lists are the same set of DATABASE identities, not merely overlapping', () => {
