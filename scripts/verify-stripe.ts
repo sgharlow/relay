@@ -28,7 +28,7 @@
  *
  *   The paired Stripe CLI — the fallback, and what works today. It uses the
  *   session key in ~/.config/stripe/config.toml, which is a HUMAN pairing tied
- *   to Steve's browser and EXPIRES 2026-10-07 (E1.8). It cannot run on a runner
+ *   to Steve's browser and EXPIRES 2026-12-10 (E1.8; re-paired 2026-09-10). It cannot run on a runner
  *   and it is not a credential this script should ever try to renew.
  *
  * 🔴 NEVER give this a secret key. It needs to read two objects; a key that can
@@ -91,7 +91,7 @@ function viaCli<T>(args: string[]): T {
   } catch (err) {
     throw new CannotLook(
       `\`stripe ${args.join(' ')}\` failed — is the CLI paired, and has the session key expired? ` +
-        `(E1.8 dates it 2026-10-07.)\n  ${String(err).split('\n')[0]}`,
+        `(E1.8 dates it 2026-12-10.)\n  ${String(err).split('\n')[0]}`,
     );
   }
 }
@@ -135,7 +135,7 @@ async function readLive(): Promise<{ endpoint: LiveEndpoint; portal: LivePortal;
   if (!chosen) throw new CannotLook('no billing portal configurations returned');
 
   return {
-    how: key ? 'STRIPE_READONLY_KEY (schedulable)' : 'paired Stripe CLI (expires 2026-10-07 — E1.8)',
+    how: key ? 'STRIPE_READONLY_KEY (schedulable)' : 'paired Stripe CLI (expires 2026-12-10 — E1.8)',
     endpoint: {
       id: rawEndpoint.id,
       status: rawEndpoint.status,
