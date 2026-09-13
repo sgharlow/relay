@@ -336,8 +336,8 @@ Source: `docs/gap-closure-plan-2026-09-12.md` §6 (revision 2, after the same-da
 | 24 | **GP-U15** D23 what `relay-resumed.review_on: 2026-10-21` reviews | "is report-bridge still the precedence, and did G1 move" | G1 |
 | 25 | **GP-D9** 5-gate: create `relay-iam-wall-ci` | yes (additive; rollback = delete the role) | G3 |
 | 26 | **GP-D8** 5-gate: rotate the `autospecai` admin key | yes, after runbook §5b exists; Steve's hands, no secret in chat | G3 |
-| 27 | **E4.2** (10-01) flip or extend | extend, dated revisit | 10-01 |
-| 28 | **E5** billing check in an automated chain | no | 10-01 |
-| 29 | **E7** Stripe Tax | Claude reads `stripe tax settings retrieve --live` first, then rule | 10-01 |
+| 27 | **E4.2** (10-01) flip or extend — ✅ **RULED 2026-09-13: EXTEND, decision_due 2026-11-15** | extend, dated revisit | ruled early |
+| 28 | **E5** billing check in an automated chain — ✅ **RULED 2026-09-13: NO** | no | ruled early |
+| 29 | **E7** Stripe Tax — read 09-13 (active at the account, not applied at checkout); ✅ **RULED 2026-09-13: ENABLE `automatic_tax`**, co-pilot PR awaiting approval | Claude reads first, then rule | ruled early |
 
 Struck from the plan's first draft because they were ruled on 2026-08-30: D25, D14, D20, B15.4, E4.1. B10's "re-prove once" is struck: delivery is proven and the residue moved to Claude (`re_scoped_2026_09_12`).

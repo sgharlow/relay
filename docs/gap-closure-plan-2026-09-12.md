@@ -293,18 +293,20 @@ Court: **S** Steve · **C** Claude · **CP** co-pilot · **E** event. ⏱ = an o
 
 **State 2026-09-13 (Claude's lane, run four days before the sprint opens):** G1.10 ✅ (both chains), G1.5 build half ✅ (route-3 run awaits a nod), A3.2 ✅, the D3 census and the U11 candidates ✅. **Nothing else in G1 can move without Steve:** G1.1 is the verifier's claim and his call; G1.2's roster, G1.3's drill, G1.4's codes, G1.9's YouTube are his hands; G1.6 and G1.11 are dated 09-22 and ~09-30; G1.7's twenty rulings license G1.8's edits. The sprint's calendar (09-17 → 09-24) has not opened. **G1 is Claude-complete and Steve-open; it is not complete.** The one gate before any of it: the ladder-window ruling (G0.13, revisit 09-17).
 
-### G2 — Billing truth, quiet window *(2026-09-24 → 10-01 · = rev-8 Sprint 3 + Sitting E · Steve ≈ 20 min + the 10-01 decision · **no owner sign-in, no owner write**)*
+### G2 — Billing truth, quiet window *(2026-09-24 → 10-01 · = rev-8 Sprint 3 + Sitting E · Steve ≈ 20 min + the 10-01 decision · **no owner sign-in, no owner write**)* — **Claude's lane ran 2026-09-13, eleven days early; the sprint's calendar has not opened and its window cannot begin until Sprint 2's last owner write**
 
 | # | Row | Court | Done when |
 |---|---|---|---|
-| G2.1 | **GP-D12** C1.1 Gmail filter (co-pilot, browser — not the owner account); C1.3 Steve downloads the 08-17 report → Claude reads | CP / S → C | filter exists; verdict recorded |
-| G2.2 | **GP-D14** registrar read | S 1 min → C | the four `ends_when` clauses answered |
-| G2.3 | **E1.5** Stripe dashboard reads #3/#4; **D28** the done-but-unrecorded lines | S ~10 min → C | recorded |
-| G2.4 | **A3.6 Phase-0 report** against the ~50 % floor | C | in `docs/sprint-reports/` |
-| G2.5 | **GP-U14** the `/terms` sentence drafted into the E4.3 change-set (E4.1 already ruled); **E4.2 on 10-01: extend with a dated revisit** (recommended) or flip; E5; E7 (Claude reads `stripe tax settings retrieve --live` first) | C draft · S rule | `beta-free-release.revisited` block; nothing red 10-02 |
-| G2.6 | `npm run verify:journeys` before the **10-01 17:28Z** dead-man | C | fresh stamp |
+| G2.1 | **GP-D12** C1.1 Gmail filter (co-pilot, browser); C1.3 the 08-17 Microsoft report — **09-13: the thread is found and labelled (id `1a00e72c9417ac7b`, attachment `…1786752000!1786838400.xml.gz`) but the read-only connector exposes the attachment id, not its bytes; the download is still Steve's ~30 s** | CP / S → C | filter exists; verdict recorded |
+| G2.2 | **GP-D14** registrar read — **09-13: not readable from here (no account-scope Cloudflare token on disk); recorded on the entry** | S 1 min → C | the four `ends_when` clauses answered |
+| G2.3 | **E1.5** Stripe dashboard reads #3 (receipts) and #4 (endpoint-failure notifications) — **09-13: what the API can see is read: the Relay endpoint is `enabled` with `invoice.payment_failed` among its events; receipts and failure-notification settings are dashboard-only** · **D28** the done-but-unrecorded lines | S ~10 min → C | recorded |
+| G2.4 | **A3.6 Phase-0 report** against the ~50 % floor — ✅ **instrument proven and baseline filed 09-13** (`docs/sprint-reports/2026-09-13-phase0-baseline.md`: 2 issued, 0 opened, 0 claimed — the real circle's codes, before the ask); re-run after the sends | C | in `docs/sprint-reports/` ✅ (baseline); post-send run owed |
+| G2.5 | **GP-U14** — ✅ **E4.1 CLOSED 09-13**: the `/terms` sentence has been live since the 08-30 ruling (the entry was shadowing E4.2's date). **E7 read done 09-13**: Stripe Tax is ACTIVE at the account, head office AZ, but the Relay checkout sets no `automatic_tax`, so nothing is collected today — recommended: leave until arms-length revenue. **E4.2 RULED EARLY 2026-09-13: EXTEND, `decision_due` → 2026-11-15** (`beta-free-release.revisited`) · **E5 RULED: NO** · **E7 RULED: ENABLE `automatic_tax` on the checkout** — built as a co-pilot PR the same day, waiting on Steve's approval, not merged | C draft · S rule | ✅ `beta-free-release.revisited` block present; the paywall-date regression test pins 2026-11-15; nothing can go red on 10-02 |
+| G2.6 | `npm run verify:journeys` before the **10-01 17:28Z** dead-man — ✅ **ran 09-13 (27/33/23), dead-man now 10-04 07:25Z** | C | fresh stamp ✅ |
 
 **Done when:** Sitting E recorded · Phase-0 report exists · E4.2/E5/E7 recorded on 10-01 · CI green 10-02 · the quiet window unbroken.
+
+**State 2026-09-13 (run early, before Sprint 2):** Claude's rows are done or read to their limit (G2.4 baseline, G2.5's E4.1 closed and E7 read, G2.6 stamped, G2.1/G2.2/G2.3 read as far as an API allows). **Steve's:** Sitting E — the Gmail filter, the DMARC download, the registrar read, the two Stripe dashboard reads, D28's lines, the GitHub validity-checks toggle — **scheduled 2026-09-19** (`the-domain-can-lapse-without-anyone-noticing.revisit`, rings 09-20). E4.2/E5/E7 were **ruled early on 2026-09-13**; the E7 PR awaits his approval. **The window itself cannot start until Sprint 2's last owner write and cannot be verified until 10-01 passes with nothing red on 10-02.** G2 is Claude-complete; it is not complete, and cannot be before 2026-10-02 by construction.
 
 ### G3 — The machine watches; the window holds *(2026-10-01 → 10-08 · Steve ≈ 30 min + two `/safe-execute` sittings · still no owner write)*
 
