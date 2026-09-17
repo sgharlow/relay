@@ -1998,6 +1998,27 @@ ratified:
         the lapse the third deferral describes. As its own mapping, this date is judged on its own
         keys, and it goes red on 2026-09-18 if nothing is recorded here.
       revisit: 2026-09-17
+      revisit_outcome: >-
+        ANSWERED 2026-09-17 (Steve, /daily-priority). THE BLOCKER IS CLEARED AND THE DEFERRAL
+        REASON NO LONGER HOLDS. Measured 2026-09-17, not recalled: `npm run verify:dogfood`
+        reports READY — 2 real owner accounts, 1 vault item, 1 recipient, 1 verifier, 1 access
+        rule, 1 release trigger — where the third deferral recorded NOT READY with five pieces
+        missing on 08-29. `invite:cohort` now has something real to invite people into, which is
+        the exact condition every previous entry said it was waiting for.
+        ⚠️ WHAT HAS STILL NOT HAPPENED, measured the same day: `.relay-cohort.json` is still the
+        2026-08-18 18:17 file with ONE person in it and is still UNTRACKED (`git log --` is
+        empty), and `.relay-cohort-codes.json` STILL DOES NOT EXIST — so `invite:cohort --commit`
+        has never run and no cohort invitation has ever been issued. Phase 0 claim conversion
+        remains N = 0, unchanged since 2026-08-12.
+        THE RULING: the send is Steve's and is not deferred — it issues real invitations to real
+        people, so it is not Claude's to run. No fifth date is set, deliberately: a date was the
+        wrong instrument each of the last three times, and the honest next state is the command,
+        not a calendar entry. If a wait is wanted it needs a NEW reason recorded here, because the
+        old one is spent.
+      closed: 2026-09-17
+      closed_by: >-
+        Blocker cleared and recorded. The entry existed to stop a lapsing revisit and to force A0;
+        both happened. The cohort send itself lives on ROADMAP Sprint 1 row 1.7 (A3.1), not here.
 
 # Per-journey build state — THE one authoritative record, added 2026-08-13.
 #
@@ -2698,6 +2719,42 @@ deferred:
       Moved from 2026-09-12, deliberately NOT answered: the circle is real but the verifier has not
       claimed, and an acknowledgement key would silence this entry for good. 09-17 is the end of
       Sprint 1, when beta-ready is due. If the verifier is not `confirmed` by then, that is the finding.
+    sprint_1_finding_recorded_2026_09_17: >-
+      THE FINDING, exactly as this entry predicted it. Measured 2026-09-17 via `npm run beta:status`
+      (read-only, .env.ro), not recalled: the verifier is `invited` with "code issued (owner
+      channel)", has NOT opened the claim page and has NOT claimed; the recipient is in the same
+      state. The emergency trigger reads ARMED · 0/1 confirmations, so quorum is still
+      unsatisfiable and M = 0 against N = 1 — unchanged since the codes were handed over on 09-10.
+      Clause (a) is NOT met at the end of Sprint 1. That is the finding, and it is recorded rather
+      than deferred, because the date was set to produce exactly this answer.
+      ⚠️ WHAT THE MEASUREMENT ALSO SHOWS, and it is the substantive part: seven days after the
+      codes were handed over through the OWNER channel, neither person has opened the claim page.
+      A code issued "I will tell them myself" leaves no evidence the human was ever actually
+      reached — `beta:status` can only say the code exists, never that anybody saw it. So the open
+      question is not whether the verifier is slow; it is whether he was ever asked. That is a
+      person-to-person act and it is Steve's.
+      ✅ Clause (b) remains live-proven on both surfaces (clause_b_built_2026_09_10) and is visibly
+      doing its job in this very reading: the script separated "code issued (owner channel)" from
+      "claimed", which is the distinction whose absence hid this gap for two days in August.
+    sprint_2_date_2026_09_17:
+      decision: "Revisit clause (a) at 2026-09-24. Steve, /daily-priority 2026-09-17."
+      why_this_date: >-
+        09-24 is the end of the Sprint 2 owner-write window fixed by the 09-13 ladder ruling
+        (ratified.sitting-d2-2026-09-13.gp_u9_ladder_window, option (a)): all owner writes happen
+        09-17 -> 09-24, then a quiet window with no owner sign-in or write while the reminder
+        ladder fires. The verifier claiming is itself a write inside that window, so 09-24 is the
+        last date this can be answered without disturbing the proof that follows it.
+      the_narrowed_question: >-
+        Not "has the verifier claimed" but "was he ever asked". The 09-17 measurement shows a code
+        issued through the owner channel and a claim page never opened, and `beta:status` cannot
+        tell those two apart. Answering it needs Steve to confirm the handover reached the human.
+      why_it_is_nested: >-
+        `sprint_1_finding_recorded_2026_09_17` sits at the top level of this entry and matches the
+        guard's acknowledgement pattern, which answers EVERY passed date on the entry it sits on.
+        A `revisit: 2026-09-24` written beside it would therefore be silenced on the day it was
+        written -- the same trap `beta-cohort-deferred-four-days.fourth_deferral_2026_09_10`
+        documents and nests to avoid. As its own mapping this date is judged on its own keys.
+      revisit: 2026-09-24
   - id: secret-kinds-declaration-is-opt-in-by-discovery      # "D3"
     owner: claude
     opened: 2026-08-18
