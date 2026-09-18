@@ -6479,6 +6479,31 @@ deferred:
       .sitting_e_scheduled): this read, the two Stripe dashboard reads, the 08-17 DMARC download,
       the Gmail filter, and the GitHub validity-checks toggle. This date rings on 09-20 if none of
       it is recorded; answer it with `revisit_outcome:`.
+    revisit_outcome: >-
+      DEFERRED to 2026-09-23 by Steve, 2026-09-17. Sitting E and its five reads move to Wednesday
+      together; this is a dated decision, not a lapse, and it is recorded here so 09-20 does not
+      ring on silence.
+      🔴 AND THERE IS A CONTRADICTION IN THIS FILE TO RESOLVE FIRST, which is most of why Wednesday
+      is cheap. `registrar_read_2026_09_13` (above) says the billing page reads "No payment method
+      on file", both slots empty — while `ratified.sitting-d2-2026-09-13.walkthrough_5_card` says
+      "card added; expiry 01/2027 - BEFORE the 2027-07-08 renewal", with its own revisit 2026-12-31
+      to replace it. Both were written on 2026-09-13. Either the card was added AFTER the registrar
+      read and clause 1 is already met, or the card went somewhere other than the registrar's
+      billing page and it is not. Nothing on this machine can tell them apart: the registrar
+      dashboard needs Steve's session, and Claude never enters payment details.
+      SO WEDNESDAY IS ONE READ, NOT AN INVESTIGATION: open the registrar billing page, and if a
+      non-expired card is on file, close clause 1 and say which of the two records was stale.
+      Until then this entry stays OPEN on its own terms — auto-renew with no card is a renewal that
+      fails on the day, and every custodial promise this product makes fails with it.
+    sprint_2_date_2026_09_17:
+      decision: "Sitting E and this read move to 2026-09-23. Steve, 2026-09-17."
+      why_it_is_nested: >-
+        `revisit_outcome` above sits at the top level of this entry and matches the guard's
+        acknowledgement pattern, which answers EVERY passed date on the entry it sits on. A
+        `revisit: 2026-09-23` written beside it would be silenced on the day it was written — the
+        trap `beta-cohort-deferred-four-days.fourth_deferral_2026_09_10` documents. As its own
+        mapping this date is judged on its own keys and rings 2026-09-24 if unanswered.
+      revisit: 2026-09-23
     owner: steve
     opened: 2026-08-28
     what: >-
@@ -7177,3 +7202,40 @@ deferred:
     closed_by: >-
       Revision 2 of the plan, same day: section Q logs all fifty findings; the pack no longer lists the
       five; the ladder entry's `ends_when` no longer asserts a date.
+  - id: the-delivery-webhook-monitor-has-gone-mute                 # NEW 2026-09-17
+    owner: steve                        # the fix touches grants; see the prohibition below
+    opened: 2026-09-17
+    what: >-
+      `.github/workflows/delivery-webhook-monitor.yml` has FAILED every scheduled run since
+      2026-09-15 (runs 34975823071, 35102391965, 35227278578). It is not silent and it is not
+      flaky: it is reporting a real state, daily, and nobody had read it for three days.
+    measured_2026_09_17: >-
+      Live GET https://relaystandby.com/api/health/delivery-webhook returned 503 with:
+      everHeard=true, totalEvents=54, lastEventAt=2026-09-14T13:09:42Z (ageSeconds 312161),
+      ripeSends=4, ripeSendsHeard=4, refusedSends=0, systemicRefusals=0, writerProven=true,
+      orphanEvents=3, healthy=false.
+      Verdict is `mute`, in the endpoint's own vocabulary: three delivery events arrived for
+      messages with NO send record, so `recordSendAttempt` has stopped writing.
+      ⚠️ WHY THIS ONE MATTERS MORE THAN ITS SEVERITY SUGGESTS, in the endpoint's own words:
+      recordSendAttempt "swallows its own failures by design, and without those rows this check
+      silently reverts to reporting healthy no matter what happens to the mail." So the failure
+      mode being watched for is the watchdog going quiet — and `refusedSends=0` with
+      `ripeSendsHeard=4` means mail is NOT currently being refused. This is an instrumentation
+      outage, not (yet) a delivery outage. Do not conflate them.
+    🔴 the_prohibition_that_binds_here: >-
+      The endpoint's own remediation text points at "a privilege or schema change on
+      email_send_attempts" and cites migration 032. **Steve's standing memory rule is: do NOT touch
+      `email_send_attempts` grants** (`feedback-relay-heartbeat-mutes-its-own-delivery-switch`).
+      The obvious fix is the prohibited one. That is exactly why this is Steve's and not Claude's,
+      and why no grant was run on 2026-09-17 when it was found.
+    deferred_2026_09_17: >-
+      Steve deferred this to 2026-09-23 with the rest of Wednesday's batch, knowing it is three
+      days old. Recorded rather than left to the workflow's own red, because a red monitor nobody
+      reads is the failure this register exists to name — it had already been red for three days
+      before anyone looked, and it was found by reading Gmail, not by anyone watching CI.
+    ends_when: >-
+      `orphanEvents` is 0 and /api/health/delivery-webhook returns 200, with the cause of the
+      write stoppage recorded here — OR the check is deliberately re-scoped, in writing, with what
+      replaces it. "It went green again" without a cause is not an answer for a check whose whole
+      subject is silent failure.
+    revisit: 2026-09-23
