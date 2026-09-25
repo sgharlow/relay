@@ -2755,6 +2755,13 @@ deferred:
         written -- the same trap `beta-cohort-deferred-four-days.fourth_deferral_2026_09_10`
         documents and nests to avoid. As its own mapping this date is judged on its own keys.
       revisit: 2026-09-24
+      revisited: >-
+        ANSWERED 2026-09-24 (Steve, /daily-priority): the verifier WAS told in person — the
+        handover reached the human, not only the owner channel. Clause (a)'s narrowed question
+        ("was he ever asked") closes YES. The claim itself is still open on his side; that is now
+        his act, not an unasked question, and it is judged by the ladder proof that follows the
+        09-24 owner-write close, not by a new date here. Date of the conversation not recorded by
+        Steve; recorded here on the day he confirmed it.
   - id: secret-kinds-declaration-is-opt-in-by-discovery      # "D3"
     owner: claude
     opened: 2026-08-18
@@ -6504,6 +6511,15 @@ deferred:
         trap `beta-cohort-deferred-four-days.fourth_deferral_2026_09_10` documents. As its own
         mapping this date is judged on its own keys and rings 2026-09-24 if unanswered.
       revisit: 2026-09-23
+      revisited: >-
+        ANSWERED 2026-09-24 (Steve, /daily-priority): a non-expired card IS on file at the
+        Cloudflare registrar. `registrar_read_2026_09_13` was the stale record — the card was
+        added after that read, as `ratified.sitting-d2-2026-09-13.walkthrough_5_card` says
+        (expiry 01/2027). Clause 1 of ends_when is MET and the expiry is recorded in
+        `card_confirmed_2026_09_24` below. The entry stays OPEN on the alarm clause only; the
+        2026-12-31 replace-card revisit in walkthrough_5_card is unchanged. Sitting E's other
+        reads are not answered by this line.
+    card_confirmed_2026_09_24: "auto-renew ON with a card on file, expiry 01/2027 (Steve, 2026-09-24); clause 1 met"
     owner: steve
     opened: 2026-08-28
     what: >-
@@ -7238,4 +7254,9 @@ deferred:
       write stoppage recorded here — OR the check is deliberately re-scoped, in writing, with what
       replaces it. "It went green again" without a cause is not an answer for a check whose whole
       subject is silent failure.
-    revisit: 2026-09-23
+    deferred_2026_09_24: >-
+      Steve, /daily-priority 2026-09-24: KEEP WATCHING, no action. The obvious fix touches
+      `email_send_attempts` grants and stays prohibited; nothing was run. Moved to 2026-10-01 so
+      the register carries the date rather than the workflow's daily red. The measured state is
+      unchanged from 2026-09-17: an instrumentation outage, not a delivery outage.
+    revisit: 2026-10-01
