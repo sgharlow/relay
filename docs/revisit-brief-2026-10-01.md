@@ -54,6 +54,15 @@ does, `lib/notify/operator-alert.ts:53`), or **(b)** operator-alert mail is excl
 count and `attributableToRelay()`'s invariant is corrected. Options (b)/(c) above are withdrawn; the
 grants prohibition stands and was never the issue.
 
+### Resolved 2026-09-25 late evening — nothing left for 10-01 on this item
+
+Deeper cause found and fixed the same night (PR #107): the 9-03 fix had never *run* — under bare
+Node the alert's ledger import failed with ERR_MODULE_NOT_FOUND (`.heartbeat/task.log`), so every
+alert was an orphan. The heartbeat now runs under tsx (pinned by a runtime test), and Steve
+approved a 5-gate backfill of the three 9-14 attempt rows (dry-run in a rolled-back transaction
+first, then commit). **Live: `/api/health/delivery-webhook` → 200, orphanEvents 0, ripeSends 7/7.**
+The register entry is closed; item 1 of this brief is answered.
+
 ---
 
 ## 2. `ratified.beta-free-release` (E4.2) — revisit "at every /daily-priority from 2026-10-01"; decision_due 2026-11-15
