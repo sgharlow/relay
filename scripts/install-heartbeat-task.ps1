@@ -45,7 +45,10 @@ if (-not (Test-Path (Join-Path $repo 'scripts\heartbeat-local.ts'))) {
 #
 # The task can read a value from three places: a User-scope variable, a
 # Machine-scope variable, or a line in the repo's gitignored .env.local
-# (`npm run heartbeat` starts node with --env-file-if-exists=.env.local).
+# (`npm run heartbeat` starts tsx with --env-file-if-exists=.env.local — tsx, not bare node, since
+#  2026-09-25: under Node's own loader the ledger write behind the alert failed with
+#  ERR_MODULE_NOT_FOUND on an extensionless import and every alert became an orphan delivery event;
+#  lib/ops/heartbeat-ledger-runtime.test.ts pins the runner).
 function Test-SchedulerVisible([string]$Name) {
   if ([Environment]::GetEnvironmentVariable($Name, 'User')) { return $true }
   if ([Environment]::GetEnvironmentVariable($Name, 'Machine')) { return $true }
