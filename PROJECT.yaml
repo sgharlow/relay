@@ -886,7 +886,7 @@ ratified:
       g4_restore_drill_approved_and_run: { ruling: "Steve approved the scratch-cluster spend in-session; Claude ran all four phases by script.", executed: "gates.d3-restore-drill.met - restore 154 s, one real item decrypted through the product's own unwrap route, scratch cluster gone, preflight green after" }
       g4_failover_r14_2: { ruling: "DEFER with a trigger (next drill 2026-12-13 or G1 pass).", executed: "the-failover-has-not-been-re-exercised-since-h0 CLOSED on both halves" }
       g4_dmarc_c3: { ruling: "PARK the p=none -> quarantine step-up until Sitting E's 08-17 report is read (2026-09-19); Steve changes the record in the Cloudflare UI (no Cloudflare token is on this machine, and DNS is the trap list's kind of change).", obliges: "the C3 row in the gap plan carries the date; no register revisit of its own - it rides Sitting E's" }
-      g4_admin_key_deletion: { ruling: "Delete the INACTIVE old admin key and the .bak on 2026-09-27 if nothing missed it.", executed: "revisit: 2026-09-27 on no-secret-rotation-cadence-and-nothing-rotated" }
+      g4_admin_key_deletion: { ruling: "Delete the INACTIVE old admin key and the .bak on 2026-09-27 if nothing missed it.", executed: "DONE 2026-09-25 on evidence (Steve pre-authorised): old key deleted, .bak deleted, profile verified — see no-secret-rotation-cadence-and-nothing-rotated.revisit_outcome" }
       # -- close-out sweep, 2026-09-13 evening, under "close out all autonomous items" --
       closeout_validity_checks: { attempted: "gh api PATCH repos/sgharlow/relay security_and_analysis.secret_scanning_validity_checks=enabled returns 200 and the setting reads `disabled` after - not API-settable on this plan/repo; stays Steve's UI toggle (Settings -> Code security), co-pilot" }
       closeout_registrar_read: { read: "the-domain-can-lapse-without-anyone-noticing.registrar_read_2026_09_13 - auto-renew ON, expires 2027-08-07, NO PAYMENT METHOD ON FILE" }
@@ -6422,6 +6422,16 @@ deferred:
       are deleted on 2026-09-27 if nothing has missed the old key in the fortnight (the walls,
       drill:preflight and the backup wall all run on the new one daily). Rings 09-28 if unanswered;
       answer with `revisit_outcome:`.
+    revisit_outcome: >-
+      DONE 2026-09-25, two days early, pre-authorised by Steve (/daily-priority AskUserQuestion:
+      "DO on evidence"). Evidence read live first: user autospecai had exactly two keys — the
+      new one (Active, created 2026-09-13T17:15:12Z, last used 2026-09-17 by kms, and the one in
+      the [autospecai] profile) and the old one (Inactive, created 2025-06-29, last used
+      2026-09-13T17:15Z by iam, i.e. the CreateAccessKey call of the rotation itself, nothing
+      after). Guarded script: DeleteAccessKey on the inactive id, ListAccessKeys after = 1 Active;
+      ~/.aws/credentials.bak-2026-09-13 deleted; `aws sts get-caller-identity` on the profile
+      still answers. This entry is now CLOSED; the 12-13 cadence revisit lives on
+      ratified.sitting-d2-2026-09-13.copilot2_rotation as recorded above.
     cadence_ratified_2026_09_13: >-
       RULED by Steve (AskUserQuestion): "NONE UNTIL FIRST CUSTOMER", with a dated revisit of
       2026-12-13 (the next restore drill's ceiling, so the two admin sessions coincide). The
