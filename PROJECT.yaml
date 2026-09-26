@@ -10,7 +10,12 @@ name: relay
 # work to production and organises it into sprints. (This comment read "No standalone ROADMAP
 # exists" until that date; the sentence was true when written and is corrected in the same
 # commit that made it false.)
-authoritative_plan: specs/Relay_H0_Build_Spec_v2.md
+authoritative_plan: PROJECT.yaml   # RULED 2026-09-25 (Steve, /daily-priority AskUserQuestion, on the 9-24
+#   roadmap-lint finding that three documents each claimed authority): THIS FILE is the plan of record.
+#   specs/Relay_H0_Build_Spec_v2.md is the June 2026 STRATEGY RECORD (read with its "SUPERSEDED IN PART"
+#   header); ROADMAP.md is the operational sequencing; .kiro/specs/relay-h0-mvp/tasks.md is the finished
+#   12-day build record. All three are subsidiary: where any of them disagrees with this file, this file
+#   wins and the other document has a defect. (Was: specs/Relay_H0_Build_Spec_v2.md, 2026-08-xx.)
 
 # The operational roadmap: the full remaining-work inventory sequenced into sprints — calendar
 # sprints for the demand lane and ops cadence, event-gated sprints for everything the demand
