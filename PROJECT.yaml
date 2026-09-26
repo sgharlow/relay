@@ -7269,4 +7269,22 @@ deferred:
       `email_send_attempts` grants and stays prohibited; nothing was run. Moved to 2026-10-01 so
       the register carries the date rather than the workflow's daily red. The measured state is
       unchanged from 2026-09-17: an instrumentation outage, not a delivery outage.
+    diagnosed_2026_09_25: >-
+      READ-ONLY diagnosis (Steve: "DO read-only now", /daily-priority AskUserQuestion). As relay_ro:
+      email_send_attempts 8 rows (first 2026-08-16, last 2026-09-13 21:54Z); email_delivery_events 54
+      rows (last 2026-09-14 13:09:42Z); has_table_privilege(relay_app, email_send_attempts, INSERT)
+      = TRUE; verify:roles green in both regions. The 3 orphans are email.delivered events to a
+      gmail.com address at 2026-09-14 12:39:41Z, 12:54:40Z and 13:09:42Z. Gmail holds exactly three
+      "[relay] heartbeat: delivery FAILING" mails from hello@relaystandby.com at 12:39:38Z, 12:54:38Z
+      and 13:09:40Z the same day (thread 1a09fee24b3548db); each event lands two seconds after its
+      alert. So this is NOT an instrumentation outage and NOT a grants problem. It is the
+      false-positive class recorded 2026-09-03 (feedback-relay-heartbeat-mutes-its-own-delivery-
+      switch): scripts/heartbeat-local.ts sends its alert by raw fetch, bypassing recordSendAttempt,
+      so its own mail becomes orphans and trips mute; and it loops, because the heartbeat alerted
+      BECAUSE the monitor read mute, and each alert added an orphan. Nothing was changed: no GRANT,
+      no DDL. The 10-01 question is the boundary fix, not the grants: (a) heartbeat-local.ts
+      records its own attempt (lib/notify/operator-alert.ts:53 already does for in-app operator
+      alerts), or (b) operator-alert mail is excluded from the orphan count in webhook-health.ts and
+      attributableToRelay()'s stated invariant is corrected. Either closes this entry once
+      /api/health/delivery-webhook reads 200 with this cause on record.
     revisit: 2026-10-01

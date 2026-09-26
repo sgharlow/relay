@@ -40,6 +40,20 @@ is the failure the register exists to name.
 
 Recommendation: **(a) first, same day**, because both (b) and (c) are guesses without the cause.
 
+### Diagnosed 2026-09-25, read-only, after this brief was written
+
+Done as relay_ro the same evening: `email_send_attempts` 8 rows (last 2026-09-13 21:54Z); `relay_app`
+holds INSERT on it (`has_table_privilege` true; `verify:roles` green in both regions). **The 3 orphans
+are the three "[relay] heartbeat: delivery FAILING" mails of 2026-09-14** (12:39, 12:54, 13:09Z; Gmail
+thread `1a09fee24b3548db`), each delivery event two seconds after its alert. This is the false-positive
+class recorded 2026-09-03: `scripts/heartbeat-local.ts` sends by raw fetch and bypasses
+`recordSendAttempt`, so its own mail trips `mute`; and the heartbeat alerts *because* the monitor reads
+mute, so it loops. **Not a grants problem, not an instrumentation outage.** The 10-01 question is now
+only the boundary fix: **(a)** the heartbeat records its own attempt (the in-app operator alert already
+does, `lib/notify/operator-alert.ts:53`), or **(b)** operator-alert mail is excluded from the orphan
+count and `attributableToRelay()`'s invariant is corrected. Options (b)/(c) above are withdrawn; the
+grants prohibition stands and was never the issue.
+
 ---
 
 ## 2. `ratified.beta-free-release` (E4.2) — revisit "at every /daily-priority from 2026-10-01"; decision_due 2026-11-15
