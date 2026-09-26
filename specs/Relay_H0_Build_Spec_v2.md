@@ -2,7 +2,9 @@
 
 > ## ⛔ SUPERSEDED IN PART — sections listed here are NOT the plan (2026-08-21)
 >
-> `PROJECT.yaml` names this file `authoritative_plan`, so this is where a reader starts. That makes
+> `PROJECT.yaml` named this file `authoritative_plan` until 2026-09-25; since then `PROJECT.yaml` is the
+> plan of record and this file is the June 2026 strategy RECORD, subsidiary to it. A reader starts at
+> `PROJECT.yaml`. This file's silences are still expensive: that makes
 > its silences expensive: **everything below reads as live plan, and some of it describes a
 > capability the product now refuses at the trust boundary.** Nothing in the body has been rewritten
 > — the sections are the record of what was intended in June 2026 — but a reader must arrive knowing
