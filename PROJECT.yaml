@@ -278,6 +278,14 @@ gates:
     kill: "< 0.5% after 100+ qualified -> park D2C; B2B2C-only or archive  # ratified 2026-07-01"
     owner: steve
     due: 2026-10-02
+    outcome_at_due: >-
+      SUPERSEDED — no separate outcome is owed on 2026-10-02. Recorded 2026-09-26 on Steve's ruling
+      (/daily-priority AskUserQuestion, "record now"), ahead of the date on purpose: the instrument
+      this gate measured was retired 2026-08-16 (paid traffic could not be bought — see
+      instrument_retired below), and the question it asked ("will caregivers pay at a real price,
+      having seen the number") lives on g1-arms-length-demand (due 2026-12-31, editorial lane; angle 3
+      first pass docs/g1-angle3-draft-2026-09-25.md). The ratified numbers above stay as the record
+      of what was decided on 2026-07-01 and are not to be read as live thresholds.
     # 🔴 THE INSTRUMENT IS RETIRED AND THE NUMBERS ABOVE NO LONGER MEAN WHAT THEY SAY.
     # Left standing rather than edited because they are the ratified record of what was
     # decided on 2026-07-01, and overwriting a ratified threshold in place is the drift
