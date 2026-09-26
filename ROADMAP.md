@@ -5,7 +5,8 @@ Steve asked *"assess the gap between the deployed product and the fully-specifie
 without adding functionality"* and then *"QA the plan"*. The answer lives in
 **`docs/gap-closure-plan-2026-09-12.md` (revision 2, after a same-day adversarial QA that found fifty
 defects in revision 1, eight of them blockers — its §Q is the log)**. That file is a *derived view*;
-this file and `PROJECT.yaml` stay authoritative, and this revision absorbs what it measured. **Sprint
+`PROJECT.yaml` is authoritative and this file is its operational sequencing (ruled 2026-09-25; this
+sentence read "this file and PROJECT.yaml stay authoritative" until then), and this revision absorbs what it measured. **Sprint
 G0 of that plan ran the same day** (PRs #75–#78); what it found, and what it changed here, is below.
 
 | What this revision measured or changed on 2026-09-12 | Evidence |
