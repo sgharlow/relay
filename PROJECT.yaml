@@ -7287,4 +7287,40 @@ deferred:
       alerts), or (b) operator-alert mail is excluded from the orphan count in webhook-health.ts and
       attributableToRelay()'s stated invariant is corrected. Either closes this entry once
       /api/health/delivery-webhook reads 200 with this cause on record.
+    root_cause_2026_09_25: >-
+      DEEPER THAN THE 9-03 CLASS, found the same evening (Steve: "(a) heartbeat records its attempt").
+      The 9-03 fix (0b7cd43) already routed the heartbeat through sendOperatorAlert -> recordSendAttempt;
+      it had simply never executed where it mattered. .heartbeat/task.log, 2026-09-14 12:39Z/12:54Z/
+      13:09Z: "[heartbeat] alert sent but not recorded: Error [ERR_MODULE_NOT_FOUND]: Cannot find module
+      '.../lib/notify/delivery-events' imported from .../lib/notify/operator-alert.ts". The scheduled task
+      ran `node … scripts/heartbeat-local.ts` (Node 22, native type stripping), and Node's loader needs
+      an extension on relative ESM imports; the dynamic import('./delivery-events') and delivery-events'
+      own import('../db/connection') are extensionless, which vitest and Next resolve and bare node does
+      not. So every real alert was sent and never recorded — three alerts, three orphans, mute for
+      eleven days. FIX (same PR): `npm run heartbeat` runs under tsx like every other script
+      (package.json), pinned by lib/ops/heartbeat-ledger-runtime.test.ts, which spawns the runner the
+      script names and asserts the ledger import resolves. The scheduled task invokes `npm run
+      heartbeat`, so it picks the change up on its next 15-minute run. STILL OPEN after the fix: the
+      three 9-14 orphans have no upper time bound in the orphan query, so the monitor stays 503 until
+      those three provider ids get their attempt rows (a 3-row backfill on production, Steve's call,
+      not run here) or the query is bounded; that is the remaining 10-01 question.
+    backfilled_2026_09_25: >-
+      RUN, on Steve's explicit approval (AskUserQuestion: "Yes: dry-run then commit"), under the
+      5-gate: problem = this entry; snapshot = attempts count 8 and the three provider ids
+      d2779023-cbbb-4a58-910d-e1e30f274344, f2642bbd-f8bb-47bb-93bf-0a0d87cde2a1,
+      ac6cbaf5-9b5b-4371-8a6d-7eb0fa4360c7 (the 9-14 12:39/12:54/13:09Z heartbeat alerts);
+      isolated test = the same three INSERTs inside BEGIN…ROLLBACK as admin: inside the
+      transaction attempts=11 / orphans=0, after rollback 8 / 3 — proven, nothing written; then
+      COMMIT: attempts 8 -> 11, orphans 3 -> 0, occurred_at = each event time minus two seconds so
+      history reads true. Live verify: GET /api/health/delivery-webhook -> 200
+      {healthy:true, orphanEvents:0, ripeSends:7, ripeSendsHeard:7}. Rollback if ever needed:
+      DELETE FROM email_send_attempts WHERE provider_id IN (those three). No GRANT, no DDL; the
+      email_send_attempts grants prohibition was never touched and never needed to be.
     revisit: 2026-10-01
+    revisit_outcome: >-
+      Answered early, 2026-09-25: both halves of ends_when are met — orphanEvents is 0 and the
+      endpoint returns 200, with the cause recorded above (bare-node module resolution in the
+      heartbeat's ledger write, not grants) and the fix in PR #107 (tsx runner + runtime test).
+      The monitor is a real instrument again; the next heartbeat alert will be recorded.
+    closed: 2026-09-25
+    closed_by: "PR #107 (runner fix + test) plus the approved 3-row backfill; endpoint 200 live-verified 2026-09-26 06:1xZ."
