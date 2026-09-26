@@ -114,7 +114,8 @@ check-in. He built it after mapping his own family's chain and finding the same 
 - [ ] Name, postal address, current telephone number and email in the submission (their rule).
 - [ ] Interest disclosed in the bio, product absent from the body: the piece stands with the last
       paragraph deleted.
-- [ ] Before it goes live: ratify `docs/g1-editorial-threshold-proposal.md`, declare `ed-caregivercom`
+- [x] Thresholds: already RATIFIED 2026-08-20 (`ratified.g1-editorial-thresholds-ratified`), re-confirmed 2026-09-26.
+- [ ] Before it goes live: declare `ed-caregivercom`
       in `GATE_LANES` in the same commit as the placement, run `npm run verify:funnel` and
       `npm run flight:snapshot`.
 - [ ] Log the placement on `g1-arms-length-demand` in `PROJECT.yaml`.

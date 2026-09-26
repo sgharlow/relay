@@ -127,7 +127,10 @@ whole article about the problem. But it is a **different** signal, so record it 
 `g1-flight-log.md` already computes per-lane ratios (ratio #4). Do not blend editorial and paid into
 one headline number without saying so.
 
-**The editorial thresholds are drafted and await ratification:**
+**The editorial thresholds are RATIFIED (2026-08-20, Steve, as proposed; re-confirmed 2026-09-26)** — this
+paragraph read "drafted and await ratification" until 2026-09-26, two weeks after the register recorded
+`ratified.g1-editorial-thresholds-ratified`. The rest of the paragraph is kept as the record of what was
+proposed; the binding numbers live under `gates.g1-arms-length-demand.editorial_instrument`:
 `docs/g1-editorial-threshold-proposal.md` (2026-08-18) proposes pass ≥ 6% at N ≥ 50 cumulative,
 kill < 2% at N ≥ 150, no-read floor below N = 50 — with the reasoning for each number. Per the gate
 block in `PROJECT.yaml`, **Steve must ratify (or amend) it BEFORE the first placement goes live**,
