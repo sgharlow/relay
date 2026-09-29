@@ -26,7 +26,24 @@ log read as though nothing was sent.
 | 1 | **2026-09-01** | **NAC Innovation Collaborative** | web form, `caregiving.org/innovation/innovation-collaborative/` — re-verified live the same evening | The A6.2 §3 eligibility question, sent by Steve under his own identity (Claude prefilled the form; Steve read it and pressed Submit). Asks two things only: is a very small independent product eligible, and what does participation cost. Newsletter consent deliberately left unchecked. Submission confirmed on-screen: *"Thank you for your submission; if you have included a message, a National Alliance for Caregiving representative will follow up with you shortly."* | — *awaiting* | — |
 | 2 | **2026-09-01** | **Homethrive** | ✉️ `contact@homethrive.com` — the footer address; the route recorded until today (`/contact/`) 404s and the only form is `/demo/`, buyer-qualification with no message field | The A6.2 §1 approach, sent by Steve from his own mailbox after a voice pass. Asks for twenty minutes, not a pilot. Cites the **Healthee** integration as the evaluated-a-third-party precedent; the Bright Horizons claim is deliberately absent (A6.1 — not primary-sourced) | — *awaiting* | — |
 | 3 | **2026-09-01** | **Wellthy** | ✉️ `partnerships@wellthy.com` — dedicated partnerships address found today; better than the demo route previously recorded, which lands in sales | The A6.2 §2 approach, sent by Steve after Homethrive so the two companies are not simultaneous. Leads with the access gap behind care navigation; states plainly it is not an estate or legal product | — *awaiting* | — |
-| — | 2026-09-22 | NAC · Homethrive · Wellthy | — | **follow-up rows owed if nothing has come back by this date** (3 weeks from send) | | |
+| — | 2026-09-22 | NAC · Homethrive · Wellthy | — | **follow-up rows owed if nothing has come back by this date** (3 weeks from send) | Nothing had come back. The rows were not written on the day; they are rows 4–7, written 2026-09-28 | |
+| 4 | **2026-09-28** | **NAC Innovation Collaborative** | follow-up to row 1 | 🔴 **Follow-up NOT sent.** Checked in Gmail (read-only) 2026-09-28: no outbound mail to NAC since the 9-01 form. The form sends no email copy, so row 1's on-screen confirmation is the only record of the submission. A second form submission would leave no trace in Gmail either, so Steve confirms none was made | **No reply.** Nothing from NAC in any Gmail folder (spam and trash included) since 2026-08-30, although the form said a representative "will follow up with you shortly" | No |
+| 5 | **2026-09-28** | **Homethrive** | follow-up to row 2 · Gmail thread `1a06086ff863da5e` | 🔴 **Follow-up NOT sent.** The thread holds only the original message, sent 2026-09-02 05:22:35Z (= 2026-09-01 22:22 MST) | **No reply, no bounce.** Nothing from Homethrive in any folder since 2026-08-30 | No |
+| 6 | **2026-09-28** | **Wellthy** | follow-up to row 3 · Gmail thread `1a060871c741484d` | 🔴 **Follow-up NOT sent.** The thread holds only the original message, sent 2026-09-02 05:21:12Z (= 2026-09-01 22:21 MST). ⚠️ Gmail shows Wellthy went out **about 80 seconds BEFORE** Homethrive, not after it as row 3 says. No consequence found; recorded for accuracy | **No reply, no bounce.** Nothing from Wellthy in any folder since 2026-08-30 | No |
+| 7 | **2026-09-28** | **caregiver.com** *(G1 editorial, NOT a G3 partner: does not count toward meetings; the primary record is `docs/g1-flight-log.md` §"THE SEND")* | Gmail thread `1a060551e3076ae6` | 🔴 **Follow-up NOT sent.** The op-ed went 2026-09-02 04:16:24Z (= 2026-09-01 21:16 MST); the thread holds only that message. Its own follow-up point is the acceptance window closing ~2026-09-30, and `ROADMAP.md` row 2.6 requires re-verifying the outlet's submission guidelines before any follow-up | **No reply, no bounce.** Nothing from caregiver.com in any folder since 2026-08-30 | n/a |
+
+---
+
+## Status, 2026-09-28: three sent, zero replies, zero follow-ups
+
+| | |
+|---|---|
+| Replies | **0 of 3** G3 contacts (and 0 from caregiver.com, row 7) |
+| Follow-ups sent | **0**. All three were due 2026-09-22; none had gone out by 2026-09-28 |
+| Meetings taken | **0**. Kill date 2026-11-30 |
+
+Source: Gmail, read-only, 2026-09-28 (threads cited in rows 5–7; NAC has no thread). Follow-ups
+are Steve's sends by design (A6.3); nothing was drafted with this entry.
 
 ---
 

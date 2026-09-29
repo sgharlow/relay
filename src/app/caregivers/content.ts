@@ -46,12 +46,16 @@ export const HEADLINE = 'Emergency access that closes itself.';
  * than mid-flight: the reversibility lead, the price, the CTA and every exclusion
  * rule are untouched, and no qualified visitor has ever seen either version.
  * `content.test.ts` pins the compliance rule so it cannot regress by a later edit.
+ *
+ * 2026-09-28: the closing sentence was an unverified superlative about competitors.
+ * It now states a property of Relay itself, the same one /security states
+ * ("Every trigger an owner can choose is reversible").
  */
 export const SUBHEAD =
   'A hospital stay can mean a family suddenly needs access to accounts only one person ' +
   'could reach — and needs that access to end when the crisis does. Relay opens exactly ' +
   'what was granted, and seals itself again as soon as that person checks back in. ' +
-  'No rival does the second half.';
+  'Every trigger an owner can choose is reversible.';
 
 export const CTA_LABEL = `Start your family's vault — $${PRICE_YEARLY_USD}/yr`;
 

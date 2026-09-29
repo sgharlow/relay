@@ -1,5 +1,13 @@
 # Angle 3 — first pass, 2026-09-25
 
+> 🔴 **CORRECTED 2026-09-28: this draft was commissioned on a false premise.** It was written
+> because `docs/revisit-brief-2026-10-01.md` said the editorial lane had not moved since 8-18.
+> In fact Steve's own angle-3 piece, "Helping without taking over" (`docs/oped-angle-3-draft.md`),
+> was **sent to caregiver.com on 2026-09-01** (`docs/g1-flight-log.md` §"THE SEND"; Gmail Sent
+> thread `1a060551e3076ae6`), and no reply had arrived as of 2026-09-28. **Do not send this draft
+> to caregiver.com**: it would be a second angle-3 submission to the same editor while the first
+> is unanswered. Keep it as raw material only; any other use is a new ruling.
+
 > **FIRST PASS BY CLAUDE. NOT FOR SUBMISSION AS WRITTEN.** Steve's ruling at the 2026-09-25
 > /daily-priority: "Claude first pass, you rewrite." Every submitted word is Steve's. Rewrite it
 > in your own voice, cut what you would not say, and add the one real story only you have. The

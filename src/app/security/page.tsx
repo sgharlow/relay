@@ -127,7 +127,7 @@ const ARCHITECTURE = [
   },
   {
     k: 'Aurora DSQL, active-active across regions',
-    v: 'The correctness invariant is owned by the database rather than reconstructed in application code, and the data survives the loss of a region.',
+    v: 'The correctness invariant is owned by the database rather than reconstructed in application code. The encrypted records are stored in two regions, but the key that decrypts them is held in us-east-1 only: if that region is impaired, nothing is lost or exposed, but no vault can be opened, from either region, until it recovers.',
   },
 ];
 
