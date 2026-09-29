@@ -39,7 +39,7 @@ describe('G1 caregiver WTP instrument', () => {
     expect(CTA_LABEL).toContain(`$${PRICE_YEARLY_USD}`);
   });
 
-  it('leads with reversibility — the one capability no rival has', () => {
+  it('leads with reversibility — the capability the product is built on', () => {
     const lead = (HEADLINE + ' ' + SUBHEAD).toLowerCase();
     expect(lead).toMatch(/closes itself|seals itself|reversib/);
   });
@@ -372,7 +372,9 @@ describe('landing copy is ad-policy compliant at the destination (§1a)', () => 
 
   it('still leads with reversibility after the rewrite — the positioning is unchanged', () => {
     expect(`${HEADLINE} ${SUBHEAD}`.toLowerCase()).toMatch(/closes itself|seals itself|reversib/);
-    expect(SUBHEAD).toContain('No rival does the second half');
+    expect(SUBHEAD).toContain('Every trigger an owner can choose is reversible');
+    // 2026-09-28: the unverified competitor superlative must not come back.
+    expect(SUBHEAD).not.toMatch(/no rival/i);
   });
 });
 

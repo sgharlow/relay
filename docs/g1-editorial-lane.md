@@ -189,11 +189,15 @@ npx tsx -e "import('./lib/g1/press-kit').then(k => console.log(k.boilerplate(), 
      pitch. AARP also wants links to recent writing samples and *"rarely uses unsolicited ideas"* —
      so it is a **second-round target after a first byline exists**, not the opening move.
 2. Draft angle 3 first — it is the most useful to a reader and the least promotional.
+   ✅ **DONE 2026-08-16/17** — `docs/oped-angle-3-draft.md`, "Helping without taking over".
+   *(Status line added 2026-09-28: this list was never updated after the send, and a brief written
+   from it on 2026-09-25 reported steps 2–5 as not started.)*
 3. **Pitch two outlets — and they are not the two this file started with.** Revised twice on
    2026-08-18: DailyCaring is out (no route), **The Caregiver Space is in**. Do not mass-pitch;
    these are relationships. They want opposite things, so sequence deliberately:
    **(a) caregiver.com** — Word attachment, named editor (`nancy@caregiver.com`), 500–1500 words,
    plus name/address/phone/email. The cheaper first try.
+   ✅ **SENT 2026-09-01 (MST)** — `docs/g1-flight-log.md` §"THE SEND". No reply as of 2026-09-28.
    **(b) The Caregiver Space** — web contact form, no pitch reviewed, journalistic standard, bio
    with links at the end. A piece written for (a) is most of what (b) needs.
 4. On acceptance: declare the `ed-` src in `GATE_LANES`, publish, and log the placement.

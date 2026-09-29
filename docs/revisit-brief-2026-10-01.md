@@ -91,14 +91,41 @@ retired 8-16, never runnable). Its `due: 2026-10-02` passes next week on a gate 
 measures anything. `g1-arms-length-demand` needs ONE arms-length person who pays or states in
 writing they would pay at a seen price; count today: 0.
 
-**The instrument is the editorial lane, and it has not moved since 8-18.** `docs/g1-editorial-lane.md`
+> ⚠️ **CORRECTED 2026-09-28 — the paragraph below was wrong when written.** The editorial lane
+> did move after 8-18: **the angle-3 op-ed was SENT to caregiver.com on 2026-09-01 (MST)**.
+> Evidence: `docs/g1-flight-log.md` §"THE SEND — 2026-09-01 (MST)" (line 365); `ROADMAP.md`
+> Sprint 2 row 2.1 ("SENT 2026-09-02 04:16Z"); Gmail Sent thread `1a060551e3076ae6`, one message,
+> 2026-09-02 04:16Z (= 2026-09-01 21:16 MST), to the caregiver.com named editor, subject
+> *Submission: "Helping without taking over" (~1,000 words)*. That piece IS angle 3: it is
+> `docs/oped-angle-3-draft.md` (drafted 2026-08-16, rebuilt on the real origin story 2026-08-17).
+> The brief was written from `docs/g1-editorial-lane.md` §Sequence, which was never updated after
+> the send. The original text is kept, struck through, so the error stays visible.
+>
+> **State on 2026-09-28, read from Gmail (read-only) and the repo:**
+> - Step 2 (draft angle 3) — DONE 8-16/8-17. Step 3(a) (caregiver.com) — **SENT 2026-09-01**.
+>   Step 3(b) (The Caregiver Space) — deliberately waiting: pitched second, only if caregiver.com
+>   passes (flight log, "What arms next").
+> - Step 5 (instrument pre-flight) — PASSED 2026-08-18 and re-run on send day (flight log).
+> - Step 4 (declare the `ed-` src in `GATE_LANES`) — correctly NOT done: it happens on
+>   acceptance, in the same commit as the placement.
+> - **Reply from caregiver.com: none.** No message from caregiver.com in any folder since
+>   2026-08-30, no bounce, and no follow-up sent (the thread holds only the original send).
+> - Acceptance window per the dossier: ~D+2..4 weeks from 2026-09-01, so it **closes ~2026-09-30**
+>   with silence so far (`ROADMAP.md` dated row: "silence is recorded, not assumed").
+> - 🔴 **Knock-on:** PR #106 (merged 2026-09-26) acted on this paragraph and produced a SECOND
+>   angle-3 draft for caregiver.com, `docs/g1-angle3-draft-2026-09-25.md`. Sending it to the same
+>   editor while the first submission is unanswered would be a duplicate submission. That file now
+>   carries the same correction note.
+
+~~**The instrument is the editorial lane, and it has not moved since 8-18.**~~ `docs/g1-editorial-lane.md`
 §Sequence: step 1 (outlet research) DONE 8-16/8-18 — **caregiver.com first** (named editor, Word
 attachment, 500–1500 words), **The Caregiver Space second** (finished article via web form, "we
 don't review pitches"), Next Avenue closed, AARP is a second-round target and **blacklists
-AI-generated pitches permanently**. Steps 2–5 (draft angle 3, pitch, declare the `ed-` src,
-verify:funnel) are not started. The 12-31 date was derived from "draft ~1 week, pitch ~1 week,
-editor 2–4 weeks, publication 2–6 weeks": a draft that starts mid-October still lands inside the
-window; one that starts in November does not.
+AI-generated pitches permanently**. ~~Steps 2–5 (draft angle 3, pitch, declare the `ed-` src,
+verify:funnel) are not started.~~ *(Wrong — see the correction above.)* The 12-31 date was derived from "draft ~1 week, pitch ~1 week,
+editor 2–4 weeks, publication 2–6 weeks": ~~a draft that starts mid-October still lands inside the
+window; one that starts in November does not.~~ *(The draft and pitch are done; the flight log puts
+publication, if accepted, at ~2026-09-29 .. 11-10, inside the window.)*
 
 **The one question (two parts):**
 - On 10-02, record `g1-caregiver-wtp` as **superseded — outcome tracked on g1-arms-length-demand**
@@ -108,6 +135,17 @@ window; one that starts in November does not.
   a byline is a byline); **(b)** Claude drafts a first pass that Steve rewrites in his own voice
   before any submission; **(c)** park the editorial lane and let B2B2C carry G1 — in which case
   the 12-31 date should be re-derived from the B2B2C path, not left standing.
+
+> ⚠️ **CORRECTED 2026-09-28: the second part rested on the error above.** Angle 3 was already
+> written by Steve and sent on 2026-09-01, so "who writes angle 3" does not arise. (The 9-25 ruling
+> "Claude first pass, you rewrite" was given on this brief's premise; see the knock-on note.) The
+> live question for 10-01 is what to do when caregiver.com's acceptance window closes silent
+> (~09-30). The options already on record: re-verify the outlet's submission guidelines, then one
+> follow-up (`ROADMAP.md` row 2.6: "re-verify the outlet's new submission guidelines before any
+> follow-up"); or record the silence and move the same piece to The Caregiver Space (A2, the
+> flight log's "pitched second, only if this one passes", which needs a ruling on what "passes"
+> means when the answer is silence); or (c) above. The first part (record `g1-caregiver-wtp` as
+> superseded) was answered 2026-09-26 (PR #109).
 
 ---
 
