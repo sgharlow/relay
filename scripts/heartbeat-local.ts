@@ -69,12 +69,30 @@ import { promisify } from 'node:util';
 import { appendFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { sendOperatorAlert } from '../lib/notify/operator-alert.ts';
+import {
+  alertTick,
+  fileStateStore,
+  policyFromEnv,
+  productionKey,
+  type HeartbeatFinding,
+  type TickOutcome,
+} from '../lib/ops/heartbeat-alert.ts';
 
 const run = promisify(execFile);
 
 /** Gitignored, like `.drill-scratch/` — this writes every few minutes. */
 const STATE_DIR = join(process.cwd(), '.heartbeat');
 const LOG = join(STATE_DIR, 'runs.jsonl');
+/**
+ * The open alert, so an unchanged problem is mailed on change and on a reminder
+ * period rather than every 15 minutes (2026-10-08). Rules, defaults and the
+ * fail-open behaviour: `lib/ops/heartbeat-alert.ts`.
+ */
+const ALERT_STATE = join(STATE_DIR, 'alert-state.json');
+const POLICY = policyFromEnv({
+  HEARTBEAT_REMIND_HOURS: process.env.HEARTBEAT_REMIND_HOURS,
+  HEARTBEAT_RECOVERY_HOURS: process.env.HEARTBEAT_RECOVERY_HOURS,
+});
 
 const BASE_URL = process.env.CANARY_BASE_URL?.trim() || 'https://relaystandby.com';
 const REPO = process.env.HEARTBEAT_REPO?.trim() || 'sgharlow/relay';
@@ -90,11 +108,7 @@ const WINDOW_HOURS = Number(process.env.HEARTBEAT_WINDOW_HOURS ?? 6);
  */
 const MIN_RUNS_IN_WINDOW = Number(process.env.HEARTBEAT_MIN_RUNS ?? 1);
 
-interface Finding {
-  half: 'production' | 'delivery';
-  detail: string;
-  consequence: string;
-}
+type Finding = HeartbeatFinding;
 
 /** The address, read WITHOUT the app's non-production gate. See the header. */
 function alertAddress(): string | undefined {
@@ -114,6 +128,7 @@ async function probeProduction(): Promise<Finding | null> {
     const out = `${err.stdout ?? ''}${err.stderr ?? ''}`.trim();
     return {
       half: 'production',
+      key: productionKey(out),
       detail: out.slice(-1500) || `canary exited ${err.code ?? 'non-zero'} with no output`,
       consequence:
         'A behavioural check against production FAILED. This is the half that means customers ' +
@@ -145,6 +160,7 @@ async function probeDelivery(): Promise<Finding | null> {
   if (n >= MIN_RUNS_IN_WINDOW) return null;
   return {
     half: 'delivery',
+    key: 'scheduled-canary-stopped',
     detail: `${n} scheduled canary run(s) in the last ${WINDOW_HOURS}h (need ≥ ${MIN_RUNS_IN_WINDOW})`,
     consequence:
       'GitHub has stopped delivering the scheduled canary entirely. Production may be fine — but ' +
@@ -152,17 +168,11 @@ async function probeDelivery(): Promise<Finding | null> {
   };
 }
 
-async function sendAlert(to: string, findings: Finding[]): Promise<boolean> {
+/** The wire half only. WHAT to send, and WHETHER, is `alertTick`'s (lib/ops/heartbeat-alert.ts). */
+async function sendMail(to: string, subject: string, text: string): Promise<boolean> {
   const key = process.env.RESEND_API_KEY?.trim();
   const from = process.env.RESEND_REPLY_TO_ADDRESS?.trim() || 'relay@relaystandby.com';
   if (!key) return false;
-  const body =
-    `The off-GitHub heartbeat (B12.i) found ${findings.length} problem(s) at ` +
-    `${new Date().toISOString()}.\n\nThis alert was sent by the LOCAL watchdog on the operator's ` +
-    `machine, deliberately outside GitHub Actions, because the GitHub-scheduled canary is being ` +
-    `dropped (~6 runs/day against a designed 96).\n\n` +
-    findings.map((f) => `── ${f.half.toUpperCase()}\n${f.detail}\n\n→ ${f.consequence}`).join('\n\n') +
-    `\n\nProbed: ${BASE_URL}\n`;
   /*
     Sent through `sendOperatorAlert` rather than a bare POST here, so the alert
     lands in `email_send_attempts` like every other message Relay sends. It is
@@ -175,13 +185,16 @@ async function sendAlert(to: string, findings: Finding[]): Promise<boolean> {
     the mail itself provably healthy, and the orphan query has no upper time
     bound: the switch was disarmed permanently, by its own alarm channel.
   */
-  return sendOperatorAlert({
-    apiKey: key,
-    from,
-    to,
-    subject: `[relay] heartbeat: ${findings.map((f) => f.half).join(' + ')} FAILING`,
-    text: body,
-  });
+  return sendOperatorAlert({ apiKey: key, from, to, subject, text });
+}
+
+/** Never throws for a state-file failure; see the module header for why it fails open. */
+function tick(to: string, findings: Finding[], unknownHalves: Finding['half'][] = []): Promise<TickOutcome> {
+  return alertTick(
+    findings,
+    { store: fileStateStore(ALERT_STATE), now: () => new Date(), send: (subject, text) => sendMail(to, subject, text) },
+    { baseUrl: BASE_URL, policy: POLICY, unknownHalves },
+  );
 }
 
 function stamp(record: Record<string, unknown>): void {
@@ -220,7 +233,13 @@ async function main(): Promise<void> {
 
   if (findings.length === 0 && !couldNotLook) {
     console.log(`heartbeat OK — production healthy, GitHub delivering (${BASE_URL})`);
-    stamp({ result: 'ok' });
+    // A clear may owe the one "recovered" mail, once it has held for the recovery period.
+    const out = await tick(to, []);
+    if (out.kind === 'recovered') {
+      console.log(out.sent ? `recovered notice sent to ${to}` : `⚠️ RECOVERED NOTICE COULD NOT BE SENT to ${to}`);
+    }
+    if (out.stateError) console.error(`⚠️ ${out.stateError}`);
+    stamp(out.kind === 'healthy' ? { result: 'ok' } : { result: 'ok', alert: out.kind, alerted: out.sent });
     return;
   }
 
@@ -231,9 +250,21 @@ async function main(): Promise<void> {
   }
 
   for (const f of findings) console.error(`🔴 ${f.half}: ${f.detail}\n   → ${f.consequence}`);
-  const sent = await sendAlert(to, findings);
-  console.error(sent ? `alert sent to ${to}` : `⚠️ ALERT COULD NOT BE SENT to ${to}`);
-  stamp({ result: 'finding', halves: findings.map((f) => f.half), alerted: sent });
+  // gh unavailable while production fails: the delivery half is unknown, not clear.
+  const out = await tick(to, findings, couldNotLook ? ['delivery'] : []);
+  if (out.attempted) {
+    console.error(out.sent ? `alert sent to ${to} (${out.kind})` : `⚠️ ALERT COULD NOT BE SENT to ${to}`);
+  } else {
+    console.error(`alert not repeated — unchanged since the last mail; next reminder ${out.nextReminderAt}`);
+  }
+  if (out.stateError) console.error(`⚠️ ${out.stateError}`);
+  stamp({
+    result: 'finding',
+    halves: findings.map((f) => f.half),
+    alerted: out.sent,
+    alert: out.kind,
+    ...(out.nextReminderAt ? { nextReminderAt: out.nextReminderAt } : {}),
+  });
   process.exit(1);
 }
 

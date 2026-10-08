@@ -92,6 +92,20 @@ describe('the off-GitHub heartbeat', () => {
     expect(SRC).toMatch(/gh api unavailable/);
   });
 
+  it('🔴 decides whether to mail through alertTick, so an unchanged problem is not mailed every tick', () => {
+    /*
+      Until 2026-10-08 every finding run mailed: 37 identical "delivery FAILING"
+      alerts in 14.8 days, for a known-open condition (B11). The decision now
+      lives in lib/ops/heartbeat-alert.ts, which is behaviour-tested; this pins
+      that the script still routes through it and keeps its state with the rest
+      of the heartbeat's, under the gitignored .heartbeat/.
+    */
+    expect(CODE).toMatch(/alertTick\(/);
+    expect(CODE).toMatch(/fileStateStore\(ALERT_STATE\)/);
+    expect(CODE).toMatch(/join\(STATE_DIR, 'alert-state\.json'\)/);
+    expect(CODE, 'the composed alert must come from alertTick, not a second copy here').not.toMatch(/FAILING/);
+  });
+
   it('writes its stamp somewhere gitignored, so it cannot dirty the tree', () => {
     expect(SRC).toContain('.heartbeat');
     expect(readFileSync('.gitignore', 'utf8')).toContain('.heartbeat/');
