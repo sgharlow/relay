@@ -312,8 +312,11 @@ npm run verify:escalation # B15.3 — J6 step 4c. The owner never answered, so t
                        # the CAS claim, both transitions, the audit entries, the verifier
                        # notices — is the real thing.
 npm run check:cadence  # are the scheduled monitors actually RUNNING? Counts each
-                       # high-frequency workflow's scheduled runs over the trailing 24h
-                       # and fails below 25% of nominal. No credentials — reads the
+                       # high-frequency workflow's COUNTED runs over the trailing 24h
+                       # (`countedEvents` in lib/ops/cadence-wall.ts — scheduled, plus
+                       # dispatched for the canary since 2026-10-08, when its cadence
+                       # moved to a local dispatcher: docs/canary-dispatch.md) and fails
+                       # below 25% of nominal. No credentials — reads the
                        # Actions API with the runner's own GITHUB_TOKEN.
                        # 🔴 RED as of 2026-08-29, correctly: the canary is delivering
                        # ~5 runs/day against a designed 96, so production has no

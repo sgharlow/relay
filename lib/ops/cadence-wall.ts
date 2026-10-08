@@ -56,10 +56,55 @@ export const MEASURED_2026_08_29 = {
   'kms-wall.yml': [1, 1, 1, 1, 1],
 } as const;
 
+/** The run events that can stand for "the monitor ran". */
+export type RunEvent = 'schedule' | 'workflow_dispatch';
+
+export const CANARY_FILE = 'production-canary.yml';
+
+/**
+ * Which canary runs count as the canary RUNNING — the ONE definition, read by
+ * `scripts/check-cadence.ts` (via `WATCHED`) and by the off-GitHub heartbeat's
+ * delivery half (`scripts/heartbeat-local.ts`). Two copies of this rule would
+ * drift, and the drift would read as an outage or hide one.
+ *
+ * 🔴 WHY `workflow_dispatch` COUNTS (2026-10-08). GitHub drops sub-hourly
+ * schedules (B11: ~5 of a designed 96/day), so the canary's 15-minute cadence
+ * now comes from a local scheduled task on VICTUS that runs
+ * `gh workflow run production-canary.yml` (task `relay-canary-dispatch`; the job
+ * file and its registration are in docs/canary-dispatch.md). The cron stays as
+ * redundancy. A healthy day is therefore mostly DISPATCH runs, and
+ * counting `schedule` alone would read a healthy canary as collapsed.
+ *
+ * ⚠️ WHAT THIS GIVES UP. A manual dispatch counts too, so a day of hand-run
+ * dispatches could mask a dead dispatcher. It would take 24 of them in a day to
+ * reach the floor, which is not a plausible accident; the trade is stated here
+ * rather than discovered. If the dispatcher dies, the canary falls back to the
+ * cron's ~5/day and this wall goes red, which is the right answer.
+ */
+export const CANARY_COUNTED_EVENTS: readonly RunEvent[] = ['schedule', 'workflow_dispatch'];
+
+/** Runs of `events` created at or after `since`. Anything else — a push run, an unknown event — is not counted. */
+export function countRuns(
+  runs: readonly { event?: unknown; created_at?: unknown }[],
+  events: readonly RunEvent[],
+  since: Date,
+): number {
+  const from = since.getTime();
+  return runs.filter(
+    (r) =>
+      typeof r.event === 'string' &&
+      (events as readonly string[]).includes(r.event) &&
+      typeof r.created_at === 'string' &&
+      Date.parse(r.created_at) >= from,
+  ).length;
+}
+
 /** One workflow's designed cadence and the floor below which it is not a monitor. */
 export interface WatchedSchedule {
   /** The workflow file, e.g. `production-canary.yml`. */
   file: string;
+  /** Which run events count toward `observed`. */
+  countedEvents: readonly RunEvent[];
   /** Runs per day the cron asks for. */
   nominalPerDay: number;
   /**
@@ -102,8 +147,9 @@ export interface Finding {
 
 /** The two high-frequency monitors. The daily ones watch themselves by being daily. */
 export const WATCHED: WatchedSchedule[] = [
-  { file: 'production-canary.yml', nominalPerDay: 96, floorFraction: 0.25 },
-  { file: 'scheduler-monitor.yml', nominalPerDay: 48, floorFraction: 0.25 },
+  { file: CANARY_FILE, countedEvents: CANARY_COUNTED_EVENTS, nominalPerDay: 96, floorFraction: 0.25 },
+  // Nothing dispatches this one, so only its cron counts.
+  { file: 'scheduler-monitor.yml', countedEvents: ['schedule'], nominalPerDay: 48, floorFraction: 0.25 },
 ];
 
 export function floorFor(s: WatchedSchedule): number {
@@ -111,12 +157,14 @@ export function floorFor(s: WatchedSchedule): number {
 }
 
 /**
- * Judge one workflow's last-24h scheduled run count.
+ * Judge one workflow's last-24h count of COUNTED runs (`countedEvents`).
  *
- * `observed` counts SCHEDULED runs only. A `workflow_dispatch` or a `push` run
- * says nothing about whether the cron is firing, and counting them would let a
- * busy day of manual testing hide a dead schedule — the same
- * measuring-the-wrong-thing shape this file exists to report.
+ * A `push` run never counts: it says nothing about whether the monitor runs on
+ * its cadence. A `workflow_dispatch` run counts only where something dispatches
+ * on a cadence — today the canary alone (see `CANARY_COUNTED_EVENTS`). Until
+ * 2026-10-08 this counted `schedule` only, for every workflow, on the argument
+ * that a busy day of manual testing could hide a dead schedule; that argument
+ * still holds for the scheduler monitor, which nothing dispatches.
  */
 export function judge(s: WatchedSchedule, observed: number): Finding | null {
   const floor = floorFor(s);
@@ -131,10 +179,17 @@ export function judge(s: WatchedSchedule, observed: number): Finding | null {
     observed === 0
       ? 'NOT RUNNING AT ALL in the last 24h. Either the schedule was disabled (GitHub does ' +
         'this to public repos after 60 days of inactivity, and it emails first) or Actions is ' +
-        'not creating the runs.'
+        'not creating the runs' +
+        (s.countedEvents.includes('workflow_dispatch')
+          ? ' — and the local dispatcher (VICTUS, relay-canary-dispatch) is not dispatching either.'
+          : '.')
       : `ran ${observed} times in 24h against a designed ${s.nominalPerDay}. At this rate the ` +
-        `detection window is about ${(24 / observed).toFixed(1)} hours, not the minutes the ` +
-        'cron asks for.';
+        `detection window is about ${(24 / observed).toFixed(1)} hours, not the minutes it is ` +
+        'designed for.' +
+        (s.countedEvents.includes('workflow_dispatch')
+          ? ' Counted: scheduled + dispatched runs — a count near the cron\'s ~5/day means the ' +
+            'local dispatcher (VICTUS, relay-canary-dispatch) has stopped.'
+          : '');
 
   return { file: s.file, observed, floor, nominalPerDay: s.nominalPerDay, detail };
 }
@@ -164,6 +219,6 @@ export function explain(findings: Finding[]): string {
     'before investigating from scratch; what would be new is a DAILY workflow appearing\n' +
     'here, or a count of zero.\n\n' +
     'What this means while it is red: production has no effective synthetic monitoring.\n' +
-    'A broken deploy is caught by the next scheduled run, and that may be hours away.'
+    'A broken deploy is caught by the next canary run, and that may be hours away.'
   );
 }

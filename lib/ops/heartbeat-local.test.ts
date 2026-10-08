@@ -50,9 +50,11 @@ describe('the off-GitHub heartbeat', () => {
     expect(SRC, 'the production probe must target a real base URL').toContain('CANARY_BASE_URL');
   });
 
-  it('also checks whether GitHub is still delivering the scheduled canary', () => {
-    expect(SRC).toContain('production-canary.yml/runs');
-    expect(SRC).toMatch(/event=="schedule"/);
+  it('also checks whether GitHub is still running the canary, by the shared counted-events rule', () => {
+    // Since 2026-10-08 the canary is dispatched locally as well as scheduled, and
+    // WHICH runs count is cadence-wall.ts's single definition, not a copy here.
+    expect(CODE).toMatch(/actions\/workflows\/\$\{CANARY_FILE\}\/runs/);
+    expect(CODE).toMatch(/countRuns\(runs, CANARY_COUNTED_EVENTS, since\)/);
   });
 
   it('🔴 refuses to run with no alert address, instead of running silently', () => {

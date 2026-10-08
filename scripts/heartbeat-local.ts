@@ -25,9 +25,10 @@
  *      against production. Not a run-count proxy: the actual behavioural
  *      checks, the same ones the workflow runs, with no credentials and no
  *      writes.
- *   2. IS GITHUB STILL DELIVERING — a read-only `gh api` count of scheduled
- *      canary runs in the trailing window. This is the half that tells you the
- *      cloud watchdog has gone quiet, which is the condition that made this
+ *   2. IS GITHUB STILL DELIVERING — a read-only `gh api` count of canary runs
+ *      in the trailing window (scheduled + dispatched since 2026-10-08, by the
+ *      shared rule in lib/ops/cadence-wall.ts). This is the half that tells you
+ *      the cloud watchdog has gone quiet, which is the condition that made this
  *      script necessary.
  *
  * Either half failing is worth waking somebody for, and they fail differently:
@@ -77,6 +78,7 @@ import {
   type HeartbeatFinding,
   type TickOutcome,
 } from '../lib/ops/heartbeat-alert.ts';
+import { CANARY_COUNTED_EVENTS, CANARY_FILE, countRuns } from '../lib/ops/cadence-wall.ts';
 
 const run = promisify(execFile);
 
@@ -99,7 +101,7 @@ const REPO = process.env.HEARTBEAT_REPO?.trim() || 'sgharlow/relay';
 const WINDOW_HOURS = Number(process.env.HEARTBEAT_WINDOW_HOURS ?? 6);
 
 /**
- * How many scheduled canary runs must appear in the window before we call
+ * How many counted canary runs must appear in the window before we call
  * GitHub delivery "alive". Deliberately NOT the designed rate: at ~6 runs/day
  * observed, demanding the design would fire constantly and be muted within a
  * week. This asks the narrower question the operator actually needs answered —
@@ -138,16 +140,25 @@ async function probeProduction(): Promise<Finding | null> {
 }
 
 async function probeDelivery(): Promise<Finding | null> {
-  const since = new Date(Date.now() - WINDOW_HOURS * 3600_000).toISOString();
+  const since = new Date(Date.now() - WINDOW_HOURS * 3600_000);
   let stdout: string;
   try {
+    /*
+      jq only PROJECTS here (event + created_at, so the output stays small); which
+      runs COUNT is decided by `countRuns` + `CANARY_COUNTED_EVENTS` from
+      lib/ops/cadence-wall.ts — the one definition cadence-watch reads too. Since
+      2026-10-08 that is scheduled AND dispatched runs: the canary's cadence comes
+      from a local dispatcher (relay-canary-dispatch on VICTUS), with the cron kept
+      as redundancy. `per_page=100` is the newest 100 runs — at ~100 a day that
+      covers the 6h window several times over.
+    */
     ({ stdout } = await run(
       'gh',
       [
         'api',
-        `repos/${REPO}/actions/workflows/production-canary.yml/runs?per_page=100`,
+        `repos/${REPO}/actions/workflows/${CANARY_FILE}/runs?per_page=100`,
         '--jq',
-        `[.workflow_runs[] | select(.event=="schedule") | select(.created_at > "${since}")] | length`,
+        '[.workflow_runs[] | {event, created_at}]',
       ],
       { timeout: 60_000 },
     ));
@@ -155,16 +166,26 @@ async function probeDelivery(): Promise<Finding | null> {
     // Cannot look is NOT the same as healthy, and must not be reported as one.
     throw new Error(`gh api unavailable: ${(e as Error).message.slice(0, 200)}`);
   }
-  const n = Number(stdout.trim());
-  if (!Number.isFinite(n)) throw new Error(`gh api returned an unreadable count: ${stdout.trim().slice(0, 80)}`);
+  let runs: unknown;
+  try {
+    runs = JSON.parse(stdout);
+  } catch {
+    runs = null;
+  }
+  if (!Array.isArray(runs)) throw new Error(`gh api returned an unreadable run list: ${stdout.trim().slice(0, 80)}`);
+  const n = countRuns(runs, CANARY_COUNTED_EVENTS, since);
   if (n >= MIN_RUNS_IN_WINDOW) return null;
   return {
     half: 'delivery',
-    key: 'scheduled-canary-stopped',
-    detail: `${n} scheduled canary run(s) in the last ${WINDOW_HOURS}h (need ≥ ${MIN_RUNS_IN_WINDOW})`,
+    key: 'canary-runs-stopped',
+    detail:
+      `${n} canary run(s) in the last ${WINDOW_HOURS}h (need ≥ ${MIN_RUNS_IN_WINDOW}; counted: ` +
+      `${CANARY_COUNTED_EVENTS.join(' + ')})`,
     consequence:
-      'GitHub has stopped delivering the scheduled canary entirely. Production may be fine — but ' +
-      'if it were not, nothing on GitHub would tell you. This local check is the only watcher left.',
+      'GitHub has stopped running the canary entirely — neither the cron nor the local dispatcher ' +
+      '(relay-canary-dispatch on VICTUS) has produced a run. Production may be fine — but if it were ' +
+      'not, nothing on GitHub would tell you. This local check is the only watcher left. ' +
+      'Check .heartbeat/dispatch.log first.',
   };
 }
 
