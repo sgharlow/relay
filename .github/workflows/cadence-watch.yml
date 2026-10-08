@@ -1,12 +1,13 @@
 # Are the scheduled monitors actually running?
 #
-# ⚠️ SINCE 2026-10-08 THE CANARY COUNTS DISPATCHED RUNS TOO. Its 15-minute cadence
-# now comes from a local scheduled task on VICTUS (relay-canary-dispatch, running
-# `gh workflow run production-canary.yml`; docs/canary-dispatch.md), with the cron
-# kept as redundancy. Which events count per workflow is ONE definition —
-# `countedEvents` in lib/ops/cadence-wall.ts — read by scripts/check-cadence.ts
-# and by the off-GitHub heartbeat alike. The scheduler monitor still counts
-# `schedule` only: nothing dispatches it.
+# ⚠️ SINCE 2026-10-08 BOTH WATCHED WORKFLOWS COUNT DISPATCHED RUNS TOO. Their
+# cadence now comes from a local scheduled task on VICTUS (relay-canary-dispatch:
+# `gh workflow run production-canary.yml` every 15 min, and
+# `gh workflow run scheduler-monitor.yml` every 30; docs/canary-dispatch.md),
+# with both crons kept as redundancy. Which events count is ONE definition —
+# DISPATCHABLE_COUNTED_EVENTS, the `countedEvents` of both entries in
+# lib/ops/cadence-wall.ts — read by scripts/check-cadence.ts and by the
+# off-GitHub heartbeat alike.
 #
 # 🔴 WHY THIS FILE EXISTS. On 2026-08-29 the production canary ran FOUR times
 # against a designed 96, and the scheduler monitor four against 48. Production
@@ -93,7 +94,7 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Count counted runs (schedule, + dispatch for the canary) in the last 24h
+      - name: Count counted runs (schedule + dispatch) in the last 24h
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-cadence.ts
@@ -113,8 +114,11 @@ jobs:
           echo "     break the assumption this watcher is built on — that the daily tier is"
           echo "     reliable. Re-measure all five before trusting anything scheduled."
           echo ""
-          echo "  4. Is the CANARY near ~5/day? Its cadence is the local dispatcher on VICTUS, not"
-          echo "     the cron. Read relay/.heartbeat/dispatch.log there, and check the task:"
+          echo "  4. Is the CANARY near ~5/day, or the SCHEDULER MONITOR near ~4/day? That is"
+          echo "     its cron alone: its cadence is the local dispatcher on VICTUS, which"
+          echo "     dispatches the canary every 15 min and the scheduler monitor every 30."
+          echo "     Read relay/.heartbeat/dispatch.log there (scheduler-monitor lines end in"
+          echo "     'scheduler-monitor'), and check the task:"
           echo "     schtasks /query /tn relay-canary-dispatch /v /fo list"
           echo ""
           echo "What it means while red: a broken deploy is caught by the next canary run,"

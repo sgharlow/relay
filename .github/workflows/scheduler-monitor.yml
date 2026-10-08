@@ -55,6 +55,14 @@ on:
   # and reads an UNHEALTHY body is a different path, and the only way to exercise
   # it for real is an actually-stale scheduler. Named because the canary's header
   # makes the same distinction, for the same reason.
+  #
+  # ⚠️ SINCE 2026-10-08 THIS IS ALSO THE CADENCE. GitHub drops the */30 cron above
+  # (B11: ~4 of 48 runs/day), so the VICTUS task relay-canary-dispatch runs
+  # `gh workflow run scheduler-monitor.yml` every 30 minutes with NO inputs — the
+  # production default below. The cron stays as redundancy, and cadence-watch
+  # counts both (lib/ops/cadence-wall.ts DISPATCHABLE_COUNTED_EVENTS). Safe at
+  # 48/day: one read-only GET (one SELECT behind it, getSchedulerHealth), and mail
+  # only through this job failing. docs/canary-dispatch.md.
   workflow_dispatch:
     inputs:
       health_url:

@@ -78,7 +78,7 @@ import {
   type HeartbeatFinding,
   type TickOutcome,
 } from '../lib/ops/heartbeat-alert.ts';
-import { CANARY_COUNTED_EVENTS, CANARY_FILE, countRuns } from '../lib/ops/cadence-wall.ts';
+import { DISPATCHABLE_COUNTED_EVENTS, CANARY_FILE, countRuns } from '../lib/ops/cadence-wall.ts';
 
 const run = promisify(execFile);
 
@@ -145,7 +145,7 @@ async function probeDelivery(): Promise<Finding | null> {
   try {
     /*
       jq only PROJECTS here (event + created_at, so the output stays small); which
-      runs COUNT is decided by `countRuns` + `CANARY_COUNTED_EVENTS` from
+      runs COUNT is decided by `countRuns` + `DISPATCHABLE_COUNTED_EVENTS` from
       lib/ops/cadence-wall.ts — the one definition cadence-watch reads too. Since
       2026-10-08 that is scheduled AND dispatched runs: the canary's cadence comes
       from a local dispatcher (relay-canary-dispatch on VICTUS), with the cron kept
@@ -173,14 +173,14 @@ async function probeDelivery(): Promise<Finding | null> {
     runs = null;
   }
   if (!Array.isArray(runs)) throw new Error(`gh api returned an unreadable run list: ${stdout.trim().slice(0, 80)}`);
-  const n = countRuns(runs, CANARY_COUNTED_EVENTS, since);
+  const n = countRuns(runs, DISPATCHABLE_COUNTED_EVENTS, since);
   if (n >= MIN_RUNS_IN_WINDOW) return null;
   return {
     half: 'delivery',
     key: 'canary-runs-stopped',
     detail:
       `${n} canary run(s) in the last ${WINDOW_HOURS}h (need ≥ ${MIN_RUNS_IN_WINDOW}; counted: ` +
-      `${CANARY_COUNTED_EVENTS.join(' + ')})`,
+      `${DISPATCHABLE_COUNTED_EVENTS.join(' + ')})`,
     consequence:
       'GitHub has stopped running the canary entirely — neither the cron nor the local dispatcher ' +
       '(relay-canary-dispatch on VICTUS) has produced a run. Production may be fine — but if it were ' +
