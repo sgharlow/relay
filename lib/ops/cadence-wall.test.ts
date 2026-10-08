@@ -7,8 +7,18 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
 
-import { WATCHED, floorFor, judge, judgeAll, explain } from './cadence-wall';
+import {
+  WATCHED,
+  floorFor,
+  judge,
+  judgeAll,
+  explain,
+  countRuns,
+  CANARY_FILE,
+  CANARY_COUNTED_EVENTS,
+} from './cadence-wall';
 
 /*
   Measured 2026-08-29 over 2026-08-24..29. THREE populations, not two — 08-26 is
@@ -141,5 +151,63 @@ describe('the message', () => {
 
   it('is quiet when there is nothing to say', () => {
     expect(explain([])).toMatch(/above its floor/);
+  });
+});
+
+/*
+  2026-10-08: the canary's 15-minute cadence moves off GitHub cron to a local
+  dispatcher on VICTUS (`gh workflow run production-canary.yml` every 15 min),
+  with the cron kept as redundancy. From then on a healthy day is ~96 DISPATCH
+  runs and ~5 scheduled ones — so a wall that counts only `schedule` would read
+  the healthy canary as collapsed, and the heartbeat's delivery half would read
+  it as stopped.
+*/
+describe('which canary runs count', () => {
+  const SINCE = new Date('2026-10-08T00:00:00Z');
+  const at = (h: number) => new Date(SINCE.getTime() + h * 3600_000).toISOString();
+  const dispatchOnly = Array.from({ length: 24 }, (_, i) => ({ event: 'workflow_dispatch', created_at: at(i) }));
+
+  it('🔴 a dispatch-only 24h window counts its dispatched canary runs, rather than reading 0', () => {
+    expect(countRuns(dispatchOnly, canary.countedEvents, SINCE)).toBe(24);
+    expect(judge(canary, countRuns(dispatchOnly, canary.countedEvents, SINCE))).toBeNull();
+  });
+
+  it('the canary still counts its scheduled runs (the cron is kept as redundancy)', () => {
+    const scheduled = [{ event: 'schedule', created_at: at(1) }, { event: 'schedule', created_at: at(2) }];
+    expect(countRuns(scheduled, canary.countedEvents, SINCE)).toBe(2);
+  });
+
+  it('push runs, unknown events and runs before the window never count', () => {
+    const noise = [
+      { event: 'push', created_at: at(1) },
+      { event: 'pull_request', created_at: at(1) },
+      { event: 'workflow_dispatch', created_at: at(-1) },
+      { event: 'workflow_dispatch' },
+      { created_at: at(1) },
+    ];
+    expect(countRuns(noise, canary.countedEvents, SINCE)).toBe(0);
+  });
+
+  it('the scheduler monitor is unchanged: nothing dispatches it, so only its cron counts', () => {
+    expect(scheduler.countedEvents).toEqual(['schedule']);
+    expect(countRuns(dispatchOnly, scheduler.countedEvents, SINCE)).toBe(0);
+  });
+
+  it('the canary entry IS the shared definition, not a copy of it', () => {
+    expect(canary.file).toBe(CANARY_FILE);
+    expect(canary.countedEvents).toBe(CANARY_COUNTED_EVENTS);
+  });
+
+  it('both consumers read the shared definition and spell no event of their own', () => {
+    const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
+    const cadence = strip(readFileSync('scripts/check-cadence.ts', 'utf8'));
+    const heartbeat = strip(readFileSync('scripts/heartbeat-local.ts', 'utf8'));
+    expect(cadence).toMatch(/countedEvents/);
+    expect(cadence).toMatch(/countRuns\(/);
+    expect(heartbeat).toMatch(/CANARY_COUNTED_EVENTS/);
+    expect(heartbeat).toMatch(/countRuns\(/);
+    for (const [name, code] of [['check-cadence.ts', cadence], ['heartbeat-local.ts', heartbeat]] as const) {
+      expect(code, `${name} must not hardcode which events count`).not.toMatch(/event\s*=+\s*["']?schedule|event=schedule|'workflow_dispatch'|"workflow_dispatch"/);
+    }
   });
 });

@@ -50,9 +50,11 @@ describe('the off-GitHub heartbeat', () => {
     expect(SRC, 'the production probe must target a real base URL').toContain('CANARY_BASE_URL');
   });
 
-  it('also checks whether GitHub is still delivering the scheduled canary', () => {
-    expect(SRC).toContain('production-canary.yml/runs');
-    expect(SRC).toMatch(/event=="schedule"/);
+  it('also checks whether GitHub is still running the canary, by the shared counted-events rule', () => {
+    // Since 2026-10-08 the canary is dispatched locally as well as scheduled, and
+    // WHICH runs count is cadence-wall.ts's single definition, not a copy here.
+    expect(CODE).toMatch(/actions\/workflows\/\$\{CANARY_FILE\}\/runs/);
+    expect(CODE).toMatch(/countRuns\(runs, CANARY_COUNTED_EVENTS, since\)/);
   });
 
   it('🔴 refuses to run with no alert address, instead of running silently', () => {
@@ -90,6 +92,20 @@ describe('the off-GitHub heartbeat', () => {
     // 2 could-not-look. Collapsing 2 into 0 is how a monitor lies.
     expect(SRC).toContain('could-not-look');
     expect(SRC).toMatch(/gh api unavailable/);
+  });
+
+  it('🔴 decides whether to mail through alertTick, so an unchanged problem is not mailed every tick', () => {
+    /*
+      Until 2026-10-08 every finding run mailed: 37 identical "delivery FAILING"
+      alerts in 14.8 days, for a known-open condition (B11). The decision now
+      lives in lib/ops/heartbeat-alert.ts, which is behaviour-tested; this pins
+      that the script still routes through it and keeps its state with the rest
+      of the heartbeat's, under the gitignored .heartbeat/.
+    */
+    expect(CODE).toMatch(/alertTick\(/);
+    expect(CODE).toMatch(/fileStateStore\(ALERT_STATE\)/);
+    expect(CODE).toMatch(/join\(STATE_DIR, 'alert-state\.json'\)/);
+    expect(CODE, 'the composed alert must come from alertTick, not a second copy here').not.toMatch(/FAILING/);
   });
 
   it('writes its stamp somewhere gitignored, so it cannot dirty the tree', () => {

@@ -25,9 +25,10 @@
  *      against production. Not a run-count proxy: the actual behavioural
  *      checks, the same ones the workflow runs, with no credentials and no
  *      writes.
- *   2. IS GITHUB STILL DELIVERING — a read-only `gh api` count of scheduled
- *      canary runs in the trailing window. This is the half that tells you the
- *      cloud watchdog has gone quiet, which is the condition that made this
+ *   2. IS GITHUB STILL DELIVERING — a read-only `gh api` count of canary runs
+ *      in the trailing window (scheduled + dispatched since 2026-10-08, by the
+ *      shared rule in lib/ops/cadence-wall.ts). This is the half that tells you
+ *      the cloud watchdog has gone quiet, which is the condition that made this
  *      script necessary.
  *
  * Either half failing is worth waking somebody for, and they fail differently:
@@ -69,19 +70,38 @@ import { promisify } from 'node:util';
 import { appendFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { sendOperatorAlert } from '../lib/notify/operator-alert.ts';
+import {
+  alertTick,
+  fileStateStore,
+  policyFromEnv,
+  productionKey,
+  type HeartbeatFinding,
+  type TickOutcome,
+} from '../lib/ops/heartbeat-alert.ts';
+import { CANARY_COUNTED_EVENTS, CANARY_FILE, countRuns } from '../lib/ops/cadence-wall.ts';
 
 const run = promisify(execFile);
 
 /** Gitignored, like `.drill-scratch/` — this writes every few minutes. */
 const STATE_DIR = join(process.cwd(), '.heartbeat');
 const LOG = join(STATE_DIR, 'runs.jsonl');
+/**
+ * The open alert, so an unchanged problem is mailed on change and on a reminder
+ * period rather than every 15 minutes (2026-10-08). Rules, defaults and the
+ * fail-open behaviour: `lib/ops/heartbeat-alert.ts`.
+ */
+const ALERT_STATE = join(STATE_DIR, 'alert-state.json');
+const POLICY = policyFromEnv({
+  HEARTBEAT_REMIND_HOURS: process.env.HEARTBEAT_REMIND_HOURS,
+  HEARTBEAT_RECOVERY_HOURS: process.env.HEARTBEAT_RECOVERY_HOURS,
+});
 
 const BASE_URL = process.env.CANARY_BASE_URL?.trim() || 'https://relaystandby.com';
 const REPO = process.env.HEARTBEAT_REPO?.trim() || 'sgharlow/relay';
 const WINDOW_HOURS = Number(process.env.HEARTBEAT_WINDOW_HOURS ?? 6);
 
 /**
- * How many scheduled canary runs must appear in the window before we call
+ * How many counted canary runs must appear in the window before we call
  * GitHub delivery "alive". Deliberately NOT the designed rate: at ~6 runs/day
  * observed, demanding the design would fire constantly and be muted within a
  * week. This asks the narrower question the operator actually needs answered —
@@ -90,11 +110,7 @@ const WINDOW_HOURS = Number(process.env.HEARTBEAT_WINDOW_HOURS ?? 6);
  */
 const MIN_RUNS_IN_WINDOW = Number(process.env.HEARTBEAT_MIN_RUNS ?? 1);
 
-interface Finding {
-  half: 'production' | 'delivery';
-  detail: string;
-  consequence: string;
-}
+type Finding = HeartbeatFinding;
 
 /** The address, read WITHOUT the app's non-production gate. See the header. */
 function alertAddress(): string | undefined {
@@ -114,6 +130,7 @@ async function probeProduction(): Promise<Finding | null> {
     const out = `${err.stdout ?? ''}${err.stderr ?? ''}`.trim();
     return {
       half: 'production',
+      key: productionKey(out),
       detail: out.slice(-1500) || `canary exited ${err.code ?? 'non-zero'} with no output`,
       consequence:
         'A behavioural check against production FAILED. This is the half that means customers ' +
@@ -123,16 +140,25 @@ async function probeProduction(): Promise<Finding | null> {
 }
 
 async function probeDelivery(): Promise<Finding | null> {
-  const since = new Date(Date.now() - WINDOW_HOURS * 3600_000).toISOString();
+  const since = new Date(Date.now() - WINDOW_HOURS * 3600_000);
   let stdout: string;
   try {
+    /*
+      jq only PROJECTS here (event + created_at, so the output stays small); which
+      runs COUNT is decided by `countRuns` + `CANARY_COUNTED_EVENTS` from
+      lib/ops/cadence-wall.ts — the one definition cadence-watch reads too. Since
+      2026-10-08 that is scheduled AND dispatched runs: the canary's cadence comes
+      from a local dispatcher (relay-canary-dispatch on VICTUS), with the cron kept
+      as redundancy. `per_page=100` is the newest 100 runs — at ~100 a day that
+      covers the 6h window several times over.
+    */
     ({ stdout } = await run(
       'gh',
       [
         'api',
-        `repos/${REPO}/actions/workflows/production-canary.yml/runs?per_page=100`,
+        `repos/${REPO}/actions/workflows/${CANARY_FILE}/runs?per_page=100`,
         '--jq',
-        `[.workflow_runs[] | select(.event=="schedule") | select(.created_at > "${since}")] | length`,
+        '[.workflow_runs[] | {event, created_at}]',
       ],
       { timeout: 60_000 },
     ));
@@ -140,29 +166,34 @@ async function probeDelivery(): Promise<Finding | null> {
     // Cannot look is NOT the same as healthy, and must not be reported as one.
     throw new Error(`gh api unavailable: ${(e as Error).message.slice(0, 200)}`);
   }
-  const n = Number(stdout.trim());
-  if (!Number.isFinite(n)) throw new Error(`gh api returned an unreadable count: ${stdout.trim().slice(0, 80)}`);
+  let runs: unknown;
+  try {
+    runs = JSON.parse(stdout);
+  } catch {
+    runs = null;
+  }
+  if (!Array.isArray(runs)) throw new Error(`gh api returned an unreadable run list: ${stdout.trim().slice(0, 80)}`);
+  const n = countRuns(runs, CANARY_COUNTED_EVENTS, since);
   if (n >= MIN_RUNS_IN_WINDOW) return null;
   return {
     half: 'delivery',
-    detail: `${n} scheduled canary run(s) in the last ${WINDOW_HOURS}h (need ≥ ${MIN_RUNS_IN_WINDOW})`,
+    key: 'canary-runs-stopped',
+    detail:
+      `${n} canary run(s) in the last ${WINDOW_HOURS}h (need ≥ ${MIN_RUNS_IN_WINDOW}; counted: ` +
+      `${CANARY_COUNTED_EVENTS.join(' + ')})`,
     consequence:
-      'GitHub has stopped delivering the scheduled canary entirely. Production may be fine — but ' +
-      'if it were not, nothing on GitHub would tell you. This local check is the only watcher left.',
+      'GitHub has stopped running the canary entirely — neither the cron nor the local dispatcher ' +
+      '(relay-canary-dispatch on VICTUS) has produced a run. Production may be fine — but if it were ' +
+      'not, nothing on GitHub would tell you. This local check is the only watcher left. ' +
+      'Check .heartbeat/dispatch.log first.',
   };
 }
 
-async function sendAlert(to: string, findings: Finding[]): Promise<boolean> {
+/** The wire half only. WHAT to send, and WHETHER, is `alertTick`'s (lib/ops/heartbeat-alert.ts). */
+async function sendMail(to: string, subject: string, text: string): Promise<boolean> {
   const key = process.env.RESEND_API_KEY?.trim();
   const from = process.env.RESEND_REPLY_TO_ADDRESS?.trim() || 'relay@relaystandby.com';
   if (!key) return false;
-  const body =
-    `The off-GitHub heartbeat (B12.i) found ${findings.length} problem(s) at ` +
-    `${new Date().toISOString()}.\n\nThis alert was sent by the LOCAL watchdog on the operator's ` +
-    `machine, deliberately outside GitHub Actions, because the GitHub-scheduled canary is being ` +
-    `dropped (~6 runs/day against a designed 96).\n\n` +
-    findings.map((f) => `── ${f.half.toUpperCase()}\n${f.detail}\n\n→ ${f.consequence}`).join('\n\n') +
-    `\n\nProbed: ${BASE_URL}\n`;
   /*
     Sent through `sendOperatorAlert` rather than a bare POST here, so the alert
     lands in `email_send_attempts` like every other message Relay sends. It is
@@ -175,13 +206,16 @@ async function sendAlert(to: string, findings: Finding[]): Promise<boolean> {
     the mail itself provably healthy, and the orphan query has no upper time
     bound: the switch was disarmed permanently, by its own alarm channel.
   */
-  return sendOperatorAlert({
-    apiKey: key,
-    from,
-    to,
-    subject: `[relay] heartbeat: ${findings.map((f) => f.half).join(' + ')} FAILING`,
-    text: body,
-  });
+  return sendOperatorAlert({ apiKey: key, from, to, subject, text });
+}
+
+/** Never throws for a state-file failure; see the module header for why it fails open. */
+function tick(to: string, findings: Finding[], unknownHalves: Finding['half'][] = []): Promise<TickOutcome> {
+  return alertTick(
+    findings,
+    { store: fileStateStore(ALERT_STATE), now: () => new Date(), send: (subject, text) => sendMail(to, subject, text) },
+    { baseUrl: BASE_URL, policy: POLICY, unknownHalves },
+  );
 }
 
 function stamp(record: Record<string, unknown>): void {
@@ -220,7 +254,13 @@ async function main(): Promise<void> {
 
   if (findings.length === 0 && !couldNotLook) {
     console.log(`heartbeat OK — production healthy, GitHub delivering (${BASE_URL})`);
-    stamp({ result: 'ok' });
+    // A clear may owe the one "recovered" mail, once it has held for the recovery period.
+    const out = await tick(to, []);
+    if (out.kind === 'recovered') {
+      console.log(out.sent ? `recovered notice sent to ${to}` : `⚠️ RECOVERED NOTICE COULD NOT BE SENT to ${to}`);
+    }
+    if (out.stateError) console.error(`⚠️ ${out.stateError}`);
+    stamp(out.kind === 'healthy' ? { result: 'ok' } : { result: 'ok', alert: out.kind, alerted: out.sent });
     return;
   }
 
@@ -231,9 +271,21 @@ async function main(): Promise<void> {
   }
 
   for (const f of findings) console.error(`🔴 ${f.half}: ${f.detail}\n   → ${f.consequence}`);
-  const sent = await sendAlert(to, findings);
-  console.error(sent ? `alert sent to ${to}` : `⚠️ ALERT COULD NOT BE SENT to ${to}`);
-  stamp({ result: 'finding', halves: findings.map((f) => f.half), alerted: sent });
+  // gh unavailable while production fails: the delivery half is unknown, not clear.
+  const out = await tick(to, findings, couldNotLook ? ['delivery'] : []);
+  if (out.attempted) {
+    console.error(out.sent ? `alert sent to ${to} (${out.kind})` : `⚠️ ALERT COULD NOT BE SENT to ${to}`);
+  } else {
+    console.error(`alert not repeated — unchanged since the last mail; next reminder ${out.nextReminderAt}`);
+  }
+  if (out.stateError) console.error(`⚠️ ${out.stateError}`);
+  stamp({
+    result: 'finding',
+    halves: findings.map((f) => f.half),
+    alerted: out.sent,
+    alert: out.kind,
+    ...(out.nextReminderAt ? { nextReminderAt: out.nextReminderAt } : {}),
+  });
   process.exit(1);
 }
 
