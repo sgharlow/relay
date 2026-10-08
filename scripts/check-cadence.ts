@@ -3,8 +3,8 @@
  *
  * The live half of `lib/ops/cadence-wall.ts`. Counts each watched workflow's
  * COUNTED runs in the last 24 hours — the events its `countedEvents` names:
- * scheduled for both, plus dispatched for the canary since 2026-10-08, when its
- * cadence moved to a local dispatcher — and fails when one is below its floor.
+ * scheduled plus dispatched for both since 2026-10-08, when their cadence moved
+ * to a local dispatcher — and fails when one is below its floor.
  *
  * NO CREDENTIALS BEYOND THE RUNNER'S OWN. It reads the Actions API with
  * `GITHUB_TOKEN`, which every workflow gets for free and which needs no scope
@@ -42,8 +42,7 @@ async function countedRunsInWindow(w: WatchedSchedule, since: Date): Promise<num
 
     WHICH events count is not decided here: it is `w.countedEvents`, the one
     definition in cadence-wall.ts that the off-GitHub heartbeat reads too. A
-    `push` run never counts, and neither does a dispatch of the scheduler
-    monitor, which nothing dispatches on a cadence.
+    `push` run never counts.
   */
   const runs: { event?: unknown; created_at?: unknown }[] = [];
   for (const event of w.countedEvents) {

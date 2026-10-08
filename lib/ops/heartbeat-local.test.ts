@@ -54,7 +54,7 @@ describe('the off-GitHub heartbeat', () => {
     // Since 2026-10-08 the canary is dispatched locally as well as scheduled, and
     // WHICH runs count is cadence-wall.ts's single definition, not a copy here.
     expect(CODE).toMatch(/actions\/workflows\/\$\{CANARY_FILE\}\/runs/);
-    expect(CODE).toMatch(/countRuns\(runs, CANARY_COUNTED_EVENTS, since\)/);
+    expect(CODE).toMatch(/countRuns\(runs, DISPATCHABLE_COUNTED_EVENTS, since\)/);
   });
 
   it('🔴 refuses to run with no alert address, instead of running silently', () => {
