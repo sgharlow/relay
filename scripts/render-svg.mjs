@@ -19,6 +19,7 @@
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { sharedToolsSpecifier } from './resolve-playwright.mjs';
 
 const [input, wArg, hArg] = process.argv.slice(2);
 if (!input) {
@@ -30,10 +31,8 @@ const width = Number(wArg ?? 400);
 const height = Number(hArg ?? width);
 const output = resolve(input.replace(/\.svg$/i, '.png'));
 
-const HOME = (process.env.USERPROFILE || process.env.HOME || '').split('\\').join('/');
 const PLAYWRIGHT =
-  process.env.PLAYWRIGHT_MODULE ||
-  `file:///${HOME}/CascadeProjects/__shared-tools/node_modules/playwright/index.mjs`;
+  process.env.PLAYWRIGHT_MODULE || sharedToolsSpecifier() || 'playwright';
 
 const svg = readFileSync(resolve(input), 'utf8');
 

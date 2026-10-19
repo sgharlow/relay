@@ -15,11 +15,10 @@
  */
 import { writeFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { sharedToolsSpecifier } from './resolve-playwright.mjs';
 
-const HOME = (process.env.HOME || process.env.USERPROFILE || '').split('\\').join('/');
 const PLAYWRIGHT =
-  process.env.PLAYWRIGHT_MODULE ||
-  `file:///${HOME}/CascadeProjects/__shared-tools/node_modules/playwright/index.mjs`;
+  process.env.PLAYWRIGHT_MODULE || sharedToolsSpecifier() || 'playwright';
 const { chromium } = await import(PLAYWRIGHT);
 
 const SRC = resolve('docs/use-cases.html');

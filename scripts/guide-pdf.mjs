@@ -30,6 +30,7 @@
  */
 
 import { writeFileSync, statSync } from 'node:fs';
+import { sharedToolsSpecifier } from './resolve-playwright.mjs';
 
 /*
   Playwright lives in the shared toolbox rather than this repo, and is resolved
@@ -37,10 +38,8 @@ import { writeFileSync, statSync } from 'node:fs';
   and for the same reason: a hardcoded C:/Users/<someone> path is unrunnable for
   anybody else and is banned by the portfolio's own rule.
 */
-const HOME = (process.env.HOME || process.env.USERPROFILE || '').split('\\').join('/');
 const PLAYWRIGHT =
-  process.env.PLAYWRIGHT_MODULE ||
-  `file:///${HOME}/CascadeProjects/__shared-tools/node_modules/playwright/index.mjs`;
+  process.env.PLAYWRIGHT_MODULE || sharedToolsSpecifier() || 'playwright';
 const { chromium } = await import(PLAYWRIGHT);
 
 const BASE = process.env.GUIDE_BASE || 'http://localhost:3100';
