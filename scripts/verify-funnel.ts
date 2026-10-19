@@ -66,12 +66,10 @@
 
 import { isGateQualifyingSrc } from '../src/app/caregivers/content';
 
-const HOME = process.env.USERPROFILE?.replace(/\\/g, '/') ?? process.env.HOME;
 
 // Same resolution as scripts/e2e-ui.ts: playwright lives in the shared toolbox.
 const PLAYWRIGHT =
-  process.env.PLAYWRIGHT_MODULE ||
-  `file:///${HOME}/CascadeProjects/__shared-tools/node_modules/playwright/index.mjs`;
+  process.env.PLAYWRIGHT_MODULE || sharedToolsSpecifier() || 'playwright';
 
 const BASE = (process.env.FUNNEL_BASE_URL ?? 'https://relaystandby.com').replace(/\/$/, '');
 const SRC = process.env.FUNNEL_SRC ?? 'qa';
@@ -100,6 +98,7 @@ interface AnalyticsEvent {
 }
 
 import { verdict, collectionFromEnv } from '../lib/ops/funnel-instrument';
+import { sharedToolsSpecifier } from './resolve-playwright.mjs';
 
 const results: Array<{ step: string; ok: boolean; detail: string }> = [];
 function record(step: string, ok: boolean, detail: string): void {

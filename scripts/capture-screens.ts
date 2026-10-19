@@ -45,15 +45,14 @@ import { query, closeAllPools } from '../lib/db/connection';
 // The product's own cascade. See the backstop at the end of main() for why a
 // hand-written DELETE is not an option on a cluster with no foreign keys.
 import { deleteAccount } from '../lib/account/lifecycle';
+import { sharedToolsSpecifier } from './resolve-playwright.mjs';
 
 const BASE = process.env.E2E_BASE || 'http://localhost:3000';
 const SCREENS = 'public/guide/screens';
 
 /* Same resolution as guide-pdf.mjs / a11y-audit.mjs, for the same reason. */
-const HOME = (process.env.HOME || process.env.USERPROFILE || '').split('\\').join('/');
 const PLAYWRIGHT =
-  process.env.PLAYWRIGHT_MODULE ||
-  `file:///${HOME}/CascadeProjects/__shared-tools/node_modules/playwright/index.mjs`;
+  process.env.PLAYWRIGHT_MODULE || sharedToolsSpecifier() || 'playwright';
 
 const RESERVED = ['test', 'invalid', 'localhost'];
 function undeliverable(address: string): string {

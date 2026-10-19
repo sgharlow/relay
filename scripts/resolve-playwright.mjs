@@ -42,8 +42,30 @@
  * Requirements: D4 (the walks half)
  */
 
+import { readFileSync } from 'node:fs';
+
 /** The install that makes rung 2 work. Quoted in the error, so it is one copy. */
 export const INSTALL_HINT = 'npm i --no-save playwright && npx playwright install chromium';
+
+/**
+ * The machine's dev root: `cascadeRoot` in `~/.devsync/machine.json`, the value devsync itself
+ * reads; `<home>/CascadeProjects` only when that file is missing, unreadable or empty.
+ *
+ * ⚠️ Until 2026-10-13 rung 3 hard-coded `<home>/CascadeProjects`. VICTUS moved its root to
+ * `C:\source` on 2026-10-09, so the shared copy stopped resolving there and every walk that
+ * relied on it needed PLAYWRIGHT_MODULE set by hand.
+ */
+export function devRoot(home, read = (p) => readFileSync(p, 'utf8')) {
+  try {
+    const root = JSON.parse(read(`${home}/.devsync/machine.json`)).cascadeRoot;
+    if (typeof root === 'string' && root.trim() !== '') {
+      return root.split(String.fromCharCode(92)).join('/').replace(/\/+$/, '');
+    }
+  } catch {
+    /* no machine.json: fall back */
+  }
+  return `${home}/CascadeProjects`;
+}
 
 /** Where this laptop keeps a shared copy, so no install is needed here. */
 export function sharedToolsSpecifier() {
@@ -51,7 +73,7 @@ export function sharedToolsSpecifier() {
     .split(String.fromCharCode(92))
     .join('/');
   if (!home) return null;
-  return `file:///${home}/CascadeProjects/__shared-tools/node_modules/playwright/index.mjs`;
+  return `file:///${devRoot(home)}/__shared-tools/node_modules/playwright/index.mjs`;
 }
 
 /** The rungs, in order, with the override first. Exported so a test can read them. */

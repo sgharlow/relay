@@ -30,7 +30,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 
-import { candidates, sharedToolsSpecifier, INSTALL_HINT } from '../../scripts/resolve-playwright.mjs';
+import { candidates, devRoot, sharedToolsSpecifier, INSTALL_HINT } from '../../scripts/resolve-playwright.mjs';
 
 const SCRIPTS = ['scripts/e2e-ui.ts', 'scripts/a11y-audit.mjs'];
 
@@ -71,6 +71,27 @@ describe('the resolution order', () => {
       'every candidate is a path on somebody’s disk — there is no way to run these walks on a ' +
         'machine that is not this one',
     ).toBeGreaterThan(0);
+  });
+
+  // VICTUS moved its dev root from ~/CascadeProjects to C:\source on 2026-10-09 and the shared copy
+  // stopped resolving there, because rung 3 hard-coded the old folder.
+  it('finds the shared copy under the machine dev root, not a fixed folder', () => {
+    let asked = '';
+    const root = devRoot('C:/Users/someone', (p: string) => {
+      asked = p;
+      return '{"cascadeRoot":"C:\\\\source\\\\"}';
+    });
+    expect(asked).toBe('C:/Users/someone/.devsync/machine.json');
+    expect(root).toBe('C:/source');
+  });
+
+  it('falls back to ~/CascadeProjects only without a usable machine.json', () => {
+    const missing = () => {
+      throw new Error('ENOENT');
+    };
+    expect(devRoot('/home/x', missing)).toBe('/home/x/CascadeProjects');
+    expect(devRoot('/home/x', () => '{"cascadeRoot":"  "}')).toBe('/home/x/CascadeProjects');
+    expect(devRoot('/home/x', () => 'not json')).toBe('/home/x/CascadeProjects');
   });
 
   it('carries an install hint a person can run', () => {
