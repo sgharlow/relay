@@ -31,6 +31,26 @@ log read as though nothing was sent.
 | 5 | **2026-09-28** | **Homethrive** | follow-up to row 2 · Gmail thread `1a06086ff863da5e` | 🔴 **Follow-up NOT sent.** The thread holds only the original message, sent 2026-09-02 05:22:35Z (= 2026-09-01 22:22 MST) | **No reply, no bounce.** Nothing from Homethrive in any folder since 2026-08-30 | No |
 | 6 | **2026-09-28** | **Wellthy** | follow-up to row 3 · Gmail thread `1a060871c741484d` | 🔴 **Follow-up NOT sent.** The thread holds only the original message, sent 2026-09-02 05:21:12Z (= 2026-09-01 22:21 MST). ⚠️ Gmail shows Wellthy went out **about 80 seconds BEFORE** Homethrive, not after it as row 3 says. No consequence found; recorded for accuracy | **No reply, no bounce.** Nothing from Wellthy in any folder since 2026-08-30 | No |
 | 7 | **2026-09-28** | **caregiver.com** *(G1 editorial, NOT a G3 partner: does not count toward meetings; the primary record is `docs/g1-flight-log.md` §"THE SEND")* | Gmail thread `1a060551e3076ae6` | 🔴 **Follow-up NOT sent.** The op-ed went 2026-09-02 04:16:24Z (= 2026-09-01 21:16 MST); the thread holds only that message. Its own follow-up point is the acceptance window closing ~2026-09-30, and `ROADMAP.md` row 2.6 requires re-verifying the outlet's submission guidelines before any follow-up | **No reply, no bounce.** Nothing from caregiver.com in any folder since 2026-08-30 | n/a |
+| 8 | **2026-10-19** | **Wellthy** | follow-up to row 3 · in-thread reply, Gmail thread `1a060871c741484d` | ✅ **Follow-up SENT** 2026-10-20 05:04:50Z (= 2026-10-19 22:04 MST), msg `1a157b2b4223f40d`. One learn-not-pitch question (how a navigator resolves an account nobody can get into), twenty-minute ask, link `https://relaystandby.com`, plain opt-out, signed "Steve Harlow / Building Relay" | — *awaiting* | — |
+| 9 | **2026-10-19** | **NAC Innovation Collaborative** | follow-up to row 1 · ✉️ `laurenrachel@caregiving.org` (the page's "Get Involved" mailto, re-checked live the same evening) with `info@caregiving.org` Cc; new Gmail thread `1a157ad9f69aa629` | ✅ **Follow-up SENT** 2026-10-20 05:05:00Z (= 22:05 MST), msg `1a157b2dc8f25ae2`. Route = option 1 of `__project-docs/decision-sheet-2026-10-31.md` Part 1. Asks the 9-01 form's two questions only: eligibility of a very small product, and cost. If it bounces, or nothing in 14 days (2026-11-02), use option 2 (Yadira Cabrera via `info@`) | — *awaiting* | — |
+| 10 | **2026-10-19** | **Homethrive** | follow-up to row 2 · in-thread reply, Gmail thread `1a06086ff863da5e` | ✅ **Follow-up SENT** 2026-10-20 05:05:25Z (= 22:05 MST), msg `1a157b33fc6151e8`. One question (what happens next when a family cannot get into a parent's accounts during a hospital or rehab stay), link, opt-out, same signature | — *awaiting* | — |
+
+> ⚠️ **How rows 8–10 nearly did not go, 2026-10-19.** The three were drafted 2026-10-18 through the
+> Gmail connector and found the next evening labelled `TRASH` (cause unknown; 25 trashed drafts
+> back to 2026-09-27 share it), and every relaystandby link in them was stored as a
+> `google.com/url?q=…` redirect — the connector rewrites links on WRITE, even an explicit
+> `<a href>` (re-measured that evening). They were restored and the links retyped in the Gmail web
+> editor, then read back clean (href `https://relaystandby.com`, 0 redirects) before Steve sent
+> them. A connector-made draft is not send-ready until its links are read back.
+
+## Status, 2026-10-19: three sent, three follow-ups sent, zero replies
+
+| | |
+|---|---|
+| Replies | **0 of 3** G3 contacts at send time |
+| Follow-ups sent | **3 of 3**, 2026-10-19 22:04–22:05 MST (rows 8–10), 27 days after they were due |
+| Meetings taken | **0**. Kill date 2026-11-30 |
+| Next check | 2026-11-02 (14 days): any reply / bounce; NAC silent → option 2 |
 
 ---
 
