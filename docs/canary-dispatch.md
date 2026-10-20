@@ -72,14 +72,20 @@ a 6h window holds no canary run at all. The heartbeat watches only the canary's 
 
 ## The job file
 
-`C:\Users\sghar\CascadeProjects\__shared-tools\taskdeck\jobs\relay-canary-dispatch.cmd`. That
+`C:\source\__shared-tools\taskdeck\jobs\relay-canary-dispatch-job.cmd`. That
 directory is gitignored in `__shared-tools`, so **this is the versioned copy. Edit both
 together.**
+
+> Paths corrected 2026-10-19. Until then this section named
+> `…\CascadeProjects\__shared-tools\taskdeck\jobs\relay-canary-dispatch.cmd`: the dev root moved to
+> `C:\source` on 2026-10-09, and the 2026-10-12 task restore (Norton had deleted the VBS-launched
+> tasks) renamed the job file to `relay-canary-dispatch-job.cmd`. `C:\source` is this machine's
+> dev root (`cascadeRoot` in `~/.devsync/machine.json`); another machine substitutes its own.
 
 ```bat
 @echo off
 setlocal
-set "RELAY=C:\Users\sghar\CascadeProjects\relay"
+set "RELAY=C:\source\relay"
 set "LOG=%RELAY%\.heartbeat\dispatch.log"
 set "OUT=%TEMP%\relay-canary-dispatch.out"
 if not exist "%RELAY%\.heartbeat" mkdir "%RELAY%\.heartbeat"
@@ -145,12 +151,17 @@ scheduler monitor fired at exactly 0, 7, 14, 30, 37 and 44.
 Use a normal (non-elevated) PowerShell, as user `sghar`. The settings match `\relay-heartbeat`:
 interactive token, every 15 minutes indefinitely, starts on battery and keeps running on
 battery, start-when-available, 10-minute limit, ignore a new instance while one is running.
-Launched through TaskDeck's `run-hidden.vbs`, so no window flashes.
+Launched through a hidden PowerShell, so no window flashes.
+
+> ⚠️ **Never launch it through `wscript` + `run-hidden.vbs` again** (the form this section showed
+> until 2026-10-19). On 2026-10-12 Norton 360 flagged `run-hidden.vbs` as `IDP.Generic` and deleted
+> every task launched through it, this one included. The tasks were re-registered with the action
+> below, which is what the live task runs (read back 2026-10-19 with `Get-ScheduledTask`).
 
 ```powershell
-$jobs = 'C:\Users\sghar\CascadeProjects\__shared-tools\taskdeck'
-$action = New-ScheduledTaskAction -Execute 'C:\Windows\System32\wscript.exe' `
-  -Argument "//B //Nologo `"$jobs\bin\run-hidden.vbs`" `"$jobs\jobs\relay-canary-dispatch.cmd`""
+$jobs = 'C:\source\__shared-tools\taskdeck'
+$action = New-ScheduledTaskAction -Execute 'powershell.exe' `
+  -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command `"& cmd.exe /c '$jobs\jobs\relay-canary-dispatch-job.cmd'; exit `$LASTEXITCODE`""
 $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) `
   -RepetitionInterval (New-TimeSpan -Minutes 15)
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
@@ -166,7 +177,7 @@ scheduler monitor changed only the job file, not the task, so the task was not r
 
 ```powershell
 schtasks /query /tn relay-canary-dispatch /v /fo list      # Logon Mode: Interactive only; Last Result: 0
-Get-Content C:\Users\sghar\CascadeProjects\relay\.heartbeat\dispatch.log -Tail 3
+Get-Content C:\source\relay\.heartbeat\dispatch.log -Tail 3
 gh run list -R sgharlow/relay --workflow production-canary.yml --event workflow_dispatch -L 3
 gh run list -R sgharlow/relay --workflow scheduler-monitor.yml --event workflow_dispatch -L 3
 npm run check:cadence                                      # both rows count schedule + workflow_dispatch
