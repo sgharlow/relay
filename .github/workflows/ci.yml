@@ -68,6 +68,16 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
+      # The heartbeat Lambda (infra/heartbeat-lambda) is its own package with its own
+      # lockfile, and the root tsconfig excludes it — so the step above never sees it.
+      # Until 2026-10-21 nothing in CI type-checked the code that runs production's
+      # 15-minute canary dispatch; this does, with that package's own pinned deps.
+      - name: Typecheck the heartbeat Lambda
+        working-directory: infra/heartbeat-lambda
+        run: |
+          npm ci --no-audit --no-fund
+          npm run typecheck
+
       - name: Lint
         run: npm run lint
 
