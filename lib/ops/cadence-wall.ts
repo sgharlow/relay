@@ -154,7 +154,7 @@ export interface Finding {
 /** The two high-frequency monitors. The daily ones watch themselves by being daily. */
 export const WATCHED: WatchedSchedule[] = [
   { file: CANARY_FILE, countedEvents: DISPATCHABLE_COUNTED_EVENTS, nominalPerDay: 96, floorFraction: 0.25 },
-  // Dispatched every 30 min by the same VICTUS task since 2026-10-08; its cron is kept as redundancy.
+  // Dispatched every 30 min since 2026-10-08 (VICTUS task; the relay-heartbeat Lambda from 2026-10-20); its cron is kept as redundancy.
   { file: 'scheduler-monitor.yml', countedEvents: DISPATCHABLE_COUNTED_EVENTS, nominalPerDay: 48, floorFraction: 0.25 },
 ];
 
@@ -187,15 +187,15 @@ export function judge(s: WatchedSchedule, observed: number): Finding | null {
         'this to public repos after 60 days of inactivity, and it emails first) or Actions is ' +
         'not creating the runs' +
         (s.countedEvents.includes('workflow_dispatch')
-          ? ' — and the local dispatcher (VICTUS, relay-canary-dispatch) is not dispatching either.'
+          ? ' — and the dispatcher (AWS Lambda relay-heartbeat; VICTUS relay-canary-dispatch until 2026-10-20) is not dispatching either.'
           : '.')
       : `ran ${observed} times in 24h against a designed ${s.nominalPerDay}. At this rate the ` +
         `detection window is about ${(24 / observed).toFixed(1)} hours, not the minutes it is ` +
         'designed for.' +
         (s.countedEvents.includes('workflow_dispatch')
           ? ' Counted: scheduled + dispatched runs — a count near the cron\'s own few runs a day ' +
-            '(~5 for the canary, ~4 for the scheduler monitor) means the local dispatcher ' +
-            '(VICTUS, relay-canary-dispatch) has stopped.'
+            '(~5 for the canary, ~4 for the scheduler monitor) means the dispatcher ' +
+            '(AWS Lambda relay-heartbeat; VICTUS relay-canary-dispatch until 2026-10-20) has stopped.'
           : '');
 
   return { file: s.file, observed, floor, nominalPerDay: s.nominalPerDay, detail };

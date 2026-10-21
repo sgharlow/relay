@@ -332,6 +332,32 @@ more than it needs to.
 rule covers: never roll `STRIPE_SECRET_KEY`, because report-bridge and skillcrossroads use it. This
 key is Relay's alone, so it is the one Stripe credential here that can be rolled freely.
 
+## §9 — `relay/heartbeat/github-pat` · the heartbeat's GitHub token (added 2026-10-20)
+
+**What it is.** A fine-grained GitHub token, repository `sgharlow/relay` only, **Actions: read and
+write**, nothing else. It lives in Secrets Manager (`relay/heartbeat/github-pat`, account
+`461293170793`, us-east-1), and only the `relay-heartbeat` Lambda reads it
+(`infra/heartbeat-lambda/handler.ts`). It dispatches `production-canary.yml` and
+`scheduler-monitor.yml` and reads the canary's run list (docs/canary-dispatch.md).
+
+**Blast radius of losing it: no customer impact.** The Lambda keeps running the canary against
+production and still alerts on a production failure; it reports the GitHub half as
+`could-not-look` and every dispatch as `failed`. The workflows fall back to their crons, and
+cadence-watch goes red the next morning. **Of leaking it:** someone can trigger and cancel this
+repo's workflows; it cannot push code, read secrets, or reach production.
+
+**Current token** (minted 2026-10-21): name `relay-heartbeat-lambda`, **expires 2027-10-20**.
+On expiry GitHub answers 401 and the Lambda degrades exactly as above — rotate before that date.
+
+**Rotation.** Mint a new token with the same scope (github.com/settings/personal-access-tokens →
+Generate new token; repository `sgharlow/relay` only; Actions: read and write), click GitHub's copy
+icon, then run `bash infra/heartbeat-lambda/set-github-token.sh`. It reads the clipboard, refuses
+anything that is not a `github_pat_` token, writes the secret, prints only the length and clears
+the clipboard — so the token is never typed, pasted into a terminal or kept in shell history. (A
+pasted `--secret-string <token>` command failed twice on 2026-10-21: once as a shell redirect, once
+by line-wrapping into PowerShell help text that was stored as the secret.) Then revoke the old one. A warm Lambda drops its cached token on the first `HTTP 401`, so the next
+tick reads the new value; no redeploy. Confirm in `/aws/lambda/relay-heartbeat`: `"canary":"ok"`.
+
 ## What is NOT rotatable, and must never be treated as though it were
 
 - **`KMS_KEY_ID`** is not a secret; it names the CMK. **Pointing it at a different key does not

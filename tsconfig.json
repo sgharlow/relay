@@ -43,6 +43,8 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    // Its own package (own AWS SDK clients, own tsconfig): `npm run typecheck` there.
+    "infra/heartbeat-lambda"
   ]
 }
