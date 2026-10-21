@@ -154,6 +154,25 @@ function validState(v: unknown): v is AlertState {
   );
 }
 
+/**
+ * The one reading of a persisted alert state, shared by every store: the local
+ * file below and the cloud heartbeat's S3 object (lib/ops/heartbeat-cloud.ts).
+ */
+export function parseAlertState(raw: string): StateRead {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { kind: 'unreadable', why: 'not valid JSON' };
+  }
+  return validState(parsed) ? { kind: 'ok', state: parsed } : { kind: 'unreadable', why: 'not a valid alert state' };
+}
+
+/** The one writing of it — the inverse of `parseAlertState`. */
+export function serializeAlertState(state: AlertState): string {
+  return JSON.stringify(state, null, 2) + '\n';
+}
+
 /** A JSON file next to the heartbeat's other state. Written atomically (tmp + rename). */
 export function fileStateStore(path: string): StateStore {
   return {
@@ -165,13 +184,7 @@ export function fileStateStore(path: string): StateStore {
         if ((e as NodeJS.ErrnoException).code === 'ENOENT') return { kind: 'none' };
         return { kind: 'unreadable', why: `read failed: ${(e as Error).message.slice(0, 120)}` };
       }
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(raw);
-      } catch {
-        return { kind: 'unreadable', why: 'not valid JSON' };
-      }
-      return validState(parsed) ? { kind: 'ok', state: parsed } : { kind: 'unreadable', why: 'not a valid alert state' };
+      return parseAlertState(raw);
     },
     write(next: AlertState | null): void {
       if (next === null) {
@@ -180,7 +193,7 @@ export function fileStateStore(path: string): StateStore {
       }
       mkdirSync(dirname(path), { recursive: true });
       const tmp = `${path}.tmp`;
-      writeFileSync(tmp, JSON.stringify(next, null, 2) + '\n');
+      writeFileSync(tmp, serializeAlertState(next));
       renameSync(tmp, path);
     },
   };
@@ -196,6 +209,8 @@ interface ComposeCtx {
   policy: AlertPolicy;
   firstAlertAt?: string;
   unreadableWhy?: string;
+  /** Who sent it. Default: the local watchdog. The cloud heartbeat names its Lambda. */
+  sentBy?: string;
 }
 
 /** The finding mail. Subject and body are the pre-2026-10-08 format plus two lines. */
@@ -214,8 +229,8 @@ export function composeFindingAlert(findings: HeartbeatFinding[], ctx: ComposeCt
     `for ${ctx.policy.recoveryHours}h.`;
   const text =
     `The off-GitHub heartbeat (B12.i) found ${findings.length} problem(s) at ` +
-    `${ctx.at.toISOString()}.\n\nThis alert was sent by the LOCAL watchdog on the operator's ` +
-    `machine, deliberately outside GitHub Actions, because the GitHub-scheduled canary is being ` +
+    `${ctx.at.toISOString()}.\n\nThis alert was sent by ${ctx.sentBy ?? "the LOCAL watchdog on the operator's machine"}, ` +
+    `deliberately outside GitHub Actions, because the GitHub-scheduled canary is being ` +
     `dropped (~6 runs/day against a designed 96).\n\n` +
     findings.map((f) => `── ${f.half.toUpperCase()}\n${f.detail}\n\n→ ${f.consequence}`).join('\n\n') +
     `\n\n${why}\n${next}` +
@@ -240,7 +255,7 @@ function composeRecovered(prev: AlertState, at: Date, policy: AlertPolicy, baseU
 export async function alertTick(
   findings: HeartbeatFinding[],
   deps: TickDeps,
-  ctx: { baseUrl: string; policy: AlertPolicy; unknownHalves?: Half[] },
+  ctx: { baseUrl: string; policy: AlertPolicy; unknownHalves?: Half[]; sentBy?: string },
 ): Promise<TickOutcome> {
   const now = deps.now();
   const nowMs = now.getTime();
@@ -331,6 +346,7 @@ export async function alertTick(
     policy,
     firstAlertAt: prev?.firstAlertAt,
     unreadableWhy: read.kind === 'unreadable' ? read.why : undefined,
+    sentBy: ctx.sentBy,
   });
   const sent = await deps.send(subject, text);
   if (sent) {

@@ -57,6 +57,8 @@ const config = [
       'scripts/scratch-*.ts',
       // Scratch probe scripts written at the repo root; gitignored by `_*.ts`.
       '_*.ts',
+      // The heartbeat Lambda's esbuild output (gitignored). Its source, handler.ts, is linted.
+      'infra/heartbeat-lambda/dist/**',
     ],
   },
 

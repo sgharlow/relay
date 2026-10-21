@@ -1,4 +1,11 @@
-# The canary dispatcher (`relay-canary-dispatch`, VICTUS)
+# The canary dispatcher (`relay-heartbeat` Lambda; was `relay-canary-dispatch`, VICTUS)
+
+> 🔁 **2026-10-20: moved to AWS** (Steve's ruling — each local console launch flashed a window,
+> 192/day across this task and `relay-heartbeat`). One Lambda, `relay-heartbeat` in account
+> `461293170793` / us-east-1, now does BOTH jobs every 15 minutes: the dispatches below and the
+> off-GitHub heartbeat (`lib/ops/heartbeat-cloud.ts`, same checks as `scripts/heartbeat-local.ts`).
+> Same cadence, same scheduler-monitor clock rule. See **"The Lambda"** at the end. The VICTUS
+> sections below are kept as the rollback path until the local tasks are deleted.
 
 > Added 2026-10-08. Steve's decision: the production canary's 15-minute cadence moves off
 > GitHub cron to a local scheduled task on VICTUS that dispatches the workflow. The GitHub cron
@@ -194,3 +201,40 @@ pre-2026-10-08 state (~5 and ~4 runs/day, cadence-watch red as before).
 
 To drop only the scheduler monitor, restore the job file from this document's previous version
 (`git log -p docs/canary-dispatch.md`). cadence-watch then reads the scheduler monitor red again.
+
+## The Lambda (since 2026-10-20)
+
+| Piece | Name |
+|---|---|
+| Function | `relay-heartbeat` (nodejs22.x, 300 s, async retries **0** — a retry would dispatch twice) |
+| Schedule | EventBridge Scheduler `relay-heartbeat-15min`, `cron(0/15 * * * ? *)` UTC, retries 0 |
+| Alert state | `s3://relay-heartbeat-state-461293170793/heartbeat/alert-state.json` |
+| Alerts | SNS `relay-heartbeat-alerts` → email (the subscription must be confirmed) |
+| GitHub token | Secrets Manager `relay/heartbeat/github-pat` — fine-grained, `sgharlow/relay` only, Actions read+write; set or rotate with `bash infra/heartbeat-lambda/set-github-token.sh` (secret-rotation-runbook §9) |
+| Code | `lib/ops/heartbeat-cloud.ts` (logic, unit-tested) · `infra/heartbeat-lambda/handler.ts` (wiring) |
+| Deploy | `MSYS_NO_PATHCONV=1 AWS_PROFILE=autospecai bash infra/heartbeat-lambda/deploy.sh` (idempotent) |
+
+**Alerts go through SNS, not Resend, on purpose.** A Resend send from relaystandby.com needs an
+`email_send_attempts` row or it becomes an orphan delivery event and trips webhook-health's mute
+alarm; writing that row needs a database identity the Lambda does not have. SNS produces no
+Resend event at all. The subject is the same `[relay] heartbeat: …` text.
+
+**Each tick logs one JSON line** to `/aws/lambda/relay-heartbeat` (30-day retention), the
+equivalent of `.heartbeat/runs.jsonl` and `dispatch.log`: `result` (`ok` / `finding` /
+`could-not-look`), `dispatch.canary` and `dispatch.schedulerMonitor` (`ok`, `skipped`, or
+`failed: …`), and the alert outcome.
+
+**Who watches the Lambda:** cadence-watch. If it stops, both workflows fall back to their crons and
+cadence-watch goes red the next morning, exactly as for the VICTUS task.
+
+**Proving the alert path (drill).** Points the canary at a path that does not exist, uses a separate
+state object, dispatches nothing, and prefixes the subject `[DRILL]`:
+
+```bash
+aws lambda invoke --function-name relay-heartbeat --payload '{"drill":true}' \
+  --cli-binary-format raw-in-base64-out --profile autospecai --region us-east-1 out.json && cat out.json
+# expect "result":"finding","halves":["production"],"alerted":true — then read the mail.
+```
+
+**Rollback:** `bash infra/heartbeat-lambda/deploy.sh --disable` (schedule off), then re-register the
+VICTUS tasks from the sections above if they were deleted.

@@ -215,8 +215,8 @@ describe('which runs count (canary and scheduler monitor)', () => {
   it('a low scheduler-monitor count points at the dispatcher, since that is its cadence now', () => {
     const low = judge(scheduler, 4)!;
     expect(low.detail).toMatch(/scheduled \+ dispatched/);
-    expect(low.detail).toMatch(/relay-canary-dispatch/);
-    expect(judge(scheduler, 0)!.detail).toMatch(/relay-canary-dispatch/);
+    expect(low.detail).toMatch(/relay-heartbeat/);
+    expect(judge(scheduler, 0)!.detail).toMatch(/relay-heartbeat/);
   });
 
   it('both consumers read the shared definition and spell no event of their own', () => {
