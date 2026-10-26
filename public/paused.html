@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Relay is paused</title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <!--
+    The whole site, while Relay is parked (2026-10-25, PROJECT.yaml → parked).
+    Static on purpose: no script, no font request, no call to anything, so this
+    page cannot fail in a way that needs watching. Colours are the globals.css
+    tokens, copied as literals because a public/ file cannot read them.
+  -->
+  <style>
+    :root { --paper: #f7f4ee; --paper-raised: #fffdf9; --ink: #1f1b16; --ink-muted: #6b6257; --rule: #e3dccf; --sage-text: #365547; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 24px 16px; background: var(--paper); color: var(--ink);
+      font: 17px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+    main { max-width: 34rem; width: 100%; background: var(--paper-raised); border: 1px solid var(--rule);
+      border-radius: 12px; padding: 40px 32px; }
+    .mark { display: flex; align-items: center; gap: 10px; color: var(--sage-text); font-weight: 600; letter-spacing: .02em; }
+    .mark svg { flex: none; }
+    h1 { font: 600 2rem/1.2 Georgia, "Times New Roman", serif; margin: 28px 0 16px; }
+    p { margin: 0 0 14px; }
+    .muted { color: var(--ink-muted); font-size: 15px; }
+    a { color: var(--ink); }
+  </style>
+</head>
+<body>
+  <main>
+    <!-- The mark is inlined, not <img src="/icon.svg">: that file's comment contains "--",
+         which is invalid XML, so an <img> refuses to render it (seen broken 2026-10-25). -->
+    <div class="mark"><svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <rect width="32" height="32" rx="7" fill="#f7f4ee"/>
+      <circle cx="11" cy="21" r="6" fill="#1f1b16"/>
+      <circle cx="22" cy="10.5" r="4.75" fill="none" stroke="#b4703a" stroke-width="3.5"/>
+    </svg>Relay</div>
+    <h1>Relay is paused.</h1>
+    <p>Relay is not open for sign-ups or sign-ins right now.</p>
+    <p>If you have a question about Relay, email <a href="mailto:hello@relaystandby.com">hello@relaystandby.com</a>.</p>
+    <p class="muted">Relay won &ldquo;Most Impactful&rdquo; at H0: Hack the Zero Stack (2026).</p>
+  </main>
+</body>
+</html>
