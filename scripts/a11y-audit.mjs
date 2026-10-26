@@ -53,6 +53,7 @@ import { readFileSync } from 'fs';
   CI keeps working unchanged: it sets PLAYWRIGHT_MODULE, which is still rung one.
 */
 import { resolvePlaywright } from './resolve-playwright.mjs';
+import nextConfig from '../next.config.mjs';
 
 const { chromium } = await resolvePlaywright();
 
@@ -163,6 +164,36 @@ let ownerCtx = null;
 let ownerSkipReason = SCOPE === 'public' ? 'A11Y_SCOPE=public' : null;
 
 const browser = await chromium.launch();
+
+/*
+  PARKED (2026-10-25, PROJECT.yaml → parked). Every path redirects to the static
+  /paused.html, so the page lists below would all score "REDIRECTED — not
+  audited" and the run would fail on a site that no longer exists. While the
+  park redirect is the first rule in next.config.mjs, the paused page IS the
+  public site: audit it, at the phone viewport, and stop. Owner mode does not
+  exist while parked, so there is nothing for A11Y_REQUIRE_OWNER to require.
+  Read from the config rather than an env var so the audit cannot disagree with
+  what is actually deployed; unparking restores the full run with no edit here.
+*/
+const PARKED = (await nextConfig.redirects())[0]?.destination === '/paused.html';
+if (PARKED) {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const p = await ctx.newPage();
+  let bad = null;
+  try {
+    await p.goto(BASE + '/paused.html', { waitUntil: 'domcontentloaded' });
+    await p.addScriptTag({ content: AXE });
+    const r = await p.evaluate(async () => await window.axe.run(document, { resultTypes: ['violations'] }));
+    bad = r.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
+    console.log(`PARKED    /paused.html     ${bad.length ? bad.length + ' serious/critical' : 'clean'}`);
+    for (const v of bad) console.log(`    ${v.id} (${v.impact}) x${v.nodes.length} — ${v.help}`);
+  } catch (e) {
+    console.log(`PARKED    /paused.html     ERROR ${e.message.slice(0, 80)}`);
+  }
+  await browser.close();
+  console.log('\nRelay is PARKED: the paused page is the whole public site; owner mode does not exist.');
+  process.exit(bad && bad.length === 0 ? 0 : 1);
+}
 
 if (!ownerSkipReason) {
   try {
