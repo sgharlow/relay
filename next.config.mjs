@@ -16,6 +16,32 @@
  */
 const LEGACY_HOST = 'relay-three-henna.vercel.app';
 
+/**
+ * PARKED 2026-10-25 (Steve's ruling; PROJECT.yaml → parked). Every request goes
+ * to the static public/paused.html, so no route handler runs: nothing reads or
+ * writes DSQL, calls OpenAI or sends through Resend. Temporary (307), so nothing
+ * caches the park as the site's permanent home.
+ *
+ * Excluded, or the page could not render: the page itself, Next's static
+ * chunks, and the icon it shows (favicon.ico is rewritten to icon.svg below).
+ *
+ * Unpark = set this to false and deploy, or roll production back to the
+ * deployment before the park in the Vercel dashboard (one click).
+ */
+const PARKED = true;
+/**
+ * Typed with the optional `has` so spreading it into redirects() keeps the
+ * array's element type one shape (security-headers.test.ts reads `r.has`).
+ * @type {{ source: string, destination: string, permanent: boolean, has?: { type: string, value: string }[] }[]}
+ */
+const PARK_REDIRECTS = [
+  {
+    source: '/:path((?!paused\\.html$|_next/|icon\\.svg$|favicon\\.ico$).*)',
+    destination: '/paused.html',
+    permanent: false,
+  },
+];
+
 /*
   ── THE CONTENT SECURITY POLICY, IN TWO VERSIONS ──────────────────────────────
 
@@ -355,6 +381,7 @@ const nextConfig = {
 
   async redirects() {
     return [
+      ...(PARKED ? PARK_REDIRECTS : []),
       {
         // "Recipients & Verifiers" and "Your circle" were two nav entries for
         // one idea, which asked an owner to know an internal distinction in

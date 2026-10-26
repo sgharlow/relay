@@ -1,5 +1,9 @@
 # Relay — standby access for the people who'll need it
 
+> ⏸️ **PARKED since 2026-10-25.** relaystandby.com shows a paused page, the scheduled monitors and the
+> heartbeat are off, and no work is planned. The data is kept and backed up. See `PROJECT.yaml → parked`
+> for what is off, what is kept and how to unpark. Everything below describes the product as built.
+
 **Standby access for your digital life.** Relay lets you build an encrypted
 vault of accounts, credentials, documents, and instructions, then assign
 **scoped, reversible access** to the right people under rules you set. When a

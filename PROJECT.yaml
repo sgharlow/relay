@@ -4,6 +4,38 @@
 
 name: relay
 
+# ⏸️ PARKED 2026-10-25 — Steve's ruling (portfolio keep/retire matrix,
+# __project-docs/portfolio-keep-retire-matrix-2026-10-25.md, AskUserQuestion "Park it").
+# Everything below this block is the record of the product as it stood; nothing in it
+# is live work while this block stands. Reviving = a NEW gate, not re-enabling the old ones.
+lifecycle: parked
+parked:
+  date: 2026-10-25
+  by: steve
+  why: "No arms-length demand signal (market.demand_signal: none) and the largest maintenance
+    load in the portfolio (727 commits in 90 days, 13 workflows, a 15-minute heartbeat Lambda)."
+  users_at_park: "0 real users. users = 2, both Steve's own gmail plus-aliases (isOwnerAlias
+    true for both, read under .env.ro 2026-10-25); the one paid subscription is Steve's own
+    card test. So the park affects nobody else."
+  what_is_off:
+    - "relaystandby.com: every path 307s to the static public/paused.html (next.config.mjs PARKED),
+      so no route handler runs: no DSQL read or write, no OpenAI, no Resend, and the hourly
+      /api/cron/heartbeat lands on the paused page"
+    - "EventBridge Scheduler relay-heartbeat-15min (us-east-1, 461293170793): DISABLED"
+    - "every GitHub workflow in this repo: disabled with gh workflow disable"
+  what_is_kept:
+    - "both DSQL clusters (deletion protection on) and the relay-dsql-daily backup plan"
+    - "on-demand snapshot taken BEFORE the park: recovery point a314dd50-352c-4b56-a987-2af21999a6cf
+      in relay-vault, 2,959,676 bytes, no lifecycle (does not expire)"
+    - "all keys and secrets, untouched (nothing rotated, nothing revoked)"
+  suspended: "the restore-drill cadence (next drill 2026-12-13) and the open gates
+    g3-b2b2c-pilot-loi (due 2026-11-30) and g1-arms-length-demand (due 2026-12-31) — no work is
+    scheduled against them while parked; they are decided at the 2026-12-31 review"
+  review: "2026-12-31 — keep the data parked, or retire (delete clusters + vaults) via /safe-execute"
+  unpark: "set PARKED = false in next.config.mjs (and delete lib/ops/parked.test.ts) and merge, or
+    promote the pre-park production deployment in Vercel; aws scheduler update-schedule
+    --name relay-heartbeat-15min --state ENABLED; gh workflow enable for each workflow"
+
 # The forward/commercial STRATEGY lives in the Build Spec §16–27 (the richest strategy doc in
 # the portfolio, per the 2026-07-01 audit). Its gap was operational sequencing, supplied partly
 # by the gates below and — since 2026-08-19 — by ROADMAP.md, which inventories the remaining
